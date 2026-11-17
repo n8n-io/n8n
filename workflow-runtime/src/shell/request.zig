@@ -7,6 +7,7 @@ const http = @import("http.zig");
 const creds = @import("creds.zig");
 const domains = @import("domains.zig");
 const binary_store = @import("binary_store.zig");
+const store_rule = @import("store_rule.zig");
 const Out = creds.Out;
 
 pub const max_url = 8 << 10;
@@ -31,6 +32,12 @@ pub const Built = struct {
     /// The args have `responseBinary`: the body of a 2xx response goes to
     /// the binary data store (`blob_store.zig`).
     stores: bool = false,
+    /// `stores`, and `responseBinary` has a rule (`store_rule.zig`): the
+    /// content type of the response says if the body goes to the store.
+    detects: bool = false,
+    /// `stores`, and `responseBinary` has `anyStatus`: a response with a
+    /// status outside 200 to 299 goes to the store too, when it is final.
+    any_status: bool = false,
     /// The credential limits the hosts of this request: a redirect goes back
     /// to the node, which sends the next request, so each URL is checked.
     no_redirect: bool = false,
@@ -153,7 +160,11 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
     // profiles).
     const fa = readArgs(args);
     // An object asks for a stored response; `null` and other values do not.
-    b.stores = if (fa.response_binary) |raw| raw.len > 0 and raw[0] == '{' else false;
+    if (fa.response_binary) |raw| if (raw.len > 0 and raw[0] == '{') {
+        b.stores = true;
+        b.detects = store_rule.Table.has(raw);
+        if (http.member(raw, "anyStatus")) |any| b.any_status = std.mem.eql(u8, any, "true");
+    };
     const m_raw = fa.method;
     const method: []const u8 = if (m_raw) |m| http.plainString(m) orelse "GET" else "GET";
     if (method.len == 0 or method.len > b.method_buf.len) return invalid(diag, "http: the method is not valid", .{});

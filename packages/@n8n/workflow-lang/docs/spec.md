@@ -826,6 +826,20 @@ file at start (`wfrt serve --credentials <file>`,
   * `fileType`: `json`, `html`, `image`, `audio`, `video`, `text` or `pdf` from the start of the
     MIME type, as n8n's `fileTypeFromMimeType`.
 
+  A rule. `responseBinary: { storeTypes: string[], inlineTypes?: string[] }` decides after the
+  head of the response: the body of a 2xx response is stored only when its `Content-Type` has
+  one text of `storeTypes` and no text of `inlineTypes` (the `includes` of JavaScript: the case
+  of the letters counts; a response without the header has the content type `''`). Another
+  response has its usual body. `fileName` and `mimeType` are not read with a rule. The rule is
+  data of the caller: the HTTP Request node gives the list of v1 for its response format
+  `autodetect` (`src/nodes/http-request.ts`). The runtime keeps each different rule once (at
+  most 8 for a shard, `store_rule.zig`) and takes a row of the store only for a body that is
+  stored, so a response that stays inline costs one test of its content type. A shard without
+  a storage path fails only the request whose response goes to the store.
+  `anyStatus: true` stores the body of a response of each status (not a redirect that the
+  runtime follows): the HTTP Request node sets it with "never error", as v1 then makes the
+  file from a failed response too.
+
   The reference runner and the test VM make the handle from the body of the fixture
   (`src/reference/binary-response.ts`): `{ $base64 }` is decoded, text is UTF-8, another value is
   its JSON text. The file part of the `id` is the SHA-256 of the bytes, so a test compares stored

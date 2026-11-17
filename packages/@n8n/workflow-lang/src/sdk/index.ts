@@ -283,6 +283,16 @@ export interface ResponseBinary {
 	fileName?: string;
 	/** The MIME type. Without it: the `Content-Type` header. */
 	mimeType?: string;
+	/**
+	 * A rule that decides after the head of the response: the body is stored only when the
+	 * content type has one of these texts and none of `inlineTypes` (the `includes` of
+	 * JavaScript). Another response has its usual body. `fileName` and `mimeType` are not read.
+	 */
+	storeTypes?: string[];
+	/** With `storeTypes`: a content type with one of these texts is never stored. */
+	inlineTypes?: string[];
+	/** Stores the body of a response of each status, not only 200 to 299. */
+	anyStatus?: boolean;
 }
 
 export interface CodeCall extends StepOptions {

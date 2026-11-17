@@ -38,6 +38,7 @@ const dns = @import("dns.zig");
 const gym_mod = @import("gym.zig");
 const creds = @import("creds.zig");
 const request = @import("request.zig");
+const store_rule = @import("store_rule.zig");
 const blob_store = @import("blob_store.zig");
 const Out = creds.Out;
 
@@ -331,7 +332,14 @@ const RState = enum { free, queued, active };
 /// message is made when it fails, with the same words as over HTTP/1.1.
 /// A plain response pays one test of this value for each DATA frame, as
 /// before the store.
-const RespFail = enum { none, body_limit, body_declared, no_big, window, headers_no_big, no_status, interim_end, storing, stored };
+const RespFail = enum { none, body_limit, body_declared, no_big, window, headers_no_big, no_status, interim_end, storing, stored, no_row, no_store };
+
+/// The failure of a response that goes to the store, in a shard without one.
+const no_store_text = "responseBinary needs the binary data store of n8n in filesystem mode (WFRT_BINARY_DATA_STORAGE_PATH is not set)";
+
+/// The failure of a response that its rule sends to the store, when the
+/// store has no free row. The request went out: the step does not run again.
+const no_row_fmt = "the response from {s} goes to the binary data store, and too many stored responses are in flight ({d}, --binary-max-transfers) (limit)";
 
 /// Where the stored files of a request body are. `sizing`: the files are
 /// opened for their sizes, and the request is not sent yet. `waiting`: the
@@ -435,6 +443,8 @@ const Req = struct {
     /// The row of the binary data store that waits for the response of a
     /// request with `responseBinary`. `.none` for every other request.
     stored: blob_store.Handle = .none,
+    /// The rule of the request in `Client.rules`, while `stored` is `.pending`.
+    rule: u8 = 0,
     /// The store has the start of the response (`blob_store.begin`): the
     /// body goes to it in pieces, and the result of the step comes from it.
     storing: bool = false,
@@ -648,6 +658,8 @@ pub const Client = struct {
     big_free: []u32,
     nbig_free: u32,
     big_used: []usize,
+    /// The rules of the requests whose content type decides if the body is stored.
+    rules: store_rule.Table = .{},
     /// The authority and path of an h2 request while it is encoded.
     tmp: []u8,
     queued_total: u32 = 0,
@@ -1082,11 +1094,24 @@ pub const Client = struct {
     fn reserveStored(c: *Client, ri: u32, args: []const u8) bool {
         const r = &c.reqs[ri];
         std.debug.assert(r.built.stores and r.stored == .none);
+        const opts = http.member(args, "responseBinary") orelse "{}";
+        if (r.built.detects) {
+            // The content type of the response decides (`decideStored`): no row yet,
+            // so a response that stays inline never waits for one, and needs no store.
+            r.rule = c.rules.intern(opts) catch |e| {
+                switch (e) {
+                    error.Full => c.failFreeFmt(ri, "http: too many different rules of responseBinary ({d}) (limit)", .{store_rule.max_rules}),
+                    error.Invalid => c.failFree(ri, "http: storeTypes and inlineTypes of responseBinary must be short lists of texts"),
+                }
+                return false;
+            };
+            r.stored = .pending;
+            return true;
+        }
         const blobs = c.cfg.blobs orelse {
-            c.failFree(ri, "http: responseBinary needs the binary data store of n8n in filesystem mode (WFRT_BINARY_DATA_STORAGE_PATH is not set)");
+            c.failFree(ri, "http: " ++ no_store_text);
             return false;
         };
-        const opts = http.member(args, "responseBinary") orelse "{}";
         r.stored = blobs.reserve(opts) catch |e| {
             switch (e) {
                 error.Full => c.failFreeFmt(ri, "http: too many stored responses are in flight ({d}, --binary-max-transfers); the step can run again (limit)", .{blobs.cfg.max_transfers}),
@@ -1095,6 +1120,32 @@ pub const Client = struct {
             return false;
         };
         return true;
+    }
+
+    const Decided = enum { store, plain, no_row, no_store };
+
+    /// The 2xx response of a request whose rule decides after the head
+    /// (`store_rule.zig`). `store`: the request has a row of the store now.
+    /// `plain`: the body stays in the response. `no_row`, `no_store`: the
+    /// body goes to the store, and the store has no free row or the shard
+    /// has no store; the caller fails the request.
+    fn decideStored(c: *Client, ri: u32, lines: []const u8) Decided {
+        const r = &c.reqs[ri];
+        std.debug.assert(r.stored == .pending and r.built.detects and r.rule < c.rules.n);
+        r.stored = .none;
+        if (!c.rules.rules[r.rule].stores(headerValue(lines, "content-type") orelse "")) return .plain;
+        const blobs = c.cfg.blobs orelse return .no_store;
+        r.stored = blobs.reserve("{}") catch |e| switch (e) {
+            error.Full => return .no_row,
+            error.TooLong => unreachable, // `{}` has no option.
+        };
+        return .store;
+    }
+
+    fn maxTransfers(c: *const Client) u16 {
+        const blobs = c.cfg.blobs orelse unreachable; // Only a request with a row or a rule of the store asks.
+        std.debug.assert(blobs.cfg.max_transfers > 0);
+        return blobs.cfg.max_transfers;
     }
 
     /// The path of the URL of the request, without the query.
@@ -1123,7 +1174,7 @@ pub const Client = struct {
         std.debug.assert(r.stored != .none and @backingInt(cn.kind) >= stored_kinds);
         if (!r.storing) {
             const h = cn.head.?;
-            if (h.status < 200 or h.status > 299) {
+            if ((h.status < 200 or h.status > 299) and !(r.built.any_status and !isRedirect(r, h))) {
                 // Not stored: the body is the usual one. A redirect keeps the
                 // row of the store for the response of the next request.
                 if (!isRedirect(r, h)) {
@@ -1133,6 +1184,21 @@ pub const Client = struct {
                 cn.kind = @fromBackingInt(@intCast(@backingInt(cn.kind) - stored_kinds));
                 return if (c.sizeBody(ci)) .plain else .done;
             }
+            if (r.stored == .pending) switch (c.decideStored(ri, h.lines)) {
+                .store => {},
+                .plain => {
+                    cn.kind = @fromBackingInt(@intCast(@backingInt(cn.kind) - stored_kinds));
+                    return if (c.sizeBody(ci)) .plain else .done;
+                },
+                .no_row => {
+                    c.connFailFmt(ci, no_row_fmt, .{ c.hostPort(ci), c.maxTransfers() });
+                    return .done;
+                },
+                .no_store => {
+                    c.connFailFmt(ci, no_store_text, .{});
+                    return .done;
+                },
+            };
             if (!c.beginStored(ci)) return .done;
         }
         return if (c.streamBody(ci)) .more else .done;
@@ -3417,14 +3483,27 @@ pub const Client = struct {
         // A failure, or an interim response: the final head decides.
         if (r.resp_fail != .none or r.status < 200) return true;
         if (r.status > 299) {
-            if (c.h2Redirect(ri) == null) {
+            const redirects = c.h2Redirect(ri) != null;
+            if (!redirects and !r.built.any_status) {
                 const reported = c.dropStored(ri, "");
                 std.debug.assert(!reported);
             }
-            return true;
+            if (redirects or !r.built.any_status) return true;
         }
         const stored = c.sink.stored orelse unreachable; // `reserveStored` needs the store, and the store comes with this sink.
         const lines = c.respArea(ri)[0..r.hdr_len];
+        if (r.stored == .pending) switch (c.decideStored(ri, lines)) {
+            .store => {},
+            .plain => return true,
+            .no_row => {
+                r.resp_fail = .no_row;
+                return true;
+            },
+            .no_store => {
+                r.resp_fail = .no_store;
+                return true;
+            },
+        };
         c.feedback(r.origin, r.status, lines);
         const trimmed = if (std.mem.endsWith(u8, lines, "\r\n")) lines[0 .. lines.len - 2] else lines;
         const resp: Response = .{ .status = r.status, .header_lines = trimmed, .body = "", .json = r.json };
@@ -3539,6 +3618,8 @@ pub const Client = struct {
             // `h2EndSlow` sends only failures here.
             .none, .storing => unreachable,
             .stored => std.fmt.bufPrint(&b, "http: the response from {s} could not be stored", .{hp}),
+            .no_row => std.fmt.bufPrint(&b, "http: " ++ no_row_fmt, .{ hp, c.maxTransfers() }),
+            .no_store => "http: " ++ no_store_text,
             .body_limit => std.fmt.bufPrint(&b, "http: the response body from {s} is larger than {d} bytes", .{ hp, c.cfg.max_body }),
             .body_declared => std.fmt.bufPrint(&b, "http: the response body from {s} is {d} bytes; the limit is {d}", .{ hp, r.body_len, c.cfg.max_body }),
             .no_big => std.fmt.bufPrint(&b, "http: the response from {s} needs a large buffer and all {d} are in use", .{ hp, c.cfg.big_slots }),
@@ -3672,7 +3753,7 @@ pub const Client = struct {
             } else {
                 r.headers_done = true;
             }
-            if (r.resp_fail == .body_declared) return c.h2FailResp(ri);
+            if (r.resp_fail == .body_declared or r.resp_fail == .no_row or r.resp_fail == .no_store) return c.h2FailResp(ri);
             if (!end_stream) return;
             if (r.resp_fail != .none) return c.h2EndSlow(ri, true);
             c.h2Complete(ri);
@@ -3887,6 +3968,8 @@ pub const Client = struct {
         const h = r.stored;
         std.debug.assert(h != .none);
         r.stored = .none;
+        // A rule that did not decide yet: the request has no row.
+        if (h == .pending) return false;
         if (!r.storing) {
             blobs.release(h);
             return false;

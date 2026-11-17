@@ -112,9 +112,15 @@ pub const Piece = union(enum) {
 /// A reserved transfer: the row in the low half, its generation in the high half.
 pub const Handle = enum(u32) {
     none = std.math.maxInt(u32),
+    /// A request whose rule decides after the head of the response
+    /// (`store_rule.zig`): it has no row yet. The store never gives this
+    /// value, and takes it in no call.
+    pending = std.math.maxInt(u32) - 1,
     _,
 
     fn of(row: u16, gen: u16) Handle {
+        // The two named values have the rows 0xffff and 0xfffe.
+        std.debug.assert(row < std.math.maxInt(u16) - 1);
         return @fromBackingInt(@as(u32, gen) << 16 | row);
     }
     fn index(h: Handle) u16 {
@@ -331,6 +337,8 @@ pub const Store = struct {
     /// Reserve every buffer and open the root directory. `s` must not move afterwards.
     pub fn init(s: *Store, gpa: std.mem.Allocator, cfg: Config, kind: u8) InitError!void {
         std.debug.assert(cfg.max_transfers > 0 and cfg.block_bytes > 0 and cfg.result_bytes >= 256);
+        // No row has the index of a named handle (`Handle.pending`).
+        std.debug.assert(cfg.max_transfers < std.math.maxInt(u16) - 1);
         var path: [binary_store.max_path + 1]u8 = @splat(0);
         if (cfg.root.len == 0 or cfg.root.len > binary_store.max_path) return error.BadRoot;
         @memcpy(path[0..cfg.root.len], cfg.root);

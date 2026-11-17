@@ -136,6 +136,10 @@ const Server = struct {
                 try sendAll(fd, std.fmt.comptimePrint("HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {d}\r\n\r\n", .{file_bytes}));
                 try sendFile(fd, 0, file_bytes / 3, false);
                 return;
+            } else if (std.mem.startsWith(u8, head, "GET /json/")) {
+                try sendAll(fd, "HTTP/1.1 200 OK\r\ncontent-type: application/json; charset=utf-8\r\ncontent-length: 11\r\n\r\n{\"ok\":true}");
+            } else if (std.mem.startsWith(u8, head, "GET /bare/")) {
+                try sendAll(fd, "HTTP/1.1 200 OK\r\ncontent-length: 4\r\n\r\nbare");
             } else if (std.mem.startsWith(u8, head, "PUT /upload ")) {
                 const kind = egress.headerValue(head, "content-type") orelse "";
                 @memcpy(s.upload_type[0..kind.len], kind);
@@ -541,6 +545,8 @@ const Rig = struct {
     server: Server = undefined,
     /// The server of an HTTP/2 rig. Null: `server` answers, over HTTP/1.1.
     peer: ?*H2Peer = null,
+    /// The client has no binary data store, as a shard without a storage path.
+    no_store: bool = false,
     rule_buf: [64]u8 = @splat(0),
     rules: [1]egress.Rule = @splat(.{ .host = "" }),
     thread: std.Thread = undefined,
@@ -582,7 +588,7 @@ const Rig = struct {
         g.sink = .{ .store = g.store };
         g.client = try a.create(egress.Client);
         // The file has 150,000 bytes: more than a response body can have here.
-        var cfg: egress.Config = .{ .max_conns = 2, .max_reqs = 4, .big_slots = 1, .max_body = 32 << 10, .blobs = g.store };
+        var cfg: egress.Config = .{ .max_conns = 2, .max_reqs = 4, .big_slots = 1, .max_body = 32 << 10, .blobs = if (g.no_store) null else g.store };
         if (h2) {
             cfg.rules = &g.rules;
             cfg.h2_conns = 2;
@@ -612,6 +618,37 @@ const Rig = struct {
         g.client.start(exec_id, 0, args, null, null, 0, 0, sys.nowMs());
         try g.loop.until(0, true);
         return g.store.nextDone() orelse error.TestExpectedEqual;
+    }
+
+    /// Start a request for `path` whose rule decides if the body is stored.
+    fn startWithRule(g: *Rig, exec_id: u64, path: []const u8) !void {
+        var args_buf: [512]u8 = @splat(0);
+        const args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}{s}\",\"responseBinary\":{s}}}", .{ g.port, path, detect_rule });
+        g.client.start(exec_id, 0, args, null, null, 0, 0, sys.nowMs());
+    }
+
+    /// A request with the rule whose body stays in the response: the result
+    /// comes through the sink, and the store has no work.
+    fn expectInline(g: *Rig, exec_id: u64, path: []const u8, status: u32, body: []const u8) !void {
+        const before = g.sink.results;
+        try g.startWithRule(exec_id, path);
+        try g.loop.until(before + 1, false);
+        try std.testing.expectEqualStrings("", g.sink.err[0..g.sink.err_len]);
+        try std.testing.expectEqual(status, g.sink.status);
+        try std.testing.expectEqualStrings(body, g.sink.body[0..g.sink.body_len]);
+        try std.testing.expect(!g.store.busy() and g.store.nextDone() == null);
+        try std.testing.expectEqual(@as(u32, g.store.cfg.max_transfers), g.store.nfree);
+        try std.testing.expectEqual(@as(u32, 4), g.client.nrfree);
+    }
+
+    /// As `expectInline` for JSON, while the test holds every row of the store.
+    fn expectInlineBusy(g: *Rig, exec_id: u64, path: []const u8) !void {
+        const before = g.sink.results;
+        try g.startWithRule(exec_id, path);
+        try g.loop.until(before + 1, false);
+        try std.testing.expectEqualStrings("", g.sink.err[0..g.sink.err_len]);
+        try std.testing.expectEqualStrings("{\"ok\":true}", g.sink.body[0..g.sink.body_len]);
+        try std.testing.expectEqual(@as(u32, 0), g.store.nfree);
     }
 
     /// Send the stored file `id` as the body of a request, and wait for the answer.
@@ -754,6 +791,96 @@ test "h2: a response goes to its file in pieces, and a request sends a stored fi
 test "h2: with a store that has no free block the bytes wait, and with reads that complete later the send waits" {
     // Two blocks of 4096 bytes: bytes waited in the response area until the store had room.
     try std.testing.expect(try h2RoundTrip(2) > 0);
+}
+
+/// A rule as the HTTP Request node of n8n has it: JSON stays in the response,
+/// and the listed types go to the store. The case of the letters counts.
+const detect_rule = "{\"inlineTypes\":[\"application/json\"],\"storeTypes\":[\"image/\",\"application/pdf\"]}";
+
+test "a rule of responseBinary stores a response by its content type, and takes a row only for a stored body" {
+    var g: Rig = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .tmp = std.testing.tmpDir(.{}) };
+    try g.start(0);
+    defer g.stop();
+    // JSON, no content type, a type with other letters (`Application/PDF`), and a 404.
+    try g.expectInline(1, "/json/a", 200, "{\"ok\":true}");
+    try g.expectInline(2, "/bare/a", 200, "bare");
+    try g.expectInline(3, "/missing", 404, "nope");
+    try std.testing.expectEqual(@as(u8, 1), g.client.rules.n);
+    try std.testing.expectEqual(@as(u64, 0), g.store.counters.stored);
+
+    // An image goes to its file in pieces, as with a plain `responseBinary`.
+    try g.startWithRule(4, "/chunked/b.png");
+    try g.loop.until(3, true);
+    const d = g.store.nextDone() orelse return error.TestExpectedEqual;
+    try g.expectFile(d);
+    try std.testing.expectEqualStrings("image/png", text(d.payload[d.head_len..], "mimeType"));
+    g.store.take(d);
+    try std.testing.expectEqual(@as(u32, 3), g.sink.results);
+
+    // `anyStatus`: the body of a 404 goes to the store too, by the same rule.
+    var args_buf: [256]u8 = @splat(0);
+    const any = "{\"storeTypes\":[\"text/plain\"],\"anyStatus\":true}";
+    const args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/missing\",\"responseBinary\":{s}}}", .{ g.port, any });
+    g.client.start(7, 0, args, null, null, 0, 0, sys.nowMs());
+    try g.loop.until(3, true);
+    const missing = g.store.nextDone() orelse return error.TestExpectedEqual;
+    try std.testing.expect(missing.ok);
+    try std.testing.expect(std.mem.endsWith(u8, missing.payload, ",\"bytes\":4}}"));
+    g.store.take(missing);
+    try std.testing.expectEqual(@as(u32, 3), g.sink.results);
+    try std.testing.expectEqual(@as(u8, 2), g.client.rules.n);
+
+    // Every row of the store is taken: JSON still comes, and an image fails with the limit.
+    const first = try g.store.reserve("{}");
+    const second = try g.store.reserve("{}");
+    try g.expectInlineBusy(5, "/json/a");
+    try g.startWithRule(6, "/chunked/b.png");
+    try g.loop.until(5, false);
+    try std.testing.expect(std.mem.indexOf(u8, g.sink.err[0..g.sink.err_len], "too many stored responses are in flight (2, --binary-max-transfers) (limit)") != null);
+    g.store.release(first);
+    g.store.release(second);
+    try std.testing.expect(!g.store.busy());
+    try std.testing.expectEqual(@as(u32, 4), g.client.nrfree);
+    try std.testing.expect(!g.server.failed);
+}
+
+test "without a binary data store a rule of responseBinary fails only a response that goes to the store" {
+    for ([_]bool{ false, true }) |h2| {
+        var g: Rig = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .tmp = std.testing.tmpDir(.{}), .no_store = true };
+        try g.startWith(0, h2);
+        defer g.stop();
+        try g.expectInline(1, "/json/a", 200, "{\"ok\":true}");
+        try g.startWithRule(2, if (h2) "/files/a" else "/chunked/b.png");
+        try g.loop.until(2, false);
+        try std.testing.expect(std.mem.indexOf(u8, g.sink.err[0..g.sink.err_len], "responseBinary needs the binary data store") != null);
+        try std.testing.expectEqual(@as(u32, 4), g.client.nrfree);
+    }
+}
+
+test "h2: a rule of responseBinary stores a response by its content type" {
+    var g: Rig = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .tmp = std.testing.tmpDir(.{}) };
+    try g.startWith(0, true);
+    defer g.stop();
+    const peer = g.peer orelse return error.TestExpectedEqual;
+    try g.expectInline(1, "/json/a", 200, "{\"ok\":true}");
+    try g.startWithRule(2, "/files/a");
+    try g.loop.until(1, true);
+    const d = g.store.nextDone() orelse return error.TestExpectedEqual;
+    try g.expectFile(d);
+    try std.testing.expectEqualStrings("application/pdf", text(d.payload[d.head_len..], "mimeType"));
+    g.store.take(d);
+    try std.testing.expectEqual(@as(u32, 1), g.sink.results);
+
+    // Every row of the store is taken: the stream of a file fails with the limit.
+    const first = try g.store.reserve("{}");
+    const second = try g.store.reserve("{}");
+    try g.startWithRule(3, "/files/a");
+    try g.loop.until(2, false);
+    try std.testing.expect(std.mem.indexOf(u8, g.sink.err[0..g.sink.err_len], "too many stored responses are in flight (2, --binary-max-transfers) (limit)") != null);
+    g.store.release(first);
+    g.store.release(second);
+    try std.testing.expectEqual(@as(u32, 4), g.client.nrfree);
+    try std.testing.expect(peer.failed == null);
 }
 
 test "responseBinary without a binary data store fails the request at its start" {

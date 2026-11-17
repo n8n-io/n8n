@@ -190,20 +190,41 @@ export function handleNames(
 	};
 }
 
+function texts(value: unknown): string[] {
+	return Array.isArray(value) ? value.filter((text) => typeof text === 'string') : [];
+}
+
+/**
+ * The rule of `responseBinary` (spec 7.1): without `storeTypes` each body is stored. With it, a
+ * body is stored when the content type has one text of `storeTypes` and no text of `inlineTypes`.
+ */
+function ruleStores(options: Record<string, unknown>, contentType: string): boolean {
+	if (options.storeTypes === undefined) return true;
+	if (texts(options.inlineTypes).some((text) => contentType.includes(text))) return false;
+	return texts(options.storeTypes).some((text) => contentType.includes(text));
+}
+
 /**
  * The result of an `http` effect. With `responseBinary` and a 2xx status, the body becomes
- * `{ $binary: <handle> }`; any other result is returned as it is.
+ * `{ $binary: <handle> }`; any other result is returned as it is. A rule in `responseBinary`
+ * keeps the body of a response of another content type as it is.
  */
 export function storedResponse(kind: string, args: unknown, result: unknown): unknown {
 	if (kind !== 'http' || !isRecord(args) || !isRecord(args.responseBinary)) return result;
 	if (!isRecord(result) || '$error' in result) return result;
 	const status = typeof result.status === 'number' ? result.status : 200;
-	if (status < 200 || status > 299) return result;
+	if ((status < 200 || status > 299) && args.responseBinary.anyStatus !== true) return result;
+	if (!ruleStores(args.responseBinary, headerOf(result.headers, 'content-type'))) return result;
 	const bytes = fixtureBytes(result.body);
 	const handle: BinaryHandle = {
 		id: REFERENCE_FILE_PREFIX + createHash('sha256').update(bytes).digest('hex'),
 		data: STORE_MODE,
-		...handleNames({ url: args.url, ...args.responseBinary }, result.headers),
+		...handleNames(
+			args.responseBinary.storeTypes === undefined
+				? { url: args.url, ...args.responseBinary }
+				: { url: args.url },
+			result.headers,
+		),
 		fileSize: prettyBytes(bytes.length),
 		bytes: bytes.length,
 	};
