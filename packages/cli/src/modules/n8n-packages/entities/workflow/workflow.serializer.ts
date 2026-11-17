@@ -6,7 +6,9 @@ import {
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnprocessableRequestError } from '@n8n/errors';
 import type { IConnections, INode } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
 import { definePackageSerializationPayload } from '../package-serialization.types';
@@ -107,6 +109,22 @@ export class WorkflowSerializer {
 			return true;
 		});
 		return copy;
+	}
+
+	serializeForExport(workflow: WorkflowEntity, options: { includeTags: boolean }) {
+		try {
+			return [this.serialize(workflow, options), this.serializeMetadata(workflow)] as const;
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			const fields = error.issues
+				.slice(0, 10)
+				.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+				.join('; ');
+			throw new UnprocessableRequestError(
+				`Workflow ${workflow.id} cannot be exported because its stored data is invalid (${fields}). Export aborted.`,
+			);
+		}
 	}
 
 	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {

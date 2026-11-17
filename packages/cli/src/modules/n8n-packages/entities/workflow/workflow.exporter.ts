@@ -1,7 +1,5 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnprocessableRequestError } from '@n8n/errors';
-import { ZodError } from 'zod';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -91,7 +89,9 @@ export class WorkflowExporter {
 					request.writer,
 					workflowsDir,
 					workflow,
-					...this.serializeOrThrow(workflow, request.includeTags),
+					...this.workflowSerializer.serializeForExport(workflow, {
+						includeTags: request.includeTags,
+					}),
 				),
 			);
 
@@ -103,25 +103,6 @@ export class WorkflowExporter {
 		}
 
 		return { entries, requirements: { credentials, dataTables, variables, tags, nodeTypes } };
-	}
-
-	private serializeOrThrow(workflow: WorkflowEntity, includeTags: boolean) {
-		try {
-			return [
-				this.workflowSerializer.serialize(workflow, { includeTags }),
-				this.workflowSerializer.serializeMetadata(workflow),
-			] as const;
-		} catch (error) {
-			if (!(error instanceof ZodError)) throw error;
-
-			const fields = error.issues
-				.slice(0, 10)
-				.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
-				.join('; ');
-			throw new UnprocessableRequestError(
-				`Workflow ${workflow.id} cannot be exported because its stored data is invalid (${fields}). Export aborted.`,
-			);
-		}
 	}
 
 	private orderWorkflowsByRequest(
