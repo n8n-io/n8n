@@ -61,7 +61,8 @@ import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 export const TRIGGER_EVENT_REQUIRED_MESSAGE =
 	'The run data does not reach the destination node from a trigger, and the trigger needs an ' +
-	'external event to start. Add run data for the trigger node to `runData`, or pin data on the trigger.';
+	'external event to start. Pin data on the trigger. Or add run data for a trigger node ' +
+	'that comes before the destination node to `runData`.';
 
 @Service()
 export class WorkflowExecutionService {
