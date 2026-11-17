@@ -12,7 +12,7 @@ import type {
 export interface KnowledgePreparationWait {
 	/** Time to get a running sandbox. */
 	sandboxWaitMs: number;
-	/** Time spent waiting for the mirror. 0 when the call did not wait for another sync and copied no files. */
+	/** Time spent waiting for the mirror. 0 when the call did not wait for another sync and did not change the mirror. */
 	mirrorWaitMs: number;
 }
 

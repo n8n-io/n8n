@@ -304,7 +304,7 @@ export class KnowledgeMirrorService {
 		const startedAt = Date.now();
 		// Another sync for this sandbox is pending, so this call waits for it.
 		const waitsForOtherSync = this.pendingMirrorSyncs.has(runtime.cacheKey);
-		const sync = { copiesFiles: false };
+		const sync = { mirrorChangesDetected: false };
 
 		try {
 			await runSerially(
@@ -312,12 +312,12 @@ export class KnowledgeMirrorService {
 				runtime.cacheKey,
 				async () =>
 					await this.syncMirror(runtime, files, () => {
-						sync.copiesFiles = true;
+						sync.mirrorChangesDetected = true;
 					}),
 			);
 		} finally {
 			// The manifest check alone is not a wait.
-			const waited = waitsForOtherSync || sync.copiesFiles;
+			const waited = waitsForOtherSync || sync.mirrorChangesDetected;
 			onWait?.(waited ? Date.now() - startedAt : 0);
 		}
 	}
@@ -325,7 +325,7 @@ export class KnowledgeMirrorService {
 	private async syncMirror(
 		runtime: KnowledgeMirrorRuntime,
 		files: KnowledgeFileReference[],
-		onCopyStart?: () => void,
+		onChangesDetected?: () => void,
 	): Promise<void> {
 		const manifestResult = await this.sandboxProviderProxy.executeCommand(
 			runtime.sandbox,
@@ -341,7 +341,7 @@ export class KnowledgeMirrorService {
 
 		if (toCopy.length === 0 && toDelete.length === 0) return;
 
-		onCopyStart?.();
+		onChangesDetected?.();
 
 		for (const name of [...expectedNames, ...toDelete]) {
 			assertKnowledgePathSegment(name, 'knowledge mirror file name');
