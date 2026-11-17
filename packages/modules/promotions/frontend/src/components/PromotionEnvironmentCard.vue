@@ -160,10 +160,11 @@ function onAction(action: 'edit' | 'remove') {
 						:connected="status === 'connected'"
 						:busy="!!busy"
 					/>
+					<!-- No checkout check: the operation clones the branch when this main has none. -->
 					<N8nButton
 						v-if="canRun"
 						size="small"
-						:disabled="status !== 'connected' || !!busy"
+						:disabled="!!busy"
 						:data-test-id="`${environment.direction}-instance-button`"
 						@click="dialogOpen = true"
 					>

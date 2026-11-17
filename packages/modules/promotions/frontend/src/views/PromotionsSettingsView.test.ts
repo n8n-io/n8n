@@ -291,6 +291,33 @@ describe('PromotionsSettingsView', () => {
 		await waitFor(() => expect(applyMenu).toBeEnabled());
 	});
 
+	it.each([
+		['has no local copy', { hasCheckout: false, matchesEnvironment: false }],
+		['has an out-of-date local copy', { hasCheckout: true, matchesEnvironment: false }],
+	])('enables Promote and Apply when the instance %s', async (_, checkout) => {
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: ['promotions:promote', 'promotions:apply'],
+		});
+		const promoteEnvironment = {
+			...applyEnvironment,
+			id: 'environment-promote',
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+			checkout,
+		} as PromotionEnvironment;
+		const environments = [{ ...applyEnvironment, checkout }, promoteEnvironment];
+		api.fetchPromotionEnvironments.mockResolvedValue(environments);
+		api.fetchPromotionEnvironment.mockImplementation(
+			async (_, id) => environments.find((environment) => environment.id === id)!,
+		);
+		renderView();
+
+		expect(await screen.findByTestId('apply-instance-button')).toBeEnabled();
+		expect(screen.getByTestId('promote-instance-button')).toBeEnabled();
+		// The missing-projects check stays off, so a page load does not start a clone.
+		expect(api.fetchMissingPromotionProjects).not.toHaveBeenCalled();
+	});
+
 	it('allows a toggle only after the current protection state loads', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		const preferences = Promise.withResolvers<undefined>();
