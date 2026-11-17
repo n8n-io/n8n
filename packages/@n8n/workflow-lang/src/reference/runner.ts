@@ -59,7 +59,15 @@ export function executionInfo(fixture: Fixture) {
 	return { id, mode, resumeUrl: `${base}/${id}`, resumeFormUrl: `${form}/${id}` };
 }
 
-export type EffectKindName = 'node' | 'http' | 'code' | 'wait' | 'approval' | 'respond' | 'service';
+export type EffectKindName =
+	| 'node'
+	| 'http'
+	| 'code'
+	| 'wait'
+	| 'approval'
+	| 'respond'
+	| 'service'
+	| 'sql';
 
 export interface EffectRecord {
 	step: string;
@@ -177,6 +185,11 @@ export async function runReference(
 		fileName?: string;
 		/** The run stops with the status `limit` after this many fibre steps. */
 		maxSteps?: number;
+		/**
+		 * Answers an effect in place of the fixture, for a test that runs effects on a real
+		 * system. `undefined` leaves the effect to the fixture. `{ $error }` fails the effect.
+		 */
+		answer?: (effect: EffectRecord) => Promise<unknown>;
 	} = {},
 ): Promise<ReferenceOutput> {
 	// Workflows run in UTC: local-time Date methods equal the UTC methods.
@@ -188,6 +201,8 @@ export async function runReference(
 	const random = splitmix64(fixture.seed);
 	const statics = new StaticDataDoc(fixture.staticData);
 	let clock = fixture.now;
+	// Effects that wait for `options.answer`. The scheduler waits for them.
+	let answering = 0;
 	let current: Fibre = { tryDepth: 0 };
 	// Closures set these, so they live in an object that the checker does not narrow.
 	const state: { abort: Abort | null; finished: ReferenceOutput | null } = {
@@ -225,7 +240,16 @@ export async function runReference(
 		let result: unknown;
 		for (;;) {
 			effects.push({ step, kind, args: clone(args) });
-			result = storedResponse(kind, args, nextResult(step));
+			let answer: unknown;
+			if (options.answer) {
+				answering++;
+				try {
+					answer = await options.answer({ step, kind, args: clone(args) });
+				} finally {
+					answering--;
+				}
+			}
+			result = answer === undefined ? storedResponse(kind, args, nextResult(step)) : answer;
 			const failed = isRecord(result) && '$error' in result;
 			if (!failed || attempt >= retryMax) break;
 			attempt++;
@@ -339,6 +363,7 @@ export async function runReference(
 				const nodeCtx = {
 					http: async (req: unknown) => await effect(step, 'http', req, retryOf(opts)),
 					service: async (req: unknown) => await effect(step, 'service', req, retryOf(opts)),
+					sql: async (req: unknown) => await effect(step, 'sql', req, retryOf(opts)),
 					staticData: (type: unknown, node: unknown) => statics.get(type, node),
 					random,
 					wait: async (call: unknown) => await pause(step, call),
@@ -354,6 +379,7 @@ export async function runReference(
 		approval: async (opts: unknown) => await effect(stepName(opts), 'approval', opts, 0),
 		respond: async (opts: unknown) => await effect(stepName(opts), 'respond', opts, 0),
 		service: async (opts: unknown) => await effect(stepName(opts), 'service', opts, retryOf(opts)),
+		sql: async (opts: unknown) => await effect(stepName(opts), 'sql', opts, retryOf(opts)),
 		now: () => clock,
 		random,
 		trace: (name: unknown, items: unknown) => {
@@ -384,6 +410,10 @@ export async function runReference(
 	const MAX_STEPS = options.maxSteps ?? 1_000_000;
 	for (let i = 0; i < MAX_STEPS && !state.finished && !state.abort; i++) {
 		const next = queue.shift();
+		if (!next && answering > 0) {
+			await new Promise((r) => setTimeout(r, 1));
+			continue;
+		}
 		if (!next) throw new Error('deadlock: no runnable fibre');
 		next();
 		await new Promise((r) => setImmediate(r));

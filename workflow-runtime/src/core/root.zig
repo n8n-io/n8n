@@ -29,6 +29,7 @@ pub const collate = @import("collate.zig");
 pub const binary_names = @import("binary_names.zig");
 pub const mime_tables = @import("mime_tables.zig");
 pub const cred_flags = @import("cred_flags.zig");
+pub const pgwire = @import("pgwire.zig");
 
 test {
     @import("std").testing.refAllDecls(@This());

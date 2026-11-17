@@ -147,6 +147,12 @@ export interface ConvertOptions {
 	 * false, it runs in the fallback host.
 	 */
 	services?: boolean;
+	/**
+	 * The runtime runs `ctx.sql` effects (spec 9.10). The default is false: the Postgres
+	 * node runs in the fallback host. With true, it runs as a library node when the
+	 * library node has the call.
+	 */
+	sql?: boolean;
 }
 
 export interface InstanceInfo {
@@ -821,6 +827,7 @@ export class ModuleGenerator {
 				this.credentialMints[slot] = list;
 			},
 			services: this.options.services,
+			sql: this.options.sql,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'

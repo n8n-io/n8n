@@ -1,7 +1,7 @@
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { WfrtFinishedEvent, WfrtStepEvent, WfrtTraceEvent } from '../compiled-engine.types';
-import { parseWfrtEvent } from '../compiled-engine.types';
+import { needsFallbackHost, parseWfrtEvent } from '../compiled-engine.types';
 import { CompiledRunRecorder, toOutputs, triggerItems } from '../compiled-run-recorder';
 
 const node = (name: string, type: string): INode => ({
@@ -238,6 +238,24 @@ describe('helpers', () => {
 			undefined,
 		);
 		expect(parseWfrtEvent('not json')).toBe(undefined);
+	});
+});
+
+describe('needsFallbackHost', () => {
+	it.each([
+		'http: the response body is 9 bytes (limit: binary-max-file)',
+		'sql: the result is larger than 1024 kB (limit: sql-max-result)',
+		'sql: the column "tags" has the type 1007 (limit: sql-type)',
+		'sql: the statement has no form with bind values (limit: sql-statement)',
+		'sql: the credential uses an SSH tunnel (limit: sql-credential)',
+		'Postgres: A query has a pg-promise filter. The fallback host runs the node (limit: sql-host) (no request to repeat: the fallback host runs the node)',
+	])('is true for the error "%s"', (message) => {
+		expect(needsFallbackHost(message)).toBe(true);
+	});
+
+	it('is false for another limit and for no error', () => {
+		expect(needsFallbackHost('sql: too many calls wait for a connection (limit)')).toBe(false);
+		expect(needsFallbackHost(undefined)).toBe(false);
 	});
 });
 

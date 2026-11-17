@@ -147,9 +147,9 @@ pub const Op = enum(u8) {
 };
 
 /// `service` (spec 9.9): a call of an n8n service that the admin client answers.
-pub const EffectKind = enum(u8) { node = 0, http = 1, code = 2, wait = 3, approval = 4, respond = 5, service = 6, _ };
+pub const EffectKind = enum(u8) { node = 0, http = 1, code = 2, wait = 3, approval = 4, respond = 5, service = 6, sql = 7, _ };
 
-pub const effect_kind_names = [_][]const u8{ "node", "http", "code", "wait", "approval", "respond", "service" };
+pub const effect_kind_names = [_][]const u8{ "node", "http", "code", "wait", "approval", "respond", "service", "sql" };
 
 pub const Error = error{
     BadMagic,
@@ -454,7 +454,7 @@ fn verifyInstr(m: *Module, f: FuncEntry, ins: Instr) Error!void {
             try reg(f, ins.a);
             try reg(f, ins.b);
             try reg(f, ins.c);
-            if (ins.x > @backingInt(EffectKind.service)) return error.BadOperand;
+            if (ins.x > @backingInt(EffectKind.sql)) return error.BadOperand;
         },
         _ => return error.UnknownOpcode,
     }

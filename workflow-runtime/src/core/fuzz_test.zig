@@ -623,3 +623,115 @@ test "fuzz text codecs" {
         .corpus = &.{ seed("SGVsbG8="), seed("grüße 😀 &=?"), seed("%u20AC%FC") },
     });
 }
+
+// ---- PostgreSQL wire protocol (pgwire.zig) ----------------------------------------
+
+const pgwire = @import("pgwire.zig");
+
+/// Every slice that a decoder gives points into the message body.
+fn pgwireBody(m: pgwire.Msg) !void {
+    switch (m.tag) {
+        'E', 'N' => {
+            var f = pgwire.Fields.init(m.body);
+            for (0..m.body.len + 1) |_| {
+                const field = (f.next() catch return) orelse return;
+                try within(m.body, field.text);
+            }
+            return error.PgwireFieldsLoop;
+        },
+        'T' => {
+            var cols = pgwire.Columns.init(m.body) catch return;
+            for (0..m.body.len + 1) |_| {
+                const col = (cols.next() catch return) orelse return;
+                try within(m.body, col.name);
+            }
+            return error.PgwireColumnsLoop;
+        },
+        'D' => {
+            var vals = pgwire.Values.init(m.body) catch return;
+            for (0..m.body.len + 1) |_| {
+                const v = (vals.next() catch return) orelse return;
+                if (v.text) |t| try within(m.body, t);
+            }
+            return error.PgwireValuesLoop;
+        },
+        'C' => {
+            const tag = pgwire.commandTag(m.body) catch return;
+            try within(m.body, tag.command);
+        },
+        'R' => switch (pgwire.auth(m.body) catch return) {
+            .sasl, .sasl_continue, .sasl_final => |data| try within(m.body, data),
+            .ok, .cleartext, .md5, .other => {},
+        },
+        else => {},
+    }
+}
+
+fn fuzzPgwire(_: void, smith: *Smith) !void {
+    const bytes = input_buf[0..smith.slice(&input_buf)];
+    var off: usize = 0;
+    for (0..bytes.len + 1) |_| {
+        const m = (pgwire.next(bytes[off..], 1 << 12) catch return) orelse return;
+        if (m.size < 5 or m.size > bytes.len - off or m.body.len > 1 << 12) return error.PgwireBadFrame;
+        try within(bytes, m.body);
+        try pgwireBody(m);
+        off += m.size;
+    }
+    return error.PgwireFramesLoop;
+}
+
+test "fuzz pgwire backend messages" {
+    try std.testing.fuzz({}, fuzzPgwire, .{
+        .corpus = &.{
+            seed("C\x00\x00\x00\x0dSELECT 1\x00Z\x00\x00\x00\x05I"),
+            seed("T\x00\x00\x00\x1b\x00\x01id\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x17\x00\x04\xff\xff\xff\xff\x00\x00D\x00\x00\x00\x0b\x00\x01\x00\x00\x00\x017"),
+            seed("E\x00\x00\x00\x18SERROR\x00C42601\x00Mbad\x00\x00"),
+            seed("R\x00\x00\x00\x17\x00\x00\x00\x0aSCRAM-SHA-256\x00\x00"),
+            seed("D\x00\x00\x00\x0a\x00\x02\xff\xff\xff\xff"),
+        },
+    });
+}
+
+/// A column value of any class and any text gives JSON that fits the
+/// buffer, or an error: never a crash, and never bytes after the limit.
+fn fuzzPgwireValue(_: void, smith: *Smith) !void {
+    var tbuf: [96]u8 = @splat(0);
+    const text = tbuf[0..smith.slice(&tbuf)];
+    const class: pgwire.Class = smith.value(pgwire.Class);
+    const opt: pgwire.Options = .{ .numbers = smith.value(bool) };
+    var obuf: [160]u8 = @splat(0xEE);
+    var o: pgwire.Out = .{ .buf = obuf[0..128] };
+    pgwire.writeValue(&o, class, text, opt) catch return;
+    if (o.len == 0 or o.len > 128) return error.PgwireValueLength;
+    for (obuf[128..]) |b| if (b != 0xEE) return error.PgwireValueOverrun;
+    // A text column is one JSON string: no raw quote or control byte inside.
+    if (class != .text) return;
+    for (obuf[1 .. o.len - 1], 1..) |b, i| {
+        if (b < 0x20 or (b == '"' and obuf[i - 1] != '\\')) return error.PgwireBadString;
+    }
+}
+
+test "fuzz pgwire column values" {
+    try std.testing.fuzz({}, fuzzPgwireValue, .{
+        .corpus = &.{ seed("2024-01-02 03:04:05.123456+05:30"), seed("\\x00ff"), seed("{\"a\":[1,\"}\"]}"), seed("-9223372036854775808"), seed("a\"b\\c\n") },
+    });
+}
+
+/// A server-first message of any bytes ends the SCRAM exchange with a
+/// message or an error.
+fn fuzzPgwireScram(_: void, smith: *Smith) !void {
+    var sbuf: [300]u8 = @splat(0);
+    const server_first = sbuf[0..smith.slice(&sbuf)];
+    var s: pgwire.Scram = .{};
+    var first: [33]u8 = @splat(0);
+    if (s.first(@splat(9), &first).len != 33) return error.PgwireScramFirst;
+    var out: [pgwire.Scram.max_final]u8 = @splat(0);
+    const final = s.final("pw", server_first, &out) catch return;
+    if (!std.mem.startsWith(u8, final, "c=biws,r=")) return error.PgwireScramFinal;
+}
+
+test "fuzz pgwire scram server-first" {
+    try std.testing.fuzz({}, fuzzPgwireScram, .{
+        .corpus = &.{ seed("r=CQkJCQkJCQkJCQkJCQkJCQkJx,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=2"), seed("r=,s=,i=0"), seed("i=99999999999,r=CQkJ") },
+    });
+}

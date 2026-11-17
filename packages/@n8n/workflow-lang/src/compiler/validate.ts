@@ -194,6 +194,77 @@ export function validateFile(
 	const isGlobalSymbol = (symbol: ts.Symbol | undefined) =>
 		!symbol || (symbol.declarations ?? []).every((d) => d.getSourceFile().fileName === LIB_FILE);
 
+	const propertyOf = (object: ts.ObjectLiteralExpression, name: string) =>
+		object.properties.find(
+			(p): p is ts.PropertyAssignment =>
+				ts.isPropertyAssignment(p) && propertyName(p.name) === name,
+		);
+
+	// The parts of a `sql` call that are literals (spec 9.10). The runtime checks the rest.
+	const checkSql = (options: ts.ObjectLiteralExpression) => {
+		const shorthand = (name: string) =>
+			options.properties.some((p) => ts.isShorthandPropertyAssignment(p) && p.name.text === name);
+		if (!propertyOf(options, 'credential') && !shorthand('credential')) {
+			report(
+				options,
+				'WL032',
+				'ctx.sql needs `credential`, the name of a credential slot.',
+				"credential: 'db'",
+			);
+		}
+		const dialect = propertyOf(options, 'dialect');
+		if (!dialect || stringLiteralValue(dialect.initializer) !== 'postgres') {
+			report(
+				dialect ?? options,
+				'WL032',
+				"The `dialect` of ctx.sql must be the literal 'postgres'.",
+				"dialect: 'postgres'",
+			);
+		}
+		const statements = propertyOf(options, 'statements');
+		if (!statements && !shorthand('statements')) {
+			report(
+				options,
+				'WL032',
+				'ctx.sql needs `statements`.',
+				"statements: [{ text: 'SELECT $1', values: [1] }]",
+			);
+			return;
+		}
+		const list = statements ? skipOuter(statements.initializer) : undefined;
+		if (!list || !ts.isArrayLiteralExpression(list)) return;
+		for (const element of list.elements) {
+			const statement = skipOuter(element);
+			if (!ts.isObjectLiteralExpression(statement)) continue;
+			const text = propertyOf(statement, 'text');
+			if (!text && !statement.properties.some(ts.isShorthandPropertyAssignment)) {
+				report(statement, 'WL032', 'A SQL statement needs `text`.', "text: 'SELECT 1'");
+			}
+			if (text && ts.isTemplateExpression(skipOuter(text.initializer))) {
+				report(
+					text,
+					'WL032',
+					'The text of a SQL statement must not be a template with values in it.',
+					"text: 'SELECT $1', values: [value]",
+				);
+			}
+			const values = propertyOf(statement, 'values');
+			const members = values ? skipOuter(values.initializer) : undefined;
+			if (!members || !ts.isArrayLiteralExpression(members)) continue;
+			for (const member of members.elements) {
+				const value = skipOuter(member);
+				if (ts.isArrayLiteralExpression(value) || ts.isObjectLiteralExpression(value)) {
+					report(
+						value,
+						'WL032',
+						'A bind value of a SQL statement is a string, a number, a boolean or null.',
+						'JSON.stringify(value)',
+					);
+				}
+			}
+		}
+	};
+
 	const checkStep = (call: ts.CallExpression) => {
 		const method = ctxCallMethod(checker, call);
 		const arg = call.arguments[0];
@@ -207,6 +278,7 @@ export function validateFile(
 			);
 			return;
 		}
+		if (method === 'sql') checkSql(options);
 		const isLibraryHttp = role === 'library';
 		if (isLibraryHttp) return;
 		const nameProp = options.properties.find(
@@ -444,6 +516,7 @@ export function validateFile(
 				method &&
 				method !== 'http' &&
 				method !== 'service' &&
+				method !== 'sql' &&
 				method !== 'staticData' &&
 				method !== 'random' &&
 				method !== 'wait' &&
@@ -452,7 +525,7 @@ export function validateFile(
 				report(
 					node,
 					'WL012',
-					'A library node can use only ctx.http, ctx.service, ctx.staticData, ctx.random, ctx.wait and ctx.credentialFlag.',
+					'A library node can use only ctx.http, ctx.service, ctx.sql, ctx.staticData, ctx.random, ctx.wait and ctx.credentialFlag.',
 					'Use ctx.http.',
 				);
 			}

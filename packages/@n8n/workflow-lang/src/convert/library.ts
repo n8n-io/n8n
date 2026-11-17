@@ -24,7 +24,7 @@ import { constantText, emptyUsage, INDEX, ITEM, jsonLiteral } from './expression
 import { isClusterRoot, LANGCHAIN_PREFIX, lowerAiNode, lowerHostNode } from './host-node.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
-import { emitStep, nodeCall, tryCompiledNode } from './steps.ts';
+import { emitStep, emitWithHostForm, hostFormOf, nodeCall, tryCompiledNode } from './steps.ts';
 import { isRecord, text } from './types.ts';
 
 let libraryTypes: Set<string> | undefined;
@@ -220,6 +220,34 @@ const ADAPTERS: Record<
 		}
 		return out;
 	},
+	// The library node gets the node version, and the parts of the raw text of the query
+	// parameters of `executeQuery`: v1 reads that raw text and evaluates each `{{ }}` of it
+	// (`executeQuery.operation.ts`). A raw value that the library node cannot read gets a
+	// marker that is not in the `supports` list, so the node runs in the host.
+	'n8n-nodes-base.postgres': (p, version) => {
+		const out: Record<string, unknown> = { ...p, nodeVersion: version };
+		if (p.operation !== 'executeQuery') return out;
+		const options = isRecord(p.options) ? p.options : {};
+		const given = options.queryReplacement;
+		const replacement: Record<string, unknown> = { present: 'queryReplacement' in options };
+		out.replacement = replacement;
+		if (given === undefined || given === '') return out;
+		if (typeof given !== 'string') return { ...out, postgresHost: true };
+		const rawValues = given.replace(/^=+/, '');
+		const resolvables = rawValues.match(/({{[\s\S]*?}})/g) ?? [];
+		replacement.raw = true;
+		if (resolvables.length > 0) {
+			replacement.parts = resolvables.map((r) => `=${r}`);
+			return out;
+		}
+		const texts = rawValues
+			.split(',')
+			.filter((entry) => entry)
+			.map((entry) => entry.trim());
+		if (texts.some((entry) => entry.startsWith('='))) return { ...out, postgresHost: true };
+		replacement.texts = texts;
+		return out;
+	},
 };
 
 /**
@@ -260,6 +288,8 @@ export const MIN_VERSIONS: Record<string, number> = {
 	// Version 2 is the node on the shared Microsoft Graph transport; the node compiler takes
 	// versions 1 and 1.1.
 	'n8n-nodes-base.microsoftTeams': 2,
+	// Version 2.5 changed how `executeQuery` reads its query parameters.
+	'n8n-nodes-base.postgres': 2.5,
 	// 1.2 has the relaxed Accept header; version 1 reads the feed once for all items.
 	'n8n-nodes-base.rssFeedRead': 1.2,
 };
@@ -274,6 +304,8 @@ const BATCH_OPERATIONS: Record<string, (key: string, p: Record<string, unknown>)
 	// Versions 2 to 2.2 read the database once, then create each page.
 	'n8n-nodes-base.notion': (key, p) => key === 'databasePage.create' && p.apiV2 === true,
 	'n8n-nodes-base.dataTable': (key, p) => key === 'row.insert' && dataTableBulk(p),
+	// The v1 router makes the queries of all items, then runs them in one batching mode.
+	'n8n-nodes-base.postgres': () => true,
 	// Append and append or update read the sheet once, then write the rows of all items.
 	'n8n-nodes-base.googleSheets': (key) => key === 'sheet.appendOrUpdate' || key === 'sheet.append',
 };
@@ -397,7 +429,8 @@ export function lowerLibrary(c: NodeContext): void {
 	if (gmailSend && c.instance) adapted.instanceId = c.instance.id;
 	// A Data Table node calls n8n's data-table service (`ctx.service`, spec 9.9). With
 	// `ConvertOptions.services: false` (a runtime without the admin client) it runs in the host.
-	const service = type === 'n8n-nodes-base.dataTable' && c.services === false;
+	const service =
+		(type === 'n8n-nodes-base.dataTable' && c.services === false) || postgresInHost(c);
 	const unsupported = (support && !librarySupports(support, adapted)) || older;
 	// The library node comes first. An operation that it does not have is compiled from the
 	// source of the v1 node when that compiles, and else runs in the host.
@@ -430,6 +463,17 @@ export function lowerLibrary(c: NodeContext): void {
 			usage: emptyUsage(),
 			failures: [],
 		};
+		// A Postgres call that has no exact form with bind values, or that reaches a limit of
+		// the runtime before a statement is committed, runs in the host in the same run.
+		if (type === 'n8n-nodes-base.postgres') {
+			const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
+			const hostForm = hostFormOf(c, inHost);
+			// Without a host form, a limit could not send the node to the host.
+			if (hostForm === null) return inHost(c);
+			const call = nodeCall(c, type, batch, c.credential(), false);
+			emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
+			return;
+		}
 		// v1 runs the node once: a failure under "continue on fail" gives one error item.
 		emitStep(c, {
 			...nodeCall(c, type, batch, c.credential(), false),
@@ -440,6 +484,21 @@ export function lowerLibrary(c: NodeContext): void {
 	}
 	// v1 runs the node once for each item, so the library node runs once for each item too.
 	emitStep(c, nodeCall(c, type, parameters, c.credential(), true));
+}
+
+/**
+ * True when a Postgres node runs in the host whatever its parameters are: the runtime has no
+ * `ctx.sql` effects (`ConvertOptions.sql`), the node continues on an error (the v1 node
+ * makes its own error items then, with a copy of the node and a time in them), or the
+ * caller says that the node runs in the host.
+ */
+function postgresInHost(c: NodeContext): boolean {
+	if (c.node.type !== 'n8n-nodes-base.postgres') return false;
+	const onError =
+		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	// n8n moved the node to the host after a limit of the `sql` effect (`NodeSources.runsInHost`).
+	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
+	return c.sql !== true || onError !== 'stopWorkflow' || moved;
 }
 
 function keyValues(list: unknown): Array<{ name: unknown; value: unknown }> {

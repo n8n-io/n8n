@@ -327,7 +327,7 @@ export interface RespondCall extends StepOptions {
 }
 
 /**
- * A call of an n8n service (spec 1.2, 9.10): the data tables of the project
+ * A call of an n8n service (spec 1.2, 9.9): the data tables of the project
  * (`dataTable`) or the deduplication store (`deduplication`). The runtime
  * sends it to the backend (n8n, or the fallback host in the test bed) and
  * records the result, so a replay does not call the service again.
@@ -345,6 +345,84 @@ export interface ServiceRequest {
 	args?: Record<string, unknown>;
 }
 
+/** A bind value of a SQL statement. Node code turns an object into JSON text itself. */
+export type SqlValue = string | number | boolean | null;
+
+/** One SQL command. `text` holds `$1..$n`; the runtime sends `values` as bind values. */
+export interface SqlStatement {
+	text: string;
+	values?: SqlValue[];
+}
+
+/**
+ * The request of a `sql` effect (spec 9.10). The runtime opens the connection from the
+ * credential of the slot. Code never reads the connection values.
+ */
+export interface SqlRequest {
+	/** Name of a credential slot of the workflow. */
+	credential: string;
+	dialect: 'postgres';
+	/**
+	 * `single` (the default): one statement runs alone; more than one run in one transaction.
+	 * `transaction`: always one transaction. `independently`: each statement alone, and a
+	 * failure does not stop the next statement.
+	 */
+	mode?: 'single' | 'independently' | 'transaction';
+	statements: SqlStatement[];
+	/** `int8` and `numeric` columns as text (the default) or as numbers. */
+	largeNumbers?: 'text' | 'numbers';
+	/** `text` (the default): a `date` column is its wire text. `legacy`: a `date` column sends the call to the host. */
+	dates?: 'text' | 'legacy';
+	connectTimeoutMs?: number;
+	/** Total time limit in ms. The runtime default is 300,000. */
+	timeoutMs?: number;
+}
+
+export interface SqlCall extends StepOptions, SqlRequest {}
+
+/** A database error, with the fields of the server's error response as node-postgres names them. */
+export interface SqlError {
+	message: string;
+	length?: number;
+	severity?: string;
+	code?: string;
+	detail?: string;
+	hint?: string;
+	position?: string;
+	internalPosition?: string;
+	internalQuery?: string;
+	where?: string;
+	schema?: string;
+	table?: string;
+	column?: string;
+	dataType?: string;
+	constraint?: string;
+	file?: string;
+	line?: string;
+	routine?: string;
+}
+
+/** The rows of one statement, keyed by column name. */
+export interface SqlRows {
+	command: string;
+	rowCount: number | null;
+	rows: Item[];
+}
+
+export interface SqlFailure {
+	error: SqlError;
+}
+
+/**
+ * The result of a `sql` effect. A database error is data, not a throw. `results` is in
+ * statement order; in the modes `single` and `transaction` it ends with the first failure.
+ * `connect`: the connection failed, and `results` is empty.
+ */
+export interface SqlResult {
+	results: Array<SqlRows | SqlFailure>;
+	connect?: SqlError;
+}
+
 /** The execution context. Each call except `now`, `random` and `trace` is a durable step. */
 export interface Ctx {
 	node<T = Item>(call: NodeCall): Promise<T[]>;
@@ -354,6 +432,7 @@ export interface Ctx {
 	approval(call: ApprovalCall): Promise<ApprovalResult>;
 	respond(call: RespondCall): Promise<void>;
 	service<T = unknown>(call: ServiceCall): Promise<T>;
+	sql(call: SqlCall): Promise<SqlResult>;
 	now(): number;
 	random(): number;
 	/**
@@ -469,6 +548,8 @@ export interface NodeCtx {
 	http<T = unknown>(request: HttpRequest): Promise<HttpResponse<T>>;
 	/** A call of an n8n service (`ServiceRequest`); the result is the service's JSON. */
 	service<T = unknown>(request: ServiceRequest): Promise<T>;
+	/** SQL statements on the database of a credential slot (spec 9.10). Values are bind values. */
+	sql(request: SqlRequest): Promise<SqlResult>;
 	/** The workflow static data, as `Ctx.staticData` (spec 9.7). Library polls keep their cursor there. */
 	staticData(type: 'global' | 'node', node?: string): Record<string, unknown>;
 	/** A number in [0, 1) from the execution PRNG, as `Ctx.random`. Glue. */

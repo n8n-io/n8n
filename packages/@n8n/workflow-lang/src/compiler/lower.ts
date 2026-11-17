@@ -453,6 +453,8 @@ function effectKind(method: string): number {
 			return EffectKind.respond;
 		case 'service':
 			return EffectKind.service;
+		case 'sql':
+			return EffectKind.sql;
 		default:
 			return EffectKind.node;
 	}

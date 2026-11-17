@@ -34,6 +34,7 @@ const CTX_METHODS: ReadonlySet<string> = new Set([
 	'approval',
 	'respond',
 	'service',
+	'sql',
 	'now',
 	'random',
 	'trace',
@@ -91,6 +92,7 @@ export function ctxCallMethod(checker: ts.TypeChecker, call: ts.Node): CtxMethod
 		case 'approval':
 		case 'respond':
 		case 'service':
+		case 'sql':
 		case 'now':
 		case 'random':
 		case 'trace':

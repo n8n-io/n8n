@@ -103,6 +103,8 @@ export interface NodeContext {
 	addCredentialMints?(slot: string, mints: CredentialMint[]): void;
 	/** False when the runtime does not run `ctx.service` effects (`ConvertOptions.services`). */
 	services?: boolean;
+	/** True when the runtime runs `ctx.sql` effects (`ConvertOptions.sql`). */
+	sql?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */
 	useZone?(zone: string): void;
 	/** True when output `index` of the node has a connection. */
