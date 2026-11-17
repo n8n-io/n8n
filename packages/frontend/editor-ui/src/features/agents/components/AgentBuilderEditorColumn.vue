@@ -7,6 +7,7 @@ import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 import { useTestButtonPrimaryColorExperiment } from '@/experiments/testButtonPrimaryColor/useTestButtonPrimaryColorExperiment';
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useAgentTriggerRedesignFlag } from '../composables/useAgentTriggerRedesignFlag';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
@@ -139,6 +140,7 @@ const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
 const showPrimaryColorTestButton = computed(
 	() => !props.artifactMode && testButtonPrimaryColorExperiment.isEnabled.value,
 );
+const isTriggerRedesignEnabled = useAgentTriggerRedesignFlag();
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
@@ -230,6 +232,34 @@ defineExpose({ onSetupTaskAction });
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
+					<template v-if="!isTriggerRedesignEnabled">
+						<AgentInfoPanel
+							ref="agentInfoPanel"
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+							@draft:config="emit('draft:config')"
+						/>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.skills.title')"
+							:description="i18n.baseText('agents.builder.skills.description')"
+							data-testid="agent-skills-panel"
+						>
+							<AgentSkillsSection
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:show-label="false"
+								:validation-issues="configValidationIssues ?? []"
+								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								@open-skill="emit('open-skill', $event)"
+								@add-skill="emit('add-skill')"
+								@remove-skill="emit('remove-skill', $event)"
+							/>
+						</AgentPanel>
+					</template>
+
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
@@ -238,6 +268,7 @@ defineExpose({ onSetupTaskAction });
 						<template #header-actions>
 							<AgentTestButton
 								:disabled-reason="props.previewDisabledReason"
+								:icon-only="!isTriggerRedesignEnabled"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
@@ -272,31 +303,33 @@ defineExpose({ onSetupTaskAction });
 						/>
 					</AgentPanel>
 
-					<AgentInfoPanel
-						ref="agentInfoPanel"
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						@update:config="(changes, meta) => emit('update:config', changes, meta)"
-						@draft:config="emit('draft:config')"
-					/>
-
-					<AgentPanel
-						:header="i18n.baseText('agents.builder.skills.title')"
-						:description="i18n.baseText('agents.builder.skills.description')"
-						data-testid="agent-skills-panel"
-					>
-						<AgentSkillsSection
-							:skills="appliedSkills"
+					<template v-if="isTriggerRedesignEnabled">
+						<AgentInfoPanel
+							ref="agentInfoPanel"
+							:config="localConfig"
 							:disabled="childrenDisabled"
-							:show-label="false"
-							:validation-issues="configValidationIssues ?? []"
-							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
-							@open-skill="emit('open-skill', $event)"
-							@add-skill="emit('add-skill')"
-							@remove-skill="emit('remove-skill', $event)"
+							:project-id="projectId"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+							@draft:config="emit('draft:config')"
 						/>
-					</AgentPanel>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.skills.title')"
+							:description="i18n.baseText('agents.builder.skills.description')"
+							data-testid="agent-skills-panel"
+						>
+							<AgentSkillsSection
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:show-label="false"
+								:validation-issues="configValidationIssues ?? []"
+								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								@open-skill="emit('open-skill', $event)"
+								@add-skill="emit('add-skill')"
+								@remove-skill="emit('remove-skill', $event)"
+							/>
+						</AgentPanel>
+					</template>
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.capabilities.title')"

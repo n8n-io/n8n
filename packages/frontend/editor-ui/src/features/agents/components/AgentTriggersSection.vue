@@ -9,14 +9,7 @@ import type {
 	AgentJsonTaskConfig,
 	TeamsFileAccessConsentState,
 } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nDropdownMenu,
-	N8nIcon,
-	updatedIconSet,
-	type DropdownMenuItemProps,
-	type IconName,
-} from '@n8n/design-system';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -34,6 +27,7 @@ import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import { useAgentTriggerRedesignFlag } from '../composables/useAgentTriggerRedesignFlag';
 import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
@@ -42,6 +36,8 @@ import { useWhatsAppMetaStatus } from '../channels/whatsapp/useWhatsAppMetaStatu
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
+import AgentTriggersList from './AgentTriggersList.vue';
+import type { AgentTriggerChannelItem } from './AgentTriggersList.types';
 import N8nChatHintPopover from './N8nChatHintPopover.vue';
 import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
@@ -89,6 +85,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const isTriggerRedesignEnabled = useAgentTriggerRedesignFlag();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
@@ -207,7 +204,7 @@ function channelRuntimeErrorMessage(channel: string): string {
 }
 
 // n8n Chat always shows, even when it is not in the agent config.
-const channelRows = computed(() =>
+const channelRows = computed<AgentTriggerChannelItem[]>(() =>
 	[
 		...(isN8nChatEnabled.value ? [N8N_CHAT_INTEGRATION_TYPE] : []),
 		...props.connectedTriggers.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE),
@@ -355,28 +352,6 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 
 defineExpose({ openChannelModal });
 
-type AddTriggerAction = 'channel' | 'schedule';
-
-const schedulesRowRef = ref<InstanceType<typeof AgentSchedulesRow> | null>(null);
-
-const addTriggerItems = computed<Array<DropdownMenuItemProps<AddTriggerAction>>>(() => [
-	{
-		id: 'channel',
-		label: i18n.baseText('agents.builder.channel.add'),
-		icon: { type: 'icon', value: 'message-square' },
-	},
-	{
-		id: 'schedule',
-		label: i18n.baseText('agents.builder.tasks.add'),
-		icon: { type: 'icon', value: 'clock' },
-	},
-]);
-
-function onAddTriggerSelect(action: AddTriggerAction) {
-	if (action === 'channel') openChannelModal();
-	else schedulesRowRef.value?.openAddSchedule();
-}
-
 function handleChannelDisconnected(channelType: string) {
 	const channels = props.connectedTriggers.filter((channel) => channel !== channelType);
 	emit('update:connected-triggers', channels);
@@ -389,12 +364,36 @@ function handleChannelDisconnected(channelType: string) {
 		:class="[$style.row, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
+		<AgentTriggersList
+			v-if="isTriggerRedesignEnabled"
+			:channels="channelRows"
+			:project-id="props.projectId"
+			:agent-id="props.agentId"
+			:disabled="props.disabled"
+			:removing-channel="removingChannel"
+			:task-refs="props.taskRefs"
+			:is-published="props.isPublished"
+			:is-runnable="props.isRunnable"
+			:reload-key="props.reloadKey"
+			:agent-unsaved="props.agentUnsaved"
+			:ensure-agent-persisted="props.ensureAgentPersisted"
+			:validation-issues="props.validationIssues"
+			:preview-disabled-reason="props.previewDisabledReason"
+			@open-channel="openChannelEdit($event.type, $event.connected)"
+			@add-channel="openChannelModal"
+			@toggle-task="emit('toggle-task', $event)"
+			@tasks-changed="emit('tasks-changed')"
+			@preview-task="emit('preview-task', $event)"
+		/>
+
 		<AgentChipRow
+			v-else
 			:label="i18n.baseText('agents.builder.channel.title')"
 			:item-count="channelRows.length"
 			:add-label="i18n.baseText('agents.builder.channel.add')"
+			add-button-test-id="agent-channels-add-channel"
 			:disabled="props.disabled"
-			hide-add
+			@add="openChannelModal"
 		>
 			<AgentItemContextMenu
 				v-for="channel in channelRows"
@@ -434,8 +433,7 @@ function handleChannelDisconnected(channelType: string) {
 		</AgentChipRow>
 
 		<AgentSchedulesRow
-			ref="schedulesRowRef"
-			hide-add
+			v-if="!isTriggerRedesignEnabled"
 			:preview-disabled-reason="props.previewDisabledReason"
 			:task-refs="props.taskRefs"
 			:disabled="props.disabled"
@@ -451,29 +449,6 @@ function handleChannelDisconnected(channelType: string) {
 			@tasks-changed="emit('tasks-changed')"
 			@preview-task="emit('preview-task', $event)"
 		/>
-
-		<N8nDropdownMenu
-			:items="addTriggerItems"
-			placement="bottom-start"
-			:disabled="props.disabled"
-			data-testid="agent-triggers-add-menu"
-			@select="onAddTriggerSelect"
-		>
-			<template #trigger>
-				<N8nButton
-					:class="$style.addTriggerButton"
-					variant="ghost"
-					size="medium"
-					:disabled="props.disabled"
-					data-testid="agent-triggers-add-trigger"
-				>
-					<template #icon>
-						<N8nIcon icon="plus" :size="16" />
-					</template>
-					{{ i18n.baseText('agents.builder.triggers.add') }}
-				</N8nButton>
-			</template>
-		</N8nDropdownMenu>
 
 		<AgentChannelModal
 			v-if="channelModalOpen"
@@ -512,17 +487,6 @@ function handleChannelDisconnected(channelType: string) {
 
 .disabled {
 	opacity: 0.5;
-}
-
-.addTriggerButton {
-	--button--color: var(--text-color--subtler);
-	align-self: flex-start;
-	margin-left: calc(-1 * var(--spacing--xs));
-
-	&:hover {
-		--button--color: var(--text-color);
-		background-color: transparent;
-	}
 }
 
 .channelChip {

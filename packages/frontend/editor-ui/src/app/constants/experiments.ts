@@ -253,7 +253,11 @@ export const AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT = createExperiment(
 	},
 );
 
+/** Boolean flag. Shows agent triggers first and restyles the trigger section. */
+export const AGENT_TRIGGER_REDESIGN_EXPERIMENT = createExperiment('143_agent_trigger_redesign');
+
 export const EXPERIMENTS_TO_TRACK = [
+	AGENT_TRIGGER_REDESIGN_EXPERIMENT.name,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name,
 	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
