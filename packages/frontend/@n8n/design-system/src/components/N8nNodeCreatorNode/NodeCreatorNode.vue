@@ -5,7 +5,7 @@ import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
-import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
 import N8nNewBadge from '../NewBadge/NewBadge.vue';
 
 export interface Props {
@@ -48,21 +48,16 @@ const { t } = useI18n();
 		<div :class="$style.body">
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<PreviewBadge
-					v-if="tag?.preview"
-					size="xxsmall"
-					:class="$style.previewBadge"
-					:text="tag.text"
-				/>
+				<N8nFeatureMaturityBadges :feature="tag?.feature" :class="$style.previewBadge" />
 				<N8nBadge
-					v-else-if="tag?.pill"
+					v-if="!tag?.feature && tag?.pill"
 					size="xxsmall"
 					:variant="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'success'"
 				>
 					{{ tag.text }}
 				</N8nBadge>
 				<ElTag
-					v-else-if="tag"
+					v-else-if="!tag?.feature && tag"
 					:class="$style.tag"
 					disable-transitions
 					size="small"

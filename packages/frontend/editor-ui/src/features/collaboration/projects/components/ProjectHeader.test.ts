@@ -600,7 +600,7 @@ describe('ProjectHeader', () => {
 		const selfHealingTab = {
 			label: 'Self-healing',
 			value: PERSONAL_SELF_HEALING_VIEW,
-			preview: true,
+			feature: 'selfHealing',
 			to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: 'project' } },
 		};
 

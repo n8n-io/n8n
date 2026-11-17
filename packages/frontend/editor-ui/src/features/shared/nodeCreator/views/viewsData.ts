@@ -75,6 +75,8 @@ import type {
 	SimplifiedNodeType,
 	ViewCreateElement,
 } from '@/Interface';
+import type { NodeCreatorTag } from '@n8n/design-system';
+import type { FeatureMaturityId } from '@n8n/frontend-constants/feature-maturity';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
@@ -107,11 +109,7 @@ export interface NodeViewItem {
 		sections?: NodeViewItemSection[];
 		description?: string;
 		displayName?: string;
-		tag?: {
-			type?: string;
-			text?: string;
-			preview?: boolean;
-		};
+		tag?: NodeCreatorTag & { feature?: FeatureMaturityId };
 		forceIncludeNodes?: string[];
 		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };
 	};

@@ -4,7 +4,6 @@ import type { AgentsSettingsDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nLoading,
-	N8nPreviewBadge,
 	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -66,16 +65,12 @@ onMounted(async () => {
 <template>
 	<N8nSettingsLayout data-test-id="agents-settings">
 		<N8nSettingsPageHeader
+			feature="agents"
 			:title="i18n.baseText('settings.agents')"
 			:description="i18n.baseText('settings.agents.description')"
-			docs-url="https://docs.n8n.io/build/build-and-manage-agents"
 			:docs-label="i18n.baseText('settings.agents.docsLabel')"
 			:docs-leading-text="i18n.baseText('settings.agents.docsLeadingText')"
-		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
-			</template>
-		</N8nSettingsPageHeader>
+		/>
 		<N8nLoading v-if="isLoading" :rows="1" :shrink-last="false" />
 		<N8nSettingsSection v-else-if="settings">
 			<N8nSettingsRowGroup>

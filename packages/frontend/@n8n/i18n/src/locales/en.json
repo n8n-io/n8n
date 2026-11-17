@@ -2764,7 +2764,6 @@
 	"nodeCreator.nodeItem.triggerIconTitle": "Trigger Node",
 	"nodeCreator.nodeItem.aiIconTitle": "LangChain AI Node",
 	"nodeCreator.nodeItem.deprecated": "Deprecated",
-	"nodeCreator.nodeItem.earlyPreview": "Preview",
 	"nodeCreator.nodeItem.beta": "Beta",
 	"nodeCredentials.createNew": "Create new credential",
 	"nodeCredentials.createNew.permissionDenied": "Your current role does not allow you to create credentials",

@@ -1,4 +1,8 @@
 // Use subpath entries to avoid loading all components in the preview.
+import {
+	FeatureMaturityKey,
+	type FeatureMaturityCatalog,
+} from '@n8n/design-system/feature-maturity';
 import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
@@ -36,8 +40,51 @@ function hasAppliedTheme(): boolean {
 	return current === 'light' || current === 'dark';
 }
 
+const featureMaturityStub: FeatureMaturityCatalog = {
+	agents: {
+		preview: true,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
+	},
+	apps: { preview: true, limitedEnterpriseSupport: false },
+	selfHealing: { preview: true, limitedEnterpriseSupport: true },
+	context: { preview: true, limitedEnterpriseSupport: true },
+	assistant: {
+		preview: false,
+		limitedEnterpriseSupport: true,
+		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
+	},
+	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
+	instance: {
+		preview: false,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io',
+	},
+	api: {
+		preview: false,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/api/',
+	},
+	userManagement: {
+		preview: false,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/user-management/',
+	},
+	hosting: {
+		preview: false,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/hosting/configuration/',
+	},
+	mcp: {
+		preview: false,
+		limitedEnterpriseSupport: false,
+		docsUrl: 'https://docs.n8n.io/connect/connect-to-n8n-mcp-server',
+	},
+};
+
 setup((app) => {
 	app.provide(IconBodyLoaderKey, loadLucideIconBody);
+	app.provide(FeatureMaturityKey, featureMaturityStub);
 
 	const pinia = createPinia();
 	app.use(pinia);

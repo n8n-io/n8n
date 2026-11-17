@@ -2,7 +2,6 @@ import { capabilities, capabilityRegistry, type ProjectContext } from '@n8n/fron
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
@@ -117,30 +116,6 @@ describe('PromotionsSettingsView', () => {
 			else expect(button).toBeDisabled();
 		},
 	);
-
-	it('shows the Preview and limited enterprise readiness tags next to the title on enterprise', () => {
-		mockedStore(useSettingsStore).isEnterprisePlan = true;
-		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		renderView();
-
-		const titleRow = screen.getByRole('heading', {
-			level: 1,
-			name: 'Environments',
-		}).parentElement;
-		const readinessBadge = screen.getByTestId('promotions-enterprise-readiness-badge');
-		expect(titleRow).toContainElement(screen.getByTestId('promotions-preview-badge'));
-		expect(titleRow).toContainElement(readinessBadge);
-		expect(readinessBadge).toHaveTextContent('Limited enterprise readiness');
-	});
-
-	it('shows only the Preview tag on other plans', () => {
-		mockedStore(useSettingsStore).isEnterprisePlan = false;
-		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		renderView();
-
-		expect(screen.getByTestId('promotions-preview-badge')).toBeInTheDocument();
-		expect(screen.queryByTestId('promotions-enterprise-readiness-badge')).not.toBeInTheDocument();
-	});
 
 	it('checks for missing projects again on click after the check failed', async () => {
 		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);

@@ -45,12 +45,6 @@ describe('SettingsContextView', () => {
 		expect(showErrorMock).toHaveBeenCalled();
 	});
 
-	it('shows a Preview label next to the page title', () => {
-		const { getByText } = renderView();
-
-		expect(getByText('Preview')).toBeInTheDocument();
-	});
-
 	it('lists Preferences and Skills, with no Sources row: sources show in the skills table', () => {
 		const { getByTestId, queryByTestId } = renderView();
 

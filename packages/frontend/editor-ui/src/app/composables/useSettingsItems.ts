@@ -131,7 +131,6 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
 				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
-				preview: true,
 			},
 			// Integrations
 			{

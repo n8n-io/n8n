@@ -36,7 +36,7 @@ const page = `
 	<N8nSettingsPageHeader
 		title="Security & login"
 		description="Your 2FA setup, passkeys, active sessions, and authorized OAuth applications."
-		docs-url="https://docs.n8n.io/user-management/"
+		feature="userManagement"
 	/>
 	<N8nSettingsSection title="Sign-in" description="How you sign in to n8n.">
 		<N8nSettingsRowGroup>
@@ -102,7 +102,7 @@ const tablePage = `
 	<N8nSettingsPageHeader
 		title="API keys"
 		description="Use your API keys to control n8n programmatically."
-		docs-url="https://docs.n8n.io/api/"
+		feature="api"
 	/>
 	<N8nSettingsSection>
 		<N8nDataTableServer :headers="headers" :items="items" :items-length="items.length">

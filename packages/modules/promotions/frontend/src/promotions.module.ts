@@ -63,7 +63,6 @@ export const PromotionsModule = defineFrontendModule({
 			},
 			position: 'top',
 			route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
-			preview: true,
 			// The same checks as the settings route.
 			get available() {
 				return (

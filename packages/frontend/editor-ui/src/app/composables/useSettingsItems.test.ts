@@ -368,14 +368,6 @@ describe('useSettingsItems', () => {
 			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-ai') + 1);
 			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-community-nodes') - 1);
 		});
-
-		it('carries the preview label', () => {
-			const item = useSettingsItems().settingsItems.value.find(
-				({ id }) => id === 'settings-context',
-			);
-
-			expect(item?.preview).toBe(true);
-		});
 	});
 
 	// The promotions module adds its own link. Its availability is tested with the module.

@@ -301,21 +301,26 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('page header', () => {
-		it('shows the limited enterprise readiness badge next to the title on enterprise', () => {
+		it('shows the limited enterprise readiness badge beside the title on Enterprise', async () => {
 			setPlanName(settingsStore, 'Enterprise');
+			const { findByText, getByRole, getByTestId } = renderComponent();
+			await waitFor(() => expect(store.isLoading).toBe(false));
+			const label = await findByText('settings.n8nAgent.enable.label');
+			const heading = getByRole('heading', { name: 'settings.n8nAgent' });
 
-			const { getByRole, getByTestId } = renderComponent();
-			const title = getByRole('heading', { name: 'settings.n8nAgent' });
-			expect(title.parentElement).toContainElement(
-				getByTestId('n8n-agent-enterprise-readiness-badge'),
+			expect(heading.parentElement).toContainElement(
+				getByTestId('assistant-enterprise-readiness-badge'),
+			);
+			expect(label.parentElement).not.toContainElement(
+				getByTestId('assistant-enterprise-readiness-badge'),
 			);
 		});
 
-		it('does not show the limited enterprise readiness badge on other plans', () => {
+		it('hides the limited enterprise readiness badge on other plans', () => {
 			setPlanName(settingsStore, 'Business');
 
 			const { queryByTestId } = renderComponent();
-			expect(queryByTestId('n8n-agent-enterprise-readiness-badge')).toBeNull();
+			expect(queryByTestId('assistant-enterprise-readiness-badge')).toBeNull();
 		});
 
 		it('does not show a Preview badge', () => {
@@ -649,7 +654,7 @@ describe('SettingsInstanceAiView', () => {
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
 			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
+			expect(getByTestId('assistant-enterprise-readiness-badge')).toBeVisible();
 		});
 
 		it('hides content when disabled via moduleSettings fallback', () => {

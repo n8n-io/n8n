@@ -35,7 +35,6 @@ import { useOAuthClientRevoke } from './composables/useOAuthClientRevoke';
 import {
 	MCP_AGENTS_VIEW,
 	MCP_CLIENTS_VIEW,
-	MCP_DOCS_PAGE_URL,
 	MCP_WORKFLOWS_VIEW,
 	UNKNOWN_COUNT_VALUE,
 } from './mcp.constants';
@@ -302,8 +301,8 @@ onBeforeUnmount(() => {
 			:description="
 				discoveryOverrides?.description ?? i18n.baseText('settings.mcp.page.description')
 			"
+			feature="mcp"
 			:docs-leading-text="discoveryOverrides?.docsLeadingText"
-			:docs-url="MCP_DOCS_PAGE_URL"
 			:docs-label="i18n.baseText('settings.mcp.page.docsLabel')"
 			data-test-id="mcp-settings-header"
 		/>

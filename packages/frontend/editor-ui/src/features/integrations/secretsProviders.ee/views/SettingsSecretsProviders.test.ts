@@ -146,6 +146,45 @@ describe('SettingsSecretsProviders', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('should render the system roles switch from the shared enable row', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+		mockIsEnterpriseEnabled.value = true;
+		settingsStore.moduleSettings = {
+			'external-secrets': {
+				roleBasedAccess: true,
+				forProjects: true,
+				multipleConnections: true,
+				systemRolesEnabled: true,
+			},
+		};
+
+		const { getByRole, getByTestId } = renderComponent({ pinia });
+
+		const toggle = getByRole('switch', { name: 'Enable external secrets for project roles' });
+		expect(getByTestId('external-secrets-system-roles-toggle')).toBeInTheDocument();
+		expect(getByTestId('external-secrets-system-roles-switch')).toBe(toggle);
+		await vi.waitFor(() => {
+			expect(toggle).toHaveAttribute('aria-checked', 'true');
+		});
+	});
+
+	it('should hide the system roles switch when role-based access is off', () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+		mockIsEnterpriseEnabled.value = true;
+		settingsStore.moduleSettings = {
+			'external-secrets': {
+				roleBasedAccess: false,
+				forProjects: true,
+				multipleConnections: true,
+				systemRolesEnabled: false,
+			},
+		};
+
+		const { queryByTestId } = renderComponent({ pinia });
+
+		expect(queryByTestId('external-secrets-system-roles-toggle')).not.toBeInTheDocument();
+	});
+
 	it('should show loading state when fetching data', () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 		mockIsEnterpriseEnabled.value = true;

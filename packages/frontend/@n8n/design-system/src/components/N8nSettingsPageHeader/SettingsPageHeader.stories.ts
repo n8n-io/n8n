@@ -9,15 +9,15 @@ const meta = {
 	component: N8nSettingsPageHeader,
 	argTypes: {
 		showDocsLink: { control: 'boolean' },
-		docsUrl: { control: 'text' },
 		docsLabel: { control: 'text' },
 		docsLeadingText: { control: 'text' },
+		feature: { control: 'text' },
 	},
 	parameters: {
 		docs: {
 			description: {
 				component:
-					'Page title with an optional 1-2 sentence description and an inline documentation link. The docs link is ON by default (`show-docs-link`), so every settings page links to docs — set `:show-docs-link="false"` to remove it, and provide `docs-url` so the link points somewhere (a dev warning fires if it is enabled without a URL). Its default copy ("Learn more in the documentation") comes from the design-system locale (`settingsPageHeader.*`); override it per page with `docs-leading-text` / `docs-label`. The header always caps itself at the content max-width (`--settings-content--max-width`, 45rem / 720px). The link is an inline `N8nExternalLink` at the end of the description, sized to the description text: the word is underlined, the trailing external-link icon is not, and hovering shows the component\'s pill without moving the surrounding copy. Pages that need several links in the description can use the `description` slot with the same `<N8nExternalLink inline size="small">` and get the identical treatment.',
+					'Page title with an optional 1-2 sentence description and an inline documentation link. The docs link is on by default (`show-docs-link`). Set `:show-docs-link="false"` to remove it. Pass a `feature` id whose entry has `docsUrl`. The header reads that URL. A dev warning fires when the link is on and the entry has no URL. Its default copy ("Learn more in the documentation") comes from the design-system locale (`settingsPageHeader.*`); override it per page with `docs-leading-text` / `docs-label`. The header always caps itself at the content max-width (`--settings-content--max-width`, 45rem / 720px). The link is an inline `N8nExternalLink` at the end of the description, sized to the description text: the word is underlined, the trailing external-link icon is not, and hovering shows the component\'s pill without moving the surrounding copy. Pages that need several links in the description can use the `description` slot with the same `<N8nExternalLink inline size="small">` and get the identical treatment.',
 			},
 		},
 	},
@@ -39,7 +39,7 @@ export const Default: Story = {
 		title: 'This instance',
 		description:
 			'Plan, usage, version, updates, instance details, resources, and support for this n8n instance.',
-		docsUrl: 'https://docs.n8n.io',
+		feature: 'instance',
 	},
 };
 
@@ -54,7 +54,7 @@ export const CustomLeadingCopy: Story = {
 		description: 'Use your API keys to control n8n programmatically.',
 		docsLeadingText: 'Read the ',
 		docsLabel: 'API reference',
-		docsUrl: 'https://docs.n8n.io/api/',
+		feature: 'api',
 	},
 };
 
@@ -100,6 +100,20 @@ export const WithoutDocsLink: Story = {
 	},
 };
 
+export const WithFeatureBadges: Story = {
+	render: (args) => ({
+		components: { N8nSettingsPageHeader },
+		setup: () => ({ args }),
+		template: frame('<N8nSettingsPageHeader v-bind="args" />'),
+	}),
+	args: {
+		title: 'Context',
+		description: 'Preferences and skills the assistant can use.',
+		feature: 'context',
+		showDocsLink: false,
+	},
+};
+
 export const TitleOnly: Story = {
 	render: (args) => ({
 		components: { N8nSettingsPageHeader },
@@ -122,6 +136,6 @@ export const LongDescription: Story = {
 		title: 'Page title',
 		description:
 			'Description of the page explaining what it does, followed up by a link to full feature documentation as the next sentence. It should not be overly long, rather 1-2 sentences.',
-		docsUrl: 'https://docs.n8n.io',
+		feature: 'instance',
 	},
 };

@@ -140,15 +140,16 @@ The `breakpoint` mixin compiles to `@media screen and (width<=991px)`.
 Every subpath resolves from `dist`. The package has no CommonJS build and no `require`
 condition.
 
-| Subpath                           | Contents                                                                                     |
-| --------------------------------- | -------------------------------------------------------------------------------------------- |
-| `@n8n/design-system`              | The barrel: components, composables, exported types, and the `locale` singleton.             |
-| `@n8n/design-system/plugin`       | `N8nPlugin`. It registers the `v-n8n-truncate` and `v-n8n-html` directives.                  |
-| `@n8n/design-system/icons/lucide` | `loadLucideIconBody` and `IconBodyLoaderKey`, for icons outside the bundled set.             |
-| `@n8n/design-system/style.css`    | The component styles.                                                                        |
-| `@n8n/design-system/theme.css`    | The design tokens, the CSS reset, four `@font-face` rules, and the element-plus overrides.   |
-| `@n8n/design-system/css/*`        | The SCSS sources: mixins, token maps, and one stylesheet per component. You must add `sass`. |
-| `@n8n/design-system/package.json` | The manifest.                                                                                |
+| Subpath                               | Contents                                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `@n8n/design-system`                  | The barrel: components, composables, exported types, and the `locale` singleton.         |
+| `@n8n/design-system/plugin`           | `N8nPlugin`. It registers the `v-n8n-truncate` and `v-n8n-html` directives.              |
+| `@n8n/design-system/feature-maturity` | `FeatureMaturityKey`, `featureMaturityForPlan`, and the catalog types. A host provides the list without the barrel. |
+| `@n8n/design-system/icons/lucide`     | `loadLucideIconBody` and `IconBodyLoaderKey`, for icons outside the bundled set.         |
+| `@n8n/design-system/style.css`        | The component styles.                                                                    |
+| `@n8n/design-system/theme.css`        | The design tokens, the CSS reset, four `@font-face` rules, and the element-plus overrides. |
+| `@n8n/design-system/css/*`            | The SCSS sources: mixins, token maps, and one stylesheet per component. You must add `sass`. |
+| `@n8n/design-system/package.json`     | The manifest.                                                                            |
 
 ## Develop the package
 

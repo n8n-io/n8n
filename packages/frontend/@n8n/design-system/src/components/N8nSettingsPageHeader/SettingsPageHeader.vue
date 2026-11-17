@@ -3,6 +3,11 @@ import { computed, useSlots, watchEffect } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nExternalLink from '../N8nExternalLink';
+import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
+import {
+	resolveFeatureMaturityBadges,
+	useFeatureMaturityCatalog,
+} from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
@@ -12,12 +17,10 @@ export interface SettingsPageHeaderProps {
 	/** Optional 1-2 sentence description. */
 	description?: string;
 	/**
-	 * Whether to render the inline documentation link at the end of the header. On by default
-	 * so every settings page links to docs; set `:show-docs-link="false"` to remove it.
+	 * Whether to render the inline documentation link at the end of the description.
+	 * On by default. Set `:show-docs-link="false"` to hide it, including when a URL is set.
 	 */
 	showDocsLink?: boolean;
-	/** Documentation link target. When omitted (while the link is shown) a dev warning fires. */
-	docsUrl?: string;
 	/** The underlined link word. Defaults to the localized "documentation". */
 	docsLabel?: string;
 	/**
@@ -27,6 +30,18 @@ export interface SettingsPageHeaderProps {
 	docsLeadingText?: string;
 	/** Heading element for the page title. */
 	headingTag?: string;
+	/**
+	 * Feature id from the list the app provides.
+	 * The entry decides which badges render beside the title.
+	 * The entry's `docsUrl` is the documentation link.
+	 * The id sets the badge test ids. A camelCase id becomes kebab-case.
+	 * `context` renders `context-preview-badge` and `context-enterprise-readiness-badge`.
+	 */
+	feature?: string;
+	/** Hide the Preview badge at this callsite. */
+	hidePreview?: boolean;
+	/** Hide the Limited enterprise readiness badge at this callsite. */
+	hideEnterprise?: boolean;
 }
 
 defineOptions({ name: 'N8nSettingsPageHeader' });
@@ -34,10 +49,12 @@ defineOptions({ name: 'N8nSettingsPageHeader' });
 const props = withDefaults(defineProps<SettingsPageHeaderProps>(), {
 	description: undefined,
 	showDocsLink: true,
-	docsUrl: undefined,
 	docsLabel: undefined,
 	docsLeadingText: undefined,
 	headingTag: 'h1',
+	feature: undefined,
+	hidePreview: false,
+	hideEnterprise: false,
 });
 
 const slots = useSlots();
@@ -50,29 +67,48 @@ const resolvedDocsLabel = computed(() => props.docsLabel ?? t('settingsPageHeade
 const resolvedDocsLeadingText = computed(
 	() => props.docsLeadingText ?? t('settingsPageHeader.docsLeadingText'),
 );
-
-// Default-on means a developer who forgets to wire a docs URL is nudged (not silently broken):
-// the link word still renders as a placeholder and a dev-only warning prompts them to act.
-// Without an href N8nExternalLink falls back to a <button>, so the placeholder is rendered
-// disabled: still visible as the nudge, but not a focusable no-op control.
+const catalog = useFeatureMaturityCatalog();
+const featureEntry = computed(() =>
+	props.feature === undefined ? undefined : catalog.value[props.feature],
+);
+// The feature entry owns the documentation page. A page does not pass a URL.
+const resolvedDocsUrl = computed(() => featureEntry.value?.docsUrl);
+// Default-on means a missing URL still renders a placeholder and warns in development.
+// `:show-docs-link="false"` removes the link even when a URL is set.
 if (import.meta.env.DEV) {
 	watchEffect(() => {
-		if (props.showDocsLink && !props.docsUrl) {
+		if (props.showDocsLink && !resolvedDocsUrl.value) {
 			console.warn(
-				'[N8nSettingsPageHeader] The docs link is enabled but no `docsUrl` was provided. ' +
-					'Set `docs-url` to your documentation page, or pass `:show-docs-link="false"` to remove it.',
+				'[N8nSettingsPageHeader] The docs link is enabled but no feature entry provides a `docsUrl`. ' +
+					'Pass a feature whose entry has `docsUrl`, or pass `:show-docs-link="false"` to remove the link.',
 			);
 		}
 	});
 }
+const featureBadges = computed(() =>
+	resolveFeatureMaturityBadges(catalog.value, props.feature, {
+		preview: props.hidePreview,
+		enterprise: props.hideEnterprise,
+	}),
+);
+const showFeatureBadges = computed(
+	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
+);
+const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.titleTrailing));
 </script>
 
 <template>
 	<header :class="$style.header">
-		<div v-if="slots.titleTrailing" :class="$style.titleRow">
+		<div v-if="showTitleRow" :class="$style.titleRow">
 			<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 				{{ title }}
 			</N8nHeading>
+			<N8nFeatureMaturityBadges
+				v-if="showFeatureBadges"
+				:feature="feature"
+				:hide-preview="hidePreview"
+				:hide-enterprise="hideEnterprise"
+			/>
 			<slot name="titleTrailing" />
 		</div>
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
@@ -94,8 +130,8 @@ if (import.meta.env.DEV) {
 					}}<N8nExternalLink
 						inline
 						size="small"
-						:href="docsUrl || undefined"
-						:disabled="docsUrl ? undefined : true"
+						:href="resolvedDocsUrl || undefined"
+						:disabled="resolvedDocsUrl ? undefined : true"
 						data-test-id="settings-page-header-docs"
 						>{{ resolvedDocsLabel }}</N8nExternalLink
 					></N8nText

@@ -96,7 +96,7 @@ describe('ProjectTabs', () => {
 	it('should render the preview badge only on preview tabs', () => {
 		const { getByTestId, getByText } = renderComponent({
 			props: {
-				additionalTabs: [{ label: 'Agents', value: 'agents', preview: true }],
+				additionalTabs: [{ label: 'Agents', value: 'agents', feature: 'agents' }],
 			},
 		});
 
@@ -115,7 +115,7 @@ describe('ProjectTabs', () => {
 			props: {
 				pageType: 'overview',
 				additionalTabs: [
-					{ label: 'Agents', value: 'agents', preview: true, insertAfter: 'WorkflowsView' },
+					{ label: 'Agents', value: 'agents', feature: 'agents', insertAfter: 'WorkflowsView' },
 					{ label: 'Data tables', value: 'dataTables' },
 				],
 			},

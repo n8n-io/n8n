@@ -17,7 +17,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { McpAgent } from './mcp.types';
 import { useMCPStore } from './mcp.store';
-import { LOADING_INDICATOR_TIMEOUT, MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from './mcp.constants';
+import { LOADING_INDICATOR_TIMEOUT, MCP_SETTINGS_VIEW } from './mcp.constants';
 import AgentsTable from './components/tabs/AgentsTable.vue';
 import MCPConnectAgentsModal from './modals/MCPConnectAgentsModal.vue';
 
@@ -158,7 +158,7 @@ onMounted(async () => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.agentsExposed.page.title')"
 			:description="i18n.baseText('settings.mcp.agentsExposed.page.description')"
-			:docs-url="MCP_DOCS_PAGE_URL"
+			feature="mcp"
 		/>
 		<div data-test-id="mcp-agents-view">
 			<div :class="$style.actions">

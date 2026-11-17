@@ -93,6 +93,33 @@ beforeEach(() => {
 	vi.spyOn(useSettingsStore(), 'getModuleSettings').mockResolvedValue(undefined);
 });
 
+function setPlanName(planName: string) {
+	const settingsStore = useSettingsStore();
+	settingsStore.settings.license = { ...settingsStore.settings.license, planName };
+}
+
+it('shows the Preview and limited enterprise readiness badges beside the page title', async () => {
+	setPlanName('Enterprise');
+	const { findByTestId, getByRole } = render();
+	const preview = await findByTestId('agents-preview-badge');
+	const enterprise = await findByTestId('agents-enterprise-readiness-badge');
+	const heading = getByRole('heading', { name: 'Agents' });
+
+	expect(heading.parentElement).toContainElement(preview);
+	expect(heading.parentElement).toContainElement(enterprise);
+	expect(enterprise).toHaveTextContent('Limited enterprise readiness');
+	expect(preview.closest('[data-test-id="settings-row-group"]')).toBeNull();
+	expect(enterprise.closest('[data-test-id="settings-row-group"]')).toBeNull();
+});
+
+it('hides the limited enterprise readiness badge on other plans', async () => {
+	setPlanName('Community');
+	const { findByTestId, queryByTestId } = render();
+
+	expect(await findByTestId('agents-preview-badge')).toBeInTheDocument();
+	expect(queryByTestId('agents-enterprise-readiness-badge')).not.toBeInTheDocument();
+});
+
 it('loads the disabled setting and saves enable and disable choices', async () => {
 	vi.mocked(updateAgentsSettings).mockImplementation(async (_context, settings) => settings);
 	const { findByRole } = render();

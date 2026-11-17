@@ -213,9 +213,9 @@ onMounted(() => {
 		@back="goToAuthentication"
 	>
 		<N8nSettingsPageHeader
+			feature="sso"
 			:title="i18n.baseText('settings.sso.title')"
 			:description="i18n.baseText('settings.sso.info')"
-			docs-url="https://docs.n8n.io/user-management/saml/"
 			:class="$style.header"
 			data-test-id="sso-settings-header"
 		/>

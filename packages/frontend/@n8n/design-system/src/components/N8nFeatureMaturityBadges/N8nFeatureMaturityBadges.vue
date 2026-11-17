@@ -1,0 +1,85 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+
+import { useI18n } from '../../composables/useI18n';
+import N8nBadge from '../N8nBadge';
+import N8nExternalLink from '../N8nExternalLink';
+import N8nTooltip from '../N8nTooltip';
+
+import { resolveFeatureMaturityBadges, useFeatureMaturityCatalog } from './featureMaturityState';
+
+defineOptions({ name: 'N8nFeatureMaturityBadges' });
+
+const props = withDefaults(
+	defineProps<{
+		/**
+		 * Feature id from the list the app provides.
+		 * The entry decides which badges render.
+		 * An omitted id renders nothing.
+		 */
+		feature?: string;
+		/** Hide the Preview badge at this callsite. */
+		/** @default false */
+		hidePreview?: boolean;
+		/** Hide the Limited enterprise readiness badge at this callsite. */
+		/** @default false */
+		hideEnterprise?: boolean;
+	}>(),
+	{
+		feature: undefined,
+		hidePreview: false,
+		hideEnterprise: false,
+	},
+);
+
+const { t } = useI18n();
+const catalog = useFeatureMaturityCatalog();
+
+const resolved = computed(() =>
+	resolveFeatureMaturityBadges(catalog.value, props.feature, {
+		preview: props.hidePreview,
+		enterprise: props.hideEnterprise,
+	}),
+);
+const visible = computed(() => resolved.value.showPreview || resolved.value.showEnterprise);
+const previewTestId = computed(() =>
+	resolved.value.testId ? `${resolved.value.testId}-preview-badge` : undefined,
+);
+const enterpriseTestId = computed(() =>
+	resolved.value.testId ? `${resolved.value.testId}-enterprise-readiness-badge` : undefined,
+);
+</script>
+
+<template>
+	<span v-if="visible" :class="$style.badges">
+		<N8nBadge
+			v-if="resolved.showPreview"
+			variant="outline"
+			size="xxsmall"
+			:data-test-id="previewTestId"
+		>
+			{{ t('previewBadge.preview') }}
+		</N8nBadge>
+		<N8nTooltip v-if="resolved.showEnterprise" placement="top" as-child>
+			<N8nBadge variant="outline" size="xxsmall" :data-test-id="enterpriseTestId" tabindex="0">
+				{{ t('enterpriseReadinessBadge.limited') }}
+			</N8nBadge>
+			<template #content>
+				<p>
+					{{ t('enterpriseReadinessBadge.tooltip') }}
+					<N8nExternalLink v-if="resolved.docsUrl" inline size="small" :href="resolved.docsUrl">
+						{{ t('enterpriseReadinessBadge.docsLink') }}
+					</N8nExternalLink>
+				</p>
+			</template>
+		</N8nTooltip>
+	</span>
+</template>
+
+<style lang="scss" module>
+.badges {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+</style>

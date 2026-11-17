@@ -18,6 +18,10 @@
       "types": "./dist/plugin.d.ts",
       "import": "./dist/plugin.js"
     },
+    "./feature-maturity": {
+      "types": "./dist/feature-maturity.d.ts",
+      "import": "./dist/feature-maturity.js"
+    },
     "./style.css": "./dist/style.css",
     "./theme.css": "./dist/theme.css",
     "./css/*": "./dist/css/*",

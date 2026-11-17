@@ -71,7 +71,6 @@ export const WithBadges: Story = {
 		setup() {
 			const items: IMenuItem[] = [
 				{ id: 'new', label: 'AI Agents', icon: 'bot', new: true },
-				{ id: 'preview', label: 'Insights', icon: 'chart-column-decreasing', preview: true },
 				{
 					id: 'notification',
 					label: 'Updates',

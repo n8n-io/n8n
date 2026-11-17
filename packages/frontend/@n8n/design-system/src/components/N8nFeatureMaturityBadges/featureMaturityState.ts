@@ -1,0 +1,87 @@
+import {
+	computed,
+	inject,
+	toValue,
+	type ComputedRef,
+	type InjectionKey,
+	type MaybeRefOrGetter,
+} from 'vue';
+
+export type FeatureMaturityEntry = {
+	/** Show the Preview badge. */
+	preview: boolean;
+	/** Show the Limited enterprise readiness badge. */
+	limitedEnterpriseSupport: boolean;
+	/**
+	 * Documentation page for this feature.
+	 * The page header reads this URL for its docs link.
+	 * The enterprise badge tooltip links here when the URL is set.
+	 */
+	docsUrl?: string;
+};
+
+export type FeatureMaturityCatalog = {
+	readonly [id: string]: FeatureMaturityEntry | undefined;
+};
+
+export const FeatureMaturityKey: InjectionKey<MaybeRefOrGetter<FeatureMaturityCatalog>> =
+	Symbol('FeatureMaturity');
+
+export function useFeatureMaturityCatalog(): ComputedRef<FeatureMaturityCatalog> {
+	const provided = inject(FeatureMaturityKey, {});
+	return computed(() => toValue(provided));
+}
+
+function featureMaturityTestId(id: string): string {
+	return id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+export function resolveFeatureMaturityBadges(
+	catalog: FeatureMaturityCatalog,
+	id: string | undefined,
+	hidden: { preview?: boolean; enterprise?: boolean } = {},
+): {
+	showPreview: boolean;
+	showEnterprise: boolean;
+	testId?: string;
+	docsUrl?: string;
+} {
+	if (id === undefined) {
+		return { showPreview: false, showEnterprise: false };
+	}
+
+	const entry = catalog[id];
+	if (entry === undefined) {
+		if (import.meta.env.DEV) {
+			console.warn(
+				`[N8nFeatureMaturityBadges] The feature list has no entry for "${id}". No badges render.`,
+			);
+		}
+		return { showPreview: false, showEnterprise: false };
+	}
+
+	return {
+		showPreview: entry.preview && !hidden.preview,
+		showEnterprise: entry.limitedEnterpriseSupport && !hidden.enterprise,
+		testId: featureMaturityTestId(id),
+		...(entry.docsUrl === undefined ? {} : { docsUrl: entry.docsUrl }),
+	};
+}
+
+export function featureMaturityForPlan(
+	catalog: FeatureMaturityCatalog,
+	isEnterprisePlan: boolean,
+): FeatureMaturityCatalog {
+	if (isEnterprisePlan) return catalog;
+
+	const visible: { [id: string]: FeatureMaturityEntry } = {};
+	for (const [id, entry] of Object.entries(catalog)) {
+		if (entry === undefined) continue;
+		visible[id] = {
+			preview: entry.preview,
+			limitedEnterpriseSupport: false,
+			...(entry.docsUrl === undefined ? {} : { docsUrl: entry.docsUrl }),
+		};
+	}
+	return visible;
+}

@@ -71,7 +71,7 @@ function confirmDisable() {
 				:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
 				:enabled="enabled"
 				:disabled="managedByEnv || isSaving"
-				show-preview-badge
+				feature="workflowReviews"
 				switch-test-id="security-workflow-reviews-toggle"
 				@update:enabled="onToggle"
 			/>

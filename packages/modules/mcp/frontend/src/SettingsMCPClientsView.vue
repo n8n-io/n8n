@@ -10,7 +10,7 @@ import { useToast } from '@n8n/composables/useToast';
 import type { OAuthClientFilters } from './clients.utils';
 import OAuthClientsTable from './components/tabs/OAuthClientsTable.vue';
 import RevokeOAuthClientConfirmModal from './components/RevokeOAuthClientConfirmModal.vue';
-import { LOADING_INDICATOR_TIMEOUT, MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from './mcp.constants';
+import { LOADING_INDICATOR_TIMEOUT, MCP_SETTINGS_VIEW } from './mcp.constants';
 import { useMCPStore } from './mcp.store';
 import { useMcp } from './composables/useMcp';
 import { useOAuthClientRevoke } from './composables/useOAuthClientRevoke';
@@ -123,7 +123,7 @@ onMounted(async () => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.connectedClients.title')"
 			:description="i18n.baseText('settings.mcp.connectedClients.description')"
-			:docs-url="MCP_DOCS_PAGE_URL"
+			feature="mcp"
 		/>
 		<div data-test-id="mcp-clients-view">
 			<OAuthClientsTable

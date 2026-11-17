@@ -9,10 +9,8 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nEmptyState,
-	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
 	N8nLoading2,
-	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -38,7 +36,6 @@ import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
 	ENVIRONMENTS_DOCS_URL,
-	ENVIRONMENTS_PLAN_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
 } from '../promotions.constants';
@@ -164,19 +161,10 @@ async function remove(environment: PromotionEnvironment) {
 <template>
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
+			feature="n8nPackages"
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
-			:docs-url="ENVIRONMENTS_PLAN_DOCS_URL"
-		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" data-test-id="promotions-preview-badge" />
-				<N8nEnterpriseReadinessBadge
-					v-if="settingsStore.isEnterprisePlan"
-					size="xsmall"
-					data-test-id="promotions-enterprise-readiness-badge"
-				/>
-			</template>
-		</N8nSettingsPageHeader>
+		/>
 
 		<N8nSettingsSection :title="i18n.baseText('settings.promotions.environments.title')">
 			<template #description>

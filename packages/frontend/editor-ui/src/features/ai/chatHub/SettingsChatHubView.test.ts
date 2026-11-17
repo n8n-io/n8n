@@ -118,12 +118,28 @@ describe('SettingsChatHubView', () => {
 		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
 	});
 
-	it('calls setChatEnabled when the title is clicked', async () => {
+	it('toggles Chat from the title and the description', async () => {
 		const { getByText } = renderComponent();
 
+		// fireEvent uses the label's native activation. user-event cannot click these labels in jsdom.
 		await fireEvent.click(getByText('Enable Chat'));
-
 		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
+
+		await fireEvent.click(
+			getByText(
+				'When disabled, Chat is hidden across the app and its API endpoints are turned off. You can re-enable it here at any time.',
+			),
+		);
+		expect(setChatEnabledMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not toggle Chat from a maturity badge', async () => {
+		const { getByTestId } = renderComponent();
+
+		await fireEvent.click(getByTestId('chat-preview-badge'));
+		await fireEvent.click(getByTestId('chat-enterprise-readiness-badge'));
+
+		expect(setChatEnabledMock).not.toHaveBeenCalled();
 	});
 
 	it('treats an unset enabled value as off (fail closed)', async () => {
@@ -138,24 +154,28 @@ describe('SettingsChatHubView', () => {
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
 	});
 
-	it('shows the Preview and limited enterprise readiness badges next to the title on enterprise', () => {
-		const { getByText, getByTestId } = renderComponent();
-		const titleRow = getByText('Chat').parentElement;
-
-		expect(titleRow).toContainElement(getByTestId('chat-hub-preview-badge'));
-		expect(titleRow).toContainElement(getByTestId('chat-hub-enterprise-readiness-badge'));
-		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(
-			'Limited enterprise readiness',
-		);
-	});
-
-	it('shows only the Preview badge on other plans', () => {
+	it('hides the limited enterprise readiness badge on other plans', () => {
 		settingsState.isEnterprisePlan = false;
 
 		const { getByTestId, queryByTestId } = renderComponent();
 
-		expect(getByTestId('chat-hub-preview-badge')).toBeInTheDocument();
-		expect(queryByTestId('chat-hub-enterprise-readiness-badge')).not.toBeInTheDocument();
+		expect(getByTestId('chat-preview-badge')).toBeInTheDocument();
+		expect(queryByTestId('chat-enterprise-readiness-badge')).not.toBeInTheDocument();
+	});
+
+	it('shows the Preview and limited enterprise readiness badges next to the title', () => {
+		const { getByRole, getByTestId } = renderComponent();
+
+		const titleRow = getByRole('heading', { name: 'Chat' }).parentElement;
+
+		expect(titleRow).toContainElement(getByTestId('chat-preview-badge'));
+		expect(titleRow).toContainElement(getByTestId('chat-enterprise-readiness-badge'));
+		expect(getByTestId('chat-hub-enabled-row')).not.toContainElement(
+			getByTestId('chat-preview-badge'),
+		);
+		expect(getByTestId('chat-enterprise-readiness-badge')).toHaveTextContent(
+			'Limited enterprise readiness',
+		);
 	});
 
 	it('disables the toggle for users without chatHub:manage scope', () => {

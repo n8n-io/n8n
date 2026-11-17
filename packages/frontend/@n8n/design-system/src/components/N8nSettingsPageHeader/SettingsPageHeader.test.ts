@@ -1,19 +1,82 @@
 import { render, screen } from '@testing-library/vue';
 
+import {
+	FeatureMaturityKey,
+	type FeatureMaturityCatalog,
+} from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
+
+const featureMaturity: FeatureMaturityCatalog = {
+	agents: { preview: true, limitedEnterpriseSupport: true },
+	context: { preview: true, limitedEnterpriseSupport: true },
+};
+
+const featureList = {
+	global: { provide: { [FeatureMaturityKey as symbol]: featureMaturity } },
+};
+
+function catalogWith(id: string, docsUrl: string) {
+	return {
+		global: {
+			provide: {
+				[FeatureMaturityKey as symbol]: {
+					[id]: { preview: false, limitedEnterpriseSupport: false, docsUrl },
+				} satisfies FeatureMaturityCatalog,
+			},
+		},
+	};
+}
 
 describe('N8nSettingsPageHeader', () => {
 	it('renders the title as an h1 by default', () => {
-		render(N8nSettingsPageHeader, { props: { title: 'This instance', showDocsLink: false } });
+		render(N8nSettingsPageHeader, { props: { title: 'This instance' } });
 
 		const title = screen.getByText('This instance');
 		expect(title).toBeInTheDocument();
 		expect(title.tagName).toBe('H1');
 	});
 
+	it('renders the feature badges beside the title', () => {
+		render(N8nSettingsPageHeader, {
+			...featureList,
+			props: { title: 'Context', feature: 'context' },
+		});
+
+		const title = screen.getByRole('heading', { name: 'Context' });
+		const preview = screen.getByTestId('context-preview-badge');
+		const enterprise = screen.getByTestId('context-enterprise-readiness-badge');
+		expect(title.parentElement).toContainElement(preview);
+		expect(title.parentElement).toContainElement(enterprise);
+	});
+
+	it('hides one badge when the header asks', () => {
+		const preview = render(N8nSettingsPageHeader, {
+			...featureList,
+			props: {
+				title: 'Agents',
+				feature: 'agents',
+				hideEnterprise: true,
+			},
+		});
+		expect(preview.getByTestId('agents-preview-badge')).toBeInTheDocument();
+		expect(preview.queryByTestId('agents-enterprise-readiness-badge')).not.toBeInTheDocument();
+		preview.unmount();
+
+		const enterprise = render(N8nSettingsPageHeader, {
+			...featureList,
+			props: {
+				title: 'Agents',
+				feature: 'agents',
+				hidePreview: true,
+			},
+		});
+		expect(enterprise.queryByTestId('agents-preview-badge')).not.toBeInTheDocument();
+		expect(enterprise.getByTestId('agents-enterprise-readiness-badge')).toBeInTheDocument();
+	});
+
 	it('renders the titleTrailing slot alongside the title', () => {
 		render(N8nSettingsPageHeader, {
-			props: { title: 'This instance', showDocsLink: false },
+			props: { title: 'This instance' },
 			slots: { titleTrailing: '<span data-test-id="trailing">Preview</span>' },
 		});
 
@@ -26,7 +89,7 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('renders the title with the requested heading tag', () => {
 		render(N8nSettingsPageHeader, {
-			props: { title: 'This instance', headingTag: 'h2', showDocsLink: false },
+			props: { title: 'This instance', headingTag: 'h2' },
 		});
 
 		expect(screen.getByText('This instance').tagName).toBe('H2');
@@ -37,19 +100,19 @@ describe('N8nSettingsPageHeader', () => {
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				showDocsLink: false,
 			},
 		});
 
 		expect(screen.getByText('Plan, usage and version.')).toBeInTheDocument();
 	});
 
-	it('renders the docs link on by default with the default "documentation" label', () => {
+	it('renders the docs link from the feature entry', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
 			},
 		});
 
@@ -57,12 +120,39 @@ describe('N8nSettingsPageHeader', () => {
 		expect(link).toHaveAttribute('href', 'https://docs.n8n.io');
 	});
 
-	it('hides the docs link when showDocsLink is false', () => {
+	it('hides the docs link when showDocsLink is false, even when the feature has a URL', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
+				showDocsLink: false,
+			},
+		});
+
+		expect(screen.getByText('Plan, usage and version.')).toBeInTheDocument();
+		expect(screen.queryByRole('link')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('settings-page-header-docs')).not.toBeInTheDocument();
+	});
+
+	it('hides the feature documentation link when showDocsLink is false', () => {
+		render(N8nSettingsPageHeader, {
+			global: {
+				provide: {
+					[FeatureMaturityKey as symbol]: {
+						agents: {
+							preview: true,
+							limitedEnterpriseSupport: true,
+							docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
+						},
+					} satisfies FeatureMaturityCatalog,
+				},
+			},
+			props: {
+				title: 'Agents',
+				description: 'Build agents.',
+				feature: 'agents',
 				showDocsLink: false,
 			},
 		});
@@ -73,12 +163,13 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('renders custom leading copy and a custom label', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('api', 'https://docs.n8n.io/api/'),
 			props: {
 				title: 'API keys',
 				description: 'Use your API keys to control n8n programmatically.',
 				docsLeadingText: 'Read the ',
 				docsLabel: 'API reference',
-				docsUrl: 'https://docs.n8n.io/api/',
+				feature: 'api',
 			},
 		});
 
@@ -88,10 +179,11 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('drops the leading copy when docsLeadingText is explicitly empty', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('migrationReport', 'https://docs.n8n.io'),
 			props: {
 				title: 'Migration report',
 				description: 'Learn more about all breaking changes in our',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'migrationReport',
 				docsLeadingText: '',
 			},
 		});
@@ -100,12 +192,39 @@ describe('N8nSettingsPageHeader', () => {
 		expect(screen.queryByText(/Learn more in the/)).not.toBeInTheDocument();
 	});
 
+	it('uses the documentation URL from the feature entry', () => {
+		render(N8nSettingsPageHeader, {
+			global: {
+				provide: {
+					[FeatureMaturityKey as symbol]: {
+						openTelemetry: {
+							preview: true,
+							limitedEnterpriseSupport: false,
+							docsUrl: 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+						},
+					} satisfies FeatureMaturityCatalog,
+				},
+			},
+			props: {
+				title: 'OpenTelemetry',
+				description: 'Send traces from this instance.',
+				feature: 'openTelemetry',
+			},
+		});
+
+		expect(screen.getByRole('link', { name: 'documentation' })).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/',
+		);
+	});
+
 	it('renders the docs link as an N8nExternalLink that opens in a new tab', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
 			},
 		});
 
@@ -116,10 +235,11 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('renders the docs link in the inline treatment, followed by the external-link icon', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
 			},
 		});
 
@@ -134,21 +254,19 @@ describe('N8nSettingsPageHeader', () => {
 		expect(link).toHaveAccessibleName('documentation');
 	});
 
-	it('warns and renders a non-navigational placeholder when shown without a docsUrl', () => {
+	it('warns and renders a non-navigational placeholder when shown without a docs URL', () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		render(N8nSettingsPageHeader, {
 			props: { title: 'This instance', description: 'Plan, usage and version.' },
 		});
 
-		// Placeholder text is still shown to nudge the developer, but it is not a real link,
-		// nor a focusable no-op control.
 		const placeholder = screen.getByTestId('settings-page-header-docs');
 		expect(placeholder).toHaveTextContent('documentation');
 		expect(placeholder).not.toHaveAttribute('href');
 		expect(placeholder).toBeDisabled();
 		expect(screen.queryByRole('link')).not.toBeInTheDocument();
-		expect(warn).toHaveBeenCalledWith(expect.stringContaining('docsUrl'));
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('feature entry'));
 
 		warn.mockRestore();
 	});

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue';
 
-import N8nEnterpriseReadinessBadge from '../EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
-import N8nPreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
+import {
+	resolveFeatureMaturityBadges,
+	useFeatureMaturityCatalog,
+} from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
@@ -19,15 +22,16 @@ export interface SettingsEnableRowProps {
 	/** Test id for the switch. */
 	switchTestId?: string;
 	/**
-	 * Shows the Preview badge beside the title.
-	 * @default false
+	 * Feature id from the list the app provides.
+	 * The entry decides which badges render beside the title.
 	 */
-	showPreviewBadge?: boolean;
-	/**
-	 * Shows the Limited enterprise support badge beside the title.
-	 * @default false
-	 */
-	showEnterpriseReadinessBadge?: boolean;
+	feature?: string;
+	/** Hide the Preview badge at this callsite. */
+	/** @default false */
+	hidePreview?: boolean;
+	/** Hide the Limited enterprise readiness badge at this callsite. */
+	/** @default false */
+	hideEnterprise?: boolean;
 	/**
 	 * Whether the setting is on.
 	 * The parent owns this value.
@@ -49,15 +53,25 @@ defineOptions({ name: 'N8nSettingsEnableRow' });
 const props = withDefaults(defineProps<SettingsEnableRowProps>(), {
 	disabled: false,
 	switchTestId: undefined,
-	showPreviewBadge: false,
-	showEnterpriseReadinessBadge: false,
+	feature: undefined,
+	hidePreview: false,
+	hideEnterprise: false,
 	enabled: false,
 });
 
 const emit = defineEmits<SettingsEnableRowEmits>();
 
 const switchId = useId();
-const hasBadges = computed(() => props.showPreviewBadge || props.showEnterpriseReadinessBadge);
+const catalog = useFeatureMaturityCatalog();
+const featureBadges = computed(() =>
+	resolveFeatureMaturityBadges(catalog.value, props.feature, {
+		preview: props.hidePreview,
+		enterprise: props.hideEnterprise,
+	}),
+);
+const hasBadges = computed(
+	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
+);
 
 const settingsSwitchProps = {
 	size: 'small',
@@ -77,16 +91,12 @@ function onEnabledChange(value: boolean) {
 						{{ title }}
 					</N8nText>
 				</label>
-				<span v-if="hasBadges" :class="$style.badges">
-					<N8nPreviewBadge
-						v-if="showPreviewBadge"
-						data-test-id="settings-enable-row-preview-badge"
-					/>
-					<N8nEnterpriseReadinessBadge
-						v-if="showEnterpriseReadinessBadge"
-						data-test-id="settings-enable-row-enterprise-readiness-badge"
-					/>
-				</span>
+				<N8nFeatureMaturityBadges
+					v-if="hasBadges"
+					:feature="feature"
+					:hide-preview="hidePreview"
+					:hide-enterprise="hideEnterprise"
+				/>
 			</div>
 			<label :for="switchId">
 				<N8nText :class="$style.description" size="small" color="text-light">
@@ -146,13 +156,6 @@ function onEnabledChange(value: boolean) {
 .title,
 .description {
 	cursor: pointer;
-}
-
-.badges {
-	display: inline-flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 
 .divider {

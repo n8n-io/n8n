@@ -6,8 +6,8 @@ import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
 	N8nBadge,
+	N8nFeatureMaturityBadges,
 	N8nNotice,
-	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -23,7 +23,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
-import { EnterpriseEditionFeature, SECURITY_POLICIES_DOCS_URL } from '@/app/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -204,9 +204,9 @@ const sharingCountText = computed(() => {
 <template>
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
+			feature="security"
 			:title="i18n.baseText('settings.security')"
 			:description="i18n.baseText('settings.security.description')"
-			:docs-url="SECURITY_POLICIES_DOCS_URL"
 			data-test-id="security-settings-header"
 		/>
 
@@ -418,7 +418,7 @@ const sharingCountText = computed(() => {
 					<template #info>
 						<N8nText :bold="true">
 							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.title') }}
-							<N8nPreviewBadge class="ml-4xs" data-test-id="security-type-policies-preview-badge" />
+							<N8nFeatureMaturityBadges class="ml-4xs" feature="securityTypePolicies" />
 						</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.description') }}

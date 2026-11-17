@@ -22,7 +22,8 @@ import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { locale } from '@n8n/design-system';
+import { FeatureMaturityKey, featureMaturityForPlan, locale } from '@n8n/design-system';
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
@@ -50,6 +51,12 @@ const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(nu
 
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+// Limited enterprise readiness renders only on the Enterprise plan.
+// Other plans keep Preview and drop that badge from the list.
+const visibleFeatureMaturity = computed(() =>
+	featureMaturityForPlan(featureMaturity, settingsStore.isEnterprisePlan),
+);
+provide(FeatureMaturityKey, visibleFeatureMaturity);
 
 // App.vue provides WorkflowDocumentStoreKey, so it cannot inject it. Expose the
 // current workflow document id (null when no workflow is loaded, e.g.

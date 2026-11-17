@@ -188,17 +188,6 @@ describe('N8nMenuItem', () => {
 			const menuItem = getByTestId('menu-item');
 			expect(menuItem.textContent).not.toContain('Hidden Label');
 		});
-
-		it('should not render PreviewBadge when compact is true', () => {
-			const { html } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem({ preview: true }),
-					compact: true,
-				},
-				global: { stubs: { ...stubs, PreviewBadge: true } },
-			});
-			expect(html()).not.toContain('preview-badge');
-		});
 	});
 
 	describe('disabled prop', () => {
@@ -248,28 +237,6 @@ describe('N8nMenuItem', () => {
 			const menuItem = getByTestId('menu-item');
 			// When disabled, the `to` prop should be undefined (no navigation href)
 			expect(menuItem).not.toHaveAttribute('href');
-		});
-	});
-
-	describe('preview prop', () => {
-		it('should render PreviewBadge when preview is true', () => {
-			const { html } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem({ preview: true }),
-				},
-				global: { stubs: { ...stubs, PreviewBadge: true } },
-			});
-			expect(html()).toContain('preview-badge-stub');
-		});
-
-		it('should not render PreviewBadge when preview is false', () => {
-			const { html } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem({ preview: false }),
-				},
-				global: { stubs: { ...stubs, PreviewBadge: true } },
-			});
-			expect(html()).not.toContain('preview-badge-stub');
 		});
 	});
 
