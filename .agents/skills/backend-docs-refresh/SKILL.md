@@ -70,7 +70,8 @@ A run that changes nothing is a valid result.
    paths, the environment variables, and the symbols in tables with "File"
    and "Symbol" columns. It does not check other symbols in code spans, for
    example decorators and class names. For each of these, confirm with
-   `git grep -w <name> -- ':!docs/backend'` that the name still exists. CI
+   `git grep -w -F -e <name> origin/master -- ':!docs/backend' ':!packages/frontend' ':!packages/testing'`
+   that the name still exists in the backend. CI
    runs Vale and Lychee on the PR.
 
 Change only files in `docs/backend`.
