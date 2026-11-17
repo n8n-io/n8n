@@ -373,6 +373,7 @@ describe('GlobalConfig', () => {
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			browserUseEnabled: true,
+			cloudBrowserEnabled: true,
 			observerMessageTokens: 30_000,
 			utilityModel: '',
 			approvalJudgeModel: '',

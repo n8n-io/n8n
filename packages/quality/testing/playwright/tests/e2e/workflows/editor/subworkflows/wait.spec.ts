@@ -58,8 +58,7 @@ test.describe(
 			expect(childExecutions[0].status).toMatch(/running|waiting/);
 		});
 
-		// TODO(CET-583): engine v2 runs the sub-execution in the parent's mode, not in `integrated`.
-		test('CAT-1445 should not be restarted by the child workflow finishing @engine:v2-pending', async ({
+		test('CAT-1445 should not be restarted by the child workflow finishing @engine:v2', async ({
 			api,
 		}) => {
 			// The child is a no-op that returns immediately.
