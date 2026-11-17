@@ -714,6 +714,9 @@ export class CredentialImporter {
 			moves.push({ ...move, status: 'moved' });
 		}
 		for (const sourceId of plan.pendingMoves ?? []) bindings.set(sourceId, sourceId);
+		// The caller accepted that the reference does not resolve. The workflow keeps the id, and
+		// the write of the workflow must not refuse it as a credential that the user cannot use.
+		for (const sourceId of plan.unresolvedAllowed ?? []) bindings.set(sourceId, sourceId);
 
 		return {
 			placeholders,
