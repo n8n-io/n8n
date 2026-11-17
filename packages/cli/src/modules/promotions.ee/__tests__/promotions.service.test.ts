@@ -2070,6 +2070,38 @@ describe('PromotionsService', () => {
 				);
 				await expect(stat(`${packageFolder}.pre-selection`)).resolves.toBeDefined();
 			});
+
+			it('keeps the backup when the lock is lost and the export fails with another error', async () => {
+				const exportError = new Error('Export failed');
+				n8nPackagesService.exportPackageToDirectory.mockImplementation(async () => {
+					// The lease expires while the export runs, and the export fails.
+					controller.abort();
+					throw exportError;
+				});
+
+				await expect(promoteW2()).rejects.toBe(exportError);
+
+				expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+					workflowFile('w1'),
+				);
+				await expect(stat(`${packageFolder}.pre-selection`)).resolves.toBeDefined();
+			});
+
+			it('does not restore the package or remove the backup when the lock is lost and the push fails with another error', async () => {
+				const pushError = new Error('Push failed');
+				gitService.commitAndPush.mockImplementation(async () => {
+					// The lease expires while Git works, and Git fails.
+					controller.abort();
+					throw pushError;
+				});
+
+				await expect(promoteW2()).rejects.toBe(pushError);
+
+				expect(await readExported('projects/alpha/workflows/w2/workflow.json')).toBe(
+					workflowFile('w2'),
+				);
+				await expect(stat(`${packageFolder}.pre-selection`)).resolves.toBeDefined();
+			});
 		});
 
 		it('restores the package and keeps the push error when staging cleanup fails', async () => {

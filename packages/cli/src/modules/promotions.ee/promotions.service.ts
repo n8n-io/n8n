@@ -598,7 +598,8 @@ export class PromotionsService {
 		} catch (error) {
 			// After a lost lock, another operation can own the package and the backup. Leave them.
 			// The next Promote resets the package to the remote branch before it writes.
-			lockLost = error instanceof PromotionLockLostError;
+			// The signal covers a lease that expired while a step failed with another error.
+			lockLost = error instanceof PromotionLockLostError || signal.aborted;
 			if (packageChanged && !lockLost) {
 				if (backedUp) {
 					await rm(packageFolder, { recursive: true, force: true }).catch(
