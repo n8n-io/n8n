@@ -72,6 +72,16 @@ describe('LeaseService', () => {
 			expect(provider.registerHolder).toHaveBeenCalledTimes(1);
 		});
 
+		it('keeps the kind registered when the provider rejects', async () => {
+			const providerError = new Error('provider failed');
+			provider.registerHolder.mockRejectedValueOnce(providerError);
+
+			await expect(service.registerKind(makeKind())).rejects.toBe(providerError);
+			await expect(service.registerKind(makeKind())).rejects.toThrow(DuplicateLeaseKindError);
+			await service.changed('kind-name');
+			expect(provider.sync).toHaveBeenCalledWith('kind-name');
+		});
+
 		it('merges kind options over the defaults', async () => {
 			await service.registerKind(
 				makeKind({ options: { startTimeoutSeconds: 10, leaseSeconds: 30 } }),
