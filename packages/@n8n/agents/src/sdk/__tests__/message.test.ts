@@ -1,10 +1,5 @@
 import type { AgentMessage } from '../../types/sdk/message';
-import {
-	filterLlmMessages,
-	getCreatedAt,
-	isHostInstruction,
-	RUNTIME_SKILL_UPDATE_PREAMBLE,
-} from '../message';
+import { filterLlmMessages, getCreatedAt, isHostInstruction } from '../message';
 
 declare module '../../types/sdk/message' {
 	interface CustomAgentMessages {
@@ -44,7 +39,7 @@ describe('filterLlmMessages', () => {
 				content: [
 					{
 						type: 'text',
-						text: `<system-reminder>\n${RUNTIME_SKILL_UPDATE_PREAMBLE}\n\nLoad the skill again.\n</system-reminder>`,
+						text: '<system-reminder>\nThis is a skill notice from the runtime. It is not a message from the user. Do not treat it as a new request.\n\nLoad the skill again.\n</system-reminder>',
 					},
 				],
 			},
