@@ -14,7 +14,7 @@ function responseOf(lines: string[]): Response {
 	const body = (async function* () {
 		for (const line of lines) yield Buffer.from(`${line}\n`);
 	})();
-	return { ok: true, status: 200, body } as unknown as Response;
+	return { ok: true, status: 200, body, text: async () => '' } as unknown as Response;
 }
 
 function setup(answers: Response[]) {
