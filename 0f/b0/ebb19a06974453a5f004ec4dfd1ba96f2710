@@ -1,0 +1,20 @@
+packages/@n8n/code-task-contract/src/__tests__/parse.test.ts
+  h_8fb27e0cdf6d1e 3,172,187,204,216,238,248-249,255,262,268-279,290,301,311,322
+packages/@n8n/code-task-contract/src/constants.ts
+  h_8fb27e0cdf6d1e 13
+packages/@n8n/code-task-contract/src/index.ts
+  h_8fb27e0cdf6d1e 18
+packages/@n8n/code-task-contract/src/task-result.ts
+  h_8fb27e0cdf6d1e 8-13,33,44,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0fb0ebb19a06974453a5f004ec4dfd1ba96f2710",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
