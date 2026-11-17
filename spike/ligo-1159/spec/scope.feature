@@ -1,5 +1,5 @@
-# Source: solution.md sections 3, 4.1, 4.4 and 4.7, and ticket 13 of section 9
-# for the behavior that it describes.
+# Source: solution.md section 3.13, and the scope rules of the previous
+# revision that the current solution.md keeps.
 Feature: What travels and what does not
   Two relations cross a project at run time: the use of a credential and a
   reference to a workflow. Variables and data tables cannot cross a project.
@@ -88,6 +88,18 @@ Feature: What travels and what does not
       Given Alice has workflow "Alice's helper" in a personal project
       When the user starts an instance Promote
       Then the branch holds no item of the personal project of Alice
+
+  Rule: Changes to an environment
+
+    Scenario: An environment that points to another repository closes its open reviews
+      Given the promote environment has an open review
+      When an admin points the environment to another repository
+      Then n8n closes the open review
+
+    Scenario: The next operation compares the repository and the instance
+      Given an admin changed the branch of the apply environment
+      When the user previews an Apply
+      Then the preview compares the new branch with the destination
 
   Rule: The package format does not change
 

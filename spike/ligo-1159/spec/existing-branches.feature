@@ -1,5 +1,5 @@
-# Source: solution.md sections 3 (row "Existing branch"), 4.3 (rule 4), 4.7, 5.10
-# and 6.5, and ticket 2 of section 9 for the behavior that it describes.
+# Source: behavior kept from the previous revision of solution.md (existing
+# branches), with the gaps and exits of solution.md sections 3.2 to 3.4.
 Feature: Branches that an earlier version wrote
   There is no migration. A branch that an earlier version wrote can hold a
   credential at the top level, with no owner, and a reference to a workflow
@@ -17,15 +17,20 @@ Feature: Branches that an earlier version wrote
       Given workflow "Daily report" of project "Sales" has no dependency
       When the user promotes "Daily report" from project "Sales"
       Then the Promote writes "Daily report" to the branch under project "Sales"
-      And the Promote shows no message about "Sync orders"
+      And the report shows no gap for "Sync orders"
 
   Rule: A credential at the top level does not count as on the branch
 
-    Scenario: A workflow that uses a top-level credential stops at its next Promote
+    Scenario: A workflow that uses a top-level credential has a gap at its next Promote
       Given credential "CRM key" is in project "Platform" on the source
+      When the user previews the Promote of "Sync orders" from project "Sales"
+      Then the report shows a gap for "CRM key"
+
+    Scenario: The gap stops a strict Promote
+      Given credential "CRM key" is in project "Platform" on the source
+      And the promote environment is strict
       When the user promotes "Sync orders" from project "Sales"
       Then the Promote stops
-      And the Promote shows this next step for "CRM key": "Promote credential CRM key from project Platform first."
 
     Scenario: The Promote passes after the owner project promotes the credential
       Given credential "CRM key" is in project "Platform" on the source

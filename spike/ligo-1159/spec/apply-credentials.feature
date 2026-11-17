@@ -1,9 +1,13 @@
-# Source: solution.md sections 1 (decisions 6 and 8), 3, 4.3, 5.9, 6.3 and 6.7,
-# and tickets 1 and 2 of section 9 for the behavior that they describe.
+# Source: solution.md sections 1, 3.7 and 3.12.
 Feature: Credentials on Apply
-  Apply creates a missing credential one time, in the owner project that the
-  branch names. A consumer project gets access through a grant that the user
-  confirms. Apply never removes a share. Git holds no sharing list.
+  A credential lives in the project that owns it. Apply creates a missing
+  credential one time, in the owner project that the branch names. A consumer
+  project gets access through a grant that the user confirms. Apply never
+  removes a share. Git holds no sharing list.
+
+  The owner on the destination follows the branch: when Apply writes a
+  credential that the branch places in another project than the destination,
+  Apply moves it to the project of the branch and keeps every share.
 
   Background:
     Given the branch holds credential "CRM key" under project "Platform"
@@ -11,23 +15,102 @@ Feature: Credentials on Apply
     And "Sync orders" uses "CRM key"
     And the destination has the team projects "Sales" and "Platform"
 
-  Rule: A credential that exists on the destination stays where it is
+  Rule: A credential that a consumer project can use passes
 
     Scenario: The consumer project can use the credential
       Given the destination holds "CRM key" in project "Platform"
       And project "Sales" can use "CRM key" on the destination
       When the user applies project "Sales"
       Then the Apply imports "Sync orders"
-      And the Apply shows no new step
+      And the report shows no gap
 
-    @open-decision-9
-    Scenario: The credential has another owner on the destination
+    Scenario: An Apply of a consumer project does not move the credential
       Given the destination holds "CRM key" in project "Ops"
       And project "Sales" can use "CRM key" on the destination
-      When the user previews the Apply of project "Sales"
-      Then the preview shows a note that the owner of "CRM key" differs from the branch
-      And the Apply is not blocked
+      When the user applies project "Sales"
+      Then the Apply imports "Sync orders"
       And "CRM key" stays in project "Ops" on the destination
+
+  Rule: The owner on the destination follows the branch
+
+    Scenario: An Apply of the owner project moves the credential and keeps every share
+      Given the destination holds "CRM key" in project "Ops"
+      And "CRM key" is shared with project "Sales" on the destination
+      When the user applies project "Platform"
+      Then "CRM key" is in project "Platform" on the destination
+      And "CRM key" keeps its id
+      And project "Sales" can still use "CRM key"
+      And project "Ops" can still use "CRM key"
+
+    Scenario: The Apply updates the credential after the move
+      Given the destination holds "CRM key" in project "Ops"
+      And the name of "CRM key" on the branch differs from the destination
+      When the user applies project "Platform"
+      Then "CRM key" is in project "Platform" on the destination
+      And the Apply updates the name and the expression values of "CRM key" from the branch
+
+    Scenario: A placeholder gets its home
+      Given an incomplete Apply of project "Sales" created the empty placeholder "CRM key" in project "Sales"
+      And a user promoted credential "CRM key" from project "Platform"
+      When the user applies project "Platform"
+      Then "CRM key" is in project "Platform" on the destination
+      And project "Sales" can still use "CRM key"
+      And the Apply writes the values of "CRM key" from the branch
+
+    @open-decision-3
+    Scenario: A secret typed into the placeholder survives the move
+      Given the empty placeholder "CRM key" is in project "Sales" on the destination
+      And a destination admin typed a secret value into "CRM key"
+      When the user applies project "Platform"
+      Then "CRM key" is in project "Platform" on the destination
+      And "CRM key" keeps the secret value that the admin typed
+
+    Scenario: The owner of a credential changed on the source
+      Given the destination holds "CRM key" in project "Platform"
+      And "CRM key" now belongs to project "Ops" on the source
+      And a user promoted credential "CRM key" from project "Ops"
+      When the user applies project "Ops"
+      Then "CRM key" is in project "Ops" on the destination
+      And project "Platform" can still use "CRM key"
+
+    Scenario: A move made by hand on the destination is undone
+      Given the destination holds "CRM key" in project "Platform"
+      And a destination admin moved "CRM key" to project "Ops" in the editor
+      When the user applies project "Platform"
+      Then "CRM key" is in project "Platform" on the destination
+
+    Scenario: The move needs the rights of the user in the project of the branch only
+      Given the destination holds "CRM key" in project "Ops"
+      And the user cannot access project "Ops"
+      And the user may create and update credentials in project "Platform"
+      When the user applies project "Platform"
+      Then "CRM key" is in project "Platform" on the destination
+
+    Scenario: The preview announces the move without naming a project that the user cannot access
+      Given the destination holds "CRM key" in project "Ops"
+      And the user cannot access project "Ops"
+      When the user previews the Apply of project "Platform"
+      Then the preview says: "CRM key moves into Platform. The projects that use it keep access."
+      And the preview does not name project "Ops"
+
+    Scenario: The members of the old owner project become users of the credential
+      Given the destination holds "CRM key" in project "Sales"
+      And a member of project "Sales" could edit "CRM key"
+      When the user applies project "Platform"
+      Then the member of project "Sales" can use "CRM key"
+      And the member of project "Sales" cannot edit "CRM key"
+
+    Scenario Outline: Some credentials never move
+      Given the destination holds "CRM key" in project "Ops"
+      And "CRM key" is <kind> on the destination
+      When the user applies project "Platform"
+      Then "CRM key" stays in project "Ops" on the destination
+
+      Examples:
+        | kind                                |
+        | a managed credential                |
+        | an end-user credential              |
+        | a credential with usage scope "instance" |
 
   Rule: A missing credential is created one time in its owner project
 
@@ -35,9 +118,9 @@ Feature: Credentials on Apply
       Given the destination does not hold "CRM key"
       When the user applies project "Sales"
       Then the Apply stops before any write
-      And the Apply reports that "CRM key" is missing
-      And the Apply names project "Platform" as the owner on the branch
-      And the Apply names project "Sales" as the consumer
+      And the report shows that "CRM key" is missing
+      And the report names project "Platform" as the owner on the branch
+      And the report names project "Sales" as the consumer
 
     Scenario: The user creates the credential in the owner project
       Given the destination does not hold "CRM key"
@@ -91,7 +174,6 @@ Feature: Credentials on Apply
 
   Rule: A consumer project gets access through a grant that the user confirms
 
-    @open-decision-3
     Scenario: The credential exists and the consumer project cannot use it
       Given the destination holds "CRM key" in project "Platform"
       And project "Sales" cannot use "CRM key" on the destination
@@ -100,7 +182,6 @@ Feature: Credentials on Apply
       And the Apply lists this access to grant: "CRM key" for project "Sales"
       And the Apply says whether the user may grant it
 
-    @open-decision-3
     Scenario: One Continue grants access and applies
       Given the Apply lists this access to grant: "CRM key" for project "Sales"
       And the user may share "CRM key"
@@ -109,14 +190,12 @@ Feature: Credentials on Apply
       And the Apply imports "Sync orders"
       And the result lists the grant
 
-    @open-decision-3
     Scenario: The first Apply call grants nothing
       Given the destination holds "CRM key" in project "Platform"
       And project "Sales" cannot use "CRM key" on the destination
       When the user applies project "Sales"
       Then the Apply shares no credential
 
-    @open-decision-3
     Scenario: The Apply grants only the items that the user confirmed
       Given the Apply lists these accesses to grant:
         | credential | project |
@@ -184,7 +263,7 @@ Feature: Credentials on Apply
       When the user starts an instance Apply
       Then "CRM key" is still shared with project "Ops" on the destination
 
-  Rule: Apply updates a credential only from the project that owns it
+  Rule: Apply updates a credential only from the project that owns it on the branch
 
     Scenario: An Apply of the owner project updates the credential from the branch
       Given the destination holds "CRM key" in project "Platform"

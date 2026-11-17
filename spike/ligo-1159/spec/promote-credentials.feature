@@ -1,9 +1,10 @@
-# Source: solution.md sections 1 (decision 6), 3, 4.2, 4.7 and 6.2.
+# Source: solution.md sections 1, 3.2, 3.7 and 3.13.
 Feature: Credentials in a project Promote
   The branch path is the owner of a credential. A credential is on the branch
   only when its file is under the folder of a team project.
 
-  The owner team promotes a credential. A consumer team never does.
+  The owner team promotes a credential, or a user who can promote the owner
+  project includes it. A consumer team without that right never writes it.
 
   Background:
     Given the source has the team projects "Sales", "Platform" and "Ops"
@@ -34,10 +35,19 @@ Feature: Credentials in a project Promote
   Rule: A Promote never writes a credential at the top level of the branch
 
     Scenario: A consumer project does not write the credential of another project
-      Given the branch does not hold "CRM key"
+      Given the promote environment is strict
+      And the branch does not hold "CRM key"
+      And the user cannot promote project "Platform"
       When the user promotes "Sync orders" from project "Sales"
       Then the Promote stops
       And the branch holds no file for "CRM key"
+
+    Scenario: A user who can promote the owner project includes the credential
+      Given the branch does not hold "CRM key"
+      And the user can promote the projects "Sales" and "Platform"
+      When the user includes "CRM key" and promotes "Sync orders"
+      Then the Promote writes "CRM key" to the branch under project "Platform"
+      And the Promote writes "Sync orders" to the branch under project "Sales"
 
     Scenario: A consumer project does not change a credential that is on the branch
       Given the branch holds credential "CRM key" under project "Platform"
@@ -65,8 +75,7 @@ Feature: Credentials in a project Promote
       Given "CRM key" is a global credential on the source
       And the branch does not hold "CRM key"
       When the user previews the Promote of "Sync orders" from project "Sales"
-      Then "Sync orders" cannot be promoted
-      And the preview shows this next step for "CRM key": "Promote credential CRM key from project Platform first."
+      Then the report shows a gap for "CRM key"
 
   Rule: A credential with the usage scope "instance" stays out of the package
 
@@ -84,3 +93,10 @@ Feature: Credentials in a project Promote
       And "CRM key" now belongs to project "Ops" on the source
       When the user promotes "Sync orders" from project "Sales"
       Then the Promote writes "Sync orders" to the branch under project "Sales"
+
+    Scenario: A Promote of the new owner moves the credential on the branch
+      Given the branch holds credential "CRM key" under project "Platform"
+      And "CRM key" now belongs to project "Ops" on the source
+      When the user promotes credential "CRM key" from project "Ops"
+      Then the branch holds "CRM key" under project "Ops"
+      And the branch does not hold "CRM key" under project "Platform"

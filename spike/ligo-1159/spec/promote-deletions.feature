@@ -1,4 +1,5 @@
-# Source: solution.md sections 3, 5.6 and 6.8 (guard 3).
+# Source: solution.md sections 1 (decision 13) and 3.3. Behavior kept from the
+# previous revision.
 Feature: Promote of a deletion
   A deletion can break a reference that other content on the branch holds.
   The source already has the same broken reference, so the Promote warns and

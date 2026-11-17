@@ -1,7 +1,7 @@
-# Source: solution.md sections 3 (row "Permission boundary"), 4.6 and 6.7.
+# Source: solution.md sections 3.1, 3.5, 3.7 and 3.12.
 Feature: Permissions in promotion
-  Promotion acts as the user. It reports, it does not act for the user, and
-  it does not show what the user cannot read.
+  Promotion acts as the user. It reports, it does not act for the user, and a
+  user never sees information about a resource that they cannot access.
 
   Today only global owners and admins promote and apply, and they can read
   everything. These rules are for project-level promotion rights.
@@ -18,24 +18,21 @@ Feature: Permissions in promotion
       When the user promotes "Sync orders" from project "Sales"
       Then the Promote writes "Sync orders" to the branch under project "Sales"
 
-  Rule: A dependency that the user cannot read is never named
+  Rule: A gap shows only what the workflow of the user already holds
 
     Scenario: The user cannot read a dependency that is not on the branch
       Given the user cannot read "CRM key"
       And the branch does not hold "CRM key"
-      When the user promotes "Sync orders" from project "Sales"
-      Then the Promote stops
-      And the Promote shows this message: "A resource that you cannot access is not on the branch. Ask an administrator."
-      And the message does not name "CRM key"
+      When the user previews the Promote of "Sync orders" from project "Sales"
+      Then the report shows "CRM key" only with the id, the name and the type that the node of "Sync orders" holds
+      And the report shows no other information about "CRM key"
 
-    Scenario: A block names a project only when the user can read it
-      Given the user can read "CRM key"
-      And the user cannot read project "Platform"
+    Scenario: A gap names a project only when the user can access it
+      Given the user cannot access project "Platform"
       And the branch does not hold "CRM key"
-      When the user promotes "Sync orders" from project "Sales"
-      Then the Promote stops
-      And the message says who can promote the dependency
-      And the message does not name project "Platform"
+      When the user previews the Promote of "Sync orders" from project "Sales"
+      Then the report does not name project "Platform"
+      And the gap offers the action "Ask the owner"
 
   Rule: Each write of an Apply has its own permission check
 
@@ -53,6 +50,7 @@ Feature: Permissions in promotion
         | grant access to a consumer       | credential:share on the credential                           | a block that says who can grant              |
         | move a workflow                  | workflow:move on the workflow                                | a block that names the missing permission    |
         | move a workflow to a new project | workflow:create in the new project                           | a block that names the missing permission    |
+        | include an item of another project | the right to promote or apply that project                 | the gap offers "Ask the owner"               |
 
     Scenario: A dependency never gives a permission
       Given the branch holds "CRM key" under project "Platform"
@@ -60,6 +58,32 @@ Feature: Permissions in promotion
       And the user may not create a credential in project "Platform" on the destination
       When the user applies project "Sales"
       Then the Apply creates no credential for the user
+
+  Rule: "Allow incomplete" needs no extra permission
+
+    Scenario: A user who can promote can continue with gaps
+      Given "Allow incomplete promotions" is on for the promote environment
+      And the user can promote project "Sales"
+      When the user confirms the gaps and promotes "Sync orders" from project "Sales"
+      Then the Promote writes "Sync orders" to the branch under project "Sales"
+
+  Rule: Moving a credential to its owner on the branch needs rights in that project only
+
+    Scenario: The user cannot access the old owner project
+      Given the branch holds "CRM key" under project "Platform"
+      And the destination holds "CRM key" in project "Ops"
+      And the user cannot access project "Ops"
+      And the user may create and update credentials in project "Platform"
+      When the user applies project "Platform"
+      Then "CRM key" is in project "Platform" on the destination
+
+    Scenario: The user may not create credentials in the project of the branch
+      Given the branch holds "CRM key" under project "Platform"
+      And the destination holds "CRM key" in project "Ops"
+      And the user may not create credentials in project "Platform"
+      When the user applies project "Platform"
+      Then the Apply stops before any write
+      And the Apply names the missing permission
 
   Rule: Selecting a credential in a Promote needs read access to it
 

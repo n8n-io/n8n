@@ -18,7 +18,8 @@ The rule defines a **complete** Promote or Apply. It no longer decides alone whe
 |---|---|
 | The dependency is in a project that the user can promote or apply | **Include it.** One action adds it to the same operation. |
 | The dependency is in a project that the user cannot access | **Ask the owner**, or **continue incomplete** when the environment allows it |
-| The dependency is personal, archived, or broken on the source | **Continue incomplete** when the environment allows it, with the fix in the message |
+| The dependency is personal, or archived on the destination | **Continue incomplete** when the environment allows it, with the fix in the message |
+| The reference is already broken on the source | **Warning.** The operation continues. Promotion copies the source, it does not repair it. |
 | None of the above, on a strict environment | **Block**, with the fix in the message |
 
 The decisions:
@@ -35,6 +36,7 @@ The decisions:
 10. **Personal dependencies** block on a strict environment. With "allow incomplete" they become broken references, and the message says how to fix them.
 11. **No closure.** Promote and Apply never add content of another project by themselves.
 12. **Package format:** no change, no version change, no new file. The branch path names the owner.
+13. **Broken stays broken.** A reference that already fails on the source is a warning in both modes. The destination never becomes worse than the source.
 
 ## 2. Terms
 
@@ -68,7 +70,8 @@ Promote and Apply show the same report. The preview and the operation compute it
 | Other project that the user can promote or apply | The item, its project, and its state: on the branch, in an open review (with a link), or missing | Include it. Open the review. |
 | Project that the user cannot access | Only what the workflow of the user already shows: the id, and the name and type from the node | Ask the owner. Continue incomplete when allowed. |
 | Personal resource | "A personal resource. Move it to a team project." | Continue incomplete when allowed. |
-| Broken on the source, or archived | "This reference does not work on the source." | Continue incomplete when allowed. |
+| Broken on the source | "This reference is broken." | None. A warning. The operation continues. |
+| Archived on the destination (Apply) | "Archived on the destination. Restore it." | Restore it. Continue incomplete when allowed. |
 
 - The report says that it does not check references made by expressions. An expression needs an execution context that Promote and Apply do not have. This is a permanent limit.
 - The report never names a project, a state or a review that the user cannot access.
@@ -78,7 +81,7 @@ Promote and Apply show the same report. The preview and the operation compute it
 ```mermaid
 flowchart TD
     R["Static reference from an item<br/>that this Promote writes"] --> E{"Does the target work<br/>on the source?"}
-    E -- no --> G1["Gap: broken on the source"]
+    E -- no --> W1["Warning: broken on the source.<br/>Promote continues."]
     E -- yes --> P{"Personal project?"}
     P -- yes --> G2["Gap: personal"]
     P -- no --> Q{"On the branch<br/>after this Promote?"}
@@ -86,7 +89,7 @@ flowchart TD
     Q -- no --> A{"Can the user promote<br/>its project?"}
     A -- yes --> I["Gap with action: include it"]
     A -- no --> G3["Gap: no access.<br/>Ask the owner."]
-    G1 & G2 & I & G3 --> S{"Environment allows<br/>incomplete?"}
+    G2 & I & G3 --> S{"Environment allows<br/>incomplete?"}
     S -- no --> B["Block until the gaps are closed"]
     S -- yes --> C["User confirms the list of gaps.<br/>The review description lists them."]
 ```
@@ -119,7 +122,7 @@ flowchart TD
 
 - A workflow reference that is not on the branch stays a warning in both modes. The source or the reviewed Promote already accepted it.
 - A credential reference that is not on the branch is a gap. Today it is the hard conflict `unknown-owner` with no action. The message now names the fix: the owner team promotes it, or the environment allows incomplete.
-- Archived counts as not present. On a strict environment the fix is to restore the target. With "allow incomplete" it is a gap like the others. This removes the dead end of an archived dependency.
+- Archived counts as not present. On a strict environment the fix is to restore the target on the destination. With "allow incomplete" it is a gap like the others. This removes the dead end of an archived dependency.
 
 ### 3.5 "Allow incomplete" setting
 
@@ -290,8 +293,9 @@ High level only. No ticket split.
 | Show the other project that a move affects. | Sandra | Section 3.11. |
 | How is the owner project of a credential determined? | Sandra | The branch path (3.7). |
 | References made by expressions. | Nour | Not checked. Permanent limit, stated in the report (3.2). |
+| A reference that is already broken on the source. | (earlier decision) | A warning, not a gap (3.3). |
 | Data tables and other dependencies. | Nour | Data tables cannot cross projects (3.13). Agents follow the same rules as workflows. |
-| Archived dependencies. | Nour | Not present. Gap with a fix. No dead end (3.4). |
+| Archived dependencies. | Nour | Not present on the destination. Gap with a fix. No dead end (3.4). |
 | A resource that exists but that the user cannot access. | Nour | Gap with no information leak. Ask the owner (3.2, 3.6). |
 | The user who applies must have the right to share. | Nour | Each grant checks the right. Without it, a gap (3.7). |
 | A credential moved from Marketing to Billing, then promoted again. | Nour | The owner follows the branch (3.7). |
@@ -310,11 +314,23 @@ High level only. No ticket split.
 - **Promote adds the dependencies of other projects automatically.** Still rejected. The owner team loses control of what ships and when.
 - **A sharing list in Git.** Still rejected. A Promote of one project does not rewrite the credential file of another project, so the list goes out of date.
 
-## 9. Open points
+## 9. Open decisions
 
-1. Request routing: which members of the owner project get "ask the owner", and what the request shows to them.
-2. Stacked promotions: specification.
-3. The editor publish check for a workflow with an empty placeholder credential (section 3.9).
-4. A secret that a destination admin types into a placeholder: confirm that the move and the update keep it. Promote carries no secrets, but this needs a check against the overwrite rules.
-5. Central credentials: alignment with IAM.
-6. One repository for each project: LIGO-1399.
+Each scenario of the specification that depends on one of these decisions carries the tag `@open-decision-N` and shows the recommended answer.
+
+**Decision 1. Who receives an "ask the owner" request, and what does it show to them?**
+- Recommendation: the admins of the owner project. The request shows the requested resource and the requesting user. It never shows the project of the requester.
+
+**Decision 2. Does the editor refuse to publish a workflow whose credential is an empty placeholder?**
+- Recommendation: yes. Verify the editor publish path, and add the check when it is missing.
+
+**Decision 3. Does a secret that a destination admin types into a placeholder survive the move and the update?**
+- Recommendation: yes. Promote carries no secret values, and the update writes only the name and the expression values.
+
+**Decision 4. How do stacked promotions work?**
+- No recommendation yet. The specification does not cover it. A request can turn into a stack later.
+
+## 10. Not decided in this document
+
+- Central credentials: alignment with IAM before the build of the home, grant and move steps.
+- One repository for each project: LIGO-1399.

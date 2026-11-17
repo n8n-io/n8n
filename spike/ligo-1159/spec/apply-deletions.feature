@@ -1,8 +1,5 @@
-# Source: solution.md sections 6.3 (retention) and 6.8, and ticket 12 of section 9
-# for the behavior that it describes.
-#
-# Not specified here: what an instance Apply deletes when the branch is a
-# partial view. Open decision 4 has no recommendation yet.
+# Source: behavior kept from the previous revision of solution.md (guards
+# against deletion). The current solution.md does not change it.
 Feature: Guards against deletion on Apply
   Apply does not delete a resource that the applied workflows still need, and
   it reports a deletion that breaks a caller on the destination.

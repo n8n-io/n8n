@@ -94,7 +94,7 @@ details.sc > summary::-webkit-details-marker{display:none}
 details.sc > summary:hover{background:#fafbfc;border-radius:8px}
 details.sc[open] > summary{border-bottom:1px solid #edf0f4}
 .odot{flex:none;width:9px;height:9px;border-radius:50%;background:#c7ced8}
-.odot.block{background:#d8473c}.odot.warn{background:#e2a11b}.odot.pass{background:#2fa56a}.odot.varies{background:linear-gradient(90deg,#d8473c 50%,#2fa56a 50%)}
+.odot.gap{background:#6a3fc0}.odot.block{background:#d8473c}.odot.warn{background:#e2a11b}.odot.pass{background:#2fa56a}.odot.varies{background:linear-gradient(90deg,#d8473c 50%,#2fa56a 50%)}
 .sname{min-width:0}
 .sright{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none}
 .rev{display:inline-flex;border:1px solid #d5dbe3;border-radius:6px;overflow:hidden}
@@ -118,7 +118,7 @@ q.msg{quotes:"“" "”";font-style:italic;color:#3b2a00;background:#fff6dd;bord
 table.ex{border-collapse:collapse;margin:2px 12px 12px 74px;font-size:12.5px}
 table.ex th{background:var(--info-bg);color:var(--info);text-align:left;padding:4px 10px;border:1px solid #cddcf6;font-family:var(--mono);font-size:11.5px}
 table.ex td{padding:4px 10px;border:1px solid #e3e7ed}
-table.ex td.block{color:var(--block);font-weight:650}table.ex td.pass{color:var(--pass);font-weight:650}table.ex td.warning{color:var(--warn);font-weight:650}
+table.ex td.gap{color:#6a3fc0;font-weight:650}table.ex td.block{color:var(--block);font-weight:650}table.ex td.pass{color:var(--pass);font-weight:650}table.ex td.warning{color:var(--warn);font-weight:650}
 table.dt{border-collapse:collapse;margin:3px 0;font-size:12.5px} table.dt td{padding:2px 9px;border:1px solid #e3e7ed}
 .notebox{padding:0 12px 10px 74px;display:none}
 .notebox.on{display:block}
@@ -145,7 +145,7 @@ dialog textarea{display:block;width:100%;height:56vh;border:0;padding:14px 18px;
 <div class="bar">
   <div class="grp"><span class="lbl">Level</span><div class="seg" id="zoom"><button data-z="rules">Rules</button><button data-z="examples">Examples</button><button data-z="steps" class="on">Steps</button></div></div>
   <input class="search" id="search" type="search" placeholder="Search rules, scenarios and steps">
-  <div class="grp"><span class="lbl">Outcome</span><select class="sel" id="fout"><option value="">any</option><option value="block">stops</option><option value="warn">warns</option><option value="pass">proceeds</option><option value="varies">varies</option></select></div>
+  <div class="grp"><span class="lbl">Outcome</span><select class="sel" id="fout"><option value="">any</option><option value="block">stops</option><option value="gap">reports a gap</option><option value="warn">warns</option><option value="pass">proceeds</option><option value="varies">varies</option></select></div>
   <div class="grp"><span class="lbl">Review</span><select class="sel" id="frev"><option value="">any</option><option value="none">not reviewed</option><option value="ok">agreed</option><option value="q">question</option><option value="x">change</option><option value="stale">changed since review</option></select></div>
   <button class="btn" id="clear" style="display:none">Clear filters</button>
   <div class="progress"><span id="ptext"></span><div class="meter" id="meter"></div><button class="btn" id="export">Export notes</button><button class="btn" id="reset" title="Remove all review marks and notes">Reset</button></div>
@@ -161,7 +161,7 @@ dialog textarea{display:block;width:100%;height:56vh;border:0;padding:14px 18px;
         <div><b>Rule = one decision</b>Read at the "Rules" level to review only the decisions.</div>
         <div><b>Scenario = one example</b>A concrete case that makes the rule checkable.</div>
       </div>
-      <div class="legend"><span><i class="odot block"></i>the operation stops</span><span><i class="odot warn"></i>it warns and continues</span><span><i class="odot pass"></i>it proceeds</span><span><i class="odot varies"></i>depends on the example row</span><span>The dot comes from the wording of the outcome steps.</span></div>
+      <div class="legend"><span><i class="odot block"></i>the operation stops</span><span><i class="odot gap"></i>it reports a gap with its exits</span><span><i class="odot warn"></i>it warns and continues</span><span><i class="odot pass"></i>it proceeds</span><span><i class="odot varies"></i>depends on the example row</span><span>The dot comes from the wording of the outcome steps.</span></div>
       <div class="decs" id="decs"></div>
       <div class="cast" id="cast"></div>
     </div>
@@ -233,6 +233,7 @@ function outcomeOf(sc) {
   const t = outs.join(' ').toLowerCase().replace(/\b(no|without a) (warning|note|message)\b/g, '');
   if (/<[^>]+>/.test(outs.join(' ')) && /result|shows:/.test(t)) return 'varies';
   if (/\bstops\b|cannot be promoted|does not start the promote|result is "blocked"|stays a block/.test(t)) return 'block';
+  if (/shows a gap|shows the gap|has a gap|lists the gaps|gap (offers|says)|offers the action/.test(t)) return 'gap';
   if (/\bwarning\b|\bnote\b/.test(t)) return 'warn';
   return 'pass';
 }
@@ -297,7 +298,7 @@ function scenarioHTML(sc) {
   if (sc.desc.length) h += `<div style="padding:8px 12px 0 74px;color:#344054">${paras(sc.desc).map((p) => `<p style="margin:0 0 4px">${esc(p)}</p>`).join('')}</div>`;
   h += stepsHTML(sc.steps);
   sc.examples.forEach((e) => {
-    h += '<table class="ex"><tr>' + e.header.map((c) => `<th>${esc(c)}</th>`).join('') + '</tr>' + e.rows.map((r) => '<tr>' + r.map((c) => `<td class="${/^(block|pass|warning)$/.test(c) ? c : ''}">${esc(c)}</td>`).join('') + '</tr>').join('') + '</table>';
+    h += '<table class="ex"><tr>' + e.header.map((c) => `<th>${esc(c)}</th>`).join('') + '</tr>' + e.rows.map((r) => '<tr>' + r.map((c) => `<td class="${/^(block|pass|warning|gap)$/.test(c) ? c : ''}">${esc(c)}</td>`).join('') + '</tr>').join('') + '</table>';
   });
   h += `<div class="notebox"><textarea placeholder="Note for this scenario"></textarea></div></details>`;
   return h;

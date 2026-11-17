@@ -1,5 +1,5 @@
-# Source: solution.md sections 1 (decision 10), 3, 4.4, 4.5 and 5.12, with
-# sections 4.5 and 5.9 of consolidated-solution.md, to which solution.md refers.
+# Source: solution.md sections 3.10 and 3.11, with the move rules of the previous
+# revision and of consolidated-solution.md (sections 4.5 and 5.9).
 Feature: Moves between projects
   A move of a workflow or a folder between two team projects is one change.
   Apply transfers the item and keeps its id, its history and its executions.
@@ -34,7 +34,7 @@ Feature: Moves between projects
       Then the branch holds "Sync orders" under project "Ops"
       And the branch does not hold "Sync orders" under project "Sales"
 
-  Rule: Apply transfers the item when the package holds both projects
+  Rule: Apply transfers the item when the operation holds both projects
 
     Background:
       Given the branch holds "Sync orders" under project "Ops" after the Promote of the move
@@ -56,6 +56,10 @@ Feature: Moves between projects
       Then the preview shows one moved row
       And the preview says that the Apply changes the projects "Sales" and "Ops"
 
+    Scenario: The API response names the other project
+      When a public API client previews the Apply of the moved row of "Sync orders"
+      Then the response names the projects "Sales" and "Ops"
+
     Scenario Outline: The moved row is one operation from either project
       When the user applies the moved row of "Sync orders" from project "<project>"
       Then "Sync orders" is in project "Ops" on the destination
@@ -65,7 +69,6 @@ Feature: Moves between projects
         | Sales   |
         | Ops     |
 
-    @open-decision-7
     Scenario: The moved workflow loses its shares
       Given "Sync orders" is shared with a user on the destination
       When the user previews the Apply of the moved row of "Sync orders"
@@ -110,7 +113,6 @@ Feature: Moves between projects
 
   Rule: A move never goes into a personal project
 
-    @open-decision-6
     Scenario: Promote refuses a move into a personal project
       Given a user moved workflow "Daily report" from project "Sales" to the personal project of Alice on the source
       When the user starts an instance Promote

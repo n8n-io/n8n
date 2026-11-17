@@ -13,7 +13,8 @@ const explorerHtml = join(specDir, '..', 'visual', 'solution.html');
 
 // Reading order. A file that is not listed goes to the last group.
 const GROUPS = [
-	['Promote', ['promote-dependencies', 'promote-credentials', 'promote-cycles', 'instance-promote', 'promote-deletions']],
+	['Gaps and exits', ['dependency-report', 'allow-incomplete', 'ask-the-owner', 'selection-across-projects']],
+	['Promote', ['promote-dependencies', 'promote-credentials', 'instance-promote', 'promote-deletions']],
 	['Apply', ['apply-dependencies', 'apply-credentials', 'apply-deletions']],
 	['Both sides', ['existing-branches', 'moves', 'scope', 'permissions']],
 ];
@@ -31,7 +32,7 @@ for (const file of files.filter((f) => !listed.has(f))) {
 	features.push({ file, group: GROUPS.at(-1)[0], text: readFileSync(join(specDir, file), 'utf8') });
 }
 
-// Open decisions: the question and the recommendation, from section 10 of solution.md.
+// Open decisions: the question and the recommendation, from section 9 of solution.md.
 const decisions = {};
 if (existsSync(solutionMd)) {
 	const blocks = readFileSync(solutionMd, 'utf8').split(/^\*\*Decision (?=\d+\.)/m).slice(1);
