@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { BehaviourCase } from './case.ts';
-import type { OracleWorkflow } from './oracle-engine.ts';
+import type { OracleWorkflow, ServiceCall } from './oracle-engine.ts';
 import { runOracle } from './oracle-engine.ts';
 import { ORACLE_PORT } from './case.ts';
 
@@ -53,9 +53,23 @@ async function runCase(dir: string, port: number, captured: Captured): Promise<u
 					body: spec.trigger.body,
 				}
 			: { scheduledAt: spec.trigger.scheduledAt };
-	const result = await runOracle(parsed, { start: triggerNode.name, item, mode });
+	const services: ServiceCall[] = [];
+	const answered = new Map<string, number>();
+	const deduplication = (call: ServiceCall) => {
+		const n = answered.get(call.step) ?? 0;
+		answered.set(call.step, n + 1);
+		services.push(call);
+		return spec.services?.[call.step]?.[n];
+	};
+	const result = await runOracle(parsed, {
+		start: triggerNode.name,
+		item,
+		mode,
+		...(spec.services ? { deduplication } : {}),
+	});
 	captured.responses.push(...result.responses);
 	return {
+		...(spec.services ? { services } : {}),
 		generatedBy: 'oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1',
 		error: result.error,
 		order: result.order,

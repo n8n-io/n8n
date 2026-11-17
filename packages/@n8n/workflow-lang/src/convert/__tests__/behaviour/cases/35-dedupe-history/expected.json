@@ -1,0 +1,257 @@
+{
+	"services": [
+		{
+			"step": "Seen",
+			"service": "deduplication",
+			"op": "getProcessedDataCount",
+			"args": {
+				"scope": "workflow",
+				"node": {
+					"id": "seen"
+				},
+				"options": {
+					"mode": "entries",
+					"maxEntries": 500
+				}
+			}
+		},
+		{
+			"step": "Seen",
+			"service": "deduplication",
+			"op": "checkProcessedAndRecord",
+			"args": {
+				"items": ["2", "10", "b", "01", ""],
+				"scope": "workflow",
+				"node": {
+					"id": "seen"
+				},
+				"options": {
+					"mode": "entries",
+					"maxEntries": 500
+				}
+			}
+		},
+		{
+			"step": "Seen",
+			"service": "deduplication",
+			"op": "getProcessedDataCount",
+			"args": {
+				"scope": "workflow",
+				"node": {
+					"id": "seen"
+				},
+				"options": {
+					"mode": "entries",
+					"maxEntries": 500
+				}
+			}
+		},
+		{
+			"step": "Newer",
+			"service": "deduplication",
+			"op": "checkProcessedAndRecord",
+			"args": {
+				"items": ["2", "5", "7"],
+				"scope": "node",
+				"node": {
+					"id": "newer"
+				},
+				"options": {
+					"mode": "latestIncrementalKey"
+				}
+			}
+		},
+		{
+			"step": "Clear",
+			"service": "deduplication",
+			"op": "clearAllProcessedItems",
+			"args": {
+				"scope": "node",
+				"node": {
+					"id": "clear"
+				},
+				"options": {
+					"mode": "entries"
+				}
+			}
+		}
+	],
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split Out", "Seen", "Discarded", "Newer", "Clear", "Done", "Fresh"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"rows": [
+							{
+								"id": "b",
+								"n": 5
+							},
+							{
+								"id": 10,
+								"n": "7"
+							},
+							{
+								"id": 2,
+								"n": 3
+							},
+							{
+								"id": "b",
+								"n": 5
+							},
+							{
+								"id": 2,
+								"n": 9
+							},
+							{
+								"id": "01",
+								"n": 1
+							},
+							{
+								"n": 2
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"id": 10,
+					"n": "7"
+				},
+				{
+					"id": 2,
+					"n": 3
+				},
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"id": 2,
+					"n": 9
+				},
+				{
+					"id": "01",
+					"n": 1
+				},
+				{
+					"n": 2
+				}
+			]
+		],
+		"Seen": [
+			[
+				{
+					"id": 10,
+					"n": "7"
+				},
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"n": 2
+				}
+			],
+			[
+				{
+					"id": 2,
+					"n": 3
+				},
+				{
+					"id": 2,
+					"n": 9
+				},
+				{
+					"id": "01",
+					"n": 1
+				}
+			]
+		],
+		"Discarded": [
+			[
+				{
+					"id": 2,
+					"n": 3
+				},
+				{
+					"id": 2,
+					"n": 9
+				},
+				{
+					"id": "01",
+					"n": 1
+				}
+			]
+		],
+		"Newer": [
+			[
+				{
+					"id": 10,
+					"n": "7"
+				},
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"id": "b",
+					"n": 5
+				}
+			],
+			[
+				{
+					"n": 2
+				}
+			]
+		],
+		"Clear": [
+			[
+				{
+					"n": 2
+				}
+			]
+		],
+		"Done": [
+			[
+				{
+					"n": 2
+				}
+			]
+		],
+		"Fresh": [
+			[
+				{
+					"id": 10,
+					"n": "7"
+				},
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"id": "b",
+					"n": 5
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

@@ -37,6 +37,8 @@ interface Expected {
 	nodes: Record<string, unknown[][]>;
 	requests: Array<{ path: string; method: string; body?: unknown }>;
 	responses: Array<{ body: unknown; statusCode: number }>;
+	/** The calls of the v1 nodes to the stores of n8n, as `ctx.service` calls. */
+	services?: Array<{ step: string; service: string; op: string; args: unknown }>;
 }
 
 type RunCodeStep = (args: { name: string; code: string; items: unknown[] }) => Promise<unknown[]>;
@@ -126,10 +128,22 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 	for (let round = 0; round < 20; round++) {
 		const out = await runReference(source, fixture);
 		const seen = new Map<string, number>();
+		const asked = new Map<string, number>();
 		let added = false;
 		for (const e of out.effects) {
 			const k = seen.get(e.step) ?? 0;
 			seen.set(e.step, k + 1);
+			if (e.kind === 'service') {
+				// The answers of the service calls of a node, in the order of the calls.
+				const node = serviceNode(e.step);
+				const n = asked.get(node) ?? 0;
+				asked.set(node, n + 1);
+				const list = (effects[e.step] ??= []);
+				if (list[k] !== undefined) continue;
+				list[k] = spec.services?.[node]?.[n] ?? null;
+				added = true;
+				break;
+			}
 			if (e.kind !== 'code' && e.kind !== 'node') continue;
 			const list = (effects[e.step] ??= []);
 			if (list[k] !== undefined) continue;
@@ -149,6 +163,9 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 	}
 	throw new Error('code steps did not settle');
 }
+
+/** The node of a service step: a node names its other service calls `<node> (<what>)`. */
+const serviceNode = (step: string): string => step.replace(/ \([a-z ]+\)$/, '');
 
 function requestsOf(effects: EffectRecord[]) {
 	return effects
@@ -210,6 +227,17 @@ describe('converted workflows behave as in n8n', () => {
 			requests.forEach((r, k) => {
 				if (r.method !== 'GET') expect(r.body).toEqual(expected.requests[k].body);
 			});
+
+			// The same calls to the stores of n8n, in the same order.
+			if (expected.services) {
+				const calls = out.effects
+					.filter((e) => e.kind === 'service')
+					.map((e) => {
+						const { service, op, args } = e.args as { service: string; op: string; args: unknown };
+						return { step: serviceNode(e.step), service, op, args };
+					});
+				expect(calls).toEqual(expected.services);
+			}
 
 			// The same webhook responses.
 			const responses = out.effects

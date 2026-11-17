@@ -885,6 +885,113 @@ export function lowerAggregate(c: NodeContext): void {
 	);
 }
 
+/**
+ * Remove Duplicates version 2, "Remove items processed in previous executions" and "Clear
+ * deduplication history". n8n keeps the history: each call of the v1 node to the
+ * deduplication helper is a `ctx.service` call (spec 9.9), with the same arguments and in
+ * the same order. The node has two outputs: the kept items and the discarded items.
+ */
+function lowerDeduplicationStore(c: NodeContext): void {
+	const p = c.parameters;
+	const opts = isRecord(p.options) ? p.options : {};
+	const host = (message: string, path: string): never => {
+		throw new NodeFailure('remove-duplicates', message, path);
+	};
+	if (c.services === false) {
+		host('The runtime of the caller has no deduplication service.', 'operation');
+	}
+	if (
+		c.node.continueOnFail ||
+		c.node.retryOnFail ||
+		(c.node.onError !== undefined && c.node.onError !== 'stopWorkflow')
+	) {
+		host(
+			'The deduplication history with "continue on fail" or "retry on fail" is not supported.',
+			'onError',
+		);
+	}
+	const id = c.node.id;
+	if (typeof id !== 'string' || id === '') {
+		host('The node has no id for its deduplication history.', 'operation');
+	}
+	const scope = opts.scope ?? 'node';
+	if (scope !== 'node' && scope !== 'workflow') {
+		host('The scope of the deduplication history is not "node" or "workflow".', 'options.scope');
+	}
+	const { w } = c;
+	// A step name is unique: the calls that read the size of the history have their own names.
+	const call = (op: string, options: string, items?: string, suffix = ''): string =>
+		`await ctx.service({ name: ${str(`${c.node.name}${suffix}`)}, service: 'deduplication', op: '${op}', args: { ${
+			items === undefined ? '' : `items: ${items}, `
+		}scope: '${String(scope)}', node: { id: ${str(String(id))} }, options: ${options} } })`;
+	if (p.operation === 'clearDeduplicationHistory') {
+		const mode = p.mode ?? 'cleanDatabase';
+		if (typeof mode !== 'string' || mode.startsWith('=')) {
+			host('The mode of "clear deduplication history" is an expression.', 'mode');
+		}
+		if (mode === 'cleanDatabase') {
+			w.line(
+				`if (${c.input}.length > 0) ${call('clearAllProcessedItems', "{ mode: 'entries' }")};`,
+			);
+		}
+		w.line(`const ${c.output(0)}: Json[] = ${c.input};`);
+		return;
+	}
+	if (p.operation !== 'removeItemsSeenInPreviousExecutions') {
+		host('The operation of the node is not known.', 'operation');
+	}
+	const logic = p.logic ?? 'removeItemsWithAlreadySeenKeyValues';
+	const numeric = logic === 'removeItemsUpToStoredIncrementalKey';
+	if (!numeric && logic !== 'removeItemsWithAlreadySeenKeyValues') {
+		host(
+			'Only the key values and the incremental key of the deduplication history are supported; a date key needs the date parser of n8n.',
+			'logic',
+		);
+	}
+	const path = numeric ? 'incrementalDedupeValue' : 'dedupeValue';
+	const value = c.compiled(p[path] ?? '', path);
+	const history = opts.historySize ?? 10000;
+	if (!numeric && (typeof history !== 'number' || !Number.isFinite(history))) {
+		host('The history size is not a fixed number.', 'options.historySize');
+	}
+	const options = numeric
+		? "{ mode: 'latestIncrementalKey' }"
+		: `{ mode: 'entries', maxEntries: ${String(history)} }`;
+	const kept = c.output(0);
+	const discarded = c.output(1, 'Discarded');
+	const groups = c.local('Keys');
+	const seen = c.local('Seen');
+	c.helper('dedupeGroups');
+	c.helper('dedupePick');
+	w.line(`let ${kept}: Json[] = [];`);
+	w.line(`let ${discarded}: Json[] = [];`);
+	w.open(`if (${c.input}.length > 0) {`);
+	w.line(
+		`const ${groups} = dedupeGroups(${c.input}.map((${ITEM}: Json, ${INDEX}: number): Json => (${c.print(value.code)})), ${String(numeric)});`,
+	);
+	if (!numeric) {
+		const count = c.local('Count');
+		w.line(
+			`const ${count}: Json = ${call('getProcessedDataCount', options, undefined, ' (history size)')};`,
+		);
+		w.open(
+			`if ((typeof ${count} === 'number' ? ${count} : 0) + ${c.input}.length > ${String(history)}) {`,
+		);
+		w.line(
+			`throw new Error(${str('The number of items to be processed exceeds the maximum history size. Please increase the history size or reduce the number of items to be processed.')});`,
+		);
+		w.close();
+	}
+	w.line(`const ${seen}: Json = ${call('checkProcessedAndRecord', options, `${groups}.keys`)};`);
+	// v1 reads the count again, for a hint about the size of the history.
+	if (!numeric) {
+		w.line(`${call('getProcessedDataCount', options, undefined, ' (history size after)')};`);
+	}
+	w.line(`${kept} = dedupePick(${c.input}, ${groups}.items, ${seen}.new);`);
+	w.line(`${discarded} = dedupePick(${c.input}, ${groups}.items, ${seen}.processed);`);
+	w.close();
+}
+
 export function lowerRemoveDuplicates(c: NodeContext): void {
 	const p = c.parameters;
 	const opts = isRecord(p.options) ? p.options : {};
@@ -892,11 +999,8 @@ export function lowerRemoveDuplicates(c: NodeContext): void {
 		c.version >= 2 &&
 		(p.operation ?? 'removeDuplicateInputItems') !== 'removeDuplicateInputItems'
 	) {
-		throw new NodeFailure(
-			'remove-duplicates',
-			'Removing items seen in earlier executions needs state that the workflow language does not have.',
-			'operation',
-		);
+		lowerDeduplicationStore(c);
+		return;
 	}
 	if (opts.removeOtherFields === true) {
 		throw new NodeFailure(

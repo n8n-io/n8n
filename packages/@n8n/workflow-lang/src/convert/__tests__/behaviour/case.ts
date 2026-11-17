@@ -25,6 +25,11 @@ export interface BehaviourCase {
 			}>;
 		}
 	>;
+	/**
+	 * Answers of the `deduplication` service (spec 9.9), by node name, in the order of the calls
+	 * of the node. The oracle gives them to the v1 node, and the test to the converted code.
+	 */
+	services?: Record<string, unknown[]>;
 	/** Node names whose output the test compares. The default is every leaf of the converted run. */
 	compare?: string[];
 }

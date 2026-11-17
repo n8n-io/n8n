@@ -750,6 +750,78 @@ function removeDuplicates(items: Json[], compare: string, fields: string[], dotN
 	return out;
 }`,
 	},
+	dedupeText: {
+		uses: [],
+		source: `/** \`value.toString()\` of a parameter value, as JavaScript gives it for JSON data. */
+function dedupeText(value: Json): string {
+	if (typeof value === 'string') return value;
+	if (Array.isArray(value)) {
+		return value.map((v: Json) => (v === null || v === undefined ? '' : dedupeText(v))).join(',');
+	}
+	if (typeof value === 'object') {
+		if (Object.keys(value).includes('toString')) {
+			throw new Error('this.getNodeParameter(...)?.toString is not a function');
+		}
+		return '[object Object]';
+	}
+	return String(value);
+}`,
+	},
+	dedupeGroups: {
+		uses: ['dedupeText'],
+		source: `/**
+ * The Remove Duplicates node, "Remove items processed in previous executions": the item
+ * indexes of each key (\`itemMapping\` of v1). \`keys\` has the order of \`Object.keys\` of the
+ * v1 object: the keys that are array indexes in rising order, then the other keys in the
+ * order of their first item. The record has a prefix on each key, so no key meets a
+ * property that every object has.
+ */
+function dedupeGroups(values: Json[], numeric: boolean): { keys: string[]; items: Record<string, number[]> } {
+	const inherited = ['constructor', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'toLocaleString', 'toString', 'valueOf', '__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__', '__proto__'];
+	const items: Record<string, number[]> = {};
+	const indexes: string[] = [];
+	const others: string[] = [];
+	for (let i = 0; i < values.length; i++) {
+		const value = values[i];
+		const text = value === null || value === undefined ? '' : dedupeText(value);
+		let key = text;
+		if (numeric) {
+			if (text === '') throw new Error('The \`Value to Dedupe\` On is empty. Please provide a value.');
+			const parsed = typeof value === 'number' ? value : typeof value === 'boolean' ? (value ? 1 : 0) : typeof value === 'object' && !Array.isArray(value) ? Number("x") : Number(text);
+			if (isNaN(parsed)) throw new Error(\`The value '\${text}' is not a number. Please provide a number.\`);
+			key = String(parsed);
+		} else if (inherited.includes(key)) {
+			throw new Error('itemMapping[checkValue].push is not a function');
+		}
+		const slot = \`k\${key}\`;
+		const list = items[slot];
+		if (list !== undefined) {
+			list.push(i);
+			continue;
+		}
+		items[slot] = [i];
+		let index = key.length > 0 && key.length <= 10 && (key === '0' || key[0] !== '0');
+		for (let k = 0; index && k < key.length; k++) index = key[k] >= '0' && key[k] <= '9';
+		if (index && Number(key) <= 4294967294) indexes.push(key);
+		else others.push(key);
+	}
+	indexes.sort((a: string, b: string) => Number(a) - Number(b));
+	return { keys: indexes.concat(others), items };
+}`,
+	},
+	dedupePick: {
+		uses: [],
+		source: `/** The items of the keys that the deduplication service gave, in the order of the keys. */
+function dedupePick(input: Json[], items: Record<string, number[]>, keys: Json[]): Json[] {
+	const out: Json[] = [];
+	for (const key of keys) {
+		const list = items[\`k\${String(key)}\`];
+		if (list === undefined) throw new Error('The deduplication service gave a key that the node did not send.');
+		for (const i of list) out.push(input[i]);
+	}
+	return out;
+}`,
+	},
 	pathsOf: {
 		uses: [],
 		source: `/** The leaf paths of an object, as \`a.b\` keys. */
