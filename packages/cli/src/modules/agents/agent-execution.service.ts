@@ -1002,15 +1002,9 @@ export class AgentExecutionService {
 		);
 		const executions = rows.slice(0, limit);
 		let older: AgentExecution | undefined = rows[limit];
-		// Two queries for each continuation. Continuations are rare, so a page
-		// usually needs none of them.
-		while (
-			older &&
-			(await this.messageRepository.continuesExecution(
-				executions[executions.length - 1].id,
-				older.id,
-			))
-		) {
+		// Up to two queries for each continuation. Continuations are rare, so a
+		// page usually needs none of them.
+		while (older && (await this.continues(executions[executions.length - 1], older))) {
 			executions.push(older);
 			[older] = await this.agentExecutionRepository.findByThreadIdNewestFirst(threadId, 1, older);
 		}
@@ -1019,6 +1013,16 @@ export class AgentExecutionService {
 		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * Whether `execution` continues `older`, the execution before it. A resume
+	 * from before input messages were linked has no links, but it has the
+	 * `resumed` status.
+	 */
+	private async continues(execution: AgentExecution, older: AgentExecution): Promise<boolean> {
+		if (execution.hitlStatus === 'resumed') return true;
+		return await this.messageRepository.continuesExecution(execution.id, older.id);
 	}
 
 	private async hydrateExecutionInputs(

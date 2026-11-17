@@ -207,7 +207,8 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 	/**
 	 * Whether `executionId` continues `predecessorId`. A continuation, such as
 	 * a resume after a suspension, reuses the input messages of the execution
-	 * that it continues.
+	 * that it continues. The check is symmetric, so the order of the two
+	 * executions does not matter.
 	 */
 	async continuesExecution(executionId: string, predecessorId: string): Promise<boolean> {
 		return await this.manager

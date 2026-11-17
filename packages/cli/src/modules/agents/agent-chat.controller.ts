@@ -1091,11 +1091,16 @@ export class AgentChatController {
 			userId: req.user.id,
 			page,
 		});
-		const checkpoint = isOlderChatHistoryPage(page)
-			? null
-			: await this.findReadableCheckpoint(thread, threadId, projectId, agentId, req.user.id);
+		// Also for a page of older turns: the checkpoint can deny access to the thread.
+		const checkpoint = await this.findReadableCheckpoint(
+			thread,
+			threadId,
+			projectId,
+			agentId,
+			req.user.id,
+		);
 		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
-		return threadMessagesResponse(history, checkpoint);
+		return threadMessagesResponse(history, isOlderChatHistoryPage(page) ? null : checkpoint);
 	}
 
 	@Get('/:agentId/chat/messages')

@@ -762,30 +762,61 @@ describe('AgentChatController chat message history', () => {
 		expect(result.nextCursor).toBe('2026-05-07T10:00:00.000Z|execution-1');
 	});
 
-	it('reads no checkpoint for a page of older turns', async () => {
-		const { controller, agentsService, checkpointStorage } = makeController();
-		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
-		agentsService.getConversationHistory.mockResolvedValue({
-			messages: [],
-			activeExecutionId: null,
-			nextCursor: null,
-		});
+	describe('a page of older turns', () => {
+		const olderPage = { limit: '20', cursor: '2026-05-07T10:00:00.000Z|execution-1' };
 		const request = {
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			user: { id: 'user-1' },
 		};
 
-		const result = await controller.getChatMessages(request as never, mock<express.Response>(), {
-			limit: '20',
-			cursor: '2026-05-07T10:00:00.000Z|execution-1',
+		function setupProjectThread(resourceId: string) {
+			const { controller, agentsService, checkpointStorage, agentExecutionService } =
+				makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentsService.getConversationHistory.mockResolvedValue({
+				messages: [],
+				activeExecutionId: null,
+				nextCursor: null,
+			});
+			agentExecutionService.findThreadById.mockResolvedValue(
+				mock<AgentExecutionThread>({
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					accessScope: 'project',
+					ownerId: null,
+				}),
+			);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue({
+				persistence: { threadId: 'thread-1', resourceId },
+				pendingToolCalls: { 'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true } },
+				messageList: { messages: [] },
+			} as never);
+			return controller;
+		}
+
+		it('leaves out the open suspensions of the newest turn', async () => {
+			const controller = setupProjectThread('integration:slack:user-1');
+
+			const result = await controller.getChatMessages(
+				request as never,
+				mock<express.Response>(),
+				olderPage,
+			);
+
+			expect(result).toEqual({
+				messages: [],
+				openSuspensions: [],
+				activeExecutionId: null,
+				nextCursor: null,
+			});
 		});
 
-		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
-		expect(result).toEqual({
-			messages: [],
-			openSuspensions: [],
-			activeExecutionId: null,
-			nextCursor: null,
+		it("rejects a project thread that holds another user's draft checkpoint", async () => {
+			const controller = setupProjectThread('draft-chat:user-2');
+
+			await expect(
+				controller.getChatMessages(request as never, mock<express.Response>(), olderPage),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 

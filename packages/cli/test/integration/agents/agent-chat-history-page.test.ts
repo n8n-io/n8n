@@ -118,6 +118,8 @@ describe('Agent chat history pages', () => {
 			await linkInput(next.id, 'Thanks');
 
 			expect(await messageRepo.continuesExecution(resumed.id, suspended.id)).toBe(true);
+			// The order does not matter, also when a tie in createdAt sorts the resume first.
+			expect(await messageRepo.continuesExecution(suspended.id, resumed.id)).toBe(true);
 			expect(await messageRepo.continuesExecution(next.id, resumed.id)).toBe(false);
 		});
 	});
