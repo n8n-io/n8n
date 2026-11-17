@@ -8,6 +8,7 @@ import type { EquivalenceCase } from './equivalence.ts';
 import { AI_CASES, ENGINE_CASES, ANTHROPIC_CASES, GEMINI_CASES } from './ai-cases.ts';
 import { DATA_TABLE_CASES } from './data-table-cases.ts';
 import { SHEETS_APPEND_CASES } from './google-sheets-append-cases.ts';
+import { SHEETS_SERVICE_ACCOUNT_CASES } from './google-sheets-service-account-cases.ts';
 import { SHEETS_UPSERT_CASES } from './google-sheets-upsert-cases.ts';
 import { MICROSOFT_TEAMS_CASES } from './microsoft-teams-cases.ts';
 
@@ -2786,6 +2787,7 @@ export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...DATA_TABLE_CASES,
 	...SHEETS_UPSERT_CASES,
 	...SHEETS_APPEND_CASES,
+	...SHEETS_SERVICE_ACCOUNT_CASES,
 	...MICROSOFT_TEAMS_CASES,
 	...AI_CASES,
 	...ANTHROPIC_CASES,

@@ -6982,6 +6982,238 @@
 		],
 		"error": "Column names were updated after the node's setup"
 	},
+	"googleSheets sheet.read with a service account": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://oauth2.googleapis.com/token",
+				"qs": {},
+				"headers": {
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "<token request>",
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer minted-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://oauth2.googleapis.com/token",
+				"qs": {},
+				"headers": {
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "<token request>",
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer minted-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/x-www-form-urlencoded",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/x-www-form-urlencoded",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"row_number": 2,
+				"Name": "Ada",
+				"Count": 3
+			},
+			{
+				"row_number": 3,
+				"Name": "Bob",
+				"Count": 0
+			}
+		]
+	},
+	"googleSheets sheet.append with a service account": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://oauth2.googleapis.com/token",
+				"qs": {},
+				"headers": {
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "<token request>",
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer minted-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://oauth2.googleapis.com/token",
+				"qs": {},
+				"headers": {
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "<token request>",
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer minted-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://oauth2.googleapis.com/token",
+				"qs": {},
+				"headers": {
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "<token request>",
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer minted-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "0",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://oauth2.googleapis.com/token",
+				"qs": {},
+				"headers": {
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "<token request>",
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!3:3",
+				"qs": {
+					"valueInputOption": "RAW"
+				},
+				"headers": {
+					"authorization": "Bearer minted-token"
+				},
+				"body": {
+					"range": "Sheet1!3:3",
+					"values": [["2024-01-01", "ada@example.com", "Ada"]]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/x-www-form-urlencoded",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/x-www-form-urlencoded",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/x-www-form-urlencoded",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/x-www-form-urlencoded",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"date": "2024-01-01",
+				"email": "ada@example.com",
+				"name": "Ada"
+			}
+		]
+	},
 	"microsoftTeams channel.create": {
 		"requests": [
 			{
