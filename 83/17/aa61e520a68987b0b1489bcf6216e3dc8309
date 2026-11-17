@@ -1,0 +1,84 @@
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_cfb06e423e7532::t_bce7306fbeb60c 2317-2322
+packages/modules/promotions/frontend/src/components/PromotionPreviewBadges.test.ts
+  s_cfb06e423e7532::t_feda6d263f6904 221-223
+  s_cfb06e423e7532::t_e22e7a4ff00449 227
+  s_cfb06e423e7532::t_b107c29ff74910 217,230,260-267,269
+  s_cfb06e423e7532::t_2d62c0b796b7e0 9,26-28,91,105,202,219-220,224,226,247,271,341-346,349
+  s_cfb06e423e7532::t_44cfb71a9e84bf 193,200-201
+  s_cfb06e423e7532::t_4184e154548b23 268,270
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_cfb06e423e7532::t_5da33ab5e14dd0 32-33,71-77
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_cfb06e423e7532::t_1aa4fc2f28f827 93,117-118,140
+  s_cfb06e423e7532::t_3366863027d7ab 52
+  s_cfb06e423e7532::t_13e9e368743df4 94
+  s_cfb06e423e7532::t_4369c29d2f7086 314-330
+packages/modules/promotions/frontend/src/promotionErrors.ts
+  s_cfb06e423e7532::t_8842479df02d42 9-12
+packages/modules/promotions/frontend/src/__tests__/preview.fixtures.ts
+  s_cfb06e423e7532::t_97bcc55149bf04 81-86
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-host.resolver.test.ts
+  s_cfb06e423e7532::t_4dc9b24632761e 17
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_cfb06e423e7532::t_e4dee99391be5c 71,114,384,387,511,515-517
+  s_cfb06e423e7532::t_8bc0aa4e6923ee 121-123
+packages/modules/promotions/frontend/src/composables/usePromotionChangeCount.ts
+  s_cfb06e423e7532::t_48844b4bac863c 1,9,12-14,35-38,55-60,77-81,95
+  s_cfb06e423e7532::t_55b58c0c972a64 30-34,39-40,70-75,85-88,90-93
+  s_cfb06e423e7532::t_e22e7a4ff00449 10-11
+  s_cfb06e423e7532::t_e68e217f114797 89
+  s_cfb06e423e7532::t_8842479df02d42 6
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_cfb06e423e7532::t_0bed8499d6e8c4 12
+  s_cfb06e423e7532::t_9fa7658315a1a7 119-130,134
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_cfb06e423e7532::t_feda6d263f6904 134-135
+  s_cfb06e423e7532::t_fc1ac4bda46e99 287,473-476
+  s_cfb06e423e7532::t_32b8ba30ebed79 704-709,712-714
+  s_cfb06e423e7532::t_fc2ca95b472f5e 136-140
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_cfb06e423e7532::t_4dc9b24632761e 137
+packages/modules/promotions/frontend/src/composables/usePromotionChangeCount.test.ts
+  s_cfb06e423e7532::t_97bcc55149bf04 22-27
+packages/modules/promotions/frontend/src/components/PromotionPreviewBadges.vue
+  s_cfb06e423e7532::t_48844b4bac863c 94
+  s_cfb06e423e7532::t_6de767444125fb 8
+  s_cfb06e423e7532::t_8bc0aa4e6923ee 41-42
+  s_cfb06e423e7532::t_9f21803a78db96 36,38-39,45-46,90-91,129
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_cfb06e423e7532::t_312eb6ff35e748 185-191,229-230,232
+packages/modules/promotions/frontend/src/composables/usePromotionPreview.ts
+  s_cfb06e423e7532::t_8842479df02d42 8
+  s_cfb06e423e7532::t_e33b1d6b809629 76
+  s_cfb06e423e7532::t_1767d4a553e0bd 14,50-51,70,72-75,102
+packages/modules/promotions/frontend/src/views/PromotionsSettingsView.test.ts
+  s_cfb06e423e7532::t_d5f13fac60dbe5 155
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_cfb06e423e7532::t_333ae9fc2b1abb 38-43
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_cfb06e423e7532::t_1aa4fc2f28f827 1337
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_cfb06e423e7532::t_ce34823d3b1613 58
+  s_cfb06e423e7532::t_1aa4fc2f28f827 76-77
+packages/cli/src/modules/promotions.ee/promotion-environment.resolver.ts
+  s_cfb06e423e7532::t_ce34823d3b1613 96
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_cfb06e423e7532::t_eac1857b2f60c8 46-52,55-57,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8317aa61e520a68987b0b1489bcf6216e3dc8309",
+  "prompts": {},
+  "sessions": {
+    "s_cfb06e423e7532": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd87b83b-832e-4462-acfd-6d1f13a18aff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_66e1332cd16bcd::t_7e44c42fb4df8d 163-164
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_66e1332cd16bcd::t_bb0e953a7c9a13 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77c3073e85a33fcc3b04b8cfce0a0a1410f24045",
+  "prompts": {},
+  "sessions": {
+    "s_66e1332cd16bcd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c69b7c8c-fabf-495c-bb0f-74a68a7cab8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

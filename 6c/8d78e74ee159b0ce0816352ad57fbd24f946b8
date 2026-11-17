@@ -1,0 +1,30 @@
+.github/scripts/workflow-validation.test.mjs
+  s_6cdd610eed4a44::t_b9f00a52092dfd 438-439,442-444,446-450,453,456-458,460-461
+.github/WORKFLOWS.md
+  s_6cdd610eed4a44::t_b9f00a52092dfd 660,825
+.github/scripts/detect-new-packages.mjs
+  s_6cdd610eed4a44::t_b9f00a52092dfd 8-9,27,38,53,78,85-86
+.github/workflows/ci-detect-new-packages.yml
+  s_6cdd610eed4a44::t_f3f735444a325d 38-42
+  s_6cdd610eed4a44::t_1e0f4d771a6ade 50
+  s_6cdd610eed4a44::t_b9f00a52092dfd 1,4-5,13,18-19,28,32-33,36,43-45,49,51-57
+  s_6cdd610eed4a44::t_eb1b2da36fe0d5 46-48
+.github/workflows/release-publish.yml
+  s_6cdd610eed4a44::t_b9f00a52092dfd 59,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c8d78e74ee159b0ce0816352ad57fbd24f946b8",
+  "prompts": {},
+  "sessions": {
+    "s_6cdd610eed4a44": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e175e9671ffe5ySmS0wFMFt6W5",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

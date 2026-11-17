@@ -1,0 +1,19 @@
+packages/@n8n/expression-runtime/src/bridge/guest-transfer.ts
+  s_646388c5a588be::t_e985fb85d1d825 46-59,61,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4776fe1fde4f3e77e52b3623fbd4738f01d75f3b",
+  "prompts": {},
+  "sessions": {
+    "s_646388c5a588be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "890d5525-ee87-407f-a63b-876c0b38859a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

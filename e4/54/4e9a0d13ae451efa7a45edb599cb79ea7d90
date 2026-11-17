@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  ai_agent 427-428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e4544e9a0d13ae451efa7a45edb599cb79ea7d90",
+  "prompts": {}
+}

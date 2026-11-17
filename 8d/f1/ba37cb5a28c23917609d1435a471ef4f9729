@@ -1,0 +1,53 @@
+packages/cli/test/integration/external-secrets/external-secrets.expression-access.test.ts
+  s_06fc4a3eebd292::t_96b4113bb04087 188-192,263-267
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_06fc4a3eebd292::t_8bcd9003a47f36 367-372
+  s_06fc4a3eebd292::t_9166323fc3796d 374-382
+packages/cli/test/integration/deprecated-nodes-inline-subworkflow.test.ts
+  s_06fc4a3eebd292::t_af9865818a2036 117-121
+packages/cli/src/workflows/workflows.controller.ts
+  s_06fc4a3eebd292::t_4710a799d7e3ec 540-544,546
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_06fc4a3eebd292::t_26696378f11940 987-992
+packages/cli/test/integration/wait-error-propagation.test.ts
+  s_06fc4a3eebd292::t_2f6d606fe63971 145-149
+packages/cli/test/integration/manual-run-form-test-url.test.ts
+  s_06fc4a3eebd292::t_863e74a82cee53 96-100
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_06fc4a3eebd292::t_96663ecda19e47 651-655,757-761,823-827,884-888,923-927,970-974,1021-1025
+  s_06fc4a3eebd292::t_f6634f33bfb2cd 732-734
+  s_06fc4a3eebd292::t_6316747745f7cf 1193,1195,1197-1198,1239,1241,1243-1244
+  s_06fc4a3eebd292::t_4ea6b1312dda85 991,993,995
+  s_06fc4a3eebd292::t_893fde6f7c8508 1313-1315
+  s_06fc4a3eebd292::t_39b155ebe08aef 1384
+  s_06fc4a3eebd292::t_89d000e286b51a 1587,1589,1592-1593,1641,1643,1646-1647
+  s_06fc4a3eebd292::t_6f195499f037a1 1219,1221,1223-1224
+  s_06fc4a3eebd292::t_ea4fcc3fe44508 1081,1083,1085,1104,1106,1108,1125,1127,1129,1146,1148,1150,1168,1170,1172
+  s_06fc4a3eebd292::t_7ca618dd531fdb 1623,1625,1630-1631
+  s_06fc4a3eebd292::t_d2edfc2e837c78 690-694
+packages/cli/test/integration/execution-context-propagation.test.ts
+  s_06fc4a3eebd292::t_ccfe3df404e493 327-329,332-333
+  s_06fc4a3eebd292::t_e2991d9a65bf55 131-133,136-137
+  s_06fc4a3eebd292::t_3e05b603c57c0a 312-314,317-318
+  s_06fc4a3eebd292::t_e03e5850d81c19 220-222,225-226
+packages/cli/test/integration/manual-run-pinned-trigger.test.ts
+  s_06fc4a3eebd292::t_6cef9ba191b7ff 93-97
+packages/cli/test/integration/manual-execution-credential-context.test.ts
+  s_06fc4a3eebd292::t_9a187627581abe 103-105,107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8df1ba37cb5a28c23917609d1435a471ef4f9729",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
