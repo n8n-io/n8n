@@ -109,6 +109,71 @@ interface StoredMessage {
 	text: string;
 }
 
+/** One argument of a tool: a `$fromAI` call of the tool node (`src/convert/from-ai.ts`). */
+interface ToolArgument {
+	key: string;
+	type: string;
+	defaultValue?: unknown;
+}
+
+/** A tool of the agent: a tool node, as the converter writes it. */
+interface ToolSpec {
+	/** The name of the tool node. */
+	node: string;
+	/** The name of the function that the model calls. */
+	name: string;
+	description: string;
+	/** The JSON schema of the arguments. */
+	schema: Record<string, unknown>;
+	/** The arguments of the schema: the agent before version 3 checks a call with them. */
+	arguments: ToolArgument[];
+}
+
+/** A tool call that the converted source runs as a step of the tool node. */
+interface ToolCall {
+	/** The index of the input item of the agent. */
+	item: number;
+	id: unknown;
+	/** The name of the function. */
+	name: string;
+	/** The name of the tool node. Empty: the agent has no such tool, and no step runs. */
+	tool: string;
+	/** The arguments as the model gives them. */
+	raw: unknown;
+	/** The item that the tool node reads. */
+	args: unknown;
+	/** The text of the answer that makes the call. */
+	text?: string;
+}
+
+/** The result of a tool call: the output items of the tool node, or the message of its failure. */
+interface ToolResult {
+	output?: unknown[];
+	error?: string;
+}
+
+/** A step of the agent of version 3: a tool call and its result (`buildSteps` of v1). */
+interface AgentStep {
+	action: Record<string, unknown>;
+	observation: string;
+}
+
+/**
+ * What the agent keeps between two calls of this node, while the converted source runs the
+ * tools. Version 3: the count of runs of the node, the steps that the request of v1 carries
+ * (`previousRequests`: the steps of the first item that calls a tool), and the calls.
+ * Before version 3: the item that waits for its tools, its messages, and the count of turns.
+ */
+interface AgentState {
+	iteration?: number;
+	previous?: AgentStep[];
+	calls?: ToolCall[];
+	index?: number;
+	items?: Item[];
+	added?: unknown[];
+	turn?: number;
+}
+
 interface ChainParameters {
 	/**
 	 * `agent`: the root is a Tools Agent (`@n8n/n8n-nodes-langchain.agent`, versions 2 to 3.1)
@@ -133,6 +198,12 @@ interface ChainParameters {
 	/** The agent: the window buffer memory sub-node. */
 	aiMemory?: AiMemory;
 	batch?: ItemParameters[];
+	/** The agent: its tools. The converted source runs the calls and gives their results. */
+	tools?: ToolSpec[];
+	/** The agent with tools: `state` of the last result of this node. */
+	state?: AgentState;
+	/** The agent with tools: the result of each call of the last result, in the same order. */
+	results?: ToolResult[];
 }
 
 /** The outcome of one item: the output item, or the error message. */
@@ -533,6 +604,185 @@ function answerToolCalls(request: ModelRequest, data: unknown): string | undefin
 	return undefined;
 }
 
+const BAD_FORMAT = "Model output doesn't fit required format";
+const BAD_FORMAT_DESCRIPTION =
+	"To continue the execution when this happens, change the 'On Error' parameter in the root node's settings";
+
+/** The name of the type of a JSON value, as zod names it in an issue. */
+function zodType(value: unknown): string {
+	if (value === undefined) return 'undefined';
+	if (value === null) return 'null';
+	if (Array.isArray(value)) return 'array';
+	return typeof value;
+}
+
+/**
+ * The check of a tool call before version 3: LangChain parses the arguments with the zod
+ * schema of the tool. It gives the arguments that the tool node reads (the keys of the
+ * schema, with the defaults), or the text of the error.
+ */
+function checkArguments(
+	tool: ToolSpec,
+	raw: unknown,
+): { args?: Record<string, unknown>; error?: string } {
+	const head = 'Received tool input did not match expected schema\n\n';
+	if (!isObject(raw)) return { error: `${head}✖ Expected object, received ${zodType(raw)}` };
+	const args: Record<string, unknown> = {};
+	const issues: string[] = [];
+	for (const argument of tool.arguments) {
+		let value = Object.keys(raw).includes(argument.key) ? raw[argument.key] : undefined;
+		if (value === undefined && argument.defaultValue !== undefined) value = argument.defaultValue;
+		let issue = '';
+		if (argument.type === 'json') {
+			const filled =
+				value !== null &&
+				typeof value === 'object' &&
+				(Array.isArray(value) ? value.length > 0 : Object.keys(value).length > 0);
+			if (!filled) issue = 'Value must be a non-empty object or a non-empty array';
+		} else if (value === undefined) {
+			issue = 'Required';
+		} else if (zodType(value) !== argument.type) {
+			issue = `Expected ${argument.type}, received ${zodType(value)}`;
+		}
+		if (issue !== '') issues.push(`✖ ${issue}\n  → at ${argument.key}`);
+		else args[argument.key] = value;
+	}
+	if (issues.length > 0) return { error: head + issues.join('\n') };
+	return { args };
+}
+
+/** The tool calls of a Chat Completions answer whose arguments are JSON, and the text. */
+function answerCalls(data: unknown): {
+	asked: boolean;
+	text: string;
+	calls: Array<{ id: unknown; name: string; raw: unknown }>;
+} {
+	const first: unknown =
+		isObject(data) && Array.isArray(data.choices) ? data.choices[0] : undefined;
+	const message = isObject(first) && isObject(first.message) ? first.message : {};
+	const list = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+	const calls: Array<{ id: unknown; name: string; raw: unknown }> = [];
+	for (const call of list) {
+		const fn = isObject(call) && isObject(call.function) ? call.function : undefined;
+		if (!isObject(call) || fn === undefined || typeof fn.arguments !== 'string') continue;
+		let raw: unknown;
+		try {
+			raw = JSON.parse(fn.arguments);
+		} catch {
+			continue;
+		}
+		calls.push({ id: call.id, name: String(fn.name), raw });
+	}
+	return {
+		asked: list.length > 0,
+		text: typeof message.content === 'string' ? message.content : '',
+		calls,
+	};
+}
+
+/** The message of the model that makes tool calls, as the OpenAI client of LangChain sends it. */
+function callMessage(content: unknown, calls: ToolCall[]): Record<string, unknown> {
+	return {
+		role: 'assistant',
+		content,
+		tool_calls: calls.map((call) => ({
+			id: call.id,
+			type: 'function',
+			function: { name: call.name, arguments: JSON.stringify(call.raw) },
+		})),
+	};
+}
+
+/**
+ * The output items of a tool node as the agent reads them: the JSON of each item, without
+ * its binary data (compiled code keeps that in the key `$binary`). `binary` is true when an
+ * item has binary data, `useful` when an item has a JSON key.
+ */
+function toolItems(result: ToolResult): { items: unknown[]; binary: boolean; useful: boolean } {
+	const items: unknown[] = [];
+	let binary = false;
+	let useful = false;
+	for (const item of result.output ?? []) {
+		if (!isObject(item)) {
+			items.push(item);
+			continue;
+		}
+		const json: Record<string, unknown> = {};
+		for (const key of Object.keys(item)) {
+			if (key === '$binary') binary = true;
+			else json[key] = item[key];
+		}
+		if (Object.keys(json).length > 0) useful = true;
+		items.push(json);
+	}
+	return { items, binary, useful };
+}
+
+/** The text that the model gets for the result of a tool call of the agent of version 3. */
+function observationOf(result: ToolResult): string {
+	if (result.error !== undefined) return JSON.stringify([{ error: result.error }]);
+	const output = toolItems(result).items;
+	return output.length > 0 ? JSON.stringify(output) : JSON.stringify('');
+}
+
+/** The text that the model gets for the result of a tool call before version 3 (`mapResult` of v1). */
+function toolContent(result: ToolResult): string {
+	if (result.error !== undefined) return '';
+	const output = toolItems(result);
+	if (output.binary && !output.useful) {
+		return JSON.stringify(
+			'Error: The Tool attempted to return binary data, which is not supported in Agents',
+		);
+	}
+	return JSON.stringify(output.items);
+}
+
+/** A step of the agent of version 3 (`buildSteps` of v1), with the message as LangChain writes it. */
+function stepOf(call: ToolCall, result: ToolResult, text: string | undefined): AgentStep {
+	const content: unknown = text ?? [];
+	const toolCall = { id: call.id, name: call.name, args: call.raw, type: 'tool_call' };
+	const input: Record<string, unknown> = {};
+	let log: unknown;
+	let type: unknown;
+	if (Array.isArray(call.raw)) {
+		for (let k = 0; k < call.raw.length; k++) input[String(k)] = call.raw[k];
+	} else if (isObject(call.raw)) {
+		for (const key of Object.keys(call.raw)) {
+			if (key === 'log') log = call.raw.log;
+			else if (key === 'type') type = call.raw.type;
+			else if (key !== 'id') input[key] = call.raw[key];
+		}
+	}
+	const action: Record<string, unknown> = {
+		tool: call.name,
+		toolInput: input,
+		log: log || (text ?? `Calling ${call.tool}`),
+		messageLog: [
+			{
+				lc_serializable: true,
+				lc_kwargs: {
+					content,
+					tool_calls: [toolCall],
+					invalid_tool_calls: [],
+					additional_kwargs: {},
+					response_metadata: {},
+				},
+				lc_namespace: ['langchain_core', 'messages'],
+				content,
+				additional_kwargs: {},
+				response_metadata: {},
+				type: 'ai',
+				tool_calls: [toolCall],
+				invalid_tool_calls: [],
+			},
+		],
+		toolCallId: call.id,
+		type: type || 'tool_call',
+	};
+	if (result.error !== undefined) action.errored = true;
+	return { action, observation: observationOf(result) };
+}
+
 /** The wait of LangChain's caller before try `attempt + 1` (p-retry with `randomize`). */
 function retryWait(random: number, attempt: number): number {
 	let factor = 1;
@@ -919,6 +1169,9 @@ export default defineNode<ChainParameters>({
 				'outputParser',
 				'aiMemory',
 				'batch',
+				'tools',
+				'state',
+				'results',
 			],
 		},
 	},
@@ -1226,6 +1479,284 @@ export default defineNode<ChainParameters>({
 				}
 			}
 		};
+
+		const tools = agent ? parameters.tools : undefined;
+		if (tools !== undefined) {
+			const fail = (error: string | undefined, description?: string) => [
+				{ items: [], runs, error: error ?? '', description: description ?? '' },
+			];
+			const toolOf = (name: string): ToolSpec | undefined => {
+				for (const tool of tools) if (tool.name === name) return tool;
+				return undefined;
+			};
+			/** The request of an item: the tools, then the messages with the calls and results so far. */
+			const toolRequest = (item: ItemParameters, added: unknown[]): ModelRequest => {
+				const request = requestOf(item, ai, true, []);
+				const body: Record<string, unknown> = {};
+				for (const key of Object.keys(request.body)) {
+					if (key === 'messages') {
+						body.tools = tools.map((tool) => ({
+							type: 'function',
+							function: {
+								name: tool.name,
+								description: tool.description,
+								parameters: tool.schema,
+								strict: false,
+							},
+						}));
+						const messages: unknown[] = [];
+						const sent = request.body.messages;
+						if (Array.isArray(sent)) for (const message of sent) messages.push(message);
+						for (const message of added) messages.push(message);
+						body.messages = messages;
+					} else {
+						body[key] = request.body[key];
+					}
+				}
+				return { responses: request.responses, body };
+			};
+			/** One call of the model for an item: the calls of the answer, or its text. */
+			const turnOf = async (
+				item: ItemParameters,
+				added: unknown[],
+			): Promise<{
+				error?: string;
+				description?: string;
+				text?: string;
+				calls?: Array<{ id: unknown; name: string; raw: unknown }>;
+			}> => {
+				const request = toolRequest(item, added);
+				if (request.responses || request.anthropic === true || request.gemini === true) {
+					return {
+						error: 'AI Agent: the tools of this chat model are not in the compiled library',
+					};
+				}
+				const answer = await send(request);
+				if (answer.error !== undefined) return { error: answer.error };
+				const run = runs[runs.length - 1];
+				let text = '';
+				try {
+					text = completionText(answer.data);
+				} catch (error) {
+					run.error = messageOf(error);
+					return { error: run.error };
+				}
+				const asked = answerCalls(answer.data);
+				if (!asked.asked) return { text };
+				if (asked.calls.length === 0) {
+					return { error: BAD_FORMAT, description: BAD_FORMAT_DESCRIPTION };
+				}
+				return { text: asked.text, calls: asked.calls };
+			};
+			const state: AgentState = parameters.state ?? {};
+			const results = parameters.results ?? [];
+			const waiting = state.calls ?? [];
+
+			if (version >= 3) {
+				// Version 3 gives the calls to the engine, and the engine runs the node again for
+				// all items. `iteration` counts the runs of the node.
+				let iteration = state.iteration ?? 0;
+				let previous = state.previous ?? [];
+				let done: ToolCall[] = waiting;
+				let given: ToolResult[] = results;
+				for (let round = 0; ; round++) {
+					if (iteration > 0 && iteration >= maxIterations) {
+						return fail(
+							`Max iterations (${maxIterations}) reached. The agent could not complete the task within the allowed number of iterations.`,
+						);
+					}
+					const items: Item[] = [];
+					const calls: ToolCall[] = [];
+					let carried: AgentStep[] | undefined;
+					for (let i = 0; i < batch.length; i++) {
+						const item = batch[i];
+						if (item.text === undefined) return fail('No prompt specified');
+						// The steps of the item: the steps that the request carries, then the calls
+						// of the last run. The text of the answer is on the first of them.
+						const steps: AgentStep[] = [];
+						for (const step of previous) steps.push(step);
+						let fresh = 0;
+						for (let k = 0; k < done.length; k++) {
+							const call = done[k];
+							if (call.item !== i) continue;
+							let known = false;
+							for (const step of steps) if (step.action.toolCallId === call.id) known = true;
+							if (known) continue;
+							steps.push(stepOf(call, given[k] ?? {}, fresh === 0 ? call.text : undefined));
+							fresh++;
+						}
+						const added: unknown[] = [];
+						for (const step of steps) {
+							const log = step.action.messageLog;
+							const logged: unknown = Array.isArray(log) ? log[0] : undefined;
+							const sentCalls =
+								isObject(logged) && Array.isArray(logged.tool_calls) ? logged.tool_calls : [];
+							const sent: unknown[] = [];
+							for (const call of sentCalls) {
+								if (!isObject(call)) continue;
+								sent.push({
+									id: call.id,
+									type: 'function',
+									function: { name: call.name, arguments: JSON.stringify(call.args) },
+								});
+							}
+							added.push({
+								role: 'assistant',
+								content: isObject(logged) ? logged.content : [],
+								tool_calls: sent,
+							});
+							added.push({
+								role: 'tool',
+								content: step.observation,
+								tool_call_id: step.action.toolCallId,
+							});
+						}
+						const turn = await turnOf(item, added);
+						if (turn.error !== undefined) return fail(turn.error, turn.description);
+						if (turn.calls !== undefined) {
+							if (carried === undefined) carried = steps;
+							const text =
+								turn.text !== undefined && turn.text.trim() !== '' ? turn.text : undefined;
+							for (const call of turn.calls) {
+								const tool = toolOf(call.name);
+								if (tool === undefined) continue;
+								const made: ToolCall = {
+									item: i,
+									id: call.id,
+									name: call.name,
+									tool: tool.node,
+									raw: call.raw,
+									args: call.raw,
+								};
+								if (text !== undefined) made.text = text;
+								calls.push(made);
+							}
+						} else {
+							const output: Item = { output: turn.text ?? '' };
+							if (parameters.returnIntermediateSteps === true) output.intermediateSteps = steps;
+							items.push(output);
+						}
+						if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
+					}
+					if (carried === undefined) return [{ items, runs }];
+					iteration++;
+					previous = carried;
+					if (calls.length > 0) {
+						return [{ items: [], runs, calls, state: { iteration, previous, calls } }];
+					}
+					// The agent has none of the tools that the model calls: the engine has no step
+					// to run, and runs the node again.
+					done = [];
+					given = [];
+				}
+			}
+
+			// Before version 3 the executor of LangChain runs the tools of an item, then calls
+			// the model again, until the answer has no call.
+			const items: Item[] = state.items ?? [];
+			let added: unknown[] = state.added ?? [];
+			let turnCount = state.turn ?? 0;
+			let resumed = parameters.state !== undefined && parameters.state !== null;
+			for (let i = state.index ?? 0; i < batch.length; i++) {
+				const item = batch[i];
+				if (item.text === undefined) return fail('No prompt specified');
+				for (let round = 0; ; round++) {
+					let stop = false;
+					if (resumed) {
+						resumed = false;
+						let at = 0;
+						for (const call of waiting) {
+							let content = `${call.name} is not a valid tool, try another one.`;
+							if (call.tool !== '') {
+								const result = results[at] ?? {};
+								at++;
+								content = toolContent(result);
+							}
+							added.push({ role: 'tool', content, tool_call_id: call.id });
+						}
+						stop = turnCount >= maxIterations;
+					}
+					if (!stop) {
+						const turn = await turnOf(item, added);
+						if (turn.error !== undefined) return fail(turn.error, turn.description);
+						if (turn.calls === undefined) {
+							items.push({ output: turn.text ?? '' });
+							break;
+						}
+						turnCount++;
+						const calls: ToolCall[] = [];
+						let refused: string | undefined;
+						for (const call of turn.calls) {
+							const tool = toolOf(call.name);
+							const made: ToolCall = {
+								item: i,
+								id: call.id,
+								name: call.name,
+								tool: '',
+								raw: call.raw,
+								args: call.raw,
+							};
+							if (tool !== undefined) {
+								const checked = checkArguments(tool, call.raw);
+								if (checked.error !== undefined) {
+									if (refused === undefined) refused = checked.error;
+									continue;
+								}
+								made.tool = tool.node;
+								made.args = checked.args;
+							}
+							calls.push(made);
+						}
+						const steps: ToolCall[] = [];
+						for (const call of calls) if (call.tool !== '') steps.push(call);
+						if (refused !== undefined) {
+							// LangChain starts the tools of an answer together. A call that the schema
+							// refuses stops the node before a tool sends a request: v1 records a run of
+							// each other tool, and no request.
+							const started: string[] = [];
+							for (const call of steps) started.push(call.tool);
+							return [
+								{
+									items: [],
+									runs,
+									started,
+									error: refused,
+									description: 'Original error: ToolInputParsingException',
+								},
+							];
+						}
+						added.push(callMessage(turn.text ?? '', calls));
+						if (steps.length > 0) {
+							return [
+								{
+									items: [],
+									runs,
+									calls: steps,
+									state: { index: i, items, added, turn: turnCount, calls },
+								},
+							];
+						}
+						// The agent has none of the tools: the executor answers each call itself.
+						for (const call of calls) {
+							added.push({
+								role: 'tool',
+								content: `${call.name} is not a valid tool, try another one.`,
+								tool_call_id: call.id,
+							});
+						}
+						stop = turnCount >= maxIterations;
+					}
+					if (stop) {
+						items.push({ output: 'Agent stopped due to max iterations.' });
+						break;
+					}
+				}
+				added = [];
+				turnCount = 0;
+				if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
+			}
+			return [{ items, runs }];
+		}
 
 		for (let iteration = 0; ; iteration++) {
 			const items: Item[] = [];

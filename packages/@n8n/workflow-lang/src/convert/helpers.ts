@@ -1693,6 +1693,22 @@ function keyValuePairs(pairs: Json[], mode: string): Json {
 	return out;
 }`,
 	},
+	fromAi: {
+		uses: [],
+		source: `/**
+ * The argument \`key\` of a tool call (\`$fromAI\` of v1): an own key of the \`query\` member of
+ * the arguments, or else an own key of the arguments, or else the default. v1 reads no
+ * inherited member.
+ */
+function fromAi(args: Json, key: string, fallback?: Json): Json {
+	const own = (source: Json, name: string): Json => {
+		if (source === null || source === undefined || typeof source !== 'object') return undefined;
+		if (Array.isArray(source) && name === 'length') return source.length;
+		return Object.keys(source).includes(name) ? source[name] : undefined;
+	};
+	return own(own(args, 'query'), key) ?? own(args, key) ?? fallback;
+}`,
+	},
 	orUndefined: {
 		uses: [],
 		source: `/** The value of an expression, or undefined when it throws a TypeError (pagination values of n8n-core). */

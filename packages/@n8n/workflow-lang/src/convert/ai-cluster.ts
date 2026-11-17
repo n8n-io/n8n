@@ -14,6 +14,7 @@
  */
 import { credentialFlagKey } from '../credentials/flags.ts';
 import { structuredOutput } from './ai-output-schema.ts';
+import { toolArguments, toolNameOf } from './from-ai.ts';
 import { isRecord } from './types.ts';
 
 const LC = '@n8n/n8n-nodes-langchain.';
@@ -28,6 +29,13 @@ export interface ClusterSubNode {
 	/** The node that gets the data. Undefined means the root. */
 	target?: string;
 	targetIndex?: number;
+	/**
+	 * A tool node: its parameters as the `Workflow` constructor of n8n holds them (the order
+	 * of the node type). The schema of the tool has the order of their `$fromAI` calls.
+	 */
+	workflowParameters?: Record<string, unknown>;
+	/** A tool node: true when the node has an error, retry, or output setting. */
+	hasSettings?: boolean;
 }
 
 /** A value that n8n computes from the fields of a credential (`CredentialDerivation`). */
@@ -65,6 +73,11 @@ export interface NativeCluster {
 	memory?: string;
 	/** The credential flags that the library node reads, and the guard of their proven values. */
 	derivations: ClusterDerivation[];
+	/**
+	 * The names of the tool nodes. The converter writes the loop of the agent: the library
+	 * node gives the tool calls of a turn, and each call runs as a step of its tool node.
+	 */
+	tools?: string[];
 }
 
 /** Eight hex digits of an FNV-1a hash: the name of a guard is unique for each node. */
@@ -457,6 +470,51 @@ function windowMemory(sub: ClusterSubNode): { node: string; key: string; window:
 	return { node: sub.name, key, window };
 }
 
+const BASE = 'n8n-nodes-base.';
+
+/**
+ * A tool of the agent: the tool form of a node of `n8n-nodes-base` (`<type>Tool`). The value
+ * is the tool as the library node reads it (`ToolSpec` of `chain-llm.ts`), or the reason why
+ * the cluster stays in the host.
+ */
+function toolSpec(sub: ClusterSubNode): Record<string, unknown> | string {
+	if (!sub.type.startsWith(BASE) || !sub.type.endsWith('Tool')) {
+		return `tool ${sub.type.replace(LC, '')}`;
+	}
+	if (sub.target !== undefined || (sub.targetIndex ?? 0) !== 0) return 'sub-nodes';
+	if (sub.hasSettings === true) return 'tool with node settings';
+	const p = sub.parameters ?? {};
+	// A node with a resource or an operation makes its description from them by default.
+	const manual = p.descriptionType === 'manual';
+	const http = sub.type === `${BASE}httpRequestTool` && p.descriptionType === undefined;
+	if (!manual && !http) return 'tool description from the operation';
+	const description = p.toolDescription;
+	if (typeof description !== 'string' || description.trim() === '') return 'tool description';
+	if (description.startsWith('=') || /\$fromAI/i.test(description)) return 'tool description';
+	if ((p.optimizeResponse ?? false) !== false) return 'tool response optimizer';
+	if (sub.workflowParameters === undefined) return 'tool node type';
+	const args = toolArguments(sub.workflowParameters);
+	if (typeof args === 'string') return args;
+	const name = toolNameOf(sub.name);
+	if (name === undefined) return 'tool name';
+	return {
+		node: sub.name,
+		name,
+		description,
+		schema: args.schema,
+		arguments: args.arguments.map((a) => ({
+			key: a.key,
+			type: a.type,
+			...(a.defaultValue === undefined ? {} : { defaultValue: a.defaultValue }),
+		})),
+	};
+}
+
+/** Model names for which LangChain uses the Responses API (`_modelPrefersResponsesAPI`). */
+function prefersResponses(model: string): boolean {
+	return model.includes('gpt-5.2-pro') || model.includes('gpt-5.4-pro') || model.includes('codex');
+}
+
 /**
  * The Tools Agent of versions 2 to 3.1 with one chat model, and a window buffer memory or nothing else. It is one
  * call of the model, so it runs as the library node of the chain with `kind: 'agent'`.
@@ -471,7 +529,8 @@ function toolsAgent(
 	settings: ClusterSettings,
 ): NativeCluster | string {
 	if (![2, 2.1, 2.2, 3, 3.1].includes(version)) return `agent version ${version}`;
-	if (subs.some((s) => s.connection === 'ai_tool')) return 'tools';
+	const toolSubs = subs.filter((s) => s.connection === 'ai_tool');
+	if (toolSubs.length > 0) subs = subs.filter((s) => s.connection !== 'ai_tool');
 	if (subs.some((s) => s.connection === 'ai_outputParser')) return 'output parser';
 	if (subs.length !== 1 && subs.length !== 2) return 'sub-nodes';
 	const sub = subs.find((s) => s.connection === 'ai_languageModel');
@@ -526,9 +585,36 @@ function toolsAgent(
 		delayBetweenBatches: delay,
 	};
 	if (steps) shared.returnIntermediateSteps = true;
+	let tools: string[] | undefined;
+	if (toolSubs.length > 0) {
+		// The proof of the loop is for the node that stops, one item at a time, without a
+		// memory, on the Chat Completions API of OpenAI.
+		if (aiMemory !== undefined) return 'tools with a memory';
+		if (!stops) return 'tools with an error setting';
+		if (size !== 1) return 'tools with batches';
+		if (aiModel.provider !== 'openAi' && aiModel.provider !== 'openRouter') {
+			return 'tools with this chat model';
+		}
+		const model = aiModel.model;
+		if (aiModel.responses === true || typeof model !== 'string' || model.startsWith('=')) {
+			return 'tools with the Responses API';
+		}
+		if (prefersResponses(model)) return 'tools with the Responses API';
+		// v1 gives the model the tools in the reverse order of their connections.
+		const specs: Array<Record<string, unknown>> = [];
+		for (const toolSub of [...toolSubs].reverse()) {
+			const spec = toolSpec(toolSub);
+			if (typeof spec === 'string') return spec;
+			if (specs.some((other) => other.name === spec.name)) return 'tools with one name';
+			specs.push(spec);
+		}
+		shared.tools = specs;
+		tools = specs.map((spec) => String(spec.node));
+	}
 	return {
 		libraryType: `${LC}chainLlm`,
 		shared,
+		...(tools === undefined ? {} : { tools }),
 		perItem: { text, systemMessage: options.systemMessage },
 		forFirstItem: aiMemory === undefined ? { aiModel } : { aiModel, aiMemory },
 		credentialOf: sub.name,

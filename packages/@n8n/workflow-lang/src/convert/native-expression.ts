@@ -125,9 +125,14 @@ export function nativeExpression(
 	// The guard of the native form gives null for every error, as v1 does for an error of the
 	// JavaScript. An error of the engine (a paired item that is not there) must stop the node,
 	// so code that calls a function of the generated source other than a Luxon helper has no
-	// native form. The error of an extension helper passes the guard, and `jsonOf` has no error.
+	// native form. The error of an extension helper passes the guard, and `jsonOf` and `fromAi`
+	// have no error.
 	for (const name of translated.called) {
-		const safe = name.startsWith('lux') || name === 'jsonOf' || EXTENSION_HELPER_NAMES.has(name);
+		const safe =
+			name.startsWith('lux') ||
+			name === 'jsonOf' ||
+			name === 'fromAi' ||
+			EXTENSION_HELPER_NAMES.has(name);
 		if (globals.has(name) && !safe) {
 			return { ok: false, blockers: [`call of ${name}`] };
 		}

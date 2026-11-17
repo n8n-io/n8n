@@ -134,6 +134,13 @@ export interface NodeContext {
 	state(): string;
 	/** A unique local name that starts with the node name and `suffix`. */
 	local(suffix: string): string;
+	/**
+	 * Lowers a tool node of an AI agent as a step, at the place of the writer. `input` is the
+	 * code of a list with one item: the arguments of the tool call, which `$fromAI` reads. It
+	 * gives the code of the output list of the tool, or the reason why the tool has no step
+	 * that is not in the fallback host.
+	 */
+	lowerTool?(tool: N8nNode, input: string): { output: string } | { reason: string };
 	/** The callee of an Execute Workflow node. */
 	subWorkflow(): SubWorkflowCall;
 }

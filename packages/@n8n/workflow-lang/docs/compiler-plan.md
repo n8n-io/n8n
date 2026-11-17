@@ -684,7 +684,51 @@ call there is a step with LangChain objects in it.
 7. `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
 8. Vector stores, document loaders and text splitters.
 
-### Tools (plan; not built)
+### Tools (built for the OpenAI Chat Completions API; the rest is the plan below)
+
+**Built** (`TOOL_CASES` and `TOOL_PROBE_CASES` in `ai-cases.ts`, 25 shapes for each of the versions 2.2 and
+3.1, each against a v1 recording):
+
+- **The loop is in the converted source** (`lowerNativeCluster`, `emitToolCalls` in `src/convert/library.ts`).
+  A call of the library node is one or more turns of the model. It gives `calls` (the tool calls that the
+  source must run) and `state` (what the agent keeps). The source runs the step of the tool node for each
+  call, with the arguments as the one input item, and calls the library node again with `state` and
+  `results`. A failure of a tool step is a result (`{ error }`), not a failure of the agent.
+- **Version 3 and 3.1** (`chain-llm.ts`): the engine of v1 runs the node again for all items after the tools,
+  so every item calls the model again. `iteration` counts the runs, and `maxIterations` stops the node with
+  the error of v1. Each call is one assistant message and one tool message. The steps that the request of
+  v1 carries are the steps of the first item that calls a tool (`previousRequests`); the library node keeps
+  that rule. v1 does not check the arguments.
+- **Versions 2 to 2.2**: the executor of LangChain loops for one item. One assistant message has all calls
+  of an answer. It checks each call with the zod schema of the tool; the library node gives the same error
+  text. A call that the schema refuses stops the node before a tool sends a request, and v1 records a run of
+  each other tool of the answer (`started`). After `maxIterations` turns the output is "Agent stopped due to
+  max iterations.".
+- **Schema** (`src/convert/from-ai.ts`): a port of the text reader of v1 (`extractFromAICalls`), over the
+  parameters in the order of the node type (`workflowParameters`). v1 gives the model the tools in the
+  reverse order of their connections.
+- **`$fromAI` at run time** (`fromAiCode` in `src/convert/expression.ts`, helper `fromAi`): an own key of the
+  `query` member of the arguments, or of the arguments, or the default. The key must be a literal.
+- **A tool is a step** (`NodeContext.lowerTool`): the tool form `<type>Tool` of a node of `n8n-nodes-base`
+  goes through the lowerer of its type. A library node or a compiled node counts. A tool that would run in
+  the fallback host keeps the whole cluster there.
+
+**In the host, with the diagnostic `ai-tools-host`** (the reason is in the message): a memory, an output
+parser, the Responses API, a chat model other than OpenAI and OpenRouter, an error or retry setting of the
+agent, a batch size above 1, a tool node with a node setting, a tool that is not `<type>Tool` of
+`n8n-nodes-base` (`toolCode`, `toolWorkflow`, `toolHttpRequest`, MCP, vector stores), a tool description
+that is an expression or comes from the operation (`descriptionType` other than `manual`), the response
+optimizer of the HTTP Request tool, a `$fromAI` call with a key that is no literal, a default of another
+type than the argument, two tools with one function name, and `returnIntermediateSteps` before version 3.
+
+**Known gaps.** (1) On version 3 the arguments have no check, so a tool node can get a value of a type that
+its parameter does not take. The HTTP Request library node then does not give the v1 errors "URL parameter
+must be a string" and "The value in the "JSON Body" field is not valid JSON" (`TOOL_PENDING_CASES`). (2) By
+the source of v1, not by a recording: a tool that gives no item, a tool that gives binary data, and
+arguments that are JSON but no object and no list on version 3. (3) The Code tool and the workflow tool need
+a task runner and `executeWorkflow` in the recorder (item 4 below).
+
+Facts of v1 and the plan for the rest:
 
 Facts of v1 from recordings (`TOOL_PROBE_CASES` in `ai-cases.ts`; the recorder now loads the tool form of a
 node, `<type>Tool`, and gives the model and the tools one list of answers):

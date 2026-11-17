@@ -2798,10 +2798,8 @@ const httpTool: SubNodeCase = {
 	connection: 'ai_tool',
 };
 /**
- * The Tools Agent with the HTTP Request tool. The converter keeps these clusters in the
- * fallback host. The recordings are the facts of v1 for the native form that is planned
- * (`docs/compiler-plan.md`, "Tools"): the function schema, the request of the tool, the
- * messages of the call and of its result, and the intermediate steps.
+ * The Tools Agent with the HTTP Request tool: the function schema, the request of the tool,
+ * the messages of the call and of its result, and the intermediate steps.
  */
 export const TOOL_PROBE_CASES: EquivalenceCase[] = [2.2, 3.1].map((version) =>
 	agent(
@@ -2818,6 +2816,375 @@ export const TOOL_PROBE_CASES: EquivalenceCase[] = [2.2, 3.1].map((version) =>
 	),
 );
 
+/** A Chat Completions answer that calls tools: `[name, arguments, id]` for each call. */
+const callsTools = (calls: Array<[string, unknown, string]>, content: string | null = null) => ({
+	body: {
+		id: 'chatcmpl-1',
+		choices: [
+			{
+				index: 0,
+				message: {
+					role: 'assistant',
+					content,
+					tool_calls: calls.map(([name, args, id]) => ({
+						id,
+						type: 'function',
+						function: {
+							name,
+							arguments: typeof args === 'string' ? args : JSON.stringify(args),
+						},
+					})),
+				},
+				finish_reason: 'tool_calls',
+			},
+		],
+	},
+});
+const typedTool: SubNodeCase = {
+	name: 'Read list',
+	type: 'n8n-nodes-base.httpRequestTool',
+	typeVersion: 4.2,
+	parameters: {
+		toolDescription: 'Reads a page of a list',
+		url: 'https://example.com/list',
+		sendQuery: true,
+		queryParameters: {
+			parameters: [
+				{ name: 'page', value: "={{ $fromAI('page', 'The page number', 'number', 1) }}" },
+				{ name: 'all', value: "={{ $fromAI('all', '', 'boolean') }}" },
+				{
+					name: 'q',
+					value: "=x {{ $fromAI('q') }} {{ $fromAI('page', 'The page number', 'number', 1) }}",
+				},
+			],
+		},
+		options: {},
+	},
+	connection: 'ai_tool',
+};
+const httpToolWith = (name: string, parameters: Record<string, unknown>): SubNodeCase => ({
+	name,
+	type: 'n8n-nodes-base.httpRequestTool',
+	typeVersion: 4.2,
+	parameters: { toolDescription: 'Reads data', options: {}, ...parameters },
+	connection: 'ai_tool',
+});
+/** A tool without arguments, a tool whose arguments all have a default, and a JSON argument. */
+const fixedTool = httpToolWith('Fixed.tool (1)', { url: 'https://example.com/fixed' });
+const defaultsTool = httpToolWith('Defaults', {
+	method: "={{ $fromAI('verb', 'GET or POST', 'string', 'GET') }}",
+	url: "=https://example.com/{{ $fromAI('strict', '', 'boolean', false) }}/{{ $fromAI('count', ' padded ', 'number', 2) }}",
+});
+const jsonTool = httpToolWith('Send', {
+	method: 'POST',
+	url: 'https://example.com/send',
+	sendBody: true,
+	specifyBody: 'json',
+	jsonBody: "={{ $fromAI('payload', 'The body', 'json') }}",
+});
+const page = (title: string) => ({ body: { title } });
+const withTools = (tools: SubNodeCase[], extra: Partial<EquivalenceCase> = {}) => ({
+	subNodes: [gpt, ...tools],
+	responseBytes: true,
+	...extra,
+});
+const brief = (version: number, options: Record<string, unknown> = {}) => ({
+	options: { systemMessage: 'Be brief', returnIntermediateSteps: version >= 3, ...options },
+});
+const fetchA = callsTools([['Fetch_page', { url: 'https://example.com/a' }, 'call_1']]);
+const fetchB = callsTools([['Fetch_page', { url: 'https://example.com/b' }, 'call_2']]);
+
+const BAD_FORMAT = "Model output doesn't fit required format";
+const BAD_INPUT = 'Received tool input did not match expected schema\n\n';
+const MAX_ONE =
+	'Max iterations (1) reached. The agent could not complete the task within the allowed number of iterations.';
+const EMPTY_JSON = '✖ Value must be a non-empty object or a non-empty array\n  → at payload';
+/** The error of v1 for each case that fails. */
+const TOOL_ERRORS: Record<string, string> = {
+	'agent tools 2.2, argument of another type': `${BAD_INPUT}✖ Expected number, received string\n  → at page\n✖ Expected boolean, received string\n  → at all\n✖ Expected string, received number\n  → at q`,
+	'agent tools 2.2, missing argument': `${BAD_INPUT}✖ Required\n  → at all\n✖ Required\n  → at q`,
+	'agent tools 2.2, arguments that are not JSON': BAD_FORMAT,
+	'agent tools 3.1, arguments that are not JSON': BAD_FORMAT,
+	'agent tools 2.2, empty arguments text': BAD_FORMAT,
+	'agent tools 3.1, empty arguments text': BAD_FORMAT,
+	'agent tools 2.2, calls that are not JSON, with text': BAD_FORMAT,
+	'agent tools 3.1, calls that are not JSON, with text': BAD_FORMAT,
+	'agent tools 3.1, max iterations': MAX_ONE,
+	'agent tools 2.2, JSON argument': BAD_INPUT + EMPTY_JSON,
+	'agent tools 2.2, JSON argument that is missing': BAD_INPUT + EMPTY_JSON,
+	'agent tools 2.2, arguments that are a list': `${BAD_INPUT}✖ Expected object, received array`,
+	'agent tools 2.2, a good call and a call with a wrong argument': `${BAD_INPUT}✖ Expected string, received number\n  → at url`,
+};
+
+/**
+ * The Tools Agent with tools, native: the converter writes the loop, and each tool call is a
+ * step of the tool node (`docs/compiler-plan.md`, "Tools").
+ */
+const ALL_TOOL_CASES: EquivalenceCase[] = [2.2, 3.1]
+	.flatMap((version) => toolCases(version))
+	.map((c) => (c.name in TOOL_ERRORS ? { ...c, expectedError: TOOL_ERRORS[c.name] } : c));
+
+/**
+ * Cases whose tool node gets an argument of a type that its parameter does not take, on an
+ * agent of version 3 (that agent does not check the arguments). The HTTP Request library
+ * node has no form of the v1 errors "URL parameter must be a string" and "The value in the
+ * "JSON Body" field is not valid JSON": the recordings stay as the facts of v1.
+ */
+const TOOL_INPUT_GAPS = [
+	'agent tools 3.1, a good call and a call with a wrong argument',
+	'agent tools 3.1, JSON argument that is missing',
+];
+export const TOOL_PENDING_CASES = ALL_TOOL_CASES.filter((c) => TOOL_INPUT_GAPS.includes(c.name));
+export const TOOL_CASES = ALL_TOOL_CASES.filter((c) => !TOOL_INPUT_GAPS.includes(c.name));
+
+function toolCases(version: number): EquivalenceCase[] {
+	return [
+		agent(
+			`tools ${version}, two rounds`,
+			version,
+			gpt,
+			[fetchA, page('A'), fetchB, page('B'), completion('A and B')],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, two calls in one answer, with text`,
+			version,
+			gpt,
+			[
+				callsTools(
+					[
+						['Fetch_page', { url: 'https://example.com/a' }, 'call_1'],
+						['Read_list', { page: 2, all: true, q: 'cats' }, 'call_2'],
+					],
+					'I look at both',
+				),
+				page('A'),
+				page('L'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([httpTool, typedTool]),
+		),
+		agent(
+			`tools ${version}, default argument`,
+			version,
+			gpt,
+			[
+				callsTools([['Read_list', { all: false, q: 'dogs' }, 'call_1']]),
+				page('L'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([typedTool]),
+		),
+		agent(
+			`tools ${version}, argument of another type`,
+			version,
+			gpt,
+			[
+				callsTools([['Read_list', { page: '3', all: 'yes', q: 5 }, 'call_1']]),
+				page('L'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([typedTool]),
+		),
+		agent(
+			`tools ${version}, missing argument`,
+			version,
+			gpt,
+			[callsTools([['Read_list', { page: 3 }, 'call_1']]), page('L'), completion('Done')],
+			brief(version),
+			withTools([typedTool]),
+		),
+		agent(
+			`tools ${version}, extra arguments`,
+			version,
+			gpt,
+			[
+				callsTools([
+					[
+						'Fetch_page',
+						{ url: 'https://example.com/a', id: 7, log: 'L', type: 'T', more: 1 },
+						'call_1',
+					],
+				]),
+				page('A'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, arguments that are not JSON`,
+			version,
+			gpt,
+			[callsTools([['Fetch_page', '{ url: ', 'call_1']]), page('A'), completion('Done')],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, unknown tool`,
+			version,
+			gpt,
+			[callsTools([['Other', { a: 1 }, 'call_1']]), completion('Done'), completion('More')],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, tool fails`,
+			version,
+			gpt,
+			[fetchA, { status: 500, body: { message: 'broken' } }, completion('It failed')],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, max iterations`,
+			version,
+			gpt,
+			[fetchA, page('A'), fetchB, page('B'), completion('late')],
+			brief(version, { maxIterations: 1 }),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, two items`,
+			version,
+			gpt,
+			version >= 3
+				? [fetchA, completion('two'), page('A'), completion('one'), completion('two again')]
+				: [fetchA, page('A'), completion('one'), completion('two')],
+			{ text: '={{ $json.q }}', ...brief(version) },
+			withTools([httpTool], { items: [{ q: 'one' }, { q: 'two' }] }),
+		),
+		agent(
+			`tools ${version}, no arguments and default arguments`,
+			version,
+			gpt,
+			[
+				callsTools([
+					['Fixed_tool_1_', {}, 'call_1'],
+					['Defaults', {}, 'call_2'],
+					['Defaults', { verb: 'POST', strict: true, count: 5 }, 'call_3'],
+				]),
+				page('F'),
+				page('D'),
+				page('E'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([fixedTool, defaultsTool]),
+		),
+		agent(
+			`tools ${version}, JSON argument`,
+			version,
+			gpt,
+			[
+				callsTools([['Send', { payload: { a: [1, 2] } }, 'call_1']]),
+				page('S'),
+				callsTools([['Send', { payload: {} }, 'call_2']]),
+				page('T'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([jsonTool]),
+		),
+		agent(
+			`tools ${version}, first of two calls fails`,
+			version,
+			gpt,
+			[
+				callsTools([
+					['Fetch_page', { url: 'https://example.com/a' }, 'call_1'],
+					['Fetch_page', { url: 'https://example.com/b' }, 'call_2'],
+				]),
+				{ status: 404, body: { message: 'gone' } },
+				page('B'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, one call of two is not JSON`,
+			version,
+			gpt,
+			[
+				callsTools([
+					['Fetch_page', { url: 'https://example.com/a' }, 'call_1'],
+					['Fetch_page', '{ url: ', 'call_2'],
+				]),
+				page('A'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, empty arguments text`,
+			version,
+			gpt,
+			[callsTools([['Fixed_tool_1_', '', 'call_1']]), page('F'), completion('Done')],
+			brief(version),
+			withTools([fixedTool]),
+		),
+		agent(
+			`tools ${version}, arguments that are a list`,
+			version,
+			gpt,
+			[callsTools([['Fixed_tool_1_', '[1]', 'call_1']]), page('F'), completion('Done')],
+			brief(version),
+			withTools([fixedTool]),
+		),
+		agent(
+			`tools ${version}, a good call and a call with a wrong argument`,
+			version,
+			gpt,
+			[
+				callsTools([
+					['Fetch_page', { url: 'https://example.com/a' }, 'call_1'],
+					['Fetch_page', { url: 7 }, 'call_2'],
+					['Fetch_page', { url: 'https://example.com/c' }, 'call_3'],
+				]),
+				page('A'),
+				page('C'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, JSON argument that is missing`,
+			version,
+			gpt,
+			[callsTools([['Send', { other: 1 }, 'call_1']]), completion('Done')],
+			brief(version),
+			withTools([jsonTool]),
+		),
+		agent(
+			`tools ${version}, calls that are not JSON, with text`,
+			version,
+			gpt,
+			[
+				callsTools([['Fetch_page', '{ url: ', 'call_1']], 'Some text'),
+				page('A'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([httpTool]),
+		),
+		agent(
+			`tools ${version}, without steps and system message`,
+			version,
+			gpt,
+			[fetchA, page('A'), completion('Done')],
+			{},
+			withTools([httpTool]),
+		),
+	];
+}
+
 /** Every case that runs in the engine of n8n and through the converter. */
 export const ENGINE_CASES: EquivalenceCase[] = [
 	...OUTPUT_PARSER_CASES,
@@ -2830,4 +3197,6 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...NETWORK_CASES,
 	...OPEN_ROUTER_CASES,
 	...MEMORY_CASES,
+	...TOOL_PROBE_CASES,
+	...TOOL_CASES,
 ];

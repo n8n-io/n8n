@@ -86,7 +86,8 @@ function workflowOf(c: EquivalenceCase): unknown {
 				typeVersion: sub.typeVersion,
 				position: [400, 200 + 100 * k],
 				parameters: sub.parameters,
-				...credentials,
+				// A tool node of these cases has no credential.
+				...(sub.connection === 'ai_tool' ? {} : credentials),
 			})),
 		],
 		connections: {
@@ -151,30 +152,46 @@ function memoryAnswers(calls: Array<Record<string, unknown>>): unknown[] {
 }
 
 /**
- * The fixture of a case with a memory: the answers of the service go between the answers of
- * the model, in the order of the calls. Each run shows the place of one more service call.
+ * The fixture of a case with a memory or with tools. The case has one list of answers, in
+ * the order in which v1 asks for them. The answers of the memory service go between the
+ * answers of the model, and each tool step gets the answers of its own requests. Each run
+ * shows the place of one more call.
  */
-async function withMemory(source: string, fixture: Fixture): Promise<Fixture> {
+async function withMemory(
+	source: string,
+	fixture: Fixture,
+	tools: string[] = [],
+): Promise<Fixture> {
 	const http = fixture.effects[NODE];
+	const steps = [NODE, ...tools];
 	for (let round = 0; round < 64; round++) {
 		const out = await runReference(source, fixture);
-		const effects = out.effects.filter((e) => e.step === NODE && e.kind !== 'wait');
+		const effects = out.effects.filter((e) => steps.includes(e.step) && e.kind !== 'wait');
 		const calls = effects
 			.filter((e) => e.kind === 'service')
 			.map((e) => (isRecord(e.args) ? e.args : {}));
 		const answers = memoryAnswers(calls);
-		const list: unknown[] = [];
+		const lists: Record<string, unknown[]> = { [NODE]: [] };
 		let model = 0;
 		let service = 0;
 		for (const effect of effects) {
+			const list = lists[effect.step] ?? [];
+			lists[effect.step] = list;
 			if (effect.kind === 'service') list.push(answers[service++]);
 			else list.push(http[model++ % http.length]);
 		}
-		for (let k = model; k < http.length; k++) list.push(http[k]);
-		if (JSON.stringify(list) === JSON.stringify(fixture.effects[NODE])) return fixture;
-		fixture = { ...fixture, effects: { ...fixture.effects, [NODE]: list } };
+		for (let k = model; k < http.length; k++) lists[NODE].push(http[k]);
+		const now = Object.fromEntries(steps.map((step) => [step, fixture.effects[step] ?? []]));
+		const next = Object.fromEntries(steps.map((step) => [step, lists[step] ?? []]));
+		if (JSON.stringify(next) === JSON.stringify(now)) return fixture;
+		fixture = { ...fixture, effects: { ...fixture.effects, ...next } };
 	}
-	throw new Error('The order of the service calls does not settle');
+	throw new Error('The order of the calls does not settle');
+}
+
+/** The names of the tool nodes of a case. */
+function toolsOf(c: EquivalenceCase): string[] {
+	return (c.subNodes ?? []).filter((sub) => sub.connection === 'ai_tool').map((sub) => sub.name);
 }
 
 interface Trace {
@@ -225,7 +242,7 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 
 		it('gives the same result from the bytecode as from the reference runner', async () => {
 			const result = converted(c);
-			const fixture = await withMemory(result.source, fixtureOf(c, result));
+			const fixture = await withMemory(result.source, fixtureOf(c, result), toolsOf(c));
 			const compiled = compile(result.source);
 			expect(compiled.module).toBeDefined();
 			const reference = await runReference(result.source, fixture);
@@ -237,7 +254,7 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			const result = converted(c);
 			const out = await runReference(
 				result.source,
-				await withMemory(result.source, fixtureOf(c, result)),
+				await withMemory(result.source, fixtureOf(c, result), toolsOf(c)),
 			);
 			const data = withDerivedValues(c.credential?.type ?? '', {
 				...(registry.get(c.credential?.type ?? '')?.defaults ?? {}),
@@ -246,7 +263,10 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			const inject = c.credential
 				? deriveInject(registry, c.credential.type, data).inject
 				: undefined;
-			const effects = out.effects.filter((e) => e.step === NODE || e.step.startsWith(`${NODE} `));
+			const tools = toolsOf(c);
+			const effects = out.effects.filter(
+				(e) => e.step === NODE || e.step.startsWith(`${NODE} `) || tools.includes(e.step),
+			);
 			const requests: NormalRequest[] = effects
 				.filter((e) => e.kind === 'http')
 				.map((effect) => {
@@ -261,7 +281,8 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 								body: args.body,
 								inject: args.inject,
 							},
-							inject,
+							// The credential of the case is the credential of the model.
+							tools.includes(effect.step) ? undefined : inject,
 							data,
 						),
 					);
@@ -296,10 +317,6 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 
 	describe.each(TOOL_PROBE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
-
-		it('stays in the fallback host', () => {
-			expect(converted(c).fallbackNodes).toContain(NODE);
-		});
 
 		it('has the v1 recording: the model, the tool, then the model with the result', () => {
 			expect(recording.error).toBeUndefined();
@@ -354,7 +371,10 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 		const custom = { sessionIdType: 'customKey', sessionKey: 'k' };
 
 		it.each([
-			['tools', [model, { ...model, name: 'Tool', type: `${LC}toolCode`, connection: 'ai_tool' }]],
+			[
+				'tool toolCode',
+				[model, { ...model, name: 'Tool', type: `${LC}toolCode`, connection: 'ai_tool' }],
+			],
 			[
 				'output parser',
 				[

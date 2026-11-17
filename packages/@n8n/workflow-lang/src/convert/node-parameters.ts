@@ -574,6 +574,29 @@ export function hideParameters(type: string, version: number, parameters: Params
 	return isRecord(out) ? out : parameters;
 }
 
+/**
+ * The parameters of a node as the `Workflow` constructor of n8n holds them: the keys in the
+ * order of the node type, with the defaults, without the hidden ones. Undefined for a type or
+ * a version that the generated descriptions do not have.
+ */
+export function workflowParameters(
+	type: string,
+	version: number,
+	parameters: Params,
+): Params | undefined {
+	const description = nodeDescription(type, version);
+	if (!description) return undefined;
+	const normalized = getNodeParameters(
+		description.properties,
+		parameters,
+		true,
+		false,
+		version,
+		description,
+	);
+	return normalized ?? undefined;
+}
+
 /** The raw value, without the `=` that `normalized` (the parameters as v1 holds them) lost. */
 function withoutPrefix(
 	raw: unknown,

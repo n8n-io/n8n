@@ -21,7 +21,9 @@ import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import type { TranslatedValue, Usage } from './expression.ts';
 import { constantText, emptyUsage, INDEX, ITEM, jsonLiteral } from './expression.ts';
+import type { ClusterSubNode } from './ai-cluster.ts';
 import { nativeCluster, VENDOR_NODES } from './ai-cluster.ts';
+import type { ClusterMember } from './host-node.ts';
 import {
 	clusterMembers,
 	isClusterRoot,
@@ -32,7 +34,12 @@ import {
 import { googleMint } from '../node-compile/specialise.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
-import { getNodeParameters, hideParameters, nodeDescription } from './node-parameters.ts';
+import {
+	getNodeParameters,
+	hideParameters,
+	nodeDescription,
+	workflowParameters,
+} from './node-parameters.ts';
 import type { StepCall } from './steps.ts';
 import {
 	emitStep,
@@ -42,6 +49,7 @@ import {
 	nodeCall,
 	tryCompiledNode,
 } from './steps.ts';
+import type { N8nNode } from './types.ts';
 import { isRecord, sourceNode, text } from './types.ts';
 
 let libraryTypes: Set<string> | undefined;
@@ -688,20 +696,83 @@ function streamsAnswer(node: {
 	return !node.disabled && (p.responseMode === 'streaming' || options.responseMode === 'streaming');
 }
 
+/** The settings of a tool node for which the loop of the agent has no proof. */
+function hasNodeSettings(node: N8nNode): boolean {
+	return (
+		node.retryOnFail === true ||
+		node.continueOnFail === true ||
+		(node.onError ?? 'stopWorkflow') !== 'stopWorkflow' ||
+		node.executeOnce === true ||
+		node.alwaysOutputData === true
+	);
+}
+
+/** A sub-node of a cluster as `nativeCluster` reads it. A tool node also gives its schema source. */
+function clusterSubNode(root: string, m: ClusterMember): ClusterSubNode {
+	const version = m.node.typeVersion ?? 1;
+	const raw = m.node.parameters ?? {};
+	const sub: ClusterSubNode = {
+		name: m.node.name,
+		type: m.node.type,
+		typeVersion: m.node.typeVersion,
+		parameters: hideParameters(m.node.type, version, raw),
+		connection: m.connection,
+		target: m.target === root ? undefined : m.target,
+		targetIndex: m.targetIndex,
+	};
+	if (m.connection !== 'ai_tool' || !m.node.type.endsWith('Tool')) return sub;
+	// The tool form of a node has the parameters of the node and a description for the model.
+	const { toolDescription: _text, descriptionType: _kind, ...own } = raw;
+	const base = m.node.type.slice(0, -'Tool'.length);
+	sub.parameters = raw;
+	sub.workflowParameters = workflowParameters(base, version, own);
+	sub.hasSettings = hasNodeSettings(m.node);
+	return sub;
+}
+
+/**
+ * The steps of the tools of an agent, for the calls of one turn (`run.calls`). Each call
+ * runs the step of its tool node with the arguments as the input item, and gives
+ * `{ output }` or `{ error }` to `results`. Returns the reason of a tool that has no step.
+ */
+function emitToolCalls(c: NodeContext, tools: N8nNode[]): string | undefined {
+	const { w } = c;
+	w.open('for (const call of calls) {');
+	w.line('const toolInput: Json[] = [call.args];');
+	w.line('let toolResult: Json = {};');
+	w.line('let toolError: Json = null;');
+	w.open('try {');
+	for (const tool of tools) {
+		w.open(`if (call.tool === ${str(tool.name)}) {`);
+		const lowered = c.lowerTool?.(tool, 'toolInput') ?? { reason: 'tools' };
+		if ('reason' in lowered) return lowered.reason;
+		w.line(`toolResult = { output: ${lowered.output} };`);
+		w.close();
+	}
+	w.close('} catch (error) {');
+	w.depth++;
+	w.line('toolResult = { error: error.message };');
+	if (c.version >= 3) {
+		w.line('toolError = error.message;');
+	} else {
+		// Before version 3 the run of the tool has the description of the error in its message.
+		w.line(
+			"toolError = typeof error.description === 'string' && error.description !== '' && error.message.indexOf(error.description) < 0 ? error.message + '\\n\\nDetails: ' + error.description : error.message;",
+		);
+	}
+	w.close();
+	if (c.traceAll) w.line('ctx.trace(call.tool, { $subRuns: [{ error: toolError }] });');
+	w.line('results.push(toolResult);');
+	w.close();
+	return undefined;
+}
+
 export function lowerNativeCluster(c: NodeContext): void {
 	const members = clusterMembers(c.workflow, c.node.name);
 	const native = nativeCluster(
 		{ name: c.node.name, type: c.node.type, typeVersion: c.version },
 		c.parameters,
-		members.map((m) => ({
-			name: m.node.name,
-			type: m.node.type,
-			typeVersion: m.node.typeVersion,
-			parameters: hideParameters(m.node.type, m.node.typeVersion ?? 1, m.node.parameters ?? {}),
-			connection: m.connection,
-			target: m.target === c.node.name ? undefined : m.target,
-			targetIndex: m.targetIndex,
-		})),
+		members.map((m) => clusterSubNode(c.node.name, m)),
 		{ streams: c.workflow.nodes.some(streamsAnswer) },
 		{
 			onError: c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow'),
@@ -723,8 +794,29 @@ export function lowerNativeCluster(c: NodeContext): void {
 		// The memory needs the service `chatMemory` (`ConvertOptions.chatMemory`).
 		(native.memory !== undefined && (c.chatMemory !== true || c.services === false))
 	) {
+		if (typeof native === 'string' && members.some((m) => m.connection === 'ai_tool')) {
+			c.info('ai-tools-host', `The agent with tools runs in the fallback host: ${native}.`);
+		}
 		lowerAiNode(c);
 		return;
+	}
+	const { w } = c;
+	const toolNodes: N8nNode[] = [];
+	for (const name of native.tools ?? []) {
+		const member = members.find((m) => m.node.name === name);
+		if (member) toolNodes.push(member.node);
+	}
+	if (toolNodes.length > 0) {
+		// A first pass, without output: every tool must have a step that is not in the host.
+		const start = w.length;
+		const depth = w.depth;
+		const failed = emitToolCalls(c, toolNodes);
+		w.truncate(start, depth);
+		if (failed !== undefined) {
+			c.info('ai-tools-host', `The agent with tools runs in the fallback host: ${failed}.`);
+			lowerAiNode(c);
+			return;
+		}
 	}
 	// n8n resolves an expression that throws a TypeError to no value (undefined).
 	const code = (value: unknown): string => {
@@ -745,7 +837,6 @@ export function lowerNativeCluster(c: NodeContext): void {
 		return;
 	}
 	c.addCredentialDerivations(credential, native.derivations);
-	const { w } = c;
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	const out = c.output(0);
@@ -766,6 +857,8 @@ export function lowerNativeCluster(c: NodeContext): void {
 	}
 	if (onError !== 'stopWorkflow') entries.push(['continueOnFail', raw('true')]);
 	entries.push(['batch', raw(`${c.input}.map((${ITEM}: Json, ${INDEX}: number) => (${item}))`)]);
+	const withTools = toolNodes.length > 0;
+	if (withTools) entries.push(['state', raw('state')], ['results', raw('results')]);
 	const call: Code = {
 		kind: 'object',
 		entries: [
@@ -780,6 +873,13 @@ export function lowerNativeCluster(c: NodeContext): void {
 	const retry = errorRetry(c);
 	w.open(`if (${c.input}.length > 0) {`);
 	w.line('let run: Json = {};');
+	if (withTools) {
+		// The loop of the agent: a turn of the model in the library node, then a step of the
+		// tool node for each call of the turn, until a turn has no call.
+		w.line('let state: Json = null;');
+		w.line('let results: Json[] = [];');
+		w.open('for (let turn = 0; ; turn++) {');
+	}
 	if (retry) {
 		// v1's retry loop: the node runs again while it fails, or while its first item has an error.
 		c.helper('retryError');
@@ -812,6 +912,20 @@ export function lowerNativeCluster(c: NodeContext): void {
 	}
 	if (retry) {
 		w.line("if (typeof run.error !== 'string' && !retryError(run.items?.[0])) break;");
+		w.close();
+	}
+	if (withTools) {
+		if (c.traceAll) {
+			// A tool that v1 starts and then leaves: the run has no request and no error.
+			w.line(
+				'for (const started of run.started ?? []) ctx.trace(started, { $subRuns: [{ error: null }] });',
+			);
+		}
+		w.line('const calls: Json[] = run.calls ?? [];');
+		w.line('if (calls.length === 0) break;');
+		w.line('state = run.state;');
+		w.line('results = [];');
+		emitToolCalls(c, toolNodes);
 		w.close();
 	}
 	w.open("if (typeof run.error === 'string') {");

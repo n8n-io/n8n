@@ -70,6 +70,11 @@ export interface ExpressionScope {
 	 * index. Without it, an expression that does not translate is a failure.
 	 */
 	hostValue?(value: string): string;
+	/**
+	 * Set in a tool node of an AI agent: code of the arguments of the tool call, which
+	 * `$fromAI` reads. Without it `$fromAI` does not translate.
+	 */
+	toolArguments?: string;
 	/** Code of variables that the node binds, for example `$response` in HTTP pagination. */
 	locals?: Record<string, string>;
 	/** The workflow time zone, the default zone of Luxon. Without it, Luxon forms do not translate. */
@@ -215,6 +220,59 @@ function stringArgument(call: ts.CallExpression): string | null {
 	if (call.arguments.length !== 1 || !a) return null;
 	if (ts.isStringLiteral(a) || ts.isNoSubstitutionTemplateLiteral(a)) return a.text;
 	return null;
+}
+
+/** Names that every object has: v1 reads only an own key of the arguments of a tool call. */
+const INHERITED_KEYS = new Set([
+	'constructor',
+	'hasOwnProperty',
+	'isPrototypeOf',
+	'propertyIsEnumerable',
+	'toLocaleString',
+	'toString',
+	'valueOf',
+	'prototype',
+	'__defineGetter__',
+	'__defineSetter__',
+	'__lookupGetter__',
+	'__lookupSetter__',
+	'__proto__',
+]);
+
+/** The text of a literal that has the same value in v1 and in compiled code, or null. */
+function plainLiteral(node: ts.Expression): string | null {
+	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return str(node.text);
+	if (ts.isNumericLiteral(node)) return String(Number(node.text));
+	if (node.kind === ts.SyntaxKind.TrueKeyword) return 'true';
+	if (node.kind === ts.SyntaxKind.FalseKeyword) return 'false';
+	if (node.kind === ts.SyntaxKind.NullKeyword) return 'null';
+	if (ts.isIdentifier(node) && node.text === 'undefined') return 'undefined';
+	if (
+		ts.isPrefixUnaryExpression(node) &&
+		node.operator === ts.SyntaxKind.MinusToken &&
+		ts.isNumericLiteral(node.operand)
+	) {
+		return `-${String(Number(node.operand.text))}`;
+	}
+	return null;
+}
+
+/**
+ * The code of `$fromAI(key, description, type, default)` in a tool node. The key is a literal
+ * that v1 accepts. The description and the type have no effect at run time; they are literals
+ * so that the call has no other work. Null: the call has no proof.
+ */
+function fromAiCode(call: ts.CallExpression, args: string): string | null {
+	const [key, description, type, fallback] = call.arguments;
+	if (call.arguments.length < 1 || call.arguments.length > 4) return null;
+	if (!key || !(ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key))) return null;
+	if (!/^[a-zA-Z0-9_-]{1,64}$/.test(key.text) || INHERITED_KEYS.has(key.text)) return null;
+	for (const other of [description, type]) {
+		if (other !== undefined && plainLiteral(other) === null) return null;
+	}
+	const value = fallback === undefined ? 'undefined' : plainLiteral(fallback);
+	if (value === null) return null;
+	return `fromAi(${args}, ${str(key.text)}${value === 'undefined' ? '' : `, ${value}`})`;
 }
 
 function isNameOf(n: ts.Identifier): boolean {
@@ -774,6 +832,22 @@ export function translateBody(
 				case '$runIndex':
 					replace(n, n, scope.runIndex ?? '0');
 					return;
+				case '$fromAI': {
+					// The argument of a tool call: v1 reads the key of the input item of the tool,
+					// or of its `query` member, and then the default.
+					const call = n.parent;
+					const code =
+						scope.toolArguments !== undefined && ts.isCallExpression(call) && call.expression === n
+							? fromAiCode(call, scope.toolArguments)
+							: null;
+					if (code === null) {
+						unsupported('$fromAI');
+						return;
+					}
+					scope.useHelper?.('fromAi');
+					replace(n, call, code);
+					return;
+				}
 				case '$min':
 					replace(n, n, 'Math.min');
 					return;
@@ -1111,7 +1185,10 @@ function neverNullish(code: string): boolean {
 		ts.isNumericLiteral(e) ||
 		ts.isTemplateExpression(e) ||
 		ts.isNoSubstitutionTemplateLiteral(e) ||
-		ts.isCallExpression(e) ||
+		// A helper of the generated source gives a value. `fromAi` gives undefined for an
+		// argument that the model does not give.
+		(ts.isCallExpression(e) &&
+			!(ts.isIdentifier(e.expression) && e.expression.text === 'fromAi')) ||
 		(ts.isBinaryExpression(e) &&
 			[
 				ts.SyntaxKind.PlusToken,

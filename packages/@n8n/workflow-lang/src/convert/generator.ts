@@ -911,7 +911,53 @@ export class ModuleGenerator {
 			state: () => this.stateVar(b, node.name),
 			local: (suffix) => this.names.unique(`${base}${suffix}`),
 			subWorkflow: () => this.subWorkflowCall(node),
+			lowerTool: (tool, toolInput) => this.lowerTool(b, tool, toolInput),
 		};
+	}
+
+	/**
+	 * A tool node of an AI agent as a step (`NodeContext.lowerTool`). The tool form of a node
+	 * (`<type>Tool`) is the node itself with a description for the model, so the node goes
+	 * through the lowerer of its type. Only a library node or a compiled node counts: a tool
+	 * that runs in the fallback host keeps the whole cluster there.
+	 */
+	private lowerTool(
+		b: Body,
+		tool: N8nNode,
+		toolInput: string,
+	): { output: string } | { reason: string } {
+		if (!tool.type.endsWith('Tool')) return { reason: `tool ${tool.type}` };
+		const { toolDescription: _text, descriptionType: _kind, ...parameters } = tool.parameters ?? {};
+		const node: N8nNode = { ...tool, type: tool.type.slice(0, -'Tool'.length), parameters };
+		const lowerer = lowererOf(node);
+		if (lowerer !== lowerLibrary && lowerer !== lowerHttpRequest && lowerer !== lowerFallback) {
+			return { reason: `tool ${tool.type} has no step form` };
+		}
+		const inHost = this.fallback.length;
+		const kept = b.outputs.get(tool.name);
+		const c = this.context(b, node, toolInput, [toolInput]);
+		c.scope.toolArguments = ITEM;
+		let reason: string | undefined;
+		try {
+			if (lowerer === lowerFallback) {
+				if (!tryCompiledNode(c)) reason = `tool ${tool.type} does not compile`;
+			} else {
+				lowerer(c);
+			}
+		} catch (error) {
+			if (!(error instanceof NodeFailure)) throw error;
+			reason = error.message;
+		}
+		const output = b.outputs.get(tool.name)?.get(0);
+		if (kept === undefined) b.outputs.delete(tool.name);
+		else b.outputs.set(tool.name, kept);
+		if (this.fallback.length !== inHost) {
+			this.fallback.length = inHost;
+			reason = `tool ${tool.type} runs in the fallback host`;
+		}
+		if (reason !== undefined) return { reason };
+		if (output === undefined) return { reason: `tool ${tool.type} gives no list` };
+		return { output };
 	}
 
 	/**
