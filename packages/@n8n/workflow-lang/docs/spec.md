@@ -1679,6 +1679,9 @@ a call that was in flight has no answer in the log:
 * a call whose `op` only reads (`getColumns`, `getManyRowsAndCount`,
   `getManyAndCount`, `getProjectId`, `getProcessedDataCount`) is sent again
   with a new `attempt`;
+* the calls `open` and `load` of the service `chatMemory` are sent again too:
+  `load` only reads, and an `open` that runs twice touches the session twice,
+  which changes no answer;
 * any other call is not sent again: the execution ends with
   `needs_attention` on the step, as a non-idempotent `http` effect does, so
   an operator decides. A write that the client ran before the crash is not

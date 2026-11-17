@@ -7,8 +7,10 @@ import { dataTableCallSchema } from '../engine-v2/engine-data-tables.contract';
 import { EngineDataTablesService } from '../engine-v2/engine-data-tables.service';
 import { CompiledEngineCredentials } from './compiled-engine-credentials';
 import { CompiledEngineSync } from './compiled-engine-sync.service';
+import { CompiledEngineConfig } from './compiled-engine.config';
 import type { WfrtServiceEvent } from './compiled-engine.types';
 import { isDataObject, MANUAL_WORKFLOW_SUFFIX } from './compiled-engine.types';
+import type { WorkflowLang } from './workflow-lang';
 import { loadWorkflowLang } from './workflow-lang';
 import { WfrtAdminClient } from './wfrt-admin.client';
 
@@ -25,7 +27,9 @@ const ANSWER_TTL_MS = 10 * 60 * 1000;
  * A `dataTable` call runs with the engine v2 data-table service: it resolves
  * the project of the workflow and checks access, as for a v1 execution. A
  * `deduplication` call runs with n8n's `DeduplicationHelper` on the
- * `processed_data` table, always for the workflow of the execution.
+ * `processed_data` table, always for the workflow of the execution. A
+ * `chatMemory` call runs with the session store of the Simple Memory node: the
+ * sessions are in the memory of this process only, as the v1 node keeps them.
  *
  * `wfrt` sends a waiting call again when the event stream opens again. Each
  * answer is kept by call id and attempt, so a write that ran already is not
@@ -35,13 +39,32 @@ const ANSWER_TTL_MS = 10 * 60 * 1000;
 export class CompiledServiceCalls {
 	private readonly answers = new Map<string, { at: number; answer: Promise<ServiceAnswer> }>();
 
+	/** `N8N_COMPILED_ENGINE_CHAT_MEMORY_MB`, in bytes. */
+	private readonly chatMemoryBytes: number;
+
+	private chatMemory?: InstanceType<WorkflowLang['ChatMemoryStore']>;
+
 	constructor(
 		private readonly client: WfrtAdminClient,
 		private readonly logger: Logger,
 		private readonly sync: CompiledEngineSync,
 		private readonly credentials: CompiledEngineCredentials,
+		config: CompiledEngineConfig,
 	) {
 		this.logger = this.logger.scoped('compiled-engine');
+		this.chatMemoryBytes = config.chatMemoryMb * 1024 * 1024;
+	}
+
+	/**
+	 * The store of the `chatMemory` service. One store serves all shards of `wfrt`. With a
+	 * limit of 0 the store takes no session, and each `open` sends its run to the fallback host.
+	 */
+	private async chatMemoryStore(): Promise<InstanceType<WorkflowLang['ChatMemoryStore']>> {
+		if (!this.chatMemory) {
+			const { ChatMemoryStore } = await loadWorkflowLang();
+			this.chatMemory ??= new ChatMemoryStore({ maxBytes: this.chatMemoryBytes });
+		}
+		return this.chatMemory;
 	}
 
 	/**
@@ -89,6 +112,12 @@ export class CompiledServiceCalls {
 		}
 		if (event.service === 'credentials') {
 			return await this.runCredentialCall(event, args, workflowId);
+		}
+		if (event.service === 'chatMemory') {
+			// The store runs each call when it comes, with no wait between: the order of the
+			// events is the order of the reads and writes of runs that share a session.
+			const store = await this.chatMemoryStore();
+			return store.run({ service: event.service, op: event.op, args }, workflowId);
 		}
 		if (event.service !== 'dataTable') {
 			return { ok: false, error: { message: `Unknown service "${event.service}"` } };

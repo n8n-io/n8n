@@ -972,11 +972,13 @@ export default defineNode<ChainParameters>({
 			}
 			session = String(key);
 			// v1 fixes the window of a session when it makes the session, so the store gets it here.
-			await ctx.service({
+			const opened = await ctx.service<{ host?: boolean }>({
 				service: 'chatMemory',
 				op: 'open',
 				args: { sessionKey: session, window: memory.window ?? 5 },
 			});
+			// The store takes no new session: the fallback host runs the cluster, as the v1 node.
+			if (opened?.host === true) return [{ items: [], runs, host: true }];
 		}
 		/** The agent keeps the prompt and its answer in the session. */
 		const remember = async (input: string, output: string): Promise<void> => {

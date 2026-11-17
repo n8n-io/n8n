@@ -577,7 +577,7 @@ engine: for every case the test compares the method, the URL, the JSON body (key
 message order and each default) and the headers after the credential is applied. Headers that name the client
 library (`user-agent`, `x-stainless-*`, `accept`) are not compared; a compiled node does not send them.
 
-### Memory: the window buffer memory (off by default; the store is a service, not built)
+### Memory: the window buffer memory (a switch; the store is a service of n8n)
 
 **What v1 keeps and where.** `memoryBufferWindow` keeps all messages of a session in the memory of the n8n
 process that runs the node: a map with the key `<workflow id>__<session key>`. Nothing is in the database, and
@@ -599,50 +599,60 @@ and the description "Key parameter is empty". The cases of `ai-cluster.test.ts` 
 outputs, the errors and the runs against v1 recordings, with a store of the test that has the rules above.
 
 **Switch.** `ConvertOptions.chatMemory` (default false). Without it the cluster runs in the fallback host,
-as before: nothing ships with a store that differs from v1. The first form of this node kept the window in
-the workflow static data (the database, kept over a restart, 1,024 sessions, last writer wins). It is gone.
+as before: nothing ships with a store that differs from v1. n8n sets it when it has the store
+(`N8N_COMPILED_ENGINE_CHAT_MEMORY_MB` above 0; the default is 64). The first form of this node kept the
+window in the workflow static data (the database, kept over a restart, 1,024 sessions, last writer wins).
+It is gone.
 
-**The store that the service needs (not built).** One session table in process memory, not in the log of the
-runtime and not in static data:
+**The store** (`ChatMemoryStore`, `src/services/chat-memory.ts`). One session table in process memory, not
+in the log of the runtime and not in static data. n8n holds one store in `CompiledServiceCalls`
+(`packages/cli/src/modules/compiled-engine/compiled-service-calls.ts`). All shards of `wfrt` reach it,
+because every `service` event goes to the one client. `wfrt` has no table of its own.
 
-- Key: workflow id (of the execution, never from the args) and session key. Value: the window of `open`, the
-  time of the last `open`, and all messages, as v1 (the count of messages of a live session has no limit in
-  v1; the table counts their bytes).
-- `open`: drop every session whose last `open` is more than one hour ago, then make or touch the session.
-  `load`: the last `2 * window` messages. `save`: add two messages. The table runs the calls in the order in
-  which they come: that is the overlap rule of v1.
-- A restart of the process that holds the table forgets it, as v1.
-- **Bound.** The table has a byte limit. v1 has none, so the table must not fail and must not drop a live
-  session. When the limit is reached, `open` of a session that is not in the table answers `{ host: true }`,
-  and that run of the cluster goes to the fallback host, where the v1 node keeps the session in the host
+- Key: workflow id (of the execution, never from the args; without the mark of a manual run) and session
+  key, as `<workflow id>__<session key>`. Value: the window of the first `open`, the time of the last
+  `open`, and all messages (the count of messages of a session has no limit in v1; the table counts their
+  bytes).
+- `open`: drop every session whose last `open` is more than one hour ago (the comparison of v1:
+  `last < now - 1 h`), then make or touch the session. `load`: the last `2 * window` messages. `save`: add
+  two messages. `load` and `save` do not touch the time, as v1. The table runs the calls in the order in
+  which they come, with no wait inside a call: that is the overlap rule of v1.
+- A restart of n8n forgets all sessions, as v1.
+- **Bound.** The table has a byte limit (64 bytes and the key for a session, 16 bytes and the text for a
+  message). v1 has none, so the table does not fail and does not drop a live session: a session that is
+  in the table grows without limit. When a new session does not fit, `open` answers `{ host: true }`, and
+  that run of the cluster goes to the fallback host, where the v1 node keeps the session in the host
   process. The table keeps one time: the last `open` that it sent to the host. It takes new sessions again
-  only when that time is more than one hour ago; then every session of the host is idle for more than one
-  hour, and v1 drops it at its next use. So no session has messages in two stores.
-- **The gate is the missing part of the converter.** `lowerNativeCluster` must write both forms, the library
-  call and the host call, and take the host call when `open` answers `{ host: true }`. Today it writes one
-  form. Until then, set `chatMemory` only for a store without a limit.
-- **Where.** Two choices; the first is the recommendation.
-  1. In the client that answers services (n8n: a service next to `engine-data-tables.service.ts` in
-     `packages/cli/src/modules/engine-v2/`; the test bed: the engine-test adapter). All shards of `wfrt`
-     reach the one table, because every `service` event goes to the one client. A restart of n8n forgets the
-     sessions, exactly as v1. `wfrt` needs no change: `startService` in
-     `workflow-runtime/src/shell/server.zig` carries the call.
-  2. In `wfrt` (the request of the project owner): a table in `workflow-runtime/src/shell/` that
-     `startService` answers itself for `chatMemory`, with no event. With several shards, the table must be
-     one for the process, behind a lock, or the call must go to the shard `hash(workflow id, session key) %
-     shards`; a workflow lives on one shard, but two workflows never share a session, so one table for each
-     shard is exact when the shard of a workflow does not change. A move of a workflow to another shard must
-     move its sessions or wait one hour. A restart of `wfrt` then forgets the sessions; v1 forgets at a
-     restart of n8n.
-- **The host must use the same store** when a workflow has one agent in the host and one native agent with
-  the same session key: v1 gives both the same session. The host can call a service
-  (`packages/@n8n/workflow-fallback-host/src/service-calls.ts`, `hostService` in `server.zig`). Until the
-  host does that, the converter must keep every agent of a workflow in the host when one memory cluster of
-  the workflow is there. This check is not built.
+  only when that time is more than one hour and ten minutes ago. Then every session of the host is idle
+  for more than one hour, and v1 drops it at its next use. The ten minutes cover the time between the
+  answer to `open` and the use of the memory in the host. So no session has messages in two stores. While
+  the time is newer, each `open` of a session that is not in the table goes to the host, also when the
+  table has room: a store that was full takes new sessions again only after a quiet period of 70 minutes.
+- **The gate.** `lowerNativeCluster` writes both forms for a cluster with a memory: the library call, and
+  the host call (`hostFormOf`, step name `<node> (fallback host)`). The library node returns
+  `{ host: true }` when `open` answers that, before a request to the model, and the source then runs the
+  host form in the same run. A cluster without a host form runs in the host always.
+- **One user of a session.** The host keeps its sessions in its own process. The v1 memory node in the
+  host cannot use the service: the agent in the host keeps the tool calls and the results of a turn in
+  the session, and `save` has only a prompt and an answer; a session object of LangChain would need a
+  service call from inside `supplyData`. So `sharesMemory` in the converter keeps every memory cluster of
+  a workflow in the host when the workflow has more than one enabled `memoryBufferWindow` node, or when
+  the memory node supplies more than one node (a second agent, a chat memory manager, a chat trigger). A
+  session key is keyed by the workflow, so other workflows cannot share it.
+- **A change of the form forgets.** When an edit moves a cluster between the library form and the host
+  (the user adds a tool), the session stays in the store that had it, and the conversation starts empty.
+  v1 keeps the session over an edit. A restart of the fallback host alone forgets the sessions that the
+  host had; v1 forgets only at a restart of n8n.
+- **A run of more than one hour.** v1 drops a session one hour after its last `getMemory`, but the agent
+  of a run that still works holds the object, so that run reads its own exchanges until it ends. In the
+  store, a `load` or `save` of a session that is not in the table reads nothing and keeps nothing.
 - **Replay.** The result of a service call is in the log of the execution (`load` gives chat text: v1 has
-  the same text in the run data of the memory sub-node of a saved execution). After a crash, `open` and
-  `load` can go again (add them to the read-only list of spec 9.9); `save` cannot, and the execution ends with
-  `needs_attention`, as each write of a service.
+  the same text in the run data of the memory sub-node of a saved execution). After a crash of `wfrt`,
+  `open` and `load` go again (the list of spec 9.9: an `open` that runs twice only touches the session
+  twice); the store is in n8n, so the conversation is still there. `save` does not go again, and the
+  execution ends with `needs_attention`, as each write of a service. After a restart of n8n the store is
+  empty: an `open` makes a new, empty session, exactly as the next run of v1 does, and a run that was
+  between its `open` and its `save` reads nothing and keeps nothing (in v1 that run died with n8n).
 
 Native with the switch: agent 2 to 3.1, memory versions 1 to 1.3 with a session key (`customKey`, or
 `sessionKey` before version 1.2), a window of 1 to 1000, batch size 1. In the host: the session of the chat

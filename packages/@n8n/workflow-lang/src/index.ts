@@ -34,3 +34,9 @@ export { runDataTableCall } from './services/data-table.ts';
 export type { DataTableBackend, ServiceAnswer, ServiceCallEvent } from './services/data-table.ts';
 export { runDeduplicationCall } from './services/deduplication.ts';
 export type { DeduplicationBackend } from './services/deduplication.ts';
+export {
+	ChatMemoryStore,
+	CHAT_MEMORY_HOST_MARGIN_MS,
+	CHAT_MEMORY_IDLE_MS,
+} from './services/chat-memory.ts';
+export type { ChatMemoryOptions } from './services/chat-memory.ts';

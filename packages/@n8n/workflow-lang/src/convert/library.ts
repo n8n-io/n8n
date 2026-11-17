@@ -27,13 +27,14 @@ import {
 	isClusterRoot,
 	LANGCHAIN_PREFIX,
 	lowerAiNode,
+	lowerCluster,
 	lowerHostNode,
 } from './host-node.ts';
 import { googleMint } from '../node-compile/specialise.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
 import { getNodeParameters, hideParameters, nodeDescription } from './node-parameters.ts';
-import type { StepCall } from './steps.ts';
+import type { HostForm, StepCall } from './steps.ts';
 import {
 	emitStep,
 	emitWithHostForm,
@@ -688,6 +689,26 @@ function streamsAnswer(node: {
 	return !node.disabled && (p.responseMode === 'streaming' || options.responseMode === 'streaming');
 }
 
+/**
+ * True when another node of the workflow can use the session of the memory node `memory`:
+ * a second window buffer memory (v1 keys a session by the workflow and the session key, so
+ * two memory nodes with one key share it), or a second node that the memory supplies (a
+ * chat memory manager, a chat trigger, another agent). The fallback host keeps its sessions
+ * in its own process, so all users of a session must run there.
+ */
+function sharesMemory(workflow: NodeContext['workflow'], memory: string): boolean {
+	const type = `${LANGCHAIN_PREFIX}memoryBufferWindow`;
+	const memories = workflow.nodes.filter((n) => n.type === type && n.disabled !== true);
+	if (memories.length > 1) return true;
+	const targets = new Set<string>();
+	for (const outputs of Object.values(workflow.connections?.[memory] ?? {})) {
+		for (const list of outputs ?? []) {
+			for (const link of list ?? []) if (link?.node !== undefined) targets.add(link.node);
+		}
+	}
+	return targets.size > 1;
+}
+
 export function lowerNativeCluster(c: NodeContext): void {
 	const members = clusterMembers(c.workflow, c.node.name);
 	const native = nativeCluster(
@@ -721,7 +742,8 @@ export function lowerNativeCluster(c: NodeContext): void {
 		NOT_INJECTABLE.has(credentialType) ||
 		!c.addCredentialDerivations ||
 		// The memory needs the service `chatMemory` (`ConvertOptions.chatMemory`).
-		(native.memory !== undefined && (c.chatMemory !== true || c.services === false))
+		(native.memory !== undefined &&
+			(c.chatMemory !== true || c.services === false || sharesMemory(c.workflow, native.memory)))
 	) {
 		lowerAiNode(c);
 		return;
@@ -744,12 +766,30 @@ export function lowerNativeCluster(c: NodeContext): void {
 		lowerAiNode(c);
 		return;
 	}
+	// The store of the service can refuse a new session (`open` answers `{ host: true }`): the
+	// cluster then runs in the fallback host in the same run, where the v1 node keeps the session.
+	let hostForm: HostForm | null = null;
+	if (native.memory !== undefined) {
+		hostForm = hostFormOf(c, (to) =>
+			lowerCluster(
+				to,
+				members.map((m) => (m.target === c.node.name ? { ...m, target: to.node.name } : m)),
+			),
+		);
+		// Without a host form the gate has no second form, so the host runs the cluster always.
+		if (hostForm === null) {
+			lowerAiNode(c);
+			return;
+		}
+	}
+	const inHost = hostForm ? c.local('RunsInHost') : '';
 	c.addCredentialDerivations(credential, native.derivations);
 	const { w } = c;
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	const out = c.output(0);
 	w.line(`const ${out}: Json[] = [];`);
+	if (hostForm) w.line(`let ${inHost} = false;`);
 	// The node gives the items that failed as `{ error }`; `splitErrorItems` moves them.
 	if (onError === 'continueErrorOutput') w.line(`const ${c.output(1, 'Errors')}: Json[] = [];`);
 	const entries: Array<[string, Code]> = Object.entries(native.shared).map(([k, v]) => [
@@ -829,7 +869,17 @@ export function lowerNativeCluster(c: NodeContext): void {
 	w.line('throw failure;');
 	w.close();
 	w.line(`for (const r of run.items ?? []) ${out}.push(r);`);
+	if (hostForm) w.line(`if (run.host === true) ${inHost} = true;`);
 	w.close();
+	if (hostForm) {
+		w.open(`if (${inHost}) {`);
+		w.append(hostForm.text.split('\n'));
+		w.line(`for (const r of ${hostForm.out}) ${out}.push(r);`);
+		if (onError === 'continueErrorOutput') {
+			w.line(`for (const r of ${hostForm.errors}) ${c.output(1, 'Errors')}.push(r);`);
+		}
+		w.close();
+	}
 }
 
 /**
