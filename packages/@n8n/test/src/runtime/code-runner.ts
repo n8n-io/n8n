@@ -17,10 +17,14 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { Worker } from 'node:worker_threads';
+import {
+	applyTaskResult,
+	DataRequestResponseBuilder,
+	DataRequestResponseStripper,
+} from 'n8n/dist/testing.js';
 
 import { WorkflowTestError } from '../errors';
 import { failExecution, type ExecutionSetup } from '../execution-context';
-import { toDataResponse } from './runner-data';
 
 type RunnerTaskArgs = Parameters<IWorkflowExecuteAdditionalData['startRunnerTask']>;
 
@@ -179,7 +183,10 @@ function toDataResponseWithVariables(
 	{ data, variables }: HostedTask,
 	params: TaskDataRequestParams,
 ): DataRequestResponse {
-	const response = toDataResponse(data, params);
+	const response = new DataRequestResponseStripper(
+		new DataRequestResponseBuilder().buildFromTaskData(data),
+		params,
+	).strip();
 	return { ...response, additionalData: { ...response.additionalData, variables } };
 }
 
@@ -225,15 +232,7 @@ export async function startRunnerTask<T, E>(
 	if ('error' in outcome) return createResultError(jsonParse<E>(outcome.error));
 
 	const result = jsonParse<TaskResultData & { result: T }>(outcome.done);
-	const { runExecutionData, workflow } = data;
-	if (result.customData) {
-		runExecutionData.resultData.metadata = {
-			...runExecutionData.resultData.metadata,
-			...result.customData,
-		};
-	}
-	if (result.staticData) workflow.overrideStaticData(result.staticData);
-	return createResultOk(result.result);
+	return createResultOk(applyTaskResult(data, result));
 }
 
 function runnerStopped(

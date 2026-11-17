@@ -1,6 +1,7 @@
 import { UnexpectedError } from '@n8n/errors';
 import type { ExecuteContext } from 'n8n-core';
 import { LazyPackageDirectoryLoader, RoutingNode } from 'n8n-core';
+import { shouldAssignExecuteMethod } from 'n8n/dist/testing.js';
 import type { INodeType, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { existsSync, readFileSync } from 'node:fs';
@@ -102,7 +103,7 @@ export const nodeTypes: INodeTypes = {
 		if (!installed || !versionIsInstalled) return createStandInNodeType(type, version ?? 1);
 		const nodeType = NodeHelpers.getVersionedNodeType(installed, version);
 		// As on an n8n server: the engine calls evalNodeMockHandler only on the execute path.
-		if (isDeclarativeWithoutExecute(nodeType)) nodeType.execute = createRoutingExecute(nodeType);
+		if (shouldAssignExecuteMethod(nodeType)) nodeType.execute = createRoutingExecute(nodeType);
 		return nodeType;
 	},
 	getKnownTypes: () =>
@@ -135,18 +136,6 @@ function createStandInNodeType(type: string, version: number): INodeType {
 			throw new UnexpectedError(`The node type "${type}" version ${version} is not installed.`);
 		},
 	};
-}
-
-function isDeclarativeWithoutExecute(nodeType: INodeType) {
-	const isDeclarative = nodeType.description.requestDefaults !== undefined;
-	return (
-		!nodeType.execute &&
-		!nodeType.supplyData &&
-		!nodeType.poll &&
-		!nodeType.trigger &&
-		(!nodeType.webhook || isDeclarative) &&
-		(!nodeType.methods || isDeclarative)
-	);
 }
 
 function createRoutingExecute(nodeType: INodeType) {

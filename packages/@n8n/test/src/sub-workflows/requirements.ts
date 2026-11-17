@@ -1,6 +1,7 @@
+import { extractVariableNames } from 'n8n/dist/testing.js';
 import { DATA_TABLE_NODE_TYPES, isResourceLocatorValue } from 'n8n-workflow';
 
-import type { NodeDefinition, WorkflowSet } from '../workflow-set';
+import type { NodeDefinition, WorkflowDefinition, WorkflowSet } from '../workflow-set';
 import { subWorkflowCall } from './contract';
 
 export interface CredentialRequirement {
@@ -43,16 +44,11 @@ export interface WorkflowSetRequirements {
 
 type Entry<T> = [key: string, value: T];
 
-const VARIABLE_PATTERN = /\$vars(?:\.([A-Za-z_$][\w$]*)|\[\s*\\?["']([^"'\\]+)\\?["']\s*\])/g;
-
 export function deriveRequirements(set: WorkflowSet): WorkflowSetRequirements {
-	const uses = set.workflows.flatMap((workflow) =>
-		workflow.definition.nodes.map((node) => ({ workflow: workflow.name, node })),
-	);
-	const collect = <T>(entriesOf: (node: NodeDefinition) => Array<Entry<T>>) => {
+	const collect = <T>(entriesOf: (definition: WorkflowDefinition) => Array<Entry<T>>) => {
 		const byKey = new Map<string, T & { workflows: string[] }>();
-		for (const { workflow, node } of uses) {
-			for (const [key, value] of entriesOf(node)) {
+		for (const { name: workflow, definition } of set.workflows) {
+			for (const [key, value] of entriesOf(definition)) {
 				const entry = byKey.get(key) ?? { ...value, workflows: [] };
 				if (!entry.workflows.includes(workflow)) entry.workflows.push(workflow);
 				byKey.set(key, entry);
@@ -62,13 +58,18 @@ export function deriveRequirements(set: WorkflowSet): WorkflowSetRequirements {
 	};
 
 	return {
-		credentials: collect(credentialsOf),
-		variables: collect(variablesOf),
-		dataTables: collect(dataTablesOf),
-		workflows: collect(childWorkflowsOf),
-		nodeTypes: collect(({ type, typeVersion }) => [
-			[`${type}@${typeVersion}`, { type, version: typeVersion }],
-		]),
+		credentials: collect(({ nodes }) => nodes.flatMap(credentialsOf)),
+		variables: collect((definition) =>
+			extractVariableNames(definition).map((name) => [name, { name }]),
+		),
+		dataTables: collect(({ nodes }) => nodes.flatMap(dataTablesOf)),
+		workflows: collect(({ nodes }) => nodes.flatMap(childWorkflowsOf)),
+		nodeTypes: collect(({ nodes }) =>
+			nodes.map(({ type, typeVersion }) => [
+				`${type}@${typeVersion}`,
+				{ type, version: typeVersion },
+			]),
+		),
 	};
 }
 
@@ -85,14 +86,6 @@ function credentialsOf(
 				]
 			: [],
 	);
-}
-
-function variablesOf(node: NodeDefinition): Array<Entry<Omit<VariableRequirement, 'workflows'>>> {
-	const text = JSON.stringify(node.parameters);
-	return [...text.matchAll(VARIABLE_PATTERN)].map((match) => {
-		const name = match[1] ?? match[2];
-		return [name, { name }];
-	});
 }
 
 function dataTablesOf(node: NodeDefinition): Array<Entry<Omit<DataTableRequirement, 'workflows'>>> {

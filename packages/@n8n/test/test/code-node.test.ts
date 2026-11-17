@@ -98,6 +98,26 @@ test('returns the static data that the code writes', async () => {
 	expect(result.staticData).toEqual({ global: { lastName: 'ada' } });
 });
 
+test('applies Code task state before the next node executes', async () => {
+	const definition = codeWorkflow(
+		"$getWorkflowStaticData('global').cursor = 42; $execution.customData.set('source', 'code'); return [{ json: {} }];",
+	);
+	definition.nodes.push({
+		id: 'read',
+		name: 'Read state',
+		type: 'n8n-nodes-base.code',
+		typeVersion: 2,
+		position: [440, 0],
+		parameters: {
+			jsCode:
+				"return [{ json: { cursor: $getWorkflowStaticData('global').cursor, source: $execution.customData.get('source') } }];",
+		},
+	});
+	definition.connections.Transform = { main: [[{ node: 'Read state', type: 'main', index: 0 }]] };
+	const result = await executeWorkflow(loadWorkflow(definition));
+	expect(result.output).toEqual([{ cursor: 42, source: 'code' }]);
+});
+
 test('records a request that the code sends through httpRequest', async () => {
 	nock(crm).get('/customers/42').reply(200, { id: 42 });
 

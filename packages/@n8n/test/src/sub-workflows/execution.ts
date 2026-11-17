@@ -1,5 +1,9 @@
 import { UnexpectedError } from '@n8n/errors';
-import { WorkflowExecute } from 'n8n-core';
+import {
+	inheritSubWorkflowContext,
+	resolveSubWorkflowOutput,
+	startPreparedWorkflow,
+} from 'n8n/dist/testing.js';
 import type {
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
@@ -8,17 +12,14 @@ import type {
 	INodeExecutionData,
 	IRun,
 	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
-	collectSubWorkflowOutput,
 	createRunExecutionData,
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	getLastExecutedNodeData,
-	getLastExecutedNodeRuns,
 	getSubWorkflowOutputPolicy,
 	MANUAL_TRIGGER_NODE_TYPE,
-	mergeRunsPerBranch,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -27,7 +28,7 @@ import type { Redaction } from '../http/redact';
 import { failExecution, type ExecutionContext, type ExecutionSetup } from '../execution-context';
 import { WorkflowTestResult, type NodeResult } from '../result';
 import { WorkflowHandle, type NodeReference } from '../workflow-set';
-import { checkContract, missingChildMessage, subWorkflowCall } from './contract';
+import { missingChildMessage, subWorkflowCall } from './contract';
 
 export interface CalledBy {
 	workflow: string;
@@ -132,6 +133,7 @@ export async function executeSubWorkflow(
 	context: ExecutionSetup,
 	info: IExecuteWorkflowInfo,
 	options: ExecuteWorkflowOptions,
+	parentData: IWorkflowExecuteAdditionalData,
 ): Promise<ExecuteWorkflowData> {
 	const { node } = options;
 	if (!node) throw new UnexpectedError('The engine called a sub-workflow without the calling node');
@@ -139,7 +141,7 @@ export async function executeSubWorkflow(
 	const child = resolveChild(context, info, node);
 	const executionId = context.subWorkflows.nextExecutionId();
 	const items = options.inputData ?? [{ json: {} }];
-	const execution = runChild(context, node, child, executionId, items, options);
+	const execution = runChild(context, node, child, executionId, items, options, parentData);
 
 	if (options.doNotWaitToFinish) {
 		context.subWorkflows.detach(execution);
@@ -180,18 +182,16 @@ function resolveChild(context: ExecutionSetup, info: IExecuteWorkflowInfo, node:
 	const child = context.set.workflows.find((workflow) => workflow.id === info.id);
 	const call = { ...subWorkflowCall(node), node, childId: info.id };
 	const parent = context.handle.name;
-	const fail = (code: 'SUB_WORKFLOW_NOT_IN_SET' | 'CONTRACT_MISMATCH', message: string) =>
-		failExecution(
-			context,
-			new WorkflowTestError(code, message, { workflow: parent, node: node.name }),
-		);
-
 	if (!child) {
 		const names = context.set.workflows.map((workflow) => workflow.name);
-		return fail('SUB_WORKFLOW_NOT_IN_SET', missingChildMessage(parent, call, names));
+		return failExecution(
+			context,
+			new WorkflowTestError('SUB_WORKFLOW_NOT_IN_SET', missingChildMessage(parent, call, names), {
+				workflow: parent,
+				node: node.name,
+			}),
+		);
 	}
-	const issue = checkContract(parent, node, child.definition);
-	if (issue?.code === 'CONTRACT_MISMATCH') fail('CONTRACT_MISMATCH', issue.message);
 	return child;
 }
 
@@ -216,12 +216,14 @@ async function runChild(
 	executionId: string,
 	items: INodeExecutionData[],
 	options: ExecuteWorkflowOptions,
+	parentData: IWorkflowExecuteAdditionalData,
 ): Promise<ChildOutcome> {
 	const { runner, runs } = parent.subWorkflows;
 	const { context, start } = prepareChild(parent, child, executionId);
+	inheritSubWorkflowContext(context.additionalData, parentData, options);
 	const run = await parent.subWorkflows.runInside(
 		context,
-		async () => await runFromTrigger(context, start, items),
+		async () => await runFromTrigger(context, start, items, options),
 	);
 	parent.subWorkflows.executionData.set(executionId, run.data);
 	const calledBy = { workflow: parent.handle.name, node: node.name };
@@ -229,7 +231,13 @@ async function runChild(
 
 	const failure = runner.toFailure(context, run);
 	if (failure) return { failure, fatal: context.fatalError !== undefined };
-	return { output: await toCallerOutput(context, run, options.returnLastRunOnly ?? false) };
+	return {
+		output: await resolveSubWorkflowOutput(
+			run,
+			context.workflow,
+			options.returnLastRunOnly ?? false,
+		),
+	};
 }
 
 function prepareChild(parent: ExecutionSetup, child: WorkflowHandle, executionId: string) {
@@ -246,14 +254,24 @@ async function runFromTrigger(
 	context: ExecutionContext,
 	start: INode,
 	items: INodeExecutionData[],
+	options: ExecuteWorkflowOptions,
 ) {
 	const runExecutionData = createRunExecutionData({
+		subWorkflowOutput: getSubWorkflowOutputPolicy(
+			Object.values(context.workflow.nodes),
+			options.returnLastRunOnly ?? false,
+		),
 		executionData: {
 			nodeExecutionStack: [{ node: start, data: { main: [items] }, source: null }],
 		},
 	});
-	const engine = new WorkflowExecute(context.additionalData, 'integrated', runExecutionData);
-	return await engine.processRunExecutionData(context.workflow);
+	const { execution } = await startPreparedWorkflow({
+		workflow: context.workflow,
+		additionalData: context.additionalData,
+		mode: 'integrated',
+		runExecutionData,
+	});
+	return await execution;
 }
 
 function findStart({ workflow, handle }: ExecutionContext): INode {
@@ -267,25 +285,4 @@ function findStart({ workflow, handle }: ExecutionContext): INode {
 		`Workflow "${handle.name}" has no Execute Workflow Trigger, so a sub-workflow call cannot start it.`,
 		{ workflow: handle.name },
 	);
-}
-
-async function toCallerOutput(
-	context: ExecutionContext,
-	run: IRun,
-	returnLastRunOnly: boolean,
-): Promise<CallerOutput> {
-	const nodes = Object.values(context.workflow.nodes);
-	const policy = getSubWorkflowOutputPolicy(nodes, returnLastRunOnly);
-	if (policy) return await collectSubWorkflowOutput(run, context.workflow, policy);
-
-	const runs = getLastExecutedNodeRuns(run);
-	if (!returnLastRunOnly && !triggerReturnsLastRunOnly(nodes) && runs.length > 0) {
-		return mergeRunsPerBranch(runs);
-	}
-	return getLastExecutedNodeData(run)?.data?.main ?? [null];
-}
-
-function triggerReturnsLastRunOnly(nodes: INode[]) {
-	const trigger = nodes.find((node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
-	return (trigger?.typeVersion ?? 1) < 1.2 && trigger?.parameters.returnOutput !== 'allRuns';
 }

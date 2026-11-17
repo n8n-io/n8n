@@ -1,16 +1,16 @@
 import { loadPackage } from '../src';
 import { copySalesPackage, SALES_PACKAGE } from './support/package-fixture';
 
-test('reports no issues for a complete package', () => {
-	expect(loadPackage(SALES_PACKAGE).issues()).toEqual([]);
+test('reports no issues for a complete package', async () => {
+	expect((await loadPackage(SALES_PACKAGE)).issues()).toEqual([]);
 });
 
-test('reports a child that the package does not hold one time', () => {
+test('reports a child that the package does not hold one time', async () => {
 	const directory = copySalesPackage((manifest) => {
 		manifest.workflows = manifest.workflows?.filter(({ name }) => name !== 'Notify sales');
 	});
 
-	expect(loadPackage(directory).issues()).toEqual([
+	expect((await loadPackage(directory)).issues()).toEqual([
 		expect.objectContaining({
 			code: 'SUB_WORKFLOW_NOT_IN_SET',
 			workflow: 'New signup',
@@ -19,7 +19,7 @@ test('reports a child that the package does not hold one time', () => {
 	]);
 });
 
-test('reports a workflow reference from the manifest that no node holds', () => {
+test('reports a workflow reference from the manifest that no node holds', async () => {
 	const directory = copySalesPackage((manifest) => {
 		manifest.requirements?.workflows?.push({
 			id: 'ErrorHandler01',
@@ -28,7 +28,7 @@ test('reports a workflow reference from the manifest that no node holds', () => 
 		});
 	});
 
-	expect(loadPackage(directory).issues()).toEqual([
+	expect((await loadPackage(directory)).issues()).toEqual([
 		{
 			code: 'SUB_WORKFLOW_NOT_IN_SET',
 			workflow: 'New signup',
@@ -38,7 +38,7 @@ test('reports a workflow reference from the manifest that no node holds', () => 
 	]);
 });
 
-test('reports a node type that is not installed', () => {
+test('reports a node type that is not installed', async () => {
 	const directory = copySalesPackage((manifest) => {
 		manifest.requirements?.nodeTypes?.push({
 			type: 'n8n-nodes-acme.lookup',
@@ -47,13 +47,13 @@ test('reports a node type that is not installed', () => {
 		});
 	});
 
-	expect(loadPackage(directory).issues()).toEqual([
+	expect((await loadPackage(directory)).issues()).toEqual([
 		expect.objectContaining({ code: 'NODE_TYPE_NOT_INSTALLED', workflow: 'Notify sales' }),
 	]);
 });
 
-test('reads the requirements from the manifest', () => {
-	const { requirements } = loadPackage(SALES_PACKAGE);
+test('reads the requirements from the manifest', async () => {
+	const { requirements } = await loadPackage(SALES_PACKAGE);
 
 	expect(requirements).toMatchObject({
 		credentials: [

@@ -1,7 +1,14 @@
 import type { PackageManifest, WorkflowManifestEntry } from '@n8n/api-types';
-import { MANIFEST_FILE, packageManifestSchema, serializedWorkflowSchema } from '@n8n/api-types';
+import { serializedWorkflowSchema } from '@n8n/api-types';
+import {
+	DirectoryPackageReader,
+	PackageImportConfig,
+	readPackageManifest,
+	TarPackageReader,
+	type PackageReader,
+} from 'n8n/dist/testing.js';
 import { jsonParse } from 'n8n-workflow';
-import { existsSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
 
 import { WorkflowTestError } from '../errors';
 import { missingSubWorkflowIssues, subWorkflowIssues } from '../sub-workflows/issues';
@@ -9,7 +16,6 @@ import type { NodeDefinition, WorkflowDefinition } from '../workflow-set';
 import { WorkflowSet } from '../workflow-set';
 import { missingChildIssues, missingNodeTypeIssues } from './manifest-issues';
 import { toRequirements } from './manifest-requirements';
-import { readPackageFiles, type PackageFiles } from './package-files';
 
 const WORKFLOW_FILE = 'workflow.json';
 
@@ -19,24 +25,35 @@ type PackagedNode = Omit<NodeDefinition, 'credentials'> & {
 
 type PackagedWorkflow = Omit<WorkflowDefinition, 'nodes'> & { nodes: PackagedNode[] };
 
-interface PackageReader {
+interface PackageSource {
 	path: string;
-	files: PackageFiles;
+	reader: PackageReader;
 }
 
-export function loadPackage(packagePath: string): WorkflowSet {
-	if (!existsSync(packagePath)) {
-		throw new WorkflowTestError('INVALID_PACKAGE', `The package "${packagePath}" does not exist.`);
+export async function loadPackage(packagePath: string): Promise<WorkflowSet> {
+	let source: PackageSource;
+	let manifest: PackageManifest;
+	try {
+		const limits = new PackageImportConfig();
+		const reader = (await stat(packagePath)).isDirectory()
+			? await DirectoryPackageReader.open(packagePath, limits)
+			: new TarPackageReader(await readFile(packagePath), limits);
+		source = { path: packagePath, reader };
+		manifest = await readPackageManifest(reader);
+	} catch (error) {
+		throw new WorkflowTestError(
+			'INVALID_PACKAGE',
+			`The package "${packagePath}" could not be loaded: ${String(error)}`,
+		);
 	}
-	const reader = { path: packagePath, files: openPackageFiles(packagePath) };
-	const manifest = readManifest(reader);
 	const entries = manifest.workflows ?? [];
 	const credentialNames = new Map(
 		(manifest.requirements?.credentials ?? []).map(({ id, name }) => [id, name]),
 	);
-	const definitions = entries.map((entry) =>
-		toDefinition(entry, readWorkflow(reader, entry), credentialNames),
-	);
+	const definitions: WorkflowDefinition[] = [];
+	for (const entry of entries) {
+		definitions.push(toDefinition(entry, await readWorkflow(source, entry), credentialNames));
+	}
 
 	return new WorkflowSet(definitions, {
 		issueProducers: [
@@ -50,40 +67,21 @@ export function loadPackage(packagePath: string): WorkflowSet {
 	});
 }
 
-function openPackageFiles(packagePath: string): PackageFiles {
-	try {
-		return readPackageFiles(packagePath);
-	} catch {
-		throw new WorkflowTestError(
-			'INVALID_PACKAGE',
-			`The package "${packagePath}" is not a package directory or a valid .n8np file.`,
-		);
-	}
-}
-
-function readManifest(reader: PackageReader): PackageManifest {
-	const manifest = readJson<unknown>(reader, MANIFEST_FILE);
-	const result = packageManifestSchema.safeParse(manifest);
-	if (!result.success) throw invalidFile(reader, MANIFEST_FILE, result.error);
-	return result.data;
-}
-
-function readWorkflow(reader: PackageReader, entry: WorkflowManifestEntry): PackagedWorkflow {
+async function readWorkflow(
+	source: PackageSource,
+	entry: WorkflowManifestEntry,
+): Promise<PackagedWorkflow> {
 	const file = `${entry.target}/${WORKFLOW_FILE}`;
-	const workflow = readJson<PackagedWorkflow>(reader, file);
-	const result = serializedWorkflowSchema.safeParse(workflow);
-	if (!result.success) throw invalidFile(reader, file, result.error);
-	return workflow;
-}
-
-function readJson<T>(reader: PackageReader, file: string): T {
-	const text = reader.files(file);
-	if (text === undefined) throw invalidPackage(reader, `has no file ${file}`);
+	let workflow: PackagedWorkflow;
 	try {
-		return jsonParse<T>(text);
-	} catch {
-		throw invalidPackage(reader, `has a file ${file} that is not valid JSON`);
+		const content = await source.reader.readFile(file);
+		workflow = jsonParse<PackagedWorkflow>(content.toString('utf8'));
+	} catch (error) {
+		throw invalidPackage(source, `has an unreadable file ${file}: ${String(error)}`);
 	}
+	const result = serializedWorkflowSchema.safeParse(workflow);
+	if (!result.success) throw invalidFile(source, file, result.error);
+	return workflow;
 }
 
 function toDefinition(
@@ -118,11 +116,11 @@ interface SchemaIssue {
 	message: string;
 }
 
-function invalidFile(reader: PackageReader, file: string, { issues }: { issues: SchemaIssue[] }) {
+function invalidFile(reader: PackageSource, file: string, { issues }: { issues: SchemaIssue[] }) {
 	const problems = issues.map(({ path, message }) => `${path.join('.')}: ${message}`);
 	return invalidPackage(reader, `has an invalid file ${file}. ${problems.join('; ')}`);
 }
 
-function invalidPackage(reader: PackageReader, problem: string) {
+function invalidPackage(reader: PackageSource, problem: string) {
 	return new WorkflowTestError('INVALID_PACKAGE', `The package "${reader.path}" ${problem}.`);
 }

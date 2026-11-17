@@ -1,23 +1,19 @@
-import { isRecord } from '@n8n/utils/is-record';
-import get from 'lodash/get';
-import { getAdditionalKeys } from 'n8n-core';
-import type {
-	IDataObject,
-	IExecuteResponsePromiseData,
-	IN8nHttpFullResponse,
-	INode,
-	IRun,
-	ITaskData,
-	IWebhookDescription,
-} from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { Readable } from 'node:stream';
 import {
-	getLastExecutedNodeData,
-	resolveWebhookDescriptionField,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
+	createWebhookLastNodeResponse,
+	createWebhookOnReceivedResponse,
+	evaluateWebhookResponseHeaders,
+	evaluateWebhookResponseOptions,
+	WebhookExecutionContext,
+	WebhookResponseHeaders,
+} from 'n8n/dist/testing.js';
+import { getAdditionalKeys } from 'n8n-core';
+import type { IExecuteResponsePromiseData, IN8nHttpFullResponse, INode, IRun } from 'n8n-workflow';
+import { getLastExecutedNodeData, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import { WorkflowTestError } from '../errors';
-import type { ExecutionContext } from '../execution-context';
+import { failExecution, type ExecutionContext } from '../execution-context';
 
 export interface WebhookResponse {
 	status: number;
@@ -26,41 +22,121 @@ export interface WebhookResponse {
 }
 
 export interface WebhookCapture {
-	trigger: INode;
-	sent?: IN8nHttpFullResponse;
-}
-
-interface ResponseOptions {
-	mode: unknown;
-	status: number;
-	data: unknown;
-	headers: Record<string, string>;
-	propertyName: unknown;
-	contentType: unknown;
+	options: ReturnType<typeof evaluateWebhookResponseOptions>;
+	headers: WebhookResponseHeaders;
+	sent?: WebhookResponse;
 }
 
 export function captureWebhookResponse(context: ExecutionContext, trigger: INode) {
 	if (trigger.type !== WEBHOOK_NODE_TYPE) return;
-	const capture: WebhookCapture = { trigger };
+	const { workflow, additionalData } = context;
+	const description = workflow.nodeTypes.getByNameAndVersion(trigger.type, trigger.typeVersion)
+		.description.webhooks?.[0];
+	if (!description) throw new UnexpectedError('The webhook node has no webhook description');
+	const responseContext = new WebhookExecutionContext(
+		workflow,
+		trigger,
+		{
+			httpMethod: 'POST',
+			node: trigger.name,
+			path: '',
+			webhookDescription: description,
+			workflowId: workflow.id,
+			workflowExecuteAdditionalData: additionalData,
+		},
+		'webhook',
+		getAdditionalKeys(additionalData, 'webhook', null),
+	);
+	const options = evaluateWebhookResponseOptions(responseContext);
+	if (options.responseMode === 'streaming') {
+		failExecution(
+			context,
+			new WorkflowTestError(
+				'INVALID_OPTION',
+				'The test library does not support streaming webhook responses.',
+				{
+					workflow: context.handle.name,
+				},
+			),
+		);
+	}
+	const headers = evaluateWebhookResponseHeaders(responseContext);
+	const capture: WebhookCapture = { options, headers };
 	context.webhook = capture;
+	if (options.responseMode === 'onReceived') {
+		const response = createWebhookOnReceivedResponse(
+			responseContext,
+			{},
+			options.responseCode,
+			headers,
+		);
+		capture.sent = {
+			status: response.code ?? 200,
+			headers: headers.toObject(),
+			body: structuredClone(response.body),
+		};
+	}
 	context.hooks.addHandler('sendResponse', (response) => {
-		if (!capture.sent && isFullResponse(response)) capture.sent = response;
+		if (!capture.sent && isFullResponse(response)) {
+			if (Buffer.isBuffer(response.body) || response.body instanceof Readable) {
+				failExecution(
+					context,
+					new WorkflowTestError(
+						'BINARY_NOT_SUPPORTED',
+						'The webhook responds with binary data. Results hold JSON only.',
+						{ workflow: context.handle.name },
+					),
+				);
+			}
+			const sentHeaders = WebhookResponseHeaders.fromObject(response.headers);
+			capture.sent = {
+				status: response.statusCode,
+				headers: { ...headers.toObject(), ...sentHeaders.toObject() },
+				body: structuredClone(response.body),
+			};
+		}
 	});
 }
 
-export function toWebhookResponse(
+export async function toWebhookResponse(
 	context: ExecutionContext,
 	run: IRun,
-): WebhookResponse | undefined {
+): Promise<WebhookResponse | undefined> {
 	if (!context.webhook) return undefined;
-	const { trigger, sent } = context.webhook;
-	const options = readResponseOptions(context, trigger, run);
-
-	if (options.mode === 'onReceived') return respond(options, onReceivedBody(options.data));
-	if (sent) return fromSentResponse(options, sent);
-	if (failed(run)) return { status: 500, headers: {}, body: { message: 'Error in workflow' } };
-	if (options.mode === 'responseNode') return respond(options, undefined);
-	return fromLastNode(context, options, run);
+	const { options, headers, sent } = context.webhook;
+	if (sent) return structuredClone(sent);
+	if (run.data.resultData.error || getLastExecutedNodeData(run)?.error) {
+		return { status: 500, headers: {}, body: { message: 'Error in workflow' } };
+	}
+	if (options.responseMode === 'responseNode') {
+		return { status: options.responseCode, headers: headers.toObject(), body: undefined };
+	}
+	const task = getLastExecutedNodeData(run);
+	if (!task) {
+		return {
+			status: options.responseCode,
+			headers: headers.toObject(),
+			body: { message: 'Workflow executed successfully but the last node did not return any data' },
+		};
+	}
+	if (options.responseData === 'firstEntryBinary') {
+		throw new WorkflowTestError(
+			'BINARY_NOT_SUPPORTED',
+			'The webhook responds with binary data. Results hold JSON only.',
+			{ workflow: context.handle.name },
+		);
+	}
+	const result = await createWebhookLastNodeResponse(options, task, headers);
+	if (!result.ok) return { status: 500, headers: {}, body: { message: result.error.message } };
+	const response = result.result;
+	if ('stream' in response) {
+		throw new WorkflowTestError(
+			'BINARY_NOT_SUPPORTED',
+			'The webhook responds with a stream. Results hold JSON only.',
+			{ workflow: context.handle.name },
+		);
+	}
+	return { status: response.code ?? 200, headers: headers.toObject(), body: response.body };
 }
 
 function isFullResponse(response: IExecuteResponsePromiseData): response is IN8nHttpFullResponse {
@@ -69,141 +145,4 @@ function isFullResponse(response: IExecuteResponsePromiseData): response is IN8n
 		typeof response.headers === 'object' &&
 		response.headers !== null
 	);
-}
-
-function failed(run: IRun) {
-	return run.data.resultData.error !== undefined || getLastExecutedNodeData(run)?.error;
-}
-
-function respond({ status, headers }: ResponseOptions, body: unknown): WebhookResponse {
-	return { status, headers, body };
-}
-
-function onReceivedBody(data: unknown) {
-	if (data === 'noData') return undefined;
-	if (data) return data;
-	return { message: 'Workflow was started' };
-}
-
-function fromSentResponse(options: ResponseOptions, sent: IN8nHttpFullResponse): WebhookResponse {
-	return {
-		status: sent.statusCode,
-		headers: { ...options.headers, ...toHeaders(sent.headers) },
-		body: sent.body,
-	};
-}
-
-function fromLastNode(
-	context: ExecutionContext,
-	options: ResponseOptions,
-	run: IRun,
-): WebhookResponse {
-	const task = getLastExecutedNodeData(run);
-	if (!task) {
-		return respond(options, {
-			message: 'Workflow executed successfully but the last node did not return any data',
-		});
-	}
-
-	if (options.data === 'noData') return respond(options, undefined);
-	if (options.data === 'firstEntryBinary') {
-		throw new WorkflowTestError(
-			'BINARY_NOT_SUPPORTED',
-			'The webhook responds with binary data. Results hold JSON only.',
-			{ workflow: context.handle.name },
-		);
-	}
-	if (options.data === 'allEntries') {
-		return respond(
-			options,
-			firstOutput(task).map((item) => item.json),
-		);
-	}
-	return fromFirstEntry(options, task);
-}
-
-function fromFirstEntry(options: ResponseOptions, task: ITaskData): WebhookResponse {
-	const [first] = firstOutput(task);
-	if (!first) return { status: 500, headers: {}, body: { message: 'No item to return was found' } };
-
-	const headers = { ...options.headers };
-	if (typeof options.contentType === 'string') headers['content-type'] = options.contentType;
-	const body =
-		typeof options.propertyName === 'string' ? get(first.json, options.propertyName) : first.json;
-	return { status: options.status, headers, body };
-}
-
-function firstOutput(task: ITaskData) {
-	return task.data?.main[0] ?? [];
-}
-
-function readResponseOptions(
-	context: ExecutionContext,
-	trigger: INode,
-	run: IRun,
-): ResponseOptions {
-	const { workflow, additionalData } = context;
-	const node = workflow.getNode(trigger.name) ?? trigger;
-	const description = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion)
-		.description.webhooks?.[0];
-	const additionalKeys = getAdditionalKeys(additionalData, 'webhook', run.data);
-
-	const read = (field: string, fallback?: string | number) => {
-		if (!description) return fallback;
-		const native = resolveWebhookDescriptionField(node, description, field);
-		if (native.resolved) return native.value;
-		return evaluate(context, node, description, field, additionalKeys, fallback);
-	};
-
-	const status = read('responseCode', 200);
-	return {
-		mode: read('responseMode', 'onReceived'),
-		status: typeof status === 'number' ? status : 200,
-		data: read('responseData', 'firstEntryJson'),
-		headers: toHeaderEntries(read('responseHeaders')),
-		propertyName: read('responsePropertyName'),
-		contentType: read('responseContentType'),
-	};
-}
-
-function evaluate(
-	{ workflow }: ExecutionContext,
-	node: INode,
-	description: IWebhookDescription,
-	field: string,
-	additionalKeys: ReturnType<typeof getAdditionalKeys>,
-	fallback?: string | number,
-) {
-	const value = description[field];
-	if (value === undefined) return fallback;
-	return workflow.expression.getComplexParameterValue(
-		node,
-		value,
-		'webhook',
-		additionalKeys,
-		undefined,
-		fallback,
-	);
-}
-
-function toHeaderEntries(value: unknown): Record<string, string> {
-	if (!isRecord(value) || !Array.isArray(value.entries)) return {};
-	return Object.fromEntries(
-		value.entries.flatMap((entry: unknown) =>
-			isRecord(entry) && typeof entry.name === 'string' ? toHeader(entry.name, entry.value) : [],
-		),
-	);
-}
-
-function toHeaders(headers: IDataObject): Record<string, string> {
-	return Object.fromEntries(
-		Object.entries(headers).flatMap(([name, value]) => toHeader(name, value)),
-	);
-}
-
-function toHeader(name: string, value: unknown): Array<[string, string]> {
-	if (typeof value === 'string') return [[name.toLowerCase(), value]];
-	if (typeof value === 'number' || typeof value === 'boolean')
-		return [[name.toLowerCase(), String(value)]];
-	return [];
 }

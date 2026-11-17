@@ -1,6 +1,6 @@
 {
   "name": "@n8n/test",
-  "version": "2.48.0",
+  "version": "2.49.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -28,10 +28,10 @@
     "@n8n/task-runner": "workspace:*",
     "@n8n/utils": "workspace:*",
     "lodash": "catalog:",
+    "n8n": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-nodes-base": "workspace:*",
-    "n8n-workflow": "workspace:*",
-    "tar": "catalog:"
+    "n8n-workflow": "workspace:*"
   },
   "peerDependencies": {
     "@n8n/n8n-nodes-langchain": "workspace:*",
@@ -52,6 +52,7 @@
     "nock": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "tar": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },

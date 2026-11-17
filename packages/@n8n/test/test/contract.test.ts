@@ -60,23 +60,20 @@ test('reports a child with a JSON example that is not valid JSON as not checked'
 	]);
 });
 
-test('fails the execution before a child with a different contract runs', async () => {
+test('keeps static contract diagnostics separate from child execution', async () => {
 	const workflows = loadWorkflows([newSignup, declaresCustomerId]);
 	const parent = workflows.get('New signup');
 	mockNode(parent.node('Get customer'), [{ id: 42, name: 'Ada', plan: 'enterprise' }]);
 	mockNode(parent.node('Send welcome email'), [{ sent: true }]);
+	mockNode(workflows.get('Notify sales').node('Post to Slack'), [{ ok: true }]);
 
-	await expect(
-		executeWorkflow(parent, {
-			input: { body: { customerId: 42 } },
-			variables: { crmBaseUrl: 'https://crm.example.com' },
-		}),
-	).rejects.toMatchObject({
-		code: 'CONTRACT_MISMATCH',
-		workflow: 'New signup',
-		node: 'Run sales workflow',
-		message: mismatch,
+	const result = await executeWorkflow(parent, {
+		input: { body: { customerId: 42 } },
+		variables: { crmBaseUrl: 'https://crm.example.com' },
 	});
+
+	expect(workflows.issues()).toEqual([expect.objectContaining({ code: 'CONTRACT_MISMATCH' })]);
+	expect(result.node('Run sales workflow').output).toEqual([{ ok: true }]);
 });
 
 test('reports no issues for a consistent set', () => {
@@ -128,4 +125,25 @@ test('lists only the data tables that a node references by a static id', () => {
 
 test('reports no missing child for a set from loadWorkflows', () => {
 	expect(loadWorkflows([newSignup]).issues()).toEqual([]);
+});
+
+test('finds variable requirements in workflow settings and spaced references', () => {
+	const workflows = loadWorkflows([
+		{
+			name: 'Variables',
+			connections: {},
+			nodes: [
+				{
+					...newSignup.nodes[0],
+					parameters: { value: '={{ $vars . region }}' },
+				},
+			],
+			settings: { errorWorkflow: '={{ $vars[ "handler" ] }}' },
+		},
+	]);
+
+	expect(workflows.requirements.variables).toEqual([
+		{ name: 'region', workflows: ['Variables'] },
+		{ name: 'handler', workflows: ['Variables'] },
+	]);
 });

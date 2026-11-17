@@ -217,3 +217,59 @@ test('redacts the access token of an OAuth2 credential', async () => {
 		'Bearer [credential: CRM OAuth.oauthTokenData.access_token]',
 	);
 });
+
+test('finishes credential pre-authentication before sending the authenticated request', async () => {
+	let releaseLogin!: (value: { token: string }) => void;
+	let markLoginStarted!: () => void;
+	const loginStarted = new Promise<void>((resolve) => {
+		markLoginStarted = resolve;
+	});
+	const token = new Promise<{ token: string }>((resolve) => {
+		releaseLogin = resolve;
+	});
+	let requests = 0;
+	nock('https://boards.example.com')
+		.post('/users/login', { username: 'ada', password: 'secret' })
+		.reply(200, async () => {
+			markLoginStarted();
+			return await token;
+		});
+	nock('https://boards.example.com')
+		.get('/boards')
+		.matchHeader('authorization', 'Bearer fresh')
+		.reply(200, () => {
+			requests += 1;
+			return { boards: [] };
+		});
+	const workflow = loadWorkflow({
+		...qualysRequest,
+		nodes: qualysRequest.nodes.map((node) =>
+			node.name === 'List scans'
+				? {
+						...node,
+						parameters: {
+							...node.parameters,
+							url: 'https://boards.example.com/boards',
+							nodeCredentialType: 'wekanApi',
+						},
+						credentials: { wekanApi: { id: 'boards', name: 'Board account' } },
+					}
+				: node,
+		),
+	});
+	const execution = executeWorkflow(workflow, {
+		credentials: {
+			'Board account': createCredential('wekanApi', {
+				username: 'ada',
+				password: 'secret',
+				url: 'https://boards.example.com',
+			}),
+		},
+	});
+
+	await loginStarted;
+	expect(requests).toBe(0);
+	releaseLogin({ token: 'fresh' });
+	expect((await execution).output).toEqual([{ boards: [] }]);
+	expect(requests).toBe(1);
+});
