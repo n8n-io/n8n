@@ -2380,7 +2380,7 @@ describe('SourceControlImportService', () => {
 				const createPublishedWorkflow = async (user: User, engineType: 'v1' | 'v2') => {
 					const { nodes, connections } = makeWorkflowImport();
 					const workflow = await createWorkflowWithHistory(
-						{ id: nanoid(), name: 'Test Workflow', versionId: nanoid(), nodes, connections },
+						{ id: nanoid(), name: 'Test Workflow', nodes, connections },
 						user,
 					);
 					await workflowHistoryRepository.update(
