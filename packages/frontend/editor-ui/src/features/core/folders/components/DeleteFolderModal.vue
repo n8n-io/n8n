@@ -24,6 +24,9 @@ import {
 } from '@n8n/design-system';
 
 defineOptions({ inheritAttrs: false });
+
+const FORM_ID = 'delete-folder-form';
+
 const props = defineProps<{
 	modalName: string;
 	activeId: string;
@@ -165,8 +168,8 @@ function onDialogOpenUpdate(open: boolean) {
 
 <template>
 	<N8nDialog :open="modalOpen" size="large" :header="title" @update:open="onDialogOpenUpdate">
-		<form :class="$style.form" novalidate @submit.prevent="onSubmit">
-			<N8nDialogBody>
+		<N8nDialogBody>
+			<form :id="FORM_ID" novalidate @submit.prevent="onSubmit">
 				<div>
 					<div v-if="isPending">
 						<N8nText color="text-base">{{
@@ -239,29 +242,23 @@ function onDialogOpenUpdate(open: boolean) {
 						</N8nRadioGroup>
 					</div>
 				</div>
-			</N8nDialogBody>
-			<N8nDialogFooter>
-				<N8nButton
-					type="submit"
-					:loading="loading"
-					:disabled="!enabled"
-					:label="i18n.baseText('generic.delete')"
-					float="right"
-					data-test-id="confirm-delete-folder-button"
-				/>
-			</N8nDialogFooter>
-		</form>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				type="submit"
+				:form="FORM_ID"
+				:loading="loading"
+				:disabled="!enabled"
+				:label="i18n.baseText('generic.delete')"
+				float="right"
+				data-test-id="confirm-delete-folder-button"
+			/>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.form {
-	display: flex;
-	flex: 1 1 auto;
-	flex-direction: column;
-	min-height: 0;
-}
-
 .content {
 	> *:not(:last-child) {
 		margin-bottom: var(--spacing--sm);
