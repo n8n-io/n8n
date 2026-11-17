@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ASTUtils, type TSESTree } from '@typescript-eslint/utils';
 import { Parser } from 'htmlparser2';
 
 import {
@@ -118,8 +118,13 @@ export const HintMaxLengthRule = createRule({
 				}
 
 				const hintProperty = findObjectProperty(node, 'hint');
-				const hint = getStringLiteralValue(hintProperty?.value ?? null);
-				const length = hint === null ? 0 : visibleLength(hint);
+				const hint = hintProperty
+					? ASTUtils.getStaticValue(
+							hintProperty.value,
+							context.sourceCode.getScope(hintProperty.value),
+						)?.value
+					: null;
+				const length = typeof hint === 'string' ? visibleLength(hint) : 0;
 				if (!hintProperty || length <= MAX_HINT_LENGTH) {
 					return;
 				}

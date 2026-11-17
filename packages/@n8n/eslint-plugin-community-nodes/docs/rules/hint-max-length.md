@@ -18,6 +18,9 @@ hints are within this limit, so it only cuts the long tail. The hint renders as
 HTML, so the rule counts the text after it decodes HTML entities. It ignores HTML
 tags and their attributes. Plain-text comparisons such as `< 10` count as text.
 
+The rule checks static strings. This includes template literals, concatenated
+strings, and local constants. It skips values that need runtime data.
+
 The rule checks the properties in every file, so it also checks properties that
 you define in a separate resource file, and the credential properties. It also
 checks the modes of a resource locator.

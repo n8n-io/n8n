@@ -41,6 +41,11 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 			code: createNodeDescriptionCode(`properties: [${property('hint: getHint()')}]`),
 		},
 		{
+			name: 'ignores template hints with dynamic values',
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- Keep the template expression in the fixture.
+			code: createNodeDescriptionCode(`properties: [${property('hint: `Use ${getHint()}`')}]`),
+		},
+		{
 			name: 'allows long descriptions',
 			filename: '/tmp/TestNode.node.ts',
 			code: createNodeDescriptionCode(
@@ -107,6 +112,22 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 		},
 	],
 	invalid: [
+		{
+			name: 'reports a hint built from string concatenation',
+			code: createNodeDescriptionCode(
+				`properties: [${property(`hint: '${'x'.repeat(60)}' + '${'y'.repeat(61)}'`)}]`,
+			),
+			errors: [{ messageId: 'hintTooLong', data: { length: 121, max: MAX_HINT_LENGTH } }],
+		},
+		{
+			name: 'reports a hint defined by a local constant in a resource file',
+			filename: '/tmp/nodes/TestNode/resources/issue/getAll.ts',
+			code: `const hint = '${TOO_LONG_HINT}';
+				export const getAll: INodeProperties[] = [${property('hint')}];`,
+			errors: [
+				{ messageId: 'hintTooLong', data: { length: TOO_LONG_HINT.length, max: MAX_HINT_LENGTH } },
+			],
+		},
 		{
 			name: 'reports a hint in a resource file outside the node file',
 			filename: '/tmp/nodes/TestNode/resources/issue/getAll.ts',
@@ -242,7 +263,7 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 	],
 });
 
-function createNodeCode(hint: string): string {
+function createNodeCode(hint: string, delimiter: "'" | '`' = "'"): string {
 	return `
 		import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
@@ -265,7 +286,7 @@ function createNodeCode(hint: string): string {
 						name: 'query',
 						type: 'string',
 						default: '',
-						hint: '${hint}',
+						hint: ${delimiter}${hint}${delimiter},
 						description: 'The query to run against the API',
 					},
 				],
@@ -375,6 +396,16 @@ describe('node property hint length', () => {
 		it('reports a hint one character over the limit', () => {
 			const hint = 'a'.repeat(MAX_HINT_LENGTH + 1);
 			expect(hintReports(createNodeCode(hint), configName)).toHaveLength(1);
+		});
+
+		it('reports a template hint one character over the limit', () => {
+			const hint = 'a'.repeat(MAX_HINT_LENGTH + 1);
+			expect(hintReports(createNodeCode(hint, '`'), configName)).toHaveLength(1);
+		});
+
+		it('accepts a template hint exactly on the limit', () => {
+			const hint = 'a'.repeat(MAX_HINT_LENGTH);
+			expect(hintReports(createNodeCode(hint, '`'), configName)).toEqual([]);
 		});
 
 		it('accepts a hint exactly on the limit', () => {
