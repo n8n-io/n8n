@@ -1000,7 +1000,8 @@ async function handleWorkflowPreviewExampleUse(
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader />
+		<!-- The navigation panel lists the chats, so the empty screen needs no history dropdown. -->
+		<InstanceAiViewHeader :show-thread-history="false" />
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">

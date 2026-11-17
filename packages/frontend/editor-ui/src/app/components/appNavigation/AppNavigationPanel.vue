@@ -101,6 +101,15 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 							{{ section.viewAll.label }}
 						</RouterLink>
 					</div>
+					<N8nText
+						v-if="section.links.length === 0 && section.emptyText"
+						size="small"
+						color="text-light"
+						:class="$style.emptyText"
+						data-test-id="app-nav-section-empty"
+					>
+						{{ section.emptyText }}
+					</N8nText>
 					<div
 						v-for="link in section.links"
 						:key="link.id"
@@ -192,5 +201,10 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 	:global(.router-link-active:hover) {
 		background-color: var(--background--hover);
 	}
+}
+
+.emptyText {
+	display: block;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
 }
 </style>

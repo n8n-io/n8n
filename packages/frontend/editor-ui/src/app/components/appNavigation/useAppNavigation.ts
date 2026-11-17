@@ -59,6 +59,8 @@ export type AppNavSection = {
 	title?: string;
 	viewAll?: { label: string; to: RouteLocationRaw };
 	links: AppNavLink[];
+	/** Shown in place of the links when the section has none */
+	emptyText?: string;
 };
 
 type NavProject = { id: string; type?: string; scopes?: Scope[] };
@@ -92,7 +94,13 @@ const ROUTE_ALIASES: Record<string, string> = {
 	[VIEWS.HOMEPAGE]: VIEWS.WORKFLOWS,
 	[VIEWS.FOLDERS]: VIEWS.WORKFLOWS,
 	[VIEWS.PROJECTS_FOLDERS]: VIEWS.PROJECTS_WORKFLOWS,
+	// Automations list workflows and agents together, so the agent lists count as Automations.
+	[AGENTS_LIST_VIEW]: VIEWS.WORKFLOWS,
+	[PROJECT_AGENTS]: VIEWS.PROJECTS_WORKFLOWS,
 };
+
+/** Agents show inside Automations, so their own list page has no link */
+const AUTOMATION_PAGES = new Set<string>([AGENTS_LIST_VIEW, PROJECT_AGENTS]);
 
 const PAGE_ICONS: Record<string, IconName> = {
 	[VIEWS.WORKFLOWS]: 'workflow',
@@ -229,7 +237,7 @@ export function useAppNavigation() {
 			? [
 					{
 						value: VIEWS.PROJECTS_WORKFLOWS,
-						label: i18n.baseText('mainSidebar.workflows'),
+						label: i18n.baseText('projects.menu.automations'),
 						to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId } },
 					},
 					{
@@ -251,7 +259,7 @@ export function useAppNavigation() {
 			: [
 					{
 						value: VIEWS.WORKFLOWS,
-						label: i18n.baseText('mainSidebar.workflows'),
+						label: i18n.baseText('projects.menu.automations'),
 						to: { name: VIEWS.WORKFLOWS },
 					},
 					{
@@ -282,6 +290,7 @@ export function useAppNavigation() {
 			.flatMap((module) => moduleTabs[module]);
 		for (const processed of processDynamicTabs(activeModuleTabs, projectId)) {
 			const { insertAfter, ...tab } = processed;
+			if (AUTOMATION_PAGES.has(tab.value)) continue;
 			const anchorIndex = insertAfter ? pages.findIndex((page) => page.value === insertAfter) : -1;
 			if (anchorIndex !== -1) pages.splice(anchorIndex + 1, 0, tab);
 			else pages.push(tab);
@@ -355,14 +364,19 @@ export function useAppNavigation() {
 				],
 			},
 		];
-		if (recentChats.value.length > 0) {
+		// The chats always have a section, so a new user sees where their chats will be.
+		{
+			const hasChats = recentChats.value.length > 0;
 			sections.push({
 				id: 'assistant-chats',
 				title: i18n.baseText('instanceAi.threads.chats'),
-				viewAll: {
-					label: i18n.baseText('instanceAi.threads.viewAll'),
-					to: { name: INSTANCE_AI_THREADS_VIEW },
-				},
+				viewAll: hasChats
+					? {
+							label: i18n.baseText('instanceAi.threads.viewAll'),
+							to: { name: INSTANCE_AI_THREADS_VIEW },
+						}
+					: undefined,
+				emptyText: i18n.baseText('appNavigation.chats.empty'),
 				links: recentChats.value.map((chat) => ({
 					id: `chat-${chat.kind}-${chat.thread.id}`,
 					label: chatItemTitle(chat, i18n),

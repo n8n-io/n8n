@@ -200,7 +200,6 @@ describe('useAppNavigation', () => {
 
 			expect(section.links.map((link) => link.id)).toEqual([
 				VIEWS.WORKFLOWS,
-				AGENTS_LIST_VIEW,
 				VIEWS.CREDENTIALS,
 				VIEWS.EXECUTIONS,
 				VIEWS.HOME_VARIABLES,
@@ -217,11 +216,15 @@ describe('useAppNavigation', () => {
 			expect(section.links.find((link) => link.active)?.id).toBe(VIEWS.WORKFLOWS);
 		});
 
-		it('leaves out module tabs of inactive modules', () => {
-			settingsStore.isModuleActive = vi.fn(() => false);
+		it('shows agents inside Automations, and marks Automations active on an agent list', () => {
+			route.current.name = AGENTS_LIST_VIEW;
 			const [section] = setup().nav.sectionsFor(OVERVIEW_ITEM_ID);
 
 			expect(section.links.map((link) => link.id)).not.toContain(AGENTS_LIST_VIEW);
+			expect(section.links.find((link) => link.active)).toMatchObject({
+				id: VIEWS.WORKFLOWS,
+				label: 'Automations',
+			});
 		});
 
 		it('links project pages to the project and adds Settings for managers', () => {
@@ -231,16 +234,11 @@ describe('useAppNavigation', () => {
 
 			expect(managed.links.map((link) => link.id)).toEqual([
 				VIEWS.PROJECTS_WORKFLOWS,
-				PROJECT_AGENTS,
 				VIEWS.PROJECTS_CREDENTIALS,
 				VIEWS.PROJECTS_EXECUTIONS,
 				VIEWS.PROJECTS_VARIABLES,
 				VIEWS.PROJECT_SETTINGS,
 			]);
-			expect(managed.links[1].to).toEqual({
-				name: PROJECT_AGENTS,
-				params: { projectId: 'team-a' },
-			});
 			expect(other.links.map((link) => link.id)).not.toContain(VIEWS.PROJECT_SETTINGS);
 		});
 
@@ -306,8 +304,11 @@ describe('useAppNavigation', () => {
 			expect(chats.links[0]).toMatchObject({ label: 'Sync invoices', active: true });
 		});
 
-		it('leaves out the Chats section when there are no chats', () => {
-			expect(setup().nav.sectionsFor(ASSISTANT_ITEM_ID)).toHaveLength(1);
+		it('keeps an empty Chats section, without View all, when there are no chats', () => {
+			const [, chats] = setup().nav.sectionsFor(ASSISTANT_ITEM_ID);
+
+			expect(chats).toMatchObject({ id: 'assistant-chats', links: [], viewAll: undefined });
+			expect(chats.emptyText).toBeTruthy();
 		});
 
 		it('gives the Inbox a single link', () => {

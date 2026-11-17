@@ -23,12 +23,15 @@ const props = withDefaults(
 			navigate?: boolean;
 			disabled?: boolean;
 		};
+		/** The chat history dropdown at the start of the header */
+		showThreadHistory?: boolean;
 	}>(),
 	{
 		title: undefined,
 		threadId: undefined,
 		threadCreditsUsed: undefined,
 		threadList: undefined,
+		showThreadHistory: true,
 	},
 );
 
@@ -51,7 +54,7 @@ function handleThreadSelect(threadId: string) {
 
 <template>
 	<div :class="$style.header">
-		<div :class="$style.threadHistory">
+		<div v-if="showThreadHistory" :class="$style.threadHistory">
 			<InstanceAiThreadList
 				max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
 				:filter="threadList?.filter"

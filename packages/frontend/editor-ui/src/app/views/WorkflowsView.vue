@@ -60,6 +60,19 @@ import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
 import { useAgentListStore } from '@/features/agents/agentList.store';
+import AgentCard from '@/features/agents/components/AgentCard.vue';
+import AgentFolderDialog, {
+	type AgentFolderAction,
+} from '@/features/agents/components/AgentFolderDialog.vue';
+import {
+	isAgentSortBy,
+	useAutomationAgents,
+} from '@/features/agents/composables/useAutomationAgents';
+import { useAgentDuplicate } from '@/features/agents/composables/useAgentDuplicate';
+import { AGENT_BUILDER_VIEW, NEW_SESSION_PARAM } from '@/features/agents/constants';
+import type { AgentListItem } from '@/features/agents/agent.types';
+import type { AgentListRowResource } from '@/features/agents/types';
+import { compareRowsBy, mergeSortedStreams } from '@/app/utils/mergeSortedStreams';
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
@@ -245,6 +258,77 @@ const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
 const batches = useLoadMoreBatches(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
+
+// Automations: the list shows agents next to the workflows, merged by the sort order.
+const isAgentsListAvailable = computed(
+	() => settingsStore.isModuleActive('agents') && settingsStore.isAgentsEnabled,
+);
+const automationAgents = useAutomationAgents(() => {
+	if (!isAgentsListAvailable.value || projectPages.isSharedSubPage) return null;
+	const query = getWorkflowsListQuery();
+	// Tags, status and execution filters only describe workflows, so they leave agents out.
+	if (
+		query.filters.tags ||
+		query.filters.active !== undefined ||
+		query.filters.executionBlockedBy ||
+		!isAgentSortBy(query.sortBy)
+	) {
+		return null;
+	}
+	const routeProjectId = route.params?.projectId as string | undefined;
+	return {
+		projectId: query.projectId,
+		folderId: (route.params?.folderId as string) || null,
+		useFolders: Boolean(routeProjectId) && showFolders.value,
+		search: filters.value.search,
+		includeArchived: filters.value.showArchived === true,
+		sortBy: query.sortBy,
+	};
+});
+const { openDuplicate: openAgentDuplicate } = useAgentDuplicate();
+const agentFolderAction = ref<AgentFolderAction | null>(null);
+const agentFolderActionProjectId = ref('');
+
+async function fetchAutomationAgents(skip: number, take: number) {
+	try {
+		return await automationAgents.fetchRange(skip, take);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.list.loadError'));
+		return { count: 0, data: [] };
+	}
+}
+
+function onSelectAgent(agentId: string, projectId: string) {
+	void router.push({ name: AGENT_BUILDER_VIEW, params: { projectId, agentId } });
+}
+
+function onNewAgentChat(agentId: string, projectId: string) {
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId, agentId },
+		query: { [NEW_SESSION_PARAM]: 'true' },
+	});
+}
+
+function onAgentDuplicate(agentId: string) {
+	const agent = automationAgents.agents.value.find(({ id }) => id === agentId);
+	if (!agent) return;
+	openAgentDuplicate(
+		agent,
+		automationAgents.agents.value.map(({ name }) => name),
+		onSelectAgent,
+	);
+}
+
+function openAgentMove(agent: AgentListItem) {
+	agentFolderActionProjectId.value = agent.projectId;
+	agentFolderAction.value = {
+		mode: 'moveAgent',
+		id: agent.id,
+		name: agent.name,
+		parentFolderId: agent.parentFolderId,
+	};
+}
 
 const currentFolderId = ref<string | null>(null);
 
@@ -584,8 +668,30 @@ const workflowListResources = computed<Resource[]>(() => {
 			} satisfies WorkflowResource;
 		}
 	});
-	return resources;
+	// The list API puts folders first; workflows and agents follow, merged by the sort order.
+	const folderRows = resources.filter((resource) => resource.resourceType === 'folder');
+	const workflowRows = resources.filter(
+		(resource): resource is WorkflowResource => resource.resourceType === 'workflow',
+	);
+	const automationRows = mergeSortedStreams<WorkflowResource | AgentListRowResource>(
+		[
+			{
+				rows: workflowRows,
+				done: workflowsAndFolders.value.length >= workflowsListStore.totalWorkflowCount,
+			},
+			{ rows: automationAgents.rows.value, done: automationAgents.done.value },
+		],
+		compareRowsBy(currentSort.value),
+	);
+	return [...folderRows, ...automationRows];
 });
+
+const automationsTotal = computed(
+	() => workflowsListStore.totalWorkflowCount + automationAgents.count.value,
+);
+const automationsLoaded = computed(
+	() => workflowsAndFolders.value.length + automationAgents.agents.value.length,
+);
 
 const statusFilterOptions = computed(() => [
 	{
@@ -642,6 +748,7 @@ const hasFilters = computed(() => {
 const showArchivedOnlyHint = computed(() => {
 	return (
 		workflowsAndFolders.value.length === 0 &&
+		automationAgents.agents.value.length === 0 &&
 		!hasFilters.value &&
 		!filters.value.showArchived &&
 		foldersStore.totalWorkflowCount > 0
@@ -1010,15 +1117,18 @@ const fetchWorkflows = async () => {
 
 	try {
 		const query = getWorkflowsListQuery();
-		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
-			query.projectId,
-			1,
-			range.take,
-			query.sortBy,
-			query.filters,
-			query.includeFolders,
-			query.onlySharedWithMe,
-		);
+		const [fetchedResources, agentPage] = await Promise.all([
+			workflowsListStore.fetchWorkflowsPage(
+				query.projectId,
+				1,
+				range.take,
+				query.sortBy,
+				query.filters,
+				query.includeFolders,
+				query.onlySharedWithMe,
+			),
+			fetchAutomationAgents(0, range.take),
+		]);
 
 		if (!isCurrent()) return [];
 
@@ -1035,6 +1145,7 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+		automationAgents.replace(agentPage);
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
@@ -1067,13 +1178,22 @@ const loadMoreWorkflows = async () => {
 	try {
 		await batches.loadMore(
 			workflowsAndFolders.value.length,
-			fetchWorkflowsBatch,
-			(fetchedResources) => {
+			async (range) => {
+				const workflowsDone =
+					workflowsAndFolders.value.length >= workflowsListStore.totalWorkflowCount;
+				const [workflows, agentPage] = await Promise.all([
+					workflowsDone ? [] : fetchWorkflowsBatch(range),
+					automationAgents.done.value
+						? null
+						: fetchAutomationAgents(automationAgents.agents.value.length, range.take),
+				]);
+				return { workflows, agentPage };
+			},
+			({ workflows, agentPage }) => {
+				if (agentPage) automationAgents.append(agentPage);
 				// A row can move between batches if it changed since the last request
 				const loadedKeys = new Set(workflowsAndFolders.value.map((r) => `${r.resource}:${r.id}`));
-				const newResources = fetchedResources.filter(
-					(r) => !loadedKeys.has(`${r.resource}:${r.id}`),
-				);
+				const newResources = workflows.filter((r) => !loadedKeys.has(`${r.resource}:${r.id}`));
 				// Leave the list as it is when nothing is new, so the list does not request again
 				if (newResources.length === 0) return;
 				workflowsAndFolders.value = [...workflowsAndFolders.value, ...newResources];
@@ -2395,9 +2515,14 @@ const onNameSubmit = async (name: string) => {
 		:loading="false"
 		:resources-refreshing="loading"
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="workflowsListStore.totalWorkflowCount"
+		:total-items="automationsTotal"
+		:loaded-count="automationsLoaded"
 		:dont-perform-sorting-and-filtering="true"
-		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
+		:has-empty-state="
+			foldersStore.totalWorkflowCount === 0 &&
+			automationAgents.agents.value.length === 0 &&
+			!currentFolderId
+		"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
 		@update:filters="onFiltersUpdated"
@@ -2571,6 +2696,22 @@ const onNameSubmit = async (name: string) => {
 					@mouseup="onFolderCardDrop"
 				/>
 			</Draggable>
+			<AgentCard
+				v-else-if="(data as AgentListRowResource).resourceType === 'agent'"
+				:key="`agent-${(data as AgentListRowResource).id}`"
+				:agent="data as AgentListRowResource"
+				:project-id="(data as AgentListRowResource).projectId"
+				:show-folder-path="Boolean(filters.search)"
+				@select="onSelectAgent((data as AgentListRowResource).id, (data as AgentListRowResource).projectId)"
+				@new-chat="onNewAgentChat"
+				@published="fetchWorkflows"
+				@unpublished="fetchWorkflows"
+				@archived="fetchWorkflows"
+				@unarchived="fetchWorkflows"
+				@deleted="fetchWorkflows"
+				@duplicate="onAgentDuplicate"
+				@move="openAgentMove(data as AgentListRowResource)"
+			/>
 			<Draggable
 				v-else
 				:key="`workflow-${index}`"
@@ -2744,6 +2885,12 @@ const onNameSubmit = async (name: string) => {
 			</div>
 		</template>
 	</ResourcesListLayout>
+	<AgentFolderDialog
+		:project-id="agentFolderActionProjectId"
+		:action="agentFolderAction"
+		@close="agentFolderAction = null"
+		@saved="fetchWorkflows"
+	/>
 </template>
 
 <style lang="scss" module>
