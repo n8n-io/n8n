@@ -114,9 +114,10 @@ parameter in user-authored workflow JSON does not create an approval job or gran
 permission to resume an Agent.
 
 Message an Agent version 4 processes items in order. It retains completed item
-results while an item is waiting. The whole workflow execution parks. On resume,
+results in node execution context while an item is waiting. The run index keeps
+separate runs of the node independent. The whole workflow execution parks. On resume,
 it restores the pending item, then processes the remaining items. Completed nodes
-remove this temporary invocation metadata. Full runtime snapshots stay in the
+remove this temporary invocation state. Full runtime snapshots stay in the
 protected Agent checkpoint, not in parent workflow task metadata or node output.
 
 ## Validation

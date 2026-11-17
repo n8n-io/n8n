@@ -659,7 +659,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	if (!waiting && this.getNode().typeVersion >= 4)
-		this.setMetadata({ agentInvocations: undefined });
+	if (!waiting && this.getNode().typeVersion >= 4) {
+		delete this.getContext('node').agentInvocations;
+		this.setMetadata({ resumeMode: undefined });
+	}
 	return [returnData];
 }
