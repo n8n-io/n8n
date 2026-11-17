@@ -23,6 +23,7 @@ import {
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import { getProject } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -53,6 +54,7 @@ import {
 } from '../composables/usePromotionSelectionReport';
 import {
 	targetKey,
+	totalWarnings,
 	type GapTargetRow,
 	type PromotionOwnerRequester,
 } from '../promotionDependencies';
@@ -77,16 +79,15 @@ import {
 import {
 	buildProjectTree,
 	changedProjectCount,
+	countListedChanges,
 	lockedProjectKeys,
 	projectIdOf,
 	projectSelectableKeys,
 	toEnvironmentSelection,
 } from '../promotionPreview.projects';
 import {
-	includedChangeCount,
 	resolveInclusion,
 	selectableKeys,
-	totalChangeCount,
 	type ResourceKey,
 	type SelectionGraph,
 } from '../promotionPreview.selection';
@@ -123,6 +124,8 @@ const origin = computed(() => (isEnvironment.value ? queryValue(route.query.from
 // Development only: `?fixture=<name>` replaces the server with the fixtures.
 const fixture = computed(() => promotionFixtureName(route.query.fixture));
 const fixtureQuery = computed(() => (fixture.value ? { fixture: fixture.value } : {}));
+// The route guard sends a reader of a project here: the page then only shows the changes.
+const openedReadOnly = computed(() => queryValue(route.query.view) === 'read');
 // The link of an owner request in the Inbox: the page then holds only the requested item.
 const isOwnerRequest = computed(() => queryValue(route.query.requested) !== undefined);
 // Only a user with the global scope can apply the whole instance, which also deletes projects.
@@ -207,6 +210,8 @@ function seedSelection(current: SelectionGraph): SelectionSeed | null {
 		};
 	}
 	if (origin.value === undefined) return null;
+	// A reader selects nothing.
+	if (readOnly.value) return { selected: [], extra: new Map() };
 	const handoff = takePromotionSelectionHandoff(props.direction, origin.value);
 	if (handoff) {
 		// The report of the project page knows the gaps of this selection. The preview of the
@@ -378,6 +383,33 @@ const details = usePromotionResourceDetails(
 	activeWorkflowKey,
 );
 
+/**
+ * Promote of a deletion: the report lists a caller only when the user can read its project, and
+ * it sends the id. A project page knows only its own project, so the page asks for the name
+ * with the rights of the user.
+ */
+const callerProjectNames = ref(new Map<string, string>());
+const askedCallerProjects = new Set<string>();
+watch(
+	() => (props.direction === 'promote' ? dependencies.report.value?.deletionCallers : undefined),
+	async (rows) => {
+		if (fixture.value) return;
+		const ids = new Set(
+			(rows ?? []).flatMap(({ callers }) => callers.map(({ projectId }) => projectId)),
+		);
+		for (const id of ids) {
+			if (projectNames.value.has(id) || askedCallerProjects.has(id)) continue;
+			askedCallerProjects.add(id);
+			try {
+				const { name } = await getProject(rootStore.restApiContext, id);
+				if (name) callerProjectNames.value = new Map(callerProjectNames.value).set(id, name);
+			} catch {
+				// The sentence then names no project.
+			}
+		}
+	},
+);
+
 /** The names of the projects that the page may show, by id. The report never adds one. */
 const projectNames = computed(() => {
 	const names = new Map<string, string>();
@@ -390,6 +422,7 @@ const projectNames = computed(() => {
 	for (const project of projects.value) names.set(project.id, project.name);
 	const current = projectContext.currentProject();
 	if (current?.id && current.name) names.set(current.id, current.name);
+	for (const [id, name] of callerProjectNames.value) if (!names.has(id)) names.set(id, name);
 	return names;
 });
 const projectName = computed(() =>
@@ -462,6 +495,10 @@ const backRoute = computed(() => {
 	if (props.projectId !== undefined) {
 		return { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: props.projectId } };
 	}
+	// The project page of a reader leads back here, so the link goes to the project instead.
+	if (origin.value !== undefined && (openedReadOnly.value || readOnly.value)) {
+		return { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: origin.value } };
+	}
 	if (origin.value !== undefined) {
 		return {
 			name: PROMOTION_PREVIEW_VIEWS[props.direction],
@@ -480,11 +517,6 @@ const backLabel = computed(() => {
 	return i18n.baseText('promotions.preview.back', { interpolate: { project: target } });
 });
 
-const changedCount = computed(() =>
-	graph.value
-		? [...graph.value.resources.values()].filter(({ change }) => change !== 'unchanged').length
-		: 0,
-);
 /**
  * An Apply that holds every change of the environment is the Apply of the whole instance, for
  * a user who may run it. A selection never deletes a project. Only that Apply does, so the
@@ -501,19 +533,51 @@ const wholeInstance = computed(
 		projects.value.every(({ canOperate }) => canOperate) &&
 		selectableResourceKeys.value.every((key) => selection.selected.value.has(key)),
 );
+/**
+ * A user who can only read every project of the view. The page then shows the changes and
+ * offers no selection and no operation (decision U8).
+ */
+const readOnly = computed(
+	() =>
+		isEnvironment.value &&
+		projects.value.length > 0 &&
+		projects.value.every(({ canOperate }) => !canOperate),
+);
+/** Counts changes as the tree lists them, so the tab, the header, the tree and the button agree. */
+const countChanges = (keys: Iterable<ResourceKey>) =>
+	graph.value ? countListedChanges(graph.value, projects.value, keys) : 0;
+/** Every changed row. A kept workflow is a row of the view and not a change of the whole-instance Apply. */
+const changedKeys = computed(() =>
+	graph.value
+		? [...graph.value.resources.values()]
+				.filter(({ change, key }) => change !== 'unchanged' && !keptKeys.value.has(key))
+				.map(({ key }) => key)
+		: [],
+);
 const totalChanges = computed(() => {
 	if (!graph.value) return 0;
+	if (wholeInstance.value) return countChanges(changedKeys.value);
 	return isEnvironment.value && props.direction === 'apply'
-		? changedCount.value
-		: totalChangeCount(graph.value);
+		? countChanges(allChangedKeys.value)
+		: countChanges(resolveInclusion(graph.value, new Set(selectableKeys(graph.value))).included);
 });
+const allChangedKeys = computed(() =>
+	graph.value
+		? [...graph.value.resources.values()]
+				.filter(({ change }) => change !== 'unchanged')
+				.map(({ key }) => key)
+		: [],
+);
 const includedChanges = computed(() => {
 	if (!graph.value) return 0;
-	// A kept workflow is a row of the view and not a change of the whole-instance Apply.
 	return wholeInstance.value
-		? changedCount.value - keptKeys.value.size
-		: includedChangeCount(graph.value, selection.inclusion.value) + unlistedIncluded.value.length;
+		? countChanges(changedKeys.value)
+		: countChanges(selection.inclusion.value.included) + unlistedIncluded.value.length;
 });
+/** The whole instance already matches the branch, apart from the workflows that stay. */
+const onlyKept = computed(
+	() => wholeInstance.value && keptKeys.value.size > 0 && includedChanges.value === 0,
+);
 /** The projects that only the Apply of the whole instance deletes. */
 const deletedProjects = computed(() => instanceApply.value?.deletedProjects ?? []);
 const deletedProjectNames = computed(() =>
@@ -522,11 +586,14 @@ const deletedProjectNames = computed(() =>
 // The header of the changes view says what the operation holds: "3 changes in 2 projects".
 const selectionSummary = computed(() => {
 	if (!isEnvironment.value || !graph.value) return undefined;
+	if (readOnly.value) return undefined;
+	if (onlyKept.value) return i18n.baseText('promotions.preview.summary.nothingToApply');
 	if (includedChanges.value === 0) return i18n.baseText('promotions.preview.summary.none');
 	const projectCount = changedProjectCount(graph.value, selection.inclusion.value.included);
+	// "3 of 4 changes selected": the same two numbers as the tree and the tab.
 	const changes = i18n.baseText('promotions.preview.summary.changes', {
-		adjustToNumber: includedChanges.value,
-		interpolate: { count: String(includedChanges.value) },
+		adjustToNumber: totalChanges.value,
+		interpolate: { count: String(includedChanges.value), total: String(totalChanges.value) },
 	});
 	if (projectCount === 0) return changes;
 	return i18n.baseText('promotions.preview.summary', {
@@ -626,15 +693,13 @@ const hasSelectedBlocked = computed(() =>
 );
 const actionableChanges = computed(() => {
 	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
-	if (wholeInstance.value) return changedCount.value - keptKeys.value.size;
+	if (wholeInstance.value) return countChanges(changedKeys.value);
 	const actionable = new Set(
 		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
 	);
 	return (
-		includedChangeCount(
-			graph.value,
-			resolveInclusion(graph.value, actionable, selection.extra.value.keys()),
-		) + unlistedIncluded.value.length
+		countChanges(resolveInclusion(graph.value, actionable, selection.extra.value.keys()).included) +
+		unlistedIncluded.value.length
 	);
 });
 const submitBlockedReason = computed(() => {
@@ -756,6 +821,8 @@ watch([showBlockersTab, showDependenciesTab], ([blockersTab, dependenciesTab]) =
 		activeTab.value = 'changes';
 	}
 });
+// Warnings never stop the operation, so the tab shows them next to the count and not in it.
+const warningCount = computed(() => totalWarnings(dependencies.warningCounts.value));
 const tabs = computed(() => [
 	{
 		value: 'changes' as const,
@@ -769,6 +836,16 @@ const tabs = computed(() => [
 					label: i18n.baseText('promotions.dependencies.tab'),
 					tag:
 						dependencies.issueCount.value > 0 ? String(dependencies.issueCount.value) : undefined,
+					...(warningCount.value > 0
+						? {
+								icon: 'triangle-alert' as const,
+								iconPosition: 'right' as const,
+								tooltip: i18n.baseText('promotions.dependencies.tab.warnings', {
+									adjustToNumber: warningCount.value,
+									interpolate: { count: String(warningCount.value) },
+								}),
+							}
+						: {}),
 				},
 			]
 		: []),
@@ -959,6 +1036,7 @@ const treeResizer = useResizablePanel({
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
 					<N8nButton
+						v-if="!readOnly"
 						:variant="isDestructive ? 'destructive' : 'brand'"
 						size="small"
 						:disabled="!canSubmit"
@@ -1060,6 +1138,7 @@ const treeResizer = useResizablePanel({
 						:gap-keys="gapKeys"
 						:owner-moves="ownerMoves"
 						:kept-keys="keptKeys"
+						:selectable="!readOnly"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
@@ -1084,15 +1163,34 @@ const treeResizer = useResizablePanel({
 							</N8nButton>
 						</template>
 					</N8nCallout>
+					<N8nCallout
+						v-if="readOnly"
+						theme="info"
+						slim
+						icon="eye"
+						data-test-id="promotion-preview-read-only"
+					>
+						{{ i18n.baseText(`promotions.preview.readOnly.${direction}`) }}
+					</N8nCallout>
+					<N8nCallout v-if="onlyKept" theme="info" slim data-test-id="promotion-preview-only-kept">
+						{{
+							i18n.baseText('promotions.preview.onlyKept', {
+								adjustToNumber: keptKeys.size,
+								interpolate: { count: String(keptKeys.size) },
+							})
+						}}
+					</N8nCallout>
 					<PromotionDependencySummary
 						v-if="
 							dependencies.report.value &&
-							(dependencies.issueCount.value > 0 || dependencies.stop.value)
+							!readOnly &&
+							(dependencies.issueCount.value > 0 || dependencies.stop.value || warningCount > 0)
 						"
 						:direction="direction"
 						:gap-count="dependencies.gapCount.value"
 						:hard-block-count="dependencies.report.value.hardBlocks.length"
 						:stop="dependencies.stop.value"
+						:warnings="dependencies.warningCounts.value"
 						@view="activeTab = 'dependencies'"
 					/>
 					<N8nCallout
@@ -1104,7 +1202,7 @@ const treeResizer = useResizablePanel({
 						{{ i18n.baseText(`promotions.preview.ownerRequest.${direction}`) }}
 					</N8nCallout>
 					<N8nCallout
-						v-else-if="origin !== undefined"
+						v-else-if="origin !== undefined && !readOnly"
 						theme="info"
 						slim
 						data-test-id="promotion-preview-across-projects"
@@ -1203,6 +1301,7 @@ const treeResizer = useResizablePanel({
 						:gap-keys="gapKeys"
 						:owner-moves="ownerMoves"
 						:kept-keys="keptKeys"
+						:selectable="!readOnly"
 						@view-dependencies="activeTab = 'dependencies'"
 						@retry="details.retry"
 						@refresh="refresh"
@@ -1284,6 +1383,7 @@ const treeResizer = useResizablePanel({
 			v-if="operation.applied.value"
 			:open="true"
 			:result="operation.applied.value.result"
+			:summary="operation.applied.value.summary"
 			:project-names="projectNames"
 			@update:open="operation.closeApplied"
 		/>

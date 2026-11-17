@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { DependencyStop } from '../../composables/usePromotionDependencies';
+import type { DependencyWarningCounts } from '../../promotionDependencies';
 
 /**
  * The dependencies in one line, above the changes. It also says why the submit button is
@@ -16,6 +17,8 @@ const props = defineProps<{
 	hardBlockCount: number;
 	/** Why the dependencies stop the operation. `undefined` when they do not. */
 	stop?: DependencyStop;
+	/** What does not stop the operation. The summary still names it. */
+	warnings?: DependencyWarningCounts;
 }>();
 
 const emit = defineEmits<{ view: [] }>();
@@ -53,6 +56,19 @@ const sentences = computed(() => {
 		parts.push(i18n.baseText(`promotions.dependencies.stop.${props.stop}`));
 	} else if (!props.stop && props.gapCount > 0) {
 		parts.push(i18n.baseText(`promotions.dependencies.summary.incomplete.${props.direction}`));
+	}
+	// A warning never stops the operation, so its sentence comes last and says that.
+	const { broken = 0, other = 0, deletions = 0 } = props.warnings ?? {};
+	if (broken > 0) {
+		parts.push(i18n.baseText('promotions.dependencies.summary.warnings.broken', count(broken)));
+	}
+	if (deletions > 0) {
+		parts.push(
+			i18n.baseText('promotions.dependencies.summary.warnings.deletions', count(deletions)),
+		);
+	}
+	if (other > 0) {
+		parts.push(i18n.baseText('promotions.dependencies.summary.warnings.other', count(other)));
 	}
 	return parts.join(' ');
 });

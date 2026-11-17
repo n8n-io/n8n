@@ -3,6 +3,7 @@ import { computed, ref, watch, type Ref } from 'vue';
 
 import {
 	dependencyIssueCount,
+	dependencyWarningCounts,
 	gapGroupOf,
 	noConfirmations,
 	pendingConfirmations,
@@ -68,6 +69,11 @@ export function usePromotionDependencies({
 
 	const gapCount = computed(() => report.value?.gaps.length ?? 0);
 	const issueCount = computed(() => (report.value ? dependencyIssueCount(report.value) : 0));
+	const warningCounts = computed(() =>
+		report.value
+			? dependencyWarningCounts(report.value, direction.value)
+			: { broken: 0, other: 0, deletions: 0 },
+	);
 	const pending = computed(() =>
 		report.value && direction.value === 'apply'
 			? pendingConfirmations(report.value, confirmations.value)
@@ -119,6 +125,7 @@ export function usePromotionDependencies({
 		confirmations,
 		gapCount,
 		issueCount,
+		warningCounts,
 		stop,
 		needsGapConfirmation,
 		payload,

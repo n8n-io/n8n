@@ -29,7 +29,8 @@ import {
 	type DetailSide,
 } from '../../promotionPreview.content';
 import type { ResourceKey, SelectionCheck, SelectionGraph } from '../../promotionPreview.selection';
-import { isContainer, resourceIcon } from '../../promotionPreview.tree';
+import { projectIdOf } from '../../promotionPreview.projects';
+import { isContainer, isUnnamed, resourceIcon } from '../../promotionPreview.tree';
 import { hasWorkflowDiff } from '../../promotionPreview.workflow';
 import DataTableChangeDetails from './DataTableChangeDetails.vue';
 import PromotionFieldChanges from './PromotionFieldChanges.vue';
@@ -82,6 +83,21 @@ function nameOf(key: string): string {
 }
 const { changeLabel, moveNote, blockerMessage, selectLabel } = usePromotionPreviewLabels();
 const blocker = computed(() => blockerMessage(props.resource, props.blockers));
+// Without access to a workflow, the page holds only its id. The title then names the kind.
+const unnamed = computed(() => props.resource.type === 'workflow' && isUnnamed(props.resource));
+const title = computed(() =>
+	unnamed.value
+		? i18n.baseText('promotions.dependencies.target.unnamed.workflow')
+		: props.resource.name,
+);
+// The project that lists the row. A moved row names it: "Moved from Sales to Ops".
+const ownProject = computed(() => {
+	const projectId = projectIdOf(props.graph.resources, props.resource);
+	return projectId === undefined
+		? undefined
+		: props.graph.resources.get(`project:${projectId}`)?.name;
+});
+const change = computed(() => changeLabel(props.resource, props.direction, ownProject.value));
 const moved = computed(() => moveNote(props.resource, props.direction));
 
 // Cards start open. Inspecting a resource from the tree opens its card again.
@@ -195,10 +211,23 @@ const tagNote = computed(() => {
 							bold
 							size="medium"
 							color="text-dark"
-							:title="resource.name"
+							:title="title"
 							:class="$style.title"
 						>
-							{{ resource.name }}
+							{{ title }}
+						</N8nText>
+						<N8nText
+							v-if="unnamed"
+							step="2xs"
+							color="text-light"
+							:class="$style.id"
+							data-test-id="promotion-preview-card-id"
+						>
+							{{
+								i18n.baseText('promotions.dependencies.target.id', {
+									interpolate: { id: resource.id },
+								})
+							}}
 						</N8nText>
 						<N8nText v-if="kept" step="xs" color="text-light">
 							{{ i18n.baseText('promotions.preview.marker.kept') }}
@@ -206,8 +235,8 @@ const tagNote = computed(() => {
 						<N8nText v-else-if="ownerMove?.allowed" step="xs" color="text-light">
 							{{ i18n.baseText('promotions.preview.marker.ownerMove') }}
 						</N8nText>
-						<N8nText v-else-if="changeLabel(resource, direction)" step="xs" color="text-light">
-							{{ changeLabel(resource, direction) }}
+						<N8nText v-else-if="change" step="xs" color="text-light">
+							{{ change }}
 						</N8nText>
 					</span>
 					<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
@@ -371,6 +400,11 @@ const tagNote = computed(() => {
 </template>
 
 <style module lang="scss">
+.id {
+	font-family: var(--font-family--monospace);
+	white-space: nowrap;
+}
+
 @use '@n8n/design-system/css/mixins/motion';
 
 .card {

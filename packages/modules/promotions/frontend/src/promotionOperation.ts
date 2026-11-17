@@ -283,3 +283,14 @@ export function withCredentialHomes(
 	});
 	return { ...check, conflicts, missingBindings: [...check.missingBindings, ...created] };
 }
+
+/**
+ * The permission that a refused move lacks. A newer server sends it as `missingScope`. An older
+ * one only names it inside the reason, between quotes.
+ */
+export function missingScopeOf(item: object): string | undefined {
+	const scope: unknown = 'missingScope' in item ? item.missingScope : undefined;
+	if (typeof scope === 'string' && scope !== '') return scope;
+	const reason: unknown = 'reason' in item ? item.reason : undefined;
+	return typeof reason === 'string' ? /permission "([\w:]+)"/.exec(reason)?.[1] : undefined;
+}

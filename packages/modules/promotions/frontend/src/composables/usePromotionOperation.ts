@@ -36,6 +36,14 @@ import type { AppliedResult, ApplyCheckResult } from '../promotions.types';
 import { hasApplyOutcome } from '../promotionApplyOutcome';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
+/**
+ * The project routes do not take `credentialIds` in this client yet, so a project page sends a
+ * directly selected credential through the route of the environment (decision U4). Set this to
+ * `true` when the project routes take the field: both operations then stay on the project
+ * route, which also compares the revision of the project page.
+ */
+const PROJECT_ROUTES_TAKE_CREDENTIALS = false;
+
 export type OperationRequest = OperationSelection & {
 	/** True when the selection imports a data table change that removes values. */
 	confirmDestructiveChanges: boolean;
@@ -136,7 +144,12 @@ export function usePromotionOperation(
 	 * The result of an Apply that did more than import: placeholders, grants, moves. The page
 	 * shows it before it leaves, because the user must act on it.
 	 */
-	const applied = shallowRef<{ result: AppliedResult; acrossProjects: boolean } | null>(null);
+	const applied = shallowRef<{
+		result: AppliedResult;
+		acrossProjects: boolean;
+		/** What the Apply wrote, as the toast would say it. */
+		summary: string;
+	} | null>(null);
 
 	async function confirmApply({
 		confirmDestructiveChanges,
@@ -271,7 +284,13 @@ export function usePromotionOperation(
 		}
 		// Only the route of the environment takes a credential that the user selected directly.
 		// It compares another preview, so the revision of the project page is not sent.
-		if (id !== undefined && request.credentialIds?.length && environmentId?.value) {
+		const ownCredentials = request.credentialIds?.length ? request.credentialIds : undefined;
+		if (
+			id !== undefined &&
+			ownCredentials &&
+			!PROJECT_ROUTES_TAKE_CREDENTIALS &&
+			environmentId?.value
+		) {
 			const { expectedPreviewRevision: _revision, ...withoutRevision } = shared;
 			const result = await promoteEnvironmentSelection(
 				rootStore.publicApiContext,
@@ -290,6 +309,9 @@ export function usePromotionOperation(
 			const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
 				workflowIds,
 				folderIds,
+				...(PROJECT_ROUTES_TAKE_CREDENTIALS && ownCredentials
+					? { credentialIds: ownCredentials }
+					: {}),
 				...shared,
 			});
 			await onPromoted(result, [id], confirmedGapIds.length);
@@ -326,13 +348,17 @@ export function usePromotionOperation(
 
 	async function onApplied(result: ApplyPackageResultDto, acrossProjects: boolean) {
 		if (result.status === 'applied') {
-			if (projectId.value !== undefined) outcome.showApplied(result);
-			else outcome.showInstanceApplied(result);
+			const summary =
+				projectId.value !== undefined
+					? outcome.appliedSummary(result)
+					: outcome.instanceAppliedSummary(result);
 			// The user must act on a placeholder or a refused move, so the page lists them first.
+			// The dialog then says everything, and no toast repeats it.
 			if (hasApplyOutcome(result)) {
-				applied.value = { result, acrossProjects };
+				applied.value = { result, acrossProjects, summary: summary.message };
 				return;
 			}
+			outcome.showApplied(summary);
 			await finishApplied(acrossProjects);
 			return;
 		}
@@ -367,7 +393,8 @@ export function usePromotionOperation(
 			await onApplied(result, false);
 			return;
 		}
-		if (id !== undefined && request.credentialIds?.length) {
+		const ownCredentials = request.credentialIds?.length ? request.credentialIds : undefined;
+		if (id !== undefined && ownCredentials && !PROJECT_ROUTES_TAKE_CREDENTIALS) {
 			const { expectedPreviewRevision: _revision, ...withoutRevision } = expected;
 			const result = await applyEnvironmentSelection(context, source.environmentId, {
 				projects: [
@@ -385,7 +412,13 @@ export function usePromotionOperation(
 			return;
 		}
 		if (id !== undefined) {
-			const selection = { workflowIds: request.workflowIds, folderIds: request.folderIds };
+			const selection = {
+				workflowIds: request.workflowIds,
+				folderIds: request.folderIds,
+				...(PROJECT_ROUTES_TAKE_CREDENTIALS && ownCredentials
+					? { credentialIds: ownCredentials }
+					: {}),
+			};
 			const result = confirmDestructiveChanges
 				? await continueApplyProjectSelection(context, id, {
 						...selection,

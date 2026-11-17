@@ -1,7 +1,7 @@
 import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
-import { isBlocking, type Blocker } from '../promotionOperation';
+import { isBlocking, missingScopeOf, type Blocker } from '../promotionOperation';
 import type { ApplyCheckResult } from '../promotions.types';
 import { isContainer } from '../promotionPreview.tree';
 
@@ -23,11 +23,20 @@ const MOVED_DETAIL = {
 export function usePromotionPreviewLabels() {
 	const i18n = useI18n();
 
-	/** "Moved from Sales" on the row of the new project, "Moved to Ops" on the row of the old one. */
-	function movedLabel(resource: PromotionResource): string | undefined {
+	/**
+	 * "Moved from Sales to Ops" on the row of each project. Without a name for one of the two,
+	 * the row names only the other: "Moved from Sales" or "Moved to Ops".
+	 */
+	function movedLabel(resource: PromotionResource, ownProject?: string): string | undefined {
 		const { movedFromProject, movedToProject } = resource;
 		// The name is absent when the user cannot access the other project.
 		const project = (movedFromProject ?? movedToProject)?.name;
+		const own = resource.projectName ?? ownProject;
+		if (project && own && (movedFromProject || movedToProject)) {
+			return i18n.baseText('promotions.preview.change.movedFromTo', {
+				interpolate: movedFromProject ? { from: project, to: own } : { from: own, to: project },
+			});
+		}
 		if (movedFromProject) {
 			return project
 				? i18n.baseText('promotions.preview.change.movedFrom', { interpolate: { project } })
@@ -53,9 +62,11 @@ export function usePromotionPreviewLabels() {
 	function changeLabel(
 		resource: PromotionResource,
 		direction: PromotionDirection,
+		/** The name of the project that lists the row, when the row does not carry it. */
+		ownProject?: string,
 	): string | undefined {
 		// A move between projects is one change, whatever the comparison calls the row.
-		const moved = movedLabel(resource);
+		const moved = movedLabel(resource, ownProject);
 		if (moved) return moved;
 		switch (resource.change) {
 			case 'added':
@@ -140,12 +151,17 @@ export function usePromotionPreviewLabels() {
 				),
 		};
 		// The server says why it cannot do the move. An older server gives no reason.
-		if (move.blockedBy) {
-			return i18n.baseText(`promotions.preview.blockers.moved.${move.blockedBy}`, { interpolate });
-		}
-		return i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
-			interpolate,
-		});
+		const text = move.blockedBy
+			? i18n.baseText(`promotions.preview.blockers.moved.${move.blockedBy}`, { interpolate })
+			: i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
+					interpolate,
+				});
+		const permission = missingScopeOf(move);
+		return permission
+			? `${text} ${i18n.baseText('promotions.dependencies.hardBlock.missingPermission', {
+					interpolate: { permission },
+				})}`
+			: text;
 	}
 
 	return { changeLabel, moveNote, blockerMessage, selectLabel, moveDetail };

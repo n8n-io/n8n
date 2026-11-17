@@ -151,6 +151,34 @@ export function scopeDependencyReport(
 export const dependencyIssueCount = (report: PromotionDependencyReport) =>
 	report.gaps.length + report.hardBlocks.length;
 
+/**
+ * What does not stop the operation and the user should still read. On Promote, a deletion that
+ * breaks a reference on the branch is one of them.
+ */
+export type DependencyWarningCounts = {
+	/** References that are already broken on the source. */
+	broken: number;
+	/** Every other warning, such as a reference that is not checked. */
+	other: number;
+	/** Promote only: deleted workflows that the branch still calls. */
+	deletions: number;
+};
+
+export function dependencyWarningCounts(
+	report: PromotionDependencyReport,
+	direction: 'promote' | 'apply',
+): DependencyWarningCounts {
+	const broken = report.warnings.filter(({ code }) => code === 'broken-on-source').length;
+	return {
+		broken,
+		other: report.warnings.length - broken,
+		deletions: direction === 'promote' ? report.deletionCallers.length : 0,
+	};
+}
+
+export const totalWarnings = ({ broken, other, deletions }: DependencyWarningCounts) =>
+	broken + other + deletions;
+
 /** True when the report has nothing to show, apart from the permanent footnote. */
 export function isEmptyReport(report: PromotionDependencyReport) {
 	return (
@@ -216,6 +244,8 @@ export type DependencyConfirmationPayload = {
 	confirmedGapIds?: string[];
 	confirmedGrantIds?: string[];
 	confirmDeletionCallers?: boolean;
+	/** The deleted workflows whose callers the user saw, so the server can compare them. */
+	confirmedDeletionCallerIds?: string[];
 	credentialHomes?: Record<string, string>;
 };
 
@@ -236,6 +266,9 @@ export function toConfirmationPayload(
 	if (grantIds.length > 0) payload.confirmedGrantIds = grantIds.sort();
 	if (report.deletionCallers.length > 0 && confirmations.deletionCallers) {
 		payload.confirmDeletionCallers = true;
+		payload.confirmedDeletionCallerIds = report.deletionCallers
+			.map(({ target }) => target.id)
+			.sort();
 	}
 	const homes = Object.fromEntries(
 		report.credentialHomeChoices.flatMap(({ credential }) => {

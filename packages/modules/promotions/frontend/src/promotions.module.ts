@@ -25,7 +25,7 @@ const isPromotionsEnabled = () =>
 // Module routes skip custom middleware, so the gate runs here.
 const requirePromotionsEnabled = () => isPromotionsEnabled() || { name: VIEWS.SOURCE_CONTROL };
 
-// Users who cannot promote or apply see no promotions UI, so a direct link leads home.
+// Users who cannot read the changes of a project see no promotions UI, so a direct link leads home.
 // The rbac middleware needs project scopes, which these routes do not load.
 const requireOperationScope =
 	(direction: PromotionDirection) => async (to: RouteLocationNormalized) => {
@@ -48,7 +48,16 @@ const requireOperationScope =
 			useRootStore().publicApiContext,
 			projectId,
 		);
-		return environments[direction]?.canOperate === true || { name: VIEWS.HOMEPAGE };
+		const environment = environments[direction];
+		if (environment?.canOperate === true) return true;
+		if (!environment) return { name: VIEWS.HOMEPAGE };
+		// A reader of the project can view the changes and cannot run the operation. Only the
+		// changes view of the environment has that read-only view, so a project page leads there.
+		if (to.params.projectId === undefined) return true;
+		return {
+			name: PROMOTION_ENVIRONMENT_VIEWS[direction],
+			query: { from: projectId, view: 'read' },
+		};
 	};
 
 /** A project page that shows the changes before the user promotes or applies them. */
