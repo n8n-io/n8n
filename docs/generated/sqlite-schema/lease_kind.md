@@ -64,7 +64,6 @@ erDiagram
   varchar_24_ leaseKind PK
   varchar leaseSessionId
   datetime_3_ readyAt
-  boolean revoked
   datetime_3_ revokedAt
   datetime_3_ updatedAt
 }

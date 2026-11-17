@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-/** No unique index or foreign key may cover `lease.leaseSessionId`, `lease.fencingToken` or `lease.revoked`: updates to them then do not conflict with the `FOR KEY SHARE` lock of a fence check. */
+/** No unique index or foreign key may cover `lease.leaseSessionId`, `lease.fencingToken` or `lease.revokedAt`: updates to them then do not conflict with the `FOR KEY SHARE` lock of a fence check. */
 export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { createTable, createIndex, column },
@@ -41,7 +41,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 					'The session ID, new for each session, also after a process loses a session',
 				),
 				column('leaseKind').varchar(24).notNull,
-				column('hostId').varchar(255).notNull.comment('The host that runs the main'),
+				column('hostId').varchar(255).notNull.comment('The host that runs the process'),
 				column('bootId').uuid.notNull.comment(
 					'The start of the process, used for same-host takeover',
 				),
@@ -82,13 +82,10 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 				column('readyAt')
 					.timestampTimezone()
 					.comment('The time at which the holder reported the lease as ready'),
-				column('revoked')
-					.bool.notNull.default(false)
-					.comment('Sync sets this flag when a held lease changes or goes'),
 				column('revokedAt')
 					.timestampTimezone()
 					.comment(
-						'The time at which sync revoked the lease, from which the hand-over deadline counts',
+						'The time at which sync revoked the lease because it changed or went, or null when not revoked; the hand-over deadline counts from it',
 					),
 			)
 			.withTimestamps.withCheck(`CHK_${tablePrefix}lease_fencingToken`, `${fencingToken} >= 0`)

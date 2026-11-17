@@ -24,7 +24,6 @@ const uuid = isSqlite ? ['varchar', ''] : ['uuid', ''];
 const bigint = ['bigint', ''];
 const int = ['integer', ''];
 const json = isSqlite ? ['text', ''] : ['json', ''];
-const bool = ['boolean', ''];
 const timestamp = isSqlite ? ['datetime', ''] : ['timestamp with time zone', ''];
 
 const newKind = () => `k-${randomUUID().slice(0, 8)}`;
@@ -158,12 +157,11 @@ describe('CreateLeaseTables migration', () => {
 				fencingToken: bigint,
 				claimedAt: timestamp,
 				readyAt: timestamp,
-				revoked: bool,
 				revokedAt: timestamp,
 				createdAt: timestamp,
 				updatedAt: timestamp,
 			},
-			['leaseKind', 'key', 'data', 'dataHash', 'fencingToken', 'revoked', 'createdAt', 'updatedAt'],
+			['leaseKind', 'key', 'data', 'dataHash', 'fencingToken', 'createdAt', 'updatedAt'],
 		],
 	])(
 		'creates %s with its column types, lengths and NOT NULL constraints',
@@ -187,7 +185,6 @@ describe('CreateLeaseTables migration', () => {
 	it.each([
 		['lease_kind', 'fencingTokenCounter', zero],
 		['lease', 'fencingToken', zero],
-		['lease', 'revoked', 'false'],
 	])('sets the default of %s.%s to %s', async (name, column, expected) => {
 		await withContext(async (context) => {
 			const table = await getTable(context, name);
@@ -214,10 +211,10 @@ describe('CreateLeaseTables migration', () => {
 		});
 	});
 
-	it('keeps leaseSessionId, fencingToken and revoked out of unique indexes', async () => {
+	it('keeps leaseSessionId, fencingToken and revokedAt out of unique indexes', async () => {
 		await withContext(async (context) => {
 			const table = await getTable(context, 'lease');
-			const guarded = ['leaseSessionId', 'fencingToken', 'revoked'];
+			const guarded = ['leaseSessionId', 'fencingToken', 'revokedAt'];
 
 			const uniqueColumns = [
 				...table.indices.filter((i) => i.isUnique).flatMap((i) => i.columnNames),

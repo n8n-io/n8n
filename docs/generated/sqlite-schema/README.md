@@ -108,7 +108,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
-| [lease](lease.md) | 12 |  | table |
+| [lease](lease.md) | 11 |  | table |
 | [lease_kind](lease_kind.md) | 7 |  | table |
 | [lease_session](lease_session.md) | 7 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
@@ -1541,7 +1541,6 @@ erDiagram
   varchar_24_ leaseKind PK
   varchar leaseSessionId
   datetime_3_ readyAt
-  boolean revoked
   datetime_3_ revokedAt
   datetime_3_ updatedAt
 }

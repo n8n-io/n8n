@@ -30,9 +30,6 @@ export class Lease extends WithTimestamps {
 	@DateTimeColumn({ nullable: true })
 	readyAt: Date | null;
 
-	@Column({ type: 'boolean', default: false })
-	revoked: boolean;
-
 	@DateTimeColumn({ nullable: true })
 	revokedAt: Date | null;
 }
