@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_cdca0ffb67006b::t_6ca9ae9cab274b 26,61,63,299
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cdca0ffb67006b::t_6ca9ae9cab274b 240
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+  s_cdca0ffb67006b::t_b1a37fb114980a 60
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowPublishTimelineContent.test.ts
+  s_cdca0ffb67006b::t_b1a37fb114980a 41
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowVersionEngineBadge.vue
+  s_cdca0ffb67006b::t_6ca9ae9cab274b 3,5,12,16
+packages/frontend/editor-ui/src/app/components/EngineBadge.test.ts
+  s_cdca0ffb67006b::t_b1a37fb114980a 1-30
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_cdca0ffb67006b::t_6ca9ae9cab274b 156
+packages/frontend/editor-ui/src/app/components/EngineBadge.vue
+  s_cdca0ffb67006b::t_6ca9ae9cab274b 1-31
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowVersionEngineBadge.test.ts
+  s_cdca0ffb67006b::t_b1a37fb114980a 15
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.vue
+  s_cdca0ffb67006b::t_6ca9ae9cab274b 15-16,112-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9dfdc800802b0e10ad64b9aca2b0d035271c6153",
+  "prompts": {},
+  "sessions": {
+    "s_cdca0ffb67006b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f443b2e4-3325-43af-879b-834762b1d7fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
