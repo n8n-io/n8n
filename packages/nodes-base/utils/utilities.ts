@@ -303,6 +303,36 @@ export function getResolvables(expression: string) {
 }
 
 /**
+ * Evaluates each `{{ }}` in `text`, in order.
+ */
+export function evaluateResolvables<T>(text: string, evaluate: (resolvable: string) => T): T[] {
+	return getResolvables(text).map((resolvable) => evaluate(resolvable));
+}
+
+/**
+ * Replaces each `{{ }}` in `text` with the value that `evaluate` returns for it.
+ *
+ * Each value goes in as literal text and is never scanned again, so `$` sequences
+ * and text that looks like an expression stay as they are.
+ *
+ * `legacy` keeps the `String.replace` behavior that older node versions depend on.
+ */
+export function resolveExpressions(
+	text: string,
+	evaluate: (resolvable: string) => unknown,
+	{ legacy = false }: { legacy?: boolean } = {},
+): string {
+	if (legacy) {
+		return getResolvables(text).reduce(
+			(result, resolvable) => result.replace(resolvable, String(evaluate(resolvable))),
+			text,
+		);
+	}
+
+	return text.replace(/{{[\s\S]*?}}/g, (resolvable) => String(evaluate(resolvable)));
+}
+
+/**
  * Flattens an object with deep data
  *
  * @param {IDataObject} data The object to flatten

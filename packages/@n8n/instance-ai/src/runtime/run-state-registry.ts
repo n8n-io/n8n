@@ -64,6 +64,7 @@ export interface BackgroundTaskStatusSnapshot {
 	runId: string;
 	messageGroupId?: string;
 	threadId: string;
+	detachedFromTurn?: boolean;
 }
 
 export interface RunStateTimeoutDetails {
@@ -191,6 +192,7 @@ export class RunStateRegistry<TUser = unknown> {
 					startedAt: task.startedAt,
 					runId: task.runId,
 					messageGroupId: task.messageGroupId,
+					...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 				})),
 		};
 	}

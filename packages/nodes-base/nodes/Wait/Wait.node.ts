@@ -219,7 +219,8 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 		description: 'The HTTP method of the Webhook call',
 	},
 	responseCodeProperty,
-	responseModeProperty,
+	// Its version gate is for Webhook node versions, which do not apply to Wait
+	{ ...responseModeProperty, displayOptions: undefined },
 	responseDataProperty,
 	responseBinaryPropertyNameProperty,
 ]);
@@ -273,7 +274,7 @@ export class Wait extends Webhook {
 		icon: 'node:wait',
 		iconColor: 'crimson',
 		group: ['organization'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Wait before continue with execution',
 		defaults: {
 			name: 'Wait',

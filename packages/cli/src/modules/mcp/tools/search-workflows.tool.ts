@@ -16,8 +16,7 @@ import type {
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
-import type { FolderFinderService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { FolderFinderService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { describeFolderError } from './folder-error.utils';
 import { createLimitSchema, tagSchema, toTagSummary } from './schemas';
@@ -112,7 +111,7 @@ export const createSearchWorkflowsTool = (
 	user: User,
 	workflowService: WorkflowService,
 	folderFinderService: FolderFinderService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'search_workflows',

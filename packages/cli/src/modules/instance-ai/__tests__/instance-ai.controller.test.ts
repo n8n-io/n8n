@@ -57,7 +57,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
@@ -104,7 +104,7 @@ describe('InstanceAiController', () => {
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
 	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -777,6 +777,43 @@ describe('InstanceAiController', () => {
 			expect(unsubscribers[0]).toHaveBeenCalledTimes(1);
 			expect(unsubscribers[1]).toHaveBeenCalledTimes(1);
 			expect(sseRes.write).not.toHaveBeenCalled();
+		});
+
+		it('should write a run-sync frame for a background task, but not for one detached from its turn', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			instanceAiService.getRunIdsForMessageGroup.mockImplementation((groupId) => [
+				groupId === 'mg-builder' ? 'run-builder' : 'run-browser',
+			]);
+			eventLog.getEventsForRuns.mockResolvedValue([RUN_START] as never);
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			const { sseReq, sseRes, frames } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncGroups = frames()
+				.filter((frame) => frame.startsWith('event: run-sync\n'))
+				.map(
+					(frame) =>
+						(
+							JSON.parse(frame.slice('event: run-sync\ndata: '.length)) as {
+								messageGroupId: string;
+							}
+						).messageGroupId,
+				);
+			expect(runSyncGroups).toEqual(['mg-builder']);
 		});
 
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
@@ -1646,6 +1683,41 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		it("should leave out a background task's turn, but not the turn of one detached from it", async () => {
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			const query = mock<InstanceAiThreadMessagesQuery>({
+				limit: 50,
+				page: 0,
+				cursor: 'cursor-1',
+				raw: undefined,
+			});
+
+			await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
+				limit: 50,
+				cursor: 'cursor-1',
+				excludeRunIds: ['run-builder'],
+				excludeMessageGroupIds: ['mg-builder'],
+			});
+		});
+
 		it('should carry the latest applied-preferences payload when a turn reported one', async () => {
 			memoryService.getRichMessages.mockResolvedValue(
 				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
@@ -1743,7 +1815,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
-		mock<Telemetry>(),
+		mock<TelemetryProxy>(),
 	);
 
 	beforeEach(() => {

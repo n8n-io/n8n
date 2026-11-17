@@ -1,6 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 
 const listAgents = vi.fn();
 
@@ -14,6 +15,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 import {
 	useProjectAgentsList,
+	invalidateProjectAgentsListCache,
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 	__clearProjectAgentsListCacheForTests,
@@ -23,6 +25,53 @@ describe('useProjectAgentsList', () => {
 	beforeEach(() => {
 		__clearProjectAgentsListCacheForTests();
 		listAgents.mockReset();
+	});
+
+	it('refreshes mounted consumers without clearing their list', async () => {
+		listAgents.mockResolvedValueOnce([{ id: 'a1' }]);
+		const first = useProjectAgentsList(ref('p1'));
+		const second = useProjectAgentsList(ref('p1'));
+		await first.ensureLoaded();
+		listAgents.mockResolvedValueOnce([{ id: 'a2' }]);
+
+		invalidateProjectAgentsListCache('p1');
+
+		expect(first.list.value).toEqual([{ id: 'a1' }]);
+		await flushPromises();
+		expect(first.list.value).toEqual([{ id: 'a2' }]);
+		expect(second.list.value).toEqual(first.list.value);
+	});
+
+	it('ignores a request started before invalidation', async () => {
+		let finishOld!: (value: unknown) => void;
+		listAgents.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finishOld = resolve;
+			}),
+		);
+		const { list, ensureLoaded } = useProjectAgentsList(ref('p1'));
+		const oldRequest = ensureLoaded();
+		listAgents.mockResolvedValueOnce([{ id: 'fresh' }]);
+
+		invalidateProjectAgentsListCache('p1');
+		await ensureLoaded();
+		finishOld([{ id: 'stale' }]);
+		await oldRequest;
+
+		expect(list.value).toEqual([{ id: 'fresh' }]);
+		expect(listAgents).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the last list when a background refresh fails', async () => {
+		listAgents.mockResolvedValueOnce([{ id: 'a1' }]);
+		const { list, ensureLoaded } = useProjectAgentsList(ref('p1'));
+		await ensureLoaded();
+		listAgents.mockRejectedValueOnce(new Error('unavailable'));
+
+		invalidateProjectAgentsListCache('p1');
+		await flushPromises();
+
+		expect(list.value).toEqual([{ id: 'a1' }]);
 	});
 
 	it('fetches on first call and caches on second', async () => {

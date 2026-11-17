@@ -7,7 +7,7 @@ import {
 } from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
 import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
+import { InstanceWriteAccessService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -41,7 +41,6 @@ import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { Telemetry } from '@/telemetry';
 import { InstanceAiApprovalModeService } from '../approval-review/approval-mode.service';
 import { InstanceAiApprovalReviewerFactory } from '../approval-review/approval-reviewer.factory';
 import { resolveBrowserUseState } from '../browser/browser-use-availability';
@@ -153,7 +152,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly aiService: AiService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
@@ -608,6 +607,27 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+
+		const { cloudBrowser } = runtime;
+		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {
+			orchestrationContext.startCloudBrowserTask = async (input) =>
+				await cloudBrowser.startTask(input, {
+					runId,
+					user,
+					threadId,
+					messageGroupId,
+					modelId,
+					modelStreamStallOptions: orchestrationContext.modelStreamStallOptions,
+					tracing: orchestrationContext.tracing,
+					domainGate: {
+						tracker: domainTracker,
+						runId,
+						permissionMode: context.permissions?.fetchUrl,
+						createCredentialPermissionMode: context.permissions?.createCredential,
+					},
+					getCredentialFields: context.credentialService.getCredentialFields,
+				});
+		}
 
 		return {
 			context,

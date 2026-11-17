@@ -1,11 +1,16 @@
-import { folderIdSchema, folderNameSchema } from '@n8n/api-types';
+import {
+	folderIdSchema,
+	folderNameSchema,
+	folderResourceTypeSchema,
+	type FolderResourceType,
+} from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -13,6 +18,9 @@ import { createFailHandler, describeFolderError } from './folder-error.utils';
 import { folderOutputSchema } from './schemas';
 
 const inputSchema = {
+	resourceType: folderResourceTypeSchema
+		.default('workflow')
+		.describe('The resource tree for the folder'),
 	projectId: z
 		.string()
 		.describe(
@@ -30,7 +38,7 @@ export const createCreateFolderTool = (
 	user: User,
 	folderService: FolderService,
 	projectService: ProjectService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'create_folder',
 	config: {
@@ -50,10 +58,12 @@ export const createCreateFolderTool = (
 		projectId,
 		name,
 		parentFolderId,
+		resourceType,
 	}: {
 		projectId: string;
 		name: string;
 		parentFolderId?: string;
+		resourceType?: FolderResourceType;
 	}) => {
 		const parent = parentFolderId === PROJECT_ROOT ? undefined : parentFolderId;
 
@@ -70,7 +80,10 @@ export const createCreateFolderTool = (
 				return fail('Project not found or access denied');
 			}
 
-			const folder = await folderService.createFolder({ name, parentFolderId: parent }, projectId);
+			const folder = await folderService.createFolder(
+				{ name, parentFolderId: parent, resourceType },
+				projectId,
+			);
 
 			telemetryPayload.results = { success: true, data: { folderId: folder.id } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -78,6 +91,7 @@ export const createCreateFolderTool = (
 			const output = {
 				id: folder.id,
 				name: folder.name,
+				resourceType: folder.resourceType,
 				parentFolderId: folder.parentFolder?.id ?? null,
 			};
 			return {

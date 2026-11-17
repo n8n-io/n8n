@@ -600,37 +600,26 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('cancelMany', () => {
-		test('should clear waitTill when canceling executions', async () => {
-			const executionIds = ['1', '2', '3'];
+	describe('markAsCanceled', () => {
+		test('should cancel only unfinished executions by default and clear waitTill', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
 
-			await executionRepository.cancelMany(executionIds);
+			await executionRepository.markAsCanceled(['1', '2', '1']);
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ExecutionEntity,
-				{ id: In(executionIds) },
+				{ id: In(['1', '2']), status: In(['new', 'running', 'unknown', 'waiting']) },
 				expect.objectContaining({ status: 'canceled', waitTill: null }),
 			);
 		});
-	});
 
-	describe('stopBeforeRun', () => {
-		test('should clear waitTill when stopping execution before run', async () => {
-			const execution = mock<IExecutionResponse>({
-				id: '1',
-				status: 'waiting',
-				waitTill: new Date('2025-01-01T00:00:00.000Z'),
-			});
+		test('should update in batches of 900 ids', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+			const ids = Array.from({ length: 901 }, (_, i) => String(i));
 
-			await executionRepository.stopBeforeRun(execution);
+			await executionRepository.markAsCanceled(ids);
 
-			expect(execution.waitTill).toBeNull();
-			expect(execution.status).toBe('canceled');
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: '1' },
-				expect.objectContaining({ status: 'canceled', waitTill: null }),
-			);
+			expect(entityManager.update).toHaveBeenCalledTimes(2);
 		});
 	});
 
