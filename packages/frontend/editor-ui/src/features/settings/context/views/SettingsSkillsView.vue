@@ -1063,38 +1063,9 @@ onMounted(async () => {
 			</template>
 		</N8nSettingsPageHeader>
 
-		<div
-			v-if="showRecommendedEmptyState"
-			:class="$style.empty"
-			data-test-id="skills-recommended-empty-state"
-		>
-			<N8nHeading tag="h2" size="medium" bold>
-				{{ i18n.baseText('experiments.recommendedSkills.empty.title') }}
-			</N8nHeading>
-			<N8nText color="text-light">
-				{{ i18n.baseText('experiments.recommendedSkills.description') }}
-			</N8nText>
-			<RecommendedSkillCards
-				:class="$style.recommended"
-				entry-point="empty_state"
-				@select="onRecommendedSkillSelect('empty_state', $event)"
-			/>
-			<N8nActionDropdown
-				:items="emptyStateCreateMenuItems"
-				placement="bottom"
-				data-test-id="skills-empty-create-menu"
-				@select="onCreateMenuSelect"
-			>
-				<template #activator>
-					<N8nButton data-test-id="skills-empty-create-button">
-						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
-						<N8nIcon icon="chevron-down" size="small" />
-					</N8nButton>
-				</template>
-			</N8nActionDropdown>
-		</div>
-		<div v-if="!showRecommendedEmptyState" :class="$style.toolbar">
+		<div v-if="!showRecommendedEmptyState || canManageSkillSync" :class="$style.toolbar">
 			<N8nInput
+				v-if="!showRecommendedEmptyState"
 				v-model="search"
 				:class="$style.search"
 				:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
@@ -1107,6 +1078,7 @@ onMounted(async () => {
 				</template>
 			</N8nInput>
 			<ResourceFiltersDropdown
+				v-if="!showRecommendedEmptyState"
 				:model-value="filters"
 				:keys="FILTER_KEYS"
 				:reset="resetFilters"
@@ -1238,7 +1210,7 @@ onMounted(async () => {
 				</template>
 			</N8nPopover>
 			<N8nActionDropdown
-				v-if="scopeOptions.length > 0"
+				v-if="!showRecommendedEmptyState && scopeOptions.length > 0"
 				:items="createMenuItems"
 				placement="bottom-end"
 				data-test-id="skills-create-menu"
@@ -1246,6 +1218,36 @@ onMounted(async () => {
 			>
 				<template #activator>
 					<N8nButton data-test-id="skills-create-menu-button">
+						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+						<N8nIcon icon="chevron-down" size="small" />
+					</N8nButton>
+				</template>
+			</N8nActionDropdown>
+		</div>
+		<div
+			v-if="showRecommendedEmptyState"
+			:class="$style.empty"
+			data-test-id="skills-recommended-empty-state"
+		>
+			<N8nHeading tag="h2" size="medium" bold>
+				{{ i18n.baseText('experiments.recommendedSkills.empty.title') }}
+			</N8nHeading>
+			<N8nText color="text-light">
+				{{ i18n.baseText('experiments.recommendedSkills.description') }}
+			</N8nText>
+			<RecommendedSkillCards
+				:class="$style.recommended"
+				entry-point="empty_state"
+				@select="onRecommendedSkillSelect('empty_state', $event)"
+			/>
+			<N8nActionDropdown
+				:items="emptyStateCreateMenuItems"
+				placement="bottom"
+				data-test-id="skills-empty-create-menu"
+				@select="onCreateMenuSelect"
+			>
+				<template #activator>
+					<N8nButton data-test-id="skills-empty-create-button">
 						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
 						<N8nIcon icon="chevron-down" size="small" />
 					</N8nButton>

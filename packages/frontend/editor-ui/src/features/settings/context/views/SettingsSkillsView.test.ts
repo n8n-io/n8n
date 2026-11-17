@@ -1585,6 +1585,24 @@ describe('SettingsSkillsView', () => {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
 
+		it('shows only the settings button above the recommended-skills empty state', async () => {
+			enableSkillSync({ switchOn: false });
+			allowSkillSyncManage();
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			mockedStore(usePostHog).isVariantEnabled.mockImplementation(
+				(flag, expected) => flag === RECOMMENDED_SKILLS_EXPERIMENT.name && expected === 'variant',
+			);
+			const view = renderWithDialogStub();
+
+			await view.findByTestId('skills-recommended-empty-state');
+			expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-create-menu-button')).not.toBeInTheDocument();
+			const settings = await openSkillSyncSettings(view);
+			expect(within(settings).getByTestId('skill-sync-enable-toggle')).toBeEnabled();
+		});
+
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
 			const view = renderWithDialogStub();
