@@ -13,6 +13,10 @@
  * Without a database, the test runs the library node on the recorded results and checks
  * its `sql` calls and its output against the recording, in the reference runner and in the
  * bytecode VM.
+ *
+ * A case with `recordFirst` has no recording yet. While the list `MYSQL_RECORD_FIRST` of
+ * the node has an entry, such a case without a recording does not run without a database.
+ * With an empty list, each case must have a recording.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -71,6 +75,17 @@ const stored: Record<string, MysqlRecording> = existsSync(recordingFile)
 	? JSON.parse(readFileSync(recordingFile, 'utf8'))
 	: {};
 const written: Record<string, MysqlRecording> = {};
+/** The list `MYSQL_RECORD_FIRST` of the node: what the converter keeps in the host. */
+const recordFirst = [
+	...(/const MYSQL_RECORD_FIRST: string\[\] = \[([^\]]*)\]/
+		.exec(readFileSync(join(here, '../mysql.ts'), 'utf8'))?.[1]
+		.matchAll(/'([^']+)'/g) ?? []),
+].map((match) => match[1]);
+
+/** True when the case waits for its first recording. */
+function waits(c: MysqlCase): boolean {
+	return c.recordFirst === true && recordFirst.length > 0 && stored[c.name] === undefined;
+}
 
 function jsonCopy<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value));
@@ -93,6 +108,37 @@ function withoutClientAddress(value: unknown): unknown {
 	return out;
 }
 
+/**
+ * A copy with 0 for the time of each error object of v1 (`timestamp` of a
+ * NodeOperationError): the time of the run is not a part of the result.
+ */
+function withoutTime(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(withoutTime);
+	if (!isRecord(value)) return value;
+	const out: Record<string, unknown> = {};
+	for (const [key, member] of Object.entries(value)) {
+		const time =
+			key === 'timestamp' && typeof member === 'number' && value.name === 'NodeOperationError';
+		out[key] = time ? 0 : withoutTime(member);
+	}
+	return out;
+}
+
+/** The node of a case with an error setting, as the recorder gives it to n8n's engine. */
+function engineNode(c: MysqlCase) {
+	return {
+		id: 'step',
+		name: NODE,
+		type: TYPE,
+		typeVersion: c.typeVersion,
+		position: [200, 0],
+		parameters: c.parameters,
+		credentials: { mySql: { id: 'case', name: 'case' } },
+		...(c.onError ? { onError: c.onError } : {}),
+		...c.settings,
+	};
+}
+
 function workflowOf(c: MysqlCase) {
 	return {
 		name: 'MySQL',
@@ -111,15 +157,17 @@ function workflowOf(c: MysqlCase) {
 				position: [200, 0],
 				parameters: { fieldToSplitOut: 'body.rows', options: {} },
 			},
-			{
-				name: NODE,
-				type: TYPE,
-				typeVersion: c.typeVersion,
-				position: [400, 0],
-				parameters: c.parameters,
-				credentials: { mySql: { id: '1', name: 'my' } },
-				...(c.onError ? { onError: c.onError } : {}),
-			},
+			c.onError
+				? engineNode(c)
+				: {
+						name: NODE,
+						type: TYPE,
+						typeVersion: c.typeVersion,
+						position: [400, 0],
+						parameters: c.parameters,
+						credentials: { mySql: { id: '1', name: 'my' } },
+						...c.settings,
+					},
 		],
 		connections: {
 			Hook: { main: [[{ node: 'Split', type: 'main', index: 0 }]] },
@@ -129,7 +177,13 @@ function workflowOf(c: MysqlCase) {
 }
 
 function sourceOf(c: MysqlCase): string {
-	const out = convertWorkflow(workflowOf(c), { mysql: true, trace: 'all' });
+	// The harness also converts the calls that the converter keeps in the host until they
+	// have a recording.
+	const out = convertWorkflow(workflowOf(c), {
+		mysql: true,
+		mysqlRecordFirst: true,
+		trace: 'all',
+	});
 	expect(out.ok).toBe(true);
 	return out.source;
 }
@@ -166,9 +220,9 @@ function outcomeOf(run: Awaited<ReturnType<typeof runReference>>): Outcome {
 }
 
 /** The answer of the fallback host for the node of a case. The test does not compare it. */
-function hostAnswer(v1: MysqlRecording['v1']): unknown {
+function hostAnswer(c: MysqlCase, v1: MysqlRecording['v1']): unknown {
 	if (v1.error !== undefined) return { $error: v1.error };
-	return v1.output;
+	return c.onError ? [{ items: [] }] : v1.output;
 }
 
 async function reset(): Promise<void> {
@@ -189,12 +243,17 @@ async function runLive(c: MysqlCase): Promise<MysqlRecording> {
 		items: c.items,
 		credential: { type: 'mySql', data: used },
 		responses: [],
-		settings: {},
+		// With settings, also empty ones, the recorder runs the node in n8n's engine.
+		settings: { ...(c.onError ? { onError: c.onError } : {}), ...c.settings },
 	});
 	const v1State = await runMysqlTexts(credential, MYSQL_STATE);
+	// With an error setting: the usual output, or both outputs with the error output.
+	const lists = v1.outputs ?? [];
+	const engineOutput =
+		c.onError === 'continueErrorOutput' ? [lists[0] ?? [], lists[1] ?? []] : (lists[0] ?? []);
 	const expected: MysqlRecording['v1'] = jsonCopy(
 		withoutClientAddress(
-			v1.error === undefined ? { output: (v1.outputs ?? [])[0] ?? [] } : { error: v1.error },
+			v1.error === undefined ? { output: withoutTime(engineOutput) } : { error: v1.error },
 		),
 	) as MysqlRecording['v1'];
 
@@ -217,7 +276,7 @@ async function runLive(c: MysqlCase): Promise<MysqlRecording> {
 			if (effect.kind === 'node' && effect.step === HOST_NODE) {
 				// The host runs the v1 node: the tables must be as they were before the node.
 				stateAtHost = await runMysqlTexts(credential, MYSQL_STATE);
-				return hostAnswer(expected);
+				return hostAnswer(c, expected);
 			}
 			return undefined;
 		},
@@ -228,7 +287,10 @@ async function runLive(c: MysqlCase): Promise<MysqlRecording> {
 		expect(stateAtHost).toEqual(before);
 	} else {
 		expect(outcome.host).toBe(false);
-		expect({ output: outcome.output, error: outcome.error }).toEqual({
+		expect({
+			output: withoutClientAddress(withoutTime(outcome.output)),
+			error: outcome.error,
+		}).toEqual({
 			output: expected.output,
 			error: expected.error,
 		});
@@ -265,12 +327,12 @@ describe('MySQL library node and the v1 node', () => {
 			async () => {
 				const recording = await runLive(c);
 				written[c.name] = recording;
-				if (!record) expect(recording).toEqual(stored[c.name]);
+				if (!record && !waits(c)) expect(recording).toEqual(stored[c.name]);
 			},
 			60_000,
 		);
 
-		it.skipIf(record)(
+		it.skipIf(record || waits(c))(
 			'makes the recorded calls and gives the recorded result',
 			async () => {
 				const recording = stored[c.name];
@@ -280,14 +342,14 @@ describe('MySQL library node and the v1 node', () => {
 				expect(compiled.diagnostics).toEqual([]);
 				const fixture = fixtureOf(c, {
 					[NODE]: recording.calls.map((call) => call.result),
-					[HOST_NODE]: [hostAnswer(recording.v1)],
+					[HOST_NODE]: [hostAnswer(c, recording.v1)],
 				});
 				const run = await runReference(source, fixture);
 				const outcome = outcomeOf(run);
 				expect(outcome.sql.map((e) => e.args)).toEqual(recording.calls.map((call) => call.args));
 				expect(outcome.host).toBe(recording.host === true);
 				if (recording.host !== true) {
-					expect({ output: outcome.output, error: outcome.error }).toEqual({
+					expect({ output: withoutTime(outcome.output), error: outcome.error }).toEqual({
 						output: recording.v1.output,
 						error: recording.v1.error,
 					});
@@ -311,9 +373,35 @@ describe('MySQL library node and the v1 node', () => {
 
 	it('has a recording for each case, and no other', () => {
 		if (record) return;
-		const names = MYSQL_CASES.filter((c) => c.convertHost !== true).map((c) => c.name);
-		expect(new Set(names).size).toBe(names.length);
+		const all = MYSQL_CASES.map((c) => c.name);
+		expect(new Set(all).size).toBe(all.length);
+		const names = MYSQL_CASES.filter((c) => c.convertHost !== true && !waits(c)).map((c) => c.name);
 		expect(Object.keys(stored).sort()).toEqual([...names].sort());
+	});
+
+	it('keeps each call of the list MYSQL_RECORD_FIRST in the fallback host', () => {
+		const operations = ['select', 'insert', 'update', 'upsert', 'deleteTable'];
+		for (const name of recordFirst) {
+			const operation = operations.includes(name) ? name : 'executeQuery';
+			const c: MysqlCase = {
+				name,
+				typeVersion: 2.5,
+				parameters: {
+					operation,
+					...(operation === 'executeQuery'
+						? { query: 'SELECT 1 AS a' }
+						: { table: { __rl: true, mode: 'list', value: 'mycase_people' } }),
+					options: {},
+				},
+				...(name === 'continueRegularOutput' || name === 'continueErrorOutput'
+					? { onError: name }
+					: {}),
+			};
+			const out = convertWorkflow(workflowOf(c), { mysql: true });
+			expect(out.ok).toBe(true);
+			expect(out.source).toContain("host: 'fallback'");
+			expect(out.source).not.toContain('batch:');
+		}
 	});
 
 	it('without the MySQL client of the runtime, the node stays in the fallback host', () => {

@@ -1,6 +1,7 @@
 // Replays the recorded `sql` calls of the Postgres library node against `wfrt`
 // and a real database, and compares each result with the recorded result of the
-// TypeScript reference client.
+// TypeScript reference client. It reads all recording files. A statement with
+// `simple: true` goes to the runtime as the library node made it.
 //
 //   node bench/pg-replay/replay.mts [--wfrt zig-out/bin/wfrt] [--port 18455] [--only <part of a case name>]
 //
@@ -9,7 +10,7 @@
 // (default `wfrt_replay`; the script makes it). Each case starts from the tables of
 // `POSTGRES_SETUP`, as the equivalence test does. The script changes nothing in `packages/`.
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +33,14 @@ const { POSTGRES_CASES, POSTGRES_SETUP, POSTGRES_STATE } = await import(
 	join(tests, 'postgres-cases.ts')
 );
 const { runTexts } = await import(join(tests, 'sql-reference.ts'));
-const recordings = JSON.parse(readFileSync(join(tests, 'postgres-recordings.json'), 'utf8'));
+// As the equivalence test: `postgres-recordings.json`, `postgres-recordings-2.json` and so on.
+const recordingFile = (index: number) =>
+	join(tests, index === 0 ? 'postgres-recordings.json' : `postgres-recordings-${index + 1}.json`);
+const recordings: Record<string, any> = {};
+let recordingFiles = 0;
+for (; existsSync(recordingFile(recordingFiles)); recordingFiles++) {
+	Object.assign(recordings, JSON.parse(readFileSync(recordingFile(recordingFiles), 'utf8')));
+}
 
 const credential = {
 	host: process.env.PG_TEST_HOST ?? '127.0.0.1',
@@ -85,9 +93,7 @@ function slotOf(override: Record<string, unknown> | undefined): string {
 	return 'db';
 }
 
-await runTexts({ ...credential, database: 'postgres' }, [
-	`CREATE DATABASE ${credential.database}`,
-]);
+await runTexts({ ...credential, database: 'postgres' }, [`CREATE DATABASE ${credential.database}`]);
 
 const dir = mkdtempSync(join(tmpdir(), 'pg-replay-'));
 execFileSync(
@@ -97,7 +103,8 @@ execFileSync(
 );
 const slots: Record<string, unknown> = { db: { type: 'postgres', data: credential } };
 for (const c of POSTGRES_CASES) {
-	if (c.credential) slots[slotOf(c.credential)] = { type: 'postgres', data: { ...credential, ...c.credential } };
+	if (c.credential)
+		slots[slotOf(c.credential)] = { type: 'postgres', data: { ...credential, ...c.credential } };
 }
 for (const name of ['badport', 'badpass']) slots[name] ??= slots.db;
 writeFileSync(join(dir, 'creds.json'), JSON.stringify(slots));
@@ -106,8 +113,22 @@ const server = spawn(
 	wfrt,
 	[
 		'serve',
-		...['--port', String(port), '--log-dir', join(dir, 'log'), '--credentials', join(dir, 'creds.json')],
-		...['--sql-timestamp-zone', 'utc', '--module', join(dir, 'out/workflow.wfm'), '--route', 'POST /replay'],
+		...[
+			'--port',
+			String(port),
+			'--log-dir',
+			join(dir, 'log'),
+			'--credentials',
+			join(dir, 'creds.json'),
+		],
+		...[
+			'--sql-timestamp-zone',
+			'utc',
+			'--module',
+			join(dir, 'out/workflow.wfm'),
+			'--route',
+			'POST /replay',
+		],
 	],
 	{ stdio: ['ignore', 'ignore', 'inherit'] },
 );
@@ -138,7 +159,16 @@ async function waitForServer(): Promise<void> {
 	throw new Error('wfrt did not start');
 }
 
-const counts = { cases: 0, calls: 0, equal: 0, sameMarker: 0, different: 0, stateDifferent: 0 };
+const counts = {
+	files: recordingFiles,
+	cases: 0,
+	calls: 0,
+	simple: 0,
+	equal: 0,
+	sameMarker: 0,
+	different: 0,
+	stateDifferent: 0,
+};
 const notes: string[] = [];
 
 try {
@@ -153,6 +183,9 @@ try {
 		let caseEqual = true;
 		for (const [index, call] of recording.calls.entries()) {
 			counts.calls += 1;
+			if (call.args.statements?.some((s: { simple?: boolean }) => s.simple === true)) {
+				counts.simple += 1;
+			}
 			const got = withoutSourcePlace(await post({ slot: slotOf(c.credential), call: call.args }));
 			const want = call.result;
 			if (canonical(got) === canonical(want)) {
@@ -173,7 +206,9 @@ try {
 		const state: string[] = await runTexts(credential, POSTGRES_STATE);
 		if (JSON.stringify(state) !== JSON.stringify(recording.state)) {
 			counts.stateDifferent += 1;
-			notes.push(`STATE ${c.name}\n  recorded: ${JSON.stringify(recording.state).slice(0, 900)}\n  now:      ${JSON.stringify(state).slice(0, 900)}`);
+			notes.push(
+				`STATE ${c.name}\n  recorded: ${JSON.stringify(recording.state).slice(0, 900)}\n  now:      ${JSON.stringify(state).slice(0, 900)}`,
+			);
 		}
 	}
 } finally {

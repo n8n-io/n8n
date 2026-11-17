@@ -107,6 +107,8 @@ export interface NodeContext {
 	sql?: boolean;
 	/** True when the `sql` effect of the runtime has a MySQL client (`ConvertOptions.mysql`). */
 	mysql?: boolean;
+	/** The recording harness converts the unproven calls (`ConvertOptions.mysqlRecordFirst`). */
+	mysqlRecordFirst?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */
 	useZone?(zone: string): void;
 	/**

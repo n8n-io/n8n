@@ -204,7 +204,9 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
 
 Status: built and tested against a scripted server. Not yet run against a real server, so the shard does not send
 calls to it: `Options.sql_mysql` is off, and a call with the dialect `mysql` ends with `(limit: sql-host)` and
-runs in the fallback host. Turn the option on after the `mysql live` tests pass.
+runs in the fallback host. The flag `--sql-mysql` of `wfrt serve` turns the option on. n8n gives the flag, and
+tells the converter that the runtime has the client (`ConvertOptions.mysql`), only with
+`N8N_COMPILED_ENGINE_SQL_MYSQL=true`. Keep both off until the `mysql live` tests pass.
 
 The files are `src/core/mywire.zig` (the pure codec), `src/core/myerr_tables.zig` (the error names of mysql2,
 made by `gen_myerr.mjs`), `src/shell/my_call.zig` (the arguments and the row JSON), `src/shell/my.zig` (the

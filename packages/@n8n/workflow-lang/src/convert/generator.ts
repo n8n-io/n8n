@@ -160,6 +160,13 @@ export interface ConvertOptions {
 	 * Postgres client and no MySQL client.
 	 */
 	mysql?: boolean;
+	/**
+	 * For the recording harness of the MySQL library node only. With true, the converter also
+	 * gives the library node the operations and the error settings that have no recording
+	 * against the v1 node yet (`MYSQL_RECORD_FIRST` of `src/nodes/mysql.ts`). The default is
+	 * false: they run in the fallback host.
+	 */
+	mysqlRecordFirst?: boolean;
 }
 
 export interface InstanceInfo {
@@ -852,6 +859,7 @@ export class ModuleGenerator {
 			services: this.options.services,
 			sql: this.options.sql,
 			mysql: this.options.mysql,
+			mysqlRecordFirst: this.options.mysqlRecordFirst,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'

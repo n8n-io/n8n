@@ -3,7 +3,9 @@
  * `NodeHelpers.getNodeParameters` of n8n-workflow 2.42.2, with
  * `returnDefaults: true` and `returnNoneDisplayed: false`. n8n runs it on
  * every node before the node reads a parameter, so a parameter that the
- * `displayOptions` of the node type hide does not reach the node.
+ * `displayOptions` of the node type hide does not reach the node. The port has
+ * the `noDataExpression` rule of n8n-workflow 2.48.0: a parameter that takes no
+ * expression loses the `=` at its start.
  *
  * `hideParameters` applies the rules to the parameters of a library node: it
  * removes the parameters that v1 drops, and keeps the others as they are (it
@@ -71,6 +73,56 @@ function isEqual(a: unknown, b: unknown): boolean {
 /** n8n's `deepCopy` for JSON values. */
 function deepCopy<T>(value: T): T {
 	return value === undefined ? value : structuredClone(value);
+}
+
+const FROM_AI_AUTO_GENERATED_MARKER = '/*n8n-auto-generated-fromAI-override*/';
+
+/** The end of the arguments of a `$fromAI(` call that starts before `from`, or -1. */
+function fromAiArgumentsEnd(str: string, from: number): number {
+	let current = from;
+	let quote = '';
+	let depth = 1;
+	let lastOutside = '';
+	while (current < str.length && depth > 0) {
+		const char = str[current];
+		if (quote !== '') {
+			if (char === '\\' && current + 1 < str.length) {
+				current += 2;
+				continue;
+			}
+			if (quote === '`' && char === '$' && str[current + 1] === '{') return -1;
+			if (char === quote) quote = '';
+		} else {
+			if (char === '"' || char === "'" || char === '`') {
+				if (char === '`' && /[a-zA-Z0-9_]/.test(lastOutside)) return -1;
+				quote = char;
+			} else if (char === ')') {
+				depth -= 1;
+			} else if (!/[a-zA-Z0-9.,\s-]/.test(char)) {
+				return -1;
+			}
+			if (!/\s/.test(char)) lastOutside = char;
+		}
+		current += 1;
+	}
+	return depth === 0 ? current : -1;
+}
+
+/**
+ * `isFromAIOnlyExpression` of n8n-workflow 2.48.0: the text is one `$fromAI()` call with
+ * literal arguments and nothing else. n8n keeps the `=` of such a value.
+ */
+export function isFromAIOnlyExpression(expr: string): boolean {
+	let str = (expr.startsWith('=') ? expr.slice(1) : expr).trim();
+	if (str.startsWith('{{') && str.endsWith('}}')) str = str.slice(2, -2).trim();
+	if (str.startsWith(FROM_AI_AUTO_GENERATED_MARKER)) {
+		str = str.slice(FROM_AI_AUTO_GENERATED_MARKER.length).trim();
+	}
+	if (str.includes('{{') || str.includes('}}')) return false;
+	const match = /^\$fromAI\s*\(/i.exec(str);
+	if (!match) return false;
+	const end = fromAiArgumentsEnd(str, match[0].length);
+	return end >= 0 && str.slice(end).trim().length === 0;
 }
 
 /** lodash `get` with a dotted path. */
@@ -341,6 +393,17 @@ export function getNodeParameters(
 				nodeParametersFull[p.name] = nodeParameters[p.name];
 				continue;
 			}
+			// A parameter that takes no expression loses its `=`. A lone `$fromAI()` keeps it.
+			const kept = nodeParameters[p.name];
+			if (
+				p.noDataExpression === true &&
+				typeof kept === 'string' &&
+				kept.charAt(0) === '=' &&
+				!isFromAIOnlyExpression(kept)
+			) {
+				nodeParameters[p.name] = kept.slice(1);
+				nodeParametersFull[p.name] = nodeParameters[p.name];
+			}
 		}
 
 		if (onlySimpleTypes) continue;
@@ -508,6 +571,56 @@ export function hideParameters(type: string, version: number, parameters: Params
 		description,
 	);
 	const out = prune(parameters, normalized ?? {});
+	return isRecord(out) ? out : parameters;
+}
+
+/** The raw value, without the `=` that `normalized` (the parameters as v1 holds them) lost. */
+function withoutPrefix(
+	raw: unknown,
+	normalized: unknown,
+	strip: (text: string) => boolean,
+): unknown {
+	if (typeof raw === 'string') {
+		const lost = raw.startsWith('=') && normalized === raw.slice(1);
+		return lost && strip(raw) ? normalized : raw;
+	}
+	if (Array.isArray(raw) && Array.isArray(normalized)) {
+		return raw.map((v, k) => (k < normalized.length ? withoutPrefix(v, normalized[k], strip) : v));
+	}
+	if (!isRecord(raw) || !isRecord(normalized) || '__rl' in raw) return raw;
+	const out: Params = {};
+	for (const [key, value] of Object.entries(raw)) {
+		out[key] = Object.hasOwn(normalized, key)
+			? withoutPrefix(value, normalized[key], strip)
+			: value;
+	}
+	return out;
+}
+
+/**
+ * The parameters of a node without the `=` of each parameter that takes no expression
+ * (`noDataExpression`), as the `Workflow` constructor of n8n leaves them: v1 does not
+ * evaluate such a value, and the node reads the text after the `=`. All other values keep
+ * their raw form. Unknown types and versions keep all parameters as they are. A value for
+ * which `strip` gives false keeps its `=`.
+ */
+export function stripNoDataExpressions(
+	type: string,
+	version: number,
+	parameters: Params,
+	strip: (text: string) => boolean = () => true,
+): Params {
+	const description = nodeDescription(type, version);
+	if (!description) return parameters;
+	const normalized = getNodeParameters(
+		description.properties,
+		parameters,
+		true,
+		false,
+		version,
+		description,
+	);
+	const out = withoutPrefix(parameters, normalized ?? {}, strip);
 	return isRecord(out) ? out : parameters;
 }
 

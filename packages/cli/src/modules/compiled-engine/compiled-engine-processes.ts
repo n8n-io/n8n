@@ -217,6 +217,8 @@ export class CompiledEngineProcesses {
 		if (userAgent !== undefined) args.push('--egress-user-agent', userAgent);
 		const timestampZone = sqlTimestampZone();
 		if (timestampZone !== undefined) args.push('--sql-timestamp-zone', timestampZone);
+		// `N8N_COMPILED_ENGINE_SQL_MYSQL`: without the flag, `wfrt` gives a MySQL call to the host.
+		if (this.config.sqlMysql) args.push('--sql-mysql');
 		if (this.socketPath) args.push('--fallback', this.socketPath);
 		return args;
 	}

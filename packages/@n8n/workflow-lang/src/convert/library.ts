@@ -932,8 +932,6 @@ export function lowerLibrary(c: NodeContext): void {
 			if (hostForm === null) return inHost(c);
 			const onError =
 				c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
-			// The MySQL library node does not make the error items of v1 yet (spec 9.11).
-			if (type === 'n8n-nodes-base.mySql' && onError !== 'stopWorkflow') return inHost(c);
 			if (onError === 'stopWorkflow') {
 				const call = nodeCall(c, type, batch, c.credential(), false);
 				emitWithHostForm(
@@ -1077,7 +1075,39 @@ function postgresInHost(c: NodeContext): boolean {
 function mysqlInHost(c: NodeContext): boolean {
 	if (c.node.type !== 'n8n-nodes-base.mySql') return false;
 	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
-	return c.mysql !== true || moved;
+	if (c.mysql !== true || moved) return true;
+	if (c.mysqlRecordFirst === true) return false;
+	// An operation or an error setting that has no recording against the v1 node yet.
+	const unproven = mysqlRecordFirst();
+	const operation = c.parameters.operation ?? 'insert';
+	const onError =
+		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	// An operation that is an expression can be an unproven one.
+	if (typeof operation !== 'string' || operation.startsWith('=')) return unproven.length > 0;
+	return unproven.includes(operation) || unproven.includes(onError);
+}
+
+let mysqlUnproven: string[] | undefined;
+
+/** The list `MYSQL_RECORD_FIRST` of the MySQL library node, read from its source. */
+function mysqlRecordFirst(): string[] {
+	if (mysqlUnproven) return mysqlUnproven;
+	const source =
+		Object.entries(NODE_SOURCES).find(([file]) => file.endsWith('mysql.ts'))?.[1] ?? '';
+	const list = /const MYSQL_RECORD_FIRST: string\[\] = \[([^\]]*)\]/.exec(source);
+	// Without the list, each call is unproven: only `executeQuery` without a continue setting runs.
+	mysqlUnproven = list
+		? [...list[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
+		: [
+				'select',
+				'insert',
+				'update',
+				'upsert',
+				'deleteTable',
+				'continueRegularOutput',
+				'continueErrorOutput',
+			];
+	return mysqlUnproven;
 }
 
 function keyValues(list: unknown): Array<{ name: unknown; value: unknown }> {

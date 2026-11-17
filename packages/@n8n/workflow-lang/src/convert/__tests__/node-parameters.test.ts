@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { convertWorkflow } from '../index.ts';
 import type { NodeDescription } from '../node-parameters.ts';
-import { getNodeParameters, hideParameters } from '../node-parameters.ts';
+import {
+	getNodeParameters,
+	hideParameters,
+	isFromAIOnlyExpression,
+	stripNoDataExpressions,
+} from '../node-parameters.ts';
 
 const description: NodeDescription = {
 	name: 'test',
@@ -136,5 +141,111 @@ describe('the port gives what n8n-workflow gives', () => {
 			compared++;
 		}
 		expect(compared).toBeGreaterThan(100);
+	});
+});
+
+describe('a parameter that takes no expression (noDataExpression)', () => {
+	const text: NodeDescription = {
+		name: 'test',
+		properties: [
+			{ name: 'query', type: 'string', default: '', noDataExpression: true },
+			{ name: 'note', type: 'string', default: '' },
+			{
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [
+					{ name: 'inner', type: 'string', default: '', noDataExpression: true },
+					{ name: 'other', type: 'string', default: '' },
+				],
+			},
+		],
+	};
+	const normalize = (parameters: Record<string, unknown>) =>
+		getNodeParameters(text.properties, parameters, true, false, 1, text) ?? {};
+
+	it('loses the `=` at its start, at each level', () => {
+		expect(
+			normalize({
+				query: '=SELECT {{ $json.a }}',
+				note: '={{ $json.a }}',
+				options: { inner: '=x {{ $json.b }}', other: '={{ $json.b }}' },
+			}),
+		).toEqual({
+			query: 'SELECT {{ $json.a }}',
+			note: '={{ $json.a }}',
+			options: { inner: 'x {{ $json.b }}', other: '={{ $json.b }}' },
+		});
+	});
+
+	it('loses one `=` only, and keeps a value that is not text', () => {
+		expect(normalize({ query: '=={{ $json.a }}' }).query).toBe('={{ $json.a }}');
+		expect(normalize({ query: 5 }).query).toBe(5);
+		expect(normalize({}).query).toBe('');
+	});
+
+	it('keeps the `=` of a value that is only a $fromAI call', () => {
+		const call = "={{ $fromAI('query', 'The query', 'string') }}";
+		expect(normalize({ query: call }).query).toBe(call);
+		const marked = "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', ``, 'string') }}";
+		expect(normalize({ query: marked }).query).toBe(marked);
+		expect(normalize({ query: "=SELECT {{ $fromAI('id') }}" }).query).toBe(
+			"SELECT {{ $fromAI('id') }}",
+		);
+	});
+
+	it('isFromAIOnlyExpression accepts one call with literal arguments only', () => {
+		expect(isFromAIOnlyExpression("={{ $fromAI('a', 'b', 'number', 5) }}")).toBe(true);
+		expect(isFromAIOnlyExpression("=$fromAI('a')")).toBe(true);
+		expect(isFromAIOnlyExpression("={{ $fromAI('a') + 1 }}")).toBe(false);
+		expect(isFromAIOnlyExpression("={{ $fromAI(other('a')) }}")).toBe(false);
+		expect(isFromAIOnlyExpression("={{ $fromAI('a', $json.b) }}")).toBe(false);
+		expect(isFromAIOnlyExpression('={{ $fromAI(`a${1}`) }}')).toBe(false);
+		expect(isFromAIOnlyExpression("={{ $fromAI('a' }}")).toBe(false);
+		expect(isFromAIOnlyExpression('={{ $json.a }}')).toBe(false);
+	});
+
+	it('stripNoDataExpressions changes only such parameters of a known node type', () => {
+		const parameters = {
+			operation: 'executeQuery',
+			query: '=SELECT {{ $json.a }}',
+			options: { queryReplacement: '={{ $json.b }}' },
+		};
+		expect(stripNoDataExpressions('n8n-nodes-base.postgres', 2.6, parameters)).toEqual({
+			operation: 'executeQuery',
+			query: 'SELECT {{ $json.a }}',
+			options: { queryReplacement: '={{ $json.b }}' },
+		});
+		expect(stripNoDataExpressions('n8n-nodes-base.unknownThing', 1, parameters)).toBe(parameters);
+	});
+
+	it('the converter gives the fallback host the text and does not evaluate it', () => {
+		const r = convertWorkflow({
+			name: 'Query',
+			nodes: [
+				{
+					name: 'Hook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: { path: 'q' },
+				},
+				{
+					name: 'Query',
+					type: 'n8n-nodes-base.postgres',
+					typeVersion: 2.6,
+					position: [200, 0],
+					parameters: {
+						operation: 'executeQuery',
+						query: '=SELECT {{ $json.body.a.toUpperCase() }} AS a',
+						options: {},
+					},
+					credentials: { postgres: { id: '1', name: 'db' } },
+				},
+			],
+			connections: { Hook: { main: [[{ node: 'Query', type: 'main', index: 0 }]] } },
+		});
+		expect(r.source).toContain("host: 'fallback'");
+		expect(r.source).toContain("query: 'SELECT {{ $json.body.a.toUpperCase() }} AS a'");
 	});
 });

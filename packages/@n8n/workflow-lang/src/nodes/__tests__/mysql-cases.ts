@@ -4,6 +4,9 @@
  * the tables afterwards.
  */
 
+import { MYSQL_CONTINUE_CASES } from './mysql-continue-cases.ts';
+import { MYSQL_OPERATION_CASES } from './mysql-operation-cases.ts';
+
 export interface MysqlCase {
 	/** Unique name. The recording file uses it as the key. */
 	name: string;
@@ -23,6 +26,13 @@ export interface MysqlCase {
 	onError?: 'continueRegularOutput' | 'continueErrorOutput';
 	/** Values of the credential that differ from the test database (a failure of the connection). */
 	credential?: Record<string, unknown>;
+	/** Settings of the node in n8n's engine ("retry on fail"). */
+	settings?: Record<string, unknown>;
+	/**
+	 * The case has no recording yet. While the list `MYSQL_RECORD_FIRST` of the node has an
+	 * entry, the test does not run it without a database.
+	 */
+	recordFirst?: boolean;
 }
 
 /** The tables of each case. The test runs these texts before each run of a node. */
@@ -487,31 +497,21 @@ const HOST: MysqlCase[] = [
 		{ replaceEmptyStrings: true },
 		{ convertHost: true },
 	),
-	query(
-		'a continue setting',
-		'SELECT 1 AS a',
-		{},
-		{ convertHost: true, onError: 'continueRegularOutput' },
+	// v1 does not split at a `;` that has a string with a backslash and an apostrophe after
+	// it, so it sends two commands as one statement.
+	...BATCHING.map((queryBatching) =>
+		query(
+			`${queryBatching}, a parameter value with an apostrophe after a semicolon`,
+			'SELECT 1 AS a; SELECT $1 AS b',
+			{ queryBatching, queryReplacement: '={{ $json.word }}' },
+			{ items: [{ word: "it's" }], host: true, recordFirst: true },
+		),
 	),
-	query(
-		'an error output',
-		'SELECT 1 AS a',
-		{},
-		{ convertHost: true, onError: 'continueErrorOutput' },
-	),
-	{
-		name: 'select, not in the library node',
-		typeVersion: 2.5,
-		parameters: {
-			operation: 'select',
-			table: { __rl: true, mode: 'list', value: 'mycase_people' },
-			options: {},
-		},
-		convertHost: true,
-	},
 ];
 
 export const MYSQL_CASES: MysqlCase[] = [
+	...MYSQL_OPERATION_CASES,
+	...MYSQL_CONTINUE_CASES,
 	...READS,
 	...WRITES,
 	...ITEMS,
