@@ -30,6 +30,17 @@ export class PromotionsModule implements ModuleInterface {
 			list: async (user, query) => await reviews.listForInbox(user, query),
 			count: async (user) => await reviews.countForInbox(user),
 		});
+
+		// "Ask the owner": the requests that a user may receive, as a second Inbox source.
+		await import('./promotion-owner-requests.controller.js');
+		const { PromotionOwnerRequestService } = await import('./promotion-owner-request.service.js');
+		const ownerRequests = Container.get(PromotionOwnerRequestService);
+		Container.get(InboxSourceRegistry).register({
+			type: 'promotion_owner_request',
+			isEnabled: async () => ownerRequests.isEnabled(),
+			list: async (user, query) => await ownerRequests.listForInbox(user, query),
+			count: async (user) => await ownerRequests.countForInbox(user),
+		});
 	}
 
 	async entities() {
@@ -42,12 +53,16 @@ export class PromotionsModule implements ModuleInterface {
 		);
 		const { PromotionRun } = await import('./database/entities/promotion-run.entity.js');
 		const { PromotionReview } = await import('./database/entities/promotion-review.entity.js');
+		const { PromotionOwnerRequest } = await import(
+			'./database/entities/promotion-owner-request.entity.js'
+		);
 		return [
 			PromotionProvider,
 			PromotionEnvironment,
 			PromotionEnvironmentProject,
 			PromotionRun,
 			PromotionReview,
+			PromotionOwnerRequest,
 		];
 	}
 }
