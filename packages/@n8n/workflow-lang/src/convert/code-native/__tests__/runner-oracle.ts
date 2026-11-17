@@ -10,7 +10,7 @@ import { runOracle } from '../../__tests__/behaviour/oracle-engine.ts';
 import { startTaskRunner, taskRunnerAvailable } from '../../__tests__/behaviour/task-runner.ts';
 import { runModule } from '../../../testing/vm.ts';
 import { checkTranslation } from '../check.ts';
-import type { CodeMode } from '../translate.ts';
+import type { CodeMode, CodeNativeInput } from '../translate.ts';
 import { translateCode } from '../translate.ts';
 
 export { taskRunnerAvailable };
@@ -99,7 +99,11 @@ export function nativeCode(
 	code: string,
 	mode: CodeMode,
 	items: unknown[],
-	options: Pick<RunnerOptions, 'nodes'> & { effects?: Record<string, unknown[]> } = {},
+	options: Pick<RunnerOptions, 'nodes'> & {
+		effects?: Record<string, unknown[]>;
+		/** What the converter knows of the workflow, for example `pairsByPosition`. */
+		known?: Partial<CodeNativeInput>;
+	} = {},
 ): RunnerOutcome {
 	const names = Object.keys(options.nodes ?? {});
 	const input = {
@@ -109,6 +113,7 @@ export function nativeCode(
 		hasNode: (name: string) => names.includes(name),
 		timezone: 'system',
 		itemsOfFirstOnly: false,
+		...options.known,
 	};
 	const t = translateCode(input);
 	if (!t.ok) throw new Error(`blocked: ${t.blockers.map((b) => b.feature).join(', ')}`);

@@ -96,6 +96,18 @@ export interface CodeNativeInput {
 	 * native form: the bytes of a stored file need a call of the runtime that reads them.
 	 */
 	inlineBinary?: boolean;
+	/**
+	 * True when v1 pairs input item k of this node with item k of node `name`: the node is
+	 * before this one on a path of nodes with one input that give one item for each item.
+	 * Only then `$('name').itemMatching(k)`, and `$('name').item` in "each item" mode, have a
+	 * native form.
+	 */
+	pairsByPosition?(name: string): boolean;
+	/**
+	 * The output of node `name` that `$('name')` reads from this node (v1's
+	 * `getNodeConnectionIndexes`). The default is 0.
+	 */
+	defaultOutput?(name: string): number;
 }
 
 export interface Blocker {
@@ -1042,8 +1054,36 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		return nodeVar(k);
 	};
 
+	/**
+	 * True when `output` and `run` (the arguments after the node name of `$items`, or the
+	 * arguments of `.all()`, `.first()` and `.last()`) name the items that the call gives
+	 * without them: the output that this node reads, and the last run. A node that runs
+	 * once has only run 0.
+	 */
+	const defaultItems = (
+		name: string,
+		output: ts.Expression | undefined,
+		run: ts.Expression | undefined,
+	): boolean => {
+		const number = (e: ts.Expression): number | null => {
+			const x = stripParens(e);
+			if (ts.isNumericLiteral(x)) return Number(x.text);
+			return ts.isPrefixUnaryExpression(x) &&
+				x.operator === ts.SyntaxKind.MinusToken &&
+				ts.isNumericLiteral(x.operand)
+				? -Number(x.operand.text)
+				: null;
+		};
+		if (output !== undefined && number(output) !== (input.defaultOutput?.(name) ?? 0)) return false;
+		if (run === undefined) return true;
+		const index = number(run);
+		return (
+			index === -1 || (index === 0 && (input.runIndex === undefined || input.runIndex === '0'))
+		);
+	};
+
 	/** `<list>.all() / .first() / .last() / .item / .isExecuted` of `$input` or `$('X')`. */
-	const itemChain = (base: ts.Node, list: string | null, own: boolean): void => {
+	const itemChain = (base: ts.Node, list: string | null, own: boolean, name = ''): void => {
 		const p = base.parent;
 		if (!ts.isPropertyAccessExpression(p) || p.expression !== base) {
 			block(own ? '$input as a value' : "$('…') as a value", 'The code uses the object itself.');
@@ -1056,7 +1096,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const noArguments =
 			call !== null &&
 			(call.arguments.length === 0 ||
-				(own && member === 'all' && call.arguments.every((x) => ts.isNumericLiteral(x))));
+				(own && member === 'all' && call.arguments.every((x) => ts.isNumericLiteral(x))) ||
+				(!own &&
+					call.arguments.length <= 2 &&
+					!call.arguments.some((x) => ts.isSpreadElement(x)) &&
+					defaultItems(name, call.arguments[0], call.arguments[1])));
 		if (call && noArguments) {
 			if (member === 'all') {
 				replace(base.getStart(sf), call.getEnd(), list);
@@ -1072,8 +1116,29 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 		}
 		if (!call && member === 'item') {
-			// As the host: `.item` is the current item in "each item" mode, else the first item.
-			replace(base.getStart(sf), p.getEnd(), own && input.mode === 'each' ? ITEM : `${list}[0]`);
+			// As v1: the item that pairs with the current item, when the pairing is by position.
+			// Else as the host: the current item in "each item" mode, else the first item.
+			const paired = !own && input.mode === 'each' && input.pairsByPosition?.(name) === true;
+			replace(
+				base.getStart(sf),
+				p.getEnd(),
+				own && input.mode === 'each' ? ITEM : paired ? `${list}[${INDEX}]` : `${list}[0]`,
+			);
+			return;
+		}
+		if (
+			call &&
+			member === 'itemMatching' &&
+			!own &&
+			call.arguments.length === 1 &&
+			!ts.isSpreadElement(call.arguments[0]) &&
+			input.pairsByPosition?.(name) === true
+		) {
+			const arg = call.arguments[0];
+			helpers.add('pairedAt');
+			const o = seq;
+			replace(base.getStart(sf), arg.getStart(sf), `pairedAt(${list}, `);
+			closing(arg.getEnd(), call.getEnd(), ')', o);
 			return;
 		}
 		if (!call && member === 'isExecuted' && !own) {
@@ -3940,7 +4005,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					computedNode(parent);
 					return false;
 				}
-				itemChain(parent, nodeList(nodeName), false);
+				itemChain(parent, nodeList(nodeName), false, nodeName);
 				return false;
 			}
 			case '$node': {
@@ -4023,13 +4088,28 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					replaceNode(parent, input.itemsOfFirstOnly ? `${ITEMS}.slice(0, 1)` : ITEMS);
 					return false;
 				}
-				// \`$items(name, 0)\`: output 0 is the default, so it is \`$items(name)\`.
-				const [first, second] = parent.arguments;
-				const firstOutput =
-					parent.arguments.length === 2 && ts.isNumericLiteral(second) && second.text === '0';
-				const nodeName = firstOutput ? constText(first) : stringArgument(parent);
+				// \`$items(name, output, run)\` with the output and the run that \`$items(name)\` reads.
+				const [first, second, third] = parent.arguments;
+				const named =
+					parent.arguments.length >= 2 &&
+					parent.arguments.length <= 3 &&
+					!parent.arguments.some((x) => ts.isSpreadElement(x))
+						? constText(first)
+						: stringArgument(parent);
+				// v1 reads output 0 here, and not the output that this node has a connection to.
+				const nodeName =
+					named !== null &&
+					((input.defaultOutput?.(named) ?? 0) !== 0 ||
+						(parent.arguments.length >= 2 && !defaultItems(named, second, third)))
+						? null
+						: named;
 				if (nodeName === null) {
-					block('$items() without a node name', '`$items()` has no native form.');
+					block(
+						parent.arguments.length === 0
+							? '$items() without a node name'
+							: '$items() with an output or a run',
+						'`$items()` has no native form.',
+					);
 					return false;
 				}
 				const list = nodeList(nodeName);

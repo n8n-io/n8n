@@ -269,7 +269,8 @@ describe('$items() without a node name', () => {
 		const two = translate("return $items('Src', 0).map((i) => ({ json: i.json }));");
 		expect(one.ok && two.ok && two.translation.body === one.translation.body).toBe(true);
 		expect(translate("return $items('Src', 1);").ok).toBe(false);
-		expect(translate("return $items('Src', 0, 0);").ok).toBe(false);
+		expect(translate("return $items('Src', 0, 0);").ok).toBe(true);
+		expect(translate("return $items('Src', 0, 1);").ok).toBe(false);
 	});
 
 	it('stays in the host when the node before is not fixed, and with other arguments', () => {

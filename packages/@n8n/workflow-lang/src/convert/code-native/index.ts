@@ -114,6 +114,8 @@ export function attemptNative(
 		nodeName?: string;
 		itemsOfFirstOnly?: boolean;
 		allowedModules?: string[];
+		pairsByPosition?: (name: string) => boolean;
+		defaultOutput?: (name: string) => number;
 	} = {},
 ): NativeAttempt & { nodes?: string[]; zones?: string[]; allNodes?: string[] } {
 	const src = codeOf(type, parameters);
@@ -211,14 +213,25 @@ function escapeMarkerCharacters(text: string): string {
 }
 
 /**
- * True when the node before this one has "execute once", false when it has not, and undefined
- * when the node before this one is not fixed. v1's `$items()` reads the setting of that node.
+ * True when each node with a connection to this one has "execute once", false when none has,
+ * and undefined when they differ or no node has a connection to this one. v1's `$items()`
+ * reads the setting of the node that gave the input items of the run.
  */
 export function previousRunsOnce(c: NodeContext): boolean | undefined {
-	const name = c.scope.prevNode;
-	if (c.scope.prevSource !== undefined || name === null) return undefined;
-	const node = c.workflow.nodes.find((n) => n.name === name);
-	return node === undefined ? undefined : node.executeOnce === true;
+	let once: boolean | undefined;
+	for (const [from, outputs] of Object.entries(c.workflow.connections)) {
+		for (const targets of outputs?.main ?? []) {
+			for (const target of targets ?? []) {
+				if (target.node !== c.node.name) continue;
+				const node = c.workflow.nodes.find((n) => n.name === from);
+				if (node === undefined) return undefined;
+				const value = node.executeOnce === true;
+				if (once !== undefined && once !== value) return undefined;
+				once = value;
+			}
+		}
+	}
+	return once;
 }
 
 /**
@@ -305,6 +318,9 @@ export function lowerCodeNative(c: NodeContext): boolean {
 			nodeName: c.node.name,
 			itemsOfFirstOnly: previousRunsOnce(c),
 			allowedModules: c.codeModules,
+			// With "execute once" the node gets one input item, and the node before has more.
+			pairsByPosition: (name) => c.node.executeOnce !== true && c.pairsByPosition(name),
+			defaultOutput: (name) => c.readOutput(name),
 			check: false,
 			allNodes: c.workflow.nodes
 				.map((n) => n.name)

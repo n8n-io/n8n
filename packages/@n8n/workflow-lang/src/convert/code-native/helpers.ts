@@ -1925,6 +1925,22 @@ function mathImul(a: Json, b: Json): number {
 	return (xl * yl + mid) | 0;
 }`,
 	},
+	pairedAt: {
+		uses: [],
+		source: `/**
+ * \\\`$(name).itemMatching(k)\\\` of a node whose items pair with the input items by position:
+ * item k, with v1's errors. v1 reads input item k with \\\`k\\\` as a key, so the text of an
+ * index counts too. The errors of v1 here have no line.
+ */
+function pairedAt(list: Json[], k: Json): Json {
+	if (k === undefined) throw { name: 'Error', message: 'Missing item index for .itemMatching()', $line: null };
+	const index: number = typeof k === 'number' ? k : typeof k === 'string' && String(Number(k)) === k ? Number(k) : -1;
+	if (!(index >= 0 && index < list.length && Math.floor(index) === index)) {
+		throw { name: 'Error', message: 'Can’t get data', $line: null };
+	}
+	return list[index];
+}`,
+	},
 	itemOfNode: {
 		uses: [],
 		source: `/** \\\`$item(k).$node[name].json\\\`: the JSON of item k of the node, with v1's errors. */
