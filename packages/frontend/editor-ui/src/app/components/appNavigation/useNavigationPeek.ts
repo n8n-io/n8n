@@ -6,8 +6,9 @@ export const PEEK_CLOSE_DELAY = 150;
 export const PEEK_CARRY_OVER_WINDOW = 2000;
 
 // Each layout mounts its own navigation, so a page with another layout, such as the
-// Assistant, mounts a new one. The open panel is handed to it, so it does not close and open.
-const handoff = { itemId: null as string | null, at: 0 };
+// Assistant, mounts a new one. The new one is created before the old one goes away, so
+// both share the open panel, and it does not close and open again.
+const shared = { itemId: ref<string | null>(null), live: 0, lastDisposedAt: 0 };
 
 /**
  * The floating panel of the collapsed navigation. Hovering a rail item opens its panel
@@ -31,10 +32,14 @@ export function useNavigationPeek(
 		carryOver = false,
 	} = options;
 
-	const handedOver =
-		carryOver && Date.now() - handoff.at <= PEEK_CARRY_OVER_WINDOW ? handoff.itemId : null;
-	handoff.itemId = null;
-	const peekItemId = ref<string | null>(toValue(enabled) ? handedOver : null);
+	if (carryOver) {
+		// No navigation is mounted and the last one went away a while ago: start closed.
+		const isStale =
+			shared.live === 0 && Date.now() - shared.lastDisposedAt > PEEK_CARRY_OVER_WINDOW;
+		if (isStale || !toValue(enabled)) shared.itemId.value = null;
+		shared.live++;
+	}
+	const peekItemId = carryOver ? shared.itemId : ref<string | null>(null);
 	let openTimer: ReturnType<typeof setTimeout> | undefined;
 	let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -83,8 +88,8 @@ export function useNavigationPeek(
 	onScopeDispose(() => {
 		clearTimers();
 		if (!carryOver) return;
-		handoff.itemId = peekItemId.value;
-		handoff.at = Date.now();
+		shared.live--;
+		shared.lastDisposedAt = Date.now();
 	});
 
 	return { peekItemId, onItemEnter, onLeave, onPanelEnter, close };

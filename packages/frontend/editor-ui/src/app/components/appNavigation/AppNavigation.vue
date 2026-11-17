@@ -148,12 +148,19 @@ onBeforeMount(() => {
 });
 
 // A panel carried over from the previous layout stays only while the pointer is still on the
-// navigation. The pointer may have moved to the page while the layout loaded, without a
-// leave event to close the panel.
+// navigation. The new navigation mounts off screen first, so it cannot read the hover state,
+// and the pointer may have moved to the page meanwhile without a leave event. The next
+// pointer move tells where the pointer is.
 const navigationRef = useTemplateRef<HTMLElement>('navigation');
+function onFirstPointerMove(event: PointerEvent) {
+	const target = event.target;
+	if (!(target instanceof Node) || !navigationRef.value?.contains(target)) peek.onLeave();
+}
 onMounted(() => {
-	if (peek.peekItemId.value !== null && !navigationRef.value?.matches(':hover')) peek.onLeave();
+	if (peek.peekItemId.value === null) return;
+	document.addEventListener('pointermove', onFirstPointerMove, { once: true });
 });
+onBeforeUnmount(() => document.removeEventListener('pointermove', onFirstPointerMove));
 
 onBeforeUnmount(() => {
 	sourceControlEventBus.off('pull', reloadMyProjects);

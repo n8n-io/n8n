@@ -156,6 +156,18 @@ describe('useNavigationPeek', () => {
 			next.scope.stop();
 		});
 
+		it('shares the open panel with a navigation that mounts before the old one goes away', () => {
+			const first = mount();
+			first.peek.onItemEnter('assistant');
+			vi.advanceTimersByTime(PEEK_OPEN_DELAY);
+
+			const second = mount();
+			first.scope.stop();
+
+			expect(second.peek.peekItemId.value).toBe('assistant');
+			second.scope.stop();
+		});
+
 		it('hands nothing over without the option', () => {
 			const first = mount();
 			first.peek.onItemEnter('assistant');
