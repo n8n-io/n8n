@@ -132,6 +132,7 @@ pub const Client = struct {
     accepted: u32 = 0,
     auth_rounds: u8 = 0,
     sent_message: bool = false,
+    envelope_started: bool = false,
     ehlo: ?Span = null,
     mail_reply: ?Span = null,
     response: Span = .{},
@@ -210,6 +211,12 @@ pub const Client = struct {
     pub fn onLimit(c: *Client, what: []const u8) void {
         c.failure = .{ .limit = true, .command = what };
         c.state = .failed;
+    }
+
+    /// True when the MAIL command is written. Before that, the fallback
+    /// host can run the call: the server has no part of a message.
+    pub fn envelopeStarted(c: *const Client) bool {
+        return c.envelope_started;
     }
 
     /// The server took the message.
@@ -369,6 +376,7 @@ pub const Client = struct {
         c.using_utf8 = utf8 and c.smtputf8;
         const arg: []const u8 = if (c.using_utf8) " SMTPUTF8" else "";
         c.putLine(&.{ "MAIL FROM:<", c.cfg.from, ">", arg }) catch return c.limit("the commands");
+        c.envelope_started = true;
         c.state = .mail;
         if (!c.pipelined) return .wait;
         for (c.rcpts) |*r| {
@@ -517,9 +525,10 @@ pub const Client = struct {
         try o.byte(']');
     }
 
-    /// The `rejectedErrors` of nodemailer, as JSON gives an error: the
-    /// properties that can be listed, without `message`.
+    /// The `rejectedErrors` of nodemailer: `message`, then the properties
+    /// that `_formatError` and `_actionRCPT` set.
     fn writeRejectedErrors(c: *const Client, o: *Out) error{NoSpace}!void {
+        std.debug.assert(c.accepted <= c.rcpts.len);
         try o.put(",\"rejectedErrors\":[");
         var first = true;
         for (c.rcpts) |r| {
@@ -527,7 +536,11 @@ pub const Client = struct {
             if (!first) try o.byte(',');
             first = false;
             const reply = c.text(r.reply);
-            try o.put("{\"code\":\"EENVELOPE\",\"response\":");
+            const intl = c.using_utf8 and std.mem.startsWith(u8, reply, "553 ") and !isAscii(r.addr);
+            try o.put("{\"message\":\"");
+            try o.put(if (intl) "Internationalized mailbox name not allowed: " else "Recipient command failed: ");
+            try putStringBody(o, reply);
+            try o.put("\",\"code\":\"EENVELOPE\",\"response\":");
             try o.string(reply);
             try writeResponseCode(o, reply);
             try o.put(",\"command\":\"RCPT TO\",\"recipient\":");
@@ -586,6 +599,15 @@ pub const Client = struct {
         return c.failure.command;
     }
 };
+
+/// The inside of a JSON string.
+fn putStringBody(o: *Out, s: []const u8) error{NoSpace}!void {
+    const at = o.len;
+    try o.string(s);
+    // `string` adds a quote at each end: the text moves over the first one.
+    std.mem.copyForwards(u8, o.buf[at .. o.len - 2], o.buf[at + 1 .. o.len - 1]);
+    o.len -= 2;
+}
 
 fn putDecimal(o: *Out, v: u64) error{NoSpace}!void {
     const digits = "0123456789";
@@ -944,7 +966,7 @@ test "smtp: STARTTLS, a second EHLO, AUTH PLAIN and a pipelined envelope" {
     });
     try std.testing.expectEqualStrings(
         "{\"accepted\":[\"c@x.test\"],\"rejected\":[\"b@x.test\"],\"ehlo\":[\"PIPELINING\",\"AUTH LOGIN PLAIN\"]," ++
-            "\"rejectedErrors\":[{\"code\":\"EENVELOPE\",\"response\":\"550 5.1.1 no such user\",\"responseCode\":550," ++
+            "\"rejectedErrors\":[{\"message\":\"Recipient command failed: 550 5.1.1 no such user\",\"code\":\"EENVELOPE\",\"response\":\"550 5.1.1 no such user\",\"responseCode\":550," ++
             "\"command\":\"RCPT TO\",\"recipient\":\"b@x.test\"}]," ++
             "\"envelopeTime\":3,\"messageTime\":5,\"messageSize\":42,\"response\":\"250 done\"}",
         try b.result(),
@@ -1083,8 +1105,8 @@ test "smtp: failures of the envelope and of the message" {
     try std.testing.expectEqualStrings(
         "{\"error\":{\"message\":\"Can't send mail - all recipients were rejected: 451 later\",\"code\":\"EENVELOPE\"," ++
             "\"response\":\"451 later\",\"responseCode\":451,\"command\":\"RCPT TO\",\"rejected\":[\"b@x.test\",\"c@x.test\"]," ++
-            "\"rejectedErrors\":[{\"code\":\"EENVELOPE\",\"response\":\"451 later\",\"responseCode\":451,\"command\":\"RCPT TO\",\"recipient\":\"b@x.test\"}," ++
-            "{\"code\":\"EENVELOPE\",\"response\":\"550 no\",\"responseCode\":550,\"command\":\"RCPT TO\",\"recipient\":\"c@x.test\"}]}}",
+            "\"rejectedErrors\":[{\"message\":\"Recipient command failed: 451 later\",\"code\":\"EENVELOPE\",\"response\":\"451 later\",\"responseCode\":451,\"command\":\"RCPT TO\",\"recipient\":\"b@x.test\"}," ++
+            "{\"message\":\"Recipient command failed: 550 no\",\"code\":\"EENVELOPE\",\"response\":\"550 no\",\"responseCode\":550,\"command\":\"RCPT TO\",\"recipient\":\"c@x.test\"}]}}",
         try b.failure(),
     );
     b.start(plain, &.{"b@x.test"});
@@ -1129,7 +1151,7 @@ test "smtp: a pipelined envelope that the server refuses" {
     });
     try std.testing.expectEqualStrings(
         "{\"error\":{\"message\":\"Can't send mail - all recipients were rejected: 550 no\",\"code\":\"EENVELOPE\",\"response\":\"550 no\",\"responseCode\":550," ++
-            "\"command\":\"RCPT TO\",\"rejected\":[\"b@x.test\"],\"rejectedErrors\":[{\"code\":\"EENVELOPE\",\"response\":\"550 no\",\"responseCode\":550," ++
+            "\"command\":\"RCPT TO\",\"rejected\":[\"b@x.test\"],\"rejectedErrors\":[{\"message\":\"Recipient command failed: 550 no\",\"code\":\"EENVELOPE\",\"response\":\"550 no\",\"responseCode\":550," ++
             "\"command\":\"RCPT TO\",\"recipient\":\"b@x.test\"}]}}",
         try b.failure(),
     );

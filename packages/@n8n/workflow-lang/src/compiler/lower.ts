@@ -458,6 +458,8 @@ function effectKind(method: string): number {
 			return EffectKind.service;
 		case 'sql':
 			return EffectKind.sql;
+		case 'smtp':
+			return EffectKind.smtp;
 		default:
 			return EffectKind.node;
 	}

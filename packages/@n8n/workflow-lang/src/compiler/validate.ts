@@ -200,6 +200,10 @@ export function validateFile(
 				ts.isPropertyAssignment(p) && propertyName(p.name) === name,
 		);
 
+	const hasProperty = (options: ts.ObjectLiteralExpression, name: string) =>
+		propertyOf(options, name) !== undefined ||
+		options.properties.some((p) => ts.isShorthandPropertyAssignment(p) && p.name.text === name);
+
 	// The parts of a `sql` call that are literals (spec 9.10). The runtime checks the rest.
 	const checkSql = (options: ts.ObjectLiteralExpression) => {
 		const shorthand = (name: string) =>
@@ -312,6 +316,14 @@ export function validateFile(
 			return;
 		}
 		if (method === 'sql') checkSql(options);
+		if (method === 'smtp' && !hasProperty(options, 'credential')) {
+			report(
+				options,
+				'WL032',
+				'ctx.smtp needs `credential`, the name of a credential slot.',
+				"credential: 'smtp'",
+			);
+		}
 		const isLibraryHttp = role === 'library';
 		if (isLibraryHttp) return;
 		const nameProp = options.properties.find(
@@ -550,6 +562,7 @@ export function validateFile(
 				method !== 'http' &&
 				method !== 'service' &&
 				method !== 'sql' &&
+				method !== 'smtp' &&
 				method !== 'staticData' &&
 				method !== 'random' &&
 				method !== 'wait' &&
@@ -558,7 +571,7 @@ export function validateFile(
 				report(
 					node,
 					'WL012',
-					'A library node can use only ctx.http, ctx.service, ctx.sql, ctx.staticData, ctx.random, ctx.wait and ctx.credentialFlag.',
+					'A library node can use only ctx.http, ctx.service, ctx.sql, ctx.smtp, ctx.staticData, ctx.random, ctx.wait and ctx.credentialFlag.',
 					'Use ctx.http.',
 				);
 			}

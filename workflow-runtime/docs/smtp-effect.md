@@ -1,8 +1,10 @@
 # The `smtp` effect: a native SMTP client for the Send Email node
 
-Status: the statement of v1, the pure state machine (`src/core/smtp.zig`) and the session over byte buffers
-with the settings of the credential (`src/shell/smtp_call.zig`) are built and tested. The connection on the
-event loop, the effect kind and the library node are not built: see "What is built". Until they are, the Send
+Status: the runtime side is built and tested against a scripted server: the pure state machine
+(`src/core/smtp.zig`), the session and the settings of the credential (`src/shell/smtp_call.zig`), the
+connection on the event loop (`src/shell/smtp.zig`) and the effect kind 8, behind `--smtp-native` (off by
+default). The SDK, the compiler and the reference runner have `ctx.smtp`. The `emailSend` library node, the
+converter lowering and the recording against v1 are not built: see "What is built". Until they are, the Send
 Email node runs in the fallback host, as before.
 
 ## Why
@@ -128,20 +130,42 @@ stateDiagram-v2
 - `writeResult` writes `info` without `envelope` and `messageId`: the node knows both. `writeFailure` writes
   `{"error":{message, code, response?, responseCode?, command, rejected?, rejectedErrors?}}`.
 
-The call of the effect (not built yet) has the credential slot, `from`, `to`, the message and
-`allowUnauthorizedCerts`. The shell reads host, port, `secure`, `disableStartTls`, `hostName`, user and
-password from the credentials document when the call starts, as the `sql` effect does. Node code never sees
-them, and the password leaves the call slot when the call ends.
+The call of the effect is `{credential, from, to, message, allowUnauthorizedCerts?}` (`SmtpRequest` of the
+SDK). The shell reads host, port, `secure`, `disableStartTls`, `hostName`, user and password from the
+credentials document when the call starts, as the `sql` effect does. Node code never sees them. The values are
+copied into the call slot. The copy is overwritten when the MAIL command is written (the login is over), the
+login commands leave the write buffer when it is empty after that, and both are overwritten again when the
+call ends.
+
+Without `--smtp-native` the shard has no SMTP client, and an `smtp` step ends with
+`smtp: the native SMTP client is not on in this build (limit: smtp-host)`.
+
+## The hand-over to the host
+
+The marker `(limit: smtp-host)` sends the step to the fallback host, where the v1 node sends the message. The
+message must go out once, so the marker is raised only while no MAIL command is written:
+
+| Where | Case |
+|---|---|
+| `Runner.startSmtpCall` (`server.zig`) | The gate is off |
+| `Client.prepare` (`smtp.zig`), before a connection | The call is over `--smtp-max-message-kb`, has more than 256 recipients, or the credential has a `secure` that is not a boolean, a port over 65535, or a value that is too long |
+| `Client.hostOnly` (`smtp.zig`), which asserts that the envelope did not start | A host name without an address (nodemailer has its own resolver and text), a connect error for a host with more than one address (Node.js reports all of them in one error), a TLS handshake that failed (the text of Node.js has no native form) |
+| `onEhlo` and `connected` (`core/smtp.zig`), before AUTH | An EHLO reply that is not ASCII; a server that offers only CRAM-MD5 |
+| `Session.writeOutcome` (`smtp_call.zig`) | Any other limit of the buffers, when `envelopeStarted` is false |
+
+After the MAIL command a limit is a plain error (`(limit)`, no marker): the step fails and the host does not
+send the message.
 
 ## Limits and known differences
 
 | Case | v1 | The native client |
 |---|---|---|
-| The server offers only CRAM-MD5 or XOAUTH2 | CRAM-MD5 login | Limit before a byte of the login goes: the call runs in the host |
-| An EHLO reply that is not ASCII | Lines after `trim` of JavaScript | Limit before the login: the call runs in the host |
-| More than 8 replies `334` at the end of a login | An empty line for each, without a bound | Limit |
-| A reply, the commands or the kept texts over the buffers | 1 MB for one reply | Limit. After DATA is taken the limit is a plain error: the host must not send the message again (`messageSent`) |
-| `rejectedErrors` | Error objects | The properties that JSON gives: `code`, `response`, `responseCode`, `command`, `recipient` (no `message`) |
+| The server offers only CRAM-MD5 or XOAUTH2 | CRAM-MD5 login | Hand-over before AUTH: the call runs in the host |
+| An EHLO reply that is not ASCII | Lines after `trim` of JavaScript | Hand-over before AUTH: the call runs in the host |
+| More than 8 replies `334` at the end of a login | An empty line for each, without a bound | Hand-over (the MAIL command is not written) |
+| A reply over 64 KiB, or kept texts over 256 KiB | 1 MB for one reply | Hand-over before the MAIL command; a plain limit error after it |
+| A name lookup that fails, a connect error for a host with more than one address, a TLS error | Errors with the texts of nodemailer and Node.js | Hand-over: no command was written |
+| `rejectedErrors` | Error objects | Objects with `message`, `code`, `response`, `responseCode`, `command`, `recipient` |
 | A reply with more than 15 digits at its start | `responseCode` is a rounded number | The first 15 digits |
 | `envelopeTime`, `messageTime` | Times of the run | Times of the run: a comparison must ignore them |
 | QUIT | Not sent | Not sent |
@@ -153,8 +177,34 @@ them, and the password leaves the call slot when the call ends.
 | The statement of v1 | This file |
 | The state machine, the reply framing, the DATA encoding, the result and the error JSON | `src/core/smtp.zig`, with tests against scripted dialogues |
 | The settings from the `smtp` credential (`loadSettings`), and `Session`: one message over a read and a write buffer, with the message sent in parts and the outcome (`info`, `{"error":…}`, or a limit with or without the marker `smtp-host`) | `src/shell/smtp_call.zig`, with tests against a scripted server in memory |
-| The connection on the event loop of the shard (socket, name lookup, TLS and the STARTTLS upgrade through `tls.zig`, the four time limits, call slots, the password wiped at the end), a fake server on a socket in the style of `pg_fake.zig`, the effect kind `smtp`, the arguments of the call | Not built. `pg.zig` is the model: one connection for each call, no pool |
-| The effect in the SDK and the reference runner, the `emailSend` library node, the converter lowering | Not built |
+| The connection on the event loop of the shard: socket, name lookup, TLS from the first byte and after STARTTLS through `tls.zig`, the four time limits, call slots (`--smtp-max-requests`, 16), the arguments of the call, the credential | `src/shell/smtp.zig`; `src/shell/smtp_fake.zig` is the scripted server on a loopback socket, with TLS |
+| The effect kind `smtp` (8) and the gate `--smtp-native` | `src/core/module.zig`, `src/shell/server.zig`, `src/main.zig` |
+| `ctx.smtp` in the SDK, the compiler, the reference runner and the test VM | `packages/@n8n/workflow-lang`: `src/sdk/index.ts`, `src/compiler`, `src/reference/runner.ts`, `src/__tests__/smtp-effect.test.ts` |
+| The `emailSend` library node with the message of MailComposer, the converter lowering, the recording of v1 against a loopback server | Not built: see "What the library node needs" |
+
+## What the library node needs
+
+These facts decide the design of the node. They come from the source of nodemailer 10.1.4 (`M`).
+
+- **Quoted-printable is the usual body encoding.** The default format of version 2.1 is HTML with the
+  attribution. The attribution has a line over 76 characters, so the body is never `7bit`: it is
+  quoted-printable or base64 (`M/mime-node/index.js:571-597`). The same bytes need the encoder of
+  `M/qp/index.js`, with its line wrap. The Gmail library node says why it has none: a loop for each byte in the
+  bytecode costs more than the node. Two ways are open: a native codec in the prelude, or a message that the
+  runtime builds from the fields (the call would carry `subject`, `text`, `html` and the addresses, and the
+  result would carry `envelope` and `messageId`). The second way needs no bytecode for each byte.
+- **The Date header needs a clock.** A library node has `ctx.random` and no `ctx.now`.
+- **The attribution link has the instance id.** The converter has it (`ConvertOptions.instance`), as the
+  Telegram node uses it.
+- **An attachment needs the type table of nodemailer.** v1 gives no content type, so nodemailer reads it from
+  the file name (`M/mime-funcs/mime-types.js`, about 2,100 lines). It is not the table of the runtime.
+- **Headers.** Addresses go through `addressparser` (the Gmail node has a port for the usual forms). A value
+  that is not ASCII goes as encoded words of 52 characters, and a line over 76 is folded
+  (`M/mime-funcs/index.js`).
+- **Bytes that can differ from v1:** the 32 hex digits of the Message-ID, the Date value, and the 16 hex digits
+  of each boundary (in the Content-Type header and in each delimiter line). Every other byte must be equal.
+- **Per item.** v1 makes one transport and one message for each item, pairs each result with its item, and with
+  "continue on fail" gives `{ error: message }`. An error is `NodeApiError(node, error)`.
 
 ## Tests
 
@@ -176,3 +226,25 @@ them, and the password leaves the call slot when the call ends.
 - STARTTLS with bytes after the `220` reply (dropped), login, and a message larger than the write buffer.
 - A refused login; a close with a last reply; a server with only CRAM-MD5 (the marker `smtp-host`).
 - The settings of the credential: `secure`, the default port, `disableStartTls`, `hostName`, no user.
+
+`src/shell/smtp_test.zig` (fast tier), the client on the event loop against `smtp_fake.zig` on a loopback
+socket:
+
+- Login, a pipelined envelope, a rejected recipient among accepted ones, the message on the wire, no QUIT.
+- A refused login; a close with a last reply; a refused connection (`connect ECONNREFUSED 127.0.0.1:1`).
+- The hand-over for CRAM-MD5 and for an EHLO reply that is not ASCII: the server saw only EHLO.
+- The time limit of the greeting; the limit of the call slots.
+- STARTTLS and TLS from the first byte with the certificate of the tests; a certificate that is not trusted.
+
+`src/shell/server.zig`: a module with an `smtp` step through the shard, without the gate (the marker, no
+connection) and with it (the result resumes the run).
+
+`packages/@n8n/workflow-lang/src/__tests__/smtp-effect.test.ts`: `ctx.smtp` in the compiler, the reference
+runner and the bytecode VM.
+
+## What the bed must run live
+
+`wfrt --smtp-native` against a real SMTP server (for example Mailpit or Postfix on loopback): one message with
+`secure` on port 465, one with STARTTLS on 587, one without TLS, each with and without a login, and one with a
+refused recipient. Compare `info` and the received message with the v1 node on the same server. Mask
+`envelopeTime`, `messageTime`, and, once the library node exists, Message-ID, Date and the boundaries.

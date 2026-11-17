@@ -67,7 +67,8 @@ export type EffectKindName =
 	| 'approval'
 	| 'respond'
 	| 'service'
-	| 'sql';
+	| 'sql'
+	| 'smtp';
 
 export interface EffectRecord {
 	step: string;
@@ -364,6 +365,7 @@ export async function runReference(
 					http: async (req: unknown) => await effect(step, 'http', req, retryOf(opts)),
 					service: async (req: unknown) => await effect(step, 'service', req, retryOf(opts)),
 					sql: async (req: unknown) => await effect(step, 'sql', req, retryOf(opts)),
+					smtp: async (req: unknown) => await effect(step, 'smtp', req, retryOf(opts)),
 					staticData: (type: unknown, node: unknown) => statics.get(type, node),
 					random,
 					wait: async (call: unknown) => await pause(step, call),
@@ -380,6 +382,7 @@ export async function runReference(
 		respond: async (opts: unknown) => await effect(stepName(opts), 'respond', opts, 0),
 		service: async (opts: unknown) => await effect(stepName(opts), 'service', opts, retryOf(opts)),
 		sql: async (opts: unknown) => await effect(stepName(opts), 'sql', opts, retryOf(opts)),
+		smtp: async (opts: unknown) => await effect(stepName(opts), 'smtp', opts, retryOf(opts)),
 		now: () => clock,
 		random,
 		trace: (name: unknown, items: unknown) => {

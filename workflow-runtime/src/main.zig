@@ -28,6 +28,7 @@ const usage =
     \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--sql-max-requests N] [--sql-max-conns N] [--sql-pool-conns N] [--sql-max-result-kb K]
     \\        [--sql-max-request-kb K] [--sql-max-statements N] [--sql-timestamp-zone utc] [--sql-mysql]
+    \\        [--smtp-native] [--smtp-max-requests N] [--smtp-max-message-kb K]
     \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
     \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-renewals N] [--renewal-kb K] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
@@ -326,6 +327,11 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
             opts.stats = true;
             continue;
         }
+        if (std.mem.eql(u8, k, "--smtp-native")) {
+            // `smtp` steps go to the native SMTP client (`shell/smtp.zig`).
+            opts.smtp_native = true;
+            continue;
+        }
         if (std.mem.eql(u8, k, "--sql-mysql")) {
             // Calls with the dialect `mysql` go to the native MySQL client (`shell/my.zig`).
             opts.sql_mysql = true;
@@ -370,6 +376,8 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (std.mem.eql(u8, k, "--rbuf-kb")) opts.rbuf = 1024 * try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--egress-max-body-mb")) opts.egress_max_body = (try std.fmt.parseInt(u32, v, 10)) << 20;
         if (std.mem.eql(u8, k, "--egress-big-slots")) opts.egress_big_slots = try std.fmt.parseInt(u32, v, 10);
+        if (std.mem.eql(u8, k, "--smtp-max-requests")) opts.smtp.max_reqs = @max(1, try std.fmt.parseInt(u16, v, 10));
+        if (std.mem.eql(u8, k, "--smtp-max-message-kb")) opts.smtp.max_request = @as(u32, @max(1, try std.fmt.parseInt(u20, v, 10))) << 10;
         if (std.mem.eql(u8, k, "--sql-max-requests")) opts.sql.max_reqs = @max(1, try std.fmt.parseInt(u16, v, 10));
         if (std.mem.eql(u8, k, "--sql-max-conns")) opts.sql.max_conns = @max(1, try std.fmt.parseInt(u16, v, 10));
         if (std.mem.eql(u8, k, "--sql-pool-conns")) opts.sql.pool_conns = @max(1, try std.fmt.parseInt(u16, v, 10));
@@ -758,6 +766,7 @@ test {
     _ = @import("shell/egress_test.zig");
     _ = @import("shell/pg_call.zig");
     _ = @import("shell/smtp_call.zig");
+    _ = @import("shell/smtp_test.zig");
     _ = @import("shell/pg.zig");
     _ = @import("shell/pg_test.zig");
     _ = @import("shell/sql_net.zig");
