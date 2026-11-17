@@ -30,10 +30,16 @@ export interface ConditionOptions {
 	zone?: string;
 }
 
-/** Translates one operand value (literal or expression) to code. */
+/**
+ * Translates one operand value (literal or expression) to code. `kind` is `date` for the
+ * operand of a dateTime condition: an expression can give a Luxon DateTime, and v1 compares
+ * it as it is. `kind` is `object` for an operand that the condition reads as an object or
+ * only tests for a value: the expression can give `$binary` or one of its entries.
+ */
 export type Operand = (
 	value: unknown,
 	path: string,
+	kind?: 'date' | 'object',
 ) => { code: string; literal: boolean; value: unknown };
 
 const wrap = (code: string) =>
@@ -194,6 +200,39 @@ export function filterCode(
 	return parts.join(filter.combinator === 'or' ? ' || ' : ' && ');
 }
 
+const FOLDED = new Set([
+	'equals',
+	'notEquals',
+	'contains',
+	'notContains',
+	'startsWith',
+	'notStartsWith',
+	'endsWith',
+	'notEndsWith',
+]);
+
+/** A string comparison of two fixed texts, as the generated code makes it. */
+function foldText(operation: string, left: string, right: string): boolean {
+	switch (operation) {
+		case 'equals':
+			return left === right;
+		case 'notEquals':
+			return left !== right;
+		case 'contains':
+			return left.includes(right);
+		case 'notContains':
+			return !left.includes(right);
+		case 'startsWith':
+			return left.startsWith(right);
+		case 'notStartsWith':
+			return !left.startsWith(right);
+		case 'endsWith':
+			return left.endsWith(right);
+		default:
+			return !left.endsWith(right);
+	}
+}
+
 function conditionCode(
 	condition: unknown,
 	options: ConditionOptions,
@@ -204,11 +243,17 @@ function conditionCode(
 	const operator = isRecord(condition.operator) ? condition.operator : {};
 	const type = typeof operator.type === 'string' ? operator.type : 'string';
 	const operation = typeof operator.operation === 'string' ? operator.operation : 'equals';
-	const left = operand(condition.leftValue, `${path}.leftValue`);
+	const dated =
+		type === 'dateTime'
+			? 'date'
+			: type === 'object' || operation === 'exists' || operation === 'notExists'
+				? 'object'
+				: undefined;
+	const left = operand(condition.leftValue, `${path}.leftValue`, dated);
 	const L = wrap(left.code);
 	if (operation === 'exists') return `${L} != null`;
 	if (operation === 'notExists') return `${L} == null`;
-	const rightOf = () => operand(condition.rightValue, `${path}.rightValue`);
+	const rightOf = () => operand(condition.rightValue, `${path}.rightValue`, dated);
 	switch (type) {
 		case 'string': {
 			const ci = !options.caseSensitive;
@@ -227,6 +272,14 @@ function conditionCode(
 				}
 				return lower(`String(${orElse(r.code, "''")})`);
 			};
+			// Two fixed texts: the converter makes the comparison (TypeScript rejects it in code).
+			if (left.literal && FOLDED.has(operation)) {
+				const r = rightOf();
+				if (r.literal) {
+					const fold = (v: unknown) => (ci ? text(v).toLowerCase() : text(v));
+					return String(foldText(operation, fold(left.value), fold(r.value)));
+				}
+			}
 			switch (operation) {
 				case 'empty':
 					return `${l}.length === 0`;
@@ -274,10 +327,8 @@ function conditionCode(
 				case 'notEndsWith':
 					return `!${l}.endsWith(${rightString()})`;
 				default:
-					throw new ConditionError(
-						`The string operation "${operation}" is not supported.`,
-						`condition string.${operation}`,
-					);
+					// v1 does not know the operation: the condition is false.
+					return 'false';
 			}
 		}
 		case 'number': {
@@ -309,10 +360,8 @@ function conditionCode(
 				case 'lte':
 					return `${l} <= ${rightNumber()}`;
 				default:
-					throw new ConditionError(
-						`The number operation "${operation}" is not supported.`,
-						`condition number.${operation}`,
-					);
+					// v1 does not know the operation: the condition is false.
+					return 'false';
 			}
 		}
 		case 'boolean': {
@@ -338,10 +387,8 @@ function conditionCode(
 				case 'notEquals':
 					return `${l} !== ${rightBool()}`;
 				default:
-					throw new ConditionError(
-						`The boolean operation "${operation}" is not supported.`,
-						`condition boolean.${operation}`,
-					);
+					// v1 does not know the operation: the condition is false.
+					return 'false';
 			}
 		}
 		case 'array': {
@@ -381,17 +428,16 @@ function conditionCode(
 				case 'notEmpty':
 					return `${l}.length !== 0`;
 				default:
-					throw new ConditionError(
-						`The array operation "${operation}" is not supported.`,
-						`condition array.${operation}`,
-					);
+					// v1 does not know the operation: the condition is false.
+					return 'false';
 			}
 		}
 		case 'dateTime': {
 			if (operation === 'empty') return `${L} == null`;
 			if (operation === 'notEmpty') return `${L} != null`;
 			const ops = ['equals', 'notEquals', 'after', 'before', 'afterOrEquals', 'beforeOrEquals'];
-			if (!options.zone || !ops.includes(operation)) {
+			if (!ops.includes(operation)) return 'false';
+			if (!options.zone) {
 				throw new ConditionError(
 					`The dateTime operation "${operation}" is not supported.`,
 					`condition dateTime.${operation}`,
@@ -416,10 +462,8 @@ function conditionCode(
 				: orElse(left.code, '{}');
 			if (operation === 'empty') return `Object.keys(${o}).length === 0`;
 			if (operation === 'notEmpty') return `Object.keys(${o}).length !== 0`;
-			throw new ConditionError(
-				`The object operation "${operation}" is not supported.`,
-				`condition object.${operation}`,
-			);
+			// v1 does not know the operation: the condition is false.
+			return 'false';
 		}
 		default:
 			throw new ConditionError(
@@ -434,6 +478,8 @@ function orZero(code: string): string {
 	if (/^-?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(code)) return Number(code) ? code : '0';
 	if (/^(['"]).*\1$/.test(code)) return code.length > 2 ? code : '0';
 	if (code === 'true' || code === 'false' || code === 'null') return code === 'true' ? code : '0';
+	// A value that the node does not have (no `value2`).
+	if (code === 'undefined') return '0';
 	return `(${code} || 0)`;
 }
 

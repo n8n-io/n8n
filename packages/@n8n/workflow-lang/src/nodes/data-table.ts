@@ -124,6 +124,9 @@ function castField(key: string, value: unknown, type: string): unknown {
 		}
 		throw new Error(fail);
 	}
+	// The converter parses a dateTime field as v1 does. It gives the ISO text of the date, or
+	// this marker for a value that is not a date.
+	if (type === 'dateTime' && isRecord(value) && value.$invalidDate === true) throw new Error(fail);
 	return value;
 }
 

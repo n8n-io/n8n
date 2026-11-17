@@ -182,8 +182,8 @@ const ADAPTERS: Record<
 	},
 	// The library node gets the index of the item for v1's error messages (`itemIndex`). These
 	// calls run in the host, with markers that are not in the `supports` list: the `table`
-	// resource, a `defineBelow` mapping without values (v1 fails on `Object.entries(null)`),
-	// and a mapped `dateTime` field (v1 parses it with Luxon in the workflow zone).
+	// resource, and a `defineBelow` mapping without values (v1 fails on `Object.entries(null)`).
+	// The converter parses a mapped `dateTime` field as v1 does (`datedColumns`).
 	'n8n-nodes-base.dataTable': (p) => {
 		const out: Record<string, unknown> = { ...p, itemIndex: '={{ $itemIndex }}' };
 		const operation = p.operation ?? 'insert';
@@ -192,14 +192,44 @@ const ADAPTERS: Record<
 			const columns = isRecord(p.columns) ? p.columns : {};
 			const auto = columns.mappingMode === 'autoMapInputData';
 			if (!auto && !isRecord(columns.value)) out.dataTableHost = true;
-			const value = isRecord(columns.value) ? columns.value : {};
-			const schema = Array.isArray(columns.schema) ? columns.schema.filter(isRecord) : [];
-			const dated = schema.some((f) => f.type === 'dateTime' && String(f.id) in value);
-			if (!auto && dated) out.dataTableHost = true;
 		}
 		return out;
 	},
 };
+
+/**
+ * The mapped fields of a Data Table node that have the type `dateTime`: v1 parses each one
+ * with Luxon in the time zone of the workflow (`tryToParseDateTime`) and gives the service
+ * the date.
+ */
+function datedColumns(p: Record<string, unknown>): string[] {
+	const operation = p.operation ?? 'insert';
+	if (typeof operation !== 'string' || !['insert', 'update', 'upsert'].includes(operation)) {
+		return [];
+	}
+	const columns = isRecord(p.columns) ? p.columns : {};
+	if (columns.mappingMode === 'autoMapInputData' || !isRecord(columns.value)) return [];
+	const value = columns.value;
+	const schema = Array.isArray(columns.schema) ? columns.schema.filter(isRecord) : [];
+	return schema
+		.filter((f) => f.type === 'dateTime' && typeof f.id === 'string' && f.id in value)
+		.map((f) => String(f.id));
+}
+
+/** Wraps the code of each dated field of `columns.value` in the helper `tableDate`. */
+function parseDatedColumns(c: NodeContext, parameters: Code, fields: string[]): void {
+	if (fields.length === 0 || parameters.kind !== 'object') return;
+	const columns = parameters.entries.find(([k]) => k === 'columns')?.[1];
+	const value =
+		columns?.kind === 'object' ? columns.entries.find(([k]) => k === 'value')?.[1] : undefined;
+	if (value?.kind !== 'object') return;
+	const zone = c.scope.timezone ?? 'UTC';
+	if (zone !== 'UTC') c.scope.useZone?.(zone);
+	c.helper('tableDate');
+	value.entries = value.entries.map(([k, code]): [string, Code] =>
+		fields.includes(k) ? [k, raw(`tableDate(${flatCode(code)}, ${str(zone)})`)] : [k, code],
+	);
+}
 
 /**
  * True when v1 inserts the rows of all items with one call: the table id is not an
@@ -381,9 +411,15 @@ export function lowerLibrary(c: NodeContext): void {
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
 	}
+	// The values of a Data Table node are inside collection parameters (`columns`, `filters`):
+	// v1 gives the text of a DateTime there.
 	const parameters = c.compiled(adapted, '', {
 		flattenResourceLocators: !LOCATOR_TYPES.has(type),
+		...(type === 'n8n-nodes-base.dataTable' ? { luxonValue: 'text' as const } : {}),
 	});
+	if (type === 'n8n-nodes-base.dataTable') {
+		parseDatedColumns(c, parameters.code, datedColumns(adapted));
+	}
 	const resource = adapted.resource ?? support?.resource ?? '';
 	const operation =
 		adapted.operation ?? (typeof resource === 'string' ? support?.operation[resource] : '') ?? '';
@@ -460,6 +496,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 		path: string,
 		mode: 'assign' | 'append' | 'set' = 'assign',
 		skipEmpty = false,
+		arrays = false,
 	): TranslatedValue => {
 		const items = keyValues(list);
 		const out: Array<[string, Code]> = [];
@@ -474,7 +511,8 @@ function lowerHttpLibrary(c: NodeContext): void {
 				throw new NodeFailure('http', 'A parameter name is not text.', `${path}[${k}].name`);
 			}
 			if (skipEmpty && name === '') return;
-			const t = c.compiled(kv.value ?? '', `${path}[${k}].value`);
+			// The value is inside a collection parameter: v1 gives the text of a DateTime there.
+			const t = c.compiled(kv.value ?? '', `${path}[${k}].value`, { luxonValue: 'text' });
 			u.item ||= t.usage.item;
 			u.index ||= t.usage.index;
 			let nameCode = str(name);
@@ -493,9 +531,9 @@ function lowerHttpLibrary(c: NodeContext): void {
 			all.push(`[${nameCode}, ${flatCode(t.code)}]`);
 		});
 		const nested = mode === 'set' && out.some(([name]) => name.includes('.') || name.includes('['));
-		// From version 4.3, v1 sends a repeated name as an array (`tag[0]=a&tag[1]=b`), which
-		// the library node does not write.
-		if (mode === 'append' && repeated) {
+		// From version 4.3, v1 sends a repeated name as an array. The library node writes an
+		// array in a body (`arrays`), and not in the query or in a header.
+		if (mode === 'append' && repeated && !arrays) {
 			throw new NodeFailure('http', 'A parameter name repeats.', path);
 		}
 		if (computed || nested || repeated) {
@@ -581,6 +619,8 @@ function lowerHttpLibrary(c: NodeContext): void {
 	add('url', c.compiled(p.url ?? '', 'url'));
 
 	let credentialType: string | undefined;
+	/** The name and the code of the content type that the node sets for its body. */
+	let contentTypeHeader: [string, string] | null = null;
 	const options = isRecord(p.options) ? p.options : {};
 	if (v >= 3) {
 		if (
@@ -621,22 +661,63 @@ function lowerHttpLibrary(c: NodeContext): void {
 		}
 		if (p.sendBody === true) {
 			const contentType = p.contentType ?? 'json';
+			// v1 sends a form body and a raw body only with a method that has a body.
+			const sent = typeof method === 'string' && !method.startsWith('=');
+			const bodyless = sent && ['GET', 'HEAD', 'OPTIONS'].includes(method);
 			if (contentType === 'json' || contentType === 'form-urlencoded') {
 				if (contentType === 'form-urlencoded') {
-					c.warn('http', 'The library node sends a form body as JSON.', 'contentType');
+					if (!sent) {
+						throw new NodeFailure('http-body', 'A form body needs a fixed method.', 'method');
+					}
+					// The text form of the body (`specifyBody: string`) is not in the library node.
+					if (p.specifyBody !== undefined && p.specifyBody !== 'keypair') {
+						throw new NodeFailure(
+							'http-body',
+							'A form body that is not a list of fields is not supported.',
+							'specifyBody',
+						);
+					}
 				}
-				add(
-					'body',
+				const fields =
 					p.specifyBody === 'json'
 						? jsonParameter(p.jsonBody, 'jsonBody')
 						: pairs(
 								isRecord(p.bodyParameters) ? p.bodyParameters.parameters : [],
 								'bodyParameters.parameters',
 								contentType === 'json' && v >= 4 ? 'set' : v >= 4.3 ? 'append' : 'assign',
-							),
-				);
+								false,
+								true,
+							);
+				// With GET, HEAD and OPTIONS v1 sends the fields of a form as a JSON body.
+				if (contentType === 'form-urlencoded' && !bodyless) {
+					// The form text of the fields, as n8n's request helper writes it (`qs.stringify`).
+					c.helper('formBody');
+					add('body', { ...fields, code: raw(`formBody(${flatCode(fields.code)})`) });
+					contentTypeHeader = ['Content-Type', "'application/x-www-form-urlencoded'"];
+				} else {
+					add('body', fields);
+				}
 			} else if (contentType === 'raw') {
+				if (!sent || bodyless) {
+					throw new NodeFailure(
+						'http-body',
+						'A raw body needs a fixed method that has a body.',
+						'method',
+					);
+				}
+				if (typeof p.rawContentType !== 'string' || p.rawContentType === '') {
+					throw new NodeFailure(
+						'http-body',
+						'A raw body without a content type is not supported.',
+						'rawContentType',
+					);
+				}
 				add('body', c.compiled(p.body ?? '', 'body'));
+				// v1 sets the header `content-type` of a raw body after the other headers.
+				const type = c.compiled(p.rawContentType, 'rawContentType');
+				usage.item ||= type.usage.item;
+				usage.index ||= type.usage.index;
+				contentTypeHeader = ['content-type', flatCode(type.code)];
 			} else if (contentType === 'binaryData' || contentType === 'multipart-form-data') {
 				fileBody(contentType);
 			} else {
@@ -647,6 +728,17 @@ function lowerHttpLibrary(c: NodeContext): void {
 				);
 			}
 			entries.push(['sendBody', raw('true')]);
+		}
+		if (contentTypeHeader !== null) {
+			// The content type of a form body or a raw body takes the place of a content type
+			// among the headers of the node.
+			c.helper('withContentType');
+			const at = entries.findIndex(([key]) => key === 'headers');
+			const headers = at < 0 ? '{}' : flatCode(entries[at][1]);
+			const [name, value] = contentTypeHeader;
+			const code = raw(`withContentType(${headers}, ${str(name)}, ${value})`);
+			if (at < 0) entries.push(['headers', code]);
+			else entries[at] = ['headers', code];
 		}
 		const response =
 			isRecord(options.response) && isRecord(options.response.response)
@@ -683,6 +775,52 @@ function lowerHttpLibrary(c: NodeContext): void {
 				'options',
 			);
 		}
+		// A page request does not write a form body or the content type of a raw body.
+		if (
+			paging &&
+			p.sendBody === true &&
+			(p.contentType === 'form-urlencoded' || p.contentType === 'raw')
+		) {
+			throw new NodeFailure(
+				'http-body',
+				'Pagination with a form body or a raw body is not supported.',
+				'options',
+			);
+		}
+		// v1 follows redirects from version 4, or when the option says so. The library node
+		// follows them always (at most 21), so each other setting runs in the host.
+		const redirect = options.redirect;
+		const redirectOptions =
+			isRecord(redirect) && isRecord(redirect.redirect) ? redirect.redirect : {};
+		const follows = redirect === undefined ? v >= 4 : redirectOptions.followRedirects === true;
+		const maxRedirects = redirectOptions.maxRedirects;
+		if (!follows || (maxRedirects !== undefined && maxRedirects !== 0 && maxRedirects !== 21)) {
+			throw new NodeFailure(
+				'http',
+				'A request that does not follow redirects, or that has its own limit of redirects, is not supported.',
+				'options.redirect',
+			);
+		}
+		// The runtime has no setting for these: the certificate check, a proxy, client
+		// certificates, and the format of arrays in the query.
+		for (const key of ['allowUnauthorizedCerts', 'proxy', 'queryParameterArrays']) {
+			const value = options[key];
+			if (value === undefined || value === false || value === '') continue;
+			throw new NodeFailure(
+				'http',
+				`The option "${key}" is not supported by the library node.`,
+				`options.${key}`,
+			);
+		}
+		if (p.provideSslCertificates === true) {
+			throw new NodeFailure(
+				'http',
+				'Client certificates are not supported by the library node.',
+				'provideSslCertificates',
+			);
+		}
+		// `options.timeout` has no effect here: the request of a library node has the time
+		// limit of the runtime (300,000 ms, the default of v1) and no setting for another one.
 	} else {
 		const auth = p.authentication;
 		const authTypes: Record<string, string> = {

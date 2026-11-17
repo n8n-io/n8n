@@ -58,6 +58,30 @@ const CASES: Case[] = [
 			},
 		},
 	},
+	{
+		name: 'a DateTime as a query value and as a body value',
+		version: 4.2,
+		parameters: {
+			method: 'POST',
+			sendQuery: true,
+			queryParameters: {
+				parameters: [
+					row('from', "={{ DateTime.fromISO('2024-01-02T03:04:05Z').minus({ days: 7 }) }}"),
+					row('day', "={{ DateTime.fromISO('2024-01-02T03:04:05Z').toFormat('yyyy-MM-dd') }}"),
+				],
+			},
+			sendBody: true,
+			contentType: 'json',
+			specifyBody: 'keypair',
+			bodyParameters: {
+				parameters: [
+					row('at', "={{ DateTime.fromISO('2024-01-02T03:04:05Z').startOf('month') }}"),
+					row('text', "=since {{ DateTime.fromISO('2024-01-02T03:04:05Z') }}"),
+					row('other', "={{ $json.missing || DateTime.fromISO('2024-06-01T00:00:00Z') }}"),
+				],
+			},
+		},
+	},
 ];
 
 let server: Server;

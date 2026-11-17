@@ -10,6 +10,7 @@
 
 import { str } from './code.ts';
 import { CODE_HELPERS } from './code-native/helpers.ts';
+import { EXTENSION_HELPER_SOURCES } from './extension-helpers.ts';
 
 interface HelperSource {
 	uses: string[];
@@ -25,6 +26,8 @@ export const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the n
 const HELPERS: Record<string, HelperSource> = {
 	// Helpers of native Code node steps (`code-native/`).
 	...CODE_HELPERS,
+	// Helpers of n8n's expression extensions (`extension-helpers.ts`).
+	...EXTENSION_HELPER_SOURCES,
 	pathOf: {
 		uses: [],
 		source: `/** Splits a lodash-style path such as \`a.b[0].c\` into keys. */
@@ -1445,6 +1448,28 @@ function filterDate(value: Json, zone: string, strict: boolean, condition: numbe
 	);
 }`,
 	},
+	tableDate: {
+		uses: ['luxFromISO'],
+		source: `/**
+ * The value of a mapped dateTime field of a Data Table node, as n8n's resource mapper reads
+ * it (tryToParseDateTime of n8n-workflow, see \`filterDate\`): the ISO text of the instant,
+ * which is the date that v1 gives the data-table service. Null and undefined stay. A value
+ * that is not a date is \`{ $invalidDate: true }\`: the node fails with the error of v1.
+ */
+function tableDate(value: Json, zone: string): Json {
+	if (value === null || value === undefined) return value;
+	const text = String(value).trim();
+	const iso = luxFromISO(text, { setZone: true }, 0, zone);
+	if (iso.invalid === null) return new Date(iso.ts).toISOString();
+	if (text.length > 10 && text.charAt(10) === ' ') {
+		const sql = luxFromISO(text.slice(0, 10) + 'T' + text.slice(11), { setZone: true }, 0, zone);
+		if (sql.invalid === null) return new Date(sql.ts).toISOString();
+	}
+	const parsed = Date.parse(text);
+	if (!isNaN(parsed)) return new Date(parsed).toISOString();
+	return { $invalidDate: true };
+}`,
+	},
 	filterDateCompare: {
 		uses: [],
 		source: `/** A dateTime filter comparison of v1: false when a side has no date. */
@@ -1540,6 +1565,120 @@ function orNull(value: () => Json): Json {
 		const name = error !== null && typeof error === 'object' ? error.name : undefined;
 		if (name === 'TypeError' || name === 'SyntaxError') return null;
 		throw error;
+	}
+}`,
+	},
+	jsonOf: {
+		uses: [],
+		source: `/**
+ * The JSON of an item as v1 has it: compiled code keeps the binary data of an item in the
+ * key \`$binary\` of its JSON (spec 10), and v1 keeps it beside the JSON.
+ */
+function jsonOf(item: Json): Json {
+	if (item === null || typeof item !== 'object' || item.$binary === undefined) return item;
+	const json: Json = {};
+	for (const k of Object.keys(item)) if (k !== '$binary') json[k] = item[k];
+	return json;
+}`,
+	},
+	formText: {
+		uses: [],
+		source: `/** A key or a value of a form as the qs library writes it (RFC 3986: only \`-._~\` stay). */
+function formText(value: string): string {
+	const hex = '0123456789ABCDEF';
+	let out = '';
+	for (let k = 0; k < value.length; k++) {
+		let c = value.charCodeAt(k);
+		if (
+			c === 0x2d ||
+			c === 0x2e ||
+			c === 0x5f ||
+			c === 0x7e ||
+			(c >= 0x30 && c <= 0x39) ||
+			(c >= 0x41 && c <= 0x5a) ||
+			(c >= 0x61 && c <= 0x7a)
+		) {
+			out += value.charAt(k);
+			continue;
+		}
+		const bytes: number[] = [];
+		if (c < 0x80) {
+			bytes.push(c);
+		} else if (c < 0x800) {
+			bytes.push(0xc0 + Math.floor(c / 64), 0x80 + (c % 64));
+		} else if (c < 0xd800 || c >= 0xe000) {
+			bytes.push(0xe0 + Math.floor(c / 4096), 0x80 + (Math.floor(c / 64) % 64), 0x80 + (c % 64));
+		} else {
+			// A surrogate pair is one character of four bytes.
+			k++;
+			const low = k < value.length ? value.charCodeAt(k) : 0;
+			c = 0x10000 + (c % 1024) * 1024 + (low % 1024);
+			bytes.push(
+				0xf0 + Math.floor(c / 262144),
+				0x80 + (Math.floor(c / 4096) % 64),
+				0x80 + (Math.floor(c / 64) % 64),
+				0x80 + (c % 64),
+			);
+		}
+		for (const b of bytes) out += '%' + hex.charAt(Math.floor(b / 16)) + hex.charAt(b % 16);
+	}
+	return out;
+}`,
+	},
+	formBody: {
+		uses: ['formText'],
+		source: `/**
+ * The body of a form request (\`application/x-www-form-urlencoded\`) as n8n's request helper
+ * writes it (\`qs.stringify\` without options): a list is \`key[0]=…\`, an object is
+ * \`key[name]=…\`, null is an empty value, and undefined is left out.
+ */
+function formBody(body: Json): string {
+	const parts: string[] = [];
+	const add = (key: string, value: Json): void => {
+		if (value === undefined) return;
+		if (value === null) {
+			parts.push(formText(key) + '=');
+		} else if (Array.isArray(value)) {
+			for (let k = 0; k < value.length; k++) add(key + '[' + String(k) + ']', value[k]);
+		} else if (typeof value === 'object') {
+			for (const name of Object.keys(value)) add(key + '[' + name + ']', value[name]);
+		} else {
+			parts.push(formText(key) + '=' + formText(String(value)));
+		}
+	};
+	if (body !== null && typeof body === 'object' && !Array.isArray(body)) {
+		for (const key of Object.keys(body)) add(key, body[key]);
+	}
+	return parts.join('&');
+}`,
+	},
+	withContentType: {
+		uses: [],
+		source: `/** The headers of a request with the content type that the node sets for its body. */
+function withContentType(headers: Json, name: string, value: Json): Json {
+	const out: Json = {};
+	if (headers !== null && typeof headers === 'object') {
+		for (const key of Object.keys(headers)) {
+			if (key.toLowerCase() !== 'content-type') out[key] = headers[key];
+		}
+	}
+	out[name] = value;
+	return out;
+}`,
+	},
+	orNullAll: {
+		uses: [],
+		source: `/**
+ * The value of an expression in its native form, or null when it throws: n8n's expression
+ * engine gives null for every error of the JavaScript of an expression.
+ */
+function orNullAll(value: () => Json): Json {
+	try {
+		return value();
+	} catch (error) {
+		// The error of an expression extension stops the node in v1.
+		if (error !== null && typeof error === 'object' && error.name === 'ExpressionExtensionError') throw error;
+		return null;
 	}
 }`,
 	},

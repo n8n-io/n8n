@@ -11,6 +11,7 @@
 import { compile } from '../compiler/index.ts';
 import type { LegacyIssue } from '../legacy/index.ts';
 import { issueOf } from '../legacy/index.ts';
+import { NATIVE_FORM_FAILED } from './expression.ts';
 import type { ConvertOptions, Round } from './generator.ts';
 import { diagnosticKey, ModuleGenerator, readWorkflow } from './generator.ts';
 import type { ConvertDiagnostic, ConvertResult } from './types.ts';
@@ -60,6 +61,8 @@ export function convertWorkflow(input: unknown, options: ConvertOptions = {}): C
 		if (r > 0 && Date.now() - started > budgetMs) {
 			return failed('budget', `The conversion took more than ${budgetMs} ms.`);
 		}
+		// An expression with an issue from an earlier round has its native form in this round.
+		const knownBefore = new Set(known.keys());
 		try {
 			const hostCodeNodes = [...(options.hostCodeNodes ?? []), ...codeHost.keys()];
 			round = new ModuleGenerator(wf, known, broken, { ...options, hostCodeNodes }).generate();
@@ -111,7 +114,19 @@ export function convertWorkflow(input: unknown, options: ConvertOptions = {}): C
 				const key = diagnosticKey(hit.node, hit.path);
 				const issue = issueOf(d);
 				const list = known.get(key) ?? [];
-				if (!list.some((i) => i.message === issue.message)) {
+				if (knownBefore.has(key)) {
+					if (!list.some((i) => i.code === NATIVE_FORM_FAILED)) {
+						known.set(key, [
+							...list,
+							{
+								feature: `native form: ${issue.feature}`,
+								message: issue.message,
+								code: NATIVE_FORM_FAILED,
+							},
+						]);
+						progress = true;
+					}
+				} else if (!list.some((i) => i.message === issue.message)) {
 					known.set(key, [...list, issue]);
 					progress = true;
 				}

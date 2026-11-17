@@ -125,13 +125,17 @@ describe('Data Table node', () => {
 		});
 	});
 
-	it('runs the table resource and mapped dates in the host', () => {
+	it('runs the table resource in the host, and parses a mapped date itself', () => {
 		const dated = {
 			...insert,
 			columns: { ...insert.columns, schema: [{ id: 'email', type: 'dateTime' }] },
 		};
-		for (const wf of [workflow({ resource: 'table', operation: 'list' }), workflow(dated)]) {
-			expect(convertWorkflow(wf, { services: true }).source).toContain("host: 'fallback'");
-		}
+		const table = convertWorkflow(workflow({ resource: 'table', operation: 'list' }), {
+			services: true,
+		});
+		expect(table.source).toContain("host: 'fallback'");
+		const mapped = convertWorkflow(workflow(dated), { services: true });
+		expect(mapped.source).not.toContain("host: 'fallback'");
+		expect(mapped.source).toContain('tableDate(');
 	});
 });
