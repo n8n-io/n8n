@@ -152,3 +152,37 @@ export function notionLookups(tool: string, args: Record<string, unknown>): Look
 		.slice(0, MAX_SOURCES);
 	return urls.map((id) => ({ tool: 'notion-fetch', args: { id } }));
 }
+
+// The issues of a real result: a list of them, or one issue.
+function issuesIn(result: unknown): Array<Record<string, unknown>> {
+	if (isRecord(result) && Array.isArray(result.issues)) return result.issues.filter(isRecord);
+	return isRecord(result) && text(result.id) ? [result] : [];
+}
+
+/**
+ * A model may leave out the description of an issue when the prompt shows it cut. The real result
+ * has it whole. Fill it in by code, for the issue with the same number.
+ */
+export function withIssueDescriptions(
+	overlay: Record<string, unknown>,
+	result?: unknown,
+): Record<string, unknown> {
+	const native = overlay.native;
+	if (!isRecord(native) || !isRecord(native.linear) || !Array.isArray(native.linear.issues)) {
+		return overlay;
+	}
+	const described = new Map<number, string>();
+	for (const issue of issuesIn(result)) {
+		const issueNumber = Number(/-(\d+)$/.exec(text(issue.id) ?? '')?.[1]);
+		const description = text(issue.description);
+		if (Number.isInteger(issueNumber) && description)
+			described.set(issueNumber, issue.description as string);
+	}
+	if (described.size === 0) return overlay;
+	const issues = native.linear.issues.map((item: unknown) => {
+		if (!isRecord(item) || text(item.description) || typeof item.number !== 'number') return item;
+		const description = described.get(item.number);
+		return description ? { ...item, description } : item;
+	});
+	return { ...overlay, native: { ...native, linear: { ...native.linear, issues } } };
+}

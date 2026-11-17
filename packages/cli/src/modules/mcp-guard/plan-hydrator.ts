@@ -37,7 +37,7 @@ export interface PlanHydratorDeps {
 	// before the first model turn, because a result without items gives the model nothing to copy.
 	lookups?: (tool: string, args: Record<string, unknown>, result?: unknown) => Plan['reads'];
 	// Last change to an overlay, after the checks. Code adds data here that the real data does not hold.
-	finalize?: (overlay: Record<string, unknown>) => Record<string, unknown>;
+	finalize?: (overlay: Record<string, unknown>, result?: unknown) => Record<string, unknown>;
 	// Lookup tools that the gym answers first. An object that an agent created in the gym has no
 	// real copy, and a real object with the same key is another object.
 	gymFirst?: ReadonlySet<string>;
@@ -407,7 +407,8 @@ export class PlanHydrator implements Hydrator {
 		// The tenant keeps what an earlier call seeded. The gym refuses an id that it has.
 		const fresh = isRecord(cleaned) ? this.seeded.dedupe(cleaned) : cleaned;
 		const toSeed = isRecord(fresh) && SeededEntities.isEmpty(fresh) ? undefined : fresh;
-		const overlay = this.deps.finalize && isRecord(toSeed) ? this.deps.finalize(toSeed) : toSeed;
+		const overlay =
+			this.deps.finalize && isRecord(toSeed) ? this.deps.finalize(toSeed, ctx.result) : toSeed;
 		trace.sent = overlay;
 		Container.get(Logger).info(
 			`mcp-guard plan seed shape: ${JSON.stringify(shapeOf(overlay)).slice(0, 500)}`,

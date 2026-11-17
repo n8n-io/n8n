@@ -1,7 +1,12 @@
 import type { GymAdmin } from './gym-admin';
 import { LinearHydrator } from './hydrator';
 import { LINEAR_INSTRUCTIONS, NOTION_INSTRUCTIONS } from './hydration-prompts';
-import { linearLookups, notionLookups, withUserEmails } from './linear-lookups';
+import {
+	linearLookups,
+	notionLookups,
+	withIssueDescriptions,
+	withUserEmails,
+} from './linear-lookups';
 import { LINEAR_READ_TOOLS, LINEAR_WRITE_TOOLS } from './linear-tools';
 import type { McpCaller } from './mcp-upstream';
 import { withTitles } from './notion-finalize';
@@ -32,7 +37,7 @@ export interface GuardServiceProfile {
 		result?: unknown,
 	) => Array<{ tool: string; args: Record<string, unknown> }>;
 	// Last change to an overlay of the plan hydrator, after its checks. Optional.
-	finalize?: (overlay: Record<string, unknown>) => Record<string, unknown>;
+	finalize?: (overlay: Record<string, unknown>, result?: unknown) => Record<string, unknown>;
 	// Lookup tools that the gym answers before the real service does, see PlanHydratorDeps.
 	gymFirst?: ReadonlySet<string>;
 	// The gym takes a seed of an entity that it has and adds new children to it, see SeededEntities.
@@ -69,7 +74,7 @@ export const LINEAR_PROFILE: GuardServiceProfile = {
 	// A `fields` list limits the result, and the real service leaves out `uuid` unless it is listed.
 	// Without the list the real service returns its default fields, which include the ids.
 	lookups: linearLookups,
-	finalize: withUserEmails,
+	finalize: (overlay, result) => withIssueDescriptions(withUserEmails(overlay), result),
 	gymFirst: new Set(['get_issue']),
 	upstreamReadArgs: (_tool, args) =>
 		Array.isArray(args.fields)

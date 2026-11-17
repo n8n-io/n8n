@@ -12,7 +12,12 @@ import {
 	provenIds,
 	removeUnprovenLiterals,
 } from '../plan-template';
-import { linearLookups, notionLookups, withUserEmails } from '../linear-lookups';
+import {
+	linearLookups,
+	notionLookups,
+	withIssueDescriptions,
+	withUserEmails,
+} from '../linear-lookups';
 import {
 	PlanHydrator,
 	nestDottedKeys,
@@ -475,6 +480,26 @@ describe('PlanHydrator with lookups of the call args', () => {
 		await hydrator.hydrate('list_issues', { project: 'P' }, text('{"issues":[]}'));
 		expect(prompts[1]).toContain('from $reads[1]');
 		expect(prompts[1]).toContain('[1] ');
+	});
+});
+
+describe('withIssueDescriptions', () => {
+	const real = { issues: [{ id: 'TRUST-1209', description: 'whole text' }] };
+	const overlay = (issue: Record<string, unknown>) => ({
+		native: { linear: { issues: [issue] } },
+	});
+
+	it('fills the description that the plan left out, for the issue with the same number', () => {
+		expect(withIssueDescriptions(overlay({ number: 1209, title: 'T' }), real)).toEqual(
+			overlay({ number: 1209, title: 'T', description: 'whole text' }),
+		);
+	});
+
+	it('keeps a description that the plan has, and leaves other issues alone', () => {
+		const kept = overlay({ number: 1209, description: 'plan text' });
+		expect(withIssueDescriptions(kept, real)).toEqual(kept);
+		const other = overlay({ number: 5 });
+		expect(withIssueDescriptions(other, real)).toEqual(other);
 	});
 });
 
