@@ -13,7 +13,7 @@ vi.mock('node:fs', async () => {
 	});
 });
 
-import { InstanceSettings } from '../instance-settings';
+import { InstanceSettings, type DeploymentStateRepo } from '../instance-settings';
 import { WorkerMissingEncryptionKey } from '../worker-missing-encryption-key.error';
 
 describe('InstanceSettings', () => {
@@ -234,12 +234,7 @@ describe('InstanceSettings', () => {
 	});
 
 	describe('initialize', () => {
-		const mockRepo = {
-			findActiveIdentifier: vi.fn(),
-			seedActiveIdentifier: vi.fn(),
-			findActiveSigningSecret: vi.fn(),
-			seedSigningSecret: vi.fn(),
-		};
+		const mockRepo = mock<DeploymentStateRepo>();
 
 		let settings: InstanceSettings;
 
@@ -250,9 +245,11 @@ describe('InstanceSettings', () => {
 
 			settings = createInstanceSettings({ encryptionKey: 'test_key' });
 
-			// Default: no DB rows, inserts succeed
-			mockRepo.findActiveIdentifier.mockResolvedValue(null);
-			mockRepo.seedActiveIdentifier.mockResolvedValue(undefined);
+			let identifier: { value: string } | null = null;
+			mockRepo.findActiveIdentifier.mockImplementation(async () => identifier);
+			mockRepo.seedActiveIdentifier.mockImplementation(async (_type, value) => {
+				identifier ??= { value };
+			});
 			mockRepo.findActiveSigningSecret.mockResolvedValue(null);
 			mockRepo.seedSigningSecret.mockResolvedValue(undefined);
 		});
@@ -271,24 +268,64 @@ describe('InstanceSettings', () => {
 				);
 			});
 
-			it('should use the value from the active DB row when one exists', async () => {
-				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
-					type === 'instance.id' ? { value: 'db-stored-id' } : null,
-				);
+			it.each([false, true])(
+				'should keep an existing ID with hasLicenseCertificate=%s',
+				async (hasLicenseCertificate) => {
+					mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
+						type === 'instance.id' ? { value: 'db-stored-id' } : null,
+					);
 
+					await settings.initialize(mockRepo, { hasLicenseCertificate });
+
+					expect(settings.instanceId).toEqual('db-stored-id');
+					expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalledWith(
+						'instance.id',
+						expect.anything(),
+					);
+				},
+			);
+
+			it('should persist a random 64-character hex ID on a fresh install', async () => {
 				await settings.initialize(mockRepo);
 
-				expect(settings.instanceId).toEqual('db-stored-id');
-				expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalledWith(
+				expect(settings.instanceId).toMatch(/^[a-f0-9]{64}$/);
+				expect(settings.instanceId).not.toEqual(settings.derivedInstanceId);
+				expect(mockRepo.seedActiveIdentifier).toHaveBeenCalledWith(
 					'instance.id',
-					expect.anything(),
+					settings.instanceId,
 				);
 			});
 
-			it('should persist the derived instanceId when no active DB row exists', async () => {
-				const derivedId = settings.instanceId;
+			it('should give fresh installs with the same encryption key different IDs', async () => {
+				const otherSettings = createInstanceSettings({ encryptionKey: 'test_key' });
+				const otherRepo = mock<DeploymentStateRepo>();
+				otherRepo.findActiveIdentifier.mockResolvedValue(null);
+				otherRepo.seedActiveIdentifier.mockImplementation(async (_type, value) => {
+					otherRepo.findActiveIdentifier.mockResolvedValue({ value });
+				});
+				otherRepo.findActiveSigningSecret.mockResolvedValue(null);
 
 				await settings.initialize(mockRepo);
+				await otherSettings.initialize(otherRepo);
+
+				expect(settings.derivedInstanceId).toEqual(otherSettings.derivedInstanceId);
+				expect(settings.instanceId).not.toEqual(otherSettings.instanceId);
+			});
+
+			it('should reuse the stored ID after a restart', async () => {
+				await settings.initialize(mockRepo);
+				const restartedSettings = createInstanceSettings({ encryptionKey: 'test_key' });
+
+				await restartedSettings.initialize(mockRepo);
+
+				expect(restartedSettings.instanceId).toEqual(settings.instanceId);
+				expect(mockRepo.seedActiveIdentifier).toHaveBeenCalledTimes(1);
+			});
+
+			it('should persist the derived ID when a license certificate exists', async () => {
+				const derivedId = settings.derivedInstanceId;
+
+				await settings.initialize(mockRepo, { hasLicenseCertificate: true });
 
 				expect(mockRepo.seedActiveIdentifier).toHaveBeenCalledWith('instance.id', derivedId);
 				expect(settings.instanceId).toEqual(derivedId);
@@ -306,16 +343,33 @@ describe('InstanceSettings', () => {
 			});
 
 			it('should use the winner row when a concurrent insert is ignored', async () => {
-				mockRepo.seedActiveIdentifier.mockImplementation(async (type: string) => {
-					if (type === 'instance.id') return undefined;
-				});
-				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
-					type === 'instance.id' ? { value: 'winner-id' } : null,
-				);
+				mockRepo.findActiveIdentifier
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce({ value: 'winner-id' });
 
 				await settings.initialize(mockRepo);
 
+				expect(mockRepo.seedActiveIdentifier).toHaveBeenCalledTimes(1);
 				expect(settings.instanceId).toEqual('winner-id');
+			});
+
+			it('should use one stored ID for concurrent mains and a later worker', async () => {
+				const otherMain = createInstanceSettings({ encryptionKey: 'test_key' });
+
+				await Promise.all([settings.initialize(mockRepo), otherMain.initialize(mockRepo)]);
+
+				const candidates = mockRepo.seedActiveIdentifier.mock.calls.map(([, value]) => value);
+				expect(candidates).toHaveLength(2);
+				expect(candidates[0]).not.toEqual(candidates[1]);
+				expect(settings.instanceId).toEqual(candidates[0]);
+				expect(otherMain.instanceId).toEqual(settings.instanceId);
+
+				process.argv[2] = 'worker';
+				const worker = createInstanceSettings({ encryptionKey: 'test_key' });
+				await worker.initialize(mockRepo);
+
+				expect(worker.instanceId).toEqual(settings.instanceId);
+				expect(mockRepo.seedActiveIdentifier).toHaveBeenCalledTimes(2);
 			});
 		});
 

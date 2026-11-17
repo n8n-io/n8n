@@ -33,6 +33,7 @@ import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-
 import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { License } from '@/license';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
@@ -71,6 +72,7 @@ mockInstance(WorkerStatusService);
 mockInstance(JobProcessor);
 const mockWorkerServer = mockInstance(WorkerServer);
 mockInstance(LoadNodesAndCredentials);
+mockInstance(License, { loadCertStr: async () => '' });
 const activeExecutions = mockInstance(ActiveExecutions);
 
 // Mocks for services reached by the full `init()` path, as in start.test.ts

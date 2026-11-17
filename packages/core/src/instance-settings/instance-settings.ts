@@ -67,7 +67,8 @@ export class InstanceSettings {
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
-	 * Derived from encryption key on first boot, then read from DB.
+	 * Random on fresh installs. Preserves the derived ID for existing licenses.
+	 * Read from DB after the first server start.
 	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
@@ -112,7 +113,9 @@ export class InstanceSettings {
 	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
 	 * Must be called after DB migrations complete, before license init.
 	 *
-	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
+	 * Precedence: env var → DB active row → seed a value.
+	 * The instance ID is random unless a license certificate needs the derived ID.
+	 * Signing secrets keep their encryption-key-derived values.
 	 *
 	 * When `canSeed` is false, missing rows are not created: only server
 	 * processes hold the deployment's encryption key, so a one-off CLI command
@@ -123,7 +126,10 @@ export class InstanceSettings {
 	 */
 	async initialize(
 		repo: DeploymentStateRepo,
-		{ canSeed = true }: { canSeed?: boolean } = {},
+		{
+			canSeed = true,
+			hasLicenseCertificate = false,
+		}: { canSeed?: boolean; hasLicenseCertificate?: boolean } = {},
 	): Promise<void> {
 		this.canSeedDeploymentState = canSeed;
 		await this.initIdentifier(
@@ -131,7 +137,7 @@ export class InstanceSettings {
 			'instance.id',
 			process.env.N8N_INSTANCE_ID,
 			canSeed,
-			() => this.instanceId,
+			() => (hasLicenseCertificate ? this.derivedInstanceId : randomBytes(32).toString('hex')),
 			(v) => {
 				this.instanceId = v;
 			},
@@ -154,7 +160,7 @@ export class InstanceSettings {
 		type: string,
 		envValue: string | undefined,
 		canSeed: boolean,
-		get: () => string,
+		generate: () => string,
 		set: (v: string) => void,
 	): Promise<void> {
 		if (envValue) {
@@ -167,7 +173,7 @@ export class InstanceSettings {
 			return;
 		}
 		if (!canSeed) return;
-		await repo.seedActiveIdentifier(type, get());
+		await repo.seedActiveIdentifier(type, generate());
 		const winner = await repo.findActiveIdentifier(type);
 		if (winner) set(winner.value);
 	}

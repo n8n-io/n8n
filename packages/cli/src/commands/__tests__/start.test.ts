@@ -2,8 +2,10 @@
 import '@/zod-alias-support';
 
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import type { DeploymentKey, Settings, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import http from 'node:http';
@@ -19,6 +21,7 @@ import type { AbstractServer } from '@/abstract-server';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -219,6 +222,89 @@ describe('Start - AuthRolesService initialization', () => {
 		start.license = license;
 		// @ts-expect-error - Accessing protected property for testing
 		start.server = mock<AbstractServer>({ init: vi.fn().mockResolvedValue(undefined) });
+	});
+
+	describe('init - instance identity', () => {
+		describe.each(['none', 'database', 'environment'] as const)(
+			'certificate source: %s',
+			(source) => {
+				beforeAll(() => {
+					vi.stubEnv('N8N_LICENSE_CERT', source === 'environment' ? 'test-license-cert' : '');
+					vi.stubEnv('N8N_INSTANCE_ID', undefined);
+				});
+
+				afterAll(() => {
+					vi.unstubAllEnvs();
+				});
+
+				it('should seed the instance ID before license initialization', async () => {
+					setupInstanceSettings('main', false, false);
+					const settingsRepository = mock<SettingsRepository>();
+					settingsRepository.findOne.mockResolvedValue(
+						source === 'database' ? mock<Settings>({ value: 'test-license-cert' }) : null,
+					);
+					Container.set(
+						License,
+						new License(
+							mockLogger(),
+							instanceSettings,
+							settingsRepository,
+							mock(),
+							Container.get(GlobalConfig),
+						),
+					);
+					deploymentKeyRepository.findActiveIdentifier.mockResolvedValueOnce(null);
+					deploymentKeyRepository.seedActiveIdentifier.mockImplementationOnce(
+						async (_type, value) => {
+							deploymentKeyRepository.findActiveIdentifier.mockResolvedValueOnce(
+								mock<DeploymentKey>({ value }),
+							);
+						},
+					);
+
+					await start.init();
+
+					expect(deploymentKeyRepository.seedActiveIdentifier).toHaveBeenCalledWith(
+						'instance.id',
+						instanceSettings.instanceId,
+					);
+					if (source === 'none') {
+						expect(instanceSettings.instanceId).toMatch(/^[a-f0-9]{64}$/);
+						expect(instanceSettings.instanceId).not.toEqual(instanceSettings.derivedInstanceId);
+					} else {
+						expect(instanceSettings.instanceId).toEqual(instanceSettings.derivedInstanceId);
+					}
+					if (source === 'environment') {
+						expect(settingsRepository.findOne).not.toHaveBeenCalled();
+					} else {
+						expect(settingsRepository.findOne).toHaveBeenCalledWith({
+							where: { key: SETTINGS_LICENSE_CERT_KEY },
+						});
+						expect(settingsRepository.findOne.mock.invocationCallOrder[0]).toBeGreaterThan(
+							dbConnection.migrate.mock.invocationCallOrder[0],
+						);
+					}
+					expect(
+						deploymentKeyRepository.seedActiveIdentifier.mock.invocationCallOrder[0],
+					).toBeLessThan(vi.mocked(start.initLicense).mock.invocationCallOrder[0]);
+				});
+			},
+		);
+
+		it('should not load a certificate or seed an ID when seeding is disabled', async () => {
+			setupInstanceSettings('main', false, false);
+			start.seedsInstanceIdentity = false;
+			const loadCertStr = vi.spyOn(license, 'loadCertStr');
+
+			try {
+				await start.init();
+
+				expect(loadCertStr).not.toHaveBeenCalled();
+				expect(deploymentKeyRepository.seedActiveIdentifier).not.toHaveBeenCalled();
+			} finally {
+				loadCertStr.mockRestore();
+			}
+		});
 	});
 
 	describe('init - conditional initialization based on instance type and leader status', () => {

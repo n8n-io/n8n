@@ -106,7 +106,7 @@ export abstract class BaseCommand<F = never> {
 
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
-	 * Only server processes hold the encryption key these are derived from.
+	 * Only server processes can set the deployment identity and signing secrets.
 	 */
 	protected seedsInstanceIdentity = false;
 
@@ -168,6 +168,8 @@ export abstract class BaseCommand<F = never> {
 			try {
 				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
 					canSeed: this.seedsInstanceIdentity,
+					hasLicenseCertificate:
+						this.seedsInstanceIdentity && (await Container.get(License).loadCertStr()).length > 0,
 				});
 			} catch (error) {
 				if (this.seedsInstanceIdentity) throw error;
