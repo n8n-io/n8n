@@ -33,7 +33,9 @@ export function throwIfLockLost(signal: AbortSignal): void {
 /**
  * One lock for each promotion environment. It protects the environment's folder and the
  * operations that write to it or import from it, on all mains of one instance. Read-only paths
- * (the changes view, the review diff, and the Apply preview read) do not take it.
+ * (the changes view, the review diff, and the Apply preview read) take it only to clone a
+ * checkout that this main does not have. Such a read fails with 423 when the environment is
+ * busy. A read with a ready checkout does not take it.
  *
  * This is an efficiency lock without fencing: on Redis the lease can expire while an operation
  * still runs. Operations check `throwIfLockLost` before each step that cannot be undone.
