@@ -1,6 +1,9 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport, SseError } from '@modelcontextprotocol/sdk/client/sse.js';
+import {
+	StreamableHTTPClientTransport,
+	StreamableHTTPError,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createRefreshingAuthFetch, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
@@ -46,6 +49,19 @@ export function isMcpContentArray(data: unknown): data is ContentBlock[] {
 	return Array.from(data).every((item) => ContentBlockSchema.safeParse(item).success);
 }
 const MCP_SESSION_TERMINATION_TIMEOUT_MS = 1_000;
+
+export function getMcpHttpErrorMessage(error: unknown): string | undefined {
+	if (
+		(error instanceof StreamableHTTPError || error instanceof SseError) &&
+		typeof error.code === 'number' &&
+		Number.isInteger(error.code) &&
+		error.code >= 300 &&
+		error.code <= 599
+	) {
+		return `HTTP ${error.code}: ${error.message}`;
+	}
+	return undefined;
+}
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
@@ -128,13 +144,13 @@ export function mapToNodeOperationError(
 		case 'auth':
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server. Authentication failed.',
-				description: error.error.message,
+				description: getMcpHttpErrorMessage(error.error) ?? error.error.message,
 			});
 		case 'connection':
 		default:
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server',
-				description: error.error.message,
+				description: getMcpHttpErrorMessage(error.error) ?? error.error.message,
 			});
 	}
 }

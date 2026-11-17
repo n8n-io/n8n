@@ -8,7 +8,7 @@ import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type { McpToolIncludeMode } from './types';
 import type { McpTool } from '../shared/types';
-import { isStructuredContent } from '../shared/utils';
+import { getMcpHttpErrorMessage, isStructuredContent } from '../shared/utils';
 
 export function getSelectedTools({
 	mode,
@@ -48,7 +48,7 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 			return result.toolResult;
 		}
 		if ('message' in result && typeof result.message === 'string') {
-			return result.message;
+			return getMcpHttpErrorMessage(result) ?? result.message;
 		}
 	}
 
