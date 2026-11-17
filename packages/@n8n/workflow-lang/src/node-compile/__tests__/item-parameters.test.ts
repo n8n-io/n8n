@@ -120,6 +120,41 @@ export class Acme {
 		expect(result.source).toBeUndefined();
 	});
 
+	const LIMITED = (limit: string) =>
+		`${limit} for (let k = 0; k < count; k++) returnData.push({ json: { id: this.getNodeParameter('id', k) } });`;
+
+	it.each([
+		['one or zero', 'const count = items.length ? 1 : 0;'],
+		[
+			'a variable that the code sets again to the count',
+			'let count = items.length ? 1 : 0; count = items.length;',
+		],
+		[
+			'a variable that a branch sets to the count',
+			'let count = 0; if (items.length > 2) { count = items.length; }',
+		],
+	])('takes the index of a loop with a limit of at most the count of the items: %s', (_, limit) => {
+		const result = compileWith(LIMITED(limit), BY_ITEM);
+		expect(result.errors).toEqual([]);
+	});
+
+	it.each([
+		[
+			'a variable with a larger value',
+			'let count = items.length ? 1 : 0; count = items.length + 1;',
+		],
+		['a variable that the code increments', 'let count = items.length ? 1 : 0; count++;'],
+		['a variable with a compound assignment', 'let count = 0; count += items.length;'],
+		['two when the list has items', 'const count = items.length ? 2 : 0;'],
+		[
+			'a variable set from another list',
+			'const other = [1, 2, 3]; let count = 0; count = other.length;',
+		],
+	])('refuses the index of a loop with a limit that can be more than the count: %s', (_, limit) => {
+		const result = compileWith(LIMITED(limit), BY_ITEM);
+		expect(result.errors.join('\n')).toContain(NO_PROOF);
+	});
+
 	it('refuses an index that the loop body changes', () => {
 		const result = compileWith(`${READ_ID} if (items.length > 5) i++;`, BY_ITEM);
 		expect(result.errors.join('\n')).toContain(NO_PROOF);

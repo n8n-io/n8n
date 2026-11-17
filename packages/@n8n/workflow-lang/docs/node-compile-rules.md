@@ -892,3 +892,59 @@ description).
 - When the caller gives no description data (`validation` is not set), the
   compiler keeps the first rule for a resource mapper: it refuses the read
   when a field of the value has a schema type.
+
+## Forms of general node code
+
+### A labelled loop exit
+
+Source: `src/node-compile/labels.ts`.
+
+- The compiler removes a label that no `break` or `continue` names.
+- A `break` or `continue` that names the loop it is in becomes a plain jump.
+- A jump from an inner loop sets a flag (`__jump<n>`: 1 for `break`, 2 for
+  `continue`) and leaves the inner loop. The code after each inner loop reads
+  the flag and continues the exit. A `continue` sets the flag back to 0.
+- Stays refused: a label on a statement that is not a loop, and a labelled
+  jump that passes through a `switch`.
+
+### A credential value that the code does not read
+
+Source: `src/node-compile/credential-forms.ts`. The secret rule does not
+change: node code cannot compare or branch on a credential value.
+
+- `a || field`, `a && field` and `a ?? field` pass the credential value
+  through. The compiler applies the rule to the result of the operation.
+- `Object.values(o).every(Boolean)` becomes one credential flag when `o` is a
+  constant object in the statement before, or an object in place, and each
+  value is a credential field or a literal.
+- The code can test the truth of a variable when each value of the variable
+  is an object, a list, `null`, `undefined`, a boolean or a credential flag.
+  The compiler follows conditional expressions, and calls of functions of the
+  node through their `return` statements. A value that can be credential text
+  stays refused.
+
+### Package functions
+
+Source: `src/node-compile/package-helpers.ts`.
+
+- `lodash/set` with a path that is not a constant of dotted names uses
+  `__setPath`. It has the path rules of lodash (`isKey`, `stringToPath`,
+  `baseSet`). At run time it stops with `has no compiled form` for a path that
+  is not text or a list of text, and for a write to a list that is not at an
+  index of the list or the next index (lodash makes a list with holes or with
+  named members there).
+- `utils.decode_col` and `utils.encode_col` of `@e965/xlsx` use
+  `__sheetColumnIndex` and `__sheetColumnName`.
+
+### A parameter that is not there, in a `try` with an empty `catch`
+
+A `try` block that starts with a read of a parameter that the node does not
+have, and that has an empty `catch` and no `finally`, does nothing. The
+compiler removes it.
+
+### The item index of a loop with a limit
+
+The index of `for (let i = 0; i < limit; i++)` is the index of an input item
+when `limit` is at most the count of the items: the count, `0`,
+`items.length ? 1 : 0`, or a variable that only holds such values (each write
+is a plain assignment).
