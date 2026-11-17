@@ -138,7 +138,11 @@ export default defineNode<ExtractParameters>({
 			if (stored) args.id = file.id;
 			else args.data = data;
 			if (encoding !== undefined) args.encoding = encoding;
-			if (typeof options.stripBOM === 'boolean') args.stripBOM = options.stripBOM;
+			// n8n shows `stripBOM` only with one of three encodings, and gives the node no
+			// value of an option that it does not show. UTF-8 is the one with a form here.
+			if (encoding === 'utf8' && typeof options.stripBOM === 'boolean') {
+				args.stripBOM = options.stripBOM;
+			}
 			let answer: ReadAnswer;
 			try {
 				answer = await ctx.service<ReadAnswer>({ service: 'binaryData', op: 'read', args });

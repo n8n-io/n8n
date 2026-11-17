@@ -1278,7 +1278,7 @@ export function lowerLibrary(c: NodeContext): void {
 		emitWithHostForm(
 			c,
 			c.node.onError === 'continueErrorOutput',
-			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit, hostMark: true }),
 			hostForm,
 		);
 		return;

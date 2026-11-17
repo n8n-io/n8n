@@ -214,3 +214,26 @@ test "native calls take fuel in proportion to their work" {
     try std.testing.expect(slices >= 25);
     try std.testing.expect(h.region.exec().fuel_used >= 100 * 256);
 }
+
+test "a string constant keeps a leading U+FEFF" {
+    // The module decoder takes the bytes of a constant as they are. A text
+    // decoder that reads a byte order mark would drop the first character.
+    var a: Asm = .{ .gpa = std.testing.allocator };
+    defer a.deinit();
+    const s_key = try a.str("\u{FEFF}k");
+    a.beginFunc();
+    try a.emitBc(.loadi, 2, 1);
+    try a.emit(.newobj, 0, 3, 0, 0);
+    try a.emit(.setprop, 0, 3, s_key, 2);
+    try a.emit(.ret, 0, 3, 0, 0);
+    try a.endFunc("run", 1, 4, 0);
+    const bytes = try a.finish();
+    defer std.testing.allocator.free(bytes);
+
+    var h: Harness = .{};
+    try h.init(bytes, "{}");
+    var fuel: u64 = 1_000;
+    const out = interp.run(&h.vm, 0, &fuel, .{});
+    try std.testing.expect(out == .done);
+    try std.testing.expectEqualStrings("{\"\xEF\xBB\xBFk\":1}", try h.encode(h.region.exec().result));
+}

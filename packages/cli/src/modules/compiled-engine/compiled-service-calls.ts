@@ -165,16 +165,21 @@ export class CompiledServiceCalls {
 
 	/**
 	 * The parts of n8n-core that the `binaryData` service needs. A file must be a file of
-	 * the workflow of the execution. A new file goes where the fallback host writes the
-	 * files of the run: under n8n's execution id for a manual run, and else under the
-	 * runtime id, from where the dispatcher moves it when n8n saves the run.
+	 * the workflow of the execution. A new file goes where a v1 execution writes it:
+	 * `workflows/<workflow id>/executions/<execution id>/binary_data/<uuid>` (n8n-core
+	 * `getBinaryHelperFunctions`: `additionalData.executionId` and `workflow.id`). The
+	 * execution id of a run that n8n started is n8n's id. A run that the runtime started has
+	 * the id `wfrt-<n>`: n8n knows its own id only when it saves the run, so the file goes
+	 * under `wfrt-wfrt-<n>`, as the runtime and the fallback host write it (`server.zig`
+	 * `egressStored`, `binary-store.ts` `storedExecutionId`), and the dispatcher moves it to
+	 * n8n's id (`moveRunBinaryData`).
 	 */
 	private binaryDataBackend(event: WfrtServiceEvent, workflowId: string): BinaryDataBackend {
 		const service = Container.get(BinaryDataService);
 		const { mode } = Container.get(BinaryDataConfig);
-		const executionId = event.workflowId.endsWith(MANUAL_WORKFLOW_SUFFIX)
-			? event.executionId
-			: runtimeLocationId(event.executionId);
+		const executionId = event.executionId.startsWith('wfrt-')
+			? runtimeLocationId(event.executionId)
+			: event.executionId;
 		return {
 			read: async (id, limit) => {
 				if (!id.includes(`workflows/${workflowId}/`)) {

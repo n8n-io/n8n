@@ -47,7 +47,6 @@ const MAX_BYTES = 262144;
 /** The base64 text of `MAX_BYTES` bytes. */
 const MAX_BASE64 = 349528;
 
-const UTF8_NAMES = ['utf8', 'utf-8', 'UTF-8', 'UTF8'];
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/_-';
 /** The ASCII characters of `\s`. A text with other characters goes to the host. */
 const SPACES = ' \t\n\r\u000b\u000c';
@@ -133,12 +132,20 @@ export default defineNode<ConvertParameters>({
 				// iconv-lite encodes `'' + (value || '')`.
 				text = value ? String(value) : '';
 			}
-			if (options.encoding && !UTF8_NAMES.includes(options.encoding)) {
+			if (options.encoding && options.encoding !== 'utf8') {
 				throw inHost(`the encoding "${options.encoding}" has no compiled form`);
 			}
+			// The options of the text of `toBinary` (version 1) depend on each other in the
+			// node description: the v1 node decides which of them it gets.
+			if (operation === 'toBinary' && (options.encoding || options.addBOM !== undefined)) {
+				throw inHost('the text options of toBinary have no compiled form');
+			}
+			// n8n shows `addBOM` only with one of three encodings, and gives the node no
+			// value of an option that it does not show.
+			const mark = options.addBOM === true && options.encoding === 'utf8';
 			if (text.length > MAX_BYTES) throw inHost(`the file has more than ${MAX_BYTES} bytes`);
 			try {
-				data = Base64.encodeUtf8(options.addBOM ? `\uFEFF${text}` : text);
+				data = Base64.encodeUtf8(mark ? `\uFEFF${text}` : text);
 			} catch (error) {
 				throw inHost('the text is not well-formed');
 			}

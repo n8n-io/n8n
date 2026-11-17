@@ -194,7 +194,7 @@ describe('Convert To File library node', () => {
 				operation: 'toText',
 				sourceProperty: 'o',
 				binaryPropertyName: 'f',
-				options: { addBOM: true, fileName: 'a.txt' },
+				options: { addBOM: true, encoding: 'utf8', fileName: 'a.txt' },
 			},
 			{ o: { a: 1 } },
 			[{ entry }],

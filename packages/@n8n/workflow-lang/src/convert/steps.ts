@@ -58,6 +58,12 @@ export interface StepCall {
 	 */
 	hostLimit?: boolean;
 	/**
+	 * A library node that sends no request and ends with the mark of `RUNS_IN_HOST` (the
+	 * file nodes): under a "continue" setting the mark is not the error of an item. The
+	 * call for the item throws it again, and the caller runs the host form.
+	 */
+	hostMark?: boolean;
+	/**
 	 * With `oneErrorItem` under "continue (using error output)": the error item pairs with
 	 * the input item, so v1 (`handleNodeErrorOutput`) merges it into the input item when the
 	 * input has one item. A Code node gives items without paired items, so it does not.
@@ -305,7 +311,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			fn,
 			opts,
 			call.reportError ? 'result[0]?.items?.[0]' : 'result[0]',
-			call.hostLimit,
+			call.hostMark,
 		);
 		if (call.reportError) {
 			w.line(`for (const r of result[0]?.items ?? []) ${out}.push(r);`);
@@ -316,7 +322,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.close('} catch (error) {');
 		w.depth++;
 		// The mark of `RUNS_IN_HOST` is not the error of an item: the host form runs the node.
-		if (call.hostLimit) w.line('if (fileLimitInHost(error)) throw error;');
+		if (call.hostMark) w.line('if (fileLimitInHost(error)) throw error;');
 		if (WHOLE_NODE_ERRORS.has(c.node.type)) {
 			// The v1 node throws this error: n8n passes all input items on output 0.
 			w.open('if (error.wholeNode === true) {');
