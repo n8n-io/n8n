@@ -231,6 +231,10 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 }`;
 const FILE_LIMIT = '(limit: binary-max-file)';
 const REPEATS = '__repeats';
+const SERVICE_MAX_BYTES = 262144;
+const SERVICE_MAX_BASE64 = 400000;
+const SERVICE_MAX_INLINE = 349528;
+const SERVICE_BYTES_HELPERS = ['__bytesBase64', '__storeBase64', '__storeBinary'];
 const REQUEST_SEND = '\tconst response = await ctx.http({';
 const REQUEST_SEND_GUARDED = `\tif ((options.method ?? 'GET') !== 'GET') ${REPEATS} = false;
 	let response;
@@ -300,6 +304,47 @@ const CONTEXT_HELPERS: Record<string, string> = {
 }`,
 	__storedMetadata: `async function __storedMetadata(id) {
 	return await ctx.service({ service: 'binaryData', op: 'metadata', args: { id } });
+}`,
+	__binaryService: `async function __binaryService(op, args) {
+	let answer;
+	try {
+		answer = await ctx.service({ service: 'binaryData', op, args });
+	} catch (error) {
+		throw new Error('file bytes that the binaryData service gave no answer for has no compiled form');
+	}
+	if (answer === null || answer === undefined || typeof answer !== 'object') throw new Error('file bytes that the binaryData service gave no answer for has no compiled form');
+	if (typeof answer.host === 'string') throw new Error('file bytes that n8n keeps in the host (' + answer.host + ') has no compiled form');
+	return answer;
+}`,
+	__bytesBase64: `async function __bytesBase64(bytes) {
+	if (bytes === null || bytes === undefined || typeof bytes !== 'object' || bytes.$bytes !== true || bytes.response === true) throw new Error('base64 text of a value that is not the file bytes of an item has no compiled form');
+	if (typeof bytes.length === 'number' && bytes.length > ${SERVICE_MAX_BYTES}) throw new Error('base64 text of a file of more than ${SERVICE_MAX_BYTES} bytes has no compiled form');
+	const args = { as: 'base64', limit: ${SERVICE_MAX_BYTES} };
+	if (bytes.id === undefined) args.data = bytes.data;
+	else args.id = bytes.id;
+	const answer = await __binaryService('read', args);
+	if (typeof answer.data !== 'string') throw new Error('base64 text that the binaryData service did not give has no compiled form');
+	return answer.data;
+}`,
+	__storeBase64: `async function __storeBase64(data, fileName, mimeType) {
+	if (typeof data !== 'string') throw new Error('binary data from a value that is not base64 text has no compiled form');
+	if (data.length > ${SERVICE_MAX_BASE64}) throw new Error('binary data from a file of more than ${SERVICE_MAX_BYTES} bytes has no compiled form');
+	if ((fileName !== undefined && typeof fileName !== 'string') || (mimeType !== undefined && typeof mimeType !== 'string')) throw new Error('binary data with a file name or a MIME type that is not text has no compiled form');
+	const args = { data, limit: ${SERVICE_MAX_BYTES} };
+	if (fileName !== undefined) args.fileName = fileName;
+	if (mimeType !== undefined) args.mimeType = mimeType;
+	const answer = await __binaryService('store', args);
+	const entry = answer.entry;
+	if (entry === null || entry === undefined || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.data !== 'string') throw new Error('binary data that the binaryData service did not give has no compiled form');
+	return entry;
+}`,
+	__storeBinary: `async function __storeBinary(bytes, fileName, mimeType) {
+	if (bytes === null || bytes === undefined || typeof bytes !== 'object' || bytes.$bytes !== true || bytes.response === true) throw new Error('binary data from a value that is not the file bytes of an item has no compiled form');
+	return await __storeBase64(bytes.id === undefined ? bytes.data : await __bytesBase64(bytes), fileName, mimeType);
+}`,
+	__hostForLimit: `function __hostForLimit(error) {
+	if (${REPEATS} && __isLimit(error) && !error.message.endsWith('${RUNS_IN_HOST}')) return new Error(error.message + ' ${RUNS_IN_HOST}');
+	return error;
 }`,
 	__sleep: `async function __sleep(ms) {
 	if (ms !== null && typeof ms === 'object') throw new Error('a pause for a value that is not a number or text has no compiled form');
@@ -704,6 +749,33 @@ const HELPERS: Record<string, string> = {
 		for (const given of values) parts.push(__formPart(name, given));
 	}
 	return parts;
+}`,
+	__formNew: `function __formNew(): any {
+	return { $formData: [] };
+}`,
+	__formAppend: `function __formAppend(form: any, name: any, value: any, options: any): void {
+	if (form === null || form === undefined || typeof form !== 'object' || !Array.isArray(form.$formData)) throw new Error('a field for a value that is not a form has no compiled form');
+	if (typeof name !== 'string') throw new Error('a form field with a name that is not text has no compiled form');
+	if (form.$formData.length >= 1024) throw new Error('a form of more than 1024 fields has no compiled form');
+	const given: any = options === undefined || options === null || options === false || options === 0 || options === '' ? {} : typeof options === 'string' ? { filename: options } : options;
+	if (typeof given !== 'object' || Array.isArray(given)) throw new Error('a form field with options that are not an object has no compiled form');
+	const sent: any = typeof value === 'number' || value === null || value === undefined ? String(value) : value;
+	const fileName: any = given.filename;
+	const contentType: any = given.contentType;
+	const named: boolean = fileName !== undefined && fileName !== null && fileName !== '' && fileName !== false && fileName !== 0;
+	const typed: boolean = contentType !== undefined && contentType !== null && contentType !== '' && contentType !== false && contentType !== 0;
+	if (typeof sent === 'string' && typed && !named) {
+		if (given.filepath !== undefined || given.header !== undefined) throw new Error('a form field with a file path or a header has no compiled form');
+		if (typeof contentType !== 'string') throw new Error('a form field with a content type that is not text has no compiled form');
+		form.$formData.push({ name, binary: { data: bufText(bufFrom(sent, 'utf8'), 'base64'), mimeType: contentType } });
+		return;
+	}
+	form.$formData.push(__formPart(name, { value: sent, options: given }));
+}`,
+	__mimeExtensionOf: `function __mimeExtensionOf(type: any): any {
+	if (type === undefined || type === null || type === '' || type === false || type === 0 || typeof type !== 'string') return false;
+	const found: string = __mimeExtension(type);
+	return found === '' ? false : found;
 }`,
 	__formPart: `function __formPart(name: string, given: any): any {
 	let value: any = given;
@@ -1333,6 +1405,19 @@ const HELPERS: Record<string, string> = {
 	__isLimitOrHost: `function __isLimit(error: any): boolean {
 	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && (error.message.endsWith('has no compiled form') || error.message.endsWith('${RUNS_IN_HOST}'));
 }`,
+	__filesInLimit: `function __filesInLimit(items: any): void {
+	for (const item of items) {
+		const files: any = item.binary;
+		if (files === null || files === undefined || typeof files !== 'object' || Array.isArray(files)) continue;
+		const list: any[] = Object.values(files);
+		for (const file of list) {
+			if (file === null || file === undefined || typeof file !== 'object') continue;
+			if (file.id === undefined || file.id === null || file.id === '') {
+				if (typeof file.data === 'string' && file.data.length > ${SERVICE_MAX_INLINE}) throw new Error('an input file of more than ${SERVICE_MAX_BYTES} bytes in a node that reads file bytes has no compiled form');
+			} else if (typeof file.id !== 'string' || typeof file.bytes !== 'number' || file.bytes > ${SERVICE_MAX_BYTES} || !(file.id.startsWith('filesystem-v2:') || file.id.startsWith('filesystem:'))) throw new Error('an input file of more than ${SERVICE_MAX_BYTES} bytes, or in a file store without a size, in a node that reads file bytes has no compiled form');
+		}
+	}
+}`,
 	__isFileLimit: `function __isFileLimit(error: any): boolean {
 	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && error.message.includes('${FILE_LIMIT}');
 }`,
@@ -1647,7 +1732,7 @@ const GENERIC_ERRORS = new Set([
 const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 	lodash: { isEmpty: '__isEmpty', get: '__get', set: '__set', omit: '__omitKeys' },
 	uuid: { validate: '__uuidValid' },
-	'mime-types': { lookup: '__mimeLookup' },
+	'mime-types': { lookup: '__mimeLookup', extension: '__mimeExtensionOf' },
 	'n8n-workflow': {
 		jsonParse: '__jsonParse',
 		deepCopy: '__deepCopy',
@@ -1664,6 +1749,33 @@ const PARAMETER_ASSERTIONS: Record<string, string> = {
 	assertParamIsNumber: 'number',
 	assertParamIsBoolean: 'boolean',
 };
+function isFormDataClass(imported: { from: string; name: string } | undefined): boolean {
+	return imported?.from === 'form-data' && imported.name === 'default';
+}
+
+const FORM_METHODS = new Set([
+	'getHeaders',
+	'getBoundary',
+	'setBoundary',
+	'getBuffer',
+	'getLength',
+	'getLengthSync',
+	'hasKnownLength',
+	'submit',
+	'pipe',
+]);
+
+function mentionsFormMethod(n: ts.Node): boolean {
+	if (ts.isPropertyAccessExpression(n) && FORM_METHODS.has(n.name.text)) return true;
+	if (
+		ts.isElementAccessExpression(n) &&
+		ts.isStringLiteralLike(n.argumentExpression) &&
+		FORM_METHODS.has(n.argumentExpression.text)
+	)
+		return true;
+	return ts.forEachChild(n, (child) => mentionsFormMethod(child) || undefined) ?? false;
+}
+
 function isLuxon(imported: { from: string; name: string } | undefined): boolean {
 	return imported?.from === 'luxon' && imported.name === 'DateTime';
 }
@@ -1679,6 +1791,16 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 	const table = PACKAGE_HELPERS[pkg];
 	return table && Object.hasOwn(table, name) ? table[name] : undefined;
 }
+
+const FORM_TYPED = "\tif (typeof type === 'string' && type.includes('multipart/form-data')) {\n";
+const FORM_FIELDS =
+	"\tif (fields === null || typeof fields !== 'object' || Array.isArray(fields)) throw";
+const FORM_PARTS_OF_FORM = HELPERS.__formParts
+	.replace(
+		FORM_TYPED,
+		`\tconst made: any = files !== null && typeof files === 'object' && !Array.isArray(files) && Array.isArray(files.$formData) ? files.$formData : undefined;\n${FORM_TYPED}\t\tif (made !== undefined) return made;\n`,
+	)
+	.replace(FORM_FIELDS, `\tif (made !== undefined) return made;\n${FORM_FIELDS}`);
 
 const HELPER_USES: Record<string, string[]> = {
 	__randomIntOf: ['__randomInt'],
@@ -1702,6 +1824,8 @@ const HELPER_USES: Record<string, string[]> = {
 	__outPaired: ['__outItem', '__assign', '__failedJson', '__pairOf'],
 	__outFailed: ['__outItem', '__assign', '__failedJson'],
 	__mimeLookup: ['__pathParts', '__extName', '__MIME'],
+	__mimeExtensionOf: ['__mimeExtension', '__MIME'],
+	__formAppend: ['__formPart'],
 	__prepareBinary: [
 		'__mimeLookup',
 		'__mimeExtension',
@@ -1851,6 +1975,7 @@ const BINARY_HELPERS = [
 	'__fileBytes',
 	'__bytesFrom',
 	'__prepareBinary',
+	...SERVICE_BYTES_HELPERS,
 ];
 
 function mentionsBinary(n: ts.Node): boolean {
@@ -1860,6 +1985,11 @@ function mentionsBinary(n: ts.Node): boolean {
 	)
 		return true;
 	return ts.forEachChild(n, mentionsBinary) ?? false;
+}
+
+function mentionsName(n: ts.Node, name: string): boolean {
+	if (ts.isIdentifier(n) && n.text === name) return true;
+	return ts.forEachChild(n, (child) => mentionsName(child, name) || undefined) ?? false;
 }
 
 function mentionsEncoding(n: ts.Node): boolean {
@@ -3052,6 +3182,27 @@ class Specialiser {
 		};
 		collectRegex(root);
 		const urlNames = urlVariables(root, localNames);
+		const isFormNew = (e: ts.Node): e is ts.NewExpression =>
+			ts.isNewExpression(e) &&
+			ts.isIdentifier(e.expression) &&
+			(e.arguments?.length ?? 0) === 0 &&
+			!localNames.has(e.expression.text) &&
+			isFormDataClass(unit.file.imports.get(e.expression.text));
+		const formNames = new Set<string>();
+		const collectForms = (n: ts.Node) => {
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				n.initializer &&
+				isFormNew(n.initializer) &&
+				localNames.get(n.name.text) === 1 &&
+				ts.isVariableDeclarationList(n.parent) &&
+				(n.parent.flags & ts.NodeFlags.Const) !== 0
+			)
+				formNames.add(n.name.text);
+			ts.forEachChild(n, collectForms);
+		};
+		collectForms(root);
 		let depth = 0;
 
 		const visit = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
@@ -3072,6 +3223,40 @@ class Specialiser {
 			const credentialCall = (e: ts.Expression) =>
 				isThisCall(e, 'getCredentials') ||
 				(ts.isAwaitExpression(e) && isThisCall(e.expression, 'getCredentials'));
+
+			if (isFormNew(node)) return this.helper('__formNew');
+			if (
+				ts.isExpressionStatement(node) &&
+				ts.isCallExpression(node.expression) &&
+				ts.isPropertyAccessExpression(node.expression.expression) &&
+				ts.isIdentifier(node.expression.expression.expression) &&
+				formNames.has(node.expression.expression.expression.text) &&
+				node.expression.expression.name.text === 'append' &&
+				(node.expression.arguments.length === 2 || node.expression.arguments.length === 3) &&
+				!node.expression.arguments.some((a) => ts.isSpreadElement(a))
+			) {
+				const [name, value, options] = args(node.expression);
+				return f.createExpressionStatement(
+					this.helper(
+						'__formAppend',
+						node.expression.expression.expression,
+						name,
+						value,
+						options ?? f.createIdentifier('undefined'),
+					),
+				);
+			}
+			if (
+				ts.isPropertyAccessExpression(node) &&
+				ts.isIdentifier(node.expression) &&
+				formNames.has(node.expression.text)
+			) {
+				this.error(
+					unit.name,
+					`'${node.name.text}' of a form of the package 'form-data' has no compiled form`,
+				);
+				return node;
+			}
 
 			if (
 				ts.isVariableDeclaration(node) &&
@@ -7536,7 +7721,103 @@ class Specialiser {
 	private storesResponses = false;
 	private marksFileLimit = false;
 	private readsStoredMetadata = false;
+	private readsItemBytes = false;
 	private requestTokenOptions = false;
+
+	private serviceBytes(root: ts.Node): ts.Node {
+		const inputs = new Set<string>();
+		const fromInput = (e: ts.Expression): boolean => {
+			if (givesInputBytes(e)) return true;
+			const made = uncast(e);
+			if (
+				!ts.isCallExpression(made) ||
+				!ts.isIdentifier(made.expression) ||
+				made.expression.text !== '__bytesFrom' ||
+				made.arguments.length !== 1
+			)
+				return false;
+			const source = uncast(made.arguments[0]);
+			return ts.isIdentifier(source) ? inputs.has(source.text) : givesInputBytes(source);
+		};
+		const collect = (n: ts.Node) => {
+			const made =
+				ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer
+					? { name: n.name.text, value: n.initializer }
+					: ts.isBinaryExpression(n) &&
+							n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+							ts.isIdentifier(n.left)
+						? { name: n.left.text, value: n.right }
+						: undefined;
+			if (made && fromInput(made.value)) inputs.add(made.name);
+			ts.forEachChild(n, collect);
+		};
+		collect(root);
+		collect(root);
+		const asyncs: boolean[] = [];
+		let found = false;
+		const awaited = (helper: string, values: ts.Expression[]): ts.Expression => {
+			if (asyncs.at(-1) !== true) this.error('code', BYTES_USE);
+			found = true;
+			this.helpers.add(helper);
+			return f.createParenthesizedExpression(f.createAwaitExpression(call(helper, ...values)));
+		};
+		const visit = (n: ts.Node): ts.Node => {
+			if (ts.isFunctionLike(n)) {
+				asyncs.push(
+					ts.canHaveModifiers(n) &&
+						(ts.getModifiers(n) ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword),
+				);
+				const out = ts.visitEachChild(n, visit, undefined);
+				asyncs.pop();
+				return out;
+			}
+			if (
+				ts.isCallExpression(n) &&
+				ts.isPropertyAccessExpression(n.expression) &&
+				n.expression.name.text === 'toString' &&
+				n.arguments.length === 1 &&
+				ts.isStringLiteral(n.arguments[0]) &&
+				bufferEncoding(n.arguments[0]) === 'base64'
+			) {
+				const held = uncast(n.expression.expression);
+				if (
+					(ts.isIdentifier(held) && inputs.has(held.text)) ||
+					(fromInput(held) && !isBase64Buffer(held))
+				)
+					return awaited('__bytesBase64', [
+						ts.visitNode(n.expression.expression, visit) as ts.Expression,
+					]);
+			}
+			if (
+				ts.isCallExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				n.expression.text === '__prepareBinary' &&
+				n.arguments.length === 3
+			) {
+				const given = uncast(n.arguments[0]);
+				const rest = n.arguments.slice(1).map((a) => ts.visitNode(a, visit) as ts.Expression);
+				if (isBase64Buffer(given))
+					return awaited('__storeBase64', [
+						ts.visitNode(given.arguments[0], visit) as ts.Expression,
+						...rest,
+					]);
+				if (givesInputBytes(given) || (ts.isIdentifier(given) && inputs.has(given.text)))
+					return awaited('__storeBinary', [
+						ts.visitNode(n.arguments[0], visit) as ts.Expression,
+						...rest,
+					]);
+			}
+			return ts.visitEachChild(n, visit, undefined);
+		};
+		const out = ts.visitNode(root, visit);
+		if (!found) return root;
+		this.readsItemBytes = true;
+		for (const helper of ['__binaryService', '__hostForLimit']) this.helpers.add(helper);
+		if (this.helpers.has('__storeBinary'))
+			for (const helper of ['__storeBase64', '__bytesBase64']) this.helpers.add(helper);
+		if (this.helpers.has('__bytesBase64')) this.helpers.add('__filesInLimit');
+		return out;
+	}
 
 	private bufferText(root: ts.Node): ts.Node {
 		const visit = (n: ts.Node): ts.Node => {
@@ -7761,6 +8042,14 @@ class Specialiser {
 	}
 
 	private print(): string {
+		if (this.helpers.has('__formNew') && this.output.some((o) => mentionsFormMethod(o.node)))
+			this.error(
+				'code',
+				"a form of the package 'form-data' has a compiled form only with `append` and as the `formData` of a request",
+			);
+		for (const entry of this.output) entry.node = this.serviceBytes(entry.node);
+		if (this.readsItemBytes && !this.output.some((o) => mentionsName(o.node, '__prepareBinary')))
+			this.helpers.delete('__prepareBinary');
 		for (const { node } of this.output) this.bytesUses(node);
 		for (const entry of this.output) entry.node = this.listSources(entry.node);
 		for (const entry of this.output) entry.node = this.zoneChoices(entry.node);
@@ -7771,7 +8060,7 @@ class Specialiser {
 			(HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT),
 		);
 		if (limitGuard) this.helpers.add('__isLimit');
-		const unitsWith = (guarded: boolean) => {
+		const unitsWith = (guarded: boolean, hosted = false) => {
 			const code: string[] = [];
 			let body = '';
 			for (const { name, node, sf } of this.output) {
@@ -7786,7 +8075,10 @@ class Specialiser {
 					if (unit?.withContext) this.error(name, 'a constant is called with the n8n context');
 					code.push(text(node));
 				} else if (name === 'execute') {
-					body = (node.body?.statements ?? []).map(text).join('\n');
+					const statements = (node.body?.statements ?? []).map(text).join('\n');
+					body = hosted
+						? `try {\n${this.helpers.has('__filesInLimit') ? '__filesInLimit(__items);\n' : ''}${statements}\n} catch (__stopped) {\n\tthrow __hostForLimit(__stopped);\n}`
+						: statements;
 				} else {
 					const lead = unit?.withContext
 						? CONTEXT_PARAMS.map((p) => f.createParameterDeclaration(undefined, undefined, p))
@@ -7891,10 +8183,11 @@ class Specialiser {
 			this.error('code', SESSION_TYPE);
 		let joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
 		this.marksFileLimit =
-			this.storesResponses && sendsRequests && namesOutsideRequest(joined, 'encoding');
+			this.readsItemBytes ||
+			(this.storesResponses && sendsRequests && namesOutsideRequest(joined, 'encoding'));
 		if (this.marksFileLimit) {
 			for (const helper of ['__isLimit', '__isFileLimit']) this.helpers.add(helper);
-			const guarded = unitsWith(true);
+			const guarded = unitsWith(true, this.readsItemBytes);
 			code = codeWith(guarded.code, true);
 			body = guarded.body;
 			joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
@@ -7942,6 +8235,7 @@ class Specialiser {
 			for (const used of CODE_HELPERS[name].uses) add(used);
 		};
 		for (const name of t.helpers) add(name);
+		if (this.helpers.has('__formAppend')) for (const name of ['bufFrom', 'bufText']) add(name);
 		if (t.usesCollections) add('collPlain');
 
 		const plain = t.usesCollections
@@ -7953,6 +8247,7 @@ class Specialiser {
 			__plain: plain,
 			[PLAIN_LIST]: t.usesCollections ? PLAIN_LIST_COLLECTIONS : PLAIN_LIST_SAME,
 			...(this.marksFileLimit ? { __isLimit: HELPERS.__isLimitOrHost } : {}),
+			...(this.helpers.has('__formNew') ? { __formParts: FORM_PARTS_OF_FORM } : {}),
 			...(makesBytes
 				? {
 						__sendBody: HELPERS.__sendBodyChecked,

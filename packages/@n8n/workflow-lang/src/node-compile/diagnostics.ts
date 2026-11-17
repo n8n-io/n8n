@@ -445,6 +445,15 @@ export const RULES: Rule[] = [
 					XML_PACKAGES.test(m[2]) ||
 					(CRYPTO_PACKAGES.test(m[2]) && m[1] === 'randomBytes'),
 			},
+			{
+				pattern: /^'([^']+)' of a form of the package 'form-data' has no compiled form$/,
+				locate: named(1),
+			},
+			{
+				pattern:
+					/^a form of the package 'form-data' has a compiled form only with `append` and as the `formData` of a request$/,
+				locate: identifier('FormData'),
+			},
 		],
 	},
 	{

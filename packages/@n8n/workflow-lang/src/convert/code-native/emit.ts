@@ -14,6 +14,8 @@ import { codeHelperNames, codeHelperSources } from './helpers.ts';
 import type { Translation } from './translate.ts';
 import {
 	ALL_NODES,
+	FILES,
+	MADE,
 	MATCHES,
 	FIRST_JSON,
 	HTTP,
@@ -98,12 +100,18 @@ function emitParts(
 	plainInput: boolean,
 	step: string | null,
 	traced: Translation | undefined,
+	files: string,
+	made: string,
 ): { params: string; lines: string[]; args: string } {
 	const raw = (k: number) => `${P}r${k}`;
 	const params = [
 		`${P}in: Json[]`,
 		...t.nodes.map((_, k) => `${raw(k)}: Json[]`),
 		...(t.usesAllNodes ? [`${ALL_NODES}: Json`] : []),
+		// The base64 text of the stored files of the input items (\`Translation.binaryNames\`).
+		...(t.binaryNames !== undefined ? [`${FILES}: Json`] : []),
+		// The plan and the stored entries of \`prepareBinaryData\` (\`codePrepareBinary\`).
+		...(t.preparesBinary ? [`${MADE}: Json`] : []),
 	].join(', ');
 	/** The values that the code reads: the items of other nodes, and the input items. */
 	const values = (source: string): string[] => {
@@ -222,7 +230,13 @@ function emitParts(
 	}
 	// Every node that ran before, by name, for \`$(name)\` with a computed name.
 	const all = t.allNodes.map((name, k) => `${JSON.stringify(name)}: ${allLists[k]}`).join(', ');
-	const args = [input, ...lists, ...(t.usesAllNodes ? [`{ ${all} }`] : [])].join(', ');
+	const args = [
+		input,
+		...lists,
+		...(t.usesAllNodes ? [`{ ${all} }`] : []),
+		...(t.binaryNames !== undefined ? [files] : []),
+		...(t.preparesBinary ? [made] : []),
+	].join(', ');
 	return { params, lines: [...head.map((h) => `\t${h}`), `\t${main}`], args };
 }
 
@@ -239,8 +253,21 @@ export function emitAsync(
 	allLists: string[] = [],
 	plainInput = false,
 	traced?: Translation,
+	files = '{}',
+	made = '{ plan: [] }',
 ): { declaration: string; expression: string } {
-	const parts = emitParts(t, mode, input, lists, allLists, plainInput, form.step, traced);
+	const parts = emitParts(
+		t,
+		mode,
+		input,
+		lists,
+		allLists,
+		plainInput,
+		form.step,
+		traced,
+		files,
+		made,
+	);
 	return {
 		declaration: [
 			`const ${form.fn} = async (${parts.params}): Promise<Json[]> => {`,
@@ -263,7 +290,9 @@ export function emitExpression(
 	allLists: string[] = [],
 	plainInput = false,
 	traced?: Translation,
+	files = '{}',
+	made = '{ plan: [] }',
 ): string {
-	const parts = emitParts(t, mode, input, lists, allLists, plainInput, null, traced);
+	const parts = emitParts(t, mode, input, lists, allLists, plainInput, null, traced, files, made);
 	return [`((${parts.params}): Json[] => {`, ...parts.lines, `})(${parts.args})`].join('\n');
 }

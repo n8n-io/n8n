@@ -8,6 +8,9 @@
  */
 import type { CodeHelperSource } from './helpers.ts';
 
+/** `RUNS_IN_HOST` of the converter (`../helpers.ts`, which imports this file). */
+const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
+
 export const BUFFER_HELPERS: Record<string, CodeHelperSource> = {
 	bufGot: {
 		uses: [],
@@ -183,21 +186,64 @@ function bufByteLength(text: Json, encoding: Json): number {
 	return utf8Bytes(text).length;
 }`,
 	},
+	codePrepareBinary: {
+		uses: ['bufText'],
+		source: `/**
+ * this.helpers.prepareBinaryData(bytes, fileName, mimeType). The node runs the code two times
+ * (\`lowerCodeNative\`). The first run makes the plan: \`made.plan\` gets the base64 text and
+ * the names of each call, and the call gives a value that is not the entry. The node stores
+ * the files of the plan (\`made.entries\`). In the second run, each call gives the stored
+ * entry of the same call of the plan, so the code gets what v1 gives. A call that differs
+ * from the plan, or a file outside the limits, sets \`made.host\`: the fallback host runs the
+ * node.
+ */
+function codePrepareBinary(made: Json, bytes: number[], fileName: Json, mimeType: Json): Json {
+	const data: string = bufText(bytes, 'base64');
+	if (made.entries === undefined) {
+		if (
+			made.plan.length >= 32 ||
+			bytes.length > 262144 ||
+			(fileName !== undefined && typeof fileName !== 'string') ||
+			(mimeType !== undefined && typeof mimeType !== 'string')
+		) {
+			made.host = true;
+			throw new Error('The code makes binary data outside the limits ${RUNS_IN_HOST}');
+		}
+		made.plan.push({ data, fileName, mimeType });
+		return { $prepared: made.plan.length - 1 };
+	}
+	const planned: Json = made.plan[made.next];
+	if (planned === undefined || planned.data !== data || planned.fileName !== fileName || planned.mimeType !== mimeType) {
+		made.host = true;
+		throw new Error('The code makes other binary data in its second run ${RUNS_IN_HOST}');
+	}
+	const entry: Json = made.entries[made.next];
+	made.next += 1;
+	return entry;
+}`,
+	},
 	codeBinaryBytes: {
 		uses: ['base64Bytes'],
 		source: `/**
- * this.helpers.getBinaryDataBuffer(index, name) for binary data that an item holds as base64
- * text: the bytes of the entry of the input item. v1 reads the input of the node, not the
- * items that the code changed.
+ * this.helpers.getBinaryDataBuffer(index, name): the bytes of the entry of the input item. v1
+ * reads the input of the node, not the items that the code changed. An entry without an id
+ * holds its bytes as base64 text. For an item, binary data or entry that is not there, the
+ * code gets the error of v1's task runner: the call fails in n8n, and the runner gives the
+ * code an error object without members (the node then fails with the message \`{}\`, without
+ * a line). For an entry with an id, \`files\` has the base64 text of
+ * the stored file (\`storedFilesReader\`). The error of a file that is not there has the mark
+ * of \`RUNS_IN_HOST\`: the fallback host runs the node.
  */
-function codeBinaryBytes(input: Json[], index: Json, name: Json): number[] {
+function codeBinaryBytes(input: Json[], files: Json, index: Json, name: Json): number[] {
 	const item: Json = input[index];
-	if (item === undefined || item === null) throw new TypeError("Cannot read properties of undefined (reading 'binary')");
-	const binary: Json = item.$binary;
-	if (binary === undefined || binary === null) throw new TypeError("Cannot read properties of undefined (reading '" + String(name) + "')");
-	const entry: Json = binary[String(name)];
-	if (entry === undefined || entry === null) throw new TypeError("Cannot read properties of undefined (reading 'id')");
-	return base64Bytes(String(entry.data));
+	const binary: Json = item === undefined || item === null ? undefined : item.$binary;
+	const entry: Json = binary === undefined || binary === null ? undefined : binary[String(name)];
+	if (entry === undefined || entry === null) throw {};
+	const id: Json = entry.id;
+	if (id === undefined || id === null || id === '' || id === false || id === 0) return base64Bytes(String(entry.data));
+	const stored: Json = typeof id === 'string' ? files[id] : undefined;
+	if (typeof stored !== 'string') throw new Error('The bytes of a stored file are not there ${RUNS_IN_HOST}');
+	return base64Bytes(stored);
 }`,
 	},
 };

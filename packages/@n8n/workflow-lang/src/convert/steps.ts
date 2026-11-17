@@ -662,6 +662,16 @@ function compiledNode(c: NodeContext): boolean {
 		);
 		return false;
 	}
+	// A module asks n8n for the bytes of a file of an item, or for new binary data, with the
+	// `binaryData` service (`__binaryService`). Above the size limit of the service the module
+	// ends with the mark of `RUNS_IN_HOST`, so its fallback-host form is in the source too.
+	if (c.services === false && compiled.source.includes('__binaryService(')) {
+		c.info(
+			'node-compile',
+			'The node asks n8n for the bytes of a file, and the runtime of the caller has no service calls.',
+		);
+		return false;
+	}
 	// A node that stores a response can reach the largest size of a stored file, which v1 does
 	// not have: its fallback-host form is in the source too.
 	// The host form runs the node again for all items. So the compiled form is one call for all

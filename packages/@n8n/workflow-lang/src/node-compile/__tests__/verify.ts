@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
 
 import { Writer } from '../../convert/code.ts';
 import { helperSources } from '../../convert/helpers.ts';
@@ -20,13 +22,15 @@ import type {
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import type { WireHeaders } from '../../nodes/__tests__/equivalence.ts';
-import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
+import { FALLBACK_HOST_DIR, recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
 import { resolveCredentialData } from '../../../scripts/gym/v1-credentials.ts';
 import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
 import { libraryNodeTypes } from '../../library/node-sources.ts';
 import { referenceHash } from '../../reference/binary-response.ts';
 import { runReference } from '../../reference/runner.ts';
+import type { BinaryDataBackend } from '../../services/binary-data.ts';
+import { runBinaryDataCall } from '../../services/binary-data.ts';
 import type { VmCost } from '../../testing/vm.ts';
 import { allocationsOf, emptyCost, runModule } from '../../testing/vm.ts';
 import type { ErrorMode, NodeSources } from '../convert.ts';
@@ -692,6 +696,61 @@ export default workflow({
 }
 
 const MAX_COMPILED_STEPS = 20000;
+interface BinaryCore {
+	prepareBinaryData(
+		bytes: Buffer,
+		executionId: string,
+		workflowId: string,
+		filePath?: string,
+		mimeType?: string,
+	): Promise<unknown>;
+	detectBinaryEncoding(bytes: Buffer): string;
+}
+
+function isBinaryCore(value: unknown): value is BinaryCore {
+	return (
+		isRecord(value) &&
+		typeof value.prepareBinaryData === 'function' &&
+		typeof value.detectBinaryEncoding === 'function'
+	);
+}
+
+let binaryBackend: BinaryDataBackend | undefined;
+
+function binaryBackendOf(): BinaryDataBackend {
+	if (binaryBackend) return binaryBackend;
+	const core: unknown = createRequire(join(FALLBACK_HOST_DIR, 'package.json'))('n8n-core');
+	if (!isBinaryCore(core)) throw new Error('n8n-core has no binary data functions');
+	binaryBackend = {
+		read: async () => {
+			throw new Error('The check has no stored file');
+		},
+		detect: (bytes) => core.detectBinaryEncoding(Buffer.from(bytes)) ?? null,
+		store: async (bytes, fileName, mimeType) =>
+			await core.prepareBinaryData(Buffer.from(bytes), 'equivalence', 'oracle', fileName, mimeType),
+	};
+	return binaryBackend;
+}
+
+const binaryCallOf = (effect: { kind: string; args: unknown }) =>
+	effect.kind === 'service' &&
+	isRecord(effect.args) &&
+	effect.args.service === 'binaryData' &&
+	(effect.args.op === 'read' || effect.args.op === 'store')
+		? {
+				service: 'binaryData',
+				op: effect.args.op,
+				args: isRecord(effect.args.args) ? effect.args.args : {},
+			}
+		: undefined;
+
+async function binaryAnswer(effect: { kind: string; args: unknown }): Promise<unknown> {
+	const asked = binaryCallOf(effect);
+	if (asked === undefined) return undefined;
+	const answer = await runBinaryDataCall(binaryBackendOf(), asked);
+	return answer.ok ? answer.result : { $error: answer.error.message };
+}
+
 const effectsOf = (responses: EquivalenceCase['responses']) => ({
 	Node: responses.map((r) => ({ status: 200, headers: {}, ...r })),
 });
@@ -983,7 +1042,11 @@ export async function differenceFromV1(
 		await runReference(
 			source,
 			{ ...fixture, seed },
-			{ extraNodes: { [compiled.file]: compiled.source }, maxSteps: MAX_COMPILED_STEPS },
+			{
+				extraNodes: { [compiled.file]: compiled.source },
+				maxSteps: MAX_COMPILED_STEPS,
+				answer: binaryAnswer,
+			},
 		);
 	const out = await runWith(fixture.seed);
 
@@ -1024,7 +1087,12 @@ export async function differenceFromV1(
 	if (renewals !== sessionRequests)
 		return `the requests for a new session token differ: ${renewals} / ${sessionRequests}`;
 	const requestsOf = (run: typeof out) =>
-		run.effects.filter((effect) => effect.kind !== 'wait' && !renewsSession(effect)).map(requestOf);
+		run.effects
+			.filter(
+				(effect) =>
+					effect.kind !== 'wait' && !renewsSession(effect) && binaryCallOf(effect) === undefined,
+			)
+			.map(requestOf);
 	const requestOf = (effect: (typeof out.effects)[number]) => {
 		const args = isRecord(effect.args) ? effect.args : {};
 		const raw = applyCredential(

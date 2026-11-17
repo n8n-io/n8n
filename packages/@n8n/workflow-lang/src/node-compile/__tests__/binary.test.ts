@@ -291,10 +291,6 @@ describe('node compiler: binary data', () => {
 			label: 'a byte of file bytes',
 			body: "returnData.push({ json: { r: Buffer.from(items[i].json.text, 'base64')[0] } });",
 		},
-		{
-			label: 'new binary data',
-			body: "returnData.push({ json: {}, binary: { data: await this.helpers.prepareBinaryData(Buffer.from(items[i].json.text, 'base64')) } });",
-		},
 	])('does not compile $label', ({ body }) => {
 		expect(probe(body).errors.length).toBeGreaterThan(0);
 	});
@@ -432,10 +428,6 @@ describe('node compiler: binary data of a response', () => {
 		{
 			label: 'a Buffer of a response that is not made into binary data',
 			body: `${DOWNLOAD} const data = Buffer.from(response.body); returnData.push({ json: { r: data } });`,
-		},
-		{
-			label: 'binary data from the bytes of an input item',
-			body: "const bytes = await this.helpers.getBinaryDataBuffer(i, 'data'); returnData.push({ json: {}, binary: { data: await this.helpers.prepareBinaryData(bytes, 'a.txt', 'text/plain') } });",
 		},
 	])('does not compile $label', ({ body }) => {
 		expect(probe(body).errors.length).toBeGreaterThan(0);
