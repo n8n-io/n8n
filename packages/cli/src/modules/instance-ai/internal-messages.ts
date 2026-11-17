@@ -69,6 +69,12 @@ export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
  */
 export const INSTANCE_URLS_OPEN_TAG = '<instance-urls>';
 export const INSTANCE_URLS_CLOSE_TAG = '</instance-urls>';
+/**
+ * Auto approval mode. The system prompt says that an action which needs approval shows a
+ * card, but in Auto the review can run the action without one.
+ */
+export const APPROVAL_MODE_OPEN_TAG = '<approval-mode>';
+export const APPROVAL_MODE_CLOSE_TAG = '</approval-mode>';
 /** Setup panel v2: per-turn recomputed setup state of the workflows the thread built. */
 export const WORKFLOW_SETUP_STATE_OPEN_TAG = '<workflow-setup-state>';
 export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
@@ -200,6 +206,15 @@ export function buildInstanceUrlsBlock(urls: {
 		`Webhook base URL: ${urls.webhookBaseUrl}`,
 		`Form base URL: ${urls.formBaseUrl}`,
 		INSTANCE_URLS_CLOSE_TAG,
+	].join('\n');
+}
+
+export function buildAutoApprovalModeBlock(): string {
+	return [
+		APPROVAL_MODE_OPEN_TAG,
+		'The user chose "Approve for me". A reviewer checks each action that needs approval. It runs routine actions at once and shows the approval card for the rest, so you cannot know if a card will show.',
+		'Before such an action, say in one short sentence what you are about to do. Do not say that an approval card will show or that nothing happens until the user approves.',
+		APPROVAL_MODE_CLOSE_TAG,
 	].join('\n');
 }
 

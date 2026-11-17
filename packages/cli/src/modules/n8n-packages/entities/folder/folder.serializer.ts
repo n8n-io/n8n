@@ -9,6 +9,7 @@ type FolderPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
+	resourceType: 'exclude';
 	parentFolderId: 'transform';
 	parentFolder: 'exclude';
 	subFolders: 'exclude';
