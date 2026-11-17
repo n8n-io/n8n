@@ -77,6 +77,13 @@ sends each step of that connection again once as a new step (`sendAgain`,
 slow lane and gets its result. A step that is lost a second time follows the
 old blame rule, which bounds the loop.
 
+A step that blocks for ever has the same path: one guard stop, then the slow
+lane, where the step limit ends it. The step fails with `The step did not
+finish within N ms` (not retryable), and the runtime gets `worker_lost` once,
+with the reason of the guard. This is not equal to v1 yet: v1 gives `Task
+execution timed out after N seconds` for a Code node, and has no time limit
+for another node.
+
 Consequence: each step in the stopped worker runs twice, with the same
 idempotency key. The pool did this already for each worker that stops; the
 shorter guard makes it more frequent (at most once for each key in 10

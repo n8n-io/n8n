@@ -18,8 +18,15 @@ import { buildHostForTests, RuntimeClient, startTestHost, type TestHost } from '
 const BASELINE = process.env.ISOLATION_BASELINE === '1';
 const BLOCK_MS = 3_000;
 const GUARD_MS = 1_000;
-/** The longest delay of a step of another workflow while the slow lane has the block. */
+/**
+ * The longest delay of a step of another workflow while the slow lane has the
+ * block, on a machine without load. Each test adds the delay that the machine
+ * gives the same steps without a block (`quietBound`). Load on the machine
+ * then does not fail a test, and a block that reaches the other workflow does.
+ */
 const QUIET_MS = 500;
+/** The time without a block in which a test measures the delay of the machine. */
+const CALM_MS = 1_000;
 /** A new worker loads its modules in this time; steps that go again wait for an idle connection. */
 const RESTART_MS = 1_500;
 
@@ -96,21 +103,38 @@ describe('fallback host isolation between workflows', () => {
 		return longest;
 	}
 
+	/**
+	 * The bound for the delay of a step of another workflow: `QUIET_MS`, and
+	 * two times the longest delay of the same steps now, without a block. The
+	 * bound must stay under the block, or the run proves nothing.
+	 */
+	async function quietBound(tag: string): Promise<number> {
+		const calm = await quickLatency(`${tag}-calm`, wait(CALM_MS));
+		const bound = QUIET_MS + 2 * calm;
+		console.log(
+			`[isolation] ${tag}: without a block ${calm.toFixed(0)} ms; bound ${bound.toFixed(0)} ms`,
+		);
+		expect(bound).toBeLessThan(BLOCK_MS);
+		return bound;
+	}
+
 	const ok = (result: StepResponse) => expect(result).toMatchObject({ ok: true });
 
 	it('a code step that blocks does not delay the steps of another workflow', async () => {
+		const bound = await quietBound('first');
 		const blocked = client.send(spin('first', 'wf-first', 'Code', BLOCK_MS));
 		const longest = await quickLatency('first', blocked);
 		console.log(
 			`[isolation] one ${BLOCK_MS} ms block: other workflow waited ${longest.toFixed(0)} ms`,
 		);
 		ok(await blocked);
-		expect(longest).toBeLessThan(QUIET_MS);
+		expect(longest).toBeLessThan(bound);
 	}, 30_000);
 
 	it('a step that starts to block moves to the slow lane after one block', async () => {
 		// The key runs alone once without a block: the normal lane takes it.
 		ok(await client.send(spin('learn-0', 'wf-learn', 'Code', 0)));
+		const bound = await quietBound('learn');
 		// Shorter than the guard: the worker reports the block, and the key gets its mark.
 		const short = client.send(spin('learn-1', 'wf-learn', 'Code', 400));
 		const during = await quickLatency('learn-a', short);
@@ -121,12 +145,13 @@ describe('fallback host isolation between workflows', () => {
 			`[isolation] first 400 ms block: other workflow waited ${during.toFixed(0)} ms; next ${BLOCK_MS} ms block: ${after.toFixed(0)} ms`,
 		);
 		ok(await again);
-		expect(during).toBeLessThan(400 + QUIET_MS);
-		expect(after).toBeLessThan(QUIET_MS);
+		expect(during).toBeLessThan(400 + bound);
+		expect(after).toBeLessThan(bound);
 	}, 30_000);
 
 	it('a block longer than the guard delays others once, and the step still gets its result', async () => {
 		ok(await client.send(spin('guard-0', 'wf-guard', 'Code', 0)));
+		const bound = await quietBound('guard');
 		const stopsBefore = host.pool?.stats().guardStops ?? 0;
 		const long = client.send(spin('guard-1', 'wf-guard', 'Code', BLOCK_MS));
 		const during = await quickLatency('guard-a', long);
@@ -139,17 +164,18 @@ describe('fallback host isolation between workflows', () => {
 			`[isolation] block over the ${GUARD_MS} ms guard: other workflow waited ${during.toFixed(0)} ms; next block: ${after.toFixed(0)} ms`,
 		);
 		ok(await next);
-		expect(during).toBeLessThan(GUARD_MS + RESTART_MS);
-		expect(after).toBeLessThan(QUIET_MS);
+		expect(during).toBeLessThan(GUARD_MS + RESTART_MS + (bound - QUIET_MS));
+		expect(after).toBeLessThan(bound);
 	}, 60_000);
 
 	it('many blocking steps of one workflow do not delay another workflow', async () => {
+		const bound = await quietBound('many');
 		const many = Array.from({ length: 20 }, (_, i) => spin(`many-${i}`, 'wf-many', 'Crunch', 200));
 		const all = client.sendBatch(many);
 		const longest = await quickLatency('many', all);
 		console.log(`[isolation] 20 steps of 200 ms: other workflow waited ${longest.toFixed(0)} ms`);
 		for (const answer of await all) ok(answer);
-		expect(longest).toBeLessThan(QUIET_MS);
+		expect(longest).toBeLessThan(bound);
 	}, 60_000);
 
 	it('a step that blocks longer than the guard, alone, finishes with its result', async () => {

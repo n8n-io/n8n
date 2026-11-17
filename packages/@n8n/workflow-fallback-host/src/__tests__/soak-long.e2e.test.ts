@@ -286,14 +286,25 @@ describe('fallback host worker pool over a long run with recycling', () => {
 			blockedMs: 1_500,
 			memoryMb: 1024,
 			recycleSteps: 100_000,
+			// The step must start in the normal lane, which has the CPU guard.
+			codeStartsSlow: false,
 			log: (message) => logs.push(message),
 		});
 		client = await RuntimeClient.connect(host.socketPath);
 		// A step that never ends and does not give control back to the worker.
 		const reply = await client.send(code('loop', 'for (;;) {}'));
-		expect(reply).toMatchObject({ ok: false, error: expect.stringContaining('did not answer') });
-		expect(logs.filter((l) => l.startsWith('A worker stopped'))).toHaveLength(1);
-		// The step alone on the connection caused the stop, so the runtime blames it.
+		// The CPU guard stops the worker and tells the runtime why.
+		expect(logs.filter((l) => l.startsWith('A worker stopped'))).toEqual([
+			expect.stringContaining('did not answer'),
+		]);
 		expect(client.lostReasons).toEqual([expect.stringContaining('did not answer')]);
+		expect(host.pool?.stats().guardStops).toBe(1);
+		// The step then goes again in the slow lane (`docs/isolation.md`). That
+		// lane has no CPU guard: the time limit of a step ends the step there.
+		expect(reply).toEqual({
+			id: 'loop',
+			ok: false,
+			error: 'The step did not finish within 20000 ms',
+		});
 	}, 60_000);
 });

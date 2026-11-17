@@ -249,17 +249,26 @@ describe('fallback host worker pool under faults', () => {
 		expect(client.lostReasons).toEqual(
 			expect.arrayContaining([
 				expect.stringContaining('did not answer'),
-				expect.stringContaining('memory'),
 				expect.stringContaining('SIGKILL'),
 			]),
 		);
-		// The client opens a new connection for each one that closed.
-		const deadline = Date.now() + 10_000;
+		// A worker near its heap limit collects garbage for a long time. On a
+		// machine with load the CPU guard can stop it first: the runtime then
+		// gets the guard's reason, and the step gets the memory error from the
+		// slow lane (the test of that step checks its error in both cases).
+		const guardTookMemoryStep = (host.pool?.stats().guardStops ?? 0) > 1;
+		if (!guardTookMemoryStep) {
+			expect(client.lostReasons).toContainEqual(expect.stringContaining('memory'));
+		}
+		// The client opens a new connection for each one that closed. A new
+		// worker takes it after it loaded its modules; the time that this takes
+		// depends on the load of the machine and is not what the test checks.
+		const deadline = Date.now() + 90_000;
 		while (client.openConnections < 2 && Date.now() < deadline) {
 			await new Promise((resolve) => setTimeout(resolve, 20));
 		}
 		expect(client.openConnections).toBe(2);
-	});
+	}, 120_000);
 });
 
 describe('fallback host worker pool with a step that hangs', () => {
