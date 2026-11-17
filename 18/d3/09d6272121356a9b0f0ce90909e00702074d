@@ -1,0 +1,221 @@
+spike/.gitignore
+  s_9aec6af7587d8a::t_26211af51fa5e5 1
+spike/cross-project-deps/index.html
+  s_c132b749540ff1::t_e01132c3044406 1-1252
+spike/ligo-1159/blind-key.txt
+  s_a90db052c9234d::t_b61d81c77bbd2b 1-4
+spike/ligo-1159/judge-prompt.txt
+  s_a90db052c9234d::t_57bacda86b4bd6 1-119
+spike/ligo-1159/review/critiques/D.md
+  s_a90db052c9234d::t_e6cb98e6387a14 1-133
+spike/ligo-1159/review/facts/batch-1.md
+  s_a90db052c9234d::t_de8c9b110d3e99 1-184
+spike/ligo-1159/review/facts/batch-2.md
+  s_a90db052c9234d::t_8e184201e0b1a7 1-244
+spike/ligo-1159/review/facts/batch-3.md
+  s_a90db052c9234d::t_4980faf840cf78 1-154
+spike/ligo-1159/review/facts/batch-4.md
+  s_a90db052c9234d::t_b5c16c6ccdff25 1-253
+spike/ligo-1159/review/facts/batch-5.md
+  s_a90db052c9234d::t_02000ec67a3df2 1-187
+spike/ligo-1159/review/facts/batch-6.md
+  s_a90db052c9234d::t_2430a1c5da7fd5 1-230
+spike/ligo-1159/review/final/consolidated-solution.md
+  s_e665a532be3875::t_be817f28776dde 1-836
+spike/ligo-1159/review/final/decision-log.md
+  s_e665a532be3875::t_24cdacaaeb882e 1-440
+spike/ligo-1159/review/final/red-team.md
+  s_e665a532be3875::t_42cb2d4db10c43 1-83
+spike/ligo-1159/review/final/solution-condensed-notion.md
+  s_e665a532be3875::t_1e16b7e48fb279 1-103
+spike/ligo-1159/review/final/solution-condensed.md
+  s_e665a532be3875::t_8f6fa9e7c26856 1-109
+spike/ligo-1159/review/final/solution.md
+  s_e665a532be3875::t_c19d52a283847b 1-814
+spike/ligo-1159/review/submissions/A/evidence.md
+  s_a90db052c9234d::t_3603adf53cfcf4 1-75
+spike/ligo-1159/review/submissions/A/solution.md
+  s_a90db052c9234d::t_f6db6cfd1d48f5 1-240
+spike/ligo-1159/review/submissions/A/ticket-plan.md
+  s_a90db052c9234d::t_0c56c4e9f35ec4 1-168
+spike/ligo-1159/review/submissions/B/README.md
+  s_a90db052c9234d::t_13f886c94c47d3 1-31
+spike/ligo-1159/review/submissions/B/current-state.md
+  s_a90db052c9234d::t_2fd38c1af388ec 1-129
+spike/ligo-1159/review/submissions/B/solution.md
+  s_a90db052c9234d::t_7fe54555a84831 1-247
+spike/ligo-1159/review/submissions/B/ticket-plan.md
+  s_a90db052c9234d::t_c3e9f5dac2297a 1-149
+spike/ligo-1159/review/submissions/C/01-current-state.md
+  s_a90db052c9234d::t_aa95547a015469 1-141
+spike/ligo-1159/review/submissions/C/02-solution.md
+  s_a90db052c9234d::t_cc9c3a5e90393e 1-404
+spike/ligo-1159/review/submissions/C/03-ticket-plan.md
+  s_a90db052c9234d::t_01b9ba0c908216 1-247
+spike/ligo-1159/review/submissions/D/solution.md
+  s_a90db052c9234d::t_f5c6b6a48c8e94 1-617
+spike/ligo-1159/spec/existing-branches.feature
+  s_e665a532be3875::t_ea2e093d11a9cd 1-78
+spike/ligo-1159/spec/index.html
+  s_e665a532be3875::t_05d295a693a385 1-469
+spike/ligo-1159/spec/instance-promote.feature
+  s_e665a532be3875::t_e315dda399bdfe 1-71
+spike/ligo-1159/spec/moves.feature
+  s_e665a532be3875::t_f92b61ec4380f3 1-162
+spike/ligo-1159/spec/promote-credentials.feature
+  s_e665a532be3875::t_7141ffbfefafce 1-86
+spike/ligo-1159/spec/promote-cycles.feature
+  s_e665a532be3875::t_12e805d6ec09c8 1-38
+spike/ligo-1159/spec/promote-dependencies.feature
+  s_e665a532be3875::t_0c4d97b5600bd7 1-224
+spike/ligo-1159/spec/scope.feature
+  s_e665a532be3875::t_ec8510fd33036d 1-97
+spike/ligo-1159/spec/viewer/template.html
+  s_e665a532be3875::t_de6e55b4bfa928 1-469
+spike/ligo-1159/visual/solution.html
+  s_e665a532be3875::t_d2398d74170c16 1-1257
+spike/ligo-1159/walkthrough/1-model.html
+  s_e665a532be3875::t_8ca0f9fcc96e3d 1-22
+spike/ligo-1159/walkthrough/1-model.mmd
+  s_a90db052c9234d::t_58edac7df383dd 1-14
+spike/ligo-1159/walkthrough/10-flow.html
+  s_e665a532be3875::t_7141914ecad15a 1-16
+spike/ligo-1159/walkthrough/10-flow.mmd
+  s_a90db052c9234d::t_0cc565dc1a7300 1-8
+spike/ligo-1159/walkthrough/2-promote.html
+  s_e665a532be3875::t_0834bc65f7ac90 1-24
+spike/ligo-1159/walkthrough/2-promote.mmd
+  s_e665a532be3875::t_c33fbde5f50b52 1-16
+spike/ligo-1159/walkthrough/3-apply.html
+  s_e665a532be3875::t_561802fc89377c 1-19
+spike/ligo-1159/walkthrough/3-apply.mmd
+  s_a90db052c9234d::t_fb41243f4a2a79 1-11
+spike/ligo-1159/walkthrough/4-credential.html
+  s_e665a532be3875::t_c1583c7cb6f124 1-22
+spike/ligo-1159/walkthrough/4-credential.mmd
+  s_a90db052c9234d::t_c358741d689335 1-14
+spike/ligo-1159/walkthrough/5-workflow-dependency.html
+  s_e665a532be3875::t_89e9c142655d77 1-14
+spike/ligo-1159/walkthrough/5-workflow-dependency.mmd
+  s_a90db052c9234d::t_963ef28bbee30a 1-6
+spike/ligo-1159/walkthrough/6-moves.html
+  s_e665a532be3875::t_994fedf31d251e 1-15
+spike/ligo-1159/walkthrough/6-moves.mmd
+  s_a90db052c9234d::t_f92bd9702abb3f 1-7
+spike/ligo-1159/walkthrough/7-plan.html
+  s_e665a532be3875::t_3c837d44c321dc 1-33
+spike/ligo-1159/walkthrough/7-plan.mmd
+  s_a90db052c9234d::t_04a4b582d9cf2c 1-25
+spike/ligo-1159/walkthrough/8-phases.html
+  s_e665a532be3875::t_2e000b8f1228b4 1-12
+spike/ligo-1159/walkthrough/8-phases.mmd
+  s_a90db052c9234d::t_47319d867e6f64 1-4
+spike/ligo-1159/walkthrough/9-example.html
+  s_e665a532be3875::t_daa3c753799ffe 1-18
+spike/ligo-1159/walkthrough/9-example.mmd
+  s_a90db052c9234d::t_1fcc57c0219310 1-10
+spike/ligo-1159/walkthrough/render.py
+  s_a90db052c9234d::t_3dc6d0e2704149 1-25
+spike/ligo-1159/review/critiques/A.md
+  s_0ceb78f982ca18::t_6a4f39bb4ab836 1-97
+spike/ligo-1159/review/critiques/B.md
+  s_7fa17cfdff399f::t_3c97a73faabbea 1-149
+spike/ligo-1159/review/critiques/C.md
+  s_4360a7f26ccaed::t_df0c985988a6b0 1-71
+spike/ligo-1159/review/extract/decision-matrix.md
+  s_afe9ed3c3d9ff1::t_fcde4ab3ae8d0b 1-352
+spike/ligo-1159/review/task.md
+  s_a90db052c9234d::t_4cf92beeb7abc7 1-56
+spike/ligo-1159/spec/apply-credentials.feature
+  s_31b98dbf40a148::t_f2c007b1fb6401 1-217
+spike/ligo-1159/spec/apply-deletions.feature
+  s_31b98dbf40a148::t_f014b3ab2ff5a6 1-52
+spike/ligo-1159/spec/apply-dependencies.feature
+  s_31b98dbf40a148::t_a7e30ced57613d 1-137
+spike/ligo-1159/spec/permissions.feature
+  s_31b98dbf40a148::t_61141ac89c4d1b 1-79
+spike/ligo-1159/spec/promote-deletions.feature
+  s_31b98dbf40a148::t_78b4a8311c80c4 1-25
+spike/ligo-1159/spec/viewer/build.mjs
+  s_31b98dbf40a148::t_e104fa34599c72 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18d309d6272121356a9b0f0ce90909e00702074d",
+  "prompts": {},
+  "sessions": {
+    "s_0ceb78f982ca18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3e848c25e8b2a641",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_31b98dbf40a148": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "accfe2e7-3bf1-42a5-8e87-1a5b3ee7ff6b",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4360a7f26ccaed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a52eef79544ab616d",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7fa17cfdff399f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a706a9cb0ff84dd68",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_9aec6af7587d8a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "725afcf1-5141-49d6-adb9-2132ab2aad68",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a90db052c9234d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89084de4-7495-4cc2-9838-feb1120969ce",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_afe9ed3c3d9ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9f88196f9ea253d1",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c132b749540ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1da4cef-3077-4796-b91c-c8ec41f42798",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_e665a532be3875": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bea5f5c3-469b-4329-b886-06693945f8ce",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
