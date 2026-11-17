@@ -8,6 +8,7 @@ import { hostRunners } from '../../__tests__/behaviour/compare.ts';
 import { allItemsCode, eachItemCode } from '../../code-node.ts';
 import { useUtc } from '../../../reference/runner.ts';
 import { runModule } from '../../../testing/vm.ts';
+import { setRunnerZone } from '../../node-identity.ts';
 import { checkTranslation } from '../check.ts';
 import type { CodeMode } from '../translate.ts';
 import { translateCode } from '../translate.ts';
@@ -333,6 +334,49 @@ return items.map((i) => ({ json: { text: parse(i.json.n).toLocaleString('en-US',
 function show(v) { return v.toLocaleString('en-US'); }
 return items.map((i) => ({ json: { stamp, a: show(i.json.n * 1000.5), b: show('n' + i.json.id) } }));`;
 		expect(same(code).ok).toBe(true);
+	});
+});
+
+describe('local time of a Date in a zone that is not UTC', () => {
+	const refused = (code: string) => {
+		setRunnerZone('Europe/Berlin');
+		try {
+			return blockersOf(code);
+		} finally {
+			setRunnerZone('UTC');
+		}
+	};
+
+	it.each([
+		'return [{ json: { h: new Date(items[0].json.id).getHours() } }];',
+		'const d = new Date(5); d.setHours(0, 0, 0, 0); return [{ json: { t: d.getTime() } }];',
+		'return [{ json: { d: new Date(2024, 0, 15).getTime() } }];',
+		'return [{ json: { d: new Date(items[0].json.Date).getTime() } }];',
+		'return [{ json: { d: Date.parse(items[0].json.Date) } }];',
+		'const d = new Date(5); return [{ json: { d: `${d}`, e: String(d) } }];',
+		"return [{ json: { d: new Date(5).toLocaleDateString('en-US') } }];",
+		"return [{ json: { d: new Date('2024-03-07T10:00:00').getTime() } }];",
+	])('keeps %s in the host', (code) => {
+		expect(refused(code)).toContain('Date: local time in a zone that is not UTC');
+	});
+
+	it.each([
+		'return [{ json: { d: new Date(items[0].json.id * 1000).toISOString(), u: new Date(5).getUTCHours() } }];',
+		"return [{ json: { d: new Date('2024-03-07T10:00:00Z').getTime(), e: new Date('2024-03-07').getTime() } }];",
+		'const d = new Date(Date.UTC(2024, 0, 5)); d.setUTCDate(9); return [{ json: { d, n: d - 5 } }];',
+	])('translates %s, which reads no local time', (code) => {
+		expect(refused(code)).toEqual([]);
+	});
+
+	it('keeps local time in the host when the zone of the task runner is not known', () => {
+		setRunnerZone('?');
+		try {
+			expect(blockersOf('return [{ json: { h: new Date(5).getHours() } }];')).toContain(
+				'Date: local time in a zone that is not UTC',
+			);
+		} finally {
+			setRunnerZone('UTC');
+		}
 	});
 });
 

@@ -27,6 +27,7 @@
 import ts from 'typescript';
 
 import { isKnownTimezone } from '../../compiler/triggers.ts';
+import { localTimeIsUtc } from '../node-identity.ts';
 import { DEFAULT_TIMEZONE } from '../triggers.ts';
 import { LOCALE_NAMES } from './locale-data.generated.ts';
 import { planBody, planCatch } from './catch-check.ts';
@@ -1092,7 +1093,6 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			ts.forEachChild(n, collect);
 		};
 		collect(root);
-		if (functions.size === 0) return;
 		for (const s of functions.keys()) callsOf.set(s, []);
 		const uses = (n: ts.Node): void => {
 			if (ts.isShorthandPropertyAssignment(n)) {
@@ -1197,7 +1197,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			!ts.isForInStatement(d.parent.parent) &&
 			!d.type &&
 			isDateStart(d.initializer);
-		for (let round = 0; infer && round < 6; round++) {
+		for (let round = 0; round < 6; round++) {
 			let changed = false;
 			for (const d of declarations) {
 				const s = checker.getSymbolAtLocation(d.name);
@@ -1207,7 +1207,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				}
 			}
 			for (const [f, calls] of directCalls) {
-				if (!plain(f)) continue;
+				if (!infer || !plain(f)) continue;
 				f.parameters.forEach((p, k) => {
 					if (
 						dateParams.has(p) ||
@@ -1241,7 +1241,6 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 			if (!changed) break;
 		}
-		if (!typedDates) dateVars.clear();
 	};
 	if (!input.nodeCode && !input.expression) inferDates(input.plainDates !== true);
 
@@ -2536,6 +2535,505 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (!isInputValue(x, 0)) return false;
 		inputsStay ??= provesReadOnly(root, checker, input.mode);
 		return inputsStay;
+	};
+
+	/**
+	 * Refuses code in which a Date can lose its kind. Native code holds a Date as a number
+	 * only in a place with the type Date. In each other place it is the JSON of the Date, and
+	 * code that reads it back gets a text where JavaScript has a Date. So a Date can go only
+	 * to a place that keeps its type, to \`JSON.stringify\`, or under a property name that no
+	 * code reads.
+	 */
+	const guardDates = (): void => {
+		const refuse = (what: string) =>
+			block(
+				'Date: a Date in a place that loses its kind',
+				`${what} The Date is text there in native code, and JavaScript has a Date.`,
+			);
+		const stored = new Set<string>();
+		const LOGICAL = [
+			ts.SyntaxKind.BarBarToken,
+			ts.SyntaxKind.AmpersandAmpersandToken,
+			ts.SyntaxKind.QuestionQuestionToken,
+		];
+		/** \`date\`: a Date for certain. \`part\`: a Date or another value. */
+		const kindOf = (e: ts.Expression): 'none' | 'date' | 'part' => {
+			const x = stripParens(e);
+			if (isDateValue(x)) return 'date';
+			let a: 'none' | 'date' | 'part';
+			let b: 'none' | 'date' | 'part';
+			if (ts.isConditionalExpression(x)) {
+				a = kindOf(x.whenTrue);
+				b = kindOf(x.whenFalse);
+			} else if (ts.isBinaryExpression(x) && LOGICAL.includes(x.operatorToken.kind)) {
+				a = kindOf(x.left);
+				b = kindOf(x.right);
+			} else if (ts.isBinaryExpression(x) && x.operatorToken.kind === ts.SyntaxKind.CommaToken) {
+				return kindOf(x.right);
+			} else return 'none';
+			if (a === 'none' && b === 'none') return 'none';
+			return a === 'date' && b === 'date' ? 'date' : 'part';
+		};
+		const passesOn = (e: ts.Node): boolean => {
+			const p = e.parent;
+			if (ts.isParenthesizedExpression(p)) return true;
+			if (ts.isConditionalExpression(p)) return p.condition !== e;
+			return (
+				ts.isBinaryExpression(p) &&
+				(LOGICAL.includes(p.operatorToken.kind) ||
+					(p.operatorToken.kind === ts.SyntaxKind.CommaToken && p.right === e))
+			);
+		};
+		const nameOf = (name: ts.PropertyName): string | null =>
+			ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)
+				? name.text
+				: null;
+		const store = (name: string | null, what: string): void => {
+			if (name === null) refuse(what);
+			else stored.add(name);
+		};
+		const globalCall = (call: ts.CallExpression): string | null => {
+			const c = stripParens(call.expression);
+			if (ts.isIdentifier(c)) return isFree(c) ? c.text : null;
+			if (
+				ts.isPropertyAccessExpression(c) &&
+				ts.isIdentifier(c.expression) &&
+				isFree(c.expression)
+			) {
+				return `${c.expression.text}.${c.name.text}`;
+			}
+			return null;
+		};
+		const ownerFunction = (n: ts.Node): ts.Node | undefined => {
+			let p: ts.Node | undefined = n.parent;
+			while (p && !isFunctionNode(p)) p = p.parent;
+			return p;
+		};
+		const place = (e: ts.Expression, kind: 'date' | 'part'): void => {
+			const p = e.parent;
+			const typed = kind === 'date';
+			if (ts.isVariableDeclaration(p)) {
+				if (!isDateStart(e)) refuse('A variable gets a value that can be a Date.');
+				return;
+			}
+			if (ts.isPropertyAssignment(p)) {
+				store(nameOf(p.name), 'A property with a computed name gets a Date.');
+				return;
+			}
+			if (ts.isArrayLiteralExpression(p)) {
+				let list: ts.Node = p;
+				while (
+					ts.isArrayLiteralExpression(list.parent) ||
+					ts.isParenthesizedExpression(list.parent)
+				) {
+					list = list.parent;
+				}
+				const owner = list.parent;
+				if (ts.isPropertyAssignment(owner) && owner.initializer === list) {
+					store(nameOf(owner.name), 'A list with a Date is under a computed name.');
+				} else refuse('A list that is not the value of a property gets a Date.');
+				return;
+			}
+			if (ts.isBinaryExpression(p)) {
+				const op = p.operatorToken.kind;
+				if (op === ts.SyntaxKind.EqualsToken && p.right === e) {
+					const target = stripParens(p.left);
+					const used = !ts.isExpressionStatement(p.parent) && !ts.isForStatement(p.parent);
+					if (used) refuse('The code uses the value of an assignment of a Date.');
+					else if (ts.isIdentifier(target)) {
+						if (!(typed && isDateValue(target) && isDateStart(e))) {
+							refuse('A variable gets a value that can be a Date.');
+						}
+					} else if (ts.isPropertyAccessExpression(target)) stored.add(target.name.text);
+					else if (
+						ts.isElementAccessExpression(target) &&
+						ts.isStringLiteralLike(target.argumentExpression)
+					) {
+						stored.add(target.argumentExpression.text);
+					} else refuse('A member with a computed name gets a Date.');
+					return;
+				}
+				if (!typed) refuse('An operator gets a value that can be a Date.');
+				return;
+			}
+			if (ts.isCallExpression(p) && p.expression !== e) {
+				const k = p.arguments.indexOf(e);
+				const g = globalCall(p);
+				if (g === 'JSON.stringify' && k === 0) return;
+				if (
+					typed &&
+					g !== null &&
+					(['String', 'Number', 'isNaN', 'isFinite'].includes(g) || g.startsWith('Math.'))
+				) {
+					return;
+				}
+				const f = localFunctionOf(p.expression);
+				if (typed && f !== undefined && k >= 0 && dateParams.has(f.parameters[k])) return;
+				const method = stripParens(p.expression);
+				if (
+					hasIntl &&
+					isDateValue(e) &&
+					p.arguments.length === 1 &&
+					ts.isPropertyAccessExpression(method) &&
+					(method.name.text === 'format' || method.name.text === 'formatToParts')
+				) {
+					return;
+				}
+				refuse('A function gets a Date as an argument.');
+				return;
+			}
+			if (ts.isNewExpression(p) && p.expression !== e) {
+				const made = stripParens(p.expression);
+				if (typed && ts.isIdentifier(made) && ['Date', 'Error'].includes(made.text)) return;
+				refuse('A constructor gets a Date as an argument.');
+				return;
+			}
+			if (ts.isReturnStatement(p) || (ts.isArrowFunction(p) && p.body === e)) {
+				const f = ts.isArrowFunction(p) ? p : ownerFunction(p);
+				if (!(typed && f !== undefined && dateFunctions.has(f))) {
+					refuse('A function gives a Date as its result.');
+				}
+				return;
+			}
+			if (
+				typed &&
+				((ts.isPropertyAccessExpression(p) && p.expression === e) ||
+					ts.isPrefixUnaryExpression(p) ||
+					ts.isTypeOfExpression(p) ||
+					ts.isVoidExpression(p) ||
+					ts.isTemplateSpan(p) ||
+					ts.isExpressionStatement(p) ||
+					ts.isIfStatement(p) ||
+					ts.isWhileStatement(p) ||
+					ts.isDoStatement(p) ||
+					ts.isForStatement(p) ||
+					ts.isConditionalExpression(p))
+			) {
+				return;
+			}
+			refuse('The code uses a Date in a place that has no type Date.');
+		};
+		const isJsDate = (x: ts.Node): boolean =>
+			ts.isCallExpression(x) &&
+			ts.isPropertyAccessExpression(x.expression) &&
+			x.expression.name.text === 'toJSDate';
+		/** \`toJSDate()\` gives the time value in native code: only places that read a number are equal. */
+		const placeJsDate = (e: ts.Node): void => {
+			let x = e;
+			while (ts.isParenthesizedExpression(x.parent)) x = x.parent;
+			const p = x.parent;
+			if (ts.isPropertyAccessExpression(p) && p.expression === x && DATE_READERS.has(p.name.text)) {
+				return;
+			}
+			if (
+				ts.isBinaryExpression(p) &&
+				(ARITHMETIC.has(p.operatorToken.kind) ||
+					[
+						ts.SyntaxKind.LessThanToken,
+						ts.SyntaxKind.LessThanEqualsToken,
+						ts.SyntaxKind.GreaterThanToken,
+						ts.SyntaxKind.GreaterThanEqualsToken,
+					].includes(p.operatorToken.kind))
+			) {
+				return;
+			}
+			if (ts.isNewExpression(p) && isNewDate(p)) return;
+			if (ts.isCallExpression(p) && p.expression !== x) {
+				const g = globalCall(p);
+				if (g !== null && (['Number', 'isNaN', 'isFinite'].includes(g) || g.startsWith('Math.'))) {
+					return;
+				}
+			}
+			block(
+				'Luxon toJSDate',
+				'The Date of `toJSDate()` goes to a place that reads more than its time value.',
+			);
+		};
+		const walk = (n: ts.Node): void => {
+			if (ts.isShorthandPropertyAssignment(n)) {
+				const s = checker.getShorthandAssignmentValueSymbol(n);
+				if (s && dateVars.has(s)) stored.add(n.name.text);
+				return;
+			}
+			if (isJsDate(n)) placeJsDate(n);
+			if (ts.isExpression(n) && !ts.isParenthesizedExpression(n) && !passesOn(n)) {
+				const kind = kindOf(n);
+				const declared =
+					ts.isIdentifier(n) &&
+					(ts.isVariableDeclaration(n.parent) ||
+						ts.isParameter(n.parent) ||
+						ts.isBindingElement(n.parent)) &&
+					n.parent.name === n;
+				const target =
+					ts.isBinaryExpression(n.parent) &&
+					n.parent.left === n &&
+					n.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+				if (kind !== 'none' && !declared && !target) place(n, kind);
+			}
+			ts.forEachChild(n, walk);
+		};
+		walk(root);
+		if (stored.size === 0) return;
+		/** True when the value of \`e\` is a number for certain: an index of a list. */
+		const isIndex = (e: ts.Expression): boolean => {
+			const x = stripParens(e);
+			if (isNumberValue(x)) return true;
+			if (!ts.isIdentifier(x) || isFree(x)) return false;
+			const symbol = checker.getSymbolAtLocation(x);
+			const declarations = symbol?.declarations ?? [];
+			const d = declarations.length === 1 ? declarations[0] : undefined;
+			if (d === undefined) return false;
+			if (ts.isParameter(d) && isFunctionNode(d.parent)) {
+				const call = d.parent.parent;
+				if (!ts.isCallExpression(call) || call.arguments[0] !== d.parent) return false;
+				const callee = stripParens(call.expression);
+				return (
+					d.parent.parameters[1] === d &&
+					ts.isPropertyAccessExpression(callee) &&
+					(ITEM_CALLBACKS.has(callee.name.text) || callee.name.text === 'findIndex')
+				);
+			}
+			if (!ts.isVariableDeclaration(d) || d.initializer === undefined) return false;
+			if (!isNumberValue(d.initializer)) return false;
+			let numeric = true;
+			const scan = (n: ts.Node): void => {
+				if (!numeric) return;
+				if (
+					ts.isBinaryExpression(n) &&
+					n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+					ts.isIdentifier(n.left) &&
+					checker.getSymbolAtLocation(n.left) === symbol &&
+					!isNumberValue(n.right)
+				) {
+					numeric = false;
+				}
+				if (
+					(ts.isArrayLiteralExpression(n) || ts.isObjectLiteralExpression(n)) &&
+					ts.isBinaryExpression(n.parent) &&
+					n.parent.left === n
+				) {
+					numeric = false;
+				}
+				if (
+					(ts.isForOfStatement(n) || ts.isForInStatement(n)) &&
+					ts.isIdentifier(n.initializer) &&
+					checker.getSymbolAtLocation(n.initializer) === symbol
+				) {
+					numeric = false;
+				}
+				ts.forEachChild(n, scan);
+			};
+			scan(root);
+			return numeric;
+		};
+		const readsBack = (what: string) =>
+			block(
+				'Date: a Date read back from an object',
+				`${what} The code stores a Date in an object, which is text there in native code.`,
+			);
+		const isTarget = (n: ts.Node): boolean =>
+			ts.isBinaryExpression(n.parent) &&
+			n.parent.left === n &&
+			n.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+		const reads = (n: ts.Node): void => {
+			if (ts.isPropertyAccessExpression(n) && stored.has(n.name.text) && !isTarget(n)) {
+				readsBack(`The code reads the property \`${n.name.text}\`.`);
+			} else if (ts.isElementAccessExpression(n)) {
+				const a = n.argumentExpression;
+				if (ts.isStringLiteralLike(a)) {
+					if (stored.has(a.text) && !isTarget(n)) {
+						readsBack(`The code reads the member "${a.text}".`);
+					}
+				} else if (!isIndex(a)) readsBack('The code reads a member with a computed name.');
+			} else if (ts.isBindingElement(n) && ts.isObjectBindingPattern(n.parent)) {
+				const key = n.propertyName ?? n.name;
+				const text = ts.isIdentifier(key) || ts.isStringLiteralLike(key) ? key.text : null;
+				if (n.dotDotDotToken || text === null || stored.has(text)) {
+					readsBack('The code reads a property with a pattern.');
+				}
+			} else if (ts.isObjectLiteralExpression(n) && isTarget(n)) {
+				readsBack('The code reads properties with a pattern.');
+			} else if (ts.isForInStatement(n)) {
+				readsBack('The code reads the names of an object.');
+			} else if (ts.isCallExpression(n)) {
+				const g = globalCall(n);
+				if (g === 'Object.values' || g === 'Object.entries') {
+					readsBack(`The code reads the values of an object with \`${g}\`.`);
+				}
+			}
+			ts.forEachChild(n, reads);
+		};
+		reads(root);
+	};
+	if (!input.nodeCode && !input.expression && (makesDates || usesLuxon)) guardDates();
+
+	/**
+	 * True when the code reads local time of a \`Date\`: a getter or a setter of local fields,
+	 * the text of a Date, a Date from fields or from a text without a zone, or a format in the
+	 * zone of the process.
+	 */
+	const readsLocalTime = (): boolean => {
+		const LOCAL = new Set([
+			'getFullYear',
+			'getYear',
+			'getMonth',
+			'getDate',
+			'getDay',
+			'getHours',
+			'getMinutes',
+			'getSeconds',
+			'getMilliseconds',
+			'getTimezoneOffset',
+			'setFullYear',
+			'setYear',
+			'setMonth',
+			'setDate',
+			'setHours',
+			'setMinutes',
+			'setSeconds',
+			'setMilliseconds',
+			'toDateString',
+			'toTimeString',
+			'toLocaleString',
+			'toLocaleDateString',
+			'toLocaleTimeString',
+			'toGMTString',
+			'resolvedOptions',
+		]);
+		const ZONED = /(Z|[+-]\d\d:?\d\d)$|^\d{4}-\d\d-\d\d$/;
+		/** True when a Date from \`e\` needs no zone: a number, a Date, or a text with its zone. */
+		const zoneFree = (e: ts.Expression): boolean => {
+			const x = stripParens(e);
+			if (ts.isStringLiteralLike(x)) return ZONED.test(x.text.trim());
+			if (isDateValue(x)) return true;
+			if (ts.isNumericLiteral(x) || ts.isPrefixUnaryExpression(x)) return true;
+			if (ts.isBinaryExpression(x)) return ARITHMETIC.has(x.operatorToken.kind);
+			if (!ts.isCallExpression(x)) return false;
+			const callee = stripParens(x.expression);
+			if (!ts.isPropertyAccessExpression(callee)) return false;
+			const name = callee.name.text;
+			if (ts.isIdentifier(callee.expression) && isFree(callee.expression)) {
+				if (callee.expression.text === 'Date') return name === 'now' || name === 'UTC';
+				if (callee.expression.text === 'Math') return true;
+			}
+			return ['getTime', 'valueOf', 'toISOString', 'toJSON', 'toMillis', 'toJSDate'].includes(name);
+		};
+		let found = false;
+		const scan = (n: ts.Node): void => {
+			if (found) return;
+			if (ts.isPropertyAccessExpression(n) && LOCAL.has(n.name.text)) found = true;
+			else if (ts.isNewExpression(n) && isNewDate(n)) {
+				const args = n.arguments ?? [];
+				if (args.length > 1 || (args.length === 1 && !zoneFree(args[0]))) found = true;
+			} else if (ts.isCallExpression(n)) {
+				const callee = stripParens(n.expression);
+				if (ts.isIdentifier(callee) && callee.text === 'Date' && isFree(callee)) found = true;
+				if (
+					ts.isPropertyAccessExpression(callee) &&
+					ts.isIdentifier(callee.expression) &&
+					isFree(callee.expression)
+				) {
+					const g = callee.expression.text;
+					if (g === 'Date' && callee.name.text === 'parse') {
+						if (n.arguments.length !== 1 || !zoneFree(n.arguments[0])) found = true;
+					}
+					if (g === 'Intl') found = true;
+					if (g === 'String' || callee.name.text === 'toString') {
+						if (n.arguments.some((a) => isDateValue(a))) found = true;
+					}
+				}
+				if (
+					ts.isIdentifier(callee) &&
+					callee.text === 'String' &&
+					n.arguments.some((a) => isDateValue(a))
+				) {
+					found = true;
+				}
+				if (
+					ts.isPropertyAccessExpression(callee) &&
+					callee.name.text === 'toString' &&
+					isDateValue(callee.expression)
+				) {
+					found = true;
+				}
+			} else if (ts.isNewExpression(n)) {
+				const made = stripParens(n.expression);
+				if (
+					ts.isPropertyAccessExpression(made) &&
+					ts.isIdentifier(made.expression) &&
+					made.expression.text === 'Intl'
+				) {
+					found = true;
+				}
+			} else if (ts.isTemplateSpan(n) && isDateValue(n.expression)) found = true;
+			else if (
+				ts.isBinaryExpression(n) &&
+				(n.operatorToken.kind === ts.SyntaxKind.PlusToken ||
+					n.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken) &&
+				(isDateValue(n.left) || isDateValue(n.right))
+			) {
+				found = true;
+			} else if (
+				usesLuxon &&
+				ts.isStringLiteralLike(n) &&
+				['local', 'system'].includes(n.text.toLowerCase())
+			) {
+				found = true;
+			}
+			ts.forEachChild(n, scan);
+		};
+		scan(root);
+		return found;
+	};
+	const zoneConsumer = input.nodeCode || input.expression ? 'process' : 'runner';
+	if (
+		(/\bDate\b|\bIntl\b|toLocale(Date|Time)?String/.test(input.code) || usesLuxon) &&
+		!localTimeIsUtc(zoneConsumer) &&
+		readsLocalTime()
+	) {
+		block(
+			'Date: local time in a zone that is not UTC',
+			zoneConsumer === 'runner'
+				? 'The code reads local time of a Date. The task runner of v1 gives it in the time zone of its operating system, which is not UTC or is not known. Native code gives it in UTC.'
+				: 'The code reads local time of a Date. v1 gives it in the time zone of the n8n process, which is not UTC or is not known. Native code gives it in UTC.',
+		);
+	}
+	/**
+	 * True when `n` is in the branch of a test \`x instanceof Date\` that is false for certain
+	 * (\`x\` is no Date): the branch does not run.
+	 */
+	const inDeadDateBranch = (n: ts.Node, receiver: ts.Expression): boolean => {
+		if (!ts.isIdentifier(receiver)) return false;
+		const symbol = checker.getSymbolAtLocation(receiver);
+		const tests = (e: ts.Expression): boolean => {
+			const x = stripParens(e);
+			if (!ts.isBinaryExpression(x) || x.operatorToken.kind !== ts.SyntaxKind.InstanceOfKeyword) {
+				return false;
+			}
+			const left = stripParens(x.left);
+			const right = stripParens(x.right);
+			return (
+				ts.isIdentifier(left) &&
+				checker.getSymbolAtLocation(left) === symbol &&
+				ts.isIdentifier(right) &&
+				right.text === 'Date' &&
+				isFree(right) &&
+				isNotDate(left, 0)
+			);
+		};
+		for (let c = n, p = n.parent; p && !isFunctionNode(p); c = p, p = p.parent) {
+			if (ts.isIfStatement(p) && p.thenStatement === c && tests(p.expression)) return true;
+			if (ts.isConditionalExpression(p) && p.whenTrue === c && tests(p.condition)) return true;
+			if (
+				ts.isBinaryExpression(p) &&
+				p.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
+				p.right === c &&
+				tests(p.left)
+			) {
+				return true;
+			}
+		}
+		return false;
 	};
 
 	/** \`x.toLocaleString(locale, options)\` and the Date forms. True when it wrote the call. */
@@ -3934,6 +4432,23 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				}
 				if (MUTATING_METHODS.has(name)) noteMutation(callee.expression);
 				if (DATE_READERS.has(name) && !isDateValue(callee.expression)) {
+					const receiver = stripParens(callee.expression);
+					const fromLuxon =
+						ts.isCallExpression(receiver) &&
+						ts.isPropertyAccessExpression(receiver.expression) &&
+						receiver.expression.name.text === 'toJSDate';
+					if (
+						!input.nodeCode &&
+						!input.expression &&
+						!fromLuxon &&
+						!inDeadDateBranch(n, receiver)
+					) {
+						// No value of the code is a Date here: JavaScript throws a TypeError.
+						block(
+							'Date: method of a value of unknown kind',
+							`\`${name}\` is a Date method, and its receiver is no Date for certain.`,
+						);
+					}
 					const o = seq;
 					open(callee.expression.getStart(sf), 'new Date(');
 					closing(callee.expression.getEnd(), callee.expression.getEnd(), ')', o);
@@ -4015,6 +4530,10 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				if (localeMethod(n, callee, name)) return;
 				if (hasIntl && (name === 'format' || name === 'formatToParts') && n.arguments.length <= 1) {
 					toHelper(n, callee, 'intlFormat', name === 'formatToParts' ? ', true' : ', false');
+					// JavaScript reads the time value of a Date here.
+					for (const x of n.arguments) {
+						if (isDateValue(x)) closing(x.getEnd(), x.getEnd(), '.getTime()', seq++);
+					}
 					if (n.arguments.length === 0) {
 						// \`f.format()\` formats now: the helper gets undefined.
 					}

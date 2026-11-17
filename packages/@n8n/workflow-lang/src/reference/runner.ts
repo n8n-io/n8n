@@ -1,4 +1,5 @@
 import { findNodeDefinition, getProperty, stringLiteralValue } from '../compiler/analysis.ts';
+import { setRunnerZone } from '../convert/node-identity.ts';
 import { selectNodeSources } from '../library/node-sources.ts';
 import { CREDENTIAL_FLAG_MISSING, credentialFlagIn } from '../credentials/flags.ts';
 import * as sdk from '../sdk/index.ts';
@@ -194,7 +195,7 @@ export async function runReference(
 	} = {},
 ): Promise<ReferenceOutput> {
 	// Workflows run in UTC: local-time Date methods equal the UTC methods.
-	useUtc();
+	if (process.env.TZ !== 'UTC') process.env.TZ = 'UTC';
 	const effects: EffectRecord[] = [];
 	const traces: TraceRecord[] = [];
 	const queue: Continuation[] = [];
@@ -429,9 +430,13 @@ export async function runReference(
 	return normalize(fixture.trace === true ? { ...withStatic, trace: traces } : withStatic);
 }
 
-/** Sets the time zone of this process to UTC (spec section 4.5). Node reads TZ at once. */
+/**
+ * Sets the time zone of this process to UTC (spec section 4.5). Node reads TZ at once. A task
+ * runner that this process starts gets the same `TZ` (`task-runner.ts` of the tests).
+ */
 export function useUtc(): void {
 	if (process.env.TZ !== 'UTC') process.env.TZ = 'UTC';
+	setRunnerZone('UTC');
 }
 
 function plainError(e: unknown): unknown {

@@ -232,7 +232,7 @@ function intlFormat(f: Json, x: Json, parts: boolean): Json {
 	let list: Json[] = [];
 	if (f.$intl === 'number') list = numberParts(f.spec, x);
 	else {
-		const t = x === undefined ? Date.now() : new Date(x).getTime();
+		const t = x === undefined ? Date.now() : Number(x);
 		if (isNaN(t)) throw new RangeError('Invalid time value');
 		list = dateParts(f.spec, t, zoneOffsetOf(f.zone, t));
 	}

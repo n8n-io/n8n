@@ -156,11 +156,6 @@ const cases: Array<[string, CodeMode, string]> = [
 		'const seen = new Set(); const m = new Map(); for (const i of items) { seen.add(i.json.tags); m.set(i.json.name, (m.get(i.json.name) || 0) + 1); } m.delete("x"); return [{ json: { n: seen.size, u: [...new Set([1, "1", 1, NaN, NaN])], m: Object.fromEntries(m), keys: [...m.keys()], s: JSON.stringify({ seen }), has: seen.has("") } }];',
 	],
 	[
-		'Date methods on untyped values',
-		'all',
-		'const ds = items.map(i => new Date(i.json.when)); return [{ json: { y: ds[0].getUTCFullYear(), t: ds[1].getTime(), iso: ds[0].toISOString() } }];',
-	],
-	[
 		'hasOwnProperty',
 		'all',
 		'const o = items[0].json; return [{ json: { a: o.hasOwnProperty("name"), b: o.hasOwnProperty("zzz") } }];',

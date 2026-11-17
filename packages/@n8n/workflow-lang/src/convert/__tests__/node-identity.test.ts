@@ -8,7 +8,9 @@ import { convertWorkflow } from '../index.ts';
 import {
 	identityKey,
 	localeIdentity,
+	localTimeIsUtc,
 	processIdentity,
+	setRunnerZone,
 	RUNTIME_DATA,
 	runtimeDataMismatch,
 	setTargetNode,
@@ -43,8 +45,40 @@ describe('the Node.js identity', () => {
 			v8: process.versions.v8,
 			ada: process.versions.ada,
 		});
-		expect(targetNode()).toEqual(own);
+		expect(targetNode()).toMatchObject(own);
 		expect(targetIsProcess()).toBe(true);
+	});
+
+	it('has the time zone of the process and of the task runner, and both are in the key', () => {
+		const before = process.env.TZ;
+		try {
+			process.env.TZ = 'UTC';
+			setRunnerZone(undefined);
+			expect(targetNode().zone).toBe('UTC');
+			expect(localTimeIsUtc('process')).toBe(true);
+			// n8n gives the runner no TZ: with a TZ in this process the zone of the runner is not known.
+			expect(targetNode().runnerZone).toBe('?');
+			expect(localTimeIsUtc('runner')).toBe(false);
+			const unknown = identityKey();
+			setRunnerZone('UTC');
+			expect(localTimeIsUtc('runner')).toBe(true);
+			expect(identityKey()).not.toBe(unknown);
+			setRunnerZone('Europe/Berlin');
+			expect(localTimeIsUtc('runner')).toBe(false);
+			process.env.TZ = 'Europe/Berlin';
+			expect(targetNode().zone).toBe('Europe/Berlin');
+			expect(localTimeIsUtc('process')).toBe(false);
+			setTargetNode(processIdentity());
+			expect(localTimeIsUtc('process')).toBe(false);
+			expect(localTimeIsUtc('runner')).toBe(false);
+			setTargetNode({ ...processIdentity(), zone: 'Etc/UTC', runnerZone: 'UTC' });
+			expect(localTimeIsUtc('process')).toBe(true);
+			expect(localTimeIsUtc('runner')).toBe(true);
+		} finally {
+			if (before === undefined) delete process.env.TZ;
+			else process.env.TZ = before;
+			setRunnerZone(undefined);
+		}
 	});
 
 	it.each(['icu', 'cldr', 'tz', 'unicode', 'v8', 'ada'] as const)(
