@@ -1398,6 +1398,156 @@ export const AI_HOST_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/** The chat model sub-node `lmChatOpenRouter`. */
+function openRouterModel(name: string, options: Record<string, unknown> = {}): SubNodeCase {
+	return {
+		name: 'Model',
+		type: `${LC}lmChatOpenRouter`,
+		typeVersion: 1,
+		parameters: { model: name, options },
+		connection: 'ai_languageModel',
+	};
+}
+const openRouter = {
+	credential: {
+		type: 'openRouterApi',
+		data: { apiKey: 'sk-or-fake', url: 'https://openrouter.ai/api/v1' },
+	},
+};
+const router = openRouterModel('anthropic/claude-sonnet-4');
+
+/** The chain and the agent with the OpenRouter chat model. */
+const OPEN_ROUTER_CASES: EquivalenceCase[] = [
+	chain(
+		'openRouter options',
+		openRouterModel('openai/gpt-4.1-mini', {
+			temperature: 0.3,
+			maxTokens: 50,
+			topP: 0.9,
+			frequencyPenalty: 0.1,
+			presencePenalty: 0.2,
+			timeout: 1000,
+			maxRetries: 1,
+		}),
+		[completion(' Hi ')],
+		{ messages },
+		openRouter,
+	),
+	chain('openRouter defaults', router, [completion('Hi')], {}, openRouter),
+	chain(
+		'openRouter reasoning model with a vendor prefix',
+		openRouterModel('openai/o3-mini', {
+			maxTokens: 5,
+		}),
+		[completion('Hi')],
+		{ messages },
+		openRouter,
+	),
+	chain(
+		'openRouter reasoning model without a prefix',
+		openRouterModel('o3-mini', {
+			maxTokens: 5,
+		}),
+		[completion('Hi')],
+		{ messages },
+		openRouter,
+	),
+	chain(
+		'openRouter model that prefers responses',
+		openRouterModel('openai/gpt-5.1-codex', {
+			maxTokens: 5,
+		}),
+		[response(outputText(' Hi '))],
+		{ messages },
+		openRouter,
+	),
+	chain(
+		'openRouter another url',
+		router,
+		[completion('x')],
+		{},
+		{
+			credential: {
+				type: 'openRouterApi',
+				data: { apiKey: 'k', url: 'https://proxy.example.com/v1' },
+			},
+		},
+	),
+	chain(
+		'openRouter error in the body',
+		router,
+		[{ body: { error: { message: 'provider down', code: 502 } } }],
+		{},
+		{
+			...openRouter,
+			expectedError:
+				'Received empty response from chat model call (no choices). Response body: {"error":{"message":"provider down","code":502}}',
+		},
+	),
+	...[400, 401, 404].map((status) =>
+		chain(
+			`openRouter status ${status}`,
+			router,
+			[failed(status), completion('late')],
+			{},
+			{
+				...openRouter,
+				expectedError: STATUS_ERRORS[status],
+			},
+		),
+	),
+	chain(
+		'openRouter status 429',
+		router,
+		[failed(429), completion('late')],
+		{},
+		{
+			...openRouter,
+			expectedError: 'OpenAI: Rate limit reached',
+		},
+	),
+	chain(
+		'openRouter status 500 then answer',
+		openRouterModel('m', { maxRetries: 1 }),
+		[failed(500), completion('late')],
+		{},
+		openRouter,
+	),
+	chain(
+		'openRouter continue',
+		router,
+		[failed(400), completion('late')],
+		{},
+		{
+			...two,
+			...openRouter,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	agent(
+		'openRouter',
+		3.1,
+		router,
+		[completion(' Hi ')],
+		{
+			options: { systemMessage: 'Be brief' },
+		},
+		openRouter,
+	),
+	agent(
+		'openRouter, version 2.2, error output',
+		2.2,
+		router,
+		[failed(400), completion('ok')],
+		{},
+		{
+			...two,
+			...openRouter,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+];
+
 /** The prompt that a chat trigger or a guardrails node gives. */
 const PROMPT_SOURCE_CASES: EquivalenceCase[] = [
 	chain(
@@ -1446,4 +1596,5 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...AI_ENGINE_CASES,
 	...AGENT_ENGINE_CASES,
 	...PROMPT_SOURCE_CASES,
+	...OPEN_ROUTER_CASES,
 ];

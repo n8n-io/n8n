@@ -165,6 +165,40 @@ function openAiModel(sub: ClusterSubNode): Record<string, unknown> | string {
 	return { provider: 'openAi', responses, model, options: kept };
 }
 
+/** The chat model sub-node `lmChatOpenRouter`: the OpenAI client of LangChain with another URL. */
+function openRouterModel(sub: ClusterSubNode): Record<string, unknown> | string {
+	if ((sub.typeVersion ?? 1) !== 1) return `model version ${sub.typeVersion}`;
+	const p = sub.parameters ?? {};
+	const model = p.model ?? 'openai/gpt-4.1-mini';
+	if (typeof model !== 'string' || model === '') return 'model name';
+	const options = p.options ?? {};
+	if (!isRecord(options)) return 'model options';
+	const kept: Record<string, unknown> = {};
+	for (const [name, value] of Object.entries(options)) {
+		if (!OPENAI_OPTIONS.has(name)) return `model option ${name}`;
+		if (name !== 'timeout') kept[name] = value;
+	}
+	return { provider: 'openRouter', responses: false, model, options: kept };
+}
+
+/** The chat model of a root as the parameter `aiModel`, and the flags of its credential. */
+function chatModel(
+	root: string,
+	sub: ClusterSubNode,
+): { aiModel: Record<string, unknown>; derivations: ClusterDerivation[] } | string {
+	if (sub.type === `${LC}lmChatOpenAi`) {
+		const aiModel = openAiModel(sub);
+		return typeof aiModel === 'string'
+			? aiModel
+			: { aiModel, derivations: openAiDerivations(root) };
+	}
+	if (sub.type === `${LC}lmChatOpenRouter`) {
+		const aiModel = openRouterModel(sub);
+		return typeof aiModel === 'string' ? aiModel : { aiModel, derivations: [] };
+	}
+	return `model ${sub.type.replace(LC, '')}`;
+}
+
 function chainLlm(
 	root: string,
 	version: number,
@@ -174,9 +208,9 @@ function chainLlm(
 	if (subs.length !== 1) return 'sub-nodes';
 	const [sub] = subs;
 	if (sub.connection !== 'ai_languageModel' || sub.target !== undefined) return 'sub-nodes';
-	if (sub.type !== `${LC}lmChatOpenAi`) return `model ${sub.type.replace(LC, '')}`;
-	const aiModel = openAiModel(sub);
-	if (typeof aiModel === 'string') return aiModel;
+	const chat = chatModel(root, sub);
+	if (typeof chat === 'string') return chat;
+	const { aiModel } = chat;
 	let text: unknown;
 	if (version <= 1.3) {
 		// The default of `prompt` is an expression that differs by version.
@@ -220,7 +254,7 @@ function chainLlm(
 		forFirstItem: { aiModel },
 		credentialOf: sub.name,
 		model: sub.name,
-		derivations: openAiDerivations(root),
+		derivations: chat.derivations,
 	};
 }
 
@@ -259,9 +293,9 @@ function toolsAgent(
 	const [sub] = subs;
 	if (sub.connection !== 'ai_languageModel' || sub.target !== undefined) return 'sub-nodes';
 	if ((sub.targetIndex ?? 0) !== 0) return 'sub-nodes';
-	if (sub.type !== `${LC}lmChatOpenAi`) return `model ${sub.type.replace(LC, '')}`;
-	const aiModel = openAiModel(sub);
-	if (typeof aiModel === 'string') return aiModel;
+	const chat = chatModel(root, sub);
+	if (typeof chat === 'string') return chat;
+	const { aiModel } = chat;
 	// Before version 3 the agent refuses a model that uses the Responses API.
 	if (version < 3 && aiModel.responses === true) return 'responses model before version 3';
 	if ((p.hasOutputParser ?? false) !== false) return 'output parser';
@@ -300,7 +334,7 @@ function toolsAgent(
 		forFirstItem: { aiModel },
 		credentialOf: sub.name,
 		model: sub.name,
-		derivations: openAiDerivations(root),
+		derivations: chat.derivations,
 	};
 }
 

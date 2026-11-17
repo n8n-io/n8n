@@ -16353,6 +16353,833 @@
 		],
 		"nodePaired": [true]
 	},
+	"chainLlm openRouter options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "openai/gpt-4.1-mini",
+					"temperature": 0.3,
+					"top_p": 0.9,
+					"frequency_penalty": 0.1,
+					"presence_penalty": 0.2,
+					"stream": false,
+					"max_tokens": 50,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "system",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter reasoning model with a vendor prefix": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "openai/o3-mini",
+					"stream": false,
+					"max_tokens": 5,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "system",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter reasoning model without a prefix": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "o3-mini",
+					"stream": false,
+					"max_completion_tokens": 5,
+					"messages": [
+						{
+							"role": "developer",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "developer",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter model that prefers responses": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"type": "message",
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"type": "message",
+							"role": "system",
+							"content": ""
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "openai/gpt-5.1-codex",
+					"stream": false,
+					"text": {},
+					"max_output_tokens": 5
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter another url": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer k"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter error in the body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Received empty response from chat model call (no choices). Response body: {\"error\":{\"message\":\"provider down\",\"code\":502}}"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Received empty response from chat model call (no choices). Response body: {\"error\":{\"message\":\"provider down\",\"code\":502}}"
+	},
+	"chainLlm openRouter status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm openRouter status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Authorization failed - please check your credentials"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"chainLlm openRouter status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The resource you are requesting could not be found"
+	},
+	"chainLlm openRouter status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "OpenAI: Rate limit reached"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "OpenAI: Rate limit reached"
+	},
+	"chainLlm openRouter status 500 then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "m",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "m",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"agent openRouter": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": " Hi "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent openRouter, version 2.2, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
 	"chainLlm openAi responses effort": {
 		"requests": [
 			{

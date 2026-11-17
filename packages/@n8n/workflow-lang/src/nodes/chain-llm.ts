@@ -22,8 +22,8 @@
  * file, so the two roots share this file and its request builders.
  *
  * Supported: the prompt as text, the system, AI and user text messages, and the
- * chat model `lmChatOpenAi` (versions 1 to 1.3: Chat Completions API and Responses
- * API) with the options that map to fields of the request body.
+ * chat models `lmChatOpenAi` (versions 1 to 1.3: Chat Completions API and Responses
+ * API) and `lmChatOpenRouter`, with the options that map to fields of the request body.
  * Not supported (the converter keeps these in the fallback host): an output
  * parser, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
@@ -368,7 +368,13 @@ export default defineNode<ChainParameters>({
 		// True when the credential has an organization (the flag `f0a11c001` of
 		// `src/convert/ai-cluster.ts`). The credential type then injects a header that the
 		// LangChain client does not send, so the request names the key itself.
-		const hasOrganization = ctx.credentialFlag(credential, 'f0a11c001');
+		// The OpenRouter model is the same LangChain client with another credential type, which
+		// injects the key only, and without the header of the OpenAI nodes.
+		const openAi = ai.provider === 'openAi';
+		const hasOrganization = openAi && ctx.credentialFlag(credential, 'f0a11c001');
+		const platform: Record<string, string> = openAi
+			? { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' }
+			: {};
 		const items: Item[] = [];
 		const agent = parameters.kind === 'agent';
 		const size = parameters.batchSize ?? (agent ? 1 : 5);
@@ -380,7 +386,7 @@ export default defineNode<ChainParameters>({
 			// v1 starts the requests of a batch together, so all of them run before a failure counts.
 			const outcomes: Outcome[] = [];
 			for (const item of batch.slice(start, start + step)) {
-				if (ai.provider !== 'openAi') {
+				if (ai.provider !== 'openAi' && ai.provider !== 'openRouter') {
 					outcomes.push({
 						error: 'Basic LLM Chain: the chat model is not in the compiled library',
 					});
@@ -404,11 +410,8 @@ export default defineNode<ChainParameters>({
 							? '{{$credentials.url}}/responses'
 							: '{{$credentials.url}}/chat/completions',
 						headers: hasOrganization
-							? {
-									authorization: 'Bearer {{$credentials.apiKey}}',
-									'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ',
-								}
-							: { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' },
+							? { authorization: 'Bearer {{$credentials.apiKey}}', ...platform }
+							: platform,
 						qs: {},
 						body: request.body,
 						credential,
