@@ -23,7 +23,7 @@ import {
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
-import type { StepRecord, StepStore } from './step-store';
+import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
 import {
 	collectSubExecutionResult,
 	resumeAwaitingParent,
@@ -60,12 +60,14 @@ export class StepSettledHandler {
 			this.executionStore.loadExecution(event.executionId),
 		]);
 		// Test the execution first: its deletion also deletes the step row.
-		// A step of another execution means a wrong message, which must still fail.
 		if (executionLoad.status === 'rejected') {
-			const stepOfOtherExecution =
-				stepLoad.status === 'fulfilled' && stepLoad.value.executionId !== event.executionId;
-			if (isMissingExecution(executionLoad.reason, event.executionId) && !stepOfOtherExecution) {
-				return;
+			if (isMissingExecution(executionLoad.reason, event.executionId)) {
+				if (stepLoad.status === 'rejected') {
+					if (stepLoad.reason instanceof StepNotFoundError) return;
+					throw stepLoad.reason;
+				}
+				// A step of another execution means a wrong message, which must still fail.
+				if (stepLoad.value.executionId === event.executionId) return;
 			}
 			throw executionLoad.reason;
 		}

@@ -213,6 +213,8 @@ function makeHandler(
 
 const event = { type: 'step:settled', executionId: 'exec-1', stepId: 'step-a' } as const;
 
+class StepLoadError extends Error {}
+
 describe('StepSettledHandler', () => {
 	it('plans every live successor in one batch and publishes step:ready for each', async () => {
 		const stepStore = makeStepStore();
@@ -499,29 +501,34 @@ describe('StepSettledHandler', () => {
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});
 
-	it('does nothing and does not reject when the execution of the event has no row', async () => {
-		// The retention sweep deletes the step rows with the execution row.
-		const stepStore = makeStepStore(
-			{},
-			{ loadStep: vi.fn().mockRejectedValue(new StepNotFoundError('step-a')) },
-		);
-		const executionStore = makeExecutionStore(
-			{},
-			{ loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-1')) },
-		);
-		const { handler, stepQueue, orchestrationQueue, lifecycleEventPublisher, responseSender } =
-			makeHandler(stepStore, { executionStore });
+	it.each([
+		{
+			detail: 'its step rows are gone with it',
+			stepOverrides: { loadStep: vi.fn().mockRejectedValue(new StepNotFoundError('step-a')) },
+		},
+		{ detail: 'the step was read before the deletion', stepOverrides: {} },
+	])(
+		'does nothing when the execution of the event has no row and $detail',
+		async ({ stepOverrides }) => {
+			const stepStore = makeStepStore({}, stepOverrides);
+			const executionStore = makeExecutionStore(
+				{},
+				{ loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-1')) },
+			);
+			const { handler, stepQueue, orchestrationQueue, lifecycleEventPublisher, responseSender } =
+				makeHandler(stepStore, { executionStore });
 
-		await expect(handler.handle(event)).resolves.toBeUndefined();
+			await expect(handler.handle(event)).resolves.toBeUndefined();
 
-		expect(stepStore.createSteps).not.toHaveBeenCalled();
-		expect(stepQueue.publish).not.toHaveBeenCalled();
-		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
-		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
-		expect(responseSender.send).not.toHaveBeenCalled();
-		expect(executionStore.finishExecution).not.toHaveBeenCalled();
-		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
-	});
+			expect(stepStore.createSteps).not.toHaveBeenCalled();
+			expect(stepQueue.publish).not.toHaveBeenCalled();
+			expect(orchestrationQueue.publish).not.toHaveBeenCalled();
+			expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+			expect(responseSender.send).not.toHaveBeenCalled();
+			expect(executionStore.finishExecution).not.toHaveBeenCalled();
+			expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each([
 		{
@@ -541,6 +548,15 @@ describe('StepSettledHandler', () => {
 				loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-1')),
 			},
 			error: ExecutionNotFoundError,
+		},
+		{
+			reason: 'the execution has no row and the step load fails for another reason',
+			step: {},
+			stepOverrides: { loadStep: vi.fn().mockRejectedValue(new StepLoadError('connection lost')) },
+			executionOverrides: {
+				loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-1')),
+			},
+			error: StepLoadError,
 		},
 		{
 			reason: 'only the step has no row',
