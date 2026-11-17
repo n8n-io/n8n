@@ -4440,7 +4440,7 @@
 	"settings.mcp.agentsExposed.count": "{count} agent | {count} agents",
 	"settings.mcp.agentsExposed.page.title": "Agents enabled",
 	"settings.mcp.agentsExposed.page.description": "Choose which agents connected clients can reach over MCP. Changes apply immediately.",
-	"settings.mcp.previewFeatures.title": "Preferences and skills",
+	"settings.mcp.previewFeatures.title": "Context",
 	"settings.mcp.previewFeatures.error.title": "Could not update setting",
 	"settings.mcp.preferences.title": "Preferences",
 	"settings.mcp.preferences.description": "Let MCP clients read and save user preferences.",
