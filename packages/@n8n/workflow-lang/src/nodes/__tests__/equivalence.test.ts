@@ -21,7 +21,7 @@ import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import { VENDOR_NODES } from '../../convert/ai-cluster.ts';
-import { AI_ENGINE_CASES } from './ai-cases.ts';
+import { ENGINE_CASES } from './ai-cases.ts';
 import { EQUIVALENCE_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import { applyCredential, normalizeRequest, withoutInstanceId } from './equivalence.ts';
@@ -132,7 +132,7 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 
 	// The cases with sub-nodes or node settings of the AI nodes run through the converter
 	// (`ai-cluster.test.ts`).
-	const cases = EQUIVALENCE_CASES.filter((c) => !AI_ENGINE_CASES.includes(c));
+	const cases = EQUIVALENCE_CASES.filter((c) => !ENGINE_CASES.includes(c));
 	describe.each(cases.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
 

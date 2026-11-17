@@ -410,7 +410,7 @@ function requireInjectable(credentialType: string | undefined): void {
 }
 
 /** Root AI nodes that have a native library form for some shapes of their cluster. */
-const NATIVE_ROOTS = new Set([`${LANGCHAIN_PREFIX}chainLlm`]);
+export const NATIVE_ROOTS = new Set([`${LANGCHAIN_PREFIX}chainLlm`, `${LANGCHAIN_PREFIX}agent`]);
 
 /**
  * Lowers a root AI node with its sub-nodes to its library node, when `nativeCluster` accepts
@@ -420,7 +420,17 @@ const NATIVE_ROOTS = new Set([`${LANGCHAIN_PREFIX}chainLlm`]);
  * of the model sub-node) and `error`. The source traces the runs, then throws the error, so
  * the run data has the failed run of the model as v1 records it.
  */
-function lowerNativeCluster(c: NodeContext): void {
+/** True when the node is a trigger that streams the answer of the workflow to its caller. */
+function streamsAnswer(node: {
+	parameters?: Record<string, unknown>;
+	disabled?: boolean;
+}): boolean {
+	const p = node.parameters ?? {};
+	const options = isRecord(p.options) ? p.options : {};
+	return !node.disabled && (p.responseMode === 'streaming' || options.responseMode === 'streaming');
+}
+
+export function lowerNativeCluster(c: NodeContext): void {
 	const members = clusterMembers(c.workflow, c.node.name);
 	const native = nativeCluster(
 		{ name: c.node.name, type: c.node.type, typeVersion: c.version },
@@ -434,6 +444,7 @@ function lowerNativeCluster(c: NodeContext): void {
 			target: m.target === c.node.name ? undefined : m.target,
 			targetIndex: m.targetIndex,
 		})),
+		{ streams: c.workflow.nodes.some(streamsAnswer) },
 	);
 	const model =
 		typeof native === 'string'
@@ -495,7 +506,7 @@ function lowerNativeCluster(c: NodeContext): void {
 		kind: 'object',
 		entries: [
 			['name', raw(str(c.node.name))],
-			['type', raw(str(c.node.type))],
+			['type', raw(str(native.libraryType))],
 			['typeVersion', literal(c.version)],
 			['parameters', { kind: 'object', entries }],
 			['credential', raw(str(credential))],

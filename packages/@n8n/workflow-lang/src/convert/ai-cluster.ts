@@ -40,6 +40,8 @@ export interface ClusterDerivation {
 }
 
 export interface NativeCluster {
+	/** The type of the library node that runs the cluster. */
+	libraryType: string;
 	/** Parameters of the library node that are the same for all items. All are literals. */
 	shared: Record<string, unknown>;
 	/**
@@ -181,8 +183,8 @@ function chainLlm(
 		if (p.prompt === undefined) return 'default prompt';
 		text = p.prompt;
 	} else {
-		if ((p.promptType ?? 'define') !== 'define') return 'prompt type';
-		text = p.text ?? '';
+		text = promptOf(p);
+		if (text === undefined) return 'prompt type';
 	}
 	if ((p.hasOutputParser ?? false) !== false) return 'output parser';
 	if ((p.needsFallback ?? false) !== false) return 'fallback model';
@@ -212,6 +214,7 @@ function chainLlm(
 		shared.delayBetweenBatches = delay;
 	}
 	return {
+		libraryType: `${LC}chainLlm`,
 		shared,
 		perItem: { text, messages: { messageValues } },
 		forFirstItem: { aiModel },
@@ -219,6 +222,92 @@ function chainLlm(
 		model: sub.name,
 		derivations: openAiDerivations(root),
 	};
+}
+
+/** Options of the Tools Agent that the native form reads, or that change nothing without tools. */
+const AGENT_OPTIONS = new Set([
+	'systemMessage',
+	'maxIterations',
+	'returnIntermediateSteps',
+	'enableStreaming',
+	'batching',
+]);
+
+/** The prompt of a root: the text parameter, or the field that the chat trigger gives. */
+function promptOf(p: Record<string, unknown>): unknown {
+	const type = p.promptType ?? 'define';
+	if (type === 'define') return p.text ?? '';
+	if (type === 'auto') return '={{ $json.chatInput }}';
+	if (type === 'guardrails') return '={{ $json.guardrailsInput }}';
+	return undefined;
+}
+
+/**
+ * The Tools Agent of versions 2 to 3.1 with one OpenAI chat model and nothing else. It is one
+ * call of the model, so it runs as the library node of the chain with `kind: 'agent'`.
+ * Versions before 2 ask the model for a stream; they stay in the host.
+ */
+function toolsAgent(
+	root: string,
+	version: number,
+	p: Record<string, unknown>,
+	subs: ClusterSubNode[],
+	context: ClusterContext,
+): NativeCluster | string {
+	if (![2, 2.1, 2.2, 3, 3.1].includes(version)) return `agent version ${version}`;
+	if (subs.length !== 1) return 'sub-nodes';
+	const [sub] = subs;
+	if (sub.connection !== 'ai_languageModel' || sub.target !== undefined) return 'sub-nodes';
+	if ((sub.targetIndex ?? 0) !== 0) return 'sub-nodes';
+	if (sub.type !== `${LC}lmChatOpenAi`) return `model ${sub.type.replace(LC, '')}`;
+	const aiModel = openAiModel(sub);
+	if (typeof aiModel === 'string') return aiModel;
+	// Before version 3 the agent refuses a model that uses the Responses API.
+	if (version < 3 && aiModel.responses === true) return 'responses model before version 3';
+	if ((p.hasOutputParser ?? false) !== false) return 'output parser';
+	if ((p.needsFallback ?? false) !== false) return 'fallback model';
+	const text = promptOf(p);
+	if (text === undefined) return 'prompt type';
+	const options = p.options ?? {};
+	if (!isRecord(options)) return 'options';
+	for (const name of Object.keys(options)) {
+		if (!AGENT_OPTIONS.has(name)) return `option ${name}`;
+	}
+	// With a trigger that streams the answer, v1 asks the model for a stream.
+	const streaming = options.enableStreaming ?? true;
+	if (streaming !== false && (context.streams || streaming !== true) && version >= 2.1) {
+		return 'streaming';
+	}
+	if (typeof (options.maxIterations ?? 10) !== 'number') return 'max iterations';
+	const steps = options.returnIntermediateSteps ?? false;
+	if (typeof steps !== 'boolean') return 'intermediate steps';
+	const batching = options.batching ?? {};
+	if (!isRecord(batching)) return 'batching';
+	const size = batching.batchSize ?? 1;
+	const delay = batching.delayBetweenBatches ?? 0;
+	if (typeof size !== 'number' || size < 1 || typeof delay !== 'number') return 'batching';
+	const shared: Record<string, unknown> = {
+		kind: 'agent',
+		nodeVersion: version,
+		batchSize: size,
+		delayBetweenBatches: delay,
+	};
+	if (steps) shared.returnIntermediateSteps = true;
+	return {
+		libraryType: `${LC}chainLlm`,
+		shared,
+		perItem: { text, systemMessage: options.systemMessage },
+		forFirstItem: { aiModel },
+		credentialOf: sub.name,
+		model: sub.name,
+		derivations: openAiDerivations(root),
+	};
+}
+
+/** What the converter knows about the workflow of the cluster. */
+export interface ClusterContext {
+	/** True when a trigger of the workflow streams the answer to its caller. */
+	streams: boolean;
 }
 
 /**
@@ -229,7 +318,11 @@ export function nativeCluster(
 	root: { name: string; type: string; typeVersion: number },
 	parameters: Record<string, unknown>,
 	subs: ClusterSubNode[],
+	context: ClusterContext = { streams: false },
 ): NativeCluster | string {
+	if (root.type === `${LC}agent`) {
+		return toolsAgent(root.name, root.typeVersion, parameters, subs, context);
+	}
 	if (root.type === `${LC}chainLlm`) return chainLlm(root.name, root.typeVersion, parameters, subs);
 	return 'root type';
 }

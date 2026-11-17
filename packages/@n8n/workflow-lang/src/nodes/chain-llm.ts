@@ -17,6 +17,10 @@
  * node does not throw for a failure of its own, so the caller can trace the runs of
  * the model before it throws the error.
  *
+ * The node is also the native form of the Tools Agent without tools, memory and output
+ * parser (`kind: 'agent'`): that agent is one call of the model too. A library node is one
+ * file, so the two roots share this file and its request builders.
+ *
  * Supported: the prompt as text, the system, AI and user text messages, and the
  * chat model `lmChatOpenAi` (versions 1 to 1.3: Chat Completions API and Responses
  * API) with the options that map to fields of the request body.
@@ -48,14 +52,25 @@ interface AiModel {
 	options?: ModelOptions;
 }
 
-/** The parameters of the chain for one input item. */
+/** The parameters of the root for one input item. */
 interface ItemParameters {
 	text?: unknown;
+	/** The chain: the message list. */
 	messages?: { messageValues?: MessageValue[] };
+	/** The agent: `options.systemMessage`. */
+	systemMessage?: unknown;
 }
 
 interface ChainParameters {
-	/** The version of the v1 node: batches start with version 1.7. */
+	/**
+	 * `agent`: the root is a Tools Agent (`@n8n/n8n-nodes-langchain.agent`, versions 2 to 3.1)
+	 * without tools, memory and output parser. It is one call of the model, as the chain is,
+	 * so the converter links this node for it. The default is the chain.
+	 */
+	kind?: string;
+	/** The agent: `options.returnIntermediateSteps`. Without tools the list is empty. */
+	returnIntermediateSteps?: boolean;
+	/** The version of the v1 node: batches of the chain start with version 1.7. */
 	nodeVersion?: number;
 	batchSize?: number;
 	delayBetweenBatches?: number;
@@ -113,10 +128,24 @@ const ROLES: Record<string, string> = {
 	HumanMessagePromptTemplate: 'user',
 };
 
-/** The messages of the v1 prompt template: the message list, then the prompt as a user message. */
-function chatMessages(parameters: ItemParameters, model: string): ChatMessage[] {
+/**
+ * The messages of the v1 prompt template. The chain: the message list, then the prompt as a
+ * user message. The agent: the system message when the option has a value, then the prompt.
+ */
+function chatMessages(parameters: ItemParameters, model: string, agent: boolean): ChatMessage[] {
 	const reasoning = isReasoningModel(model);
 	const out: ChatMessage[] = [];
+	if (agent) {
+		const system = parameters.systemMessage;
+		if (system) {
+			out.push({
+				role: reasoning ? 'developer' : 'system',
+				content: typeof system === 'string' ? system : String(system),
+			});
+		}
+		out.push({ role: 'user', content: promptText(parameters.text) });
+		return out;
+	}
 	for (const value of parameters.messages?.messageValues ?? []) {
 		const role = ROLES[value.type ?? 'SystemMessagePromptTemplate'];
 		if (role === undefined) throw new Error('Invalid message type');
@@ -247,15 +276,46 @@ function partText(part: Record<string, unknown>): string {
 	throw new Error(`Cannot coerce "${String(part.type)}" message part into a string.`);
 }
 
+/** True when the answer of the model calls a tool. The agent of this node has no tools. */
+function callsTool(data: unknown, responses: boolean): boolean {
+	if (!isObject(data)) return false;
+	if (responses) {
+		const output = Array.isArray(data.output) ? data.output : [];
+		return output.some((item) => isObject(item) && item.type === 'function_call');
+	}
+	const first: unknown = Array.isArray(data.choices) ? data.choices[0] : undefined;
+	const message = isObject(first) ? first.message : undefined;
+	const calls = isObject(message) ? message.tool_calls : undefined;
+	return Array.isArray(calls) && calls.length > 0;
+}
+
+/**
+ * The output text of the agent (handleAgentFinishOutput of v1). A Chat Completions answer is
+ * text as it is. A Responses answer is a list of parts: the text parts joined and trimmed,
+ * or else the thinking parts.
+ */
+function agentOutput(parts: Array<Record<string, unknown>>, responses: boolean): string {
+	if (!responses) return String(parts[0]?.text ?? '');
+	let text = '';
+	for (const part of parts) if (part.type === 'text' && part.text) text += String(part.text);
+	if (text.trim() !== '') return text.trim();
+	let thinking = '';
+	for (const part of parts) {
+		if (part.type === 'thinking' && part.thinking) thinking += String(part.thinking);
+	}
+	return thinking.trim();
+}
+
 /** The request body of the item, and true when it goes to the Responses API. */
 function requestOf(
 	item: ItemParameters,
 	ai: AiModel,
+	agent: boolean,
 ): { responses: boolean; body: Record<string, unknown> } {
 	const options = ai.options ?? {};
 	const maxTokens = options.maxTokens === -1 ? undefined : options.maxTokens;
 	const model = ai.model ?? '';
-	const messages = chatMessages(item, model);
+	const messages = chatMessages(item, model, agent);
 	if (ai.responses === true || prefersResponses(model)) {
 		return {
 			responses: true,
@@ -290,6 +350,8 @@ export default defineNode<ChainParameters>({
 	supports: {
 		operations: {
 			default: [
+				'kind',
+				'returnIntermediateSteps',
 				'nodeVersion',
 				'batchSize',
 				'delayBetweenBatches',
@@ -308,9 +370,12 @@ export default defineNode<ChainParameters>({
 		// LangChain client does not send, so the request names the key itself.
 		const hasOrganization = ctx.credentialFlag(credential, 'f0a11c001');
 		const items: Item[] = [];
-		const size = parameters.batchSize ?? 5;
+		const agent = parameters.kind === 'agent';
+		const size = parameters.batchSize ?? (agent ? 1 : 5);
 		const delay = parameters.delayBetweenBatches ?? 0;
-		const step = (parameters.nodeVersion ?? 1.9) >= 1.7 && size > 1 ? size : 1;
+		// The chain has batches from version 1.7, for a batch size above 1. The agent has them always.
+		const batched = agent ? size >= 1 : (parameters.nodeVersion ?? 1.9) >= 1.7 && size > 1;
+		const step = batched ? size : 1;
 		for (let start = 0; start < batch.length; start += step) {
 			// v1 starts the requests of a batch together, so all of them run before a failure counts.
 			const outcomes: Outcome[] = [];
@@ -326,7 +391,7 @@ export default defineNode<ChainParameters>({
 					outcomes.push({ error: 'No prompt specified' });
 					continue;
 				}
-				const request = requestOf(item, ai);
+				const request = requestOf(item, ai, agent);
 				const tries = (ai.options?.maxRetries ?? 2) + 1;
 				// v1 records the run of the model when the request starts.
 				const run: { error: string | null } = { error: null };
@@ -373,6 +438,18 @@ export default defineNode<ChainParameters>({
 					outcomes.push({ error: run.error });
 					continue;
 				}
+				if (agent) {
+					if (callsTool(data, request.responses)) {
+						outcomes.push({
+							error: 'AI Agent: the model called a tool, and the agent has no tools',
+						});
+						continue;
+					}
+					const item: Item = { output: agentOutput(parts, request.responses) };
+					if (parameters.returnIntermediateSteps === true) item.intermediateSteps = [];
+					outcomes.push({ item });
+					continue;
+				}
 				// The string output parser of the chain works after the run of the model.
 				try {
 					let text = '';
@@ -391,7 +468,7 @@ export default defineNode<ChainParameters>({
 					return [{ items: [], runs, error: outcome.error }];
 				}
 			}
-			if (step > 1 && start + step < batch.length && delay > 0) {
+			if (batched && start + step < batch.length && delay > 0) {
 				await ctx.wait({ duration: delay });
 			}
 		}

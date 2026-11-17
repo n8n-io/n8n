@@ -1073,6 +1073,309 @@ export const AI_ENGINE_CASES: EquivalenceCase[] = [
 	chain('always output data', gpt, [completion('a')], {}, { settings: { alwaysOutputData: true } }),
 ];
 
+function agent(
+	name: string,
+	typeVersion: number,
+	model: SubNodeCase,
+	responses: EquivalenceCase['responses'],
+	parameters: Record<string, unknown> = {},
+	extra: Partial<EquivalenceCase> = {},
+): EquivalenceCase {
+	return {
+		name: `agent ${name}`,
+		type: `${LC}agent`,
+		typeVersion,
+		parameters: { promptType: 'define', text: 'Ask {this}', options: {}, ...parameters },
+		credential: openAi,
+		subNodes: [model],
+		responses,
+		...extra,
+	};
+}
+
+/** The Tools Agent without tools, memory and output parser, with the OpenAI chat model. */
+export const AGENT_ENGINE_CASES: EquivalenceCase[] = [
+	...[2, 2.1, 2.2, 3, 3.1].map((version) =>
+		agent(`version ${version}`, version, gpt, [completion(' Hi there ')], {
+			options: { systemMessage: 'Be {brief}' },
+		}),
+	),
+	agent('responses, no system message', 3.1, openAiModel(1.3, 'gpt-5', {}), [
+		response(outputText(' Hi'), { type: 'refusal', refusal: 'no' }, outputText('! ')),
+	]),
+	agent(
+		'responses, reasoning model with system message',
+		3,
+		openAiModel(1.3, 'gpt-5-mini', { maxTokens: 40 }),
+		[response(outputText(''))],
+		{ options: { systemMessage: 'Be brief', enableStreaming: true, maxIterations: 4 } },
+	),
+	agent(
+		'completions, reasoning model',
+		2.2,
+		openAiModel(1.2, 'o3-mini', { temperature: 0.4 }),
+		[completion('Hi')],
+		{ options: { systemMessage: 'Be brief' } },
+	),
+	agent('intermediate steps', 3.1, gpt, [completion('Hi')], {
+		options: { returnIntermediateSteps: true },
+	}),
+	agent('intermediate steps, version 2', 2, gpt, [completion('Hi')], {
+		options: { returnIntermediateSteps: true, systemMessage: '' },
+	}),
+	agent('empty answer', 3.1, gpt, [completion('')]),
+	agent('answer without content', 2.2, gpt, [completion(null)]),
+	agent(
+		'no choices',
+		3.1,
+		gpt,
+		[{ body: { id: 'x', choices: [] } }],
+		{},
+		{
+			expectedError:
+				'Received empty response from chat model call (no choices). Response body: {"id":"x","choices":[]}',
+		},
+	),
+	agent(
+		'prompt without a value',
+		3.1,
+		gpt,
+		[completion('x')],
+		{ text: '={{ $json.q }}' },
+		{
+			expectedError: 'No prompt specified',
+		},
+	),
+	agent('empty prompt', 3.1, gpt, [completion('x')], { text: '' }),
+	agent(
+		'prompt null, number and object',
+		3.1,
+		gpt,
+		[completion('a')],
+		{ text: '={{ $json.v }}' },
+		{
+			items: [{ v: null }, { v: 5 }, { v: { a: [1] } }],
+		},
+	),
+	agent(
+		'prompt of the chat trigger',
+		3.1,
+		gpt,
+		[completion('x')],
+		{ promptType: 'auto' },
+		{
+			items: [{ chatInput: 'from chat' }],
+		},
+	),
+	agent(
+		'prompt of the chat trigger, missing',
+		2.2,
+		gpt,
+		[completion('x')],
+		{ promptType: 'auto' },
+		{
+			expectedError: 'No prompt specified',
+		},
+	),
+	agent(
+		'system message from the item',
+		3.1,
+		gpt,
+		[completion('x')],
+		{
+			options: { systemMessage: '={{ $json.s }}' },
+		},
+		{ items: [{ s: 'from item' }, { other: 1 }, { s: '' }, { s: 7 }] },
+	),
+	// v1 reads the parameters of the model for the first item only.
+	agent(
+		'model from the item',
+		3.1,
+		openAiModel(1.2, '={{ $json.model }}', {}),
+		[completion('a')],
+		{},
+		{ items: [{ model: 'gpt-4o' }, { model: 'gpt-4.1' }] },
+	),
+	agent(
+		'credential with an organization',
+		3.1,
+		gpt,
+		[completion('a')],
+		{},
+		{
+			credential: { type: 'openAiApi', data: { apiKey: 'sk-fake', organizationId: 'org-fake' } },
+		},
+	),
+	agent(
+		'credential with a custom header',
+		3.1,
+		gpt,
+		[completion('a')],
+		{},
+		{
+			credential: {
+				type: 'openAiApi',
+				data: { apiKey: 'sk-fake', header: true, headerName: 'X-Custom', headerValue: 'v1' },
+			},
+		},
+	),
+	// Items in batches, and the error settings
+	agent(
+		'first item fails',
+		3.1,
+		gpt,
+		[failed(400), completion('ok')],
+		{},
+		{
+			...two,
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	agent(
+		'first item fails, version 2.2',
+		2.2,
+		gpt,
+		[failed(400), completion('ok')],
+		{},
+		{
+			...two,
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	agent(
+		'batch of two, second fails',
+		3.1,
+		gpt,
+		[completion('first'), failed(400)],
+		{
+			options: { batching: { batchSize: 2 } },
+		},
+		{ ...two, expectedError: STATUS_ERRORS[400] },
+	),
+	agent(
+		'batch of two, first fails',
+		2.1,
+		gpt,
+		[failed(400), completion('late')],
+		{
+			options: { batching: { batchSize: 2, delayBetweenBatches: 0 } },
+		},
+		{ ...two, expectedError: STATUS_ERRORS[400] },
+	),
+	agent(
+		'delay between batches',
+		3.1,
+		gpt,
+		[completion('a'), completion('b'), completion('c')],
+		{
+			options: { batching: { batchSize: 2, delayBetweenBatches: 30 } },
+		},
+		{ items: [{ a: 1 }, { a: 2 }, { a: 3 }] },
+	),
+	agent(
+		'delay between batches of one',
+		3,
+		gpt,
+		[completion('a'), completion('b')],
+		{
+			options: { batching: { delayBetweenBatches: 20 } },
+		},
+		two,
+	),
+	agent(
+		'continue',
+		3.1,
+		gpt,
+		[failed(400), completion('ok')],
+		{},
+		{
+			...two,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	agent(
+		'continue, version 2',
+		2,
+		gpt,
+		[completion('ok'), failed(429)],
+		{},
+		{
+			...two,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	agent(
+		'error output',
+		3.1,
+		gpt,
+		[failed(400), completion('ok')],
+		{},
+		{
+			...two,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+	agent('retry, then answer', 3.1, gpt, [failed(400), completion('late')], {}, { settings: retry }),
+	agent(
+		'retry, all fail',
+		2.2,
+		gpt,
+		[failed(400)],
+		{},
+		{
+			settings: retry,
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	agent(
+		'retry continue',
+		3.1,
+		gpt,
+		[failed(400), completion('ok'), completion('ok2'), completion('ok3')],
+		{},
+		{
+			...two,
+			settings: { ...retry, onError: 'continueRegularOutput' },
+		},
+	),
+	agent(
+		'retry error output',
+		3.1,
+		gpt,
+		[failed(400), completion('ok'), completion('ok2'), completion('ok3')],
+		{},
+		{
+			...two,
+			settings: { ...retry, onError: 'continueErrorOutput' },
+		},
+	),
+	agent('status 500 then answer', 3.1, openAiModel(1.2, 'gpt-4o', { maxRetries: 1 }), [
+		failed(500),
+		completion('late'),
+	]),
+	agent(
+		'execute once',
+		3.1,
+		gpt,
+		[completion('a'), completion('b')],
+		{},
+		{
+			...two,
+			settings: { executeOnce: true },
+		},
+	),
+	agent(
+		'always output data',
+		3.1,
+		gpt,
+		[completion('a')],
+		{},
+		{
+			settings: { alwaysOutputData: true },
+		},
+	),
+];
+
 /** Clusters that stay in the fallback host: the proof of the native form does not cover them. */
 export const AI_HOST_CASES: EquivalenceCase[] = [
 	chain(
@@ -1093,4 +1396,54 @@ export const AI_HOST_CASES: EquivalenceCase[] = [
 			},
 		},
 	),
+];
+
+/** The prompt that a chat trigger or a guardrails node gives. */
+const PROMPT_SOURCE_CASES: EquivalenceCase[] = [
+	chain(
+		'prompt of the chat trigger',
+		gpt,
+		[completion('x')],
+		{ promptType: 'auto', text: undefined },
+		{
+			items: [{ chatInput: 'from chat' }],
+		},
+	),
+	chain(
+		'prompt of the chat trigger, missing',
+		gpt,
+		[completion('x')],
+		{
+			promptType: 'auto',
+			text: undefined,
+		},
+		{ typeVersion: 1.5, expectedError: 'No prompt specified' },
+	),
+	chain(
+		'prompt of the guardrails node',
+		gpt,
+		[completion('x')],
+		{
+			promptType: 'guardrails',
+			text: undefined,
+		},
+		{ items: [{ guardrailsInput: 'checked' }] },
+	),
+	agent(
+		'prompt of the guardrails node',
+		3.1,
+		gpt,
+		[completion('x')],
+		{ promptType: 'guardrails' },
+		{
+			items: [{ guardrailsInput: 'checked' }],
+		},
+	),
+];
+
+/** Every case that runs in the engine of n8n and through the converter. */
+export const ENGINE_CASES: EquivalenceCase[] = [
+	...AI_ENGINE_CASES,
+	...AGENT_ENGINE_CASES,
+	...PROMPT_SOURCE_CASES,
 ];

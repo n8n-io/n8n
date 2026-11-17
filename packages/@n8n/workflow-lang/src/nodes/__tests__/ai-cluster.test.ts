@@ -22,7 +22,7 @@ import { evaluateCredentialFlags, unprovenFlagNodes } from '../../node-compile/e
 import type { Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
-import { AI_ENGINE_CASES, AI_HOST_CASES } from './ai-cases.ts';
+import { ENGINE_CASES, AI_HOST_CASES } from './ai-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import { applyCredential, normalizeRequest } from './equivalence.ts';
 
@@ -148,7 +148,7 @@ function traced(traces: Trace[], name: string) {
 describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine recordings', () => {
 	const registry = registryOf(loadCredentialTypes().types);
 
-	describe.each(AI_ENGINE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+	describe.each(ENGINE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
 
 		it('has a v1 recording of the result that the case names', () => {
