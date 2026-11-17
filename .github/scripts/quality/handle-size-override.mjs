@@ -1,7 +1,7 @@
 /**
  * Re-triggers the PR Size Limit check when a maintainer comments `/size-limit-override`.
  *
- * Re-runs failed jobs in the latest PR quality workflow for the current HEAD.
+ * Re-runs failed jobs in the latest PR quality workflow that ran the size check for this PR and HEAD.
  * This also re-runs the required aggregate check after the size check passes.
  *
  * Exit codes:
@@ -12,6 +12,7 @@
 import { initGithub, getEventFromGithubEventPath } from '../github-helpers.mjs';
 
 const WORKFLOW_ID = 'ci-pr-quality.yml';
+const CHECK_NAME = 'PR Size Limit';
 
 /**
  * @param {{
@@ -43,21 +44,39 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 	});
 	const headSha = pr.head.sha;
 
-	const {
-		data: { workflow_runs },
-	} = await octokit.rest.actions.listWorkflowRuns({
-		owner,
-		repo,
-		workflow_id: WORKFLOW_ID,
-		event: 'pull_request',
-		head_sha: headSha,
-		per_page: 1,
-	});
+	let workflowRun;
+	for await (const { data: runs } of octokit.paginate.iterator(
+		octokit.rest.actions.listWorkflowRuns,
+		{
+			owner,
+			repo,
+			workflow_id: WORKFLOW_ID,
+			event: 'pull_request',
+			head_sha: headSha,
+			per_page: 100,
+		},
+	)) {
+		for (const candidate of runs) {
+			if (!candidate.pull_requests.some((pullRequest) => pullRequest.number === prNumber)) continue;
 
-	const workflowRun = workflow_runs[0];
+			const jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+				owner,
+				repo,
+				run_id: candidate.id,
+				per_page: 100,
+			});
+			// Label events can pass while the size check is skipped.
+			if (jobs.some((job) => job.name === CHECK_NAME && job.conclusion !== 'skipped')) {
+				workflowRun = candidate;
+				break;
+			}
+		}
+		if (workflowRun) break;
+	}
+
 	if (!workflowRun) {
 		throw new Error(
-			`No PR quality workflow found for ${headSha}. Push a new commit to trigger it.`,
+			`No PR quality workflow found with '${CHECK_NAME}' for PR #${prNumber} at ${headSha}. Push a new commit to trigger it.`,
 		);
 	}
 
