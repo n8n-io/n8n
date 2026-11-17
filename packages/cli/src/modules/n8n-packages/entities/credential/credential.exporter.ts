@@ -37,6 +37,11 @@ export interface CredentialExportRequest {
 	credentialExportPolicy: CredentialExportPolicy;
 	/** Target directory of each exported project (`projects/<slug>-<id>`), keyed by project id. */
 	projectTargetsById?: Map<string, string>;
+	/**
+	 * Promotion-only. Credentials to write without a consumer in the package. Each gets a file
+	 * and no requirement row.
+	 */
+	additionalCredentialIds?: string[];
 }
 
 export interface CredentialExportResult {
@@ -58,9 +63,11 @@ export class CredentialExporter {
 		const requirements: PackageCredentialRequirement[] = [];
 		const includeDescription = await this.credentialDescriptions.isEnabled();
 
-		for (const [credentialId, { fallback, usedBy }] of this.groupByCredentialId(
-			request.requirements,
-		)) {
+		const groups = this.groupByCredentialId(request.requirements);
+		const withoutConsumers = (request.additionalCredentialIds ?? [])
+			.filter((id) => !groups.has(id))
+			.map((id): [string, CredentialGroup | undefined] => [id, undefined]);
+		for (const [credentialId, group] of [...groups, ...withoutConsumers]) {
 			const credential = await this.credentialsFinder.findCredentialForUser(
 				credentialId,
 				request.user,
@@ -70,8 +77,8 @@ export class CredentialExporter {
 			// Use authored metadata if the credential is not accessible.
 			const { id, name, type } = credential ?? {
 				id: credentialId,
-				name: fallback.credentialName,
-				type: fallback.credentialType,
+				name: group?.fallback.credentialName,
+				type: group?.fallback.credentialType,
 			};
 
 			if (credential) {
@@ -107,11 +114,13 @@ export class CredentialExporter {
 				);
 			}
 
+			// A credential without a consumer has a file only.
+			if (!group) continue;
 			requirements.push({
 				id,
 				name,
 				type,
-				usedBy,
+				usedBy: group.usedBy,
 			});
 		}
 
