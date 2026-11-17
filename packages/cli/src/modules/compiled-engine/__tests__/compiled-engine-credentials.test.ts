@@ -149,6 +149,33 @@ describe('CompiledEngineCredentials', () => {
 			expect(Reflect.get(Object(document.oauth), 'renewal')).not.toHaveProperty('statusDefault');
 		});
 
+		it('gets the first token of a client-credentials credential when it builds the document', async () => {
+			const stored = {
+				grantType: 'clientCredentials',
+				accessTokenUrl: tokenUrl,
+				clientId: 'c',
+				clientSecret: 's',
+				authentication: 'body',
+			};
+			helper.getDecrypted.mockImplementation(async () => {
+				const saved = helper.updateCredentialsOauthTokenData.mock.calls[0]?.[2].oauthTokenData;
+				return saved === undefined ? { ...stored } : { ...stored, oauthTokenData: saved };
+			});
+			const document = await credentials().buildDocument('wf1', [binding]);
+			expect(helper.updateCredentialsOauthTokenData).toHaveBeenCalledTimes(1);
+			expect(JSON.stringify(document.oauth)).toContain('"access_token":"new"');
+		});
+
+		it('does not get a token for a client-credentials credential that has one', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				grantType: 'clientCredentials',
+				accessTokenUrl: tokenUrl,
+				oauthTokenData: { access_token: 'old' },
+			});
+			await credentials().buildDocument('wf1', [binding]);
+			expect(helper.updateCredentialsOauthTokenData).not.toHaveBeenCalled();
+		});
+
 		it('gives no renewal to a credential whose values do not expire', async () => {
 			helper.getDecrypted.mockResolvedValue({ apiKey: 'k' });
 			const plain = { ...binding, slot: 'plain', type: 'httpHeaderAuth' };

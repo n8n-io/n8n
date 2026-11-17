@@ -94,6 +94,14 @@ function oauth2ExpiredStatuses(data: IDataObject): number[] {
 	const list = Array.isArray(configured) ? configured : [configured];
 	return list.map((code) => Number(code)).filter((code) => Number.isInteger(code) && code > 0);
 }
+
+/** A client-credentials credential that has no access token yet: n8n-core gets one at the first request. */
+function needsFirstToken(data: IDataObject): boolean {
+	if (data.grantType !== 'clientCredentials') return false;
+	const token = isRecord(data.oauthTokenData) ? data.oauthTokenData.access_token : undefined;
+	return typeof token !== 'string' || token === '';
+}
+
 /** The name of a flag under `data.n8nDerived`. Only a boolean has such a name. */
 const FLAG_NAME = /^f[0-9a-f]{8}$/;
 /** The lifetime that n8n assumes when the token endpoint gives none. */
@@ -164,14 +172,21 @@ export class CompiledEngineCredentials {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase({
 					workflowId,
 				});
-				const data = await this.credentialsHelper.getDecrypted(
-					additionalData,
-					{ id: use.credentialId, name: use.credentialName },
-					use.type,
-					'internal',
-					toExecuteData(use.type),
-				);
+				const read = async () =>
+					await this.credentialsHelper.getDecrypted(
+						additionalData,
+						{ id: use.credentialId, name: use.credentialName },
+						use.type,
+						'internal',
+						toExecuteData(use.type),
+					);
+				let data = await read();
 				const kind = this.renewalKind(use.type, (mints[use.slot] ?? []).length > 0);
+				if (kind === 'oauth2' && needsFirstToken(data)) {
+					// As v1 at the first request: a client-credentials credential without a token gets one.
+					await this.refreshOAuth2(use, workflowId);
+					data = await read();
+				}
 				if (kind === 'preAuthentication') {
 					// As v1 before each request: a credential without a session token gets one.
 					Object.assign(data, await this.preAuthenticate(use, data, workflowId, false));
@@ -465,7 +480,7 @@ export class CompiledEngineCredentials {
 		workflowId: string,
 	): Promise<MintedToken> {
 		const { getGoogleAccessToken, googleServiceAccountScopes } = await import(
-			'n8n-nodes-base/dist/nodes/Google/GenericFunctions'
+			'n8n-nodes-base/dist/nodes/Google/GenericFunctions.js'
 		);
 		const isService = (name: string): name is keyof typeof googleServiceAccountScopes =>
 			Object.hasOwn(googleServiceAccountScopes, name);

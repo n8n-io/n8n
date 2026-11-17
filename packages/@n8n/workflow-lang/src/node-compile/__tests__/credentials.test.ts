@@ -83,6 +83,22 @@ describe('public credential fields', () => {
 			'@acmeApi.useProxy=true',
 		]);
 	});
+
+	it('has no class for the field of n8n that sets no limit on the domains', () => {
+		const withLimit: CredentialTypeInfo = {
+			name: 'acmeApi',
+			defaults: { baseUrl: 'https://api.acme.test', allowedHttpRequestDomains: 'all' },
+			fields: {
+				baseUrl: { type: 'string', password: false },
+				allowedHttpRequestDomains: { type: 'options', password: false },
+			},
+		};
+		expect(publicCredential(withLimit, {}).classes).toEqual(['@acmeApi.baseUrl=set']);
+		expect(publicCredential(withLimit, { allowedHttpRequestDomains: 'domains' }).classes).toEqual([
+			'@acmeApi.allowedHttpRequestDomains=domains',
+			'@acmeApi.baseUrl=set',
+		]);
+	});
 });
 
 describe('credentials in the node compiler', () => {

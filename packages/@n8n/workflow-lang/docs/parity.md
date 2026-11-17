@@ -50,3 +50,54 @@ Add a row when a new difference is found. The sources are `docs/spec.md`, the RE
 
 These change where code runs, not the result: a node that does not compile runs in the fallback host with the
 code of v1; a trigger's own requests run in n8n.
+
+## End-to-end check in a running n8n (2026-11-17)
+
+The check runs each workflow two times in one n8n: with the engine setting `compiled` and on v1. A local HTTP stub
+stands in for the vendors. n8n starts `wfrt` (release build) and the fallback host, with
+`N8N_ENABLED_MODULES=compiled-engine` and `N8N_COMPILED_ENGINE_COMPILE_NODES=true`. The script compares the webhook
+response, the execution status and the requests that the stub got (method, path, query, body, credential headers).
+
+To repeat it:
+
+```bash
+(cd workflow-runtime && zig build -Drelease=true)
+pnpm build > build.log 2>&1
+N8N_USER_FOLDER=<test folder> N8N_ENABLED_MODULES=compiled-engine \
+  N8N_COMPILED_ENGINE_COMPILE_NODES=true ./packages/cli/bin/n8n start
+N8N_URL=http://localhost:5678 node packages/cli/scripts/compiled-engine-node-compile-e2e.mjs
+```
+
+A node ran compiled from its source when the compile response has the diagnostic `node-compiled` for it. The place
+`native` in the response does not tell a compiled node from a library node. A request of `wfrt` has the user agent
+`n8n-wfrt`.
+
+| Case | Runs as | Result |
+|---|---|---|
+| a. Webhook, Set, Respond to Webhook | module code | Equal to v1 |
+| b. Discourse `post.get`, fixed parameter | compiled from source | Equal to v1 |
+| c. The same, `postId` as an expression, three items | compiled from source | Equal to v1: three requests |
+| d. The same, `onError: continueRegularOutput`, the stub answers 400 | compiled from source | Equal to v1 |
+| e. Crypto (no compiled form) | fallback host | Equal to v1 |
+| f. Manual run of the workflow of b | compiled from source | Equal to v1 in 10 of 13 runs: see "Open" |
+| g. HTTP Request, OAuth2 client credentials, the stub answers 401 one time | library node | Equal to v1: 401, one token request, one resend |
+
+Closed by this check:
+
+| Difference | How it was closed |
+|---|---|
+| The n8n package did not build: the import of the Google token function had no file extension | The import has the extension `.js` |
+| With the node compiler on, a workflow with a node to compile did not compile (`Cannot read properties of undefined`): the search for the file of a node class called the getters of all loaded modules | The search reads data properties only (`findExportingFile`, unit test) |
+| No node with a credential ran compiled in n8n. n8n adds the field `allowedHttpRequestDomains` to each credential type that authenticates. Its default `all` was a credential class that the verified list does not have | The value `all` is not a class. Another value is a class, so the node runs in the fallback host (unit test) |
+| An OAuth2 client-credentials credential without a token failed (`has no value at "oauthTokenData.access_token"`). v1 gets the first token at the first request | n8n gets the first token when it builds the credentials document (unit test) |
+
+Open, found by this check:
+
+| Difference | Source | What closes it |
+|---|---|---|
+| The compiled HTTP Request node does not read `allowedHttpRequestDomains` and `allowedDomains` of its credential. With the value `none`, v1 refuses the request, and the compiled engine sends it with the credential (case h) | `getCredentialAllowedDomains` in the v1 node (`HttpRequest/GenericFunctions.ts`) and in `routing-node.ts`; the converter has no code for the fields | The converter writes the check into the module, or keeps such a node in the fallback host |
+| A manual run can lose the run data of a node that is not a leaf. The `finished` event (outbox) can come before the `step` and `trace` events (ring) of the same execution. `CompiledEngineDispatcher.finish` saves the execution at `finished` and ignores later events (case f, 3 of 13 runs) | `compiled-engine.dispatcher.ts`, `finish` and `apply` | `wfrt` sends `finished` after the ring events of the execution, or `finished` names the last trace and the dispatcher waits for it |
+| The item of the Webhook trigger has no `webhookUrl` and no `executionMode`, and `headers.host` is the address of `wfrt` (case i). The fetch call of the forwarder cannot set `host` | `Webhook/utils.ts` (v1); `compiled-webhook.forwarder.ts` | The runtime adds the two fields; the forwarder sends the host in a header that `wfrt` reads |
+| When a node fails in a production webhook run, the body of the 500 response has the name, the message, the HTTP code and the description of the node error. v1 answers `{"message":"Error in workflow"}` (case j) | `wfrt` webhook response | The response of v1 |
+| A request of a compiled node has other transport headers: `user-agent: n8n-wfrt` (v1: `n8n`), `accept: application/json,text/*;q=0.9,*/*;q=0.8` (v1: `application/json`), `accept-encoding: identity`, no `connection: close` | stub recordings of case b | Decide; the `accept` header can change the answer of an API |
+| When the publish compile fails, `POST /workflows/:id/activate` succeeds and the workflow is active, but `wfrt` has no route: the webhook answers 404 `no route`. Seen one time, with the compile error of the second closed row | `workflow-publication-applier.ts`, `apply` returns `failed` after the publish | Run the workflow on v1, or refuse the publish with the compile error |
