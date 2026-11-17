@@ -2,6 +2,8 @@ import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { Publisher } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AiPreferenceRepository, Settings, SettingsRepository } from '@n8n/db';
+import { PubSubMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
@@ -114,6 +116,17 @@ describe('AiPreferenceSettingsService', () => {
 			await service.reload();
 
 			expect(service.isSwitchOn).toBe(true);
+		});
+
+		it.each(['reload-ai-preference-settings', 'pubsub-reconnected'])('runs on %s', (eventName) => {
+			const handlers = Container.get(PubSubMetadata)
+				.getHandlers()
+				.filter(
+					({ eventName: name, eventHandlerClass }) =>
+						name === eventName && eventHandlerClass === AiPreferenceSettingsService,
+				);
+
+			expect(handlers.map(({ methodName }) => methodName)).toEqual(['reload']);
 		});
 	});
 });
