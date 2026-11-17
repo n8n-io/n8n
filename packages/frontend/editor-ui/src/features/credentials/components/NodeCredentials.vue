@@ -1495,6 +1495,10 @@ function onCredentialOptionSelected(
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
 	selectRefs.value.forEach((select) => select.blur());
 	await nextTick();
+	// The closing dropdown moves focus back to the select input. Remove it again,
+	// because the credential modal returns focus there on close and a filterable
+	// select opens its dropdown on focus.
+	selectRefs.value.forEach((select) => select.blur());
 	createNewCredential(type.name, true, showMixedCredentials(type));
 }
 
