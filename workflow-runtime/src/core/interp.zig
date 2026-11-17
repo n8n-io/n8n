@@ -35,6 +35,9 @@ pub const EffectReq = struct {
     step: u32,
     occurrence: u32,
     args: Value,
+    /// The execution has one fibre, and it now waits on this effect: `run`
+    /// has nothing to do until the effect has a result.
+    only_fibre: bool,
 };
 
 /// A ctx.trace call of an execution with tracing on. `name` is a string.
@@ -116,13 +119,18 @@ pub fn setTrigger(r: *heap.Region, trigger: Value) void {
 /// The whole fibre table, including unused capacity.
 fn fibreSlots(r: *const heap.Region) []Fibre {
     const e = r.at(heap.Exec, 0);
-    const p: [*]Fibre = @ptrCast(@alignCast(r.buf.ptr + e.fibres + @sizeOf(heap.Hdr)));
-    return p[0..e.fibres_cap];
+    return fibreTable(r, e)[0..e.fibres_cap];
+}
+
+fn fibreTable(r: *const heap.Region, e: *const heap.Exec) [*]Fibre {
+    return @ptrCast(@alignCast(r.buf.ptr + e.fibres + @sizeOf(heap.Hdr)));
 }
 
 fn fib(vm: *Vm, fi: u32) *Fibre {
-    std.debug.assert(fi < vm.r.exec().nfibres);
-    const f = &fibreSlots(vm.r)[fi];
+    // One read of the root gives the count and the table.
+    const e = vm.r.exec();
+    std.debug.assert(fi < e.nfibres);
+    const f = &fibreTable(vm.r, e)[fi];
     if (mem.enabled) mem.rdHeader(vm.r.probe, .fibre_table, .interp_frame, f, @sizeOf(Fibre));
     return f;
 }
@@ -144,12 +152,14 @@ fn window(vm: *Vm, f: *const Fibre, fr: *const Frame) []Value {
 /// Run runnable fibres in index order until something needs the core.
 pub fn run(vm: *Vm, now_ms: f64, fuel: *u64, limits: Limits) Outcome {
     while (true) {
-        switch (fib(vm, 0).state) {
+        const first = fib(vm, 0).state;
+        switch (first) {
             .done => return .done,
             .failed => return .failed,
             else => {},
         }
-        const fi = pickRunnable(vm) orelse return .idle;
+        // Fibre 0 is the first in index order: no scan when it can run.
+        const fi = if (first == .runnable) 0 else pickRunnable(vm) orelse return .idle;
         const out = runFibre(vm, fi, now_ms, fuel, limits);
         switch (out) {
             .fibre_done => {
@@ -181,32 +191,32 @@ fn wakeJoiners(vm: *Vm) void {
 const FibreOut = union(enum) { fibre_done, parked, outcome: Outcome };
 
 fn runFibre(vm: *Vm, fi: u32, now_ms: f64, fuel: *u64, limits: Limits) FibreOut {
+    // The root, the fibre and its top frame stay in locals. The region does
+    // not move while the fibre runs. A call, a return, a throw and a fork
+    // change the frame or the fibre table: they give `.called` or `.jumped`,
+    // and the locals are read again. The fuel counts are locals too, and
+    // each exit writes them back.
+    const e = vm.r.exec();
+    var f = fib(vm, fi);
+    var fr = topFrame(vm, f);
+    var left = fuel.*;
+    var used = e.fuel_used;
+    defer {
+        fuel.* = left;
+        e.fuel_used = used;
+    }
     while (true) {
-        if (fuel.* == 0) return .{ .outcome = .fuel_out };
-        const e = vm.r.exec();
-        if (e.fuel_used >= limits.fuel_total) return .{ .outcome = .{ .limit = .fuel } };
-        const f = fib(vm, fi);
-        const fr = topFrame(vm, f);
-        // Simple instructions run in `fastRun` with the frame, its code and
-        // its registers in locals. It stops before the first other one,
-        // which `step` runs; after it the frame can be another one. A
-        // function with a compiled form runs that instead; it can also run
-        // the instruction where it stops, and then gives its result here.
-        const budget = @min(fuel.*, limits.fuel_total - e.fuel_used);
+        if (left == 0) return .{ .outcome = .fuel_out };
+        if (used >= limits.fuel_total) return .{ .outcome = .{ .limit = .fuel } };
+        const budget = @min(left, limits.fuel_total - used);
         var pending: ?Err!Flow = null;
-        const done = if (limits.aot and fr.func < vm.m.aot.len and vm.m.aot[fr.func] != module.no_aot) blk: {
-            const win = window(vm, f, fr);
-            var cx: aot.Cx = .{ .vm = vm, .fi = fi, .fr = fr, .win = win, .R = win.ptr, .code = vm.m.funcCode(fr.func), .budget = budget, .now_ms = now_ms, .limits = limits };
-            aot.run(vm.m.aot[fr.func], &cx);
-            pending = cx.pending;
-            break :blk cx.n;
-        } else fastRun(vm, fr, f, budget);
-        fuel.* -= done;
-        e.fuel_used += done;
+        const done = runSimple(vm, fi, f, &fr, budget, now_ms, limits, &pending);
+        left -= done;
+        used += done;
         if (done == budget and pending == null) continue;
         // The fast loop stopped at an instruction that the slow path runs again.
         if (pending == null) mem.bail(vm.r.probe);
-        const flow = (pending orelse step(vm, fi, vm.m.funcCode(fr.func)[fr.pc], now_ms, limits)) catch |err| switch (err) {
+        const flow = (pending orelse step(vm, fi, f, fr, vm.m.funcCode(fr.func)[fr.pc], now_ms, limits)) catch |err| switch (err) {
             error.RegionFull => return .{ .outcome = .region_full },
             error.ArenaFull => return .{ .outcome = .{ .limit = .memory } },
             error.Limit => return .{ .outcome = .{ .limit = vm.limit_reason } },
@@ -215,120 +225,205 @@ fn runFibre(vm: *Vm, fi: u32, now_ms: f64, fuel: *u64, limits: Limits) FibreOut 
                 break :blk @as(Flow, .fibre_done);
             },
         };
-        fuel.* -= 1;
-        vm.r.exec().fuel_used += 1;
+        left -= 1;
+        used += 1;
         if (vm.charged > 0) {
-            fuel.* -= @min(vm.charged, fuel.*);
-            vm.r.exec().fuel_used +|= vm.charged;
+            left -= @min(vm.charged, left);
+            used +|= vm.charged;
             vm.charged = 0;
         }
         switch (flow) {
-            .next => topFrame(vm, fib(vm, fi)).pc += 1,
-            .jumped, .called => {},
+            .next => fr.pc += 1,
+            .jumped, .called => {
+                f = fib(vm, fi);
+                fr = topFrame(vm, f);
+            },
             .fibre_done => return .fibre_done,
             .parked => return .parked,
             .effect => |req| return .{ .outcome = .{ .effect = req } },
             .trace => |req| {
-                topFrame(vm, fib(vm, fi)).pc += 1;
+                fr.pc += 1;
                 return .{ .outcome = .{ .trace = req } };
             },
         }
     }
 }
 
-/// Run the instructions that cannot fail, allocate, call or leave the frame,
-/// at most `budget` of them, and stop before any other one. Each costs one
-/// unit of fuel, as in `step`. Returns how many ran; `fr.pc` is the next one.
-fn fastRun(vm: *Vm, fr: *Frame, f: *const Fibre, budget: u64) u64 {
-    const code = vm.m.funcCode(fr.func);
-    const R = window(vm, f, fr);
+/// Instructions run in `fastRun` with the frame, its code and its registers
+/// in locals. A function with a compiled form runs that instead. Both stop
+/// at an instruction that needs `runFibre` and give its result in
+/// `pending`. `frp` is the top frame, before and after. Returns how many
+/// instructions ran before the pending one.
+inline fn runSimple(vm: *Vm, fi: u32, f: *Fibre, frp: **Frame, budget: u64, now_ms: f64, limits: Limits, pending: *?Err!Flow) u64 {
+    const fr = frp.*;
+    if (!hasCompiled(vm, fr.func, limits)) return fastRun(vm, fi, f, frp, budget, now_ms, limits, pending);
+    const win = window(vm, f, fr);
+    var cx: aot.Cx = .{ .vm = vm, .fi = fi, .f = f, .fr = fr, .win = win, .R = win.ptr, .code = vm.m.funcCode(fr.func), .budget = budget, .now_ms = now_ms, .limits = limits };
+    aot.run(vm.m.aot[fr.func], &cx);
+    pending.* = cx.pending;
+    return cx.n;
+}
+
+fn hasCompiled(vm: *const Vm, func: u32, limits: Limits) bool {
+    return limits.aot and func < vm.m.aot.len and vm.m.aot[func] != module.no_aot;
+}
+
+/// `stepIn` for any opcode, as one function: the fast loop calls it for the
+/// instructions that it does not run inline. Never inline: the compiler
+/// then moves the setup of every opcode in front of the loop, which cost
+/// about 280 machine instructions for each entry.
+noinline fn stepAny(vm: *Vm, fi: u32, f: *Fibre, fr: *Frame, R: []Value, ins: Instr, now_ms: f64, limits: Limits) Err!Flow {
+    return stepIn(vm, fi, f, fr, R, null, ins, now_ms, limits);
+}
+
+/// Run at most `budget` instructions of fibre `fi` (`f`), from its top frame
+/// `frp.*`. The simple forms run inline: they cannot fail, allocate, call or
+/// leave the frame. Every other instruction runs through `stepAny`, with the
+/// frame, its code and its registers still in locals. A call and a return
+/// change those locals and the loop goes on in the other frame. The loop
+/// stops at an instruction whose result `runFibre` must handle (an error, an
+/// effect, a fuel charge, a parked or finished fibre, a frame with a
+/// compiled form): the result is in `pending`, and `fr.pc` is that
+/// instruction. Each instruction costs one unit of fuel. Returns how many
+/// ran before the pending one; `frp.*` is the top frame.
+fn fastRun(vm: *Vm, fi: u32, f: *Fibre, frp: **Frame, budget: u64, now_ms: f64, limits: Limits, pending: *?Err!Flow) u64 {
+    var fr = frp.*;
+    var code = vm.m.funcCode(fr.func);
+    var R = window(vm, f, fr);
     var pc = fr.pc;
     var n: u64 = 0;
-    defer fr.pc = pc;
+    std.debug.assert(budget > 0 and pending.* == null);
+    defer {
+        fr.pc = pc;
+        frp.* = fr;
+    }
     while (n < budget) : (n += 1) {
         const ins = code[pc];
         const op: Op = @fromBackingInt(@intCast(ins.op));
         if (mem.enabled) mem.instr(vm.r.probe, vm.m, ins, &code[pc], R.ptr);
-        switch (op) {
-            .nop => {},
-            .mov => R[ins.a] = R[ins.b],
-            .loadk => R[ins.a] = value.num(vm.m.numbers[ins.bc()]),
-            .loads => R[ins.a] = value.constString(ins.bc()),
-            .loadi => R[ins.a] = value.num(@floatFromInt(@as(i32, @bitCast(ins.bc())))),
-            .loadundef => R[ins.a] = value.undef,
-            .loadnull => R[ins.a] = value.null_,
-            .loadbool => R[ins.a] = value.boolean(ins.x != 0),
-            .add, .sub, .mul, .mod, .lt, .le, .gt, .ge => {
-                const x = R[ins.b];
-                const y = R[ins.c];
-                if (value.kindOf(x) != .number or value.kindOf(y) != .number) return n;
-                const a = value.asNum(x);
-                const b = value.asNum(y);
-                R[ins.a] = switch (op) {
-                    .add => value.num(a + b),
-                    .sub => value.num(a - b),
-                    .mul => value.num(a * b),
-                    .mod => value.num(jsMod(a, b)),
-                    .lt => value.boolean(a < b),
-                    .le => value.boolean(a <= b),
-                    .gt => value.boolean(a > b),
-                    .ge => value.boolean(a >= b),
-                    else => unreachable, // The outer prong lists these only.
-                };
+        if (fastOp(vm, op, ins, R, &pc)) continue;
+        // `stepAny` reads the position from the frame (a return, a throw).
+        fr.pc = pc;
+        const res = stepAny(vm, fi, f, fr, R, ins, now_ms, limits);
+        switch (afterStep(vm, f, op, res, limits)) {
+            .next => pc += 1,
+            .frame => |top| {
+                fr = top;
+                code = vm.m.funcCode(fr.func);
+                R = window(vm, f, fr);
+                pc = fr.pc;
             },
-            .seq => R[ins.a] = value.boolean(vm.strictEquals(R[ins.b], R[ins.c])),
-            .sne => R[ins.a] = value.boolean(!vm.strictEquals(R[ins.b], R[ins.c])),
-            .not => R[ins.a] = value.boolean(!vm.truthy(R[ins.b])),
-            .isnullish => R[ins.a] = value.boolean(value.isNullish(R[ins.b])),
-            .jmp => {
-                pc = ins.bc();
-                continue;
+            .stop => {
+                // A jump or a fork moved the position of this frame.
+                pc = fr.pc;
+                pending.* = res;
+                return n;
             },
-            .jt, .jf, .jnullish => {
-                const v = R[ins.a];
-                const taken = switch (op) {
-                    .jt => vm.truthy(v),
-                    .jf => !vm.truthy(v),
-                    .jnullish => value.isNullish(v),
-                    else => unreachable, // The outer prong lists these only.
-                };
-                if (taken) {
-                    pc = ins.bc();
-                    continue;
-                }
-            },
-            .getprop => {
-                const o = R[ins.b];
-                if (value.kindOf(o) != .object) return n;
-                const off = value.payload(o);
-                R[ins.a] = if (vm.objFindValue(off, value.constString(ins.c))) |i| mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]) else value.undef;
-            },
-            // Allocations: a full region leaves nothing changed, and `step`
-            // runs the instruction again and reports it.
-            .setprop => {
-                const o = R[ins.a];
-                if (value.kindOf(o) != .object) return n;
-                vm.objSet(value.payload(o), value.constString(ins.b), R[ins.c]) catch return n;
-            },
-            .newobj => R[ins.a] = vm.r.newObject(4) catch return n,
-            .newarr => R[ins.a] = vm.r.newArray(4) catch return n,
-            .push => {
-                if (value.kindOf(R[ins.a]) != .array) return n;
-                vm.r.arrPush(value.payload(R[ins.a]), R[ins.b]) catch return n;
-            },
-            .getelem => {
-                const arr = R[ins.b];
-                const k = R[ins.c];
-                if (value.kindOf(arr) != .array or value.kindOf(k) != .number) return n;
-                const x = value.asNum(k);
-                if (!(x >= 0 and x == @trunc(x) and x < 4294967295)) return n;
-                R[ins.a] = vm.arrGet(arr, @intFromFloat(x));
-            },
-            else => return n,
         }
-        pc += 1;
     }
     return n;
+}
+
+const AfterStep = union(enum) { next, frame: *Frame, stop };
+
+/// What the fast loop does after `stepAny` gave `res` for opcode `op`: go
+/// to the next instruction, go on in the frame that a call or a return made
+/// the top one, or stop and give `res` to `runFibre`.
+inline fn afterStep(vm: *Vm, f: *const Fibre, op: Op, res: Err!Flow, limits: Limits) AfterStep {
+    const flow = res catch return .stop;
+    if (vm.charged != 0) return .stop;
+    if (flow == .next) return .next;
+    if (flow != .called and flow != .jumped) return .stop;
+    // A slow jump and a fork give `.jumped` too. A fork can move the fibre.
+    if (op != .call and op != .ret) return .stop;
+    const top = topFrame(vm, f);
+    return if (hasCompiled(vm, top.func, limits)) .stop else .{ .frame = top };
+}
+
+/// One simple instruction at `pc.*`, with the next position in `pc.*`.
+/// False when the instruction is not simple for these operands: nothing
+/// changed then.
+inline fn fastOp(vm: *Vm, op: Op, ins: Instr, R: []Value, pc: *u32) bool {
+    std.debug.assert(ins.op == @backingInt(op));
+    switch (op) {
+        .nop => {},
+        .mov => R[ins.a] = R[ins.b],
+        .loadk => R[ins.a] = value.num(vm.m.numbers[ins.bc()]),
+        .loads => R[ins.a] = value.constString(ins.bc()),
+        .loadi => R[ins.a] = value.num(@floatFromInt(@as(i32, @bitCast(ins.bc())))),
+        .loadundef => R[ins.a] = value.undef,
+        .loadnull => R[ins.a] = value.null_,
+        .loadbool => R[ins.a] = value.boolean(ins.x != 0),
+        .add, .sub, .mul, .mod, .lt, .le, .gt, .ge => {
+            const x = R[ins.b];
+            const y = R[ins.c];
+            if (value.kindOf(x) != .number or value.kindOf(y) != .number) return false;
+            const a = value.asNum(x);
+            const b = value.asNum(y);
+            R[ins.a] = switch (op) {
+                .add => value.num(a + b),
+                .sub => value.num(a - b),
+                .mul => value.num(a * b),
+                .mod => value.num(jsMod(a, b)),
+                .lt => value.boolean(a < b),
+                .le => value.boolean(a <= b),
+                .gt => value.boolean(a > b),
+                .ge => value.boolean(a >= b),
+                else => unreachable, // The outer prong lists these only.
+            };
+        },
+        .seq => R[ins.a] = value.boolean(vm.strictEquals(R[ins.b], R[ins.c])),
+        .sne => R[ins.a] = value.boolean(!vm.strictEquals(R[ins.b], R[ins.c])),
+        .not => R[ins.a] = value.boolean(!vm.truthy(R[ins.b])),
+        .isnullish => R[ins.a] = value.boolean(value.isNullish(R[ins.b])),
+        .jmp => {
+            pc.* = ins.bc();
+            return true;
+        },
+        .jt, .jf, .jnullish => {
+            const v = R[ins.a];
+            const taken = switch (op) {
+                .jt => vm.truthy(v),
+                .jf => !vm.truthy(v),
+                .jnullish => value.isNullish(v),
+                else => unreachable, // The outer prong lists these only.
+            };
+            if (taken) {
+                pc.* = ins.bc();
+                return true;
+            }
+        },
+        .getprop => {
+            const o = R[ins.b];
+            if (value.kindOf(o) != .object) return false;
+            const off = value.payload(o);
+            R[ins.a] = if (vm.objFindValue(off, value.constString(ins.c))) |i| mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]) else value.undef;
+        },
+        // Allocations: a full region leaves nothing changed, and `step`
+        // runs the instruction again and reports it.
+        .setprop => {
+            const o = R[ins.a];
+            if (value.kindOf(o) != .object) return false;
+            vm.objSet(value.payload(o), value.constString(ins.b), R[ins.c]) catch return false;
+        },
+        .newobj => R[ins.a] = vm.r.newObject(4) catch return false,
+        .newarr => R[ins.a] = vm.r.newArray(4) catch return false,
+        .push => {
+            if (value.kindOf(R[ins.a]) != .array) return false;
+            vm.r.arrPush(value.payload(R[ins.a]), R[ins.b]) catch return false;
+        },
+        .getelem => {
+            const arr = R[ins.b];
+            const k = R[ins.c];
+            if (value.kindOf(arr) != .array or value.kindOf(k) != .number) return false;
+            const x = value.asNum(k);
+            if (!(x >= 0 and x == @trunc(x) and x < 4294967295)) return false;
+            R[ins.a] = vm.arrGet(arr, @intFromFloat(x));
+        },
+        else => return false,
+    }
+    pc.* += 1;
+    return true;
 }
 
 /// A native call costs about one instruction for each 64 units of work:
@@ -347,18 +442,19 @@ pub const Flow = union(enum) { next, jumped, called, fibre_done, parked, effect:
 
 // ---- instructions -----------------------------------------------------------
 
-pub fn step(vm: *Vm, fi: u32, ins: Instr, now_ms: f64, limits: Limits) Err!Flow {
-    const f = fib(vm, fi);
-    const fr = topFrame(vm, f);
+/// Run instruction `ins` of the top frame `fr` of fibre `fi` (`f`).
+fn step(vm: *Vm, fi: u32, f: *Fibre, fr: *Frame, ins: Instr, now_ms: f64, limits: Limits) Err!Flow {
     const R = window(vm, f, fr);
     if (mem.enabled) mem.instr(vm.r.probe, vm.m, ins, &vm.m.funcCode(fr.func)[fr.pc], R.ptr);
-    return stepIn(vm, fi, fr, R, null, ins, now_ms, limits);
+    return stepAny(vm, fi, f, fr, R, ins, now_ms, limits);
 }
 
-/// The body of `step`, for frame `fr` of fibre `fi` with register window
-/// `R`. With a comptime `known` opcode only that instruction's code is
-/// compiled: the compiled functions (`aot.zig`) call it that way.
-pub inline fn stepIn(vm: *Vm, fi: u32, fr: *Frame, R: []Value, comptime known: ?Op, ins: Instr, now_ms: f64, limits: Limits) Err!Flow {
+/// The body of `step`, for the top frame `fr` of fibre `fi` (`f`) with
+/// register window `R`. With a comptime `known` opcode only that
+/// instruction's code is compiled: the compiled functions (`aot.zig`) call
+/// it that way. After `.called` and `.jumped` the caller must read the
+/// fibre and the frame again.
+pub inline fn stepIn(vm: *Vm, fi: u32, f: *Fibre, fr: *Frame, R: []Value, comptime known: ?Op, ins: Instr, now_ms: f64, limits: Limits) Err!Flow {
     const op: Op = known orelse @fromBackingInt(@intCast(ins.op));
     switch (op) {
         .nop => {},
@@ -382,10 +478,10 @@ pub inline fn stepIn(vm: *Vm, fi: u32, fr: *Frame, R: []Value, comptime known: ?
         .sne => R[ins.a] = value.boolean(!vm.strictEquals(R[ins.b], R[ins.c])),
         .lt, .le, .gt, .ge => R[ins.a] = value.boolean(relational(op, try vm.compare(R[ins.b], R[ins.c]))),
         .isnullish => R[ins.a] = value.boolean(value.isNullish(R[ins.b])),
-        .jmp => return jumpTo(vm, fi, ins.bc()),
-        .jt => if (vm.truthy(R[ins.a])) return jumpTo(vm, fi, ins.bc()),
-        .jf => if (!vm.truthy(R[ins.a])) return jumpTo(vm, fi, ins.bc()),
-        .jnullish => if (value.isNullish(R[ins.a])) return jumpTo(vm, fi, ins.bc()),
+        .jmp => return jumpTo(fr, ins.bc()),
+        .jt => if (vm.truthy(R[ins.a])) return jumpTo(fr, ins.bc()),
+        .jf => if (!vm.truthy(R[ins.a])) return jumpTo(fr, ins.bc()),
+        .jnullish => if (value.isNullish(R[ins.a])) return jumpTo(fr, ins.bc()),
         .newobj => R[ins.a] = try vm.r.newObject(4),
         .newarr => R[ins.a] = try vm.r.newArray(4),
         .getprop => R[ins.a] = if (value.kindOf(R[ins.b]) == .object) blk: {
@@ -417,7 +513,7 @@ pub inline fn stepIn(vm: *Vm, fi: u32, fr: *Frame, R: []Value, comptime known: ?
         .newcell => R[ins.a] = try vm.r.newCell(R[ins.b]),
         .getcell => R[ins.a] = vm.r.at(heap.Cell, try cellOff(vm, R[ins.b])).value,
         .setcell => vm.r.at(heap.Cell, try cellOff(vm, R[ins.a])).value = R[ins.b],
-        .call => return call(vm, fi, ins, limits),
+        .call => return call(vm, f, fr, R, ins, limits),
         .callm => {
             const before = vm.r.used;
             R[ins.a] = try lib.callMethod(vm, vm.m.natives[ins.b], R[ins.c], R[ins.c + 1 ..][0..ins.x]);
@@ -429,7 +525,7 @@ pub inline fn stepIn(vm: *Vm, fi: u32, fr: *Frame, R: []Value, comptime known: ?
             R[ins.a] = try lib.callNative(vm, vm.m.natives[ins.b], args);
             chargeNative(vm, before, args);
         },
-        .ret => return ret(vm, fi, R[ins.a]),
+        .ret => return ret(vm, fi, f, fr, R[ins.a]),
         .throw => {
             vm.thrown = R[ins.a];
             return error.Throw;
@@ -439,9 +535,9 @@ pub inline fn stepIn(vm: *Vm, fi: u32, fr: *Frame, R: []Value, comptime known: ?
             const kind: ops.ErrKind = if (ins.x <= 2) @fromBackingInt(@intCast(ins.x)) else .@"error";
             R[ins.a] = try vm.makeError(kind, msg);
         },
-        .@"suspend" => return suspendOn(vm, fi, ins, R),
-        .fork => return fork(vm, fi, ins, limits),
-        .join => return join(vm, fi, ins),
+        .@"suspend" => return suspendOn(vm, fi, f, ins, R),
+        .fork => return fork(vm, fr, R, ins, limits),
+        .join => return join(vm, fi, f, R, ins),
         .now => R[ins.a] = value.num(now_ms),
         .random => R[ins.a] = value.num(nextRandom(&vm.r.exec().prng)),
         .exec_info => R[ins.a] = try execInfo(vm),
@@ -485,8 +581,8 @@ fn execInfo(vm: *Vm) Err!Value {
     return o;
 }
 
-fn jumpTo(vm: *Vm, fi: u32, target: u32) Flow {
-    topFrame(vm, fib(vm, fi)).pc = target;
+fn jumpTo(fr: *Frame, target: u32) Flow {
+    fr.pc = target;
     return .jumped;
 }
 
@@ -587,8 +683,7 @@ pub fn nextRandom(state: *u64) f64 {
 
 /// Make room for one more frame and `need` registers. Allocates before it
 /// changes the fibre, so a failure leaves the fibre as it was.
-fn ensureFrameRoom(vm: *Vm, fi: u32, need_regs: u32) Err!void {
-    const f = fib(vm, fi);
+fn ensureFrameRoom(vm: *Vm, f: *Fibre, need_regs: u32) Err!void {
     var new_frames: ?u32 = null;
     var new_regs: ?u32 = null;
     const frames_cap = f.frames_cap;
@@ -599,35 +694,34 @@ fn ensureFrameRoom(vm: *Vm, fi: u32, need_regs: u32) Err!void {
     if (need_regs > regs_cap) {
         new_regs = try vm.r.newVals(@max(need_regs, regs_cap * 2));
     }
-    const f2 = fib(vm, fi);
     if (new_frames) |nf| {
         const dst: [*]Frame = @ptrCast(@alignCast(vm.r.buf.ptr + nf + @sizeOf(heap.Hdr)));
-        @memcpy(dst[0..f2.nframes], vm.r.framesOf(f2));
-        f2.frames = nf;
-        f2.frames_cap = frames_cap * 2;
+        @memcpy(dst[0..f.nframes], vm.r.framesOf(f));
+        f.frames = nf;
+        f.frames_cap = frames_cap * 2;
     }
     if (new_regs) |nr| {
         const cap = vm.r.valsCap(nr);
-        @memcpy(vm.r.valsAt(nr, cap)[0..f2.regs_top], vm.r.regsOf(f2)[0..f2.regs_top]);
-        f2.regs = nr;
-        f2.regs_cap = cap;
+        @memcpy(vm.r.valsAt(nr, cap)[0..f.regs_top], vm.r.regsOf(f)[0..f.regs_top]);
+        f.regs = nr;
+        f.regs_cap = cap;
     }
 }
 
-fn call(vm: *Vm, fi: u32, ins: Instr, limits: Limits) Err!Flow {
-    const f = fib(vm, fi);
-    const fr = topFrame(vm, f);
-    const callee = window(vm, f, fr)[ins.b];
+fn call(vm: *Vm, f: *Fibre, fr: *const Frame, R: []const Value, ins: Instr, limits: Limits) Err!Flow {
+    const callee = R[ins.b];
     if (value.kindOf(callee) != .ref or vm.r.hdr(value.payload(callee)).kind != .closure) {
         return vm.throwMsg(.type_error, "value is not a function", .{});
     }
     if (f.nframes >= limits.call_depth) return vm.limit(.depth);
     const func = vm.r.at(heap.Closure, value.payload(callee)).func;
     const fe = vm.m.funcs[func];
-    const base = fr.base + vm.m.funcs[fr.func].nregs;
-    try ensureFrameRoom(vm, fi, base + fe.nregs);
-    const f2 = fib(vm, fi);
-    const caller = topFrame(vm, f2).*;
+    // Read the caller's frame now: `ensureFrameRoom` can move the frames
+    // and the registers. The fibre itself does not move.
+    const caller_base = fr.base;
+    const base = caller_base + @as(u32, @intCast(R.len));
+    try ensureFrameRoom(vm, f, base + fe.nregs);
+    const f2 = f;
     const regs = vm.r.regsOf(f2);
     const win = regs[base..][0..fe.nregs];
     // Registers above `regs_top` are always undefined: new blocks start so,
@@ -638,15 +732,14 @@ fn call(vm: *Vm, fi: u32, ins: Instr, limits: Limits) Err!Flow {
     if (mem.enabled) mem.wrSlice(vm.r.probe, .registers, .interp_reg, win[0..nargs]);
     if (mem.enabled) mem.wr(vm.r.probe, .frames, .interp_frame, &vm.r.framesOf(f2).ptr[f2.nframes], @sizeOf(Frame));
     if (mem.enabled) mem.wr(vm.r.probe, .fibre_table, .interp_frame, f2, @sizeOf(Fibre));
-    @memcpy(win[0..nargs], regs[caller.base + ins.c ..][0..nargs]);
+    @memcpy(win[0..nargs], regs[caller_base + ins.c ..][0..nargs]);
     f2.regs_top = base + fe.nregs;
     vm.r.framesOf(f2).ptr[f2.nframes] = .{ .func = func, .pc = 0, .base = base, .ret_reg = ins.a, .closure = callee };
     f2.nframes += 1;
     return .called;
 }
 
-fn popFrame(vm: *Vm, f: *Fibre) void {
-    const fr = topFrame(vm, f);
+fn popFrame(vm: *Vm, f: *Fibre, fr: *Frame) void {
     if (mem.enabled) mem.wrSlice(vm.r.probe, .registers, .vals_fill, vm.r.regsOf(f)[fr.base..f.regs_top]);
     if (mem.enabled) mem.scan(vm.r.probe, .value_fill, f.regs_top - fr.base);
     if (mem.enabled) mem.wr(vm.r.probe, .fibre_table, .interp_frame, f, @sizeOf(Fibre));
@@ -657,9 +750,8 @@ fn popFrame(vm: *Vm, f: *Fibre) void {
     f.nframes -= 1;
 }
 
-fn ret(vm: *Vm, fi: u32, v: Value) Flow {
-    const f = fib(vm, fi);
-    popFrame(vm, f);
+fn ret(vm: *Vm, fi: u32, f: *Fibre, fr: *Frame, v: Value) Flow {
+    popFrame(vm, f, fr);
     if (f.nframes == 0) {
         f.state = .done;
         f.result = v;
@@ -690,7 +782,7 @@ pub fn unwind(vm: *Vm, fi: u32, err: Value) bool {
                 return true;
             }
         }
-        popFrame(vm, f);
+        popFrame(vm, f, fr);
     }
     f.state = .failed;
     f.result = err;
@@ -710,7 +802,7 @@ pub fn inTry(vm: *Vm, fi: u32) bool {
 
 // ---- effects and fibres -------------------------------------------------------
 
-fn suspendOn(vm: *Vm, fi: u32, ins: Instr, R: []Value) Err!Flow {
+fn suspendOn(vm: *Vm, fi: u32, f: *Fibre, ins: Instr, R: []Value) Err!Flow {
     const step_v = R[ins.b];
     const e = vm.r.exec();
     if (value.kindOf(step_v) != .number) return vm.throwMsg(.type_error, "step index is not a number", .{});
@@ -722,10 +814,9 @@ fn suspendOn(vm: *Vm, fi: u32, ins: Instr, R: []Value) Err!Flow {
     occ[s] += 1;
     const seq = e.next_effect;
     e.next_effect += 1;
-    const f = fib(vm, fi);
     f.state = .parked_effect;
     f.wait_effect = seq;
-    return .{ .effect = .{ .fibre = fi, .seq = seq, .kind = @fromBackingInt(@intCast(ins.x)), .step = s, .occurrence = occurrence, .args = R[ins.c] } };
+    return .{ .effect = .{ .fibre = fi, .seq = seq, .kind = @fromBackingInt(@intCast(ins.x)), .step = s, .occurrence = occurrence, .args = R[ins.c], .only_fibre = e.nfibres == 1 } };
 }
 
 /// Complete a parked effect. An error is thrown at the await.
@@ -769,9 +860,9 @@ pub fn fibreForEffect(vm: *Vm, seq: u32) ?u32 {
     return null;
 }
 
-fn fork(vm: *Vm, fi: u32, ins: Instr, limits: Limits) Err!Flow {
-    const f = fib(vm, fi);
-    const R = window(vm, f, topFrame(vm, f));
+/// Gives `.jumped` after it moved to the next instruction: a new fibre
+/// table makes the caller's pointer to the fibre stale.
+fn fork(vm: *Vm, fr: *Frame, R: []Value, ins: Instr, limits: Limits) Err!Flow {
     const callee = R[ins.b];
     const arg0 = R[ins.c];
     if (value.kindOf(callee) != .ref or vm.r.hdr(value.payload(callee)).kind != .closure) {
@@ -814,9 +905,10 @@ fn fork(vm: *Vm, fi: u32, ins: Instr, limits: Limits) Err!Flow {
     vm.r.framesOf(&slots[id])[0] = .{ .func = func, .pc = 0, .base = 0, .ret_reg = 0, .closure = callee };
     if (fe.nparams > 0) vm.r.regsOf(&slots[id])[0] = arg0;
     e2.nfibres += 1;
-    const fr = topFrame(vm, fib(vm, fi));
-    window(vm, fib(vm, fi), fr)[ins.a] = value.num(@floatFromInt(id));
-    return .next;
+    // The frames and the registers of this fibre did not move.
+    R[ins.a] = value.num(@floatFromInt(id));
+    fr.pc += 1;
+    return .jumped;
 }
 
 /// The fibre that a JOIN list element names, or null.
@@ -827,9 +919,8 @@ fn joinId(vm: *Vm, idv: Value) ?u32 {
     return @intFromFloat(x);
 }
 
-fn join(vm: *Vm, fi: u32, ins: Instr) Err!Flow {
-    const f = fib(vm, fi);
-    const list = window(vm, f, topFrame(vm, f))[ins.b];
+fn join(vm: *Vm, fi: u32, f: *Fibre, R: []Value, ins: Instr) Err!Flow {
+    const list = R[ins.b];
     if (value.kindOf(list) != .array) return vm.throwMsg(.type_error, "join list is not an array", .{});
     const ids = vm.r.arrItems(value.payload(list));
     // The ids come from a register: a bad module can put anything there
@@ -847,17 +938,15 @@ fn join(vm: *Vm, fi: u32, ins: Instr) Err!Flow {
         if (child.state != .done) all_done = false;
     }
     if (!all_done) {
-        const f2 = fib(vm, fi);
-        f2.state = .parked_join;
-        f2.join = list;
+        f.state = .parked_join;
+        f.join = list;
         return .parked;
     }
     const out = try vm.r.newArray(@intCast(ids.len));
     const ids2 = vm.r.arrItems(value.payload(list));
     try vm.r.arrReserve(value.payload(out), @intCast(ids2.len));
     for (ids2) |idv| vm.r.arrPush(value.payload(out), fib(vm, joinId(vm, idv).?).result) catch unreachable; // Reserved above; checked above.
-    const f3 = fib(vm, fi);
-    f3.join = value.undef;
-    window(vm, f3, topFrame(vm, f3))[ins.a] = out;
+    f.join = value.undef;
+    R[ins.a] = out;
     return .next;
 }

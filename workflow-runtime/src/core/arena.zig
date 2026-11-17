@@ -1,6 +1,12 @@
 //! Transient storage. It only moves forward and resets in one step at the
 //! end of each batch.
 const std = @import("std");
+const builtin = @import("builtin");
+
+/// True when released memory gets the 0xAA fill, so a stale slice or offset
+/// reads poison: Debug builds and all tests. A release binary does not fill:
+/// the fill was 1,564 bytes for each small execution (docs/perf-model.md).
+pub const poison: bool = builtin.mode == .debug or builtin.is_test;
 
 pub const Arena = struct {
     buf: []u8,
@@ -43,10 +49,10 @@ pub const Arena = struct {
         return .{ .arena = a, .used = a.used };
     }
 
-    /// Safe builds fill the released bytes with 0xAA, so a slice kept past
-    /// its batch reads poison, not plausible data.
+    /// Debug builds and tests fill the released bytes with 0xAA (`poison`),
+    /// so a slice kept past its batch reads poison, not plausible data.
     pub fn reset(a: *Arena) void {
-        if (std.debug.runtime_safety) @memset(a.buf[0..a.used], 0xAA);
+        if (poison) @memset(a.buf[0..a.used], 0xAA);
         a.used = 0;
     }
 
@@ -62,7 +68,7 @@ pub const Arena = struct {
 
         pub fn end(t: Temp) void {
             std.debug.assert(t.arena.used >= t.used);
-            if (std.debug.runtime_safety) @memset(t.arena.buf[t.used..t.arena.used], 0xAA);
+            if (poison) @memset(t.arena.buf[t.used..t.arena.used], 0xAA);
             t.arena.used = t.used;
         }
     };

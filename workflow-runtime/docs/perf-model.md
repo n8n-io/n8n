@@ -255,3 +255,86 @@ case and fails when a count is above its record; `--update` writes the record. `
 because the alignment of a buffer can move it. The counts do not use the cost table, so they are the same on each
 machine. A change that lowers a count updates the record in the same commit, as with `lint-ratchet` and the cost
 record of the node compiler. `ci.sh` does not run the gate yet.
+
+## 11. The durable log record of W3, field by field
+
+Measured by `bench/run.sh` (W3, a request body of 1 KB): 1,209 log bytes for each run. The log holds the inputs
+of the core, one record for each batch (`logfmt.zig`). A W3 run has two logged events: the request, and the
+result of its HTTP step. The numbers below come from the formats in `logfmt.zig` and `server.zig`
+(`requestPayload`, `writeResult`) and from the request that `wfrt load` sends. They add up to the measured value.
+
+| Part | Bytes | Content | A replay needs | n8n's saved execution data needs |
+|---|---|---|---|---|
+| Batch header | 32 for each batch, about 1 for each run | Magic, length, checksum, event count, `now_ms`, `batch_seq` | All of it: the clock of the batch, the order, the check for a torn record | Nothing |
+| Request event, header | 32 | Kind (1), padding (3), `seq` (4, not used), `aux` (4, not used), payload length (4), `exec_id` (8, zero: the core makes the id), `conn` (8) | Kind and length. `conn` names a connection that is gone after a crash: verify before a change | Nothing |
+| Request line | 9 | `POST /w3` and a newline | All of it: the route | The method and the path of the trigger item |
+| Request headers | 75 | The headers as JSON (`host`, `content-type`, `content-length`) and a newline | Only for a module that reads headers (`triggerHeaders`) | All of it, when the workflow saves data: the trigger item has `headers` |
+| Request body | 1,024 | The body bytes | Only the members that the code reads. W3 reads `body.id` | All of it, when the workflow saves data: the trigger item has `body` |
+| Padding of the request | 4 | To 8 bytes | Nothing | Nothing |
+| Result event, header | 32 | Kind, `seq` (the effect), `aux` (raw-body flag and head length), payload length, `exec_id`, `conn` (not used) | Kind, `seq`, `aux`, length, `exec_id` | Nothing |
+| Result payload | 27, and 5 of padding | `{"status":200,"headers":{}}` | The status. The shell already left out the headers and the body: the step flags say that the code reads neither | The whole result. The shell keeps the headers and the body when the execution has `exec_flag_data` (`stepReads`) |
+
+The request event is 1,144 bytes, the result event 64, the batch headers 1. The request body is 84.7% of the
+record, the request headers 6.2%, the two event headers 5.3%.
+
+The record must keep every input that changes what the core does: the route, the trigger members and the result
+members that the code reads, the clock, and the order of the events. For a workflow that saves execution data it
+must also keep the whole trigger item and the whole result of each step, because n8n's saved data must equal
+v1. Whether a workflow saves data is known at the start (`save_data` of the module, `exec_flag_data` of the
+execution), so the choices below never depend on how a run ends.
+
+Proposal, in order of gain. None of it is done: the record did not change.
+
+1. **Log only the trigger members that the module reads, when the module does not save data.** The compiler
+   already proves that W3 never reads the headers (`triggerHeaders: false`). Extend the proof to the body: the
+   module lists the member paths that the code reads. The log then holds the request line and a trigger with
+   only those members. For W3 that is `{"id":7}`: the request event goes from 1,144 to about 64 bytes, and the
+   record from 1,209 to about 130. Conditions: the module does not save data; no step gets the whole trigger (a
+   fallback host step, or the trigger passed on as one value); a dynamic read (`body[key]`) keeps the whole
+   body; and the replay decodes the logged form to the same trigger value that the first run made.
+2. **Leave out the headers JSON under the same condition** (75 bytes). It needs only the module flag that exists.
+3. **A short event header.** 16 bytes hold the kind, the payload length and `exec_id`; `seq` and `aux` follow
+   only for the kinds that use them; `conn` is not written if a replay does not need it. About 24 bytes for a W3
+   run. This is a new log version: do it together with item 1.
+4. **One copy of a large body for a module that saves data.** The body then goes to the log and, in the
+   `started` action, to the outbox. Check whether one of the two can refer to the other. No gain for W3.
+
+With a module that saves data, a request with a 1 KB body stays at about 1,209 bytes: n8n needs the body.
+
+## 12. The fill of `undefined` memory in a safe release build
+
+A ReleaseSafe build writes 0xAA to each `undefined` variable where it is declared. The model does not see these
+writes: they are stack memory without a call to `mem.zig`. A search of the release binary for 0xAA writes
+(`objdump -d`, 2026-11-17) found these on or near the path of a run:
+
+| Function | Bytes | When |
+|---|---|---|
+| `core.step` (`fireTimers`, the deferred timers) | 1,536 | Each batch. Removed: the array is now in scratch, taken at the first deferred timer |
+| `core.applyEvent` (`findRoute`, the path segments) | 1,024 | A request that matches no static route |
+| `core.webhookTrigger` | 768 and 16,384 | Not checked: read which branches reach them |
+| `shard.tickSome` | Two fills, size not read | Not checked |
+| `lib.callMethod`, `lib.callNative` | 29 and 4 places | The native that owns the buffer |
+
+To remove one, take the buffer from scratch or from the state, or declare it inside the branch that needs it.
+A new `@setRuntimeSafety(false)` is not the fix: the lint line `safety-off` cannot rise.
+
+## 13. The first findings that were acted on (2026-11-17)
+
+Four findings of the model became changes: no 0xAA fill of released regions and scratch in a release build; no
+empty entry of the interpreter after the effect of the only fibre; the fibre, the frame and the fuel in locals
+on the slow path; and calls, returns and the other slow forms inside the fast loop. The numbers are for one
+execution, before and after. The bytecode did not change. `bench-node` is the machine instructions of one
+execution (`/usr/bin/time -l`, Apple M-series host); it runs the compiled forms, the model runs the interpreter.
+
+| Case | Reads | Writes | Dependent loads | Modelled cycles | `bench-node` instructions |
+|---|---|---|---|---|---|
+| w3 | 246 to 201 | 99 to 96 | 90 to 79 | 11,401 to 11,177 | 18,789 to 17,792 |
+| 02-loops | 2,099 to 1,592 | 574 to 545 | 755 to 600 | 56,584 to 54,371 | 259,697 to 250,864 |
+| 14-json | 1,272 to 996 | 363 to 346 | 523 to 428 | 17,455 to 16,607 | 99,761 to 96,043 |
+| 18-library-http | 5,148 to 3,584 | 1,081 to 1,019 | 1,785 to 1,238 | 55,178 to 51,009 | 178,270 to 160,641 |
+| 19-library-slack-perplexity | 6,087 to 3,950 | 1,171 to 1,063 | 2,086 to 1,321 | 46,862 to 41,561 | 183,726 to 167,233 |
+| 32-luxon-expression | 246,529 to 122,284 | 41,163 to 36,002 | 74,626 to 29,443 | 1,181,618 to 901,206 | 4,452,422 to 4,151,284 |
+
+For w3, 7,500 of the modelled cycles are the system calls of a batch of one, which a server batch shares. After
+these changes the interpreter has no bail left, and the reads of the execution root for one w3 run went from 61
+to 32: the rest are in `core.zig` (the phases of a run), which is the next place to look.

@@ -45,6 +45,9 @@ comptime {
 pub const Cx = struct {
     vm: *Vm,
     fi: u32,
+    /// The fibre and its top frame. They are valid until an instruction
+    /// gives a flow other than `.next`.
+    f: *heap.Fibre,
     fr: *heap.Frame,
     /// The register window of the frame. The region does not move while
     /// the fibre runs, and the window moves only on a call.
@@ -143,7 +146,7 @@ fn hashStr(h: *std.hash.Wyhash, s: []const u8) void {
 /// is left in `cx.pending` for `runFibre`.
 pub fn slowOp(cx: *Cx, comptime op: Op, pc: u32) bool {
     cx.fr.pc = pc;
-    const res = interp.stepIn(cx.vm, cx.fi, cx.fr, cx.win, op, cx.code[pc], cx.now_ms, cx.limits);
+    const res = interp.stepIn(cx.vm, cx.fi, cx.f, cx.fr, cx.win, op, cx.code[pc], cx.now_ms, cx.limits);
     if (res) |flow| {
         if (flow == .next and cx.vm.charged == 0) return true;
     } else |_| {}
