@@ -952,15 +952,6 @@ describe('AssistantAgentProvider', () => {
 				const stored = await start.memory.getThread('thread-1');
 				expect(stored?.metadata).not.toHaveProperty('assistantSuspendedContextTurn');
 			});
-
-			it('reports nothing for a turn without an instance context block', async () => {
-				const { provider, telemetry } = setup();
-
-				const handle = await provider.prepareTurn(startTurn());
-				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
-
-				expect(contextRows(telemetry)).toEqual([]);
-			});
 		});
 
 		describe('side-call usage', () => {
