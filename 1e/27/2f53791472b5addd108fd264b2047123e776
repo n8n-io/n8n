@@ -1,0 +1,23 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8c6b0110a62f95::t_1b71661af2bf0b 327,568
+  s_8c6b0110a62f95::t_bc8e9b2f86567c 328,569
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8c6b0110a62f95::t_bc8e9b2f86567c 520-552,2038-2053,2055
+  s_8c6b0110a62f95::t_94cf40d2d02f61 2054,2056-2057
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e272f53791472b5addd108fd264b2047123e776",
+  "prompts": {},
+  "sessions": {
+    "s_8c6b0110a62f95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8dc29685-7c96-4a96-b600-feab9e804e0e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

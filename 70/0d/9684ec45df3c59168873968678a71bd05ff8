@@ -1,0 +1,161 @@
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_33852536738524::t_199734b31c57ad 32-33
+docs/generated/postgres-schema/README.md
+  s_33852536738524::t_41c292227ea09b 12,41,215,267,513,525,843
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_33852536738524::t_3804f6e3d6e62a 7,14,19,40,43,63,65,79,85,97,114-135,138
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_33852536738524::t_a0db40f28f2eac 65
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_33852536738524::t_d04b94c24e6da4 76
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_33852536738524::t_6c3219f3bc0481 51
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_33852536738524::t_b0351f144dfc2e 53
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_33852536738524::t_e5d9761e05ab11 44
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_33852536738524::t_a89d86b1772ca1 64
+docs/generated/postgres-schema/public.agent_execution.md
+  s_33852536738524::t_e993afd668e5d9 107,119
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_33852536738524::t_caf52dfd45a116 99
+docs/generated/postgres-schema/public.agent_files.md
+  s_33852536738524::t_5143b8dfd51e38 65
+docs/generated/postgres-schema/public.agent_history.md
+  s_33852536738524::t_c1a4ea966cc9d6 67
+docs/generated/postgres-schema/public.agent_plan.md
+  s_33852536738524::t_9b13345717007f 60,72
+docs/generated/postgres-schema/public.agent_publish_history.md
+  s_33852536738524::t_529a9af987ece6 62
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  s_33852536738524::t_4e6e8c67402203 48
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_33852536738524::t_18b70d4922b691 56
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_33852536738524::t_05158f51e6c1b3 50
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_33852536738524::t_64bb6b322f6cfb 44
+docs/generated/postgres-schema/public.agents.md
+  s_33852536738524::t_f0cf1b2e2a4bc0 8,37,59,71,101,134-155,157,169
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_33852536738524::t_99e674cc14a697 77
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_33852536738524::t_b3add38a943642 86
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_33852536738524::t_29d0246d23de70 53
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_33852536738524::t_e828e0f7cb25b9 75
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_33852536738524::t_15b8d67b7fe794 63
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_33852536738524::t_89039c11880c1a 57
+docs/generated/postgres-schema/public.agents_observations.md
+  s_33852536738524::t_4f9df289b51537 76
+docs/generated/postgres-schema/public.agents_tags.md
+  s_33852536738524::t_0f78b451fc99a5 41
+docs/generated/postgres-schema/public.execution_entity.md
+  s_33852536738524::t_87237a9722b9fc 12,65,95-124
+docs/generated/postgres-schema/public.folder.md
+  s_33852536738524::t_ccb60d65ca73ed 59
+docs/generated/postgres-schema/public.project.md
+  s_33852536738524::t_cf046ca96f5a85 153
+docs/generated/postgres-schema/public.user.md
+  s_33852536738524::t_e61a79c5dfbe1f 225
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_33852536738524::t_ae503b90dc20d0 12,70,141-162
+docs/generated/sqlite-schema/README.md
+  s_33852536738524::t_53f192a09dc84a 12,41,197,248,499,511,829
+docs/generated/sqlite-schema/agent_background_job.md
+  s_33852536738524::t_fe520c952df2a6 9,18,30,52-56,65,67,81,87,99,116-137,140
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_33852536738524::t_7926556754546e 72
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_33852536738524::t_bc511b338cf12c 77
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_33852536738524::t_2a98129ce3f767 60
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_33852536738524::t_fe36758d6b48b3 61
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_33852536738524::t_744d1d73259da7 54
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_33852536738524::t_18c36a99428b0c 69
+docs/generated/sqlite-schema/agent_execution.md
+  s_33852536738524::t_ba53dc3a405850 111,123
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_33852536738524::t_ee0fdfa283230e 99
+docs/generated/sqlite-schema/agent_files.md
+  s_33852536738524::t_0c67ddfc0e7426 68
+docs/generated/sqlite-schema/agent_history.md
+  s_33852536738524::t_66ba85ec245f34 74
+docs/generated/sqlite-schema/agent_plan.md
+  s_33852536738524::t_7b581abf55e1dd 65,77
+docs/generated/sqlite-schema/agent_publish_history.md
+  s_33852536738524::t_79d377909f6507 66
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  s_33852536738524::t_4f220341e1dcc0 58
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_33852536738524::t_70c59782676278 61
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_33852536738524::t_692ce8c3c07502 57
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_33852536738524::t_48426c6e281d40 54
+docs/generated/sqlite-schema/agents.md
+  s_33852536738524::t_5423a340438f96 9,19,46-50,59,71,101,134-155,157,169
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_33852536738524::t_57de501475dcec 80
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_33852536738524::t_6160a8093122b1 85
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_33852536738524::t_a03fbd9925b3c6 60
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_33852536738524::t_635efafac4f913 79
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_33852536738524::t_1185ad3d525f07 70
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_33852536738524::t_7851b4bf1d90ea 64
+docs/generated/sqlite-schema/agents_observations.md
+  s_33852536738524::t_3a6cd57c7e68c8 79
+docs/generated/sqlite-schema/agents_tags.md
+  s_33852536738524::t_f6fc6f4cee7779 52
+docs/generated/sqlite-schema/execution_entity.md
+  s_33852536738524::t_7d615d56f9a5c2 23,61,93-122
+docs/generated/sqlite-schema/folder.md
+  s_33852536738524::t_139cb83ed1c62c 65
+docs/generated/sqlite-schema/project.md
+  s_33852536738524::t_869c06be40f508 159
+docs/generated/sqlite-schema/user.md
+  s_33852536738524::t_c2af03fd52bf96 229
+docs/generated/sqlite-schema/workflow_entity.md
+  s_33852536738524::t_fae8d8b364bc35 23,69,140-161
+packages/@n8n/db/src/migrations/common/1794916566281-AddAgentApprovalJobKind.ts
+  s_33852536738524::t_1595fdf8159b0b 1-77
+packages/@n8n/db/src/migrations/common/1794916567037-AddAgentApprovalExecutionOwner.ts
+  s_33852536738524::t_8ecea0202c79b6 1-36
+packages/@n8n/db/src/migrations/sqlite/1794916567037-AddAgentApprovalExecutionOwner.ts
+  s_33852536738524::t_83becc96206a9e 1-6
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_33852536738524::t_88279ce55bbf9b 8-14,30-32,62-67,70-94
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_33852536738524::t_500ab2d5e2392f 8,48,72-82
+packages/cli/test/migration/1794916566281-add-agent-approval-job-kind.test.ts
+  s_33852536738524::t_fe116a29a69c66 1-78
+packages/cli/test/migration/1794916567037-add-agent-approval-execution-owner.test.ts
+  s_33852536738524::t_51a6810d3d42be 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "700d9684ec45df3c59168873968678a71bd05ff8",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_95bfe39bb3e379::t_fadb65495b7873 330-332
+  s_95bfe39bb3e379::t_31ac01a70254f4 319,325,339-341,346-352
+  s_95bfe39bb3e379::t_aee0f5fbf221cd 353
+packages/cli/src/controllers/__tests__/ai.controller.test.ts
+  s_95bfe39bb3e379::t_31ac01a70254f4 771-778
+packages/cli/src/services/__tests__/ai-usage.service.test.ts
+  s_95bfe39bb3e379::t_31ac01a70254f4 140,142-149,151-154
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-environment.factory.ts
+  s_95bfe39bb3e379::t_b1454cc59ccc01 181
+  s_95bfe39bb3e379::t_31ac01a70254f4 178-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6489dbcd62fddd707bdba7177e0513ace1a633a",
+  "prompts": {},
+  "sessions": {
+    "s_95bfe39bb3e379": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef9b81f8-ba5a-4f3b-b102-ea87734cbdb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

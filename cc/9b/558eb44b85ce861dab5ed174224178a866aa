@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/wouldHaveHappened.utils.test.ts
+  s_901f582250d1d3::t_b917abeee21147 1,49,54-59,73-90
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedCard.vue
+  s_901f582250d1d3::t_49b41ef045ad64 111
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappened.utils.ts
+  s_901f582250d1d3::t_f09a6093b58803 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc9b558eb44b85ce861dab5ed174224178a866aa",
+  "prompts": {},
+  "sessions": {
+    "s_901f582250d1d3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91e0-7468-b40f-e879d1d172c9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

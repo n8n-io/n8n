@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_c142e5092c494d::t_25a21a280acc06 429-432,434-436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c638b3813391b417b46d297e5fd4f2d0e11fd674",
+  "prompts": {},
+  "sessions": {
+    "s_c142e5092c494d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05b4e9c1-cda3-4318-9905-19eb001cfee9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

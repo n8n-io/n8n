@@ -1,0 +1,42 @@
+.agents/specs/rig.md
+  h_8fb27e0cdf6d1e 680-682
+packages/quality/environments/rig/src/commands/env.ts
+  h_8fb27e0cdf6d1e 7
+packages/quality/environments/rig/src/commands/lifecycle.ts
+  h_8fb27e0cdf6d1e 314-337,347-350,379,381-382,384
+packages/quality/environments/rig/src/commands/running.ts
+  h_8fb27e0cdf6d1e 149,356-359
+packages/quality/environments/rig/src/env/managed.ts
+  h_8fb27e0cdf6d1e 172-174
+packages/quality/environments/rig/src/env/resolve.ts
+  h_8fb27e0cdf6d1e 230,247-290
+packages/quality/environments/rig/src/environment.ts
+  h_8fb27e0cdf6d1e 23,255
+packages/quality/environments/rig/src/runtime/session.ts
+  h_8fb27e0cdf6d1e 76-78,100-101,103-111,175-189,224-230,457-458,460,462,467-513,587,589-597,631-632
+packages/quality/environments/rig/src/runtime/supervisor.ts
+  h_8fb27e0cdf6d1e 44-45,303-311
+packages/quality/environments/rig/src/services/compose.ts
+  h_8fb27e0cdf6d1e 301-314
+packages/quality/environments/rig/src/topology/components.ts
+  h_8fb27e0cdf6d1e 233-235
+packages/quality/environments/rig/test/commands.test.ts
+  h_8fb27e0cdf6d1e 1-44
+packages/quality/environments/rig/test/layers.test.ts
+  h_8fb27e0cdf6d1e 9
+packages/quality/environments/rig/test/runners.test.ts
+  h_8fb27e0cdf6d1e 74-75,80-93
+packages/quality/environments/rig/test/topology.test.ts
+  h_8fb27e0cdf6d1e 96-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea8a8a250e6aa3b2f00ecb8738220978e8e8ca84",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

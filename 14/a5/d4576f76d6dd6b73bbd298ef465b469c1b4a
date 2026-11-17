@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedCard.vue
+  s_901f582250d1d3::t_a3442d6ded9a00 111
+packages/frontend/editor-ui/src/features/agents/__tests__/wouldHaveHappened.utils.test.ts
+  s_901f582250d1d3::t_66870ea9545a9f 1,49,54-59,73-88
+  s_5db79975d3aa9b::t_be1502f74ac989 89-90
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappened.utils.ts
+  s_901f582250d1d3::t_04f175c9073d90 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14a5d4576f76d6dd6b73bbd298ef465b469c1b4a",
+  "prompts": {},
+  "sessions": {
+    "s_5db79975d3aa9b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6b9-bdd5-758c-aa99-6daa1c2bdd89",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_901f582250d1d3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91e0-7468-b40f-e879d1d172c9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

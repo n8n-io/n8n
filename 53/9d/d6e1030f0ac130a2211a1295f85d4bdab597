@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/N8n/v2/overrides.ts
+  s_c76b585b42ea77::t_bbad49e330cd66 41
+  s_c76b585b42ea77::t_e785cac9696882 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "539dd6e1030f0ac130a2211a1295f85d4bdab597",
+  "prompts": {},
+  "sessions": {
+    "s_c76b585b42ea77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "724c21c2-8296-4d6b-9342-442f4111d503",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
