@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAgentApprovalExecutionOwner1794916567037 implements ReversibleMigration {
+export class AddAgentApprovalExecutionOwner1794933124357 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column, addForeignKey, createIndex },
 	}: MigrationContext) {
