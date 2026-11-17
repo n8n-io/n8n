@@ -799,6 +799,11 @@ export function lowerNativeCluster(c: NodeContext): void {
 		w.line(
 			`if ((run.runs ?? []).length > 0) ctx.trace(${str(native.model)}, { $subRuns: run.runs });`,
 		);
+		if (native.parser !== undefined) {
+			w.line(
+				`if ((run.parserRuns ?? []).length > 0) ctx.trace(${str(native.parser)}, { $subRuns: run.parserRuns });`,
+			);
+		}
 		if (native.memory !== undefined) {
 			w.line(
 				`if ((run.memoryRuns ?? []).length > 0) ctx.trace(${str(native.memory)}, { $subRuns: run.memoryRuns });`,
@@ -815,7 +820,13 @@ export function lowerNativeCluster(c: NodeContext): void {
 			`ctx.trace(${str(c.node.name)}, { $error: { message: run.error, description: run.description ?? '' } });`,
 		);
 	}
-	w.line('throw new Error(run.error);');
+	// The error of v1 is a NodeOperationError: it carries the description of the sub-node.
+	w.line('const failure: Json = new Error(run.error);');
+	w.open("if (typeof run.description === 'string' && run.description !== '') {");
+	w.line("failure.name = 'NodeOperationError';");
+	w.line('failure.description = run.description;');
+	w.close();
+	w.line('throw failure;');
 	w.close();
 	w.line(`for (const r of run.items ?? []) ${out}.push(r);`);
 	w.close();

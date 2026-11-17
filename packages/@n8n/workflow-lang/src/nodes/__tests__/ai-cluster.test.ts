@@ -25,7 +25,12 @@ import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import { ENGINE_CASES, AI_HOST_CASES } from './ai-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
-import { applyCredential, networkErrorText, normalizeRequest } from './equivalence.ts';
+import {
+	applyCredential,
+	errorDetailOfResult,
+	networkErrorText,
+	normalizeRequest,
+} from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recordings: Record<string, Recording> = JSON.parse(
@@ -223,6 +228,11 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			const node = traced(out.trace ?? [], NODE);
 			expect(node.error).toBe(recording.error);
 			expect(out.status).toBe(recording.error === undefined ? 'ok' : 'error');
+			// A description that the library node gives is the description of v1.
+			const detail = errorDetailOfResult(out.result);
+			if (recording.error !== undefined && detail.description !== null) {
+				expect(detail.description).toBe(recording.errorDetail?.description);
+			}
 			if (recording.error === undefined) {
 				const outputs = recording.outputs ?? [];
 				expect(node.outputs).toEqual(outputs.length === 0 ? [[]] : outputs);
