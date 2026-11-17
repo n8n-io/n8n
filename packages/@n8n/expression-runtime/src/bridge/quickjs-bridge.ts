@@ -1,6 +1,12 @@
 import { LruCache } from '@n8n/utils/lru-cache';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import type {
+	QuickJSContext,
+	QuickJSHandle,
+	QuickJSRuntime,
+	QuickJSWASMModule as QuickJSWasm,
+} from 'quickjs-emscripten-core';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
 import {
@@ -24,6 +30,7 @@ import {
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
 import { HostDataResolver } from './host-data-resolver';
+import { errorOriginOf, tagErrorOrigin } from '../evaluator/error-classification';
 import {
 	dispatchHostCall,
 	escapeHostResult,
@@ -34,6 +41,7 @@ import {
 	serializeError,
 } from './host-functions';
 
+<<<<<<< HEAD
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
 // only loaded when QuickJsBridge.initialize() is actually called.
@@ -41,6 +49,8 @@ type QuickJSModule = typeof import('quickjs-emscripten');
 type QuickJSWasm = Awaited<ReturnType<QuickJSModule['getQuickJS']>>;
 let _quickjs: QuickJSModule | null = null;
 
+=======
+>>>>>>> 00b01195 (feat(editor): Report QuickJS shadow error origins (no-changelog) (#44061))
 /**
  * The instantiated WASM module that new bridges use, cached after the first
  * async initialize(). Creating runtimes/contexts from it is synchronous, so
@@ -52,11 +62,19 @@ let _quickjsWasmLoading: Promise<QuickJSWasm> | null = null;
 /** Runtime bundle source, read once per process by loadRuntimeBundle(). */
 let _runtimeBundle: string | null = null;
 
+<<<<<<< HEAD
 async function getQuickJSModule(): Promise<QuickJSModule> {
 	if (!_quickjs) {
 		_quickjs = await import('quickjs-emscripten');
 	}
 	return _quickjs;
+=======
+/** Loads only the release-sync variant. The quickjs-emscripten package makes a bundler ship all four variants. */
+async function newQuickJSWasm(): Promise<QuickJSWasm> {
+	// Load WASM only when a bridge initializes, not when the barrel file is imported.
+	const { newQuickJSWASMModuleFromVariant } = await import('quickjs-emscripten-core');
+	return await newQuickJSWASMModuleFromVariant(import('@jitl/quickjs-wasmfile-release-sync'));
+>>>>>>> 00b01195 (feat(editor): Report QuickJS shadow error origins (no-changelog) (#44061))
 }
 
 /**
@@ -137,6 +155,22 @@ function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
 		(value as Record<string, unknown>).__isUndefined === true &&
 		Object.keys(value).length === 1
 	);
+}
+
+/** The name of a thrown value: the `name` of an Error, else its `typeof`. */
+function errorNameOf(error: unknown): string {
+	return error instanceof Error ? error.name : typeof error;
+}
+
+/** The `name` of an error that QuickJS dumped, if it has one. */
+function guestErrorName(dump: unknown): string | undefined {
+	if (typeof dump === 'object' && dump !== null) {
+		const { name } = dump as Record<string, unknown>;
+		if (typeof name === 'string') {
+			return name;
+		}
+	}
+	return undefined;
 }
 
 function isErrorValueSentinel(value: unknown): value is {
@@ -524,8 +558,13 @@ type GuestOutcome = { kind: 'compileError' | 'error' | 'value'; dump: unknown };
  */
 export class QuickJsBridge implements RuntimeBridge {
 	private wasm: QuickJSWasm | undefined;
+<<<<<<< HEAD
 	private runtime: import('quickjs-emscripten').QuickJSRuntime | undefined;
 	private vm: import('quickjs-emscripten').QuickJSContext | undefined;
+=======
+	private runtime: QuickJSRuntime | undefined;
+	private vm: QuickJSContext | undefined;
+>>>>>>> 00b01195 (feat(editor): Report QuickJS shadow error origins (no-changelog) (#44061))
 	private initialized = false;
 	private disposed = false;
 
@@ -547,7 +586,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	private logger: Required<BridgeConfig>['logger'];
 
 	// Long-lived host-callback handles (Intl polyfill, character map) — disposed on dispose()
+<<<<<<< HEAD
 	private hostFunctionHandles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
+=======
+	private hostFunctionHandles: QuickJSHandle[] = [];
+>>>>>>> 00b01195 (feat(editor): Report QuickJS shadow error origins (no-changelog) (#44061))
 
 	// Memoized host Intl formatters keyed by ctor + locales + options.
 	// Construction dominates per-call cost (~39µs for a DateTimeFormat vs ~1µs
@@ -1223,6 +1266,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	 *
 	 * Callers must dispose the returned handles when the call completes.
 	 */
+<<<<<<< HEAD
 	private createCallbackHandles(
 		resolver: HostDataResolver,
 	): Array<import('quickjs-emscripten').QuickJSHandle> {
@@ -1230,6 +1274,13 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const vm = this.vm;
 		const handles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
+=======
+	private createCallbackHandles(resolver: HostDataResolver): QuickJSHandle[] {
+		if (!this.vm) throw new Error('Context not initialized');
+
+		const vm = this.vm;
+		const handles: QuickJSHandle[] = [];
+>>>>>>> 00b01195 (feat(editor): Report QuickJS shadow error origins (no-changelog) (#44061))
 
 		try {
 			handles.push(
@@ -1277,10 +1328,31 @@ export class QuickJsBridge implements RuntimeBridge {
 					// Throw the build error, not a dispose error.
 				}
 			}
-			throw error;
+			throw tagErrorOrigin(error, { kind: 'callback_setup', errorName: errorNameOf(error) });
 		}
 
 		return handles;
+	}
+
+	/**
+	 * Dispose every per-call host callback, then throw the first dispose error.
+	 * That error keeps its message and records its origin.
+	 */
+	private disposeCallbackHandles(handles: QuickJSHandle[]) {
+		const errors = handles.flatMap((handle) => {
+			try {
+				handle.dispose();
+				return [];
+			} catch (error) {
+				return [error];
+			}
+		});
+		if (errors.length > 0) {
+			throw tagErrorOrigin(errors[0], {
+				kind: 'callback_cleanup',
+				errorName: errorNameOf(errors[0]),
+			});
+		}
 	}
 
 	/**
@@ -1289,7 +1361,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * For primitives, uses the dedicated vm.newXxx() methods.
 	 * For complex objects (arrays, objects), uses JSON round-trip via evalCode.
 	 */
+<<<<<<< HEAD
 	private hostValueToQuickJSHandle(value: unknown): import('quickjs-emscripten').QuickJSHandle {
+=======
+	private hostValueToQuickJSHandle(value: unknown): QuickJSHandle {
+>>>>>>> 00b01195 (feat(editor): Report QuickJS shadow error origins (no-changelog) (#44061))
 		if (!this.vm) throw new Error('Context not initialized');
 
 		// Building a value runs guest code, which a broken runtime must not do.
@@ -1408,14 +1484,16 @@ export class QuickJsBridge implements RuntimeBridge {
 				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
 			} catch (error) {
 				if (!this.broken) {
-					this.hostErrorName = error instanceof Error ? error.name : typeof error;
+					this.hostErrorName = errorNameOf(error);
 				}
 				this.broken = true;
 				throw error;
 			}
 
 			if (outcome.kind === 'compileError') {
-				throw new Error(`Expression compilation failed: ${String(outcome.dump)}`);
+				throw tagErrorOrigin(new Error(`Expression compilation failed: ${String(outcome.dump)}`), {
+					kind: 'compile',
+				});
 			}
 
 			if (outcome.kind === 'error') {
@@ -1430,20 +1508,30 @@ export class QuickJsBridge implements RuntimeBridge {
 				if (errStr.includes('interrupted')) {
 					throw this.timeoutError(nested);
 				}
+				const uncaught = {
+					kind: 'guest_uncaught',
+					errorName: guestErrorName(errDump),
+				} as const;
 				if (
 					typeof errDump === 'object' &&
 					errDump !== null &&
 					typeof (errDump as Record<string, unknown>).message === 'string'
 				) {
-					throw new Error((errDump as Record<string, unknown>).message as string);
+					throw tagErrorOrigin(
+						new Error((errDump as Record<string, unknown>).message as string),
+						uncaught,
+					);
 				}
-				throw new Error(`Expression evaluation failed: ${errStr}`);
+				throw tagErrorOrigin(new Error(`Expression evaluation failed: ${errStr}`), uncaught);
 			}
 
 			// Only a thrown error reaches the host as a bare sentinel. The guest walk
 			// escapes any user object with the same flag.
 			if (isErrorSentinel(outcome.dump)) {
-				throw reconstructError(outcome.dump);
+				throw tagErrorOrigin(reconstructError(outcome.dump), {
+					kind: outcome.dump.fromHost === true ? 'host_callback' : 'guest',
+					errorName: outcome.dump.name,
+				});
 			}
 
 			const result = unwrapSentinels(outcome.dump);
@@ -1479,14 +1567,15 @@ export class QuickJsBridge implements RuntimeBridge {
 					{},
 				);
 			}
-			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+			throw tagErrorOrigin(
+				new Error(`Expression evaluation failed: ${errorMessage}`),
+				errorOriginOf(error) ?? { kind: 'bridge', errorName: errorNameOf(error) },
+			);
 		} finally {
 			resolver.dispose();
 			this.deadlines.pop();
 			if (!this.broken) {
-				for (const handle of callbackHandles) {
-					handle.dispose();
-				}
+				this.disposeCallbackHandles(callbackHandles);
 			} else if (this.deadlines.length === 0) {
 				// Only the outermost call drops the runtime. A nested call returns
 				// into the frames of the outer call, which still use the runtime.
@@ -1500,9 +1589,15 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * reports guest errors as results, so a throw from here is a host error.
 	 */
 	private runInGuest(
+<<<<<<< HEAD
 		vm: import('quickjs-emscripten').QuickJSContext,
 		wrappedCode: string,
 		callbackHandles: Array<import('quickjs-emscripten').QuickJSHandle>,
+=======
+		vm: QuickJSContext,
+		wrappedCode: string,
+		callbackHandles: QuickJSHandle[],
+>>>>>>> 00b01195 (feat(editor): Report QuickJS shadow error origins (no-changelog) (#44061))
 	): GuestOutcome {
 		const wrapperResult = vm.evalCode(wrappedCode);
 		if (wrapperResult.error) {
@@ -1552,7 +1647,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		} catch (error) {
 			// Clears this.vm, so the next execute() tries the rebuild again.
 			this.discardFailedRuntime();
-			throw error;
+			throw tagErrorOrigin(error, { kind: 'rebuild', errorName: errorNameOf(error) });
 		}
 	}
 
