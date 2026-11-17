@@ -23,6 +23,7 @@ import {
 	WAIT_INDEFINITELY,
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import { Container } from '@n8n/di';
@@ -454,17 +455,7 @@ describe('ExecuteContext', () => {
 				data: inputData,
 				source: null,
 			};
-			const state: IRunExecutionData = {
-				version: 1,
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: null,
-				},
-			};
+			const state = createRunExecutionData();
 			const complete = {
 				response: 'done',
 				structuredOutput: { ok: true },
