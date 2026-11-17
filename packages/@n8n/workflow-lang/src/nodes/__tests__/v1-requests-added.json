@@ -14915,5 +14915,56 @@
 			]
 		],
 		"nodePaired": [false]
+	},
+	"chainLlm file in the input item": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
 	}
 }

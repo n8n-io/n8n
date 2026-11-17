@@ -3788,6 +3788,49 @@ const PROMPT_DEFAULT_CASES: EquivalenceCase[] = [
 	),
 ];
 
+const withFile = (mimeType: string, fileName: string) => ({
+	items: [{ q: 'one', $binary: { data: { data: 'aGk=', mimeType, fileName } } }],
+});
+
+/**
+ * An input item with binary data. v1 gives the model an image and a text file of the item
+ * (`passthroughBinaryImages`, default on). The library node has no form of that: the cluster
+ * runs in the fallback host (`ai-cluster.test.ts`). The recordings are the facts of v1.
+ */
+export const BINARY_HOST_CASES: EquivalenceCase[] = [
+	...[2.2, 3.1].map((version) =>
+		agent(
+			`${version}, image in the input item`,
+			version,
+			gpt,
+			[completion('x')],
+			{},
+			withFile('image/png', 'a.png'),
+		),
+	),
+	agent(
+		'3.1, text file in the input item',
+		3.1,
+		gpt,
+		[completion('x')],
+		{},
+		withFile('text/plain', 'a.txt'),
+	),
+	agent(
+		'3.1, other file in the input item',
+		3.1,
+		gpt,
+		[completion('x')],
+		{},
+		withFile('application/zip', 'a.zip'),
+	),
+];
+
+/** The chain does not read the binary data of an input item. */
+const BINARY_CHAIN_CASES: EquivalenceCase[] = [
+	chain('file in the input item', gpt, [completion('x')], {}, withFile('image/png', 'a.png')),
+];
+
 /** Every case that runs in the engine of n8n and through the converter. */
 export const ENGINE_CASES: EquivalenceCase[] = [
 	...OUTPUT_PARSER_CASES,
@@ -3807,4 +3850,5 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...PARSER_UNUSED_CASES,
 	...GEMINI_DEFAULT_CASES,
 	...PROMPT_DEFAULT_CASES,
+	...BINARY_CHAIN_CASES,
 ];

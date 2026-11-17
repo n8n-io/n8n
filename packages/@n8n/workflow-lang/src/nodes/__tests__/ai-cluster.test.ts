@@ -24,7 +24,13 @@ import type { Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
 import { ChatMemoryStore } from '../../services/chat-memory.ts';
 import { runModule } from '../../testing/vm.ts';
-import { ENGINE_CASES, AI_HOST_CASES, TOOL_PENDING_CASES, TOOL_PROBE_CASES } from './ai-cases.ts';
+import {
+	ENGINE_CASES,
+	AI_HOST_CASES,
+	BINARY_HOST_CASES,
+	TOOL_PENDING_CASES,
+	TOOL_PROBE_CASES,
+} from './ai-cases.ts';
 import { ERROR_ITEM_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import {
@@ -650,6 +656,32 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			expect(convertWorkflow(manager, { trace: 'all', chatMemory: true }).fallbackNodes).toContain(
 				NODE,
 			);
+		});
+	});
+
+	describe.each(BINARY_HOST_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+		it('runs the agent in the fallback host, because v1 gives the model the files of the item', async () => {
+			const result = converted(c);
+			expect(result.fallbackNodes ?? []).not.toContain(NODE);
+			const compiled = compile(result.source);
+			expect(compiled.diagnostics).toEqual([]);
+			const hostStep = `${NODE} (fallback host)`;
+			const answer = [{ json: { output: 'from the host' } }];
+			const fixture: Fixture = {
+				...fixtureOf(c, result),
+				effects: { [hostStep]: [[{ items: answer }, { subRuns: { Model: [{ error: null }] } }]] },
+			};
+			const out = await runReference(result.source, fixture);
+			expect(out.status).toBe('ok');
+			// The library node does not run: no request goes to the model from the module.
+			expect(out.effects.filter((e) => e.step === NODE)).toEqual([]);
+			const host = out.effects.filter((e) => e.step === hostStep);
+			expect(host.map((e) => e.kind)).toEqual(['node']);
+			const args = isRecord(host[0].args) ? host[0].args : {};
+			expect(args.type).toBe(c.type);
+			expect(traced(out.trace ?? [], NODE).outputs).toEqual([answer]);
+			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
 		});
 	});
 

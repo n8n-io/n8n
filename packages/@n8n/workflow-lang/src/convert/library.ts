@@ -939,8 +939,12 @@ export function lowerNativeCluster(c: NodeContext): void {
 	}
 	// The store of the service can refuse a new session (`open` answers `{ host: true }`): the
 	// cluster then runs in the fallback host in the same run, where the v1 node keeps the session.
+	// The agent gives the model the images and the text files of an input item
+	// (`passthroughBinaryImages`). The library node has no form of that: with binary data in
+	// an input item, the cluster runs in the fallback host in the same run.
+	const readsFiles = c.node.type === `${LANGCHAIN_PREFIX}agent`;
 	let hostForm: HostForm | null = null;
-	if (native.memory !== undefined) {
+	if (native.memory !== undefined || readsFiles) {
 		hostForm = hostFormOf(c, (to) =>
 			lowerCluster(
 				to,
@@ -950,8 +954,8 @@ export function lowerNativeCluster(c: NodeContext): void {
 		// Without a host form the gate has no second form, so the host runs the cluster always.
 		if (hostForm === null) {
 			c.info(
-				'ai-cluster-host',
-				'The AI cluster runs in the fallback host: memory without a host form.',
+				toolNodes.length > 0 ? 'ai-tools-host' : 'ai-cluster-host',
+				'The AI cluster runs in the fallback host: the cluster has no host form.',
 			);
 			lowerAiNode(c);
 			return;
@@ -994,7 +998,15 @@ export function lowerNativeCluster(c: NodeContext): void {
 		],
 	};
 	const retry = errorRetry(c);
-	w.open(`if (${c.input}.length > 0) {`);
+	if (readsFiles) {
+		w.open(`for (const item of ${c.input}) {`);
+		w.line('const files: Json = item.$binary;');
+		w.line(
+			`if (typeof files === 'object' && files !== null && Object.keys(files).length > 0) ${inHost} = true;`,
+		);
+		w.close();
+	}
+	w.open(`if (${readsFiles ? `!${inHost} && ` : ''}${c.input}.length > 0) {`);
 	w.line('let run: Json = {};');
 	if (withTools) {
 		// The loop of the agent: a turn of the model in the library node, then a step of the

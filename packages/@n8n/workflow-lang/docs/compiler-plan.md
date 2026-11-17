@@ -773,6 +773,17 @@ reads for all items of a batch before the first write), a key expression with a 
 - The custom error texts that v1 makes from the code of an OpenAI error in the vendor node were not seen in
   the recorder (its failed answer has no error code at the place where the node looks).
 
+- **Binary data in an input item of the agent.** v1 gives the model each image and each text file
+  of the input item as a second user message (`options.passthroughBinaryImages`, default on; text
+  files always; recorded for versions 2.2 and 3.1). The library node has no form of that. The
+  converted source of each agent has the host form of the cluster too (`hostFormOf`): when an input
+  item has an entry in `$binary`, the cluster runs in the fallback host in the same run, before a
+  request goes to the model. The chain does not read binary data (recorded). Cost: the module of
+  each native agent has the host call of the cluster; a run has one test for each input item. With
+  a memory, such a run uses the session of the host, not the session of the store (see "A change of
+  the form forgets").
+- **A memory session of two forms.** See above.
+
 Closed and proven against the engine: a tool call of the model for an agent without tools (version 3: the
 engine runs the agent again, up to `maxIterations`; version 2: LangChain answers "... is not a valid tool" and
 calls the model again), and a request without an answer under each error setting (the vendor nodes give
