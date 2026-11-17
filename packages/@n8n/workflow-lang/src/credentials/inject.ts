@@ -188,6 +188,53 @@ const MANUAL_RULES: Record<string, ManualRule> = {
 		headers: { 'user-agent': 'n8n' },
 		basicAuth: { user: '', password: '{{$credentials.apiKey}}' },
 	}),
+	// The types below have an `authenticate` function that adds to the request and reads only
+	// the credential data: no header of the request is lost, and the method and the URL do not
+	// matter. A type whose function replaces the headers or reads the request has no rule.
+	// AzureAiSearchApi.authenticate: the key in the header `api-key`.
+	azureAiSearchApi: () => ({ headers: { 'api-key': '{{$credentials.apiKey}}' } }),
+	// NvidiaApi.authenticate: a bearer token, and nothing without a key.
+	nvidiaApi: (data) =>
+		data === undefined || Boolean(data.apiKey)
+			? { headers: { Authorization: 'Bearer {{$credentials.apiKey}}' } }
+			: {},
+	// LemonadeApi.authenticate: a bearer token, and nothing when the key is empty or blank.
+	lemonadeApi: (data) =>
+		data === undefined || (typeof data.apiKey === 'string' && data.apiKey.trim() !== '')
+			? { headers: { Authorization: 'Bearer {{$credentials.apiKey}}' } }
+			: {},
+	// BitbucketAccessTokenApi.authenticate: basic auth with the email and the access token.
+	bitbucketAccessTokenApi: () => ({
+		basicAuth: { user: '{{$credentials.email}}', password: '{{$credentials.accessToken}}' },
+	}),
+	// UProcApi.authenticate: basic auth with the email and the API key.
+	uprocApi: () => ({
+		basicAuth: { user: '{{$credentials.email}}', password: '{{$credentials.apiKey}}' },
+	}),
+	// GhostContentApi.authenticate: the key in the query.
+	ghostContentApi: () => ({ qs: { key: '{{$credentials.apiKey}}' } }),
+	// SchemaRegistryApi.authenticate: basic auth, only when the user and the password are set.
+	schemaRegistryApi: (data) => {
+		const filled = (value: unknown) => typeof value === 'string' && value !== '';
+		const sends =
+			data === undefined ||
+			(data.authentication === 'basicAuth' && filled(data.username) && filled(data.password));
+		return sends
+			? { basicAuth: { user: '{{$credentials.username}}', password: '{{$credentials.password}}' } }
+			: {};
+	},
+	// HttpMultipleHeadersAuth.authenticate: each row of `headers.values` is a header, and a
+	// later row wins. The rows are in a list, which a template cannot address, so the inject
+	// has the values, as for `httpCustomAuth`.
+	httpMultipleHeadersAuth: (data) => {
+		const list = isRecord(data?.headers) ? data.headers.values : undefined;
+		const headers: Record<string, string> = {};
+		for (const row of Array.isArray(list) ? list : []) {
+			if (!isRecord(row) || typeof row.name !== 'string' || typeof row.value !== 'string') continue;
+			headers[row.name] = row.value;
+		}
+		return Object.keys(headers).length > 0 ? { headers } : {};
+	},
 	// The HTTP Request node applies these generic types in its own code.
 	httpBasicAuth: () => ({
 		basicAuth: { user: '{{$credentials.user}}', password: '{{$credentials.password}}' },

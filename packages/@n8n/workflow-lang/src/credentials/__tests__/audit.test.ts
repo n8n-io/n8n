@@ -9,7 +9,8 @@ import {
 	emptyRequest,
 	KNOWN_DIFFERENCES,
 } from '../audit.ts';
-import { DEFAULT_NODE_PACKAGES } from '../types.ts';
+import { deriveInject } from '../inject.ts';
+import { DEFAULT_NODE_PACKAGES, loadCredentialClasses, registryOf } from '../types.ts';
 
 describe('applyInject', () => {
 	it('sets a default header only when the request has no header of that name', () => {
@@ -104,9 +105,56 @@ describe.runIf(built)('the derived inject against the real n8n authenticate', ()
 			expect(entry?.skipped).toBeUndefined();
 			expect(entry?.differences).toEqual([]);
 		}
+		// Types whose `authenticate` function only adds to the request, from the credential data.
+		for (const type of [
+			'azureAiSearchApi',
+			'nvidiaApi',
+			'lemonadeApi',
+			'bitbucketAccessTokenApi',
+			'uprocApi',
+			'ghostContentApi',
+			'schemaRegistryApi',
+		]) {
+			const entry = byName.get(type);
+			expect(entry?.kind, type).toBe('manual');
+			expect(entry?.skipped, type).toBeUndefined();
+			expect(entry?.differences, type).toEqual([]);
+		}
+		// The fake data of the audit has no rows for this type, so v1 fails on it: see the next test.
+		expect(byName.get('httpMultipleHeadersAuth')?.kind).toBe('manual');
 		// The known difference: v1 sets the header, the rule leaves it out.
 		expect(byName.get('openAiApi')?.differences).toEqual([
 			'header "OpenAI-Organization": v1 sets "", the inject sets none',
 		]);
 	}, 300_000);
+
+	it('gives the headers of `httpMultipleHeadersAuth` as its authenticate does', async () => {
+		const { types } = loadCredentialClasses();
+		const loaded = types.find((t) => t.info.name === 'httpMultipleHeadersAuth');
+		const authenticate: unknown = Reflect.get(loaded?.instance ?? {}, 'authenticate');
+		expect(typeof authenticate).toBe('function');
+		const data = {
+			headers: {
+				values: [
+					{ name: 'X-Key', value: 'first' },
+					{ name: 'X-Other', value: 'b c' },
+					{ name: 'X-Key', value: 'last' },
+				],
+			},
+		};
+		const v1 = (await Reflect.apply(authenticate as never, loaded?.instance, [
+			data,
+			{ url: 'https://example.test/x', headers: { 'X-Keep': '1' } },
+		])) as { headers: Record<string, string> };
+		const registry = registryOf(types.map((t) => t.info));
+		const derived = deriveInject(registry, 'httpMultipleHeadersAuth', data);
+		expect(derived.kind).toBe('manual');
+		const request = emptyRequest();
+		request.headers['X-Keep'] = '1';
+		expect(applyInject(derived.inject, data, request).headers).toEqual(v1.headers);
+		// Without rows, v1 adds nothing.
+		expect(
+			deriveInject(registry, 'httpMultipleHeadersAuth', { headers: { values: [] } }).inject,
+		).toEqual({});
+	});
 });

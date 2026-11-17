@@ -9,11 +9,11 @@ The credentials tool writes an `inject` rule for each credential type that the c
 ## Summary
 
 * Credential types loaded: 453
-* The runtime applies the inject for 278 of them (generic, oauth2, manual)
+* The runtime applies the inject for 293 of them (generic, oauth2, manual)
 * The runtime applies the inject and the rule differs: 2
 * Of those, 2 stay different, with the reason in the table
-* The node goes to the fallback host and the rule differs: 30
-* Not compared: 119 of the applied kinds, and 145 of the other kinds
+* The node goes to the fallback host and the rule differs: 15
+* Not compared: 120 of the applied kinds, and 145 of the other kinds
 
 ## Types that the runtime applies
 
@@ -37,10 +37,12 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | baserowTokenApi | generic | same |  |
 | beeminderApi | generic | same |  |
 | beeminderOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
+| bitbucketAccessTokenApi | manual | same |  |
 | bitlyOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | boxOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | brandfetchApi | generic | same |  |
 | calApi | generic | same |  |
+| calendlyApi | manual | same |  |
 | calendlyOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | carbonBlackApi | generic | same |  |
 | ciscoMerakiApi | generic | same |  |
@@ -82,6 +84,7 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | freshworksCrmApi | generic | same |  |
 | getResponseApi | generic | same |  |
 | getResponseOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
+| ghostContentApi | manual | same |  |
 | githubApi | generic | same |  |
 | githubOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | gitlabApi | generic | same |  |
@@ -123,6 +126,7 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | httpBasicAuth | manual | not compared | no authenticate: the node code applies the credential |
 | httpBearerAuth | generic | same |  |
 | httpHeaderAuth | generic | same |  |
+| httpMultipleHeadersAuth | manual | not compared | v1 failed on the fake data (filled: Cannot read properties of undefined (reading 'reduce'); toggled: Cannot read properties of undefined (reading 'reduce')) |
 | httpCustomAuth | manual | not compared | no authenticate: the node code applies the credential |
 | httpQueryAuth | manual | not compared | no authenticate: the node code applies the credential |
 | hubspotApi | generic | same |  |
@@ -141,6 +145,7 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | keapOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | kibanaApi | generic | same |  |
 | koBoToolboxApi | generic | same |  |
+| lemlistApi | manual | same |  |
 | linearApi | generic | same |  |
 | linearOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | lineNotifyOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
@@ -181,6 +186,7 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | nasaApi | generic | same |  |
 | netlifyApi | generic | same |  |
 | citrixAdcApi | generic | same |  |
+| nextCloudApi | manual | same |  |
 | nextCloudOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | nocoDb | generic | same |  |
 | nocoDbApiToken | generic | same |  |
@@ -214,6 +220,8 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | rocketchatApi | generic | same |  |
 | rundeckApi | generic | same |  |
 | salesforceOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
+| schemaRegistryApi | manual | same |  |
+| segmentApi | manual | same |  |
 | sekoiaApi | generic | same |  |
 | sendGridApi | generic | same |  |
 | sendInBlueApi | generic | same |  |
@@ -222,6 +230,7 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | sentryIoServerApi | generic | same |  |
 | serviceNowOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | serviceNowBasicApi | generic | same |  |
+| shopifyApi | manual | same |  |
 | shopifyAccessTokenApi | generic | same |  |
 | shopifyOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | slackApi | generic | same |  |
@@ -247,12 +256,14 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | todoistOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | togglApi | generic | same |  |
 | trellixEpoApi | generic | same |  |
+| trelloApi | manual | same |  |
 | twakeCloudApi | generic | same |  |
 | twilioApi | manual | same |  |
 | twistOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | twitterOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | typeformApi | generic | same |  |
 | typeformOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
+| uprocApi | manual | same |  |
 | uptimeRobotApi | generic | same |  |
 | urlScanIoApi | generic | same |  |
 | verticaApi | generic | same |  |
@@ -269,12 +280,14 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | xeroOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | youTubeOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | zabbixApi | generic | same |  |
+| zendeskApi | manual | same |  |
 | zendeskOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | zohoOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | zoomApi | generic | same |  |
 | zoomOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | alibabaCloudApi | generic | same |  |
 | anthropicApi | manual | same |  |
+| azureAiSearchApi | manual | same |  |
 | azureOpenAiApi | generic | same |  |
 | azureEntraCognitiveServicesOAuth2Api | oauth2 | not compared | v1 signs it with requestOAuth2, not with authenticate |
 | braveSearchApi | generic | same |  |
@@ -290,6 +303,8 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | mistralCloudApi | generic | same |  |
 | minimaxApi | generic | same |  |
 | moonshotApi | generic | same |  |
+| lemonadeApi | manual | same |  |
+| nvidiaApi | manual | same |  |
 | ollamaApi | generic | same |  |
 | openRouterApi | generic | same |  |
 | pineconeApi | generic | same |  |
@@ -308,33 +323,18 @@ These types derive a `generic`, `oauth2` or `manual` inject. A `differs` row is 
 | --- | --- | --- | --- |
 | actionNetworkApi | unsupported | **differs** | authenticate is a function — header "OSDI-API-Token": v1 sets it, the inject does not (data: defaults) |
 | aws | unsupported | **differs** | authenticate is a function — header "host": v1 sets it, the inject does not; header "x-amz-date": v1 sets it, the inject does not; header "authorization": v1 sets it, the inject does not; header "x-amz-security-token": v1 sets it, the inject does not (data: defaults) |
-| bitbucketAccessTokenApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: defaults) |
-| calendlyApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: defaults) |
 | convertKitApi | unsupported | **differs** | authenticate is a function — query "api_secret": v1 sets it, the inject does not (data: defaults) |
 | datadogApi | unsupported | **differs** | authenticate is a function — header "DD-API-KEY": v1 sets it, the inject does not; header "DD-APPLICATION-KEY": v1 sets it, the inject does not (data: defaults) |
 | discourseApi | unsupported | **differs** | authenticate is a function — header "Api-Key": v1 sets it, the inject does not; header "Api-Username": v1 sets it, the inject does not (data: defaults) |
 | elasticSecurityApi | unsupported | **differs** | authenticate is a function — header "kbn-xsrf": v1 sets it, the inject does not; header "Authorization": v1 sets it, the inject does not (data: defaults) |
-| ghostContentApi | unsupported | **differs** | authenticate is a function — query "key": v1 sets it, the inject does not (data: defaults) |
-| httpMultipleHeadersAuth | unsupported | **differs** | authenticate is a function — header "": v1 sets it, the inject does not (data: defaults) |
 | invoiceNinjaApi | unsupported | **differs** | authenticate is a function — header "Accept": v1 sets it, the inject does not; header "X-Ninja-Token": v1 sets it, the inject does not (data: defaults) |
-| lemlistApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not; header "user-agent": v1 sets it, the inject does not (data: defaults) |
 | mailerLiteApi | unsupported | **differs** | authenticate is a function — header "X-MailerLite-ApiKey": v1 sets it, the inject does not; header "Authorization": v1 sets it, the inject does not (data: defaults) |
 | mindeeInvoiceApi | unsupported | **differs** | authenticate is a function — header "X-Inferuser-Token": v1 sets it, the inject does not (data: defaults) |
 | mindeeReceiptApi | unsupported | **differs** | authenticate is a function — header "X-Inferuser-Token": v1 sets it, the inject does not (data: defaults) |
-| nextCloudApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: defaults) |
 | pushoverApi | unsupported | **differs** | authenticate is a function — query "token": v1 sets it, the inject does not (data: defaults) |
-| schemaRegistryApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: filled) |
-| segmentApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: defaults) |
-| shopifyApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: defaults) |
-| trelloApi | unsupported | **differs** | authenticate is a function — query "key": v1 sets it, the inject does not; query "token": v1 sets it, the inject does not (data: defaults) |
-| uprocApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: defaults) |
 | wooCommerceApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not; query "consumer_key": v1 sets it, the inject does not; query "consumer_secret": v1 sets it, the inject does not (data: defaults) |
-| zendeskApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: defaults) |
-| azureAiSearchApi | unsupported | **differs** | authenticate is a function — header "api-key": v1 sets it, the inject does not (data: defaults) |
 | chromaSelfHostedApi | unsupported | **differs** | header Authorization: the expression "$credentials.authentication === "apiKey" && $credentials.apiKey ? "Bearer " + $credentials.apiKey : """ is not a credential field; header X-Chroma-Token: the expression "$credentials.authentication === "token" && $credentials.token ? $credentials.token : """ is not a credential field — header "Authorization": v1 sets it, the inject does not; header "X-Chroma-Token": v1 sets it, the inject does not (data: defaults) |
 | customModelEndpointApi | unsupported | **differs** | authenticate is a function — header "authorization": v1 sets it, the inject does not (data: defaults) |
-| lemonadeApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: filled) |
-| nvidiaApi | unsupported | **differs** | authenticate is a function — header "Authorization": v1 sets it, the inject does not (data: filled) |
 | zepApi | unsupported | **differs** | header Authorization: the expression "$credentials.apiKey && !$credentials.cloud ? "Bearer " + $credentials.apiKey : "Api-Key " + $credentials.apiKey" is not a credential field — header "Authorization": v1 sets it, the inject does not (data: defaults) |
 
 ## Other types

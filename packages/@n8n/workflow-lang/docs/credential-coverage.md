@@ -10,13 +10,13 @@ Packages: `n8n-nodes-base` (413), `@n8n/n8n-nodes-langchain` (40).
 |---|---|---|
 | Converted: generic `authenticate` | 155 | 34.2% |
 | Converted: OAuth2 bearer token (extends `oAuth2Api`) | 116 | 25.6% |
-| Converted: hand-written rule | 14 | 3.1% |
-| **Converted, total** | **285** | **62.9%** |
-| Not convertible | 47 | 10.4% |
+| Converted: hand-written rule | 22 | 4.9% |
+| **Converted, total** | **293** | **64.7%** |
+| Not convertible | 39 | 8.6% |
 | No `authenticate`: the node code applies the credential | 121 | 26.7% |
 | **Total** | **453** | |
 
-Of the 332 types that declare how to sign a request (an `authenticate` property, OAuth2, or a hand-written rule), the tool converts 285 (85.8%).
+Of the 332 types that declare how to sign a request (an `authenticate` property, OAuth2, or a hand-written rule), the tool converts 293 (88.3%).
 
 Notes:
 
@@ -28,11 +28,11 @@ Notes:
 
 | Reason | Types | Examples |
 |---|---|---|
-| authenticate is a function | 29 | `actionNetworkApi`, `aws`, `awsAssumeRole`, `azureAiSearchApi`, `azureStorageSharedKeyApi` |
+| authenticate is a function | 21 | `actionNetworkApi`, `aws`, `awsAssumeRole`, `azureStorageSharedKeyApi`, `ciscoSecureEndpointApi` |
 | the type gets a token with a request first | 13 | `atlassianServiceAccountApi`, `auth0ManagementApi`, `baserowApi`, `ciscoUmbrellaApi`, `crowdStrikeOAuth2Api` |
 | OAuth1 signs each request | 3 | `oAuth1Api`, `trelloOAuth1Api`, `twitterOAuth1Api` |
 | complex expression (a condition, a function call or another operator) | 2 | `chromaSelfHostedApi`, `zepApi` |
 
 ## Hand-written rules
 
-`anthropicApi`, `calendlyApi`, `httpBasicAuth`, `httpCustomAuth`, `httpQueryAuth`, `lemlistApi`, `nextCloudApi`, `notionApi`, `openAiApi`, `segmentApi`, `shopifyApi`, `trelloApi`, `twilioApi`, `zendeskApi`
+`anthropicApi`, `azureAiSearchApi`, `bitbucketAccessTokenApi`, `calendlyApi`, `ghostContentApi`, `httpBasicAuth`, `httpCustomAuth`, `httpMultipleHeadersAuth`, `httpQueryAuth`, `lemlistApi`, `lemonadeApi`, `nextCloudApi`, `notionApi`, `nvidiaApi`, `openAiApi`, `schemaRegistryApi`, `segmentApi`, `shopifyApi`, `trelloApi`, `twilioApi`, `uprocApi`, `zendeskApi`
