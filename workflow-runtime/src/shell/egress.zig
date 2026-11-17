@@ -1101,7 +1101,7 @@ pub const Client = struct {
             r.rule = c.rules.intern(opts) catch |e| {
                 switch (e) {
                     error.Full => c.failFreeFmt(ri, "http: too many different rules of responseBinary ({d}) (limit)", .{store_rule.max_rules}),
-                    error.Invalid => c.failFree(ri, "http: storeTypes and inlineTypes of responseBinary must be short lists of texts"),
+                    error.Invalid => c.failFree(ri, "http: storeTypes and inlineTypes of responseBinary must be short lists of texts, or texts with commas between them"),
                 }
                 return false;
             };

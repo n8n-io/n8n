@@ -288,9 +288,9 @@ export interface ResponseBinary {
 	 * content type has one of these texts and none of `inlineTypes` (the `includes` of
 	 * JavaScript). Another response has its usual body. `fileName` and `mimeType` are not read.
 	 */
-	storeTypes?: string[];
+	storeTypes?: string[] | string;
 	/** With `storeTypes`: a content type with one of these texts is never stored. */
-	inlineTypes?: string[];
+	inlineTypes?: string[] | string;
 	/** Stores the body of a response of each status, not only 200 to 299. */
 	anyStatus?: boolean;
 }

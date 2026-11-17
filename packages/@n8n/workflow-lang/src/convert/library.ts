@@ -1540,6 +1540,8 @@ function lowerHttpLibrary(c: NodeContext): void {
 	let contentTypeHeader: [string, string] | null = null;
 	/** True when the node stores the body of the response as a file of the item. */
 	let storesFile = false;
+	/** True when the runtime can store the body by its content type (`autodetect`). */
+	let detectsFile = false;
 	const options = isRecord(p.options) ? p.options : {};
 	if (v >= 3) {
 		if (
@@ -1696,6 +1698,15 @@ function lowerHttpLibrary(c: NodeContext): void {
 				);
 			}
 			storesFile = true;
+		} else if (
+			v >= 3 &&
+			(response.responseFormat === undefined || response.responseFormat === 'autodetect') &&
+			method === 'GET' &&
+			c.node.onError !== 'continueErrorOutput'
+		) {
+			// A file that the runtime cannot store (over its largest size, or no store) is a
+			// result for v1. The node then runs in the fallback host, which can send a GET again.
+			detectsFile = true;
 		}
 		// The library node reads these response options (`src/nodes/http-request.ts`).
 		const kept: Array<[string, Code]> = [];
@@ -1916,6 +1927,24 @@ function lowerHttpLibrary(c: NodeContext): void {
 			replay,
 		);
 		return;
+	}
+	if (detectsFile) {
+		const replay = c.local('Replay');
+		const answers = replayOf(replay);
+		const hostForm = hostFormOf(c, (to) =>
+			lowerHostNode(to, 1, [['host', raw("'fallback'")], answers.host]),
+		);
+		if (hostForm !== null) {
+			entries.push(answers.compiled);
+			emitWithHostForm(
+				c,
+				false,
+				(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+				hostForm,
+				replay,
+			);
+			return;
+		}
 	}
 	// v1 sends one request for each item.
 	emitStep(c, call);

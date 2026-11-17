@@ -2,7 +2,9 @@
 //! (spec 7.1): `storeTypes` and `inlineTypes` are lists of texts. The body
 //! goes to the binary data store when the content type of the response has
 //! one text of `storeTypes` and no text of `inlineTypes`. The test is the
-//! `includes` of JavaScript: bytes, with the case of the letters.
+//! `includes` of JavaScript: bytes, with the case of the letters. A list is
+//! a JSON array of strings, or one string with a comma between two texts
+//! (a program then builds no list for each request).
 //!
 //! The caller gives the rule as data, so the runtime knows no node. A
 //! request names the same rule each time, so the client keeps each rule
@@ -51,9 +53,35 @@ pub const Rule = struct {
         return false;
     }
 
-    /// Add the texts of the JSON array `list`. The count of the texts.
+    /// Add the texts of one JSON string, which has a comma between two
+    /// texts. The count of the texts. The string is decoded in place: each
+    /// comma becomes the length byte of the text after it.
+    fn addJoined(r: *Rule, raw: []const u8) Table.Error!u8 {
+        std.debug.assert(r.packed_len <= r.packed_texts.len);
+        const room = r.packed_texts[r.packed_len..];
+        if (room.len < 1) return error.Invalid;
+        var out: creds.Out = .{ .buf = room[1..] };
+        http.unescape(raw, &out) catch |e| switch (e) {
+            error.NoSpace, error.BadString => return error.Invalid,
+        };
+        var n: u8 = 0;
+        var start: usize = 0;
+        for (0..out.len + 1) |i| {
+            if (i < out.len and room[1 + i] != ',') continue;
+            if (n == max_texts or i - start > max_text) return error.Invalid;
+            room[start] = @intCast(i - start);
+            start = i + 1;
+            n += 1;
+        }
+        r.packed_len += @intCast(1 + out.len);
+        return n;
+    }
+
+    /// Add the texts of `list`: a JSON array of strings, or one string
+    /// (`addJoined`). The count of the texts.
     fn addList(r: *Rule, list: []const u8) Table.Error!u8 {
         std.debug.assert(r.packed_len <= r.packed_texts.len);
+        if (list.len > 0 and list[0] == '"') return r.addJoined(list);
         var elements = http.Elements.init(list) orelse return error.Invalid;
         var n: u8 = 0;
         for (0..max_texts + 1) |_| {
@@ -152,7 +180,7 @@ test "a rule that is not lists of texts takes no row" {
     var table: Table = .{};
     try t.expect(Table.has("{\"storeTypes\":[]}"));
     try t.expect(!Table.has("{\"fileName\":\"a\"}"));
-    try t.expectError(error.Invalid, table.intern("{\"storeTypes\":\"image/\"}"));
+    try t.expectError(error.Invalid, table.intern("{\"storeTypes\":7}"));
     try t.expectError(error.Invalid, table.intern("{\"storeTypes\":[1]}"));
     try t.expectError(error.Invalid, table.intern("{\"storeTypes\":[\"a\"],\"inlineTypes\":{}}"));
     try t.expectEqual(@as(u8, 0), table.n);
@@ -161,4 +189,23 @@ test "a rule that is not lists of texts takes no row" {
     try t.expect(!table.rules[i].stores("a"));
     const j = try table.intern("{\"storeTypes\":[\"image\\/\"]}");
     try t.expect(table.rules[j].stores("image/gif"));
+}
+
+test "a list is also one string with a comma between two texts" {
+    const t = std.testing;
+    var table: Table = .{};
+    const i = try table.intern("{\"inlineTypes\":\"application/json\",\"storeTypes\":\"image/,application\\/pdf,audio/\"}");
+    const r = &table.rules[i];
+    try t.expectEqual(@as(u8, 1), r.n_inline);
+    try t.expectEqual(@as(u8, 3), r.n_store);
+    try t.expect(r.stores("image/png") and r.stores("x application/pdf") and r.stores("audio/ogg"));
+    try t.expect(!r.stores("application/json; image/") and !r.stores("text/csv") and !r.stores(""));
+    // The same texts as lists give the same answers.
+    const j = try table.intern("{\"inlineTypes\":[\"application/json\"],\"storeTypes\":[\"image/\",\"application/pdf\",\"audio/\"]}");
+    try t.expectEqualSlices(u8, r.packed_texts[0..r.packed_len], table.rules[j].packed_texts[0..table.rules[j].packed_len]);
+    // A text of a string has at most 255 bytes.
+    var long: [600]u8 = @splat('a');
+    @memcpy(long[0..15], "{\"storeTypes\":\"");
+    @memcpy(long[598..600], "\"}");
+    try t.expectError(error.Invalid, table.intern(&long));
 }

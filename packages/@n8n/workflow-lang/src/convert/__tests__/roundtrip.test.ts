@@ -109,8 +109,16 @@ describe('round trip through the canvas projection', () => {
 				[' (history size)', ' (history size after)'].some(
 					(suffix) => name.endsWith(suffix) && byName.has(name.slice(0, -suffix.length)),
 				);
+			// The fallback-host form of an HTTP Request node (for a response over a limit of the
+			// runtime) is a step of the node, with or without the wait of its retries.
+			const hostForm = (name: string) =>
+				[' (fallback host)', ' (fallback host) (retry)'].some(
+					(suffix) => name.endsWith(suffix) && byName.has(name.slice(0, -suffix.length)),
+				);
 			const steps = new Set(
-				manifest.steps.map((s) => s.name).filter((n) => !retryWait(n) && !historySize(n)),
+				manifest.steps
+					.map((s) => s.name)
+					.filter((n) => !retryWait(n) && !historySize(n) && !hostForm(n)),
 			);
 			for (const step of steps) {
 				const original = byName.get(step);
