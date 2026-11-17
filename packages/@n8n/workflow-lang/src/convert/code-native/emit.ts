@@ -5,7 +5,7 @@
  * The expression is a call of an arrow function. Its parameters take the
  * input list and the lists of the other nodes that the code reads, so the
  * user code cannot see or change the variables of the workflow. It copies the
- * lists as JSON, as the fallback host gets them, and wraps the items as
+ * lists as JSON, as the fallback host gets them (but see `sharesInput`), and wraps the items as
  * `{ json, pairedItem }`, with the position of the item as v1's paired item.
  * The user code runs in an inner function, so its `return` gives the result,
  * which `codeItems` turns into the result list.
@@ -13,14 +13,22 @@
 import type { Translation } from './translate.ts';
 import { ALL_NODES, MATCHES, FIRST_JSON, INDEX, ITEM, ITEMS, nodeVar, P } from './translate.ts';
 
+/**
+ * True when the code reads the input list without a copy. The copy does three things: it
+ * keeps changes of the code away from the list, it makes each value plain JSON (no
+ * `undefined`, no NaN) as the task runner of v1 gets it, and it gives each object one place
+ * only. So the code needs no copy when it provably changes nothing (`Translation.readOnly`)
+ * and the list is plain JSON that came from a parse (`plainInput`: the result of a native
+ * Code node or of a step of the fallback host).
+ */
+function sharesInput(t: Translation, plainInput: boolean): boolean {
+	return plainInput && t.readOnly;
+}
+
 /** The helpers that `emitExpression` calls, besides those of the translation. */
-export function emitHelpers(t: Translation, mode: 'all' | 'each'): string[] {
-	const out = new Set([
-		'codeClone',
-		'codeWrap',
-		mode === 'each' ? 'codeEachItems' : 'codeItems',
-		...t.helpers,
-	]);
+export function emitHelpers(t: Translation, mode: 'all' | 'each', plainInput = false): string[] {
+	const out = new Set(['codeWrap', mode === 'each' ? 'codeEachItems' : 'codeItems', ...t.helpers]);
+	if (!sharesInput(t, plainInput) || t.nodes.length > 0) out.add('codeClone');
 	if (t.nodes.length > 0) out.add('codeWrapJson');
 	if (t.usesCollections) out.add('collPlain');
 	return [...out];
@@ -36,6 +44,7 @@ export function emitExpression(
 	input: string,
 	lists: string[],
 	allLists: string[] = [],
+	plainInput = false,
 ): string {
 	const raw = (k: number) => `${P}r${k}`;
 	const params = [
@@ -49,8 +58,9 @@ export function emitExpression(
 			`const ${nodeVar(k)}: Json[] = codeClone(${raw(k)}).map((${P}j: Json, ${P}k: number) => codeWrapJson(${P}j, ${P}k));`,
 		);
 	});
+	const source = sharesInput(t, plainInput) ? `${P}in` : `codeClone(${P}in)`;
 	head.push(
-		`let ${ITEMS}: Json[] = codeClone(${P}in).map((${P}j: Json, ${P}k: number) => codeWrap(${P}j, ${P}k));`,
+		`let ${ITEMS}: Json[] = ${source}.map((${P}j: Json, ${P}k: number) => codeWrap(${P}j, ${P}k));`,
 	);
 	if (t.usesMatchProps) head.push(`const ${MATCHES}: Json[] = [];`);
 	// The user code keeps its text: indenting it would change multi-line template literals.

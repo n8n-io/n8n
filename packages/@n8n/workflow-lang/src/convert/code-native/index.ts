@@ -55,8 +55,14 @@ export function codeOf(
 export type NativeAttempt =
 	| {
 			ok: true;
-			expression: (input: string, lists: string[], allLists?: string[]) => string;
-			helpers: string[];
+			/** `plainInput`: the input list is plain JSON from a parse (see `emit.ts`). */
+			expression: (
+				input: string,
+				lists: string[],
+				allLists?: string[],
+				plainInput?: boolean,
+			) => string;
+			helpers: (plainInput?: boolean) => string[];
 	  }
 	| { ok: false; blockers: Blocker[] };
 
@@ -105,9 +111,9 @@ export function attemptNative(
 		nodes: t.nodes,
 		zones: [...t.zones],
 		allNodes: t.allNodes,
-		expression: (input, lists, allLists = []) =>
-			emitExpression(t, src.mode, input, lists, allLists),
-		helpers: emitHelpers(t, src.mode),
+		expression: (input, lists, allLists = [], plainInput = false) =>
+			emitExpression(t, src.mode, input, lists, allLists, plainInput),
+		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput),
 	};
 }
 
@@ -192,13 +198,16 @@ export function lowerCodeNative(c: NodeContext): boolean {
 		if (list === null) throw new NodeFailure('code-native', `Node "${name}" has no list.`);
 		return list;
 	});
-	for (const h of attempt.helpers) c.helper(h);
-	for (const z of attempt.zones ?? []) c.useZone?.(z);
 	const { w, input } = c;
+	const plainInput = c.plainLists?.has(input) ?? false;
+	for (const h of attempt.helpers(plainInput)) c.helper(h);
+	for (const z of attempt.zones ?? []) c.useZone?.(z);
 	const out = c.output(0);
 	const allLists = (attempt.allNodes ?? []).map((name) => c.ranBefore(name) ?? '[]');
-	const expr = attempt.expression(input, lists, allLists);
+	const expr = attempt.expression(input, lists, allLists, plainInput);
 	if (onError === 'stopWorkflow') {
+		// The result list comes from a JSON parse (`codeItems`), and no other code assigns it.
+		c.plainLists?.add(out);
 		w.block(`const ${out}: Json[] = ${input}.length > 0 ? ${expr} : [];`);
 		return true;
 	}

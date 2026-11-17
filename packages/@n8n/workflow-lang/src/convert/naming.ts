@@ -129,7 +129,11 @@ export class NameTable {
 		this.taken.add(name);
 	}
 
+	/** Runs when a name becomes free: facts that the generator keeps for the name end here. */
+	onRelease?: (name: string) => void;
+
 	release(name: string): void {
+		this.onRelease?.(name);
 		if (!RESERVED.has(name)) this.taken.delete(name);
 	}
 }

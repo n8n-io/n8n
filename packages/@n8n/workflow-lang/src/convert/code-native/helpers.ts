@@ -1218,7 +1218,7 @@ function collKeysOf(v: Json, which: string): Json[] {
 }`,
 	},
 	hasOwnOf: {
-		uses: [],
+		uses: ['objectPrototypeName'],
 		source: `/** \`x.hasOwnProperty(k)\` and \`Object.hasOwn(x, k)\` for JSON values. */
 function hasOwnOf(x: Json, k: Json): boolean {
 	if (x === undefined || x === null) {
@@ -1230,8 +1230,66 @@ function hasOwnOf(x: Json, k: Json): boolean {
 		const i = Number(key);
 		return String(i) === key && Number.isInteger(i) && i >= 0 && i < x.length;
 	}
-	if (typeof x !== 'object') return false;
-	return key in x;
+	if (typeof x !== 'object' || !(key in x)) return false;
+	// \`in\` is also true for the names of \`Object.prototype\`, which are own keys only when the object has them.
+	if (key.length < 7 || !objectPrototypeName(key)) return true;
+	return Object.keys(x).includes(key);
+}`,
+	},
+	objectPrototypeName: {
+		uses: [],
+		source: `/** True for the name of a property of \`Object.prototype\`. */
+function objectPrototypeName(key: string): boolean {
+	return (
+		key === 'toString' ||
+		key === 'constructor' ||
+		key === 'valueOf' ||
+		key === 'hasOwnProperty' ||
+		key === '__proto__' ||
+		key === 'toLocaleString' ||
+		key === 'isPrototypeOf' ||
+		key === 'propertyIsEnumerable' ||
+		key === '__defineGetter__' ||
+		key === '__defineSetter__' ||
+		key === '__lookupGetter__' ||
+		key === '__lookupSetter__'
+	);
+}`,
+	},
+	arrayOfLength: {
+		uses: [],
+		source: `/** \`Array(n)\`: a list of n empty places, or the list of the value when it is not a number. */
+function arrayOfLength(n: Json): Json[] {
+	if (typeof n !== 'number') return [n];
+	if (!(n >= 0) || n > 4294967295 || Math.floor(n) !== n) {
+		throw new RangeError('Invalid array length');
+	}
+	const out: Json[] = [];
+	for (let k = 0; k < n; k++) out.push(undefined);
+	return out;
+}`,
+	},
+	arrayFill: {
+		uses: [],
+		source: `/** \`list.fill(v)\` for a new list. */
+function arrayFill(list: Json[], v: Json): Json[] {
+	for (let k = 0; k < list.length; k++) list[k] = v;
+	return list;
+}`,
+	},
+	localeCaseOf: {
+		uses: [],
+		source: `/** \`value.toLocaleLowerCase()\` and \`value.toLocaleUpperCase()\` without a locale. */
+function localeCaseOf(value: Json, upper: boolean): string {
+	if (typeof value !== 'string') {
+		const name = upper ? 'toLocaleUpperCase' : 'toLocaleLowerCase';
+		throw new TypeError(
+			value === undefined || value === null
+				? 'Cannot read properties of ' + value + " (reading '" + name + "')"
+				: name + ' is not a function',
+		);
+	}
+	return upper ? value.toUpperCase() : value.toLowerCase();
 }`,
 	},
 	pushAll: {

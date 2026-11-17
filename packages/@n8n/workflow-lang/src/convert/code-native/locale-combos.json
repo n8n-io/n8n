@@ -2051,5 +2051,615 @@
 	["toLocaleTimeString", "nl-NL", { "hour": "2-digit", "hourCycle": "h23", "minute": "2-digit" }],
 	["DateTimeFormat", "nl-NL", { "day": "numeric", "month": "short", "year": "numeric" }],
 	["toLocaleString", "pl-PL", { "maximumFractionDigits": 2, "minimumFractionDigits": 2 }],
-	["toLocaleString", "fr-FR", { "month": "long", "year": "numeric" }]
+	["toLocaleString", "fr-FR", { "month": "long", "year": "numeric" }],
+	["toLocaleString", "en-ZA", {}],
+	[
+		"toLocaleString",
+		"en-AU",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleString", "cs-CZ", {}],
+	["toLocaleTimeString", "nl-NL", { "hour": "2-digit", "minute": "2-digit" }],
+	[
+		"DateTimeFormat",
+		"en-CA",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hourCycle": "h23",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	[
+		"DateTimeFormat",
+		"en-GB",
+		{ "day": "2-digit", "hour": "2-digit", "hour12": false, "month": "2-digit", "year": "numeric" }
+	],
+	["toLocaleDateString", "fr-FR", { "weekday": "long" }],
+	["toLocaleDateString", "fr-FR", { "month": "long" }],
+	["DateTimeFormat", "ru-RU", { "hour": "2-digit", "hour12": false, "minute": "2-digit" }],
+	[
+		"toLocaleString",
+		"en-CA",
+		{ "day": "numeric", "hour": "numeric", "hour12": true, "minute": "2-digit", "month": "short" }
+	],
+	["toLocaleDateString", "en-CA", { "day": "numeric", "month": "long", "weekday": "long" }],
+	["toLocaleString", "en-CA", { "dateStyle": "medium", "timeStyle": "short" }],
+	["toLocaleDateString", "ja-JP", { "day": "numeric", "month": "long", "year": "numeric" }],
+	["toLocaleString", "ru-RU", { "maximumFractionDigits": 2, "minimumFractionDigits": 2 }],
+	["DateTimeFormat", "pl-PL", { "day": "numeric" }],
+	[
+		"toLocaleString",
+		"de-CH",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleDateString", "de-CH", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	["toLocaleTimeString", "de-CH", { "hour": "2-digit", "minute": "2-digit" }],
+	["toLocaleDateString", "pt-PT", { "month": "long", "year": "numeric" }],
+	["toLocaleTimeString", "it-IT", { "hour": "2-digit", "minute": "2-digit" }],
+	["toLocaleString", "ar-SA", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	[
+		"toLocaleString",
+		"en-US",
+		{ "day": "numeric", "month": "long", "weekday": "long", "year": "numeric" }
+	],
+	["toLocaleString", "fr-FR", { "hour": "2-digit", "minute": "2-digit" }],
+	[
+		"toLocaleString",
+		"nl-NL",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleTimeString", "en-GB", { "hour12": false }],
+	[
+		"toLocaleString",
+		"es-CL",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleString", "en-US", { "timeZoneName": "short" }],
+	["toLocaleString", "es-AR", { "weekday": "long" }],
+	["toLocaleString", "uk-UA", {}],
+	[
+		"DateTimeFormat",
+		"en-US",
+		{ "hour": "2-digit", "hour12": false, "minute": "2-digit", "timeZoneName": "shortOffset" }
+	],
+	[
+		"DateTimeFormat",
+		"en-US",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"timeZoneName": "shortOffset",
+			"year": "numeric"
+		}
+	],
+	[
+		"toLocaleDateString",
+		"en-AE",
+		{ "day": "numeric", "month": "long", "weekday": "long", "year": "numeric" }
+	],
+	["toLocaleString", "en-US", { "day": "numeric", "month": "numeric" }],
+	["toLocaleString", "en-US", { "hour": "numeric", "hour12": true }],
+	["toLocaleTimeString", "fr-FR", {}],
+	["toLocaleTimeString", "es-US", { "hour": "2-digit", "hour12": true, "minute": "2-digit" }],
+	[
+		"toLocaleString",
+		"en-CA",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": true,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	[
+		"toLocaleDateString",
+		"es-VE",
+		{ "day": "2-digit", "month": "long", "weekday": "long", "year": "numeric" }
+	],
+	["toLocaleDateString", "es-VE", {}],
+	[
+		"toLocaleString",
+		"en-AU",
+		{ "day": "2-digit", "hour": "2-digit", "hour12": true, "minute": "2-digit", "month": "2-digit" }
+	],
+	[
+		"toLocaleString",
+		"en-US",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"weekday": "short",
+			"year": "numeric"
+		}
+	],
+	[
+		"DateTimeFormat",
+		"en-AU",
+		{
+			"day": "2-digit",
+			"hour": "numeric",
+			"hourCycle": "h12",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "2-digit"
+		}
+	],
+	["toLocaleTimeString", "fi-FI", { "hour": "2-digit", "minute": "2-digit" }],
+	["toLocaleDateString", "fi-FI", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	["toLocaleString", "es-ES", { "dateStyle": "short", "timeStyle": "short" }],
+	["DateTimeFormat", "en-US", { "hour": "2-digit", "hourCycle": "h23", "weekday": "short" }],
+	[
+		"DateTimeFormat",
+		"en-US",
+		{ "day": "2-digit", "month": "2-digit", "weekday": "short", "year": "numeric" }
+	],
+	[
+		"DateTimeFormat",
+		"en-GB",
+		{ "hour": "2-digit", "hour12": false, "timeZoneName": "shortOffset" }
+	],
+	["toLocaleTimeString", "de-DE", { "hour": "2-digit" }],
+	["toLocaleString", "es-AR", { "currency": "ARS", "style": "currency" }],
+	[
+		"toLocaleString",
+		"en-CA",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "short",
+			"year": "numeric"
+		}
+	],
+	["toLocaleDateString", "fr-FR", { "month": "long", "year": "numeric" }],
+	["toLocaleDateString", "fr-FR", { "weekday": "short" }],
+	["NumberFormat", "fr-FR", { "currency": "EUR", "style": "currency" }],
+	["toLocaleDateString", "de-DE", { "day": "numeric", "month": "long", "year": "numeric" }],
+	[
+		"toLocaleDateString",
+		"en-US",
+		{ "day": "numeric", "month": "short", "weekday": "long", "year": "numeric" }
+	],
+	["toLocaleString", "en-AU", { "hour": "2-digit", "hour12": true, "minute": "2-digit" }],
+	["DateTimeFormat", "en-GB", { "day": "2-digit", "month": "2-digit", "year": "2-digit" }],
+	[
+		"DateTimeFormat",
+		"en-GB",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleDateString", "es-ES", { "weekday": "long" }],
+	["DateTimeFormat", "en-GB", { "day": "2-digit", "month": "short" }],
+	["NumberFormat", "ja-JP", {}],
+	["toLocaleString", "fr-FR", { "dateStyle": "short", "timeStyle": "short" }],
+	["toLocaleDateString", "en-GB", { "day": "2-digit", "month": "short" }],
+	[
+		"toLocaleString",
+		"es-CO",
+		{
+			"day": "numeric",
+			"hour": "2-digit",
+			"hour12": true,
+			"minute": "2-digit",
+			"month": "long",
+			"weekday": "long"
+		}
+	],
+	["toLocaleTimeString", "de-CH", {}],
+	["toLocaleString", "en-AU", { "hour": "numeric", "hour12": false }],
+	["toLocaleDateString", "he-IL", { "day": "numeric", "month": "long", "year": "numeric" }],
+	["toLocaleDateString", "he-IL", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	["toLocaleDateString", "en-GB", { "day": "numeric", "month": "short", "year": "numeric" }],
+	[
+		"DateTimeFormat",
+		"en-CA",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"weekday": "short",
+			"year": "numeric"
+		}
+	],
+	[
+		"DateTimeFormat",
+		"en-US",
+		{
+			"day": "numeric",
+			"hour": "numeric",
+			"hour12": true,
+			"minute": "2-digit",
+			"month": "short",
+			"second": "2-digit",
+			"timeZoneName": "short",
+			"weekday": "short",
+			"year": "numeric"
+		}
+	],
+	[
+		"toLocaleString",
+		"en-US",
+		{ "day": "numeric", "hour": "numeric", "minute": "2-digit", "month": "numeric" }
+	],
+	[
+		"toLocaleString",
+		"uk-UA",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleDateString", "es-UY", { "day": "2-digit", "month": "2-digit" }],
+	["toLocaleTimeString", "es-UY", { "hour": "2-digit", "hour12": false, "minute": "2-digit" }],
+	["toLocaleString", "de-DE", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	["toLocaleString", "en-us", { "weekday": "long" }],
+	["toLocaleDateString", "en-AU", { "day": "numeric", "month": "short", "weekday": "short" }],
+	["toLocaleDateString", "es-PE", { "day": "numeric", "month": "long", "weekday": "long" }],
+	[
+		"toLocaleString",
+		"en-GB",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["DateTimeFormat", "fr-FR", { "dateStyle": "medium", "timeStyle": "short" }],
+	["toLocaleDateString", "pl-PL", { "day": "numeric", "month": "long", "year": "numeric" }],
+	["toLocaleTimeString", "pl-PL", { "hour": "2-digit", "minute": "2-digit", "second": "2-digit" }],
+	["toLocaleString", "en-CA", { "month": "long", "year": "numeric" }],
+	[
+		"DateTimeFormat",
+		"de-DE",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["DateTimeFormat", "en-GB", { "day": "numeric", "month": "long", "weekday": "long" }],
+	[
+		"toLocaleDateString",
+		"de-DE",
+		{ "day": "numeric", "month": "short", "weekday": "short", "year": "numeric" }
+	],
+	[
+		"DateTimeFormat",
+		"fa-IR-u-nu-latn",
+		{ "day": "2-digit", "month": "2-digit", "year": "numeric" }
+	],
+	["DateTimeFormat", "es-CO", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	[
+		"DateTimeFormat",
+		"es-CO",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	[
+		"toLocaleString",
+		"en-US",
+		{
+			"day": "numeric",
+			"hour": "numeric",
+			"minute": "2-digit",
+			"month": "short",
+			"weekday": "short"
+		}
+	],
+	[
+		"toLocaleString",
+		"nl-NL",
+		{ "day": "2-digit", "hour": "2-digit", "minute": "2-digit", "month": "2-digit" }
+	],
+	["toLocaleString", null, { "maximumFractionDigits": 2, "minimumFractionDigits": 2 }],
+	["toLocaleString", "de-DE", { "hour12": false }],
+	["toLocaleDateString", "tr-TR", {}],
+	["toLocaleString", "en-US", { "dateStyle": "long", "timeStyle": "short" }],
+	["toLocaleDateString", "es-CO", { "day": "numeric", "month": "long", "weekday": "long" }],
+	[
+		"toLocaleString",
+		"pt-PT",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleDateString", "pt-PT", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	["DateTimeFormat", "en-AU", { "weekday": "long" }],
+	[
+		"toLocaleDateString",
+		"en-ZA",
+		{ "day": "numeric", "month": "long", "weekday": "long", "year": "numeric" }
+	],
+	["toLocaleString", "default", { "month": "short" }],
+	[
+		"toLocaleString",
+		"en-AU",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "short",
+			"year": "numeric"
+		}
+	],
+	["toLocaleString", "de-DE", { "dateStyle": "medium", "timeStyle": "short" }],
+	["toLocaleString", "en-GB", { "dateStyle": "short", "timeStyle": "medium" }],
+	["toLocaleString", "en-AU", { "currency": "AUD", "style": "currency" }],
+	["DateTimeFormat", "en-AU", { "day": "numeric", "month": "long", "weekday": "long" }],
+	[
+		"DateTimeFormat",
+		"en-AU",
+		{ "hour": "2-digit", "hourCycle": "h23", "minute": "2-digit", "second": "2-digit" }
+	],
+	["NumberFormat", "fi-FI", { "currency": "EUR", "style": "currency" }],
+	[
+		"NumberFormat",
+		"en-US",
+		{
+			"currency": "USD",
+			"maximumFractionDigits": 2,
+			"minimumFractionDigits": 2,
+			"style": "currency"
+		}
+	],
+	[
+		"toLocaleDateString",
+		"en-SG",
+		{ "day": "numeric", "month": "long", "weekday": "long", "year": "numeric" }
+	],
+	[
+		"toLocaleDateString",
+		"en-US",
+		{ "day": "numeric", "hour": "2-digit", "minute": "2-digit", "month": "long", "year": "numeric" }
+	],
+	["toLocaleString", "pt-BR", { "dateStyle": "short", "timeStyle": "medium" }],
+	["toLocaleDateString", "en-GB", { "month": "long", "year": "numeric" }],
+	["toLocaleString", "en-GB", { "dateStyle": "short", "timeStyle": "short" }],
+	[
+		"DateTimeFormat",
+		"en-GB",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"weekday": "long",
+			"year": "numeric"
+		}
+	],
+	["toLocaleDateString", "ar-SA", { "weekday": "long" }],
+	[
+		"DateTimeFormat",
+		"en-US",
+		{ "hour": "2-digit", "hour12": false, "minute": "2-digit", "weekday": "long" }
+	],
+	[
+		"DateTimeFormat",
+		"de-DE",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hourCycle": "h23",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleDateString", "fr-FR", { "day": "numeric", "month": "long", "weekday": "long" }],
+	["toLocaleTimeString", "sv-SE", { "hour": "2-digit", "minute": "2-digit" }],
+	["DateTimeFormat", "it-IT", { "hour": "numeric", "hour12": false }],
+	["toLocaleString", "cs-CZ", { "maximumFractionDigits": 2, "minimumFractionDigits": 2 }],
+	[
+		"toLocaleString",
+		"hu-HU",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleTimeString", "en-CA", { "hour": "2-digit", "hour12": false, "minute": "2-digit" }],
+	[
+		"toLocaleString",
+		"fr-FR",
+		{ "day": "numeric", "hour": "2-digit", "minute": "2-digit", "month": "long", "weekday": "long" }
+	],
+	["toLocaleTimeString", "en-AU", { "hour": "numeric", "hour12": true, "minute": "2-digit" }],
+	[
+		"DateTimeFormat",
+		"en-AU",
+		{
+			"day": "2-digit",
+			"hour": "numeric",
+			"hour12": true,
+			"minute": "2-digit",
+			"month": "short",
+			"weekday": "short",
+			"year": "numeric"
+		}
+	],
+	[
+		"DateTimeFormat",
+		"en-US",
+		{
+			"day": "numeric",
+			"hour": "numeric",
+			"hour12": true,
+			"minute": "2-digit",
+			"month": "short",
+			"weekday": "short"
+		}
+	],
+	["DateTimeFormat", "fr-FR", { "day": "2-digit", "month": "long", "year": "numeric" }],
+	["toLocaleTimeString", "tr-TR", { "hour": "2-digit", "minute": "2-digit" }],
+	["toLocaleDateString", "en-IN", { "weekday": "long" }],
+	["toLocaleDateString", "en-IN", { "day": "numeric", "month": "short", "year": "numeric" }],
+	["DateTimeFormat", "pt-BR", { "hour": "2-digit", "hour12": false, "minute": "2-digit" }],
+	["toLocaleDateString", "pt-BR", { "day": "2-digit", "month": "2-digit" }],
+	["toLocaleTimeString", "de-DE", {}],
+	["toLocaleDateString", "et-ET", { "day": "2-digit", "month": "2-digit", "year": "numeric" }],
+	["DateTimeFormat", "pt-BR", { "dateStyle": "short", "timeStyle": "short" }],
+	[
+		"toLocaleString",
+		"cs-CZ",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"year": "numeric"
+		}
+	],
+	[
+		"toLocaleString",
+		"en-US",
+		{ "day": "2-digit", "hour": "2-digit", "minute": "2-digit", "month": "short" }
+	],
+	["toLocaleString", "en-US", { "weekday": "short" }],
+	[
+		"toLocaleString",
+		"en-AU",
+		{ "day": "numeric", "hour": "numeric", "minute": "2-digit", "month": "short" }
+	],
+	[
+		"DateTimeFormat",
+		"hu-HU",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleString", "pt-PT", { "maximumFractionDigits": 2, "minimumFractionDigits": 2 }],
+	[
+		"toLocaleDateString",
+		"pt-PT",
+		{ "day": "2-digit", "month": "long", "weekday": "long", "year": "numeric" }
+	],
+	["DateTimeFormat", "en-US", { "day": "numeric", "month": "long", "year": "numeric" }],
+	["toLocaleDateString", "pt-BR", { "day": "2-digit", "month": "long", "weekday": "long" }],
+	["NumberFormat", "en-US", { "currency": "USD", "maximumFractionDigits": 0, "style": "currency" }],
+	["DateTimeFormat", "en-US", { "day": "numeric", "month": "short" }],
+	["toLocaleString", "de-DE", { "dateStyle": "short", "timeStyle": "short" }],
+	[
+		"DateTimeFormat",
+		"es-GT",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit",
+			"second": "2-digit",
+			"year": "numeric"
+		}
+	],
+	["toLocaleString", "ja-JP", { "hour12": false }],
+	["toLocaleDateString", "tr-TR", { "day": "numeric", "month": "long" }],
+	[
+		"DateTimeFormat",
+		"fr-FR",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"hour12": false,
+			"minute": "2-digit",
+			"month": "2-digit"
+		}
+	],
+	[
+		"toLocaleDateString",
+		"nl-BE",
+		{
+			"day": "2-digit",
+			"hour": "2-digit",
+			"minute": "2-digit",
+			"month": "2-digit",
+			"year": "numeric"
+		}
+	],
+	[
+		"toLocaleDateString",
+		"nl-BE",
+		{ "day": "numeric", "month": "long", "weekday": "long", "year": "numeric" }
+	],
+	["toLocaleDateString", "es-MX", { "day": "2-digit", "month": "short" }],
+	["toLocaleDateString", "es-MX", { "day": "numeric", "month": "long" }],
+	["toLocaleDateString", "es-MX", { "month": "long", "year": "numeric" }],
+	["DateTimeFormat", "en-GB", { "hour": "2-digit", "hour12": false, "weekday": "short" }]
 ]

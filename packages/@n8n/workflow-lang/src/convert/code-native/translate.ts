@@ -81,6 +81,11 @@ export interface Translation {
 	helpers: Set<string>;
 	/** True when the code can change objects that it gets, so it needs copies. */
 	mutates: boolean;
+	/**
+	 * True when the code provably changes no object that it gets (\`provesReadOnly\`): then it
+	 * can read an input list that is plain JSON without a copy.
+	 */
+	readOnly: boolean;
 	/** The code reads `$json` of the first item (all-items mode). */
 	usesFirstJson: boolean;
 	/** The code reads the clock or the random generator. */
@@ -471,6 +476,246 @@ function isBufferFrom(e: ts.Expression): boolean {
 	);
 }
 
+/** Methods that change their receiver: the ones of lists, and the ones of a Set or a Map. */
+const RECEIVER_CHANGERS = new Set([...MUTATING_METHODS, 'add', 'set', 'delete', 'clear']);
+
+/** List methods that give a new list. */
+const NEW_LIST_METHODS = new Set(['map', 'filter', 'slice', 'concat', 'flatMap', 'flat']);
+
+/** List methods that take a `this` value after the callback. */
+const THIS_ARG_METHODS = new Set([
+	'forEach',
+	'map',
+	'filter',
+	'some',
+	'every',
+	'find',
+	'findIndex',
+	'findLast',
+	'findLastIndex',
+	'flatMap',
+]);
+
+/** Functions of `Object` that change nothing. */
+const OBJECT_READERS = new Set(['keys', 'values', 'entries', 'fromEntries', 'hasOwn', 'is']);
+
+/**
+ * True when the code provably changes no object that it gets: not an input item, not a
+ * part of one, not an item of another node.
+ *
+ * Every change in JavaScript is an assignment to a property, a `delete`, or a call of a
+ * built-in that changes its receiver or its first argument. The proof allows these only on
+ * a local variable that only ever holds a list or an object that the code made itself
+ * (a literal, `Object.keys(…)`, `list.map(…)` of a list, …) or the list of the input items
+ * (`items`, `$input.all()`), which is a list of the node's own wrappers. A change of
+ * anything else, a way to call a built-in indirectly (`call`, `apply`, `bind`, a computed
+ * method name, a `this` argument) and `this` itself give "not proven". The proof errs to
+ * "not proven": then the code gets copies.
+ */
+function provesReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode): boolean {
+	const free = (id: ts.Identifier): boolean => {
+		const sym = checker.getSymbolAtLocation(id);
+		return sym === undefined || (sym.declarations ?? []).length === 0;
+	};
+	const freeNamed = (e: ts.Expression, name: string): boolean =>
+		ts.isIdentifier(e) && e.text === name && free(e);
+	/** `G.m(…)` of a free global `G`: the name `m`, or null. */
+	const staticCall = (x: ts.Expression, global: string): string | null =>
+		ts.isCallExpression(x) &&
+		ts.isPropertyAccessExpression(x.expression) &&
+		freeNamed(x.expression.expression, global)
+			? x.expression.name.text
+			: null;
+	/** `$input.all()`: the list of the node's own wrappers of the input items. */
+	const isInputAll = (x: ts.Expression): boolean =>
+		ts.isCallExpression(x) &&
+		x.arguments.length === 0 &&
+		ts.isPropertyAccessExpression(x.expression) &&
+		x.expression.name.text === 'all' &&
+		freeNamed(x.expression.expression, '$input');
+	/** `items` in "all items" mode: the same list as `$input.all()`. */
+	const isItems = (x: ts.Expression): boolean => mode === 'all' && freeNamed(x, 'items');
+	/** A list that the code made itself. */
+	const newList = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (ts.isArrayLiteralExpression(x)) return true;
+		if ((ts.isCallExpression(x) || ts.isNewExpression(x)) && freeNamed(x.expression, 'Array')) {
+			return true;
+		}
+		const ofArray = staticCall(x, 'Array');
+		if (ofArray === 'from' || ofArray === 'of') return true;
+		const ofObject = staticCall(x, 'Object');
+		if (ofObject === 'keys' || ofObject === 'values' || ofObject === 'entries') return true;
+		return (
+			ts.isCallExpression(x) &&
+			ts.isPropertyAccessExpression(x.expression) &&
+			!ts.isOptionalChain(x) &&
+			NEW_LIST_METHODS.has(x.expression.name.text) &&
+			listValue(x.expression.expression)
+		);
+	};
+	/** A value that is a list for certain. */
+	const listValue = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (newList(x) || isInputAll(x) || isItems(x)) return true;
+		// `$('Node').all()`.
+		return (
+			ts.isCallExpression(x) &&
+			x.arguments.length === 0 &&
+			ts.isPropertyAccessExpression(x.expression) &&
+			x.expression.name.text === 'all' &&
+			ts.isCallExpression(x.expression.expression) &&
+			freeNamed(x.expression.expression.expression, '$')
+		);
+	};
+	/** A list or an object whose own places the code can change without a change of an input. */
+	const own = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (newList(x) || isInputAll(x) || ts.isObjectLiteralExpression(x)) return true;
+		if (staticCall(x, 'Object') === 'fromEntries' || staticCall(x, 'JSON') === 'parse') return true;
+		if (
+			ts.isNewExpression(x) &&
+			(freeNamed(x.expression, 'Map') || freeNamed(x.expression, 'Set'))
+		) {
+			return true;
+		}
+		return ts.isConditionalExpression(x) && own(x.whenTrue) && own(x.whenFalse);
+	};
+
+	const ownVars = new Set<ts.Symbol>();
+	const otherVars = new Set<ts.Symbol>();
+	const holds = (name: ts.Identifier, value: ts.Expression | undefined) => {
+		const sym = checker.getSymbolAtLocation(name);
+		if (sym === undefined) return;
+		if (value !== undefined && own(value)) ownVars.add(sym);
+		else otherVars.add(sym);
+	};
+	const changed: ts.Expression[] = [];
+	let proven = true;
+	/** The value whose property an assignment, an update or a `delete` changes. */
+	const changes = (target: ts.Expression): void => {
+		const x = stripParens(target);
+		if (ts.isIdentifier(x)) return;
+		if (ts.isPropertyAccessExpression(x) || ts.isElementAccessExpression(x)) {
+			changed.push(x.expression);
+		} else {
+			proven = false;
+		}
+	};
+	const visit = (n: ts.Node): void => {
+		if (!proven) return;
+		if (
+			n.kind === ts.SyntaxKind.ThisKeyword ||
+			ts.isClassLike(n) ||
+			ts.isGetAccessor(n) ||
+			ts.isSetAccessor(n) ||
+			ts.isTaggedTemplateExpression(n)
+		) {
+			proven = false;
+			return;
+		}
+		if (ts.isVariableDeclaration(n)) {
+			if (ts.isIdentifier(n.name)) holds(n.name, n.initializer);
+		} else if (ts.isBinaryExpression(n)) {
+			const op = n.operatorToken.kind;
+			if (op >= ts.SyntaxKind.FirstAssignment && op <= ts.SyntaxKind.LastAssignment) {
+				const left = stripParens(n.left);
+				if (ts.isIdentifier(left)) {
+					holds(left, op === ts.SyntaxKind.EqualsToken ? n.right : undefined);
+				} else changes(left);
+			}
+		} else if (ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) {
+			if (
+				n.operator === ts.SyntaxKind.PlusPlusToken ||
+				n.operator === ts.SyntaxKind.MinusMinusToken
+			) {
+				changes(n.operand);
+			}
+		} else if (ts.isDeleteExpression(n)) {
+			changes(n.expression);
+		} else if (ts.isForInStatement(n) || ts.isForOfStatement(n)) {
+			if (!ts.isVariableDeclarationList(n.initializer)) changes(n.initializer);
+		} else if (ts.isCallExpression(n)) {
+			const callee = stripParens(n.expression);
+			if (ts.isElementAccessExpression(callee)) {
+				proven = false;
+				return;
+			}
+			if (ts.isPropertyAccessExpression(callee)) {
+				const name = callee.name.text;
+				if (name === 'call' || name === 'apply' || name === 'bind') {
+					const inner = stripParens(callee.expression);
+					const proto =
+						ts.isPropertyAccessExpression(inner) && inner.name.text === 'hasOwnProperty'
+							? stripParens(inner.expression)
+							: undefined;
+					const hasOwn =
+						name === 'call' &&
+						proto !== undefined &&
+						ts.isPropertyAccessExpression(proto) &&
+						proto.name.text === 'prototype' &&
+						freeNamed(proto.expression, 'Object');
+					if (!hasOwn) proven = false;
+				}
+				if (RECEIVER_CHANGERS.has(name)) changed.push(callee.expression);
+				if (THIS_ARG_METHODS.has(name) && n.arguments.length > 1) proven = false;
+				if (freeNamed(callee.expression, 'Array') && name === 'from' && n.arguments.length > 2) {
+					proven = false;
+				}
+				if (freeNamed(callee.expression, 'Object') && !OBJECT_READERS.has(name)) {
+					const first = n.arguments[0];
+					if (name === 'assign' && first !== undefined && !ts.isSpreadElement(first)) {
+						if (!ts.isObjectLiteralExpression(stripParens(first))) changed.push(first);
+					} else proven = false;
+				}
+			}
+		} else if (
+			ts.isPropertyAccessExpression(n) &&
+			RECEIVER_CHANGERS.has(n.name.text) &&
+			!(ts.isCallExpression(n.parent) && n.parent.expression === n)
+		) {
+			// A method that changes its receiver, as a value.
+			proven = false;
+			return;
+		} else if (ts.isIdentifier(n) && (n.text === 'Object' || n.text === 'Reflect') && free(n)) {
+			const parent = n.parent;
+			const isName =
+				(ts.isPropertyAccessExpression(parent) || ts.isPropertyAssignment(parent)) &&
+				parent.name === n;
+			const isStatic =
+				n.text === 'Object' &&
+				ts.isPropertyAccessExpression(parent) &&
+				parent.expression === n &&
+				ts.isCallExpression(parent.parent) &&
+				parent.parent.expression === parent;
+			// `Object.prototype.hasOwnProperty`, which only reads.
+			const isHasOwn =
+				n.text === 'Object' &&
+				ts.isPropertyAccessExpression(parent) &&
+				parent.expression === n &&
+				parent.name.text === 'prototype' &&
+				ts.isPropertyAccessExpression(parent.parent) &&
+				parent.parent.expression === parent &&
+				parent.parent.name.text === 'hasOwnProperty';
+			if (!isName && !isStatic && !isHasOwn) {
+				proven = false;
+				return;
+			}
+		}
+		ts.forEachChild(n, visit);
+	};
+	visit(root);
+	if (!proven) return false;
+	for (const target of changed) {
+		const x = stripParens(target);
+		if (isItems(x) || own(x)) continue;
+		if (!ts.isIdentifier(x)) return false;
+		const sym = checker.getSymbolAtLocation(x);
+		if (sym === undefined || !ownVars.has(sym) || otherVars.has(sym)) return false;
+	}
+	return true;
+}
+
 /** Translates the code. See the file comment. */
 export function translateCode(input: CodeNativeInput): TranslateResult {
 	const text = WRAP_PREFIX + input.code + WRAP_SUFFIX;
@@ -554,6 +799,20 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const isFree = (id: ts.Identifier): boolean => {
 		const sym = checker.getSymbolAtLocation(id);
 		return sym === undefined || (sym.declarations ?? []).length === 0;
+	};
+
+	/** \`Object.prototype.hasOwnProperty\` of the global \`Object\`. */
+	const isPrototypeHasOwn = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (!ts.isPropertyAccessExpression(x) || x.name.text !== 'hasOwnProperty') return false;
+		const proto = stripParens(x.expression);
+		return (
+			ts.isPropertyAccessExpression(proto) &&
+			proto.name.text === 'prototype' &&
+			ts.isIdentifier(proto.expression) &&
+			proto.expression.text === 'Object' &&
+			isFree(proto.expression)
+		);
 	};
 
 	const nodeList = (name: string): string | null => {
@@ -702,13 +961,99 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		ts.isArrowFunction(fn) &&
 		!fn.getChildren(sf).some((c) => c.kind === ts.SyntaxKind.OpenParenToken);
 
+	/** Rest parameters whose function gets the rest arguments as one list at each call. */
+	const restParameters = new Set<ts.ParameterDeclaration>();
+
+	/**
+	 * A function with a rest parameter that the code only calls by its name: each call
+	 * \`f(a, b, c)\` of \`f(x, ...rest)\` becomes \`f(a, [b, c])\`, and the parameter a plain one.
+	 * Any other use of the name (a value, a shadowing declaration) keeps the blocker.
+	 */
+	const planRest = (fn: ts.Node): void => {
+		if (!isFunctionNode(fn)) return;
+		const rest = fn.parameters[fn.parameters.length - 1];
+		if (rest === undefined || !rest.dotDotDotToken || rest.type || !ts.isIdentifier(rest.name)) {
+			return;
+		}
+		let nameId: ts.Identifier | undefined;
+		if (ts.isFunctionDeclaration(fn)) nameId = fn.name;
+		else if (
+			(ts.isArrowFunction(fn) || (ts.isFunctionExpression(fn) && fn.name === undefined)) &&
+			ts.isVariableDeclaration(fn.parent) &&
+			fn.parent.initializer === fn &&
+			ts.isIdentifier(fn.parent.name) &&
+			ts.isVariableDeclarationList(fn.parent.parent) &&
+			(fn.parent.parent.flags & ts.NodeFlags.Const) !== 0
+		) {
+			nameId = fn.parent.name;
+		}
+		if (nameId === undefined) return;
+		const sym = checker.getSymbolAtLocation(nameId);
+		if (sym === undefined || (sym.declarations ?? []).length !== 1) return;
+		const fixed = fn.parameters.length - 1;
+		const calls: ts.CallExpression[] = [];
+		let onlyCalls = true;
+		const scan = (x: ts.Node): void => {
+			if (!onlyCalls) return;
+			if (ts.isIdentifier(x) && x.text === nameId.text && x !== nameId) {
+				const parent = x.parent;
+				const isPropertyName =
+					(ts.isPropertyAccessExpression(parent) || ts.isPropertyAssignment(parent)) &&
+					parent.name === x;
+				if (!isPropertyName) {
+					const direct =
+						ts.isCallExpression(parent) &&
+						parent.expression === x &&
+						!parent.questionDotToken &&
+						checker.getSymbolAtLocation(x) === sym &&
+						!parent.arguments.some((arg) => ts.isSpreadElement(arg));
+					if (direct) calls.push(parent);
+					else onlyCalls = false;
+				}
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+		if (!onlyCalls) return;
+		restParameters.add(rest);
+		for (const call of calls) {
+			const args = call.arguments;
+			const close = call.getEnd() - 1;
+			if (args.length <= fixed) {
+				const missing = 'undefined, '.repeat(fixed - args.length);
+				// After the edits of the last argument, and after a trailing comma.
+				insert(
+					close,
+					`${args.length > 0 && !args.hasTrailingComma ? ', ' : ''}${missing}[]`,
+					3_000_000,
+				);
+			} else {
+				insert(args[fixed].getStart(sf), '[', -3_000_000);
+				insert(close, ']', 3_000_000);
+			}
+		}
+	};
+	const planRestOf = (x: ts.Node): void => {
+		planRest(x);
+		ts.forEachChild(x, planRestOf);
+	};
+
 	const annotateParameters = (fn: ts.SignatureDeclaration) => {
 		const bareArrow = isBareArrow(fn);
 		for (const p of fn.parameters) {
 			if (p.type) continue;
 			if (p.dotDotDotToken) {
+				if (restParameters.has(p)) {
+					// Each call gives the rest arguments as one list (\`planRest\`).
+					replace(p.dotDotDotToken.getStart(sf), p.name.getStart(sf), '');
+					insert(p.name.getEnd(), '?: Json', 0);
+					continue;
+				}
 				// The compiler does not lower rest parameters.
-				block('rest parameter', 'A rest parameter (`...args`) has no native form.');
+				block(
+					'rest parameter',
+					'A rest parameter (`...args`) has a native form only in a function that the code only calls by its name.',
+				);
 				continue;
 			}
 			if (bareArrow) {
@@ -1703,6 +2048,57 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			const callee = stripParens(n.expression);
 			if (ts.isPropertyAccessExpression(callee)) {
 				const name = callee.name.text;
+				const plainArgs = !n.arguments.some((x) => ts.isSpreadElement(x));
+				if (
+					name === 'call' &&
+					n.arguments.length === 2 &&
+					plainArgs &&
+					!n.questionDotToken &&
+					isPrototypeHasOwn(callee.expression)
+				) {
+					// \`Object.prototype.hasOwnProperty.call(x, k)\` becomes \`hasOwnOf(x, k)\`.
+					helpers.add('hasOwnOf');
+					replace(n.getStart(sf), n.arguments[0].getStart(sf), 'hasOwnOf(');
+					for (const x of n.arguments) visit(x);
+					return;
+				}
+				const made = stripParens(callee.expression);
+				if (
+					name === 'fill' &&
+					n.arguments.length <= 1 &&
+					plainArgs &&
+					!ts.isOptionalChain(callee) &&
+					(ts.isCallExpression(made) || ts.isNewExpression(made)) &&
+					ts.isIdentifier(made.expression) &&
+					made.expression.text === 'Array' &&
+					isFree(made.expression) &&
+					made.arguments?.length === 1 &&
+					!ts.isSpreadElement(made.arguments[0])
+				) {
+					// \`Array(n).fill(v)\` becomes \`arrayFill(arrayOfLength(n), v)\`: the same order of evaluation.
+					helpers.add('arrayOfLength');
+					helpers.add('arrayFill');
+					const o = seq;
+					const size = made.arguments[0];
+					replace(n.getStart(sf), size.getStart(sf), 'arrayFill(arrayOfLength(');
+					if (n.arguments.length === 0) closing(size.getEnd(), n.getEnd(), '), undefined)', o);
+					else {
+						closing(size.getEnd(), n.arguments[0].getStart(sf), '), ', o);
+						visit(n.arguments[0]);
+					}
+					visit(size);
+					return;
+				}
+				if (
+					(name === 'toLocaleLowerCase' || name === 'toLocaleUpperCase') &&
+					n.arguments.length === 0 &&
+					!ts.isOptionalChain(callee)
+				) {
+					// Without a locale, the case rules are those of the root locale, as in \`toLowerCase\`.
+					toHelper(n, callee, 'localeCaseOf', name === 'toLocaleUpperCase' ? ', true' : ', false');
+					visit(callee.expression);
+					return;
+				}
 				if (MUTATING_METHODS.has(name)) noteMutation(callee.expression);
 				if (DATE_READERS.has(name) && !isDateValue(callee.expression)) {
 					const o = seq;
@@ -2268,6 +2664,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		return true;
 	};
 
+	if (root.body) planRestOf(root.body);
 	if (root.body) for (const st of root.body.statements) visit(st);
 
 	// The rewrites call helpers by name, so the code must not declare a name of its own like them.
@@ -2360,6 +2757,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		nodes,
 		helpers,
 		mutates,
+		readOnly: provesReadOnly(root, checker, input.mode),
 		usesFirstJson,
 		nondeterministic,
 		usesCollections: usesCollections || usesLuxon,
