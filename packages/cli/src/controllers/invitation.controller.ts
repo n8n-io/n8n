@@ -1,6 +1,6 @@
 import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { UserRepository, AuthenticatedRequest, PersonRepository } from '@n8n/db';
 import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
@@ -9,7 +9,6 @@ import { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
-import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';

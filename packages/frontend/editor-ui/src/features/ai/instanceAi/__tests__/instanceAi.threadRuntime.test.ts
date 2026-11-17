@@ -5,10 +5,12 @@ import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, after
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiAgentNode,
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
@@ -23,6 +25,7 @@ import {
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getPendingAppTargetFromThreadMetadata,
+	threadTargetsAgent,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
 
@@ -1320,6 +1323,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1336,6 +1340,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1416,6 +1421,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
+					approval_mode: 'unavailable',
 				},
 			);
 		});
@@ -1545,11 +1551,42 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
+
+	test.each([
+		{ available: false, metadata: undefined, expected: 'unavailable' },
+		{ available: true, metadata: undefined, expected: 'auto' },
+		{
+			available: true,
+			metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+			expected: 'manual',
+		},
+	])(
+		'sendMessage tracks the approval mode $expected',
+		async ({ available, metadata, expected }) => {
+			const settingsStore = mockedStore(useInstanceAiSettingsStore);
+			settingsStore.approvalModesAvailable = available;
+			settingsStore.approvalMode = 'auto';
+			const runtime = createThreadRuntime(activeThreadId, {
+				onTitleUpdated: vi.fn(),
+				onRunFinish: vi.fn(),
+				getThreadMetadata: () => metadata,
+			});
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ approval_mode: expected }),
+			);
+		},
+	);
 
 	test('sendMessage falls back and warns for invalid action_source values', async () => {
 		const hooks = {
@@ -1576,6 +1613,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1612,6 +1650,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		warnSpy.mockRestore();
@@ -2658,6 +2697,31 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 		expect(runtime.isAwaitingConfirmation).toBe(false);
 	});
 
+	it('counts as awaiting user input while its run is active, although it is not in the panel', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-active',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+		runtime.activeRunId = 'run-1';
+
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.isAwaitingUserInput).toBe(true);
+	});
+
+	it('does not count as awaiting user input once its run has ended', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-ended',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+
+		expect(runtime.activeRunId).toBeNull();
+		expect(runtime.isAwaitingUserInput).toBe(false);
+	});
+
 	it('leaves other confirmations on the same tool in the panel', () => {
 		const runtime = seedConfirmation({
 			requestId: 'req-plain',
@@ -3197,7 +3261,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				],
 				children: [],
 				timeline: [],
-			},
+			} satisfies InstanceAiAgentNode,
 			status: 'completed',
 			backgroundTasks: [],
 		};
@@ -3343,6 +3407,57 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 		// The historical build really was hydrated (so "not tracked" is meaningful,
 		// not just an empty no-op hydration).
 		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.anything(),
+		);
+	});
+
+	test('does not track for a workflow that only appears in an older history page', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-new',
+					role: 'user',
+					createdAt: new Date().toISOString(),
+					content: 'Thanks',
+					reasoning: '',
+					isStreaming: false,
+				},
+			],
+			nextEventId: 11,
+			nextCursor: 'cursor-1',
+		});
+		await activeRuntime(registry).loadHistoricalMessages();
+		const { agentTree } = runSyncWithBuild({
+			runId: 'run-old',
+			messageGroupId: 'mg-old',
+			workflowId: 'wf-old',
+			toolCallId: 'tc-old',
+		});
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-old',
+					runId: 'run-old',
+					messageGroupId: 'mg-old',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree,
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadOlderMessages();
+
+		expect(activeRuntime(registry).messages.map((msg) => msg.id)).toEqual(['msg-old', 'msg-new']);
+		expect(activeRuntime(registry).isHydratingThread).toBe(false);
 		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
 			'User viewed new builder workflow',
 			expect.anything(),
@@ -3761,5 +3876,196 @@ describe('createThreadRuntime - follow-up run after a reconnect', () => {
 			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
 		).toEqual(['req-move']);
 		expect(runtime.isAwaitingConfirmation).toBe(true);
+	});
+});
+
+describe('createThreadRuntime - older history pages', () => {
+	const threadId = 'thread-older';
+	const message = (
+		id: string,
+		role: 'user' | 'assistant',
+		messageGroupId?: string,
+	): ThreadRuntime['messages'][number] => ({
+		id,
+		role,
+		messageGroupId,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		content: id,
+		reasoning: '',
+		isStreaming: false,
+	});
+
+	async function hydratedRuntime() {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime(threadId);
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u2', 'user', 'g2'), message('a2', 'assistant', 'g2')],
+			nextCursor: 'cursor-1',
+			nextEventId: 0,
+		});
+		await runtime.loadHistoricalMessages();
+		return runtime;
+	}
+
+	beforeEach(() => {
+		setupRuntimePinia();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	test('prepends older pages until the thread start and skips messages it already has', async () => {
+		const runtime = await hydratedRuntime();
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [
+				message('u1', 'user', 'g1'),
+				message('a1', 'assistant', 'g1'),
+				message('a2-older-copy', 'assistant', 'g2'),
+				message('u2', 'user'),
+			],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			threadId,
+			100,
+			undefined,
+			'cursor-1',
+		);
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'a1', 'u2', 'a2']);
+		expect(runtime.hasOlderMessages).toBe(false);
+
+		await runtime.loadOlderMessages();
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+	});
+
+	test('drops a page that returns after a reset', async () => {
+		const runtime = await hydratedRuntime();
+		let resolveOlder!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveOlder = resolve;
+			}),
+		);
+
+		const loading = runtime.loadOlderMessages();
+		runtime.resetState();
+		resolveOlder({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextCursor: 'cursor-0',
+			nextEventId: 0,
+		});
+		await loading;
+
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+		expect(runtime.messages).toEqual([]);
+		expect(runtime.hasOlderMessages).toBe(false);
+	});
+
+	test('rethrows a failed request and keeps the cursor for a retry', async () => {
+		const runtime = await hydratedRuntime();
+		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
+
+		await expect(runtime.loadOlderMessages()).rejects.toThrow('fetch failed');
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
+	});
+});
+
+describe('threadTargetsAgent', () => {
+	it('is true for a thread with a bound or a pending agent', () => {
+		const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiPendingAgentTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: { 'agent-1': target } })).toBe(true);
+	});
+
+	it('is false for a thread without an agent', () => {
+		expect(threadTargetsAgent(undefined)).toBe(false);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: { agentId: 'agent-1' } })).toBe(
+			false,
+		);
+	});
+});
+
+describe('createThreadRuntime - background agent confirmations', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		activeThreadId = 'thread-background-agent';
+	});
+
+	it('attaches a confirmation to the background agent that raised it, even with hidden steps', () => {
+		const runtime = activeRuntime(createRuntimeRegistry());
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					timeline: [],
+					children: [
+						{
+							agentId: 'agent-cloud-browser',
+							role: 'cloud-browser',
+							kind: 'cloud-browser',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'tc-navigate',
+									toolName: 'browser_navigate',
+									args: { url: 'https://example.com' },
+									isLoading: true,
+									confirmation: {
+										requestId: 'req-navigate',
+										severity: 'warning',
+										message: 'browser_navigate: Browser: example.com',
+										inputType: 'resource-decision',
+										resourceDecision: {
+											toolGroup: 'browser',
+											kind: 'host',
+											resource: 'example.com',
+											description: 'Browser: example.com',
+											options: ['denyOnce', 'allowOnce', 'allowForSession'],
+										},
+									},
+								},
+							],
+						},
+					],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingConfirmations[0].agentNode.kind).toBe('cloud-browser');
 	});
 });

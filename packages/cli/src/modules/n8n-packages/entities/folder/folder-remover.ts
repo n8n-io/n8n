@@ -87,7 +87,13 @@ export class FolderRemover {
 		const summaries: RemovedFolderSummary[] = [];
 
 		for (const folder of plan.removals) {
-			await this.folderService.deleteFolder(context.user, folder.id, context.projectId, {});
+			await this.folderService.deleteFolder(
+				context.user,
+				folder.id,
+				context.projectId,
+				{},
+				context.ctx,
+			);
 			summaries.push({
 				folderId: folder.id,
 				name: folder.name,

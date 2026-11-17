@@ -8,7 +8,11 @@ import {
 	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
 } from './promotion-apply-check.dto';
-import { promotionCommitMessageSchema, promotionSelectedIdsSchema } from './promotion-common.dto';
+import {
+	expectedPreviewRevisionSchema,
+	promotionCommitMessageSchema,
+	promotionSelectedIdsSchema,
+} from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
@@ -61,6 +65,21 @@ export const promotePackageResultSchema = z.object({
 });
 
 export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.shape) {}
+
+/** The result of a project Promote. Read `status` before the other fields. */
+export const promoteSelectionResultSchema = z.discriminatedUnion('status', [
+	promotePackageResultSchema.extend({ status: z.literal('promoted') }),
+	/** The project or its branch changed after the reviewed preview. Nothing was pushed. */
+	z.object({ status: z.literal('preview-changed'), environmentId: n8nIdSchema }),
+]);
+
+export const PromoteSelectionResultDto = {
+	name: 'PromoteSelectionResultDto',
+	schema: promoteSelectionResultSchema,
+	parse: (value: unknown) => promoteSelectionResultSchema.parse(value),
+};
+
+export type PromoteSelectionResultDto = z.infer<typeof promoteSelectionResultSchema>;
 
 /** What the import changed. Partial results are visible here too. */
 export const applyPackageCountsSchema = z.object({
@@ -152,16 +171,6 @@ export class ContinueApplyPackageDto extends Z.class(
 	},
 	{ strict: true },
 ) {}
-
-const expectedPreviewRevisionSchema = z
-	.string()
-	.regex(/^[0-9a-f]{64}$/)
-	.optional()
-	.openapi({
-		description:
-			'The `revision` of the reviewed Apply preview. Apply builds the preview again and returns ' +
-			'status `preview-changed` without writing when it differs, for example after a local edit.',
-	});
 
 /**
  * The selection of a project Apply. Apply always applies the project details, so a request

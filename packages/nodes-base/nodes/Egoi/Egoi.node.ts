@@ -7,8 +7,9 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
 import type { ICreateMemberBody } from './Interfaces';
@@ -490,7 +491,7 @@ export class Egoi implements INodeType {
 		loadOptions: {
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await egoiApiRequestAllItems.call(this, 'items', 'GET', '/lists');
+				const lists = await egoiApiRequestAllItems.call(this, 'items', 'GET', requestPath`/lists`);
 				for (const list of lists) {
 					const listName = list.internal_name;
 					const listId = list.list_id;
@@ -505,7 +506,11 @@ export class Egoi implements INodeType {
 			async getExtraFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const listId = this.getCurrentNodeParameter('list');
-				const extraFields = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+				const extraFields = await egoiApiRequest.call(
+					this,
+					'GET',
+					requestPath`/lists/${listId}/fields`,
+				);
 				for (const field of extraFields) {
 					if (field.type === 'extra') {
 						const fieldName = field.name;
@@ -521,7 +526,7 @@ export class Egoi implements INodeType {
 
 			async getListTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tagList = await egoiApiRequestAllItems.call(this, 'items', 'GET', '/tags');
+				const tagList = await egoiApiRequestAllItems.call(this, 'items', 'GET', requestPath`/tags`);
 				for (const tag of tagList) {
 					const tagName = tag.name;
 					const tagId = tag.tag_id;
@@ -580,7 +585,7 @@ export class Egoi implements INodeType {
 						responseData = await egoiApiRequest.call(
 							this,
 							'POST',
-							`/lists/${listId}/contacts`,
+							requestPath`/lists/${listId}/contacts`,
 							body,
 						);
 
@@ -592,7 +597,7 @@ export class Egoi implements INodeType {
 								await egoiApiRequest.call(
 									this,
 									'POST',
-									`/lists/${listId}/contacts/actions/attach-tag`,
+									requestPath`/lists/${listId}/contacts/actions/attach-tag`,
 									{ tag_id: tag, contacts: [contactId] },
 								);
 							}
@@ -602,7 +607,7 @@ export class Egoi implements INodeType {
 							responseData = await egoiApiRequest.call(
 								this,
 								'GET',
-								`/lists/${listId}/contacts/${contactId}`,
+								requestPath`/lists/${listId}/contacts/${contactId}`,
 							);
 						}
 					}
@@ -614,17 +619,19 @@ export class Egoi implements INodeType {
 
 						const by = this.getNodeParameter('by', 0) as string;
 
-						let endpoint = '';
+						let endpoint: RequestPath;
+						let qs: IDataObject = {};
 
 						if (by === 'id') {
 							const contactId = this.getNodeParameter('contactId', i) as string;
-							endpoint = `/lists/${listId}/contacts/${contactId}`;
+							endpoint = requestPath`/lists/${listId}/contacts/${contactId}`;
 						} else {
 							const email = this.getNodeParameter('email', i) as string;
-							endpoint = `/lists/${listId}/contacts?email=${email}`;
+							endpoint = requestPath`/lists/${listId}/contacts`;
+							qs = { email };
 						}
 
-						responseData = await egoiApiRequest.call(this, 'GET', endpoint, {});
+						responseData = await egoiApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 						if (responseData.items) {
 							responseData = responseData.items;
@@ -656,7 +663,7 @@ export class Egoi implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/lists/${listId}/contacts`,
+								requestPath`/lists/${listId}/contacts`,
 								{},
 							);
 						} else {
@@ -665,7 +672,7 @@ export class Egoi implements INodeType {
 							responseData = await egoiApiRequest.call(
 								this,
 								'GET',
-								`/lists/${listId}/contacts`,
+								requestPath`/lists/${listId}/contacts`,
 								{},
 								{ limit },
 							);
@@ -708,7 +715,7 @@ export class Egoi implements INodeType {
 						responseData = await egoiApiRequest.call(
 							this,
 							'PATCH',
-							`/lists/${listId}/contacts/${contactId}`,
+							requestPath`/lists/${listId}/contacts/${contactId}`,
 							body,
 						);
 
@@ -718,7 +725,7 @@ export class Egoi implements INodeType {
 								await egoiApiRequest.call(
 									this,
 									'POST',
-									`/lists/${listId}/contacts/actions/attach-tag`,
+									requestPath`/lists/${listId}/contacts/actions/attach-tag`,
 									{ tag_id: tag, contacts: [contactId] },
 								);
 							}
@@ -728,7 +735,7 @@ export class Egoi implements INodeType {
 							responseData = await egoiApiRequest.call(
 								this,
 								'GET',
-								`/lists/${listId}/contacts/${contactId}`,
+								requestPath`/lists/${listId}/contacts/${contactId}`,
 							);
 						}
 					}

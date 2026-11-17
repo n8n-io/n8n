@@ -615,9 +615,11 @@ describe('createModel', () => {
 	});
 
 	it('passes credential headers to the OpenAI provider', () => {
+		// The chat style skips the Responses wrapper, so the provider stub is visible.
 		const model = createModel({
 			id: 'openai/gpt-5-mini',
 			apiKey: 'key',
+			apiStyle: 'chat',
 			headers: { 'x-custom-header': 'value' },
 		}) as unknown as Record<string, unknown>;
 		expect(model.headers).toEqual({ 'x-custom-header': 'value' });
@@ -637,7 +639,10 @@ describe('createModel', () => {
 
 	it('should pass proxy-aware fetch when HTTP_PROXY is set', () => {
 		process.env.HTTP_PROXY = 'http://proxy:9090';
-		const model = createModel('openai/gpt-4o') as unknown as Record<string, unknown>;
+		const model = createModel({ id: 'openai/gpt-4o', apiStyle: 'chat' }) as unknown as Record<
+			string,
+			unknown
+		>;
 		expect(model.fetch).toBeInstanceOf(Function);
 		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:9090');
 	});

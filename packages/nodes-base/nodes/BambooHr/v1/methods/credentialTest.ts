@@ -4,7 +4,9 @@ import type {
 	ICredentialTestFunctions,
 	IHttpRequestOptions,
 	INodeCredentialTestResult,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 async function validateCredentials(
 	this: ICredentialTestFunctions,
@@ -17,13 +19,13 @@ async function validateCredentials(
 		apiKey: string;
 	};
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: 'GET',
 		auth: {
 			username: apiKey,
 			password: 'x',
 		},
-		url: `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory`,
+		url: requestUrl`https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory`,
 	};
 
 	return await this.helpers.request(options);

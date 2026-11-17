@@ -1,0 +1,99 @@
+{
+	"name": "Drift request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 300],
+			"id": "e1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0001"
+		},
+		{
+			"parameters": {
+				"email": "nathan@example.com",
+				"additionalFields": { "name": "Nathan" }
+			},
+			"name": "Create Contact",
+			"type": "n8n-nodes-base.drift",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "e1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0002",
+			"credentials": { "driftApi": { "id": "1", "name": "Drift account" } }
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"contactId": "1234567890",
+				"updateFields": { "phone": "+15550100" }
+			},
+			"name": "Update Contact",
+			"type": "n8n-nodes-base.drift",
+			"typeVersion": 1,
+			"position": [300, 120],
+			"id": "e1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0003",
+			"credentials": { "driftApi": { "id": "1", "name": "Drift account" } }
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"contactId": "1234567890"
+			},
+			"name": "Get Contact",
+			"type": "n8n-nodes-base.drift",
+			"typeVersion": 1,
+			"position": [300, 240],
+			"id": "e1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0004",
+			"credentials": { "driftApi": { "id": "1", "name": "Drift account" } }
+		},
+		{
+			"parameters": {
+				"operation": "getCustomAttributes"
+			},
+			"name": "Get Custom Attributes",
+			"type": "n8n-nodes-base.drift",
+			"typeVersion": 1,
+			"position": [300, 360],
+			"id": "e1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0005",
+			"credentials": { "driftApi": { "id": "1", "name": "Drift account" } }
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"contactId": "1234567890"
+			},
+			"name": "Delete Contact",
+			"type": "n8n-nodes-base.drift",
+			"typeVersion": 1,
+			"position": [300, 480],
+			"id": "e1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0006",
+			"credentials": { "driftApi": { "id": "1", "name": "Drift account" } }
+		}
+	],
+	"pinData": {
+		"Create Contact": [{ "json": { "id": 1234567890 } }],
+		"Update Contact": [{ "json": { "id": 1234567890 } }],
+		"Get Contact": [{ "json": { "id": 1234567890 } }],
+		"Get Custom Attributes": [{ "json": { "name": "company" } }],
+		"Delete Contact": [{ "json": { "success": true } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Create Contact", "type": "main", "index": 0 },
+					{ "node": "Update Contact", "type": "main", "index": 0 },
+					{ "node": "Get Contact", "type": "main", "index": 0 },
+					{ "node": "Get Custom Attributes", "type": "main", "index": 0 },
+					{ "node": "Delete Contact", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "e1a6f0a4-6f7a-4c55-9d43-4b5a1d6e00ff",
+	"meta": { "instanceId": "test" },
+	"id": "DriftRequests",
+	"tags": []
+}

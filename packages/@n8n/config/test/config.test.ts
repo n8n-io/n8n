@@ -308,6 +308,7 @@ describe('GlobalConfig', () => {
 				includeWorkflowPublicationMetrics: false,
 				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
+				includeExecutionLedgerMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			agentWebhook: 'agent-webhook',
@@ -373,8 +374,10 @@ describe('GlobalConfig', () => {
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			browserUseEnabled: true,
+			cloudBrowserEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
+			utilityModel: '',
+			approvalJudgeModel: '',
 			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
@@ -475,6 +478,14 @@ describe('GlobalConfig', () => {
 			grantTokenTtl: 30,
 			insecureMode: false,
 		},
+		codeExecution: {
+			backend: 'task-runners',
+			sandbox: {
+				url: '',
+				apiKey: '',
+				scope: 'execution',
+			},
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
@@ -541,6 +552,9 @@ describe('GlobalConfig', () => {
 			ownerQuarantineGraceSeconds: 86400,
 			ownerSettleSeconds: 300,
 		},
+		leases: {
+			enabled: false,
+		},
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
@@ -564,7 +578,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
+			blockFilePatterns: '(?:^|/)\\.git(?:/|$)',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
@@ -765,6 +779,7 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			backgroundTasksEnabled: false,
+			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',

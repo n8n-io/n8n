@@ -25,7 +25,12 @@ import { useSkillDeleteRule } from '../skills.utils';
 
 type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
-type SourceAction = 'checkNow' | 'openInGitHub';
+type SourceAction =
+	| 'checkNow'
+	| 'openInGitHub'
+	| 'changeScope'
+	| 'replaceCredential'
+	| 'deleteSource';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -60,6 +65,10 @@ const emit = defineEmits<{
 	download: [skill: SkillListItem];
 	toggleSource: [sourceId: string];
 	checkSource: [source: SkillSourceListItem];
+	moveSource: [source: SkillSourceListItem];
+	reviewSource: [source: SkillSourceListItem];
+	deleteSource: [source: SkillSourceListItem];
+	replaceCredential: [source: SkillSourceListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -179,7 +188,12 @@ function updateCount(source: SkillSourceListItem): number {
 }
 
 function sourceActions(source: SkillSourceListItem) {
-	const items: Array<{ value: SourceAction; label: string; icon: IconName }> = [];
+	const items: Array<{
+		value: SourceAction;
+		label: string;
+		icon: IconName;
+		destructive?: boolean;
+	}> = [];
 	if (source.canReview) {
 		items.push({
 			value: 'checkNow',
@@ -187,16 +201,41 @@ function sourceActions(source: SkillSourceListItem) {
 			icon: 'refresh-cw',
 		});
 	}
+	if (source.canMove) {
+		items.push({
+			value: 'changeScope',
+			label: i18n.baseText('settings.context.skills.moveSource.action'),
+			icon: 'folder',
+		});
+	}
 	items.push({
 		value: 'openInGitHub',
 		label: i18n.baseText('settings.context.skills.sources.openInGitHub'),
 		icon: 'external-link',
 	});
+	if (source.canReplaceCredential) {
+		items.push({
+			value: 'replaceCredential',
+			label: i18n.baseText('settings.context.skills.sources.replaceCredential.action'),
+			icon: 'key-round',
+		});
+	}
+	if (source.canDelete) {
+		items.push({
+			value: 'deleteSource',
+			label: i18n.baseText('settings.context.skills.sources.delete.action'),
+			icon: 'trash-2',
+			destructive: true,
+		});
+	}
 	return items;
 }
 
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
+	else if (action === 'changeScope') emit('moveSource', source);
+	else if (action === 'deleteSource') emit('deleteSource', source);
+	else if (action === 'replaceCredential') emit('replaceCredential', source);
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
 }
 
@@ -346,18 +385,25 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						size="small"
 						data-test-id="skill-group-checking"
 					/>
-					<N8nBadge
+					<button
 						v-else-if="updateCount(sourcesById.get(group)!) > 0"
-						:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
-						data-test-id="skill-group-updates"
+						type="button"
+						:class="$style.updateButton"
+						data-test-id="skill-group-review-updates"
+						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
 					>
-						{{
-							i18n.baseText('settings.context.skills.sources.updates', {
-								interpolate: { count: updateCount(sourcesById.get(group)!) },
-								adjustToNumber: updateCount(sourcesById.get(group)!),
-							})
-						}}
-					</N8nBadge>
+						<N8nBadge
+							:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
+							data-test-id="skill-group-updates"
+						>
+							{{
+								i18n.baseText('settings.context.skills.sources.updates', {
+									interpolate: { count: updateCount(sourcesById.get(group)!) },
+									adjustToNumber: updateCount(sourcesById.get(group)!),
+								})
+							}}
+						</N8nBadge>
+					</button>
 				</div>
 			</template>
 
@@ -532,6 +578,15 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 }
 
 .groupRowFoldable {
+	cursor: pointer;
+}
+
+.updateButton {
+	display: inline-flex;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius--sm);
+	background: none;
 	cursor: pointer;
 }
 

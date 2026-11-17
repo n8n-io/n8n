@@ -83,7 +83,13 @@ export async function saveThreadTabs(
 export async function persistPendingAgent(
 	context: IRestApiContext,
 	threadId: string,
-	payload: { projectId: string; agentId: string; name: string; config?: AgentJsonConfig },
+	payload: {
+		projectId: string;
+		agentId: string;
+		name: string;
+		config?: AgentJsonConfig;
+		parentFolderId?: string | null;
+	},
 ): Promise<{ agent: AgentCreationResource; thread: InstanceAiThreadInfo }> {
 	return await makeRestApiRequest(
 		context,
@@ -98,10 +104,12 @@ export async function fetchThreadMessages(
 	threadId: string,
 	limit?: number,
 	page?: number,
+	cursor?: string,
 ): Promise<InstanceAiRichMessagesResponse> {
 	const params = new URLSearchParams();
 	if (limit !== undefined) params.set('limit', String(limit));
 	if (page !== undefined) params.set('page', String(page));
+	if (cursor !== undefined) params.set('cursor', cursor);
 	const qs = params.toString();
 	return await makeRestApiRequest(
 		context,

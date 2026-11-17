@@ -1,5 +1,9 @@
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
-import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
+import {
+	autoApprovalPayloadSchema,
+	instanceAiApprovalDetailsSchema,
+} from './instance-ai-approval.schema';
+import type { InstanceAiAutoApprovalDecider } from './instance-ai-approval.schema';
 import { WorkflowExecuteModeList } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -277,6 +281,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-error',
 	'tool-interrupted',
 	'confirmation-request',
+	'auto-approval',
 	'instance-context',
 	'tasks-update',
 	'setup-items',
@@ -348,6 +353,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'data-table',
 	'eval-setup',
 	'agent-builder',
+	'cloud-browser',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -784,6 +790,8 @@ export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayReso
 
 export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
+	/** What resource the approval is for: a site to open (`host`) or a credential to save (`credential-write`). */
+	kind: z.enum(['host', 'credential-write']).optional(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
@@ -1341,6 +1349,8 @@ const eventBase = {
 	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
 	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
+	/** Set on events of an agent that outlives the turn that started it, such as a cloud browser task. */
+	detachedFromTurn: z.boolean().optional(),
 };
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
@@ -1389,6 +1399,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({ type: z.literal('auto-approval'), ...eventBase, payload: autoApprovalPayloadSchema }),
 	z.object({
 		type: z.literal('instance-context'),
 		...eventBase,
@@ -1436,6 +1447,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'confirmation-request' }
 >;
+export type InstanceAiAutoApprovalEvent = Extract<InstanceAiEvent, { type: 'auto-approval' }>;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
 export type InstanceAiPreferencesAppliedEvent = Extract<
@@ -1749,14 +1761,6 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
 
-/**
- * Build style for a run. `progressive` makes the agent build a minimal working
- * slice first, gate increments on real executions, and extend on actual
- * execution data. `default` uses the standard building policy.
- */
-export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
-export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
-
 export const instanceAiPromptConfigurationSchema = z.object({
 	version: z.string(),
 	systemPromptVersion: z.string(),
@@ -1767,6 +1771,9 @@ export const instanceAiPromptConfigurationSchema = z.object({
 export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
 
 export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
+
+// Shared by the send-message request and the eval overrides of an Assistant agent thread.
+const instanceAiPromptVersionSchema = z.string().trim().min(1).max(128);
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
@@ -1783,10 +1790,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
-	/** Explicit override for evals. Omit to use the backend experiment assignment. */
-	mode: instanceAiBuildModeSchema.optional(),
-	/** Pin a published prompt profile. Takes precedence over mode. */
-	promptVersion: z.string().trim().min(1).max(128).optional(),
+	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
 	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
@@ -1829,7 +1834,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'canvas_action_button',
 	'canvas_choice_prompt',
 	'node_error_view',
-	'workflow_error_nudge', // Experiment cleanup (119_surface_assistant_on_workflow_error)
+	'workflow_error_nudge',
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
@@ -1956,6 +1961,7 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
  * there first, and binds it to the thread in the same request.
  */
 export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),
@@ -1969,8 +1975,8 @@ export class InstanceAiEventsQuery extends Z.class({
 /** Ceilings for a single thread-history read: `limit` bounds the rows (and the
  *  tree hydration hanging off them) one request can pull, `page` bounds the
  *  offset scan behind it. Both sit above any real client — the UI's largest page
- *  is 100 messages and it never pages past the first — so they only ever bite a
- *  hand-crafted request. */
+ *  is 100 messages, and it loads older pages with `cursor`, not `page` — so they
+ *  only ever bite a hand-crafted request. */
 export const INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT = 50;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT = 200;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
@@ -1982,7 +1988,10 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 		.min(1)
 		.max(INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT)
 		.default(INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT),
+	/** Offset paging for `raw` reads. Rich reads page with `cursor`. */
 	page: z.coerce.number().int().nonnegative().max(INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE).default(0),
+	/** `nextCursor` of the previous rich read: returns the messages before it. */
+	cursor: z.string().min(1).max(512).optional(),
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
 
@@ -2050,6 +2059,8 @@ export interface InstanceAiToolCallState {
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
+	/** Set when Auto mode ran the call without showing its approval card. */
+	autoApproval?: { message: string; reason: string; decidedBy: InstanceAiAutoApprovalDecider };
 	/** Set by a `preference-card` fact; absent means the tool result is the state. */
 	preferenceCard?: {
 		state: 'edited' | 'undone';
@@ -2087,6 +2098,8 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
+	/** The agent outlives the run that started it, so the run's end does not end it. */
+	detachedFromTurn?: boolean;
 	/** Agent kind for card dispatch (builder, data-table, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Current activity for the Agent card. */
@@ -2278,6 +2291,8 @@ export interface InstanceAiRichMessagesResponse {
 	threadId: string;
 	projectId?: string;
 	messages: InstanceAiMessage[];
+	/** Pass as `cursor` to load the older messages. Absent when the page reaches the start of the thread. */
+	nextCursor?: string;
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
 	/**
@@ -2319,6 +2334,8 @@ export interface InstanceAiThreadStatusResponse {
 		runId?: string;
 		/** The messageGroupId this task was spawned under. */
 		messageGroupId?: string;
+		/** The task keeps running after its turn has ended, and the turn does not stay live for it. */
+		detachedFromTurn?: boolean;
 	}>;
 	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
@@ -2538,6 +2555,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxServiceUrl: string | null;
 	envManaged: InstanceAiEnvManagedFields;
 	browserUseEnabled: boolean;
+	cloudBrowserEnabled: boolean;
 }
 
 export type InstanceAiComponentSource = 'ui' | 'env' | 'none';
@@ -2649,6 +2667,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	searchDisabled: z.boolean().optional(),
 	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	browserUseEnabled: z.boolean().optional(),
+	cloudBrowserEnabled: z.boolean().optional(),
 }) {}
 
 export const instanceAiVerificationFailureSchema = z.enum([
@@ -2855,9 +2874,6 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversati
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
-
 /**
  * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by
  * default. `N8N_INSTANCE_AI_PROMPT_VERSION` pins a profile for the whole
@@ -2865,6 +2881,13 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
  */
 export const INSTANCE_AI_CONCISE_STYLE_FLAG = '124_instance_ai_concise_style';
 export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
+
+/**
+ * Rollout flag for approval modes: the Manual and Auto selector in the chat.
+ * Off means every user stays in Manual. On means a user without a saved
+ * choice gets Auto.
+ */
+export const INSTANCE_AI_APPROVAL_MODES_FLAG = '144_instance_ai_approval_modes';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
@@ -2884,6 +2907,9 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
 
 /** Instance rollout gate for shared activity recording and retrieval. */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
+
+/** Rollout gate for cloud browser use in the n8n Assistant. */
+export const INSTANCE_AI_CLOUD_BROWSER_FLAG = '129_instance_ai_cloud_browser';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
@@ -2932,6 +2958,8 @@ export interface InstanceAiEvalExecutionResult {
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
+	/** What the scenario tests. Used only to pick the start trigger when the workflow has several. */
+	scenarioDescription: z.string().optional(),
 	/**
 	 * AI root nodes (Agent, Chain) that should stay pinned — opt-out from the
 	 * default-on wire-server interception path. Useful when the caller wants
@@ -3081,6 +3109,26 @@ export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
 	baseUrl: z.string().url(),
 	/** Credential field the stand-in URL is written into. */
 	urlField: z.string().min(1),
+}) {}
+
+/**
+ * Creates an Assistant agent thread before its first message, so the eval
+ * harness can set up the thread before the first turn.
+ */
+export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
+	threadId: z.string().uuid(),
+	projectId: z.string().min(1),
+	/** Where the thread comes from. The route stores it in the thread metadata for the trace. */
+	source: z.enum(INSTANCE_AI_THREAD_SOURCES).optional(),
+	sourceContext: instanceAiSourceContextSchema.optional(),
+}) {}
+
+/**
+ * The turn overrides of an Assistant agent thread. The request replaces all
+ * overrides of the thread, so an omitted field clears its override.
+ */
+export class InstanceAiAssistantEvalThreadOverridesRequest extends Z.class({
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

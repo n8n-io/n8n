@@ -538,12 +538,15 @@ describe('POST /executions/:id/retry', () => {
 			.send({ loadWorkflow: true });
 
 		expect(response.statusCode).toBe(200);
-		expect(executionServiceSpy).toHaveBeenCalledWith({
-			executionId: execution.id,
-			options: { loadWorkflow: true },
-			sharedWorkflowIds: expect.arrayContaining([workflow.id]),
-			user: expect.objectContaining({ id: user1.id }),
-		});
+		expect(executionServiceSpy).toHaveBeenCalledWith(
+			{
+				executionId: execution.id,
+				options: { loadWorkflow: true },
+				sharedWorkflowIds: expect.arrayContaining([workflow.id]),
+				user: expect.objectContaining({ id: user1.id }),
+			},
+			undefined,
+		);
 
 		executionServiceSpy.mockRestore();
 	});
@@ -618,6 +621,87 @@ describe('POST /executions/:id/retry', () => {
 			expect(response.body).toMatchObject({ id: '999', status: 'success' });
 			expect(response.body).toHaveProperty('data');
 			expect(response.body).toHaveProperty('workflowData');
+		});
+	});
+
+	describe('with private credentials', () => {
+		/**
+		 * A failed execution in a team project that `editor` can retry. The retry run
+		 * itself is mocked, so the test checks who may start it and with what context.
+		 */
+		const retryAsEditor = async (runtimeData: Record<string, unknown>) => {
+			testServer.license.enable('feat:sharing');
+			const editor = await createMemberWithApiKey();
+			const teamProject = await createTeamProject();
+			await linkUserToProject(editor, teamProject, 'project:editor');
+			const workflow = await createWorkflow({}, teamProject);
+			const execution = await createExecution(
+				{
+					finished: false,
+					status: 'error',
+					data: stringify({
+						resultData: { runData: {} },
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [],
+							metadata: {},
+							waitingExecution: {},
+							waitingExecutionSource: {},
+							runtimeData: {
+								version: 1,
+								establishedAt: Date.now(),
+								source: 'manual',
+								...runtimeData,
+							},
+						},
+					}),
+				},
+				workflow,
+			);
+
+			const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+			const outcome = vi
+				.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+				.mockResolvedValue({
+					data: { resultData: { runData: {} } },
+					mode: 'retry',
+					startedAt: new Date(),
+					finished: true,
+					status: 'success',
+					waitTill: null,
+				} as unknown as IRun);
+
+			const response = await testServer
+				.publicApiAgentFor(editor)
+				.post(`/executions/${execution.id}/retry`)
+				.send({ loadWorkflow: false });
+
+			const runData = run.mock.calls[0]?.[0];
+			run.mockRestore();
+			outcome.mockRestore();
+			return { response, runData };
+		};
+
+		test('should reject a retry of a run of another user', async () => {
+			const { response, runData } = await retryAsEditor({
+				usesDynamicCredentials: true,
+				executedByUserId: owner.id,
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(runData).toBeUndefined();
+		});
+
+		test('should retry a run without private credentials without the original identity', async () => {
+			const { response, runData } = await retryAsEditor({
+				credentials: 'encrypted-owner-identity',
+				secureArtifacts: 'encrypted-artifacts',
+			});
+
+			expect(response.statusCode).toBe(200);
+			const retriedRuntimeData = runData?.executionData?.executionData?.runtimeData;
+			expect(retriedRuntimeData).not.toHaveProperty('credentials');
+			expect(retriedRuntimeData).not.toHaveProperty('secureArtifacts');
 		});
 	});
 
@@ -851,6 +935,28 @@ describe('GET /executions', () => {
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].dataTooLargeToDisplay).toBe(true);
 		expect(response.body.data[0].data?.resultData?.runData).toEqual({});
+	});
+
+	test('hides the push session fields with includeData', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createExecution(
+			{
+				status: 'success',
+				data: stringify({
+					pushRef: 'push-ref-of-the-owner',
+					pushRefUserId: 'user-id-of-the-owner',
+					resultData: { runData: {} },
+				}),
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get('/executions').query({ includeData: true });
+
+		const [{ data }] = response.body.data;
+		expect(data).toHaveProperty('resultData');
+		expect(data).not.toHaveProperty('pushRef');
+		expect(data).not.toHaveProperty('pushRefUserId');
 	});
 
 	test('should return 400 for an invalid cursor', async () => {

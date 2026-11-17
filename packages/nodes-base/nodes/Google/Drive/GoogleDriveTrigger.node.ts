@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	Failure,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { escapeBackslashQuotedValue } from '@utils/query-escaping';
 
@@ -409,7 +409,7 @@ export class GoogleDriveTrigger implements INodeType {
 					this,
 					'drives',
 					'GET',
-					'/drive/v3/drives',
+					requestPath`/drive/v3/drives`,
 				);
 				returnData.push({
 					name: 'Root',
@@ -509,14 +509,14 @@ export class GoogleDriveTrigger implements INodeType {
 				});
 			} else if (this.getMode() === 'manual') {
 				qs.pageSize = 1;
-				files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+				files = await googleApiRequest.call(this, 'GET', requestPath`/drive/v3/files`, {}, qs);
 				files = files.files;
 			} else {
 				files = await googleApiRequestAllItems.call(
 					this,
 					'files',
 					'GET',
-					'/drive/v3/files',
+					requestPath`/drive/v3/files`,
 					{},
 					qs,
 				);
@@ -571,7 +571,7 @@ async function getWatchedItemIfChanged(
 		item = await googleApiRequest.call(
 			this,
 			'GET',
-			`/drive/v3/files/${itemId}`,
+			requestPath`/drive/v3/files/${itemId}`,
 			{},
 			{ supportsAllDrives: true, fields: '*' },
 		);

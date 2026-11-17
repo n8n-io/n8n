@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -51,7 +52,7 @@ describe('MicrosoftOutlookV2 - listSearch Service Principal mailbox rewrite', ()
 			'microsoftEntraServicePrincipalApi',
 			expect.objectContaining({
 				method: 'GET',
-				uri: 'https://graph.microsoft.com/v1.0/users/user%40example.com/mailFolders',
+				uri: requestUrl`https://graph.microsoft.com/v1.0/users/user@example.com/mailFolders`,
 			}),
 		);
 		expect(result.results).toEqual([

@@ -1,0 +1,350 @@
+{
+	"name": "Magento 2 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1d3c5e7-0000-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "get",
+				"customerId": "42"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000002",
+			"name": "Get Customer",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 0],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "delete",
+				"customerId": "42"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000003",
+			"name": "Delete Customer",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 160],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "update",
+				"customerId": "42",
+				"email": "nathan@example.com",
+				"firstName": "Nathan",
+				"lastName": "Smith",
+				"updateFields": {}
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000004",
+			"name": "Update Customer",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 320],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "create",
+				"orderId": "1001"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000005",
+			"name": "Create Invoice",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 480],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "get",
+				"orderId": "1001"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000006",
+			"name": "Get Order",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 640],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "cancel",
+				"orderId": "1001"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000007",
+			"name": "Cancel Order",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 800],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "ship",
+				"orderId": "1001"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000008",
+			"name": "Ship Order",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 960],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "get",
+				"sku": "24-MB01"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000009",
+			"name": "Get Product",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 1120],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "delete",
+				"sku": "24-MB01"
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000010",
+			"name": "Delete Product",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 1280],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "update",
+				"sku": "24-MB01",
+				"updateFields": {
+					"name": "Joust Duffle Bag"
+				}
+			},
+			"id": "a1d3c5e7-0000-4000-8000-000000000011",
+			"name": "Update Product",
+			"type": "n8n-nodes-base.magento2",
+			"typeVersion": 1,
+			"position": [240, 1440],
+			"credentials": {
+				"magento2Api": {
+					"id": "1",
+					"name": "Magento 2 account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Customer": [
+			{
+				"json": {
+					"id": 42,
+					"email": "nathan@example.com",
+					"firstname": "Nathan",
+					"lastname": "Smith"
+				}
+			}
+		],
+		"Delete Customer": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Update Customer": [
+			{
+				"json": {
+					"id": 42,
+					"email": "nathan@example.com",
+					"firstname": "Nathan",
+					"lastname": "Smith"
+				}
+			}
+		],
+		"Create Invoice": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Order": [
+			{
+				"json": {
+					"entity_id": 1001,
+					"increment_id": "000001001",
+					"status": "pending"
+				}
+			}
+		],
+		"Cancel Order": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Ship Order": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Product": [
+			{
+				"json": {
+					"id": 7,
+					"sku": "24-MB01",
+					"name": "Joust Duffle Bag"
+				}
+			}
+		],
+		"Delete Product": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Update Product": [
+			{
+				"json": {
+					"id": 7,
+					"sku": "24-MB01",
+					"name": "Joust Duffle Bag"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Get Customer",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Customer",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Customer",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Invoice",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Order",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Cancel Order",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ship Order",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Product",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Product",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Product",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "00000000-0000-4000-8000-000000000000",
+	"id": "Magento2RequestUrls",
+	"meta": {},
+	"tags": []
+}

@@ -21,6 +21,8 @@ const HOST_EVENT_KEYS: Partial<
 	'tasks-update': () => 'tasks',
 	'setup-items': (event) =>
 		event.type === 'setup-items' ? `workflow:${event.payload.workflowId}` : 'workflow',
+	'auto-approval': (event) =>
+		event.type === 'auto-approval' ? `tool-call:${event.payload.toolCallId}` : 'tool-call',
 	status: () => 'status',
 };
 

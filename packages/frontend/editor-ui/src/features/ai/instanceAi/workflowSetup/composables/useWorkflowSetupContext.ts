@@ -67,8 +67,11 @@ interface ProvideOptions {
 	inputThreadId: Ref<string | undefined>;
 	/** How the parent settled the last answer. */
 	outcome: Ref<WorkflowSetupOutcome | undefined>;
-	/** Hands the user's apply to the parent, which sends it. */
-	emitApply: (payload: WorkflowSetupApplyPayload) => void;
+	/**
+	 * Hands the user's apply to the parent, which sends it. `sections` is the
+	 * card's sections at apply time, for a parent that reads the result later.
+	 */
+	emitApply: (payload: WorkflowSetupApplyPayload, sections: WorkflowSetupSection[]) => void;
 	/** Hands the user's defer to the parent, which sends it. */
 	emitDefer: () => void;
 }
@@ -89,7 +92,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	const bootstrap = useWorkflowSetupBootstrap(opts.workflowId);
 	const applyMachine = useWorkflowSetupDecision({
 		outcome: opts.outcome,
-		emitApply: opts.emitApply,
+		emitApply: (payload) => opts.emitApply(payload, sections.value),
 		emitDefer: opts.emitDefer,
 	});
 

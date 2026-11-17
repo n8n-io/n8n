@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
@@ -76,7 +76,7 @@ export const properties: INodeProperties[] = [
 				default: 'empty',
 				displayOptions: {
 					show: {
-						'@version': [3.2],
+						'@version': [{ _cnd: { gte: 3.2 } }],
 					},
 				},
 			},
@@ -222,11 +222,11 @@ export async function execute(
 	const options = this.getNodeParameter('options', 0, {}) as OperationOptions;
 	const workflowId = this.getWorkflow().id;
 
-	let query = this.getNodeParameter('query', 0) as string;
-
-	for (const resolvable of getResolvables(query)) {
-		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
-	}
+	const query = resolveExpressions(
+		this.getNodeParameter('query', 0) as string,
+		(resolvable) => this.evaluateExpression(resolvable, 0),
+		{ legacy: node.typeVersion < 3.3 },
+	);
 
 	// the value is resolved once, not on each execution, because merge mode runs once for all items
 	const parameters = getQueryParameterValues.call(this, node, options.queryParameters);

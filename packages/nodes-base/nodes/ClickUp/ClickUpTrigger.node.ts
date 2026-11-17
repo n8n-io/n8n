@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { clickupApiRequest } from './GenericFunctions';
 
@@ -246,7 +246,7 @@ export class ClickUpTrigger implements INodeType {
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { teams } = await clickupApiRequest.call(this, 'GET', '/team');
+				const { teams } = await clickupApiRequest.call(this, 'GET', requestPath`/team`);
 				for (const team of teams) {
 					const teamName = team.name;
 					const teamId = team.id;
@@ -268,7 +268,7 @@ export class ClickUpTrigger implements INodeType {
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
-				const endpoint = `/team/${teamId}/webhook`;
+				const endpoint = requestPath`/team/${teamId}/webhook`;
 				const { webhooks } = await clickupApiRequest.call(this, 'GET', endpoint);
 				if (Array.isArray(webhooks)) {
 					for (const webhook of webhooks) {
@@ -285,7 +285,7 @@ export class ClickUpTrigger implements INodeType {
 				const filters = this.getNodeParameter('filters') as IDataObject;
 				const teamId = this.getNodeParameter('team') as string;
 				const events = this.getNodeParameter('events') as string[];
-				const endpoint = `/team/${teamId}/webhook`;
+				const endpoint = requestPath`/team/${teamId}/webhook`;
 				const body: IDataObject = {
 					endpoint: webhookUrl,
 					events,
@@ -312,8 +312,8 @@ export class ClickUpTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhook/${webhookData.webhookId}`;
 				try {
+					const endpoint = requestPath`/webhook/${webhookData.webhookId}`;
 					await clickupApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;

@@ -5,7 +5,7 @@ export { ExpressionEvaluator } from './evaluator/expression-evaluator';
 // so this value re-export does NOT pull in the native binary at import time.
 export { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
 
-// QuickJsBridge lazy-loads quickjs-emscripten internally; importing this
+// QuickJsBridge lazy-loads quickjs-emscripten-core internally; importing this
 // value does NOT pull in the WASM module at import time.
 export { QuickJsBridge } from './bridge/quickjs-bridge';
 
@@ -41,8 +41,11 @@ export { IsolateError } from '@n8n/errors';
 export { NoOpProvider } from './observability/noop-provider';
 export { EXPRESSION_METRICS } from './observability/metrics';
 export type { ExpressionMetricDef, ExpressionMetricKey, MetricDef } from './observability/metrics';
-export { classifyExpressionError } from './evaluator/error-classification';
-export type { ExpressionErrorType } from './evaluator/error-classification';
+export { classifyExpressionError, errorOriginOf } from './evaluator/error-classification';
+export type {
+	ExpressionErrorOrigin,
+	ExpressionErrorType,
+} from './evaluator/error-classification';
 
 // Extension runtime exports
 export { extend, extendOptional, EXTENSION_OBJECTS } from './extensions/extend';

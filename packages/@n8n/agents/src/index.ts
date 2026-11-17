@@ -315,6 +315,7 @@ export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
 	getCreatedAt,
+	isHostInstruction,
 	isLlmMessage,
 	isRuntimeContextCue,
 } from './sdk/message';
@@ -408,6 +409,7 @@ export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
+export { PromptCacheParamsError } from './runtime/model/prompt-cache-params-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -572,5 +574,5 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
-export { modelConfigToId } from './utils/model';
+export { getCatalogModelId, modelConfigToId } from './utils/model';
 export { isZodSchema, zodToJsonSchema } from './utils/zod';

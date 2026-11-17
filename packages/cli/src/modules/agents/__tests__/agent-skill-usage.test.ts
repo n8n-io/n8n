@@ -39,11 +39,11 @@ describe('AgentSkillUsage', () => {
 		agents.findProjectIdsByIds.mockResolvedValue([]);
 	});
 
-	describe('markFollowersChanged', () => {
+	describe('findFollowingAgentIds', () => {
 		it('returns followers without loading or writing agent rows', async () => {
 			agentSkills.findFollowingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
 
-			const ids = await service.markFollowersChanged('skill_a', TX_CTX);
+			const ids = await service.findFollowingAgentIds('skill_a', TX_CTX);
 
 			expect(ids).toEqual(['agent-1', 'agent-2']);
 			expect(agentSkills.findFollowingAgentIds).toHaveBeenCalledWith(['skill_a'], TX_CTX);

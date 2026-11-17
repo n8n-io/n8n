@@ -277,7 +277,7 @@ export function useNodeExecution(
 		try {
 			await workflowsStore.removeTestWebhook(workflowDocumentStore.value.workflowId);
 		} catch (error) {
-			toast.showError(error, 'Error stopping webhook');
+			toast.showError(error, i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
 		}
 	}
 

@@ -9,6 +9,7 @@ import type {
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INode, INodeType } from 'n8n-workflow';
@@ -16,6 +17,7 @@ import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -26,6 +28,7 @@ import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner
 import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@n8n/backend-services';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowPublicationApplier', () => {
@@ -48,6 +51,8 @@ describe('WorkflowPublicationApplier', () => {
 		ownerId: workflowId,
 	}));
 	const durableJobProvisioner = mock<DurableJobProvisioner>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -63,6 +68,8 @@ describe('WorkflowPublicationApplier', () => {
 		ownershipService,
 		workflowScheduledJobOwner,
 		durableJobProvisioner,
+		credentialsPermissionChecker,
+		workflowPublisherService,
 	);
 
 	function makeRecord(
@@ -153,6 +160,8 @@ describe('WorkflowPublicationApplier', () => {
 		// `clearAllMocks` keeps implementations, so restore the clearing default.
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		policyEnforcementService.enforceWorkflowPublish.mockResolvedValue(mock());
+		credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
+		workflowPublisherService.findPublisherUserIdForAccessCheck.mockResolvedValue('publisher-1');
 	});
 
 	test('skips with workflow-not-found when the workflow is gone', async () => {
@@ -284,6 +293,99 @@ describe('WorkflowPublicationApplier', () => {
 		});
 	});
 
+	describe('credential access', () => {
+		const refusal = () => new UserError('Node "a" does not have access to the credential');
+
+		test('checks every node of the new version, sub-nodes included, as its publisher', async () => {
+			const trigger = triggerNode('a');
+			// A trigger can load this sub-node with its credential in the webhook phase.
+			const subNode = triggerNode('tool', {
+				type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				credentials: { httpBearerAuth: { id: 'cred-1', name: 'Owner token' } },
+			});
+			const nodes = [trigger, subNode];
+			workflowHistoryRepository.findOneBy.mockResolvedValue({ ...newVersion, nodes });
+			setTriggerSets([], [trigger]);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowPublisherService.findPublisherUserIdForAccessCheck).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+			);
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				nodes,
+				'publisher-1',
+			);
+		});
+
+		// At startup, the triggers register again with the current state of access.
+		test('checks again when the trigger diff is empty', async () => {
+			const trigger = triggerNode('a');
+			setTriggerSets([trigger], [{ ...trigger }]);
+			credentialsPermissionChecker.check.mockRejectedValue(refusal());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('failed');
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		test('fails the record without registering triggers when the check refuses', async () => {
+			setTriggerSets([], [triggerNode('a'), triggerNode('b')]);
+			credentialsPermissionChecker.check.mockRejectedValue(refusal());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{ nodeId: 'a', status: 'failed', errorMessage: refusal().message },
+						{ nodeId: 'b', status: 'failed', errorMessage: refusal().message },
+					],
+				},
+			});
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		// A transient error is no verdict, so the record must be retried.
+		test('propagates an error that is not a refusal', async () => {
+			credentialsPermissionChecker.check.mockRejectedValue(new Error('db down'));
+
+			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('db down');
+
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+
+		// Refusing on a failed lookup would make a transient error final.
+		test('propagates a failed publisher lookup so the record is retried', async () => {
+			setTriggerSets([], [triggerNode('a')]);
+			workflowPublisherService.findPublisherUserIdForAccessCheck.mockRejectedValue(
+				new Error('db down'),
+			);
+
+			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('db down');
+
+			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+
+		test('does not check while unpublishing', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(
+				makeWorkflow({ active: true, activeVersionId: null }),
+			);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('policy enforcement', () => {
 		const violation = () =>
 			new PolicyViolationError([
@@ -339,8 +441,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		});
 
-		// Left as `activated`, these rows read as drift and get re-enqueued forever.
-		test('reports every desired trigger as failed so no activated rows survive', async () => {
+		test('reports the refusal for every requested trigger', async () => {
 			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([
 				triggerNode('a'),
 				triggerNode('b'),
@@ -351,22 +452,25 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({
 				type: 'failed',
-				triggerStatuses: [
-					{
-						nodeId: 'a',
-						nodeName: 'a',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: 'Blocked by policy',
-					},
-					{
-						nodeId: 'b',
-						nodeName: 'b',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: 'Blocked by policy',
-					},
-				],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{
+							nodeId: 'a',
+							nodeName: 'a',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: 'Blocked by policy',
+						},
+						{
+							nodeId: 'b',
+							nodeName: 'b',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: 'Blocked by policy',
+						},
+					],
+				},
 			});
 		});
 
@@ -405,6 +509,92 @@ describe('WorkflowPublicationApplier', () => {
 			policyEnforcementService.enforceWorkflowPublish.mockRejectedValue(new Error('boom'));
 
 			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('boom');
+		});
+	});
+
+	test.each(['credentials', 'policy'] as const)(
+		'keeps live trigger state when %s refuse a same-version retry',
+		async (refusalSource) => {
+			const version = { ...newVersion, nodes: [triggerNode('a')] };
+			workflowHistoryRepository.findOneBy.mockResolvedValue(version);
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(version));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation(
+				(candidate) => candidate?.nodes ?? [],
+			);
+			const error =
+				refusalSource === 'credentials'
+					? new UserError('Credential access changed')
+					: new PolicyViolationError([
+							{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+						]);
+			if (refusalSource === 'credentials') {
+				credentialsPermissionChecker.check.mockRejectedValueOnce(error);
+			} else {
+				policyEnforcementService.enforceWorkflowPublish.mockRejectedValueOnce(error);
+			}
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error,
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [{ nodeId: 'a', status: 'activated' }],
+				},
+			});
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		},
+	);
+
+	describe('after a refusal that leaves the previous version live', () => {
+		const refuse = (version: typeof newVersion) => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(version);
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(version));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation(
+				(candidate) => candidate?.nodes ?? [],
+			);
+			const error = new UserError('Credential access changed');
+			credentialsPermissionChecker.check.mockRejectedValueOnce(error);
+			return error;
+		};
+
+		test('marks unregistered previous triggers with their own cause, not the refusal', async () => {
+			const version = { ...newVersion, nodes: [triggerNode('a'), triggerNode('b')] };
+			refuse(version);
+			workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(
+				new Set(['b']),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerState: {
+					triggerStatuses: [
+						{ nodeId: 'a', status: 'activated' },
+						{ nodeId: 'b', status: 'failed', errorMessage: 'Trigger is not registered' },
+					],
+				},
+			});
+		});
+
+		test('keeps stored trigger state when the registration probe fails', async () => {
+			const version = { ...newVersion, nodes: [triggerNode('a')] };
+			const error = refuse(version);
+			workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockRejectedValueOnce(
+				new Error('Webhook lookup failed'),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({ type: 'failed', error });
+			expect(result).not.toHaveProperty('triggerState', expect.anything());
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 	});
 
@@ -500,6 +690,7 @@ describe('WorkflowPublicationApplier', () => {
 			['startup', 'init'],
 			['leadership-takeover', 'leadershipChange'],
 			['reconcile', 'update'],
+			['transfer', 'update'],
 		] as const)('reason %s activates with mode %s', async (reason, expectedMode) => {
 			setTriggerSets([], [triggerNode('a')]);
 
@@ -533,19 +724,22 @@ describe('WorkflowPublicationApplier', () => {
 				workflowPublishedVersionRepository.findOne.mockResolvedValue(null);
 			});
 
-			test('reason publish activates with mode activate', async () => {
-				setTriggerSets([], [triggerNode('a')]);
+			test.each(['publish', 'transfer'] as const)(
+				'reason %s activates with mode activate',
+				async (reason) => {
+					setTriggerSets([], [triggerNode('a')]);
 
-				await applier.apply(makeRecord({ reason: 'publish' }), abort);
+					await applier.apply(makeRecord({ reason }), abort);
 
-				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'wf-1' }),
-					newVersion,
-					new Set(['a']),
-					'activate',
-					abort,
-				);
-			});
+					expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+						expect.objectContaining({ id: 'wf-1' }),
+						newVersion,
+						new Set(['a']),
+						'activate',
+						abort,
+					);
+				},
+			);
 
 			test('a record without a reason (pre-migration row) activates with mode activate', async () => {
 				setTriggerSets([], [triggerNode('a')]);
@@ -991,15 +1185,19 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'failed',
 			error,
-			triggerStatuses: [
-				{
-					nodeId: 'b',
-					nodeName: 'b',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: error.message,
-				},
-			],
+			nodeId: 'b',
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'b',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
 		});
 		expect((result as { error: Error }).error).toBe(error);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
@@ -1026,22 +1224,25 @@ describe('WorkflowPublicationApplier', () => {
 			error: expect.objectContaining({
 				message: `Triggers failed to activate: "b": ${deterministic.message}; "c": third-party unavailable`,
 			}),
-			triggerStatuses: [
-				{
-					nodeId: 'b',
-					nodeName: 'b',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: deterministic.message,
-				},
-				{
-					nodeId: 'c',
-					nodeName: 'c',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: 'third-party unavailable',
-				},
-			],
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'b',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: deterministic.message,
+					},
+					{
+						nodeId: 'c',
+						nodeName: 'c',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'third-party unavailable',
+					},
+				],
+			},
 		});
 	});
 
@@ -1182,23 +1383,27 @@ describe('WorkflowPublicationApplier', () => {
 				error: expect.objectContaining({
 					message: expect.stringContaining('n8n-nodes-base.executeCommand'),
 				}),
-				triggerStatuses: [
-					{
-						nodeId: 'a',
-						nodeName: 'a',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: expect.stringContaining('n8n-nodes-base.executeCommand'),
-					},
-					{
-						nodeId: 'x',
-						nodeName: 'Execute Command',
-						status: 'failed',
-						triggerKind: 'persisted',
-						errorMessage: 'Unrecognized node type: n8n-nodes-base.executeCommand',
-					},
-				],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{
+							nodeId: 'a',
+							nodeName: 'a',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: expect.stringContaining('n8n-nodes-base.executeCommand'),
+						},
+						{
+							nodeId: 'x',
+							nodeName: 'Execute Command',
+							status: 'failed',
+							triggerKind: 'persisted',
+							errorMessage: 'Unrecognized node type: n8n-nodes-base.executeCommand',
+						},
+					],
+				},
 			});
+			expect(result).not.toHaveProperty('nodeId', expect.anything());
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 		});
 
@@ -1252,7 +1457,11 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({
 				type: 'failed',
-				triggerStatuses: [{ nodeId: 'x', status: 'failed', triggerKind: 'persisted' }],
+				nodeId: 'x',
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [{ nodeId: 'x', status: 'failed', triggerKind: 'persisted' }],
+				},
 			});
 		});
 
@@ -1514,19 +1723,23 @@ describe('WorkflowPublicationApplier', () => {
 			const message = `Cannot publish workflow: trigger "Long" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters. Remove and re-add the affected nodes to give them new IDs.`;
 			expect(result).toEqual({
 				type: 'failed',
+				nodeId: longId,
 				error: expect.objectContaining({
 					message,
 					affectedNodes: [{ id: longId, name: 'Long' }],
 				}),
-				triggerStatuses: [
-					{
-						nodeId: fittingId,
-						nodeName: 'Fitting',
-						status: 'failed',
-						triggerKind: 'in-memory',
-						errorMessage: message,
-					},
-				],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [
+						{
+							nodeId: fittingId,
+							nodeName: 'Fitting',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: message,
+						},
+					],
+				},
 			});
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
@@ -1548,7 +1761,10 @@ describe('WorkflowPublicationApplier', () => {
 			expect(result).toMatchObject({
 				type: 'failed',
 				error: { affectedNodes: [{ id: longId, name: 'Long' }] },
-				triggerStatuses: [{ nodeId: astralId, nodeName: 'Astral', status: 'failed' }],
+				triggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [{ nodeId: astralId, nodeName: 'Astral', status: 'failed' }],
+				},
 			});
 		});
 
@@ -1583,7 +1799,10 @@ describe('WorkflowPublicationApplier', () => {
 
 			const result = await applier.apply(makeRecord(), abort);
 
-			expect(result).toMatchObject({ type: 'failed', triggerStatuses: [] });
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerState: { versionId: 'v-2', triggerStatuses: [] },
+			});
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 

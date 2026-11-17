@@ -186,6 +186,7 @@ function hasSafeEventKeys(event: InstanceAiEvent): boolean {
 		case 'tool-error':
 		case 'tool-interrupted':
 		case 'confirmation-request':
+		case 'auto-approval':
 			return isSafeObjectKey(event.payload.toolCallId);
 		default:
 			return true;
@@ -333,6 +334,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'agent-spawned':
 		case 'agent-completed':
 		case 'confirmation-request':
+		case 'auto-approval':
 		case 'tasks-update':
 		case 'setup-items':
 		// Apply context events during live runs as well as history replay.
