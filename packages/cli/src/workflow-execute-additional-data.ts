@@ -689,7 +689,7 @@ async function startExecution(
 		const rootExecutionMode = additionalData.rootExecutionMode ?? options.executionMode;
 
 		// A refused caller must not start executions in this workflow's project.
-		blockedReason = 'callerPolicy';
+		blockedReason = 'policy';
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,

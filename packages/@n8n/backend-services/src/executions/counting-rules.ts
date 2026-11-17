@@ -14,6 +14,8 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
+import type { ExecutionLedgerBlockedReason } from './execution-ledger-writer';
+
 export type LedgerEntityType = ExecutionLedgerEntityType;
 export type LedgerEvent = ExecutionLedgerEvent;
 /** `none` for `started` rows. `blocked`: the run stopped before its first node. */
@@ -196,11 +198,6 @@ export function isLedgerFact(row: Record<keyof LedgerFact, string>): row is Ledg
 	);
 }
 
-// The ledger stores a refused caller as `policy`.
-function toLedgerBlockedBy(reason: ExecutionBlockedReason): Exclude<LedgerBlockedBy, 'none'> {
-	return reason === 'callerPolicy' ? 'policy' : reason;
-}
-
 function toBlockedReason(run: CompletedRun): ExecutionBlockedReason | undefined {
 	const marker = run.data?.resultData?.failedBeforeStart;
 	if (isExecutionBlockedReason(marker)) return marker;
@@ -210,16 +207,18 @@ function toBlockedReason(run: CompletedRun): ExecutionBlockedReason | undefined 
 	return undefined;
 }
 
+/** A blocked run always carries its reason, so the result fits the ledger writer. */
+export type LedgerOutcomeResult =
+	| { outcome: 'blocked'; blockedBy: ExecutionLedgerBlockedReason }
+	| { outcome: Exclude<LedgerOutcome, 'blocked'>; blockedBy: 'none' };
+
 /** The one place that decides whether a run was blocked before its first node, and why. */
-export function toLedgerOutcome(run: CompletedRun): {
-	outcome: LedgerOutcome;
-	blockedBy: LedgerBlockedBy;
-} {
+export function toLedgerOutcome(run: CompletedRun): LedgerOutcomeResult {
 	const outcome = isTerminalExecutionStatus(run.status) ? run.status : 'none';
 	const isFailure = outcome === 'error' || outcome === 'crashed';
 	const reason = isFailure ? toBlockedReason(run) : undefined;
 	if (!reason) return { outcome, blockedBy: 'none' };
-	return { outcome: 'blocked', blockedBy: toLedgerBlockedBy(reason) };
+	return { outcome: 'blocked', blockedBy: reason };
 }
 
 export function toLedgerFact(run: CompletedRun, source?: WorkflowExecutionSource): LedgerFact {

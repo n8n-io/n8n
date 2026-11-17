@@ -767,7 +767,7 @@ describe('JobProcessor', () => {
 	});
 
 	// A plain run, since a deep mock answers every flag with a truthy function.
-	test.each(['callerPolicy', 'startFailed', undefined] as const)(
+	test.each(['policy', 'startFailed', undefined] as const)(
 		'should report failedBeforeStart=%s in job-finished',
 		async (flag) => {
 			const executionPersistence = mock<ExecutionPersistence>();

@@ -1163,14 +1163,14 @@ describe('ScalingService', () => {
 					status: 'error',
 					startedAt: '2026-07-25T11:59:00.000Z',
 					stoppedAt: '2026-07-25T11:59:30.000Z',
-					failedBeforeStart: 'callerPolicy',
+					failedBeforeStart: 'policy',
 				});
 
 				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
 					'jobs',
 					'job-789',
 					'exec-123',
-					expect.objectContaining({ failedBeforeStart: 'callerPolicy' }),
+					expect.objectContaining({ failedBeforeStart: 'policy' }),
 				);
 			});
 

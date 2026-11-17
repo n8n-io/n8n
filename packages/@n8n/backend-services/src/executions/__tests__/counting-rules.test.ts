@@ -275,7 +275,6 @@ describe('toLedgerOutcome', () => {
 
 	test.each<[ExecutionBlockedReason, LedgerBlockedBy]>([
 		['policy', 'policy'],
-		['callerPolicy', 'policy'],
 		['credentialAccess', 'credentialAccess'],
 		['invalidWorkflow', 'invalidWorkflow'],
 		['contextHook', 'contextHook'],

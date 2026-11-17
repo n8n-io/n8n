@@ -755,7 +755,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(fullRunData.data.resultData.failedBeforeStart).toBe('credentialAccess');
 			});
 
-			it('marks the run as blocked by the caller policy when the policy refuses the caller', async () => {
+			it('marks the run as blocked by policy when the sub-workflow refuses its caller', async () => {
 				failPolicyCheck();
 
 				await expect(runSubWorkflow(false)).rejects.toThrow('cannot be called by this workflow');
@@ -764,7 +764,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					EXECUTION_ID,
 					expect.objectContaining({
 						data: expect.objectContaining({
-							resultData: expect.objectContaining({ failedBeforeStart: 'callerPolicy' }),
+							resultData: expect.objectContaining({ failedBeforeStart: 'policy' }),
 						}),
 					}),
 				);

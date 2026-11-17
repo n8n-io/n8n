@@ -1,7 +1,6 @@
-/** Why a run stopped before its first node. `callerPolicy`: the workflow refused its caller. */
+/** Why a run stopped before its first node. */
 export const EXECUTION_BLOCKED_REASONS = [
 	'policy',
-	'callerPolicy',
 	'credentialAccess',
 	'invalidWorkflow',
 	'contextHook',

@@ -1893,7 +1893,7 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunnerMock.run.mock.calls[0][0].workflowData.nodes).toEqual(mappingNodes);
 		});
 
-		test('marks the stored refusal as blocked by the caller policy when the sub-workflow policy refuses', async () => {
+		test('marks the stored refusal as blocked by policy when the error workflow refuses its caller', async () => {
 			const workflowErrorData: IWorkflowErrorData = {
 				workflow: { id: 'workflow-id', name: 'Test Workflow' },
 				execution: {
@@ -1967,7 +1967,7 @@ describe('WorkflowExecutionService', () => {
 
 			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
 			const [payload] = executionPersistence.create.mock.calls[0];
-			expect(payload.data.resultData.failedBeforeStart).toBe('callerPolicy');
+			expect(payload.data.resultData.failedBeforeStart).toBe('policy');
 		});
 
 		test('should not run the error workflow when it has no published version (flag on)', async () => {
