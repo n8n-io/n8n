@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import CredentialTypesTab from './CredentialTypesTab.vue';
 import CredentialTypeAccessDialog from './access-dialog/CredentialTypeAccessDialog.vue';
+import NodeTypeAccessDialog from './access-dialog/NodeTypeAccessDialog.vue';
 import NodeTypesTab from './NodeTypesTab.vue';
 import { useInstancePolicy } from './useInstancePolicy';
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
@@ -124,8 +125,14 @@ onMounted(() => {
 				<ReuseTabs />
 			</template>
 		</NodeTypesTab>
+		<NodeTypeAccessDialog
+			v-if="details?.kind === 'node'"
+			open
+			:node-type="details.name"
+			@update:open="closeDetails"
+		/>
 		<CredentialTypeAccessDialog
-			v-if="details?.kind === 'credential'"
+			v-else-if="details?.kind === 'credential'"
 			open
 			:credential-type="details.name"
 			@update:open="closeDetails"
