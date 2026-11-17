@@ -352,7 +352,7 @@ export function rewriteExtensions(body: string): { code: string; helpers: string
 const BINARY_META = new Set(['mimeType', 'fileName', 'fileExtension', 'fileSize', 'fileType']);
 
 /**
- * True when the expression reads `$binary` (the node `n`) in a way that gives the value of
+ * True when the expression reads `$binary` or the `binary` of an item (the node `n`) in a way that gives the value of
  * v1 with the binary data of the runtime (spec 10: `$binary` of an item, with one more
  * member `bytes` in each entry, and no key when the item has no binary data, where v1 has an
  * empty map). These ways
@@ -361,7 +361,7 @@ const BINARY_META = new Set(['mimeType', 'fileName', 'fileExtension', 'fileSize'
  * of an entry (`!`, a condition, `&&`, a comparison with null), and, with `value`, the map
  * or an entry as the whole value of the expression.
  */
-function binaryUse(n: ts.Identifier, value: boolean): boolean {
+function binaryUse(n: ts.Node, value: boolean): boolean {
 	let cur: ts.Node = n;
 	let p: ts.Node = n.parent;
 	const climb = () => {
@@ -565,11 +565,22 @@ export function translateBody(
 			replace(base, after, 'undefined');
 			return;
 		}
+		// The binary data of an item: the key `$binary` of its JSON (see `binaryUse`).
+		const binary = ts.isPropertyAccessExpression(after) && after.name.text === 'binary';
+		const binaryOf = (code: string) => {
+			if (scope.binaryMode === 'combined' || !binaryUse(after, false)) {
+				unsupported('binary of an item');
+			} else {
+				// v1 gives undefined here for an item without binary data (`$binary` gives a map).
+				replace(base, after, `${code}.$binary`);
+			}
+		};
 		if (member === 'item' && !call) {
 			const code = own ? ITEM : pairedOf(name);
 			if (own) usage.item = true;
 			if (code === null) return;
-			if (json) replace(base, after, jsonValue(after, code));
+			if (binary) binaryOf(code);
+			else if (json) replace(base, after, jsonValue(after, code));
 			else replace(base, p, `({ json: ${code} })`);
 			return;
 		}
@@ -577,7 +588,8 @@ export function translateBody(
 			const l = list();
 			if (l === null) return;
 			const code = member === 'first' ? `${l}[0]` : `${l}[${l}.length - 1]`;
-			if (json) replace(base, after, jsonValue(after, code));
+			if (binary) binaryOf(code);
+			else if (json) replace(base, after, jsonValue(after, code));
 			else replace(base, p.parent, `({ json: ${code} })`);
 			return;
 		}
@@ -622,7 +634,52 @@ export function translateBody(
 		unsupported(own ? `$input.${member ?? '?'}` : `$('…').${member ?? '?'}`);
 	};
 
+	/**
+	 * `$item(k).$node["Node"].json`: the JSON of item `k` of the node (helper `itemAt`).
+	 * Returns false when `n` is not such a call.
+	 */
+	const itemOfNode = (n: ts.CallExpression): boolean => {
+		const node = n.parent;
+		const named = node.parent;
+		const member = named?.parent;
+		if (
+			!ts.isIdentifier(n.expression) ||
+			n.expression.text !== '$item' ||
+			n.arguments.length !== 1 ||
+			ts.isSpreadElement(n.arguments[0]) ||
+			!ts.isPropertyAccessExpression(node) ||
+			node.expression !== n ||
+			node.name.text !== '$node' ||
+			!member ||
+			!ts.isPropertyAccessExpression(member) ||
+			member.expression !== named ||
+			(member.name.text !== 'json' && member.name.text !== 'data')
+		) {
+			return false;
+		}
+		const name =
+			ts.isElementAccessExpression(named) && named.expression === node
+				? ts.isStringLiteral(named.argumentExpression) ||
+					ts.isNoSubstitutionTemplateLiteral(named.argumentExpression)
+					? named.argumentExpression.text
+					: null
+				: ts.isPropertyAccessExpression(named) && named.expression === node
+					? named.name.text
+					: null;
+		if (name === null) return false;
+		const at = translateBody(n.arguments[0].getText(sf), scope);
+		if (!at.ok) return false;
+		const l = listOf(name);
+		if (l === null) return false;
+		usage.item ||= at.usage.item;
+		usage.index ||= at.usage.index;
+		scope.useHelper?.('itemAt');
+		replace(n, member, jsonValue(member, `itemAt(${l}, (${at.code}), ${str(name)})`));
+		return true;
+	};
+
 	const visit = (n: ts.Node): void => {
+		if (ts.isCallExpression(n) && itemOfNode(n)) return;
 		// $('Node')…
 		if (
 			ts.isCallExpression(n) &&
@@ -912,6 +969,10 @@ export function translateBody(
 					code: 'WL101',
 				})),
 			};
+		}
+		// A part of a template that needs no rewrite keeps its plain form and its plain guard.
+		if (form.helpers.length === 0 && form.code === `(${ended})`) {
+			return { ok: true, code: ended, usage };
 		}
 		for (const h of form.helpers) scope.useHelper?.(h);
 		for (const z of form.zones) scope.useZone?.(z);
@@ -1246,6 +1307,7 @@ export function translateExpression(
 			continue;
 		}
 		all ||= r.guardAll === true;
+		if (r.guardAll) scope.useHelper?.('orNullAll');
 		const piece = r.guardAll
 			? `orNullAll(() => ${r.code})`
 			: throws

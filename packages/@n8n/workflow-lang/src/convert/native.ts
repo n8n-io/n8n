@@ -511,7 +511,14 @@ export function lowerSet(c: NodeContext): void {
 				c.helper('orUndefined');
 				c.helper('parseRawJson');
 				const t = c.compiled(rawJson.replace(/^=+/, '='), 'jsonOutput', {
-					templatePart: (code) => `toText(${code.replace(/^orNull\(/, 'orUndefined(')})`,
+					templatePart: (code) => {
+						// A part in its native form has the guard for every error (`orNullAll`).
+						if (code.startsWith('orNullAll(')) c.helper('orUndefinedAll');
+						const guarded = code
+							.replace(/^orNull\(/, 'orUndefined(')
+							.replace(/^orNullAll\(/, 'orUndefinedAll(');
+						return `toText(${guarded})`;
+					},
 				});
 				usage.item ||= t.usage.item;
 				usage.index ||= t.usage.index;

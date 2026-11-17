@@ -1520,6 +1520,21 @@ function orUndefined(value: () => Json): Json {
 	}
 }`,
 	},
+	orUndefinedAll: {
+		uses: [],
+		source: `/**
+ * The value of an expression in its native form, or undefined when it throws (\`orNullAll\`
+ * for a place where v1 gives undefined: a part of a text, a pagination value).
+ */
+function orUndefinedAll(value: () => Json): Json {
+	try {
+		return value();
+	} catch (error) {
+		if (error !== null && typeof error === 'object' && error.name === 'ExpressionExtensionError') throw error;
+		return undefined;
+	}
+}`,
+	},
 	paginationRepeat: {
 		uses: [],
 		source: `/**
@@ -1664,6 +1679,17 @@ function withContentType(headers: Json, name: string, value: Json): Json {
 	}
 	out[name] = value;
 	return out;
+}`,
+	},
+	itemAt: {
+		uses: [],
+		source: `/** \`$item(k).$node[name].json\`: the JSON of item k of the node, with the errors of v1. */
+function itemAt(list: Json[], k: Json, name: string): Json {
+	if (list.length === 0) throw new Error("Node '" + name + "' hasn't been executed");
+	if (list.length <= k) {
+		throw new Error('"' + name + '" node has ' + String(list.length) + " item(s) but you're trying to access item " + String(k));
+	}
+	return list[k];
 }`,
 	},
 	orNullAll: {

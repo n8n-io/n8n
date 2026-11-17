@@ -149,6 +149,40 @@ describe('the native form of expressions', () => {
 		expect(traced).toEqual(v1.nodes.S?.[0]);
 	});
 
+	it('gives the JSON output of a Set node in raw mode', async () => {
+		const wf = {
+			...workflow([]),
+			nodes: [
+				workflow([]).nodes[0],
+				{
+					name: 'S',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {
+						mode: 'raw',
+						jsonOutput:
+							'={ "a": "{{ $json.text.replace(/\\d+/g, "#") }}", "n": {{ $json.n }}, "m": "{{ $json.missing.replace(/a/, "b") }}", "t": {{ /^Order/.test($json.text) }} }',
+						options: {},
+					},
+				},
+			],
+		};
+		const v1 = await runOracle(wf, { start: 'T', item: ITEM, mode: 'trigger', timeoutMs: 20_000 });
+		const converted = convertWorkflow(wf, { trace: 'all' });
+		expect(converted.fallbackNodes).toEqual([]);
+		const out = await runReference(converted.source, {
+			trigger: { body: ITEM },
+			now: 0,
+			seed: 1,
+			effects: {},
+			trace: true,
+		});
+		expect(v1.error).toBeNull();
+		expect(out.status).toBe('ok');
+		expect((out.trace ?? []).find((t) => t.step === 'S')?.items).toEqual(v1.nodes.S?.[0]);
+	});
+
 	it('keeps an expression with an extension without a helper in the fallback host', () => {
 		const converted = convertWorkflow(
 			workflow([

@@ -72,6 +72,20 @@ const CASES: Case[] = [
 		},
 	},
 	{
+		name: 'next URL from a regular expression on a field of the response',
+		pagination: {
+			paginationMode: 'responseContainsNextURL',
+			nextURL: '={{ $response.body.links.match(/<([^>]*)>;\\s*rel="next"/)[1] }}',
+			paginationCompleteWhen: 'other',
+			completeExpression: '={{ !/rel="next"/.test($response.body.links) }}',
+		},
+		serve: (path, _q, base) => {
+			const n = path === '/x' ? 0 : Number(path.split('/').pop());
+			const next = n < 2 ? `<${base}/x/page/${n + 1}>; rel="next", ` : '';
+			return { status: 200, body: { n, links: `${next}<${base}/x>; rel="first"` } };
+		},
+	},
+	{
 		name: 'stop on a status code, with the last page in the output',
 		pagination: {
 			parameters: { parameters: [{ name: 'page', value: '={{ $pageCount }}' }] },
