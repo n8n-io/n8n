@@ -14,6 +14,8 @@ import {
 import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
+import { dbNowLiteral } from '../utils/dialect-time';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
@@ -42,6 +44,38 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			status: In([Status.InProgress, Status.Pending]),
 		});
 		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
+	}
+
+	/** Get the latest request, including its terminal outcome, for publication callers. */
+	async findLatestByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationOutbox | null> {
+		return await this.managerFor(ctx).findOne(WorkflowPublicationOutbox, {
+			where: { workflowId },
+			order: { id: 'DESC' },
+		});
+	}
+
+	/** Read one latest request per workflow without loading its retained history. */
+	async findLatestByWorkflowIds(workflowIds: string[]): Promise<WorkflowPublicationOutbox[]> {
+		const records: WorkflowPublicationOutbox[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			const latest = await this.createQueryBuilder('outbox')
+				.where((qb) => {
+					const latestIds = qb
+						.subQuery()
+						.select('MAX(request.id)')
+						.from(WorkflowPublicationOutbox, 'request')
+						.where('request.workflowId IN (:...workflowIds)', { workflowIds: chunk })
+						.groupBy('request.workflowId')
+						.getQuery();
+					return `outbox.id IN ${latestIds}`;
+				})
+				.getMany();
+			records.push(...latest);
+		}
+		return records;
 	}
 
 	/**
@@ -505,10 +539,15 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		warningMessage?: string,
 	): Promise<void> {
 		const manager = this.managerFor(ctx);
+		// Match trigger-row precision so callers can compare publication outcomes.
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Completed, errorMessage: warningMessage ?? null },
+			{
+				status: Status.Completed,
+				errorMessage: warningMessage ?? null,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
@@ -519,7 +558,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Failed, errorMessage },
+			{
+				status: Status.Failed,
+				errorMessage,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Failed);
 	}
@@ -539,7 +582,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.PartialSuccess, errorMessage },
+			{
+				status: Status.PartialSuccess,
+				errorMessage,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
 	}
