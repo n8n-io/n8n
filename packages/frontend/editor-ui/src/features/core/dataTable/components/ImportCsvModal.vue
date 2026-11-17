@@ -13,6 +13,7 @@ import {
 	N8nCallout,
 	N8nDialog,
 	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nIcon,
 	N8nText,
@@ -197,11 +198,10 @@ onBeforeUnmount(() => {
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
+			<N8nDialogDescription>
+				{{ i18n.baseText('dataTable.importCsv.description') }}
+			</N8nDialogDescription>
 			<div :class="$style.content">
-				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('dataTable.importCsv.description') }}
-				</N8nText>
-
 				<ElUpload
 					:class="$style.uploadDemo"
 					drag
