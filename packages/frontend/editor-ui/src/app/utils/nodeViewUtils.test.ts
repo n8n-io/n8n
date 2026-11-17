@@ -259,9 +259,9 @@ describe('generateOffsets', () => {
 		expect(result).toEqual([-864, -672, -480, -288, -96, 96, 288, 480, 672, 864]);
 	});
 
-	it('should space the offsets evenly by the node size and the spacing', () => {
-		const result = generateOffsets(3, 128, GRID_SIZE);
-		expect(result).toEqual([-144, 0, 144]);
+	it('should put two offsets half a node size and spacing away from 0', () => {
+		const result = generateOffsets(2, 128, GRID_SIZE);
+		expect(result).toEqual([-72, 72]);
 	});
 });
 

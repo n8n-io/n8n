@@ -901,6 +901,9 @@ describe('useCanvasOperations', () => {
 				type: 'test',
 				typeVersion: 1,
 			});
+			vi.mocked(workflowDocumentStoreInstance.getExpressionHandler).mockReturnValue(
+				createWorkflowObjectKeepingParameters([lastInteracted]).expression,
+			);
 			uiStore.lastInteractedWithNodeId = lastInteracted.id;
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
 				id === lastInteracted.id ? (lastInteracted as INodeUi) : undefined,
