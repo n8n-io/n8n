@@ -324,6 +324,8 @@ export class PromotionsService {
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
+			// The lease can also expire during the write.
+			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
@@ -563,6 +565,8 @@ export class PromotionsService {
 				branch,
 			);
 
+			// The lease can also expire during the write.
+			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.

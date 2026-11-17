@@ -517,6 +517,39 @@ describe('PromotionsService', () => {
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
 
+		it.each([false, true])(
+			'stops before the commit and keeps the checkout trusted when the lock is lost during the package write (branch on promotion: %s)',
+			async (createBranchOnPromotion) => {
+				resolver.resolveForEnvironment.mockResolvedValue(
+					operationInput({
+						direction: 'promote',
+						settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion },
+					}),
+				);
+				const { repositoryFolder } = workingDirectory.paths(ENVIRONMENT_ID);
+				const packageFolder = path.join(repositoryFolder, 'n8n');
+				const controller = new AbortController();
+				vi.spyOn(environmentLock, 'run').mockImplementation(
+					async (_environmentId, fn) => await fn(controller.signal),
+				);
+				const { rm: realRm } =
+					await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+				vi.mocked(rm).mockImplementation(async (target, options) => {
+					// The lease expires while the new package replaces the old one.
+					if (target === packageFolder) controller.abort();
+					await realRm(target, options);
+				});
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
+				).rejects.toThrow(PromotionLockLostError);
+
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+				expect(runRepository.insertRun).not.toHaveBeenCalled();
+				await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+			},
+		);
+
 		it('stops before the push when the lock is lost after the commit check', async () => {
 			const controller = new AbortController();
 			vi.spyOn(environmentLock, 'run').mockImplementation(
@@ -1998,6 +2031,26 @@ describe('PromotionsService', () => {
 					workflowFile('w1'),
 				);
 				await expect(readExported('projects/alpha/workflows/w2/workflow.json')).rejects.toThrow();
+				await expect(stat(`${packageFolder}.pre-selection`)).resolves.toBeDefined();
+				await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+			});
+
+			it('stops before the commit and keeps the package and the backup when the lock is lost during the package write', async () => {
+				const applySelection = WorkingCopyUpdater.prototype.applySelection;
+				vi.spyOn(WorkingCopyUpdater.prototype, 'applySelection').mockImplementationOnce(
+					async function (this: WorkingCopyUpdater, ...args) {
+						await applySelection.apply(this, args);
+						// The lease expires while the selection is written.
+						controller.abort();
+					},
+				);
+
+				await expect(promoteW2()).rejects.toThrow(PromotionLockLostError);
+
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+				expect(await readExported('projects/alpha/workflows/w2/workflow.json')).toBe(
+					workflowFile('w2'),
+				);
 				await expect(stat(`${packageFolder}.pre-selection`)).resolves.toBeDefined();
 				await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
 			});
