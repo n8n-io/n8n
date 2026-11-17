@@ -23,7 +23,8 @@
  *
  * Supported: the prompt as text, the system, AI and user text messages, and the
  * chat models `lmChatOpenAi` (versions 1 to 1.3: Chat Completions API and Responses
- * API) and `lmChatOpenRouter`, with the options that map to fields of the request body.
+ * API), `lmChatOpenRouter` and `lmChatAnthropic` (versions 1 to 1.5, without thinking
+ * options), with the options that map to fields of the request body.
  * Not supported (the converter keeps these in the fallback host): an output
  * parser, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
@@ -42,6 +43,8 @@ interface ModelOptions {
 	frequencyPenalty?: number;
 	presencePenalty?: number;
 	maxRetries?: number;
+	/** The Anthropic model. */
+	topK?: number;
 }
 
 interface AiModel {
@@ -95,6 +98,10 @@ interface Outcome {
 interface ModelRequest {
 	responses: boolean;
 	body: Record<string, unknown>;
+	/** True for the Messages API of Anthropic. */
+	anthropic?: boolean;
+	/** The request cannot go out: the error of the LangChain client, on the run of the model. */
+	refused?: string;
 }
 
 interface ChatMessage {
@@ -234,6 +241,27 @@ function connectionMessage(text: string): string {
  */
 function answerToolCalls(request: ModelRequest, data: unknown): string | undefined {
 	const messages = request.body.messages;
+	if (request.anthropic === true && Array.isArray(messages)) {
+		const blocks: unknown[] = [];
+		const results: unknown[] = [];
+		for (const part of anthropicParts(data)) {
+			if (part.type === 'text') {
+				blocks.push({ type: 'text', text: part.text });
+			} else if (part.type === 'tool_use') {
+				blocks.push({ type: 'tool_use', id: part.id, name: part.name, input: part.input });
+				results.push({
+					type: 'tool_result',
+					content: `${String(part.name)} is not a valid tool, try another one.`,
+					tool_use_id: part.id,
+				});
+			} else {
+				return 'AI Agent: the model called a tool, and the agent has no tools';
+			}
+		}
+		messages.push({ role: 'assistant', content: blocks });
+		messages.push({ role: 'user', content: results });
+		return undefined;
+	}
 	if (request.responses || !Array.isArray(messages) || !isObject(data)) {
 		return 'AI Agent: the model called a tool, and the agent has no tools';
 	}
@@ -343,6 +371,14 @@ function partText(part: Record<string, unknown>): string {
 	throw new Error(`Cannot coerce "${String(part.type)}" message part into a string.`);
 }
 
+/** The content blocks of an answer of the Anthropic Messages API. */
+function anthropicParts(data: unknown): Array<Record<string, unknown>> {
+	const parts: Array<Record<string, unknown>> = [];
+	const content = isObject(data) && Array.isArray(data.content) ? data.content : [];
+	for (const part of content) if (isObject(part)) parts.push(part);
+	return parts;
+}
+
 /** True when the answer of the model calls a tool. The agent of this node has no tools. */
 function callsTool(data: unknown, responses: boolean): boolean {
 	if (!isObject(data)) return false;
@@ -373,8 +409,144 @@ function agentOutput(parts: Array<Record<string, unknown>>, responses: boolean):
 	return thinking.trim();
 }
 
+/** The default of `max_tokens` for a model (MODEL_DEFAULT_MAX_OUTPUT_TOKENS of @langchain/anthropic). */
+const ANTHROPIC_MAX_TOKENS: Array<[string, number]> = [
+	['claude-opus-5', 16384],
+	['claude-fable-5', 16384],
+	['claude-mythos-5', 16384],
+	['claude-mythos-preview', 16384],
+	['claude-opus-4-7', 16384],
+	['claude-opus-4-6', 16384],
+	['claude-sonnet-4-6', 16384],
+	['claude-opus-4-5', 16384],
+	['claude-sonnet-4-5', 16384],
+	['claude-haiku-4-5', 16384],
+	['claude-opus-4-1', 16384],
+	['claude-sonnet-4', 16384],
+	['claude-opus-4', 16384],
+	['claude-3-7-sonnet', 8192],
+	['claude-3-5-sonnet', 8192],
+	['claude-3-5-haiku', 8192],
+	['claude-3-opus', 4096],
+	['claude-3-sonnet', 4096],
+	['claude-3-haiku', 4096],
+];
+
+/** Models that the Anthropic client limits to 8192 tokens without a stream. */
+const ANTHROPIC_NONSTREAMING = [
+	'claude-opus-4-20250514',
+	'claude-opus-4-0',
+	'claude-4-opus-20250514',
+	'anthropic.claude-opus-4-20250514-v1:0',
+	'claude-opus-4@20250514',
+	'claude-opus-4-1-20250805',
+	'anthropic.claude-opus-4-1-20250805-v1:0',
+	'claude-opus-4-1@20250805',
+];
+
+function isDigits(text: string): boolean {
+	if (text === '') return false;
+	for (let i = 0; i < text.length; i++) if (!isDigit(text[i])) return false;
+	return true;
+}
+
+/**
+ * True when the v1 model node sends the sampling parameters for the model
+ * (modelSupportsSamplingParams): other Claude models take none, and the node drops them.
+ */
+function anthropicSamples(model: string): boolean {
+	if (!model.startsWith('claude-')) return true;
+	if (
+		model.startsWith('claude-2') ||
+		model.startsWith('claude-instant') ||
+		model.startsWith('claude-3') ||
+		model.startsWith('claude-sonnet-4') ||
+		model.startsWith('claude-haiku-4')
+	) {
+		return true;
+	}
+	// `claude-opus-4`, then `-0` to `-6` or nothing, then a date of 8 digits or nothing.
+	if (!model.startsWith('claude-opus-4')) return false;
+	let rest = model.slice('claude-opus-4'.length);
+	if (rest.length >= 2 && rest[0] === '-' && rest[1] >= '0' && rest[1] <= '6') {
+		if (rest.length === 2 || rest[2] === '-') rest = rest.slice(2);
+	}
+	if (rest === '') return true;
+	return rest.length === 9 && rest[0] === '-' && isDigits(rest.slice(1));
+}
+
+/** The request of the Anthropic chat model (`lmChatAnthropic`, ChatAnthropic of LangChain). */
+function anthropicRequest(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
+	const options = ai.options ?? {};
+	const model = ai.model ?? '';
+	const messages = chatMessages(item, '', agent);
+	const request: ModelRequest = { responses: false, anthropic: true, body: {} };
+	let maxTokens = options.maxTokens;
+	if (maxTokens === undefined) {
+		maxTokens = 4096;
+		for (const [prefix, tokens] of ANTHROPIC_MAX_TOKENS) {
+			if (model.startsWith(prefix)) {
+				maxTokens = tokens;
+				break;
+			}
+		}
+	}
+	const body: Record<string, unknown> = { model, stream: false, max_tokens: maxTokens };
+	if (anthropicSamples(model)) {
+		body.temperature = options.temperature;
+		body.top_k = options.topK;
+		body.top_p = options.topP;
+	}
+	if (agent) body.tools = [];
+	const sent: unknown[] = [];
+	for (let i = 0; i < messages.length; i++) {
+		const message = messages[i];
+		if (message.role !== 'system') {
+			sent.push(message);
+		} else if (i === 0) {
+			body.system = message.content;
+		} else {
+			request.refused = 'System messages are only permitted as the first passed message.';
+		}
+	}
+	body.messages = sent;
+	// The client refuses a request without a stream that can take longer than 10 minutes.
+	const long = (60 * 60 * maxTokens) / 128000 > 10 * 60;
+	if (long || (ANTHROPIC_NONSTREAMING.includes(model) && maxTokens > 8192)) {
+		if (request.refused === undefined) {
+			request.refused =
+				'Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details';
+		}
+	}
+	request.body = body;
+	return request;
+}
+
+/** The text of a failed answer as the Anthropic client writes it: the status, then the body. */
+function anthropicClientMessage(status: number, body: unknown): string {
+	const text = typeof body === 'string' ? body : body === undefined ? '' : JSON.stringify(body);
+	return text === '' ? `${status} status code (no body)` : `${status} ${text}`;
+}
+
+/**
+ * True when the text names a sampling parameter and then says that it is deprecated or not
+ * supported: the test of the v1 model node on the message of a failed request.
+ */
+function refusesSampling(message: string): boolean {
+	const lower = message.toLowerCase();
+	let first = -1;
+	for (const name of ['temperature', 'top_p', 'top_k']) {
+		const at = lower.indexOf(name);
+		if (at >= 0 && (first < 0 || at < first)) first = at;
+	}
+	if (first < 0) return false;
+	const after = lower.slice(first);
+	return after.includes('deprecated') || after.includes('not supported');
+}
+
 /** The request body of the item, and true when it goes to the Responses API. */
 function requestOf(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
+	if (ai.provider === 'anthropic') return anthropicRequest(item, ai, agent);
 	const options = ai.options ?? {};
 	const maxTokens = options.maxTokens === -1 ? undefined : options.maxTokens;
 	const model = ai.model ?? '';
@@ -450,12 +622,63 @@ export default defineNode<ChainParameters>({
 		const tries = (ai.options?.maxRetries ?? 2) + 1;
 
 		/**
+		 * One call of the Anthropic model. The credential type injects the key and the custom
+		 * header. LangChain tries a failed request 7 times, also after a 429 answer.
+		 */
+		const sendAnthropic = async (
+			request: ModelRequest,
+			run: { error: string | null },
+		): Promise<{ data?: unknown; error?: string }> => {
+			for (let attempt = 1; ; attempt++) {
+				let status = 0;
+				let body: unknown;
+				let transport = '';
+				try {
+					const response = await ctx.http<unknown>({
+						method: 'POST',
+						url: '{{$credentials.url}}/v1/messages',
+						headers: { 'anthropic-version': '2023-06-01' },
+						qs: {},
+						body: request.body,
+						credential,
+					});
+					status = response.status;
+					body = response.body;
+				} catch (error) {
+					transport = messageOf(error);
+				}
+				if (status > 0 && status < 400) return { data: body };
+				if (status > 0 && refusesSampling(anthropicClientMessage(status, body))) {
+					run.error = `The model "${String(request.body.model)}" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again.`;
+					return { error: run.error };
+				}
+				if (NO_RETRY.includes(status)) {
+					run.error =
+						STATUS_MESSAGES[String(status)] ??
+						'Your request is invalid or could not be processed by the service';
+					return { error: run.error };
+				}
+				if (attempt >= 7) {
+					run.error =
+						status > 0 ? anthropicClientMessage(status, body) : connectionMessage(transport);
+					return { error: run.error };
+				}
+				await ctx.wait({ duration: retryWait(ctx.random(), attempt) });
+			}
+		};
+
+		/**
 		 * One call of the model, with the tries of LangChain's caller. It records the run of the
 		 * model sub-node when the request starts, and gives the body of the answer or the error.
 		 */
 		const send = async (request: ModelRequest): Promise<{ data?: unknown; error?: string }> => {
 			const run: { error: string | null } = { error: null };
 			runs.push(run);
+			if (request.refused !== undefined) {
+				run.error = request.refused;
+				return { error: run.error };
+			}
+			if (request.anthropic === true) return await sendAnthropic(request, run);
 			for (let attempt = 1; ; attempt++) {
 				let status = 0;
 				let body: unknown;
@@ -495,7 +718,7 @@ export default defineNode<ChainParameters>({
 		 * version 3 gives the call to n8n's engine: the engine then runs the whole node again.
 		 */
 		const one = async (item: ItemParameters, iteration: number): Promise<Outcome> => {
-			if (ai.provider !== 'openAi' && ai.provider !== 'openRouter') {
+			if (ai.provider !== 'openAi' && ai.provider !== 'openRouter' && ai.provider !== 'anthropic') {
 				return { error: 'Basic LLM Chain: the chat model is not in the compiled library' };
 			}
 			if (agent && version >= 3 && iteration >= maxIterations) {
@@ -512,14 +735,19 @@ export default defineNode<ChainParameters>({
 				const run = runs[runs.length - 1];
 				let parts: Array<Record<string, unknown>> = [];
 				try {
-					if (request.responses) parts = responseParts(answer.data);
+					if (request.anthropic === true) parts = anthropicParts(answer.data);
+					else if (request.responses) parts = responseParts(answer.data);
 					else parts = [{ type: 'text', text: completionText(answer.data) }];
 				} catch (error) {
 					run.error = messageOf(error);
 					return { error: run.error };
 				}
 				if (agent) {
-					if (callsTool(answer.data, request.responses)) {
+					const calls =
+						request.anthropic === true
+							? parts.some((part) => part.type === 'tool_use')
+							: callsTool(answer.data, request.responses);
+					if (calls) {
 						// The agent has no tools. Version 3 gives the calls to the engine, which has no
 						// tool to run and runs the agent again. Version 2 answers each call itself.
 						if (version >= 3) return { again: true };
@@ -530,7 +758,9 @@ export default defineNode<ChainParameters>({
 						if (failed !== undefined) return { error: failed };
 						continue;
 					}
-					const output: Item = { output: agentOutput(parts, request.responses) };
+					const output: Item = {
+						output: agentOutput(parts, request.responses || request.anthropic === true),
+					};
 					if (parameters.returnIntermediateSteps === true) output.intermediateSteps = [];
 					return { item: output };
 				}

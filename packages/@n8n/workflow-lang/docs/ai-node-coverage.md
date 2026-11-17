@@ -46,7 +46,7 @@ chat trigger or with unconnected sub-nodes has no root node, and counts as nativ
 | `openai.ts` | `openAi` 2 to 2.3 `text.response`; 1 to 1.8 `text.message`; no tools | cases against the node and the engine |
 | `anthropic.ts` | `anthropic` 1 `text.message`; no attachments, no tools | cases against the node and the engine |
 | `google-gemini.ts` | `googleGemini` 1 to 1.2 `text.message`; no built-in tools | cases against the node and the engine |
-| `chain-llm.ts` | `chainLlm` 1 to 1.9 with `lmChatOpenAi` 1 to 1.3 or `lmChatOpenRouter`; text prompt and messages; all error settings; batches | cases against the engine with the real sub-node |
+| `chain-llm.ts` | `chainLlm` 1 to 1.9 with `lmChatOpenAi` 1 to 1.3, `lmChatOpenRouter` or `lmChatAnthropic` 1 to 1.5 (no thinking options, no gateway URL); text prompt and messages; all error settings; batches | cases against the engine with the real sub-node |
 | `chain-llm.ts` (`kind: 'agent'`) | `agent` 2 to 3.1 (Tools Agent) with the same models; no tool, memory or parser | cases against the engine with the real sub-node |
 
 ### Root node types: workflows, and workflows where the node is native

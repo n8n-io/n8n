@@ -3291,6 +3291,227 @@
 			}
 		]
 	},
+	"googleDrive file.createFromText in the root": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "404",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f1",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "root"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "notes.txt",
+					"mimeType": "text/plain"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "404",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f1",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "root"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "notes.txt",
+					"mimeType": "text/plain"
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"id": "f1"
+			},
+			{
+				"id": "f1"
+			}
+		]
+	},
+	"googleDrive file.createFromText in a folder with properties": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "475",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"Untitled\",\"parents\":[\"folder-9\"],\"mimeType\":\"text/plain\",\"properties\":{\"team\":\"ops\"},\"appProperties\":{\"run\":\"7\"}}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nGrüße 😀\r\n-- end \"quoted\"\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f2",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"keepRevisionForever": "true",
+					"ocrLanguage": "de",
+					"useContentAsIndexableText": "true",
+					"addParents": "folder-9"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Untitled",
+					"mimeType": "text/plain",
+					"properties": {
+						"team": "ops"
+					},
+					"appProperties": {
+						"run": "7"
+					}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "f2"
+			}
+		]
+	},
+	"googleDrive file.createFromText in a shared drive, no content": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "390",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"empty.txt\",\"parents\":[\"drive-3\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\n\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f3",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "drive-3"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "empty.txt",
+					"mimeType": "text/plain"
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "f3"
+			}
+		]
+	},
+	"googleDrive file.createFromText as a Google document": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Doc",
+					"parents": ["folder-9"],
+					"mimeType": "application/vnd.google-apps.document",
+					"properties": {
+						"team": "ops"
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://docs.googleapis.com/v1/documents/d1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"insertText": {
+								"text": "Hello document",
+								"endOfSegmentLocation": {
+									"segmentId": ""
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "d1"
+			}
+		]
+	},
 	"googleDrive file.copy with the cached name": {
 		"requests": [
 			{
@@ -7243,6 +7464,185 @@
 			}
 		]
 	},
+	"microsoftTeams task.get status 500": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service was not able to process your request"
+	},
+	"microsoftTeams task.get status 404": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The resource you are requesting could not be found"
+	},
+	"microsoftTeams task.create status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"planId": "plan-1",
+					"bucketId": "bucket-1",
+					"title": "x"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Bad request - please check your parameters"
+	},
+	"microsoftTeams chatMember.remove status 403": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/members/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"microsoftTeams chat.getAll status 429 on the second page": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$top": "50"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/chats",
+				"qs": {
+					"$skiptoken": "n"
+				},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"error": "The service is receiving too many requests from you"
+	},
+	"microsoftTeams channel.update status 418": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"body": {
+					"displayName": "x"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"microsoftTeams task.get status 501": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service failed to process your request"
+	},
+	"microsoftTeams task.get id of dots": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id with a bad percent code": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id that decodes to a percent sign": {
+		"requests": [],
+		"accepts": [],
+		"error": "The ID is not valid"
+	},
+	"microsoftTeams task.get id with other letters and spaces around it": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/täsk-😀 x",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "t"
+			}
+		]
+	},
+	"microsoftTeams task.get id that is a number": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/42",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "42"
+			}
+		]
+	},
 	"openAi text.message": {
 		"requests": [
 			{
@@ -7985,7 +8385,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"content": [
@@ -8038,7 +8444,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"content": [
@@ -8104,7 +8516,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"content": [
@@ -8140,7 +8563,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"id": "msg_1",
@@ -8303,7 +8732,28 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"content": [
@@ -8440,7 +8890,23 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"content": [
@@ -8518,7 +8984,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"output": [
 			{
 				"content": [
@@ -8534,7 +9011,7 @@
 	},
 	"anthropic text.message empty prompt": {
 		"requests": [],
-		"accepts": [],
+		"wire": [],
 		"error": "A non-empty prompt is required."
 	},
 	"anthropic text.message status 400": {
@@ -8561,7 +9038,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "Bad request - please check your parameters"
 	},
 	"anthropic text.message status 401": {
@@ -8609,7 +9092,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "Authorization failed - please check your credentials"
 	},
 	"anthropic text.message status 404": {
@@ -8636,7 +9130,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "The resource you are requesting could not be found"
 	},
 	"anthropic text.message status 418": {
@@ -8663,7 +9163,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "Your request is invalid or could not be processed by the service"
 	},
 	"anthropic text.message status 429": {
@@ -8690,7 +9196,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "The service is receiving too many requests from you"
 	},
 	"anthropic text.message status 500": {
@@ -8717,7 +9229,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "The service was not able to process your request"
 	},
 	"anthropic text.message status 503": {
@@ -8744,7 +9262,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
 	},
 	"anthropic text.message status 599": {
@@ -8771,7 +9295,13 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"error": "The service failed to process your request"
 	},
 	"googleGemini text.message defaults": {
@@ -9896,7 +10426,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"outputs": [],
 		"paired": [],
 		"error": "Bad request - please check your parameters"
@@ -9946,7 +10487,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"outputs": [
 			[
 				{
@@ -10019,7 +10571,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"outputs": [
 			[
 				{
@@ -10139,7 +10702,28 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"outputs": [
 			[
 				{
@@ -10259,7 +10843,28 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"outputs": [
 			[
 				{
@@ -16394,6 +16999,2389 @@
 		],
 		"nodePaired": [true]
 	},
+	"chainLlm anthropic defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi there"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi there"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic version 1.5": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first"
+						},
+						{
+							"role": "user",
+							"content": "second"
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"system": "Answer {briefly}"
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic version 1.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-3-5-sonnet-20240620",
+					"stream": false,
+					"max_tokens": 300,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": ""
+						}
+					],
+					"system": ""
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-3-haiku-20240307 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-3-haiku-20240307",
+					"stream": false,
+					"max_tokens": 4096,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-3-haiku-20240307 topP": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-3-haiku-20240307",
+					"stream": false,
+					"max_tokens": 4096,
+					"top_p": 0.9,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-3-7-sonnet-20250219 topK": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-3-7-sonnet-20250219",
+					"stream": false,
+					"max_tokens": 8192,
+					"top_k": 3,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-3-5-haiku-latest topK topP": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-3-5-haiku-latest",
+					"stream": false,
+					"max_tokens": 8192,
+					"top_k": -1,
+					"top_p": 0.5,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-haiku-4-5 temperature topK": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-haiku-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"temperature": 0.2,
+					"top_k": 4,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-sonnet-4-20250514 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-20250514",
+					"stream": false,
+					"max_tokens": 16384,
+					"temperature": 0.3,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-sonnet-4-6 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-6",
+					"stream": false,
+					"max_tokens": 16384,
+					"temperature": 0.3,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-opus-4 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4",
+					"stream": false,
+					"max_tokens": 16384,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-opus-4-20250514 temperature maxTokensToSample": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4-20250514",
+					"stream": false,
+					"max_tokens": 8192,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-opus-4-5 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-opus-4-6-20260101 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4-6-20260101",
+					"stream": false,
+					"max_tokens": 16384,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-opus-4-7 temperature topK topP maxTokensToSample": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4-7",
+					"stream": false,
+					"max_tokens": 50,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-opus-4-10 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4-10",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-opus-5 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-sonnet-5 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-5",
+					"stream": false,
+					"max_tokens": 4096,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-fable-5-2 topP": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-fable-5-2",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-2.1 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-2.1",
+					"stream": false,
+					"max_tokens": 4096,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling claude-instant-1 temperature": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-instant-1",
+					"stream": false,
+					"max_tokens": 4096,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling my-gateway-model temperature topK": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "my-gateway-model",
+					"stream": false,
+					"max_tokens": 4096,
+					"temperature": 0.2,
+					"top_k": 2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic system message that is not first": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "System messages are only permitted as the first passed message."
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "System messages are only permitted as the first passed message."
+	},
+	"chainLlm anthropic tokens above the limit without a stream": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+	},
+	"chainLlm anthropic opus 4.1 default tokens": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Streaming is required for operations that may take longer than 10 minutes. See https://github.com/anthropics/anthropic-sdk-typescript#long-requests for more details"
+	},
+	"chainLlm anthropic tool use in the answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Cannot coerce \"tool_use\" message part into a string."
+	},
+	"chainLlm anthropic custom header": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "k",
+					"x-custom": "v1"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm anthropic status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Authorization failed - please check your credentials"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"chainLlm anthropic status 403": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Forbidden - perhaps check your credentials?"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"chainLlm anthropic status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The resource you are requesting could not be found"
+	},
+	"chainLlm anthropic status 409": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Your request is invalid or could not be processed by the service"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"chainLlm anthropic status 429, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic status 500 seven times": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null, null, null, null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "500 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"boom\"}}"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "500 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"boom\"}}"
+	},
+	"chainLlm anthropic status 502 with a text body, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic network, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm anthropic sampling parameter refused": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"temperature": 0.2,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "The model \"claude-sonnet-4-5\" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again."
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The model \"claude-sonnet-4-5\" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again."
+	},
+	"chainLlm anthropic sampling parameter not supported, status 500": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "The model \"claude-sonnet-4-5\" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again."
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The model \"claude-sonnet-4-5\" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again."
+	},
+	"chainLlm anthropic continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"agent anthropic": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					],
+					"system": "Be brief"
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "Hi there"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hi there"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent anthropic, version 2.2, thinking only": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "hm"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "hm"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent anthropic, tool use, version 3.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "after"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "after"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent anthropic, tool use, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "pre"
+								},
+								{
+									"type": "tool_use",
+									"id": "tu",
+									"name": "x",
+									"input": {
+										"a": 1
+									}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "tool_result",
+									"content": "x is not a valid tool, try another one.",
+									"tool_use_id": "tu"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "after"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "after"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent anthropic, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"tools": [],
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
 	"agent 3, tool call, then answer": {
 		"requests": [
 			{
@@ -19118,7 +22106,18 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
 		"outputs": [
 			[
 				{
@@ -20373,405 +23372,5 @@
 			]
 		],
 		"nodePaired": [false]
-	},
-	"googleDrive file.createFromText in the root": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "404",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f1",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"addParents": "root"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "notes.txt",
-					"mimeType": "text/plain"
-				}
-			},
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "404",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f1",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"addParents": "root"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "notes.txt",
-					"mimeType": "text/plain"
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
-		"output": [
-			{
-				"id": "f1"
-			},
-			{
-				"id": "f1"
-			}
-		]
-	},
-	"googleDrive file.createFromText in a folder with properties": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "475",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"Untitled\",\"parents\":[\"folder-9\"],\"mimeType\":\"text/plain\",\"properties\":{\"team\":\"ops\"},\"appProperties\":{\"run\":\"7\"}}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nGrüße 😀\r\n-- end \"quoted\"\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f2",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"keepRevisionForever": "true",
-					"ocrLanguage": "de",
-					"useContentAsIndexableText": "true",
-					"addParents": "folder-9"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "Untitled",
-					"mimeType": "text/plain",
-					"properties": {
-						"team": "ops"
-					},
-					"appProperties": {
-						"run": "7"
-					}
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"output": [
-			{
-				"id": "f2"
-			}
-		]
-	},
-	"googleDrive file.createFromText in a shared drive, no content": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/upload/drive/v3/files",
-				"qs": {
-					"uploadType": "multipart",
-					"supportsAllDrives": "true"
-				},
-				"headers": {
-					"content-type": "multipart/related; boundary=<boundary>",
-					"content-length": "390",
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"empty.txt\",\"parents\":[\"drive-3\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\n\r\n--<boundary>--\r\n"
-			},
-			{
-				"method": "PATCH",
-				"url": "https://www.googleapis.com/drive/v3/files/f3",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives",
-					"addParents": "drive-3"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "empty.txt",
-					"mimeType": "text/plain"
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"output": [
-			{
-				"id": "f3"
-			}
-		]
-	},
-	"googleDrive file.createFromText as a Google document": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://www.googleapis.com/drive/v3/files",
-				"qs": {
-					"includeItemsFromAllDrives": "true",
-					"supportsAllDrives": "true",
-					"spaces": "appDataFolder, drive",
-					"corpora": "allDrives"
-				},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"name": "Doc",
-					"parents": ["folder-9"],
-					"mimeType": "application/vnd.google-apps.document",
-					"properties": {
-						"team": "ops"
-					}
-				}
-			},
-			{
-				"method": "POST",
-				"url": "https://docs.googleapis.com/v1/documents/d1:batchUpdate",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-drive-token"
-				},
-				"body": {
-					"requests": [
-						{
-							"insertText": {
-								"text": "Hello document",
-								"endOfSegmentLocation": {
-									"segmentId": ""
-								}
-							}
-						}
-					]
-				}
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"output": [
-			{
-				"id": "d1"
-			}
-		]
-	},
-	"microsoftTeams task.get status 500": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "The service was not able to process your request"
-	},
-	"microsoftTeams task.get status 404": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "The resource you are requesting could not be found"
-	},
-	"microsoftTeams task.create status 400": {
-		"requests": [
-			{
-				"method": "POST",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"body": {
-					"planId": "plan-1",
-					"bucketId": "bucket-1",
-					"title": "x"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "Bad request - please check your parameters"
-	},
-	"microsoftTeams chatMember.remove status 403": {
-		"requests": [
-			{
-				"method": "DELETE",
-				"url": "https://graph.microsoft.com/v1.0/chats/19:7e2f1174_0c5cfdbb@unq.gbl.spaces/members/m1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "Forbidden - perhaps check your credentials?"
-	},
-	"microsoftTeams chat.getAll status 429 on the second page": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/chats",
-				"qs": {
-					"$top": "50"
-				},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			},
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/chats",
-				"qs": {
-					"$skiptoken": "n"
-				},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json", "application/json"],
-		"error": "The service is receiving too many requests from you"
-	},
-	"microsoftTeams channel.update status 418": {
-		"requests": [
-			{
-				"method": "PATCH",
-				"url": "https://graph.microsoft.com/v1.0/teams/61165b04-e4cc-4026-b43f-926b4e2a7182/channels/19:abc123@thread.tacv2",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"body": {
-					"displayName": "x"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "Your request is invalid or could not be processed by the service"
-	},
-	"microsoftTeams task.get status 501": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"error": "The service failed to process your request"
-	},
-	"microsoftTeams task.get id of dots": {
-		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
-	},
-	"microsoftTeams task.get id with a bad percent code": {
-		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
-	},
-	"microsoftTeams task.get id that decodes to a percent sign": {
-		"requests": [],
-		"accepts": [],
-		"error": "The ID is not valid"
-	},
-	"microsoftTeams task.get id with other letters and spaces around it": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/täsk-😀 x",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"output": [
-			{
-				"id": "t"
-			}
-		]
-	},
-	"microsoftTeams task.get id that is a number": {
-		"requests": [
-			{
-				"method": "GET",
-				"url": "https://graph.microsoft.com/v1.0/planner/tasks/42",
-				"qs": {},
-				"headers": {
-					"authorization": "Bearer fake-teams-token"
-				},
-				"qsFormat": "brackets"
-			}
-		],
-		"accepts": ["application/json"],
-		"output": [
-			{
-				"id": "42"
-			}
-		]
 	}
 }
