@@ -5,7 +5,7 @@
  * They differ in what they report per pass, not in how a graph maps to v1.
  */
 
-import type { GraphEdge, WorkflowGraph } from '@n8n/engine';
+import { deriveLoops, type GraphEdge, type WorkflowGraph, type WorkflowLoop } from '@n8n/engine';
 import type { ISourceData, ITaskData } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
@@ -14,22 +14,75 @@ export function nodeNamesById(graph: WorkflowGraph): Map<string, string> {
 	return new Map(graph.nodes.map((node) => [node.id, node.name]));
 }
 
+/** What a node's input lineage needs, prepared once for a whole execution. */
+export interface SourceLineage {
+	namesById: Map<string, string>;
+	/** Forward edges into each node, by the node's id. */
+	incomingEdgesByNodeId: Map<string, GraphEdge[]>;
+	loops: WorkflowLoop[];
+	/** The last pass each node is known to have run. */
+	lastIterationByNodeId: Map<string, number>;
+}
+
+export function toSourceLineage(
+	graph: WorkflowGraph,
+	lastIterationByNodeId: Map<string, number>,
+): SourceLineage {
+	return {
+		namesById: nodeNamesById(graph),
+		incomingEdgesByNodeId: incomingEdgesByNodeId(graph),
+		loops: deriveLoops(graph),
+		lastIterationByNodeId,
+	};
+}
+
 /**
- * Forward edges by target node. A back edge's source is the previous pass, a
- * lineage v1 cannot express, so it reads the forward edge into the loop entry
- * instead.
+ * One source per input slot of `nodeId` at `iteration`: the predecessor, its
+ * output slot and the pass that fed this one, or `null` for an unconnected slot.
+ * Inside a loop the run data holds every finished pass, and a source without a
+ * pass reads pass 0.
  */
-export function forwardEdgesByTarget(graph: WorkflowGraph): Map<string, GraphEdge[]> {
-	const edgesByTarget = new Map<string, GraphEdge[]>();
+export function toSourcesAt(
+	lineage: SourceLineage,
+	nodeId: string,
+	iteration: number,
+): Array<ISourceData | null> {
+	return toSourceSlots(lineage.incomingEdgesByNodeId.get(nodeId) ?? [], lineage.namesById, (edge) =>
+		toPreviousNodeRun(lineage, edge, iteration),
+	);
+}
+
+/**
+ * Which run of the predecessor fed this pass. The cases follow `classifyEdge`
+ * in the engine's `iteration-mapping`: an edge inside one loop keeps the pass,
+ * an edge leaving a loop reads its last pass, and anything else reads run 0.
+ */
+function toPreviousNodeRun(lineage: SourceLineage, edge: GraphEdge, iteration: number): number {
+	const sourceLoop = lineage.loops.find((loop) => loop.memberIds.has(edge.from));
+	// `plain` or `entry`: the predecessor ran once.
+	if (!sourceLoop) return 0;
+	// `intra`: both ends share a pass.
+	if (sourceLoop.memberIds.has(edge.to)) return iteration;
+	// `exit`: the predecessor's terminal pass.
+	return lineage.lastIterationByNodeId.get(edge.from) ?? 0;
+}
+
+/**
+ * Forward edges into each node, by the node's id. A back edge's source is the
+ * previous pass, a lineage v1 cannot express, so it reads the forward edge into
+ * the loop entry instead.
+ */
+export function incomingEdgesByNodeId(graph: WorkflowGraph): Map<string, GraphEdge[]> {
+	const byNodeId = new Map<string, GraphEdge[]>();
 
 	for (const edge of graph.edges) {
 		if (edge.isBackEdge === true) continue;
-		const edges = edgesByTarget.get(edge.to);
+		const edges = byNodeId.get(edge.to);
 		if (edges) edges.push(edge);
-		else edgesByTarget.set(edge.to, [edge]);
+		else byNodeId.set(edge.to, [edge]);
 	}
 
-	return edgesByTarget;
+	return byNodeId;
 }
 
 /**
