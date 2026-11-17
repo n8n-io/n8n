@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/building-blocks/credentials.spec.ts
+  s_ff02cb585a0470::t_ee8a504f43f5ae 101-109
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_ff02cb585a0470::t_50af19e9ad1245 1498-1501
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0eb95d408c44b453296957e19131a65b4a425aab",
+  "prompts": {},
+  "sessions": {
+    "s_ff02cb585a0470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5002596e-f38f-4102-ae5d-6df0ace96fbd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
