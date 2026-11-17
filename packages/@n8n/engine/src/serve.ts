@@ -1,4 +1,4 @@
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { AllowAllAdmittance } from './admittance';
@@ -7,6 +7,7 @@ import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
 import { createInMemoryWorkQueues } from './queue';
 import { noopExecutionResponseSender } from './response-channel';
+import { retentionPolicyFromHours } from './retention';
 import { createEngineRuntime } from './runtime';
 import { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
 
@@ -14,6 +15,7 @@ const logger = createConsoleLogger();
 
 async function main(): Promise<void> {
 	const config = Container.get(EngineConfig);
+	const { pruneData, pruneDataMaxAge } = Container.get(ExecutionsConfig);
 
 	// Refused rather than degraded: an engine with nowhere to record an execution
 	// would report healthy while being unable to run one.
@@ -51,6 +53,7 @@ async function main(): Promise<void> {
 			},
 			logger,
 		}),
+		retention: retentionPolicyFromHours({ enabled: pruneData, maxAgeHours: pruneDataMaxAge }),
 	});
 	runtime.start();
 
