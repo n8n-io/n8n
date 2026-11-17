@@ -847,6 +847,7 @@ export async function differenceFromV1(
 	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
 		...c.credential?.data,
+		...v1.preAuthentication?.data,
 	});
 	if (compiled.derivations.length > 0) {
 		const derived: Record<string, unknown> = isRecord(data.n8nDerived)
@@ -867,9 +868,20 @@ export async function differenceFromV1(
 		}
 		data.n8nMinted = minted.tokens;
 	}
-	const inject = credentialType ? deriveInject(registry, credentialType, data).inject : undefined;
+	const inject = credentialType
+		? deriveInject(registry, credentialType, data, { preAuthenticated: true }).inject
+		: undefined;
+	const renewsSession = (effect: (typeof out.effects)[number]) =>
+		effect.kind === 'service' &&
+		isRecord(effect.args) &&
+		effect.args.service === 'credentials' &&
+		effect.args.op === 'renew';
+	const sessionRequests = (v1.preAuthentication?.requests ?? 1) - 1;
+	const renewals = out.effects.filter(renewsSession).length;
+	if (renewals !== sessionRequests)
+		return `the requests for a new session token differ: ${renewals} / ${sessionRequests}`;
 	const requestsOf = (run: typeof out) =>
-		run.effects.filter((effect) => effect.kind !== 'wait').map(requestOf);
+		run.effects.filter((effect) => effect.kind !== 'wait' && !renewsSession(effect)).map(requestOf);
 	const requestOf = (effect: (typeof out.effects)[number]) => {
 		const args = isRecord(effect.args) ? effect.args : {};
 		const { qsFormat: _, ...request } = normalizeRequest(

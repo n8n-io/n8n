@@ -207,11 +207,16 @@ function convertMap(
 /**
  * Derives the inject of credential type `type`. With `data`, the result is
  * specific to that credential: templated header and query names are filled.
+ *
+ * `preAuthenticated` says that the caller fills the session token of a type with
+ * `preAuthentication` (`CredentialTypeInfo.expirable`) before a request, and again when it
+ * expired, as v1 does. The `authenticate` of the type then applies as for other types.
  */
 export function deriveInject(
 	registry: CredentialTypeRegistry,
 	type: string,
 	data?: Record<string, unknown>,
+	options: { preAuthenticated?: boolean } = {},
 ): InjectResult {
 	const info = registry.get(type);
 	if (!info) return { kind: 'unsupported', reasons: [`unknown credential type "${type}"`] };
@@ -246,7 +251,7 @@ export function deriveInject(
 	}
 	const manual = MANUAL_RULES[type];
 	if (manual) return { kind: 'manual', inject: manual(data), reasons: [] };
-	if (info.preAuthentication) {
+	if (info.preAuthentication && !(options.preAuthenticated === true && info.expirable)) {
 		return {
 			kind: 'unsupported',
 			reasons: ['preAuthentication: the type gets a token with a request first'],

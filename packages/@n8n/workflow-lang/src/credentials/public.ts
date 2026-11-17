@@ -28,7 +28,8 @@ export function publicCredentialFields(
 ): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [name, field] of Object.entries(info?.fields ?? {})) {
-		if (field.password) continue;
+		// The session token of `preAuthentication` is a secret that n8n fills, whatever its name.
+		if (field.password || name === info?.expirable) continue;
 		const flag = field.type === 'boolean';
 		if (!flag && SECRET.test(name)) continue;
 		const choice = field.type === 'options' || flag;

@@ -181,6 +181,47 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 		expect(other.nodes.Acme).toBe('code');
 	});
 
+	it('gives the nodes in the host to store, and takes stored nodes after a restart', async () => {
+		credentials.unprovenFlagNodes.mockResolvedValue([]);
+		expect(compiler.hostNodes()).toEqual({});
+		compiler.runInHost('wf1', 'Acme');
+		compiler.runInHost('wf2', 'Other');
+		const stored = compiler.hostNodes();
+		expect(stored).toEqual({ wf1: ['Acme'], wf2: ['Other'] });
+
+		const restarted = new CompiledWorkflowCompiler(
+			processes,
+			subWorkflows,
+			logger,
+			nodeTypes,
+			urlService,
+			mock<InstanceSettings>({ instanceId: 'instance' }),
+			credentials,
+			mock<CredentialTypes>(),
+			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1 }),
+		);
+		restarted.restoreHostNodes(stored);
+		expect(restarted.hostNodes()).toEqual(stored);
+		const inHost = await restarted.compile(input);
+		expect(inHost.nodes.Acme).toBe('host');
+		// A stored node is not new: the caller does not compile again for it.
+		expect(restarted.runInHost('wf1', 'Acme')).toBe(false);
+	});
+
+	it('keeps a fixed number of nodes in the host, and forgets the oldest workflow first', () => {
+		for (let k = 0; k < 100; k++) expect(compiler.runInHost('wf-full', `Node ${k}`)).toBe(true);
+		expect(compiler.runInHost('wf-full', 'Node 100')).toBe(false);
+		for (let w = 0; w < 49; w++) {
+			for (let k = 0; k < 100; k++) compiler.runInHost(`wf${w}`, `Node ${k}`);
+		}
+		const count = () => Object.values(compiler.hostNodes()).reduce((sum, n) => sum + n.length, 0);
+		expect(count()).toBe(5000);
+		expect(compiler.runInHost('wf-new', 'Download')).toBe(true);
+		expect(count()).toBe(4901);
+		expect(compiler.hostNodes()['wf-full']).toBeUndefined();
+		expect(compiler.hostNodes()['wf-new']).toEqual(['Download']);
+	});
+
 	it('does not ask for the conditions when nodes are not compiled from their code', async () => {
 		compiler = new CompiledWorkflowCompiler(
 			processes,

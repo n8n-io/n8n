@@ -286,9 +286,12 @@ function otherAuthentications(node: LoadedNode, version: number, start: Json): J
 
 function fakeCredential(type: string): Json {
 	const data: Json = {};
-	for (const [key, value] of Object.entries(registry.get(type)?.defaults ?? {})) {
+	const info = registry.get(type);
+	const session = info?.preAuthentication === true ? info.expirable : undefined;
+	for (const [key, value] of Object.entries(info?.defaults ?? {})) {
 		const address = /url|host|domain|server|endpoint/i.test(key);
-		data[key] = value === '' ? (address ? 'https://api.example.test' : `fake-${key}`) : value;
+		const filled = address ? 'https://api.example.test' : `fake-${key}`;
+		data[key] = value === '' && key !== session ? filled : value;
 	}
 	if (type === 'googleApi') data.privateKey = testSigningKey();
 	if (/oauth2/i.test(type)) {

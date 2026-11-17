@@ -1,6 +1,7 @@
 import ts from 'typescript';
 
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
+import { RUNS_IN_HOST } from '../convert/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
 import { MAX_CREDENTIAL_FLAGS } from '../credentials/flags.ts';
 import { MIME_TABLE } from '../generated/mime-table.generated.ts';
@@ -126,6 +127,12 @@ const LATER_AUTHENTICATE = '__AUTHENTICATE';
 const GOOGLE_TOKEN_FUNCTION = 'getGoogleAccessToken';
 const GOOGLE_TOKEN_FILE = '/nodes/Google/GenericFunctions.ts';
 const MAX_MINTS = 16;
+const SESSION_MARKER = '__SESSION';
+const isSessionMarker = (e: ts.Node): e is ts.CallExpression =>
+	ts.isCallExpression(e) &&
+	ts.isIdentifier(e.expression) &&
+	e.expression.text === SESSION_MARKER &&
+	e.arguments.length === 1;
 const isMintCall = (e: ts.Node): e is ts.CallExpression =>
 	ts.isCallExpression(e) && ts.isIdentifier(e.expression) && e.expression.text === MINT_GOOGLE;
 
@@ -164,6 +171,20 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 	}
 	return response.body;
 }`;
+const FILE_LIMIT = '(limit: binary-max-file)';
+const REPEATS = '__repeats';
+const REQUEST_SEND = '\tconst response = await ctx.http({';
+const REQUEST_SEND_GUARDED = `\tif ((options.method ?? 'GET') !== 'GET') ${REPEATS} = false;
+	let response;
+	try {
+		response = await ctx.http({`;
+const REQUEST_SENT = '\t});\n\tif (response.status >= 400';
+const REQUEST_SENT_GUARDED = `\t});
+	} catch (error) {
+		if (${REPEATS} && __isFileLimit(error)) throw new Error(error.message + ' ${RUNS_IN_HOST}');
+		throw error;
+	}
+	if (response.status >= 400`;
 const REQUEST_FAILS = 'if (response.status >= 400) {';
 const REQUEST_FAILS_UNLESS_LENIENT =
 	'if (response.status >= 400 && !(legacy ? options.simple === false : options.ignoreHttpStatusErrors)) {';
@@ -203,7 +224,22 @@ const RANDOM_STEPS = 9007199254740992;
 const RANDOM_INTEGER_LIMIT = 4294967296;
 const MAX_RANDOM_SHAPES = 32;
 
+const SESSION_FORM_DATA = 'a request with form data after a new session token has no compiled form';
+const SESSION_TYPE =
+	'a credential type that gets a session token first has a compiled form only when the request names the type as text';
+const SESSION_OPTIONS =
+	'token options of a request with a credential type that gets a session token first have no compiled form';
+
 const CONTEXT_HELPERS: Record<string, string> = {
+	__requestRenewed: `async function __requestRenewed(options) {
+	try {
+		return await __request(options, true, true);
+	} catch (error) {
+		if (options.formData !== undefined && options.formData !== null) throw new Error('${SESSION_FORM_DATA}');
+		await ctx.service({ service: 'credentials', op: 'renew', args: { credentialId: credential } });
+		return await __request(options, true, true);
+	}
+}`,
 	__storedMetadata: `async function __storedMetadata(id) {
 	return await ctx.service({ service: 'binaryData', op: 'metadata', args: { id } });
 }`,
@@ -1038,6 +1074,12 @@ const HELPERS: Record<string, string> = {
 }`,
 	__isLimit: `function __isLimit(error: any): boolean {
 	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && error.message.endsWith('has no compiled form');
+}`,
+	__isLimitOrHost: `function __isLimit(error: any): boolean {
+	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && (error.message.endsWith('has no compiled form') || error.message.endsWith('${RUNS_IN_HOST}'));
+}`,
+	__isFileLimit: `function __isFileLimit(error: any): boolean {
+	return error !== null && error !== undefined && typeof error === 'object' && typeof error.message === 'string' && error.message.includes('${FILE_LIMIT}');
 }`,
 	__urlText: `function __urlText(text: string, escaped: any): string {
 	let out: string = '';
@@ -2015,6 +2057,25 @@ class Specialiser {
 		return call(name, ...args);
 	}
 
+	private getsSessionToken(type: string): boolean {
+		const path = this.input.credentialEntry?.(type);
+		const file = path === undefined ? undefined : this.load(path);
+		if (!file || !/expirable:\s*true/.test(file.sf.text)) return false;
+		let found = false;
+		file.sf.forEachChild((st) => {
+			if (!ts.isClassDeclaration(st)) return;
+			for (const m of st.members) {
+				if (
+					(ts.isMethodDeclaration(m) || ts.isPropertyDeclaration(m)) &&
+					ts.isIdentifier(m.name) &&
+					m.name.text === 'preAuthentication'
+				)
+					found = true;
+			}
+		});
+		return found;
+	}
+
 	private authenticateUnit(type: string, optional = false): string | undefined {
 		const path = this.input.credentialEntry?.(type);
 		const file = path === undefined ? undefined : this.load(path);
@@ -2572,6 +2633,21 @@ class Specialiser {
 							? args(node, extraAt)[0]
 							: undefined;
 					if (tokenOptions) this.requestTokenOptions = true;
+					const typeNode = viaCall ? node.arguments[1] : node.arguments[0];
+					const renewed =
+						wrapped &&
+						helperName === 'requestWithAuthentication' &&
+						typeNode !== undefined &&
+						ts.isStringLiteral(typeNode) &&
+						this.getsSessionToken(typeNode.text);
+					if (renewed && tokenOptions) this.error('code', SESSION_OPTIONS);
+					if (renewed) {
+						this.helpers.add('__request');
+						return this.helper(
+							'__requestRenewed',
+							authenticate ? f.createAwaitExpression(call(authenticate, options)) : options,
+						);
+					}
 					return this.helper(
 						'__request',
 						authenticate
@@ -4637,7 +4713,28 @@ class Specialiser {
 			) {
 				const authenticate = this.authenticateUnit(n.arguments[0].text, true);
 				const options = ts.visitNode(n.arguments[1], visit) as ts.Expression;
-				return done(authenticate ? f.createAwaitExpression(call(authenticate, options)) : options);
+				const authenticated = authenticate
+					? f.createAwaitExpression(call(authenticate, options))
+					: options;
+				return done(
+					this.getsSessionToken(n.arguments[0].text)
+						? call(SESSION_MARKER, authenticated)
+						: authenticated,
+				);
+			}
+			if (
+				ts.isCallExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				n.expression.text === '__request' &&
+				n.arguments.length === 3 &&
+				n.arguments[1].kind === ts.SyntaxKind.TrueKeyword &&
+				isSessionMarker(n.arguments[0])
+			) {
+				const options = n.arguments[0].arguments[0];
+				if (n.arguments[2].kind === ts.SyntaxKind.TrueKeyword)
+					return done(this.helper('__requestRenewed', options));
+				if (n.arguments[2].kind === ts.SyntaxKind.FalseKeyword)
+					return done(call('__request', options, n.arguments[1], n.arguments[2]));
 			}
 			if (ts.isTypeOfExpression(n)) {
 				const operand = literalOf(n.expression);
@@ -6762,9 +6859,13 @@ class Specialiser {
 		for (const { node } of this.output) buffersForBinaryData(node, this.responseBuffers);
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
-		const guarded = [...this.helpers].some((h) =>
-			(HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT),
-		);
+		const mayStore =
+			this.helpers.has('__request') &&
+			(this.helpers.has('__prepareBinary') || this.responseBuffers.size > 0) &&
+			this.output.some((o) => mentionsEncoding(o.node));
+		const guarded =
+			mayStore ||
+			[...this.helpers].some((h) => (HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT));
 		if (guarded) this.helpers.add('__isLimit');
 		for (const { name, node, sf } of this.output) {
 			const unit = this.units.get(name);
@@ -6820,6 +6921,8 @@ class Specialiser {
 							? REQUEST_RESULT_OR_FULL
 							: REQUEST_RESULT,
 					)
+					.replace(REQUEST_SEND, this.storesResponses ? REQUEST_SEND_GUARDED : REQUEST_SEND)
+					.replace(REQUEST_SENT, this.storesResponses ? REQUEST_SENT_GUARDED : REQUEST_SENT)
 					.replace(
 						REQUEST_HEAD,
 						this.requestTokenOptions ? REQUEST_HEAD_WITH_TOKEN_OPTIONS : REQUEST_HEAD,
@@ -6829,6 +6932,10 @@ class Specialiser {
 						this.requestTokenOptions ? REQUEST_CREDENTIAL_WITH_TOKEN_OPTIONS : REQUEST_CREDENTIAL,
 					),
 			);
+		if (this.storesResponses && this.helpers.has('__request')) {
+			code.unshift(`let ${REPEATS} = true;`);
+			this.helpers.add('__isFileLimit');
+		}
 		this.helpers.delete('__request');
 		for (const [name, source] of Object.entries(CONTEXT_HELPERS)) {
 			if (this.helpers.delete(name)) code.unshift(source);
@@ -6848,6 +6955,8 @@ class Specialiser {
 			...Object.keys(HELPERS),
 			...COST_GLOBALS,
 		]);
+		if ([...code, body].some((text) => text.includes(`${SESSION_MARKER}(`)))
+			this.error('code', SESSION_TYPE);
 		const joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
 		const reachesBytes = reachableHelpers([joined], HELPERS);
 		const makesBytes =
@@ -6902,6 +7011,7 @@ class Specialiser {
 			...COST_HELPERS,
 			__plain: plain,
 			[PLAIN_LIST]: t.usesCollections ? PLAIN_LIST_COLLECTIONS : PLAIN_LIST_SAME,
+			...(this.storesResponses ? { __isLimit: HELPERS.__isLimitOrHost } : {}),
 			...(makesBytes
 				? {
 						__sendBody: HELPERS.__sendBodyChecked,

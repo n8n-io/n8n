@@ -189,7 +189,9 @@ export function buildCredentialsFile(input: {
 		}
 		const defaults = registry.get(credential.type)?.defaults ?? {};
 		const data = withDerivedValues(credential.type, { ...defaults, ...credential.data });
-		const derived = deriveInject(registry, credential.type, data);
+		// The caller of the file fills the session token of a type with `preAuthentication`
+		// (n8n: `CompiledEngineCredentials`), so the runtime applies its `authenticate`.
+		const derived = deriveInject(registry, credential.type, data, { preAuthenticated: true });
 		const entry: CredentialsFileEntry = { type: credential.type, data };
 		if (derived.inject) entry.inject = derived.inject;
 		file[slot] = entry;

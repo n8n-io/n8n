@@ -171,6 +171,27 @@ class CredentialTypes {
 	}
 }
 
+/**
+ * `preAuthentication` of one recording. v1 runs it before a request when the session token of
+ * the credential (the hidden `expirable` field) is empty, and again after a 401 answer.
+ * Its requests are apart from the requests of the node: n8n sends them, a compiled node does not.
+ */
+const preAuthentication = {
+	active: false,
+	field: '',
+	requests: 0,
+	data: {} as Record<string, unknown>,
+};
+
+/** The answer to a request of `preAuthentication`: each field of the body is the new token. */
+function sessionAnswer(): unknown {
+	const token = `fake-${preAuthentication.field}`;
+	return new Proxy(
+		{},
+		{ get: (_target, key) => (typeof key === 'string' && key !== 'then' ? token : undefined) },
+	);
+}
+
 /** The credentials helper of n8n's CLI, reduced to what a single run needs. */
 function credentialsHelper(credentialTypes: CredentialTypes, data: Record<string, unknown>) {
 	return {
@@ -209,7 +230,34 @@ function credentialsHelper(credentialTypes: CredentialTypes, data: Record<string
 			}
 			return requestOptions;
 		},
-		preAuthentication: async () => undefined,
+		// As `CredentialsHelper.preAuthentication` of n8n's CLI.
+		async preAuthentication(
+			helpers: unknown,
+			credentials: Record<string, unknown>,
+			typeName: string,
+			_node: unknown,
+			expired: boolean,
+		) {
+			const type = credentialTypes.get(typeName);
+			const expirable = (type.properties ?? []).find(
+				(p: AnyRecord) => p.type === 'hidden' && p.typeOptions?.expirable === true,
+			);
+			if (!expirable || typeof type.preAuthentication !== 'function') return undefined;
+			if (credentials[expirable.name] !== '' && !expired) return undefined;
+			preAuthentication.active = true;
+			preAuthentication.field = expirable.name;
+			let output: AnyRecord | undefined;
+			try {
+				output = await type.preAuthentication.call(helpers, credentials);
+			} finally {
+				preAuthentication.active = false;
+			}
+			if (output?.[expirable.name] === undefined) return undefined;
+			Object.assign(preAuthentication.data, output);
+			// v1 saves the new token in the credential: the next request of the node reads it.
+			Object.assign(data, output);
+			return Object.assign(credentials, output);
+		},
 		runPreAuthentication: async () => undefined,
 		getCredentials: async () => {
 			throw new Error('not supported');
@@ -328,6 +376,10 @@ function installFakeHttp(
 	};
 	const client = {
 		async request(options: AnyRecord) {
+			if (preAuthentication.active) {
+				preAuthentication.requests++;
+				return answer(200, sessionAnswer(), {}, options.returnFullResponse === true, false);
+			}
 			recorded.push({
 				method: options.method,
 				url: options.url,
@@ -352,6 +404,10 @@ function installFakeHttp(
 			);
 		},
 		async requestLegacy(options: AnyRecord) {
+			if (preAuthentication.active) {
+				preAuthentication.requests++;
+				return answer(200, sessionAnswer(), {}, options.resolveWithFullResponse === true, false);
+			}
 			let body = options.body;
 			if (options.form !== undefined) body = { $form: options.form };
 			if (options.formData !== undefined) body = multipartOf(options) ?? body;
@@ -600,6 +656,17 @@ async function recordInEngine(
 export async function recordV1(
 	testCase: EquivalenceCase,
 	extraNodes: Record<string, unknown> = {},
+): Promise<Recording> {
+	Object.assign(preAuthentication, { active: false, field: '', requests: 0, data: {} });
+	const recording = await recordNode(testCase, extraNodes);
+	if (preAuthentication.requests === 0) return recording;
+	const { requests, data } = preAuthentication;
+	return { ...recording, preAuthentication: { requests, data: { ...data } } };
+}
+
+async function recordNode(
+	testCase: EquivalenceCase,
+	extraNodes: Record<string, unknown>,
 ): Promise<Recording> {
 	const { workflow, engine, compat } = load();
 	expressionEngine ??= workflow.Expression.initExpressionEngine({

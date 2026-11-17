@@ -19,6 +19,11 @@ export interface CredentialTypeInfo {
 	authenticate?: GenericAuthenticate | 'function';
 	/** True when the type has a `preAuthentication` hook. */
 	preAuthentication?: boolean;
+	/**
+	 * The hidden field that `preAuthentication` fills (`typeOptions.expirable`): a session token
+	 * that n8n gets with a request before the first request of a node, and again when it expired.
+	 */
+	expirable?: string;
 	/** Defaults of the credential fields. */
 	defaults?: Record<string, unknown>;
 	/** The type of each field, and if n8n marks it as a password (`typeOptions.password`). */
@@ -92,6 +97,13 @@ export function describeCredentialType(instance: unknown, source?: string): Cred
 	if (Array.isArray(properties)) {
 		for (const property of properties) {
 			if (!isRecord(property) || typeof property.name !== 'string') continue;
+			if (
+				property.type === 'hidden' &&
+				isRecord(property.typeOptions) &&
+				property.typeOptions.expirable === true
+			) {
+				info.expirable ??= property.name;
+			}
 			fields[property.name] = {
 				type: typeof property.type === 'string' ? property.type : '',
 				password: isRecord(property.typeOptions) && property.typeOptions.password === true,

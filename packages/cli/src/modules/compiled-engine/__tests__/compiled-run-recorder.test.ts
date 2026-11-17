@@ -240,3 +240,74 @@ describe('helpers', () => {
 		expect(parseWfrtEvent('not json')).toBe(undefined);
 	});
 });
+
+describe('CompiledRunRecorder: a limit of wfrt that v1 does not have', () => {
+	const LIMIT =
+		'http: the response body is 9 bytes; a stored file can have 8 (--binary-max-file-mb); the fallback host can run the node (limit: binary-max-file)';
+
+	it('gives the node the run of its fallback-host step, without the error of the compiled form', () => {
+		const recorder = new CompiledRunRecorder({ nodes, connections });
+		recorder.start('Webhook', { body: {}, headers: {}, query: {} }, 1000);
+		recorder.onStep(step('HTTP Request', 'started', 1001));
+		recorder.onStep(step('HTTP Request', 'failed', 1002, { error: LIMIT }));
+		expect(recorder.failed).toEqual({ nodeName: 'HTTP Request', message: LIMIT });
+		recorder.onStep(step('HTTP Request (fallback host)', 'started', 1003));
+		recorder.onStep(
+			step('HTTP Request (fallback host)', 'completed', 1004, { result: [{ file: 'a.txt' }] }),
+		);
+		const { error } = recorder.finish(finished('ok', 1005));
+
+		expect(error).toBeUndefined();
+		expect(recorder.failed).toBeUndefined();
+		const runs = recorder.getRunData()['HTTP Request'];
+		expect(runs).toHaveLength(1);
+		expect(runs[0].executionStatus).toBe('success');
+		expect(runs[0].error).toBeUndefined();
+		expect(runs[0].data?.main).toEqual([[{ json: { file: 'a.txt' } }]]);
+		expect(recorder.getRunData()['HTTP Request (fallback host)']).toBeUndefined();
+		// The node runs in the host from the next run: that run does not reach the limit first.
+		expect(recorder.hostLimitNodes).toEqual(['HTTP Request']);
+	});
+
+	it('reads a trace of the fallback-host step as a trace of the node', () => {
+		const recorder = new CompiledRunRecorder({ nodes, connections });
+		recorder.start('Webhook', { body: {}, headers: {}, query: {} }, 1000);
+		recorder.onTrace(trace('HTTP Request (fallback host)', [{ a: 1 }], 1001));
+		recorder.finish(finished('ok', 1002));
+		expect(recorder.getRunData()['HTTP Request'][0].data?.main).toEqual([[{ json: { a: 1 } }]]);
+	});
+
+	it('keeps a node with that name as its own node', () => {
+		const named = [...nodes, node('HTTP Request (fallback host)', 'n8n-nodes-base.set')];
+		const recorder = new CompiledRunRecorder({ nodes: named, connections });
+		recorder.onTrace(trace('HTTP Request (fallback host)', [{ a: 1 }], 1001));
+		recorder.finish(finished('ok', 1002));
+		expect(recorder.getRunData()['HTTP Request']).toBeUndefined();
+		expect(recorder.getRunData()['HTTP Request (fallback host)']).toHaveLength(1);
+	});
+
+	it('finds the limit in an error item of a node under a "continue" setting', () => {
+		const stepped = new CompiledRunRecorder({ nodes, connections });
+		stepped.onStep(step('HTTP Request', 'started', 1001));
+		stepped.onStep(
+			step('HTTP Request', 'completed', 1002, { result: [{ id: 1 }, { error: LIMIT }] }),
+		);
+		expect(stepped.hostLimitNodes).toEqual(['HTTP Request']);
+
+		const traced = new CompiledRunRecorder({ nodes, connections });
+		traced.onTrace(trace('HTTP Request', [[{ id: 1 }], [{ id: 2, error: LIMIT }]], 1001));
+		expect(traced.hostLimitNodes).toEqual(['HTTP Request']);
+	});
+
+	it('does not move a node to the host for another error', () => {
+		const recorder = new CompiledRunRecorder({ nodes, connections });
+		recorder.onStep(step('HTTP Request', 'started', 1001));
+		recorder.onStep(
+			step('HTTP Request', 'failed', 1002, { error: 'the step can run again (limit)' }),
+		);
+		recorder.onTrace(
+			trace('Set', [{ error: 'The remote answered 500' }, { error: { message: LIMIT } }], 1003),
+		);
+		expect(recorder.hostLimitNodes).toEqual([]);
+	});
+});

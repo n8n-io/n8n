@@ -63,6 +63,7 @@ function setup() {
 		globalConfig,
 		logger,
 		staticData,
+		mock<CompiledExecutionStore>(),
 	);
 	return { sync, client, staticData, workflowRepository };
 }

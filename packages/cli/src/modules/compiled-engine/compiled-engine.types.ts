@@ -371,6 +371,13 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
  */
 const HOST_LIMIT_MARKERS = ['(limit: binary-max-file)'];
 
+/**
+ * The end of the step name of the fallback-host form of a compiled node (`HOST_STEP` of the
+ * converter). A compiled node that reaches a limit that v1 does not have, and that sent no
+ * request that v1 sends once, runs in the host in the same run, under this step name.
+ */
+export const HOST_STEP_SUFFIX = ' (fallback host)';
+
 /** True when the error of a step says that the node must run in the fallback host. */
 export function needsFallbackHost(message: string | undefined): boolean {
 	if (!message) return false;
