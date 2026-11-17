@@ -815,3 +815,64 @@ that project, as the server does when it gets `credentialHomes`.
 The API answers a read-only view to a project viewer (decision A2). The route
 guard of the page still needs the right to operate a project, so the viewer
 goes to the home page.
+
+## Frontend fixes after the coverage audits (stream F)
+
+### F1. A reader of a project opens a read-only changes view (replaces U7)
+
+The route guard lets a user in when an environment serves the project, also
+without the right to operate. Only the changes view of the environment has a
+read-only API (decision A2), so the project page of a reader leads to that
+view (`/promotions/<direction>?from=<project>&view=read`). The view shows "You
+can view these changes. You cannot promote them.", no checkbox and no submit
+button. The project header shows a badge without a count for a reader, because
+only a user who can operate may ask for the count.
+
+### F2. The counts of the changes view leave out the project of a group header
+
+The header of a group stands for its project. A change of the project itself,
+such as a new project, comes with the items inside it, so the tab, the header
+line, the tree and the submit button do not count it next to those items. A
+project that is the only change of its group still counts. The header line
+reads "3 of 4 changes selected in 3 projects". A project page lists the project
+as a row, so its counts do not change.
+
+### F3. A whole-instance Apply with only kept workflows has nothing to apply
+
+A kept workflow is not a change of that Apply. The counts read "0 of 0
+changes", the header line reads "No changes to apply", and a note says that the
+instance matches the branch apart from the workflows that stay.
+
+### F4. The result of an Apply shows once
+
+When the Apply did something for its dependencies, or has a warning, the result
+dialog opens and no toast shows. The dialog starts with the sentence of the
+toast (the counts). Without such a result, only the toast shows.
+
+### F5. Warnings are next to the count of the Dependencies tab, not in it
+
+The tag of the tab still counts gaps and hard blocks. A warning icon with a
+tooltip shows next to it. The line above the changes names the warnings: broken
+on the source, a Promote of a deletion that breaks a reference on the branch,
+and the others. On Promote, a deletion with callers on the branch counts as a
+warning and needs no confirmation.
+
+### F6. Texts for values that this client does not know
+
+A warning code that the client does not know gets a sentence by the words of
+the code (`placeholder`, `data-table`, `variable`), else a generic sentence. A
+target kind that it does not know reads "Item". A usage that it does not know
+reads "Used by".
+
+### F7. The name of the project of a caller on a Promote of a deletion
+
+The report sends the id of the project of a caller, and only for a project
+that the user can read. A project page knows only its own project, so the page
+reads the name of the other project with the rights of the user. Without a
+name the sentence names no project.
+
+### F8. `confirmedDeletionCallerIds` is sent with every confirmed deletion
+
+The page sends the ids of the deleted workflows whose callers the user saw,
+next to `confirmDeletionCallers: true`. The request DTOs are strict, so this
+needs the backend change of the same round.
