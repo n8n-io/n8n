@@ -29,6 +29,7 @@ import {
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { useAsyncState } from '@vueuse/core';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
@@ -414,7 +415,18 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 // Data sharing is an instance-wide AI setting, not part of the assistant's own
 // settings, so it is read and saved through the settings store.
 const isDataSharingEnabled = computed(() => settingsStore.isAiDataSharingEnabled);
-const isSavingDataSharing = ref(false);
+const { isLoading: isSavingDataSharing, executeImmediate: enableDataSharing } = useAsyncState(
+	async () => await settingsStore.updateAiDataSharingSettings(true),
+	undefined,
+	{
+		immediate: false,
+		onSuccess: () => {
+			toast.showMessage({ title: i18n.baseText('settings.ai.updated.success'), type: 'success' });
+			telemetry.track('User changed AI Usage settings', { allow_sending_parameter_values: true });
+		},
+		onError: (error) => toast.showError(error, i18n.baseText('settings.ai.updated.error')),
+	},
+);
 const canToggleDataSharing = computed(
 	() =>
 		!isOff.value &&
@@ -426,18 +438,23 @@ const canToggleDataSharing = computed(
 // The setting is deprecated: it can only be turned on, so the switch locks once it is.
 async function handleDataSharingToggle(value: boolean) {
 	if (!value || !canToggleDataSharing.value) return;
-
-	isSavingDataSharing.value = true;
-	try {
-		await settingsStore.updateAiDataSharingSettings(true);
-		toast.showMessage({ title: i18n.baseText('settings.ai.updated.success'), type: 'success' });
-		telemetry.track('User changed AI Usage settings', { allow_sending_parameter_values: true });
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.ai.updated.error'));
-	} finally {
-		isSavingDataSharing.value = false;
-	}
+	await enableDataSharing();
 }
+
+const isModelTrainingAllowed = computed(
+	() => settingsStore.settings.ai?.allowModelTraining === true,
+);
+const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingToggle } =
+	useAsyncState(
+		async (value: boolean) => await settingsStore.updateModelTrainingSettings(value),
+		undefined,
+		{
+			immediate: false,
+			onSuccess: () =>
+				toast.showMessage({ title: i18n.baseText('settings.ai.updated.success'), type: 'success' }),
+			onError: (error) => toast.showError(error, i18n.baseText('settings.ai.updated.error')),
+		},
+	);
 </script>
 
 <template>
@@ -693,11 +710,23 @@ async function handleDataSharingToggle(value: boolean) {
 
 			<N8nSettingsSection
 				v-if="isEnabled"
-				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
+				:title="
+					i18n.baseText(
+						store.isModelTrainingOptOutAvailable
+							? 'settings.n8nAgent.dataSharing.modelTraining.title'
+							: 'settings.n8nAgent.dataSharing.title',
+					)
+				"
 			>
 				<template #description>
 					<N8nText size="small" color="text-base">
-						{{ i18n.baseText('settings.n8nAgent.dataSharing.description') }}
+						{{
+							i18n.baseText(
+								store.isModelTrainingOptOutAvailable
+									? 'settings.n8nAgent.dataSharing.modelTraining.description'
+									: 'settings.n8nAgent.dataSharing.description',
+							)
+						}}
 						<!-- Same docs phrase as N8nSettingsPageHeader: lead-in, inline external link, icon. -->
 						<span :class="$style.docsPhrase">
 							{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLeadingText') }}
@@ -753,6 +782,24 @@ async function handleDataSharingToggle(value: boolean) {
 						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.envVar') }}
 					</template>
 				</N8nCallout>
+				<N8nSettingsRowGroup v-if="store.isModelTrainingOptOutAvailable">
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.n8nAgent.modelTraining.label')"
+						:description="i18n.baseText('settings.n8nAgent.modelTraining.description')"
+						:max-description-lines="3"
+						data-test-id="n8n-agent-model-training-row"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="isModelTrainingAllowed"
+								:disabled="!store.canManageAiUsage || isSavingModelTraining"
+								:aria-label="i18n.baseText('settings.n8nAgent.modelTraining.label')"
+								data-test-id="n8n-agent-model-training-toggle"
+								@update:model-value="handleModelTrainingToggle"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 		</template>
 

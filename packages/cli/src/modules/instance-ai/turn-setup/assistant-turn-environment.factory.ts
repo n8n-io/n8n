@@ -63,6 +63,9 @@ import {
 	isAssistantCreditBalanceExhausted,
 } from './assistant-credits';
 
+/** Marks traces of instances that opted out, so the training pipeline can skip them. */
+const MODEL_TRAINING_OPT_OUT_TAG = 'model-training-opt-out';
+
 /**
  * Normalises `N8N_INSTANCE_AI_PROMPT_VERSION`. Blank and absent both mean "no
  * pin" and must become `undefined`: passing `''` on to `resolvePromptProfile`
@@ -172,6 +175,7 @@ export class AssistantTurnEnvironmentFactory {
 	}> {
 		if (!this.aiService.isProxyEnabled()) return {};
 
+		const allowModelTraining = await this.aiUsageService.isModelTrainingAllowed();
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl();
 		const tokenManager = new ProxyTokenManager(async () => {
@@ -198,6 +202,7 @@ export class AssistantTurnEnvironmentFactory {
 					...(await tokenManager.getAuthHeaders()),
 					...featureHeaders,
 				}),
+				...(allowModelTraining ? {} : { traceTags: [MODEL_TRAINING_OPT_OUT_TAG] }),
 			},
 		};
 	}

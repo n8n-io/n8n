@@ -403,6 +403,7 @@ export class FrontendService {
 			},
 			ai: {
 				allowSendingParameterValues: true,
+				allowModelTraining: true,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -528,6 +529,12 @@ export class FrontendService {
 		} catch {
 			this.settings.ai.allowSendingParameterValues =
 				this.globalConfig.ai.allowSendingParameterValues;
+		}
+		try {
+			this.settings.ai.allowModelTraining = await this.aiUsageService.isModelTrainingAllowed();
+		} catch {
+			// Show the instance as opted out rather than claim its traces train models.
+			this.settings.ai.allowModelTraining = false;
 		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';

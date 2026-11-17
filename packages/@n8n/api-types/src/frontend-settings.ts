@@ -263,6 +263,8 @@ export interface FrontendSettings {
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
+		/** Whether n8n may train models on this instance's Assistant traces. */
+		allowModelTraining: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;

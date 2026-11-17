@@ -315,6 +315,33 @@ describe('AssistantTurnEnvironmentFactory', () => {
 		});
 	});
 
+	describe('createProxyRunConfig', () => {
+		function createProxyFactory(allowModelTraining: boolean) {
+			return createFactory({
+				aiService: {
+					isProxyEnabled: vi.fn(() => true),
+					getClient: vi.fn(async () => ({ getApiProxyBaseUrl: () => 'https://proxy.test' })),
+				},
+				aiUsageService: { isModelTrainingAllowed: vi.fn(async () => allowModelTraining) },
+			});
+		}
+
+		it('tags traces when the instance opted out of model training', async () => {
+			const { tracingProxyConfig, searchProxyConfig } =
+				await createProxyFactory(false).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.traceTags).toEqual(['model-training-opt-out']);
+			expect(searchProxyConfig?.traceTags).toBeUndefined();
+		});
+
+		it('does not tag traces when the instance allows model training', async () => {
+			const { tracingProxyConfig } = await createProxyFactory(true).createProxyRunConfig(user);
+
+			expect(tracingProxyConfig?.apiUrl).toBe('https://proxy.test/langsmith');
+			expect(tracingProxyConfig?.traceTags).toBeUndefined();
+		});
+	});
+
 	describe('areMcpConnectionsAvailable', () => {
 		it.each([
 			{ moduleActive: true, accessEnabled: true, expected: true },
