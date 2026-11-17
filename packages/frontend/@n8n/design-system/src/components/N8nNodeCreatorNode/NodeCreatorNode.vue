@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ElTag } from 'element-plus';
-
 import { useI18n } from '../../composables/useI18n';
-import type { NodeCreatorTag } from '../../types/node-creator-node';
+import type { NodeCreatorTag, NodeCreatorTagType } from '../../types/node-creator-node';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
@@ -31,6 +29,15 @@ defineEmits<{
 defineSlots<{ icon: {}; extraDetails: {}; dragContent: {}; trailing: {} }>();
 
 const { t } = useI18n();
+
+// A pill keeps info and danger. Any other pill color uses the success badge.
+// A tag that is not a pill uses its color, or the success badge when the color is omitted.
+function badgeVariant(tag: NodeCreatorTag): NodeCreatorTagType {
+	const { type, pill } = tag;
+	if (type === 'info' || type === 'danger') return type;
+	if (!pill && type === 'warning') return 'warning';
+	return 'success';
+}
 </script>
 
 <template>
@@ -54,23 +61,9 @@ const { t } = useI18n();
 					:class="$style.previewBadge"
 					:text="tag.text"
 				/>
-				<N8nBadge
-					v-else-if="tag?.pill"
-					size="xxsmall"
-					:variant="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'success'"
-				>
+				<N8nBadge v-else-if="tag" size="xxsmall" :variant="badgeVariant(tag)">
 					{{ tag.text }}
 				</N8nBadge>
-				<ElTag
-					v-else-if="tag"
-					:class="$style.tag"
-					disable-transitions
-					size="small"
-					round
-					:type="tag.type ?? 'success'"
-				>
-					{{ tag.text }}
-				</ElTag>
 				<N8nNewBadge v-if="isNew" :text="t('nodeCreatorNode.new')" />
 				<N8nIcon
 					v-if="isTrigger"
@@ -134,17 +127,6 @@ const { t } = useI18n();
 }
 .previewBadge {
 	margin-left: var(--spacing--2xs);
-}
-:root .tag {
-	margin-left: var(--spacing--2xs);
-	line-height: var(--font-size--3xs);
-	font-size: var(--font-size--3xs);
-	padding: 0.1875rem var(--spacing--3xs) var(--spacing--4xs) var(--spacing--3xs);
-	height: auto;
-
-	span {
-		font-size: var(--font-size--2xs) !important;
-	}
 }
 .panelIcon {
 	flex-grow: 1;

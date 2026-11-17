@@ -4,7 +4,6 @@
  */
 import { computed, ref, useCssModule } from 'vue';
 
-import { ElTag } from 'element-plus';
 import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -74,11 +73,7 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 </script>
 
 <template>
-	<ElTag
-		:type="theme"
-		:disable-transitions="true"
-		:class="[$style.container, theme === 'info' && $style.containerInfo]"
-	>
+	<div :class="[$style.container, $style[theme]]">
 		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
@@ -113,7 +108,7 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 		<div v-if="expanded" :class="$style.details">
 			{{ details }}
 		</div>
-	</ElTag>
+	</div>
 </template>
 
 <style module lang="scss">
@@ -132,21 +127,41 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 }
 
 .container {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	box-sizing: border-box;
 	width: 100%;
 	position: relative;
+	padding-inline: var(--spacing--2xs);
 	border: none;
+	border-radius: var(--radius--3xs);
+	font-size: var(--font-size--2xs);
+	white-space: normal;
 }
 
-// `info` gets a neutral fill instead of the themed one.
-.containerInfo {
-	// Match Element Plus's specificity to override the tag's fill + border.
-	// Alpha overlays read against the modal in both themes; the border steps one
-	// notch past the fill (darker in light mode, lighter in dark).
-	&:global(.el-tag--info.el-tag--light) {
-		background-color: light-dark(var(--color--black-alpha-50), var(--color--white-alpha-100));
-		border: var(--border-width) solid
-			light-dark(var(--color--black-alpha-100), var(--color--white-alpha-300));
-	}
+.success {
+	background-color: var(--callout--color--background--success);
+	color: var(--callout--color--text--success);
+}
+
+.warning {
+	background-color: var(--callout--color--background--warning);
+	color: var(--callout--color--text--warning);
+}
+
+.danger {
+	background-color: var(--callout--color--background--danger);
+	color: var(--callout--color--text--danger);
+}
+
+// Alpha overlays read against the modal in both themes. The border steps one
+// notch past the fill (darker in light mode, lighter in dark).
+.info {
+	background-color: light-dark(var(--color--black-alpha-50), var(--color--white-alpha-100));
+	border: var(--border-width) solid
+		light-dark(var(--color--black-alpha-100), var(--color--white-alpha-300));
+	color: var(--color--text);
 }
 
 .message {
@@ -175,7 +190,7 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	// ElTag is inline-flex; claim full width so the text shrinks, not the button.
+	// Claim the full width so the text shrinks, not the button.
 	width: 100%;
 }
 
@@ -217,7 +232,6 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 .subtitle {
 	margin-top: var(--spacing--4xs);
 	line-height: var(--line-height--md);
-	// ElTag defaults to nowrap; let the subtitle wrap instead of overflowing.
 	white-space: normal;
 }
 

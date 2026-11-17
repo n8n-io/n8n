@@ -43,6 +43,19 @@ describe('N8nNodeCreatorNode', () => {
 		expect(getByText('Free credits').closest('.n8n-badge')?.className).toContain('success');
 	});
 
+	it('renders a recommended tag as an info badge', () => {
+		const { getByText } = renderNode({ text: 'Recommended', type: 'info' });
+		const badge = getByText('Recommended').closest('.n8n-badge');
+
+		expect(badge).toBeInTheDocument();
+		expect(badge?.className).toContain('info');
+	});
+
+	it('renders a warning tag that is not a pill as a warning badge', () => {
+		const { getByText } = renderNode({ text: 'Limited', type: 'warning' });
+		expect(getByText('Limited').closest('.n8n-badge')?.className).toContain('warning');
+	});
+
 	it('greys the row and renders the trailing slot when disabled', () => {
 		const { container, getByText } = render(NodeCreatorNode, {
 			props: { title: 'Gmail', description: 'Send email', disabled: true },

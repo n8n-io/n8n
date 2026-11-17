@@ -61,6 +61,7 @@ const dialogBan = requireBan('reka-ui', 'Dialog');
 const dateRangeBan = requireBan('reka-ui', 'DateRangePicker');
 const toggleBan = requireBan('reka-ui', 'Toggle');
 const menuBan = requireBan('element-plus', 'ElMenu');
+const tagBan = requireBan('element-plus', 'ElTag');
 const radioBan = requireBan('reka-ui', 'RadioGroup');
 
 const paginationWrapper =
@@ -262,6 +263,11 @@ ruleTester.run('no-direct-component-imports', NoDirectComponentImportsRule, {
 			errors: [error('ElMenu', menuBan)],
 		},
 		{
+			name: 'an element-plus tag import',
+			code: "import { ElTag } from 'element-plus';",
+			errors: [error('ElTag', tagBan)],
+		},
+		{
 			name: 'a reka primitive that is not migrated and not allowlisted',
 			code: "import { SeparatorRoot } from 'reka-ui';",
 			errors: [
@@ -378,6 +384,12 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			filename: 'Component.vue',
 			code: template('<el-menu />'),
 			errors: [error('el-menu', menuBan)],
+		},
+		{
+			name: 'kebab-case tag template',
+			filename: 'Component.vue',
+			code: template('<el-tag>Recommended</el-tag>'),
+			errors: [error('el-tag', tagBan)],
 		},
 		{
 			name: 'PascalCase template tag',
