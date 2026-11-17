@@ -12,14 +12,13 @@ import {
 	type StatusDotVariant,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
-import { PROMOTION_INSTANCE_APPLY_VIEW } from '../promotions.constants';
+import { PROMOTION_ENVIRONMENT_VIEWS } from '../promotions.constants';
 import { promotionEnvironmentBranch, promotionProviderIcon } from '../promotionsSettings.utils';
-import PromoteInstanceDialog from './PromoteInstanceDialog.vue';
 import PromotionMissingProjectsButton from './PromotionMissingProjectsButton.vue';
 
 const props = defineProps<{
@@ -38,8 +37,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const router = useRouter();
 const { permissions } = usePromotionCheckout();
-
-const dialogOpen = ref(false);
 
 const branch = computed(() => promotionEnvironmentBranch(props.environment));
 
@@ -68,13 +65,10 @@ const actions = computed(() => [
 	},
 ]);
 
-// Apply opens its preview page, so users review the whole Apply first. Promote asks in a dialog.
+// Both open the changes view of the environment, with every change selected. Users review
+// the changes and the dependencies there first. Promote then asks for the commit message.
 async function run() {
-	if (props.environment.direction === 'apply') {
-		await router.push({ name: PROMOTION_INSTANCE_APPLY_VIEW });
-		return;
-	}
-	dialogOpen.value = true;
+	await router.push({ name: PROMOTION_ENVIRONMENT_VIEWS[props.environment.direction] });
 }
 
 function onAction(action: 'edit' | 'remove') {
@@ -203,17 +197,6 @@ function onAction(action: 'edit' | 'remove') {
 				</div>
 			</template>
 		</N8nSettingsRow>
-
-		<PromoteInstanceDialog
-			v-if="dialogOpen && environment.direction === 'promote'"
-			:open="dialogOpen"
-			:environment-id="environment.id"
-			:base-branch-name="environment.settings.baseBranchName"
-			:environment-name="environment.name"
-			:create-branch-on-promotion="environment.settings.createBranchOnPromotion"
-			:provider-type="environment.provider.type"
-			@update:open="dialogOpen = $event"
-		/>
 	</div>
 </template>
 

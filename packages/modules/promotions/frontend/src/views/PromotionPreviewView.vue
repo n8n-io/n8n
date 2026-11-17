@@ -20,20 +20,31 @@ import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, toRef, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import PromotionDependencyReport from '../components/dependencies/PromotionDependencyReport.vue';
+import PromotionDependencySummary from '../components/dependencies/PromotionDependencySummary.vue';
+import PromotionIncompleteDialog from '../components/dependencies/PromotionIncompleteDialog.vue';
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
 import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import PromoteSelectionDialog from '../components/PromoteSelectionDialog.vue';
+import { usePromotionDependencies } from '../composables/usePromotionDependencies';
 import { usePromotionOperation, type OperationRequest } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
-import { usePromotionSelection } from '../composables/usePromotionSelection';
+import { usePromotionSelection, type SelectionSeed } from '../composables/usePromotionSelection';
+import type { GapTargetRow, PromotionOwnerRequester } from '../promotionDependencies';
+import { loadPromotionFixture, promotionFixtureName } from '../promotionFixtures';
 import { getPromotionEnvironmentDetails, getPromotionResourceDetails } from '../promotions.api';
-import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
+import {
+	PROMOTION_ENVIRONMENT_VIEWS,
+	PROMOTION_PREVIEW_VIEWS,
+	PROMOTIONS_SETTINGS_SCOPES,
+	PROMOTIONS_SETTINGS_VIEW,
+} from '../promotions.constants';
 import {
 	indexBlockers,
 	isBlocking,
@@ -44,16 +55,32 @@ import {
 	touchesDestructiveChange,
 } from '../promotionOperation';
 import {
+	buildProjectTree,
+	changedProjectCount,
+	lockedProjectKeys,
+	projectIdOf,
+	projectSelectableKeys,
+	toEnvironmentSelection,
+} from '../promotionPreview.projects';
+import {
 	includedChangeCount,
 	resolveInclusion,
 	selectableKeys,
 	totalChangeCount,
 	type ResourceKey,
+	type SelectionGraph,
 } from '../promotionPreview.selection';
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
-import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
+import { buildPreviewTree, cardOrder, type PreviewTreeGroup } from '../promotionPreview.tree';
+import {
+	setPromotionSelectionHandoff,
+	takePromotionSelectionHandoff,
+} from '../promotionSelectionHandoff';
 
-/** Without a project, the page applies the whole instance. Users cannot select changes then. */
+/**
+ * Without a project, the page is the changes view of the environment: the changes of every
+ * project that the user can access, and one selection across them.
+ */
 const props = defineProps<{ projectId?: string; direction: PromotionDirection }>();
 
 const i18n = useI18n();
@@ -68,18 +95,34 @@ const documentTitle = useDocumentTitle({
 
 const projectId = toRef(props, 'projectId');
 const direction = toRef(props, 'direction');
-const isInstance = computed(() => props.projectId === undefined);
+const isEnvironment = computed(() => props.projectId === undefined);
+const queryValue = (value: unknown) =>
+	typeof value === 'string' && value !== '' ? value : undefined;
+// Only for the changes view: the project page that handed its selection over (`?from=`).
+const origin = computed(() => (isEnvironment.value ? queryValue(route.query.from) : undefined));
+// Development only: `?fixture=<name>` replaces the server with the fixtures.
+const fixture = computed(() => promotionFixtureName(route.query.fixture));
+const fixtureQuery = computed(() => (fixture.value ? { fixture: fixture.value } : {}));
 
-const { state, preview, check, graph, environment, refreshing, refreshFailed, refresh } =
-	usePromotionPreview(projectId, direction);
+const {
+	state,
+	preview,
+	check,
+	graph,
+	projects,
+	dependencyReport,
+	environment,
+	refreshing,
+	refreshFailed,
+	refresh,
+} = usePromotionPreview(projectId, direction, { origin, fixture });
 const promoteEnvironment = computed(() =>
 	environment.value?.direction === 'promote' ? environment.value : null,
 );
-// The page shows and enforces only the blockers of the workflows it lists. A whole-instance
-// Apply stops for any blocker, also on a workflow that it does not change.
+// A project page shows and enforces only the blockers of the workflows it lists.
 const scopedCheck = computed(() => {
 	if (!check.value || !graph.value) return null;
-	return isInstance.value ? check.value : scopeCheck(check.value, graph.value);
+	return isEnvironment.value ? check.value : scopeCheck(check.value, graph.value);
 });
 // A project-wide conflict blocks all of them, so it also stops a selection without workflows.
 const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
@@ -88,15 +131,67 @@ const blockerList = computed(() => [
 	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
 ]);
 const blockers = computed(() => indexBlockers(blockerList.value));
-const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
-const selection = usePromotionSelection(graph, {
-	disabled: computed(() => blockers.value.blocked),
-	locked: operation.isBusy,
+// Users cannot add a blocked workflow, or a change of a project that they can only read or
+// that an open review holds.
+const disabledKeys = computed((): ReadonlySet<ResourceKey> => {
+	const locked = graph.value ? lockedProjectKeys(graph.value, projects.value) : new Set<string>();
+	return locked.size > 0 ? new Set([...blockers.value.blocked, ...locked]) : blockers.value.blocked;
 });
+const operation = usePromotionOperation(projectId, direction, {
+	preview,
+	check,
+	refresh,
+	environmentId: computed(() => environment.value?.id),
+	origin,
+	fixture,
+});
+
+/**
+ * The first selection of a changes view that continues a project page. A reload loses the
+ * handoff, so the URL gives the changes of that project and the included items.
+ */
+function seedSelection(current: SelectionGraph): SelectionSeed | null {
+	if (!isEnvironment.value || origin.value === undefined) return null;
+	const handoff = takePromotionSelectionHandoff(props.direction, origin.value);
+	if (handoff) return { selected: handoff.selected, extra: new Map(handoff.extra) };
+	const included = [route.query.include].flat().flatMap((key) => queryValue(key) ?? []);
+	return {
+		selected: projectSelectableKeys(current, origin.value),
+		extra: new Map(
+			included.flatMap((key): Array<[ResourceKey, string]> => {
+				const resource = current.resources.get(key);
+				const owner = resource ? projectIdOf(current.resources, resource) : undefined;
+				return owner === undefined ? [] : [[key, owner]];
+			}),
+		),
+	};
+}
+
+const selection = usePromotionSelection(graph, {
+	disabled: disabledKeys,
+	locked: operation.isBusy,
+	seed: seedSelection,
+});
+const dependencies = usePromotionDependencies({
+	source: dependencyReport,
+	operationReport: operation.gapsReport,
+	graph,
+	included: computed(() => selection.inclusion.value.included),
+	direction,
+});
+
 const activeWorkflowKey = ref<ResourceKey>();
 const details = usePromotionResourceDetails(
 	async (keys) => {
 		const request = { commitSha: preview.value?.commitSha ?? null, keys };
+		if (fixture.value) {
+			const loaded = await loadPromotionFixture(
+				fixture.value,
+				props.direction,
+				props.projectId ?? origin.value,
+			);
+			return loaded.details(keys);
+		}
 		return props.projectId === undefined
 			? await getPromotionEnvironmentDetails(
 					rootStore.publicApiContext,
@@ -115,14 +210,23 @@ const details = usePromotionResourceDetails(
 	activeWorkflowKey,
 );
 
-const projectName = computed(() => {
-	if (props.projectId === undefined) return undefined;
-	return projectContext.currentProject()?.id === props.projectId
-		? projectContext.currentProject()?.name
-		: preview.value?.resources.find(
-				(resource) => resource.type === 'project' && resource.id === props.projectId,
-			)?.name;
+/** The names of the projects that the page may show, by id. The report never adds one. */
+const projectNames = computed(() => {
+	const names = new Map<string, string>();
+	for (const resource of preview.value?.resources ?? []) {
+		if (resource.type === 'project') names.set(resource.id, resource.name);
+		else if (resource.projectId !== undefined && resource.projectName !== undefined) {
+			names.set(resource.projectId, resource.projectName);
+		}
+	}
+	for (const project of projects.value) names.set(project.id, project.name);
+	const current = projectContext.currentProject();
+	if (current?.id && current.name) names.set(current.id, current.name);
+	return names;
 });
+const projectName = computed(() =>
+	props.projectId === undefined ? undefined : projectNames.value.get(props.projectId),
+);
 const title = computed(() => {
 	if (!environment.value?.name) {
 		return i18n.baseText(`promotions.preview.title.${props.direction}`);
@@ -136,14 +240,16 @@ const title = computed(() => {
 });
 watch(title, (value) => documentTitle.set(value), { immediate: true });
 
-const tree = computed(() =>
-	preview.value
-		? buildPreviewTree(preview.value, {
-				workflows: i18n.baseText('promotions.preview.tree.section.workflows'),
-				group: (group) => i18n.baseText(`promotions.preview.tree.group.${group}`),
-			})
-		: [],
-);
+const tree = computed(() => {
+	if (!preview.value) return [];
+	const labels = {
+		workflows: i18n.baseText('promotions.preview.tree.section.workflows'),
+		group: (group: PreviewTreeGroup) => i18n.baseText(`promotions.preview.tree.group.${group}`),
+	};
+	return isEnvironment.value
+		? buildProjectTree(preview.value.resources, projects.value, labels)
+		: buildPreviewTree(preview.value, labels);
+});
 const order = computed(() => (graph.value ? cardOrder(tree.value, graph.value.resources) : []));
 
 // The inspected card lives in the URL, so a direct link opens it. Replacing the entry keeps
@@ -188,48 +294,117 @@ const canOpenSettings = computed(() =>
 	rbacStore.hasScope([...PROMOTIONS_SETTINGS_SCOPES], {}, { mode: 'allOf' }),
 );
 
-// The whole-instance Apply starts on the settings page, so it goes back there.
-const backRoute = computed(() =>
-	props.projectId === undefined
-		? { name: PROMOTIONS_SETTINGS_VIEW }
-		: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: props.projectId } },
-);
-const backLabel = computed(() =>
-	i18n.baseText('promotions.preview.back', {
-		interpolate: {
-			project: isInstance.value
-				? i18n.baseText('settings.promotions.title')
-				: (projectContext.currentProject()?.name ?? ''),
-		},
-	}),
-);
+// The changes view goes back to where it was opened: a project page, or the settings page.
+const backRoute = computed(() => {
+	if (props.projectId !== undefined) {
+		return { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: props.projectId } };
+	}
+	if (origin.value !== undefined) {
+		return {
+			name: PROMOTION_PREVIEW_VIEWS[props.direction],
+			params: { projectId: origin.value },
+			query: fixtureQuery.value,
+		};
+	}
+	return { name: PROMOTIONS_SETTINGS_VIEW };
+});
+const backLabel = computed(() => {
+	const target = isEnvironment.value
+		? origin.value === undefined
+			? i18n.baseText('settings.promotions.title')
+			: (projectNames.value.get(origin.value) ?? '')
+		: (projectContext.currentProject()?.name ?? '');
+	return i18n.baseText('promotions.preview.back', { interpolate: { project: target } });
+});
 
-// A whole-instance Apply has no selection, so it counts every change.
+const changedCount = computed(() =>
+	graph.value
+		? [...graph.value.resources.values()].filter(({ change }) => change !== 'unchanged').length
+		: 0,
+);
+/**
+ * An Apply that holds every change of the environment is the Apply of the whole instance. Only
+ * that Apply also writes what users cannot select, such as the deletion of a project.
+ */
+const wholeInstance = computed(
+	() =>
+		isEnvironment.value &&
+		props.direction === 'apply' &&
+		origin.value === undefined &&
+		!!graph.value &&
+		selection.extra.value.size === 0 &&
+		projects.value.every(({ canOperate }) => canOperate) &&
+		selectableResourceKeys.value.every((key) => selection.selected.value.has(key)),
+);
 const totalChanges = computed(() => {
 	if (!graph.value) return 0;
-	if (!isInstance.value) return totalChangeCount(graph.value);
-	return [...graph.value.resources.values()].filter(({ change }) => change !== 'unchanged').length;
+	return isEnvironment.value && props.direction === 'apply'
+		? changedCount.value
+		: totalChangeCount(graph.value);
 });
-const includedChanges = computed(() =>
-	graph.value ? includedChangeCount(graph.value, selection.inclusion.value) : 0,
-);
+const includedChanges = computed(() => {
+	if (!graph.value) return 0;
+	return wholeInstance.value
+		? changedCount.value
+		: includedChangeCount(graph.value, selection.inclusion.value);
+});
+// The header of the changes view says what the operation holds: "3 changes in 2 projects".
+const selectionSummary = computed(() => {
+	if (!isEnvironment.value || !graph.value) return undefined;
+	if (includedChanges.value === 0) return i18n.baseText('promotions.preview.summary.none');
+	const projectCount = changedProjectCount(graph.value, selection.inclusion.value.included);
+	const changes = i18n.baseText('promotions.preview.summary.changes', {
+		adjustToNumber: includedChanges.value,
+		interpolate: { count: String(includedChanges.value) },
+	});
+	if (projectCount === 0) return changes;
+	return i18n.baseText('promotions.preview.summary', {
+		interpolate: {
+			changes,
+			projects: i18n.baseText('promotions.preview.summary.projects', {
+				adjustToNumber: projectCount,
+				interpolate: { count: String(projectCount) },
+			}),
+		},
+	});
+});
 
 const request = computed((): OperationRequest => {
-	if (isInstance.value) {
+	const confirmations = dependencies.payload.value;
+	const none = { workflowIds: [], folderIds: [] };
+	if (!graph.value) return { ...none, confirmDestructiveChanges: false };
+	if (wholeInstance.value) {
 		return {
-			workflowIds: [],
-			folderIds: [],
+			...none,
+			wholeInstance: true,
 			confirmDestructiveChanges: blockerList.value.some(({ kind }) => kind === 'destructive'),
 			deletedProjects: (check.value?.conflicts ?? []).flatMap((conflict) =>
 				conflict.code === 'project-deletion' ? conflict.project.name : [],
 			),
+			confirmations,
+		};
+	}
+	const confirmDestructiveChanges = touchesDestructiveChange(
+		blockers.value,
+		selection.selected.value,
+	);
+	if (isEnvironment.value) {
+		return {
+			...none,
+			projects: toEnvironmentSelection(
+				graph.value,
+				selection.selected.value,
+				selection.extra.value,
+				projects.value.map(({ id }) => id),
+			),
+			confirmDestructiveChanges,
+			confirmations,
 		};
 	}
 	return {
-		...(graph.value
-			? toOperationRequest(graph.value, selection.selected.value)
-			: { workflowIds: [], folderIds: [] }),
-		confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
+		...toOperationRequest(graph.value, selection.selected.value),
+		confirmDestructiveChanges,
+		confirmations,
 	};
 });
 const isDestructive = computed(
@@ -238,6 +413,17 @@ const isDestructive = computed(
 const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
 );
+const actionableChanges = computed(() => {
+	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
+	if (wholeInstance.value) return changedCount.value;
+	const actionable = new Set(
+		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
+	);
+	return includedChangeCount(
+		graph.value,
+		resolveInclusion(graph.value, actionable, selection.extra.value.keys()),
+	);
+});
 const submitBlockedReason = computed(() => {
 	// A folder that moved to another project stops the whole apply, so it blocks every selection.
 	const movedFolders = scopedCheck.value?.movedFolders ?? [];
@@ -247,25 +433,18 @@ const submitBlockedReason = computed(() => {
 			interpolate: { folders: movedFolders.map(({ name }) => `"${name}"`).join(', ') },
 		});
 	}
-	if (isInstance.value) {
-		return blockerList.value.some(isBlocking)
-			? i18n.baseText('promotions.preview.submit.blockedInstance')
-			: undefined;
+	if (hasSelectedBlocked.value) {
+		return i18n.baseText(
+			props.direction === 'promote'
+				? 'promotions.preview.submit.blockedPromote'
+				: 'promotions.preview.submit.blocked',
+		);
 	}
-	if (!hasSelectedBlocked.value) return undefined;
-	return i18n.baseText(
-		props.direction === 'promote'
-			? 'promotions.preview.submit.blockedPromote'
-			: 'promotions.preview.submit.blocked',
-	);
-});
-const actionableChanges = computed(() => {
-	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
-	if (isInstance.value) return totalChanges.value;
-	const actionable = new Set(
-		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
-	);
-	return includedChangeCount(graph.value, resolveInclusion(graph.value, actionable));
+	// The changes view leaves blocked changes out. With nothing else to apply, it says why.
+	if (isEnvironment.value && actionableChanges.value === 0 && blockerList.value.some(isBlocking)) {
+		return i18n.baseText('promotions.preview.submit.blockedInstance');
+	}
+	return undefined;
 });
 const canSubmit = computed(
 	() =>
@@ -273,18 +452,27 @@ const canSubmit = computed(
 		!refreshing.value &&
 		!operation.isBusy.value &&
 		!submitBlockedReason.value &&
+		!dependencies.stop.value &&
 		actionableChanges.value > 0 &&
 		(props.direction === 'promote' || !!check.value),
 );
+// With gaps on an environment that allows them, the button says what the user accepts.
 const submitLabel = computed(() =>
-	i18n.baseText(`promotions.preview.submit.${props.direction}`, {
-		adjustToNumber: actionableChanges.value,
-		interpolate: { count: String(actionableChanges.value) },
-	}),
+	dependencies.needsGapConfirmation.value
+		? i18n.baseText(`promotions.dependencies.submit.${props.direction}`, {
+				adjustToNumber: dependencies.gapCount.value,
+				interpolate: { count: String(dependencies.gapCount.value) },
+			})
+		: i18n.baseText(`promotions.preview.submit.${props.direction}`, {
+				adjustToNumber: actionableChanges.value,
+				interpolate: { count: String(actionableChanges.value) },
+			}),
 );
 
 // Promote asks for the optional commit message first. Apply confirms inside the operation.
+// An incomplete operation asks in the dialog of the gaps instead.
 const promoteDialogOpen = ref(false);
+const incompleteDialogOpen = ref(false);
 // Lives here, not in the dialog, so the typed message survives a failed promote.
 const promoteCommitMessage = ref('');
 // The router reuses this view across projects, so a draft must not carry over.
@@ -293,6 +481,10 @@ watch(projectId, () => {
 });
 
 async function onSubmit() {
+	if (dependencies.needsGapConfirmation.value) {
+		incompleteDialogOpen.value = true;
+		return;
+	}
 	if (props.direction === 'promote') {
 		promoteDialogOpen.value = true;
 		return;
@@ -305,14 +497,30 @@ async function onPromoteConfirm(commitMessage: string | undefined) {
 	await operation.submit({ ...request.value, commitMessage });
 }
 
-type PreviewTab = 'changes' | 'blockers';
+async function onIncompleteConfirm(commitMessage: string | undefined) {
+	incompleteDialogOpen.value = false;
+	await operation.submit({
+		...request.value,
+		...(props.direction === 'promote' ? { commitMessage } : {}),
+		confirmed: true,
+	});
+}
+
+type PreviewTab = 'changes' | 'dependencies' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');
 const blockerCount = computed(() => blockerList.value.filter(isBlocking).length);
 const showBlockersTab = computed(
 	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
 );
-watch(showBlockersTab, (show) => {
-	if (!show) activeTab.value = 'changes';
+// The tab exists when the server sends a report. An older server sends none.
+const showDependenciesTab = computed(() => !!dependencies.report.value && state.value === 'ready');
+watch([showBlockersTab, showDependenciesTab], ([blockersTab, dependenciesTab]) => {
+	if (
+		(activeTab.value === 'blockers' && !blockersTab) ||
+		(activeTab.value === 'dependencies' && !dependenciesTab)
+	) {
+		activeTab.value = 'changes';
+	}
 });
 const tabs = computed(() => [
 	{
@@ -320,6 +528,16 @@ const tabs = computed(() => [
 		label: i18n.baseText('promotions.preview.tab.changes'),
 		tag: graph.value ? String(totalChanges.value) : undefined,
 	},
+	...(showDependenciesTab.value
+		? [
+				{
+					value: 'dependencies' as const,
+					label: i18n.baseText('promotions.dependencies.tab'),
+					tag:
+						dependencies.issueCount.value > 0 ? String(dependencies.issueCount.value) : undefined,
+				},
+			]
+		: []),
 	...(showBlockersTab.value
 		? [
 				{
@@ -336,17 +554,71 @@ function showBlockers() {
 	if (showBlockersTab.value) activeTab.value = 'blockers';
 }
 
-async function inspectFromBlockers(key: string) {
+async function inspectFromTab(key: string) {
+	// A reference can come from a workflow that the page does not list.
+	if (!graph.value?.resources.has(key)) return;
 	activeTab.value = 'changes';
 	// The cards must be visible before the page scrolls to one.
 	await nextTick();
 	await inspect(key);
 }
 
-// Apply found blockers that the check did not show, so the page opens them.
+// The operation wrote nothing and the page shows why, so it opens the tab that explains it.
 watch(operation.notice, (notice) => {
-	if (notice === 'newBlockers') activeTab.value = 'blockers';
+	if (notice === 'newBlockers' && showBlockersTab.value) activeTab.value = 'blockers';
+	if (notice === 'gapsChanged') activeTab.value = 'dependencies';
 });
+
+/**
+ * "Include it". The changes view adds the item to its selection. A project page can only hold
+ * items of its own project, so an item of another project continues in the changes view, with
+ * the selection of this page.
+ */
+async function onInclude({ include }: GapTargetRow) {
+	if (!include || !graph.value) return;
+	const ownItem =
+		include.projectId === props.projectId &&
+		graph.value.resources.get(include.resourceKey)?.selectable === true;
+	if (props.projectId === undefined || ownItem) {
+		selection.include(include.resourceKey, include.projectId);
+		return;
+	}
+	setPromotionSelectionHandoff({
+		direction: props.direction,
+		fromProjectId: props.projectId,
+		selected: [...selection.selected.value],
+		extra: [[include.resourceKey, include.projectId]],
+	});
+	await router.push({
+		name: PROMOTION_ENVIRONMENT_VIEWS[props.direction],
+		query: { from: props.projectId, include: include.resourceKey, ...fixtureQuery.value },
+	});
+}
+
+/** The deleted workflows that the user can take out of the selection, by id. */
+const removableDeletions = computed(
+	() =>
+		new Set(
+			[...selection.selected.value].flatMap((key) => {
+				const resource = graph.value?.resources.get(key);
+				return resource?.type === 'workflow' && resource.change === 'deleted' ? [resource.id] : [];
+			}),
+		),
+);
+
+// "Ask the owner". The owner-request composable plugs in here: replace `undefined` with its
+// send function. The fixtures bring their own.
+const defaultOwnerRequester: PromotionOwnerRequester | undefined = undefined;
+const ownerRequester = shallowRef<PromotionOwnerRequester | undefined>(defaultOwnerRequester);
+watch(
+	fixture,
+	async (name) => {
+		ownerRequester.value = name
+			? (await loadPromotionFixture(name, props.direction)).ownerRequester
+			: defaultOwnerRequester;
+	},
+	{ immediate: true },
+);
 
 // Users can resize the tree to read long names. The browser stores the width.
 const panes = ref<HTMLElement | null>(null);
@@ -369,6 +641,16 @@ const treeResizer = useResizablePanel({
 				<span :class="$style.back"><N8nIcon icon="arrow-left" size="small" />{{ backLabel }}</span>
 			</N8nLink>
 			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
+			<N8nText
+				v-if="selectionSummary && state === 'ready'"
+				size="small"
+				color="text-base"
+				role="status"
+				:class="$style.summary"
+				data-test-id="promotion-preview-summary"
+			>
+				{{ selectionSummary }}
+			</N8nText>
 			<div :class="$style.tabRow">
 				<N8nTabs
 					v-model="activeTab"
@@ -482,14 +764,15 @@ const treeResizer = useResizablePanel({
 						:included-changes="includedChanges"
 						:total-changes="totalChanges"
 						:inspected-key="inspectedKey"
-						:disabled="blockers.blocked"
+						:disabled="disabledKeys"
 						:locked="operation.isBusy.value"
 						:direction="direction"
 						:blockers="blockers"
-						:selectable="!isInstance"
+						:projects="projects"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
+						@toggle-keys="selection.toggleKeys"
 						@select-all="selection.selectAll"
 						@clear="selection.clear"
 						@inspect="inspect"
@@ -510,6 +793,29 @@ const treeResizer = useResizablePanel({
 							</N8nButton>
 						</template>
 					</N8nCallout>
+					<PromotionDependencySummary
+						v-if="
+							dependencies.report.value &&
+							(dependencies.issueCount.value > 0 || dependencies.stop.value)
+						"
+						:direction="direction"
+						:gap-count="dependencies.gapCount.value"
+						:hard-block-count="dependencies.report.value.hardBlocks.length"
+						:stop="dependencies.stop.value"
+						@view="activeTab = 'dependencies'"
+					/>
+					<N8nCallout
+						v-if="origin !== undefined"
+						theme="info"
+						slim
+						data-test-id="promotion-preview-across-projects"
+					>
+						{{
+							i18n.baseText('promotions.preview.acrossProjects', {
+								interpolate: { project: projectNames.get(origin) ?? '' },
+							})
+						}}
+					</N8nCallout>
 					<N8nCallout v-if="refreshFailed" theme="warning" slim>
 						{{ i18n.baseText('promotions.preview.refreshFailed') }}
 					</N8nCallout>
@@ -529,12 +835,11 @@ const treeResizer = useResizablePanel({
 						:direction="direction"
 						:selected="selection.selected.value"
 						:inclusion="selection.inclusion.value"
-						:disabled="blockers.blocked"
+						:disabled="disabledKeys"
 						:locked="operation.isBusy.value"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
-						:selectable="!isInstance"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"
@@ -550,12 +855,31 @@ const treeResizer = useResizablePanel({
 				:check="scopedCheck"
 				:busy="operation.isBusy.value"
 				@refresh="refresh"
-				@inspect="inspectFromBlockers"
+				@inspect="inspectFromTab"
 			>
 				<N8nCallout v-if="submitBlockedReason && !operation.error.value" theme="warning" slim>
 					{{ submitBlockedReason }}
 				</N8nCallout>
 			</PromotionBlockers>
+			<PromotionDependencyReport
+				v-if="showDependenciesTab && dependencies.report.value"
+				v-show="activeTab === 'dependencies'"
+				:class="$style.dependencies"
+				:report="dependencies.report.value"
+				:direction="direction"
+				:confirmations="dependencies.confirmations.value"
+				:locked="operation.isBusy.value"
+				:project-names="projectNames"
+				:removable-deletions="removableDeletions"
+				:environment-id="environment?.id"
+				:owner-requester="ownerRequester"
+				@include="onInclude"
+				@remove-deletion="selection.exclude(`workflow:${$event}`)"
+				@inspect="inspectFromTab"
+				@grant="dependencies.setGrant"
+				@deletion-callers="dependencies.setDeletionCallers"
+				@credential-home="dependencies.setCredentialHome"
+			/>
 		</template>
 
 		<PromoteSelectionDialog
@@ -567,6 +891,18 @@ const treeResizer = useResizablePanel({
 			:create-branch-on-promotion="promoteEnvironment.createBranchOnPromotion"
 			:provider-type="promoteEnvironment.providerType"
 			@confirm="onPromoteConfirm"
+		/>
+		<PromotionIncompleteDialog
+			v-if="incompleteDialogOpen && dependencies.report.value"
+			v-model:open="incompleteDialogOpen"
+			v-model:commit-message="promoteCommitMessage"
+			:direction="direction"
+			:report="dependencies.report.value"
+			:project-names="projectNames"
+			:opens-review="
+				promoteEnvironment?.providerType === 'gitlab' && promoteEnvironment.createBranchOnPromotion
+			"
+			@confirm="onIncompleteConfirm"
 		/>
 	</div>
 </template>
@@ -591,6 +927,12 @@ const treeResizer = useResizablePanel({
 }
 
 .title {
+	margin-bottom: var(--spacing--2xs);
+}
+
+/* The summary belongs to the title, so it takes the place of the space below it. */
+.summary {
+	margin-top: calc(-1 * var(--spacing--2xs));
 	margin-bottom: var(--spacing--2xs);
 }
 
@@ -634,7 +976,8 @@ const treeResizer = useResizablePanel({
 	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
-.blockers {
+.blockers,
+.dependencies {
 	flex: 1;
 	min-height: 0;
 }
