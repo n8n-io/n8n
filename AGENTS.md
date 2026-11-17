@@ -59,6 +59,14 @@ frontend, and extensible node-based workflow engine.
   (workflow graph and traversal). A new shared helper usually belongs in one of
   these packages too; domain logic stays in the package that owns the domain.
 
+## Compiled workflow engine (proof of concept)
+
+This branch holds a compiled workflow engine. When you work on `packages/@n8n/workflow-lang`,
+`workflow-runtime/`, `packages/@n8n/workflow-fallback-host` or
+`packages/cli/src/modules/compiled-engine`, obey the guide:
+
+@packages/@n8n/workflow-lang/docs/agent-guide.md
+
 ## Agent Skills and Claude Code Plugin
 
 n8n shared skills live in `.agents/skills/`. Claude Code consumes them through
