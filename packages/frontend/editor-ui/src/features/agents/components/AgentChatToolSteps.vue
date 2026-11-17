@@ -14,6 +14,7 @@ import {
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
+import type { AgentsChatHostEventItem } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
@@ -36,6 +37,7 @@ import {
 import { TOOL_CALL_STATE } from '../constants';
 import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import { getToolOutputAttachments } from '../utils/tool-output-files';
 
@@ -46,6 +48,8 @@ const props = defineProps<{
 	canFixWithAssistant?: boolean;
 	dismissedToolCallIds?: string[];
 	executionId?: string;
+	/** Host events that show right before the step of their call, by call. */
+	hostEvents?: ReadonlyMap<string, AgentsChatHostEventItem[]>;
 }>();
 
 const emit = defineEmits<{
@@ -71,6 +75,10 @@ const outputFilesByToolCallId = computed(
 
 function outputFiles(tc: ToolCall) {
 	return outputFilesByToolCallId.value.get(tc.toolCallId) ?? [];
+}
+
+function hostEventsFor(tc: ToolCall): AgentsChatHostEventItem[] {
+	return props.hostEvents?.get(tc.toolCallId) ?? [];
 }
 
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
@@ -280,6 +288,7 @@ function hasActiveToolCall(): boolean {
 		<template v-if="toolCalls.length > 1">
 			<N8nAiActivityStepGroup :label="groupLabel()" size="medium" :loading="hasActiveToolCall()">
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
+					<AgentChatHostEvents :items="hostEventsFor(tc)" />
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"
 						:key="`${tc.toolCallId}-${view.label}`"
@@ -359,6 +368,7 @@ function hasActiveToolCall(): boolean {
 
 		<template v-else>
 			<template v-for="tc in toolCalls" :key="tc.toolCallId">
+				<AgentChatHostEvents :items="hostEventsFor(tc)" />
 				<N8nAiActivityStep
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"

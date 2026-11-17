@@ -5,18 +5,21 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs?: IDataObject,
-	uri?: string,
+	uri?: RequestUrl,
 ) {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
@@ -24,14 +27,14 @@ export async function googleApiRequest(
 		'serviceAccount',
 	) as string;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://docs.googleapis.com/v1${endpoint}`,
+		uri: uri ?? requestUrl`https://docs.googleapis.com/v1${endpoint}`,
 		json: true,
 	};
 
@@ -58,10 +61,10 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs?: IDataObject,
-	uri?: string,
+	uri?: RequestUrl,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

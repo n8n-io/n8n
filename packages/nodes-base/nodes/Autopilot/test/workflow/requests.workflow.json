@@ -1,0 +1,218 @@
+{
+	"name": "Autopilot request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 600],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0001"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "upsert",
+				"email": "nathan@example.com",
+				"additionalFields": {}
+			},
+			"name": "Upsert Contact",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0002",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+			},
+			"name": "Get Contact",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 120],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0003",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+			},
+			"name": "Delete Contact",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 240],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0004",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"name": "Get Many Contacts",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 360],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0005",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contactJourney",
+				"triggerId": "0001",
+				"contactId": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+			},
+			"name": "Add Contact To Journey",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 480],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0006",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "add",
+				"listId": "contactlist_06444749-9C0B-4894-9D43-1F7B5D4D0E2A",
+				"contactId": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+			},
+			"name": "Add Contact To List",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0007",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "exist",
+				"listId": "contactlist_06444749-9C0B-4894-9D43-1F7B5D4D0E2A",
+				"contactId": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+			},
+			"name": "Check Contact In List",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 720],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0008",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "remove",
+				"listId": "contactlist_06444749-9C0B-4894-9D43-1F7B5D4D0E2A",
+				"contactId": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
+			},
+			"name": "Remove Contact From List",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 840],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0009",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "getAll",
+				"listId": "contactlist_06444749-9C0B-4894-9D43-1F7B5D4D0E2A",
+				"limit": 1
+			},
+			"name": "Get Many List Contacts",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 960],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0010",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"name": "Newsletter"
+			},
+			"name": "Create List",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 1080],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0011",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"name": "Get Many Lists",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0012",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		}
+	],
+	"pinData": {
+		"Upsert Contact": [{ "json": { "contact_id": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D" } }],
+		"Get Contact": [
+			{
+				"json": {
+					"contact_id": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D",
+					"Email": "nathan@example.com"
+				}
+			}
+		],
+		"Delete Contact": [{ "json": { "success": true } }],
+		"Get Many Contacts": [
+			{ "json": { "contact_id": "person_11111111-2222-4333-8444-555555555555" } },
+			{ "json": { "contact_id": "person_66666666-7777-4888-9999-AAAAAAAAAAAA" } }
+		],
+		"Add Contact To Journey": [{ "json": { "success": true } }],
+		"Add Contact To List": [{ "json": { "success": true } }],
+		"Check Contact In List": [{ "json": { "exist": true } }],
+		"Remove Contact From List": [{ "json": { "success": true } }],
+		"Get Many List Contacts": [
+			{ "json": { "contact_id": "person_0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D" } }
+		],
+		"Create List": [{ "json": { "list_id": "contactlist_06444749-9C0B-4894-9D43-1F7B5D4D0E2A" } }],
+		"Get Many Lists": [
+			{
+				"json": {
+					"list_id": "contactlist_06444749-9C0B-4894-9D43-1F7B5D4D0E2A",
+					"title": "Newsletter"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Upsert Contact", "type": "main", "index": 0 },
+					{ "node": "Get Contact", "type": "main", "index": 0 },
+					{ "node": "Delete Contact", "type": "main", "index": 0 },
+					{ "node": "Get Many Contacts", "type": "main", "index": 0 },
+					{ "node": "Add Contact To Journey", "type": "main", "index": 0 },
+					{ "node": "Add Contact To List", "type": "main", "index": 0 },
+					{ "node": "Check Contact In List", "type": "main", "index": 0 },
+					{ "node": "Remove Contact From List", "type": "main", "index": 0 },
+					{ "node": "Get Many List Contacts", "type": "main", "index": 0 },
+					{ "node": "Create List", "type": "main", "index": 0 },
+					{ "node": "Get Many Lists", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e00ff",
+	"meta": { "instanceId": "test" },
+	"id": "AutopilotRequests",
+	"tags": []
+}

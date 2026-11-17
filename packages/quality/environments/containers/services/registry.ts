@@ -1,11 +1,13 @@
 import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
+import { engineTaskRunner } from './engine-task-runner';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
 import { kent, createKentHelper } from './kent';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
+import { liteLlm } from './litellm';
 import { localstack, createLocalStackHelper } from './localstack';
 import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
@@ -39,6 +41,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	tracing,
 	proxy,
 	taskRunner,
+	engineTaskRunner,
 	loadBalancer,
 	cloudflared,
 	ngrok,
@@ -51,6 +54,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	cadvisor,
 	sandbox,
 	npmRegistry,
+	litellm: liteLlm,
 };
 
 export const helperFactories: Partial<HelperFactories> = {

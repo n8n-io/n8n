@@ -12,7 +12,7 @@ test.describe(
 	{
 		tag: '@bench:kafka',
 		annotation: [
-			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'owner', description: 'Core Execution' },
 			{ type: 'question', description: 'node-count-scaling' },
 		],
 	},

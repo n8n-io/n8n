@@ -1,6 +1,9 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
+
+import '../openapi-extend';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
@@ -8,8 +11,18 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
-import { AgentApprovalSchema, AgentTeamsSettingsSchema } from './agent-integration.schema';
-import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
+import {
+	AgentApprovalSchema,
+	AgentTeamsSettingsSchema,
+	WEBHOOK_INTEGRATION_TYPE,
+	type AgentIntegrationConfig,
+} from './agent-integration.schema';
+import {
+	AgentVectorStoreConfigSchema,
+	AgentJsonConfigSchema,
+	type AgentJsonConfig,
+} from './agent-json-config.schema';
+import type { AgentPersonalisation } from './agent-personalisation';
 import {
 	agentSkillAvailabilitySchema,
 	agentSkillSchema,
@@ -17,13 +30,22 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { alsoNullable } from '../dto/openapi-nullable';
 import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
 	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentSkill,
+	type AgentSkillVersionInfo,
 } from './types';
-import { paginationSchema } from '../dto/pagination/pagination.dto';
+import {
+	MAX_ITEMS_PER_PAGE,
+	createLimitValidator,
+	offsetValidator,
+	publicApiPaginationSchema,
+} from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
+import { nullableObjectGuardSchema } from '../schemas/object-guard.schema';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
 import {
@@ -48,6 +70,8 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'usage:desc',
 ] as const;
 
+export const DEFAULT_AGENTS_LIST_LIMIT = 10;
+
 export const AGENT_SESSION_STATUSES = [
 	'running',
 	'succeeded',
@@ -71,6 +95,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'discord',
 	'whatsapp',
 	'teams',
+	'webhook',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -80,8 +105,13 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		ids: z.array(z.string().min(1)).min(1).max(50).optional(),
+		/** Tag ids: only agents carrying all of these tags are listed. */
+		tags: z.array(z.string().min(1)).min(1).max(50).optional(),
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
+		includeArchived: z.boolean().optional(),
+		active: z.boolean().optional(),
+		projectId: z.string().min(1).optional(),
 	})
 	.strict();
 
@@ -113,10 +143,25 @@ const agentListFilterValidator = z
 	});
 
 export class ListAgentsQueryDto extends Z.class({
-	...paginationSchema,
+	offset: offsetValidator,
+	limit: createLimitValidator(MAX_ITEMS_PER_PAGE, DEFAULT_AGENTS_LIST_LIMIT),
 	filter: agentListFilterValidator,
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
+
+export class WhatsAppWebhookStatusQueryDto extends Z.class({
+	credentialId: z.string().min(1).optional(),
+}) {}
+export type AgentListFilter = z.infer<typeof agentListFilterSchema>;
+
+export type AgentsListSortBy = (typeof AGENTS_LIST_SORT_OPTIONS)[number];
+
+export type ListAgentsOptions = {
+	offset?: number;
+	limit?: number;
+	filter?: AgentListFilter;
+	sortBy?: AgentsListSortBy;
+};
 
 export class ListAgentSessionsQueryDto extends Z.class({
 	cursor: z.string().optional(),
@@ -195,17 +240,20 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
  */
 export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
 
+const createAgentToolEntrySchema = z.object({
+	code: z.string(),
+	descriptor: z.object({ name: z.string() }).passthrough(),
+});
+
 const createAgentShape = {
-	name: z.string().min(1),
+	name: z.string().trim().min(1).max(128),
 	id: clientMintedAgentIdSchema.optional(),
-	config: z.record(z.unknown()).optional(),
+	config: AgentJsonConfigSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
-	tools: z
-		.record(
-			z.object({ code: z.string(), descriptor: z.object({ name: z.string() }).passthrough() }),
-		)
-		.optional(),
+	tools: z.record(createAgentToolEntrySchema).optional(),
 	skills: z.record(agentSkillSchema).optional(),
+	/** Tag ids assigned to the new agent, as the workflow create endpoint takes them. */
+	tags: z.array(z.string().min(1)).max(50).optional(),
 };
 
 const createAgentSchema = z
@@ -229,6 +277,8 @@ export class CreateAgentDto implements CreateAgent {
 
 	declare skills?: CreateAgent['skills'];
 
+	declare tags?: CreateAgent['tags'];
+
 	static schema = createAgentSchema;
 
 	constructor(data: CreateAgent) {
@@ -244,11 +294,295 @@ export class CreateAgentDto implements CreateAgent {
 	}
 }
 
+/**
+ * Body of the Public API `POST /agents`. Internal-only fields (client-minted
+ * `id`, duplication `schema`/`skills`, builder `tags`) stay off this contract.
+ */
+export class CreateAgentPublicDto extends Z.class(
+	{
+		name: z.string().min(1),
+		/** Target project; the caller's personal project when omitted. */
+		projectId: z.string().min(1).optional(),
+		// An opaque object in the spec: the recursive config schema holds a
+		// `z.lazy` JSON value the OpenAPI generator cannot inspect.
+		config: AgentJsonConfigSchema.openapi({
+			type: 'object',
+			description:
+				'Agent configuration. Set name, model, and instructions. An empty model creates an unconfigured draft.',
+			example: {
+				name: 'Support',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help customers.',
+			},
+		}).optional(),
+		tools: z.record(createAgentToolEntrySchema).optional(),
+		availableInMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
 	/** Hash of the config the edit was made against (`null` when the agent had none). */
 	baseConfigHash: z.string().nullable(),
+	/**
+	 * Tag ids to replace the agent's tags with. Omitted means "leave the
+	 * tags alone"; an empty array clears them.
+	 */
+	tags: z.array(z.string().min(1)).max(50).optional(),
 }) {}
+
+function isPlainObject(value: unknown): boolean {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Stored configs predate the current write schema. A response check that
+ * reused that schema would reject a saved row and turn GET into a 500.
+ */
+const agentConfigResponseSchema = nullableObjectGuardSchema<AgentJsonConfig>().openapi(
+	alsoNullable({ type: 'object' }),
+);
+
+const agentProjectResponseSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		type: z.string(),
+	})
+	.nullable();
+
+// OpenAPI metadata only: the runtime guard stays permissive, because stored
+// configs predate the current write schema. The metadata documents the fields
+// every integration carries, so generated clients can work with a channel.
+const agentIntegrationResponseMetadata: ZodOpenAPIMetadata = {
+	type: 'object',
+	description: 'A channel integration. `type` picks the platform.',
+	properties: {
+		type: {
+			type: 'string',
+			description: 'The integration type, for example `slack` or `webhook`.',
+		},
+		credentialId: { type: 'string' },
+		settings: { type: 'object', description: 'Platform-specific integration settings.' },
+		approval: {
+			type: 'object',
+			description: 'Channel actions that need approval before they run.',
+		},
+	},
+	required: ['type', 'credentialId'],
+};
+
+const agentActiveVersionResponseSchema = z
+	.object({
+		versionId: z.string(),
+		integrations: z.array(
+			z.custom<AgentIntegrationConfig>(isPlainObject).openapi(agentIntegrationResponseMetadata),
+		),
+	})
+	.nullable();
+
+const agentToolEntrySchema = z
+	.custom<{ code: string; descriptor: { name: string } }>(isPlainObject)
+	.openapi({
+		type: 'object',
+		description: 'A custom tool: the code it runs and its descriptor.',
+		properties: {
+			code: { type: 'string' },
+			descriptor: {
+				type: 'object',
+				description: 'The tool descriptor. `name` is required; other fields pass through.',
+				properties: { name: { type: 'string' } },
+				required: ['name'],
+				additionalProperties: true,
+			},
+		},
+		required: ['code', 'descriptor'],
+	});
+
+const agentPublicShape = {
+	id: z.string(),
+	name: z.string(),
+	projectId: z.string(),
+	project: agentProjectResponseSchema,
+	availableInMCP: z.boolean(),
+	isArchived: z.boolean(),
+	versionId: z.string().nullable(),
+	activeVersionId: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	config: agentConfigResponseSchema,
+	configHash: z.string().nullable(),
+	tools: z.record(agentToolEntrySchema),
+	activeVersion: agentActiveVersionResponseSchema,
+};
+
+/** The draft, published, and latest version of each attached skill, keyed by skill id. */
+const agentSkillVersionsSchema = z.record(z.custom<AgentSkillVersionInfo>(isPlainObject));
+
+const agentBuilderStateShape = {
+	isRunnable: z.boolean(),
+	hasPublishHistory: z.boolean(),
+	hasVersionHistory: z.boolean(),
+	skills: z.record(z.custom<AgentSkill>(isPlainObject)),
+	skillHashes: z.record(z.string()),
+	outdatedSkillIds: z.array(z.string()),
+	skillVersions: agentSkillVersionsSchema,
+};
+
+/** Fields a later public GET and PUT share. Builder-only state stays off this shape. */
+export class AgentPublicDto extends Z.class(agentPublicShape) {}
+
+/** Single-agent response. `config` is the document `PUT` writes back. */
+export class AgentDto extends AgentPublicDto.extend(agentBuilderStateShape) {}
+
+/**
+ * Response of the Public API `DELETE /agents/:agentId`. Metadata of the
+ * removed agent: the deleted row has no runtime state or config to report.
+ */
+export const deletedAgentPublicSchema = z.object(agentPublicShape).pick({
+	id: true,
+	name: true,
+	projectId: true,
+	availableInMCP: true,
+	versionId: true,
+	activeVersionId: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export class DeletedAgentPublicDto extends Z.class(deletedAgentPublicSchema.shape) {}
+
+/** Response of the Public API `POST /agents`. Builder-only state stays off this shape. */
+export class CreatedAgentPublicDto extends AgentPublicDto {}
+
+/** Query of the Public API `GET /agents`. Pick `limit` off the schema: `offset` is the decoded cursor field, never a client-facing param. */
+export class ListAgentsPublicQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: publicApiPaginationSchema.limit,
+	/** Narrows the list to one project. */
+	projectId: z.string().min(1).optional(),
+}) {}
+
+/** Row of the Public API `GET /agents`. `config` stays off the row: a list row is not a full-replace body. */
+export const agentListPublicItemSchema = z.object(agentPublicShape).pick({
+	id: true,
+	name: true,
+	projectId: true,
+	availableInMCP: true,
+	isArchived: true,
+	versionId: true,
+	activeVersionId: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export class AgentListPublicItemDto extends Z.class(agentListPublicItemSchema.shape) {}
+
+/** Response of the Public API `GET /agents`: one cursor page of agents. */
+export class AgentListPublicDto extends Z.class({
+	data: z.array(agentListPublicItemSchema),
+	nextCursor: z.string().nullable(),
+}) {}
+
+const agentListItemShape = {
+	id: z.string(),
+	name: z.string(),
+	projectId: z.string(),
+	project: agentProjectResponseSchema,
+	availableInMCP: z.boolean(),
+	isArchived: z.boolean(),
+	versionId: z.string().nullable(),
+	activeVersionId: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	personalisation: nullableObjectGuardSchema<AgentPersonalisation>(),
+	/** `false` when the draft has no stored config. The list does not carry `config`. */
+	hasConfig: z.boolean(),
+	/**
+	 * Present when the list attaches skill versions, so a card can flag
+	 * skill-only changes without loading the agent.
+	 */
+	skillVersions: agentSkillVersionsSchema.optional(),
+};
+
+/**
+ * Overview and project lists. `config` is omitted so a list row cannot be
+ * sent as a full replace and drop skill refs the list never loaded.
+ */
+export class AgentListItemDto extends Z.class(agentListItemShape) {}
+
+const strippedAgentField = z.unknown().optional();
+
+const updateAgentObjectSchema = z
+	.object({
+		config: z.record(z.unknown()),
+		baseConfigHash: z.string().nullable().optional(),
+		configHash: z.string().nullable().optional(),
+		id: strippedAgentField,
+		name: strippedAgentField,
+		projectId: strippedAgentField,
+		project: strippedAgentField,
+		availableInMCP: strippedAgentField,
+		isArchived: strippedAgentField,
+		versionId: strippedAgentField,
+		activeVersionId: strippedAgentField,
+		createdAt: strippedAgentField,
+		updatedAt: strippedAgentField,
+		tools: strippedAgentField,
+		skills: strippedAgentField,
+		skillHashes: strippedAgentField,
+		outdatedSkillIds: strippedAgentField,
+		skillVersions: strippedAgentField,
+		isRunnable: strippedAgentField,
+		hasPublishHistory: strippedAgentField,
+		hasVersionHistory: strippedAgentField,
+		activeVersion: strippedAgentField,
+		adopted: strippedAgentField,
+	})
+	.strict();
+
+const updateAgentSchema = updateAgentObjectSchema
+	.superRefine((value, ctx) => {
+		if (value.baseConfigHash === undefined && value.configHash === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'baseConfigHash or configHash is required',
+				path: ['baseConfigHash'],
+			});
+		}
+	})
+	.transform(({ config, baseConfigHash, configHash }) => ({
+		config,
+		baseConfigHash: baseConfigHash !== undefined ? baseConfigHash : (configHash ?? null),
+	}));
+
+type UpdateAgent = z.infer<typeof updateAgentSchema>;
+
+/**
+ * Accepts a GET `AgentDto` or the editor body `{ config, baseConfigHash }`.
+ * Server-managed fields are ignored. `configHash` is the concurrency token
+ * when `baseConfigHash` is absent.
+ */
+export class UpdateAgentDto implements UpdateAgent {
+	declare config: UpdateAgent['config'];
+
+	declare baseConfigHash: UpdateAgent['baseConfigHash'];
+
+	static schema = updateAgentSchema;
+
+	constructor(data: z.input<typeof updateAgentObjectSchema>) {
+		Object.assign(this, updateAgentSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateAgentSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateAgentSchema.parse(data);
+	}
+}
 
 export class CreateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name,
@@ -484,24 +818,31 @@ const agentConnectIntegrationShape = {
 	 * Credential of the same type this channel takes over from. Swapping in one
 	 * request keeps the agent from ever holding two live channels or none.
 	 */
-	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+	replaces: z.object({ credentialId: z.string() }).optional(),
 	/** Channel actions that need approval before they run. */
 	approval: AgentApprovalSchema.optional(),
 };
 
 /**
+ * Channels whose own config check decides whether the entry holds a
+ * credential: n8n Chat never does, and a webhook does only for some
+ * authentications.
+ */
+const CREDENTIAL_OPTIONAL_TYPES: ReadonlySet<string> = new Set([
+	N8N_CHAT_INTEGRATION_TYPE,
+	WEBHOOK_INTEGRATION_TYPE,
+]);
+
+/**
  * Envelope check for the connect body. The channel itself is validated against
  * the per-platform integration schema, which is where `settings` is checked.
- * n8n Chat is the one channel without a credential, so it takes an empty `credentialId`.
  */
 const agentConnectIntegrationSchema = z
 	.object(agentConnectIntegrationShape)
 	.refine(
-		(value) =>
-			value.type === N8N_CHAT_INTEGRATION_TYPE
-				? value.credentialId === ''
-				: value.credentialId.length > 0,
-		{ message: 'credentialId is required, except for n8n Chat', path: ['credentialId'] },
+		({ type, credentialId, replaces }) =>
+			CREDENTIAL_OPTIONAL_TYPES.has(type) || (credentialId !== '' && replaces?.credentialId !== ''),
+		{ message: 'credentialId is required for this channel', path: ['credentialId'] },
 	);
 
 export class AgentConnectIntegrationDto extends Z.class(agentConnectIntegrationShape) {
@@ -573,6 +914,13 @@ export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
 export class PublishAgentDto extends Z.class({
 	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
+	/** The draft shown before confirmation. Omit when publishing a saved version. */
+	draft: z
+		.object({
+			versionId: z.string().min(1),
+			skillVersions: z.record(z.string(), z.number().int().positive()),
+		})
+		.optional(),
 }) {}
 
 export class RevertAgentToVersionDto extends Z.class({

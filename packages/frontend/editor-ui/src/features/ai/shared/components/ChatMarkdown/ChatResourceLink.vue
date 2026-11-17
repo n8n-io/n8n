@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isArtifactLinkType, type useArtifactLinks } from '@/features/ai/instanceAi/artifactLinks';
 import { computed, inject } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
@@ -34,8 +35,10 @@ const props = defineProps<{
 	openAgentChatPreview?: (id: string, projectId: string) => boolean;
 	openSkillPreview?: (id: string) => boolean;
 	openAppPreview?: (id: string) => boolean;
-	buildAppHref?: (projectId: string, id: string) => string;
-	buildSkillHref?: (id: string) => string;
+	artifactLinks?: Pick<
+		ReturnType<typeof useArtifactLinks>,
+		'artifactHref' | 'routerPathHref' | 'toRouterPath'
+	>;
 }>();
 
 const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
@@ -56,8 +59,23 @@ const entry = computed(() =>
 	),
 );
 
+const routerPath = computed(() => {
+	if (props.artifactLinks) return props.artifactLinks.toRouterPath(props.href);
+	const url = getSameOriginUrl(props.href);
+	return url
+		? { pathname: url.pathname, fullPath: `${url.pathname}${url.search}${url.hash}` }
+		: undefined;
+});
+
+const internalRoute = computed(() => {
+	const pathname = routerPath.value?.pathname;
+	return pathname === undefined
+		? undefined
+		: INTERNAL_ROUTE_PATTERNS.find(({ pattern }) => pattern.test(pathname));
+});
+
 const preview = computed(() => {
-	const resolved = resolveAgentTestLink(props.href);
+	const resolved = routerPath.value ? resolveAgentTestLink(routerPath.value.fullPath) : undefined;
 	if (!resolved || !props.agentPreviewTarget) return resolved;
 	const target = props.agentPreviewTarget;
 	return {
@@ -72,23 +90,27 @@ const preview = computed(() => {
 
 const type = computed(() => {
 	if (custom.value) return custom.value[1];
-	const url = getSameOriginUrl(props.href);
-	return url && INTERNAL_ROUTE_PATTERNS.find(({ pattern }) => pattern.test(url.pathname))?.type;
+	return internalRoute.value?.type;
 });
 
-const href = computed(
-	() =>
-		preview.value?.href ??
-		(custom.value && id.value
-			? buildResourceUrl(
-					custom.value[1],
-					id.value,
-					entry.value?.projectId,
-					props.buildAppHref,
-					props.buildSkillHref,
-				)
-			: props.href),
-);
+const href = computed(() => {
+	if (preview.value) {
+		return props.artifactLinks?.routerPathHref(preview.value.href) ?? preview.value.href;
+	}
+	if (custom.value && id.value) {
+		const resourceType = custom.value[1];
+		if (props.artifactLinks && isArtifactLinkType(resourceType)) {
+			return (
+				props.artifactLinks.artifactHref(resourceType, id.value, entry.value?.projectId) ?? '#'
+			);
+		}
+		return buildResourceUrl(resourceType, id.value, entry.value?.projectId);
+	}
+	return internalRoute.value && routerPath.value && props.artifactLinks
+		? props.artifactLinks.routerPathHref(routerPath.value.fullPath)
+		: props.href;
+});
+
 const icon = computed(() =>
 	preview.value ? undefined : (resourceIcons[type.value ?? ''] ?? getResourceLinkIcon(props.href)),
 );

@@ -11,6 +11,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { CODE_BUILDER_VALIDATE_TOOL, MAX_WORKFLOW_CODE_LENGTH } from './constants';
+import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 
 const inputSchema = {
 	code: z
@@ -87,6 +88,7 @@ export const createValidateWorkflowCodeTool = (
 			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+			await validateScheduleTriggerIntervals(result.workflow.nodes);
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 				result.workflow,

@@ -5,6 +5,7 @@ import type {
 	ContinueApplyPackageDto,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isLockedError } from '../promotionErrors';
 import { continueApplyPromotion } from '../promotionsSettings.api';
 import type {
 	BlockedApplyResult,
@@ -35,6 +36,8 @@ type BindingRow = {
 
 type PromotionBindingsError =
 	| { kind: 'creationMismatch' }
+	// Another operation held the environment, so Continue applied nothing.
+	| { kind: 'locked' }
 	// The UI uses the cause to show why Continue failed.
 	| { kind: 'continue'; cause: unknown };
 
@@ -247,7 +250,9 @@ export function usePromotionBindings() {
 			if (result.status === 'applied') isFinished.value = true;
 			return result;
 		} catch (cause) {
-			if (currentSession === session) error.value = { kind: 'continue', cause };
+			if (currentSession === session) {
+				error.value = isLockedError(cause) ? { kind: 'locked' } : { kind: 'continue', cause };
+			}
 			return undefined;
 		} finally {
 			if (currentSession === session) isSubmitting.value = false;

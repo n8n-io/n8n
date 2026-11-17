@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
+import { updateDisplayOptions, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
@@ -209,7 +209,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		max_completion_tokens: (options.maxTokens as number) || 300,
 	};
 
-	let response = await apiRequest.call(this, 'POST', '/chat/completions', { body });
+	let response = await apiRequest.call(this, 'POST', requestPath`/chat/completions`, { body });
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 

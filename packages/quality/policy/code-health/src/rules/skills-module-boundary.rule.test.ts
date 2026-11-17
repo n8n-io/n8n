@@ -107,11 +107,10 @@ import { SkillService } from '../../skills';`,
 		]);
 	});
 
-	it('allows the allowlist, the module itself and packages from inside the module', () => {
+	it('allows the module itself and packages from inside the module', () => {
 		write(
 			`${modules}/skills/services/example.ts`,
 			`
-import { PostHogClient } from '@/posthog';
 import { Skill } from '../database/entities/skill.entity';
 import { SkillService } from '@/modules/skills/services/skill.service';
 import { Service } from '@n8n/di';`,

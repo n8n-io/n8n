@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 export type DialectQuery = { sql: string; params: unknown[] };
 

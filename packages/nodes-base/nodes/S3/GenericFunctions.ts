@@ -10,12 +10,14 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sanitizeXmlName } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, sanitizeXmlName } from 'n8n-workflow';
 import { URL } from 'url';
 import { parseString } from 'xml2js';
 
 import { uriEncodeS3Pathname } from '../../credentials/common/aws/utils';
+import { assertBucketName } from '../Aws/S3/utils';
 
 function queryToString(params: IDataObject) {
 	return Object.keys(params)
@@ -23,15 +25,17 @@ function queryToString(params: IDataObject) {
 		.join('&');
 }
 
+type S3RequestOption = Pick<IRequestOptions, 'encoding' | 'resolveWithFullResponse'>;
+
 export async function s3ApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	bucket: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string | Buffer,
 	query: IDataObject = {},
 	headers?: object,
-	option: IDataObject = {},
+	option: S3RequestOption = {},
 	region?: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('s3');
@@ -46,14 +50,15 @@ export async function s3ApiRequest(
 	const endpoint = new URL(credentials.endpoint as string);
 
 	if (bucket) {
+		assertBucketName(this.getNode(), bucket);
 		if (credentials.forcePathStyle) {
-			path = `/${bucket}${path}`;
+			path = requestPath`/${bucket}${path}`;
 		} else {
 			endpoint.host = `${bucket}.${endpoint.host}`;
 		}
 	}
 
-	endpoint.pathname = `${endpoint.pathname === '/' ? '' : endpoint.pathname}${path}`;
+	endpoint.pathname = `${endpoint.pathname === '/' ? '' : endpoint.pathname}${path.value}`;
 	endpoint.pathname = uriEncodeS3Pathname(endpoint.pathname, {
 		preserveEncodedSlashes: true,
 	});
@@ -102,11 +107,11 @@ export async function s3ApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	bucket: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	query: IDataObject = {},
 	headers?: object,
-	options: IDataObject = {},
+	options: S3RequestOption = {},
 	region?: string,
 ): Promise<any> {
 	const response = await s3ApiRequest.call(
@@ -131,11 +136,11 @@ export async function s3ApiRequestSOAP(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	bucket: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string | Buffer,
 	query: IDataObject = {},
 	headers?: object,
-	option: IDataObject = {},
+	option: S3RequestOption = {},
 	region?: string,
 ): Promise<any> {
 	const response = await s3ApiRequest.call(
@@ -176,11 +181,11 @@ export async function s3ApiRequestSOAPAllItems(
 	propertyName: string,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	option: IDataObject = {},
+	option: S3RequestOption = {},
 	region?: string,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];

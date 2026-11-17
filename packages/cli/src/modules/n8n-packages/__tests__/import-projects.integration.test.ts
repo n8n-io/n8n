@@ -18,9 +18,11 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import type { Project, User } from '@n8n/db';
+import type { OperationContext, Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { pickVariableForProject } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -1416,9 +1418,13 @@ describe('project shell import', () => {
 				const packageBuffer = await apiUrlPackage();
 
 				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
 
 				const result = await importProjects(owner, packageBuffer, undefined, {
 					variableMissingMode: 'create-stub',
+					ctx,
 				});
 
 				// A name-only requirement (no bundled entry) falls back to each consuming project.
@@ -1449,6 +1455,12 @@ describe('project shell import', () => {
 				expect(importedEvents).toHaveLength(1);
 				const payload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 				expect(payload.counts.variables).toMatchObject({ created: 0, stubbed: 2 });
+				expect(payload.loginId).toBe('login-1');
+				const variableEvents = emitSpy.mock.calls.filter(([name]) => name === 'variable-created');
+				expect(variableEvents.map(([, event]) => (event as { loginId?: string }).loginId)).toEqual([
+					'login-1',
+					'login-1',
+				]);
 			});
 
 			it('creates one row per project when both bundle the same name', async () => {

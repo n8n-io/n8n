@@ -221,20 +221,24 @@ export class FailedExecutionPortabilityService {
 
 		let executionId: string | undefined;
 		try {
-			executionId = await this.executionPersistence.create({
-				data,
-				workflowData,
-				finished: false,
-				mode: envelope.execution.mode,
-				status: envelope.execution.status,
-				startedAt: importedStartedAt,
-				stoppedAt: importedStoppedAt,
-				workflowId,
-				waitTill: null,
-				tracingContext: null,
-				deduplicationKey: null,
-				usedPrivateCredentials: false,
-			});
+			executionId = await this.executionPersistence.create(
+				{
+					data,
+					workflowData,
+					finished: false,
+					mode: envelope.execution.mode,
+					status: envelope.execution.status,
+					startedAt: importedStartedAt,
+					stoppedAt: importedStoppedAt,
+					workflowId,
+					waitTill: null,
+					tracingContext: null,
+					deduplicationKey: null,
+					usedPrivateCredentials: false,
+				},
+				{},
+				{ skipLedger: true },
+			);
 
 			const restored = await this.executionPersistence.findSingleExecution(executionId, {
 				includeData: true,

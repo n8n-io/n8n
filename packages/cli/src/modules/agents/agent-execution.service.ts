@@ -521,7 +521,8 @@ export class AgentExecutionService {
 	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
-		const error = 'Agent execution was interrupted by a process restart.';
+		const error =
+			'Agent execution stopped because n8n restarted, for example after a crash or an update.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
@@ -748,18 +749,34 @@ export class AgentExecutionService {
 		}
 		const { refs } = result;
 
+		// The thread is already deleted, so a failed blob delete only leaves orphaned bytes.
 		await Promise.all([
 			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
-			this.agentExecutionLogStore.delete(
-				this.toBlobRefs(refs.executionLogs).map((ref) => ({
+			this.deleteThreadExecutionLogs(agentId, threadId, refs.executionLogs),
+		]);
+		return true;
+	}
+
+	private async deleteThreadExecutionLogs(
+		agentId: string,
+		threadId: string,
+		executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>,
+	): Promise<void> {
+		try {
+			await this.agentExecutionLogStore.delete(
+				this.toBlobRefs(executionLogs).map((ref) => ({
 					agentId,
 					threadId,
 					executionId: ref.id,
 					storedAt: ref.storedAt,
 				})),
-			),
-		]);
-		return true;
+			);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs of a deleted thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/**

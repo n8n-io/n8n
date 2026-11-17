@@ -37,7 +37,7 @@ const listItem: SkillListItem = {
 	canDelete: true,
 	canStopSyncing: false,
 	syncState: null,
-	canCheckForUpdates: false,
+	sourceId: null,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 };

@@ -38,6 +38,10 @@ type FlaggedSkillProps = InferTelemetryProps<
 
 type StoppedSyncProps = InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC>;
 
+type DeletedSourceProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE
+>;
+
 type UpdateFoundProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND
 >;
@@ -126,6 +130,21 @@ export class SkillsTelemetry {
 		});
 	}
 
+	async changedSourceScope(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CHANGED_SKILL_SOURCE_SCOPE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	/** One connect request of Skill Sync, also a failed one. */
 	async connectedSource(props: Omit<ConnectedSourceProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
@@ -156,6 +175,16 @@ export class SkillsTelemetry {
 		});
 	}
 
+	/** One source delete, after the transaction commits or fails. */
+	async deletedSource(props: Omit<DeletedSourceProps, 'user_id'>, userId: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	/** One synced skill that became a normal skill. */
 	async stoppedSync(props: Omit<StoppedSyncProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
@@ -180,6 +209,44 @@ export class SkillsTelemetry {
 				user_id: userId,
 				...props,
 			});
+		});
+	}
+
+	async reviewedUpdate(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	async updatedSourceCredential(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	async sourceHealthChanged(
+		props: InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED>,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED, props);
 		});
 	}
 

@@ -2,7 +2,10 @@ operationId: getUser
 tags:
   - User
 summary: Get user by ID/Email
-description: Retrieve a user from your instance. Only available for the instance owner.
+description: |-
+  Retrieve a user from your instance. Only available for the instance owner.
+
+  Requires the `user:read` API key scope.
 x-required-scope: user:read
 parameters:
   - schema:
