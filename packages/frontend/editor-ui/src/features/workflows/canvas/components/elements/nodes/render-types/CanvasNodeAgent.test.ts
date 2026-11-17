@@ -159,6 +159,32 @@ describe('CanvasNodeAgent', () => {
 		expect(getByTestId('canvas-node-agent')).not.toHaveClass('restricted');
 	});
 
+	it('renders no status ring while the node is idle', () => {
+		const { getByTestId } = renderWithAgent('agent-1');
+
+		expect(getByTestId('canvas-node-agent').querySelector('.statusRing')).toBeNull();
+	});
+
+	it.each([
+		['running', { running: true }],
+		['waiting', { running: false, status: 'waiting' as const }],
+	])('renders the status ring while the node is %s', (state, execution) => {
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: createCanvasNodeProvide({
+					data: {
+						type: 'n8n-nodes-base.messageAnAgent',
+						execution,
+						render: { type: CanvasNodeRenderType.Agent, options: { agentSource: 'inline' } },
+					},
+				}),
+			},
+		});
+
+		expect(getByTestId('canvas-node-agent')).toHaveClass(state);
+		expect(getByTestId('canvas-node-agent').querySelector('.statusRing')).not.toBeNull();
+	});
+
 	it('shows the embedded picker and emits update when an agent is selected (empty state)', async () => {
 		const { getByTestId, emitted } = renderWithAgent('');
 

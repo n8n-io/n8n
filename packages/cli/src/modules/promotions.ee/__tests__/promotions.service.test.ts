@@ -3,8 +3,15 @@ import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
-import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import type {
+	OperationContext,
+	Project,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -52,11 +59,13 @@ import {
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
+import type { PromotePreviewService } from '../promote-preview.service';
 import { GitCommitPackageReader } from '../git-commit-package-reader';
 import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
+import { expectPushed } from './utils/promotion-fixtures';
 
 // These dependencies are injected as mocks. Do not load their implementation graphs.
 vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
@@ -106,6 +115,7 @@ describe('PromotionsService', () => {
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
 	const eventService = mock<EventService>();
+	const promotePreviewService = mock<PromotePreviewService>();
 	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
@@ -240,6 +250,7 @@ describe('PromotionsService', () => {
 			folderService,
 			n8nPackagesService,
 			applyPreviewService,
+			promotePreviewService,
 			inventoryReader,
 			packageImportConfig,
 			runRepository,
@@ -1466,6 +1477,7 @@ describe('PromotionsService', () => {
 				commitMessage: 'm',
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			const targetBranchName = result.git.branchName;
 			expect(targetBranchName).toMatch(
@@ -1525,6 +1537,7 @@ describe('PromotionsService', () => {
 				commitMessage: 'm',
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 				input,
@@ -1569,6 +1582,7 @@ describe('PromotionsService', () => {
 				workflowIds: ['w1'],
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 				input,
@@ -2016,6 +2030,30 @@ describe('PromotionsService', () => {
 				},
 				'promoteSelectionResolved',
 			);
+
+		it('reports a changed preview without success counts or an opened review', async () => {
+			promotePreviewService.build.mockResolvedValueOnce(
+				mock<Awaited<ReturnType<PromotePreviewService['build']>>>({ revision: 'current' }),
+			);
+
+			expect(
+				await service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					expectedPreviewRevision: 'reviewed',
+					canExportVariableValues: true,
+				}),
+			).toEqual({ status: 'preview-changed', environmentId: ENVIRONMENT_ID });
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('promotion-promoted', {
+				user: actor,
+				environmentId: ENVIRONMENT_ID,
+				scope: 'project',
+				projectId: 'p1',
+				selectedWorkflowCount: 1,
+				selectedFolderCount: 0,
+				outcome: 'preview_changed',
+				durationMs: expect.any(Number),
+			});
+		});
 
 		it('promotes live and archived workflows and pushes only missing ones as deletions', async () => {
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
@@ -2468,6 +2506,7 @@ describe('PromotionsService', () => {
 					tagConflictPolicy: 'rename',
 					layoutConflictPolicy: 'follow-package',
 					credentialPersonalRoute: 'exclude',
+					ctx: {},
 				},
 				expect.any(GitCommitPackageReader),
 				'enforce',
@@ -2695,6 +2734,33 @@ describe('PromotionsService', () => {
 			},
 		);
 
+		it('passes the operation context to the import plan and the project deletion', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2', 'p3']);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([
+				{ id: 'p3', name: 'Gamma' },
+			] as never);
+
+			const result = await service.continueApply(
+				ENVIRONMENT_ID,
+				actor,
+				{ ...request, confirmDestructiveChanges: true },
+				false,
+				ctx,
+			);
+
+			expect(result).toMatchObject({ status: 'applied' });
+			expect(n8nPackagesService.planPackage.mock.calls[0][0].ctx).toBe(ctx);
+			expect(projectService.deleteProject).toHaveBeenCalledExactlyOnceWith(
+				actor,
+				'p3',
+				{ publicApi: false },
+				ctx,
+			);
+		});
+
 		it('keeps importer errors and does not reconcile projects after failure', async () => {
 			n8nPackagesService.applyPackagePlan.mockRejectedValueOnce(
 				new BadRequestError('Import blocked'),
@@ -2809,12 +2875,23 @@ describe('PromotionsService', () => {
 						publishingPolicy: 'preserve-target-state',
 						layoutConflictPolicy: 'follow-package',
 						credentialPersonalRoute: 'exclude',
+						ctx: {},
 					},
 					expect.any(GitCommitPackageReader),
 					planned,
 					'enforce',
 				);
 				expect(check).toHaveBeenCalledWith(plan, inventory, planned, noMoves);
+			});
+
+			it('passes the operation context to the selection import plan', async () => {
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] }, false, ctx);
+
+				expect(n8nPackagesService.planPackageSelection.mock.calls[0][0].ctx).toBe(ctx);
 			});
 
 			it.each(['applyProjectSelection', 'continueApplyProjectSelection'] as const)(

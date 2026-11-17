@@ -189,14 +189,21 @@ export class ToolCallRunner {
 			payload: undefined,
 		};
 		try {
-			toolResult = await this.runToolHandler(params, builtTool, input, async (payload, options) => {
-				suspension.didSuspend = true;
-				suspension.payload = payload;
-				suspension.options = options;
-				if (suspension.abortObserved || params.abortSignal?.aborted) {
-					await this.cleanupInterruptedSuspension(params, builtTool, input, suspension);
-				}
-			});
+			toolResult = await this.runToolHandler(
+				params,
+				builtTool,
+				input,
+				async (payload, options) => {
+					suspension.didSuspend = true;
+					suspension.payload = payload;
+					suspension.options = options;
+					if (suspension.abortObserved || params.abortSignal?.aborted) {
+						await this.cleanupInterruptedSuspension(params, builtTool, input, suspension);
+					}
+				},
+				guardrails,
+				guardCtx,
+			);
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
 				suspension.abortObserved = true;
@@ -215,8 +222,6 @@ export class ToolCallRunner {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
 
-		// Final result only: a call that suspended reports once, after resume.
-		if (guardrails && guardCtx) await guardrails.afterTool(guardCtx, toolResult);
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
 
@@ -405,6 +410,8 @@ export class ToolCallRunner {
 		builtTool: BuiltTool,
 		input: JSONValue,
 		onSuspend: (payload: unknown, options?: ToolSuspendOptions) => void,
+		guardrails: GuardrailRunner | undefined,
+		guardCtx: ReturnType<GuardrailRunner['toolCallContext']> | undefined,
 	): Promise<unknown> {
 		const {
 			toolCallId,
@@ -426,9 +433,14 @@ export class ToolCallRunner {
 			input,
 			resolvedTelemetry,
 			async () =>
-				await raceWithAbort(
-					async () =>
-						await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
+				await raceWithAbort(async () => {
+					const result = await executeTool(
+						input,
+						builtTool,
+						resumeData,
+						resolvedTelemetry,
+						toolCallId,
+						{
 							runId,
 							persistence,
 							...(this.deps.loadSkill ? { loadSkill: this.deps.loadSkill } : {}),
@@ -441,9 +453,20 @@ export class ToolCallRunner {
 							resumeSchema,
 							onSuspend,
 							onGuardrailNotice: params.guardrails?.onNotice,
-						}),
-					abortSignal,
-				),
+						},
+					);
+					// Final result only: a call that suspended reports once,
+					// after resume. The after-stage check runs inside the span
+					// so a refused result is recorded as the refusal, never as
+					// span output; the throw becomes a tool error upstream.
+					if (guardrails && guardCtx && !isSuspendedToolResult(result)) {
+						const stop = await guardrails.afterTool(guardCtx, result);
+						if (stop) {
+							throw new Error(`Tool result blocked by guardrail: ${stop.code}`);
+						}
+					}
+					return result;
+				}, abortSignal),
 		);
 	}
 

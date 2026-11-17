@@ -1,6 +1,6 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -13,6 +13,7 @@ import {
 	CredentialsRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	type OperationContext,
 	type Project,
 	type User,
 } from '@n8n/db';
@@ -26,8 +27,10 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 
@@ -61,7 +64,6 @@ import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-de
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -119,11 +121,11 @@ class AgentDefinitionSaveCheck implements RegisteredPolicyCheck {
 
 const license = new LicenseMocker();
 mockInstance(ActiveWorkflowManager);
-mockInstance(Telemetry);
+mockInstance(TelemetryProxy);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 const runtimes = mockInstance(AgentRuntimeCacheService);
 const broadcaster = mockInstance(AgentUpdateBroadcaster);
-const telemetry = mockInstance(Telemetry);
+const telemetry = mockInstance(TelemetryProxy);
 let owner: User;
 let project: Project;
 let agents: AgentRepository;
@@ -909,8 +911,14 @@ it('archives and restores a matched Agent to match the package', async () => {
 	expect(published.agentOutcomes[0].agent).toMatchObject({ isArchived: false });
 	expect(published.agentOutcomes[0].agent.activeVersionId).not.toBeNull();
 
+	const publishService = Container.get(AgentPublishService);
+	const archiveSpy = vi.spyOn(publishService, 'archiveAgent');
+	const unarchiveSpy = vi.spyOn(publishService, 'unarchiveAgent');
+	const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
 	source(input).isArchived = true;
-	const archived = await importSelected(input, { publishingPolicy: 'match-source' });
+	const archived = await importSelected(input, { publishingPolicy: 'match-source', ctx });
+	expect(archiveSpy.mock.calls[0][5]).toBe(ctx);
 	expect(archived.agentOutcomes[0]).toMatchObject({
 		status: 'updated',
 		agent: { isArchived: true, activeVersionId: null },
@@ -923,7 +931,11 @@ it('archives and restores a matched Agent to match the package', async () => {
 	expect(updated.agentOutcomes[0].agent).toMatchObject({ isArchived: true });
 
 	source(input).isArchived = false;
-	const restored = await importSelected(input, { publishingPolicy: 'preserve-published-state' });
+	const restored = await importSelected(input, {
+		publishingPolicy: 'preserve-published-state',
+		ctx,
+	});
+	expect(unarchiveSpy.mock.calls[0][4]).toBe(ctx);
 	expect(restored.agentOutcomes[0].agent).toMatchObject({
 		isArchived: false,
 		activeVersionId: null,

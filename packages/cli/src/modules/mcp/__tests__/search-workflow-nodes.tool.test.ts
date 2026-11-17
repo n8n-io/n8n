@@ -1,11 +1,11 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeCatalogService } from '@/node-catalog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool';
@@ -30,13 +30,13 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 describe('search-workflow-nodes MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let nodeCatalogService: Mocked<NodeCatalogService>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<TelemetryProxy>;
 	let aiGatewayService: Mocked<AiGatewayService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		nodeCatalogService = mock<NodeCatalogService>();
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 		aiGatewayService = mock<AiGatewayService>();
 		aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 		nodeCatalogService.searchNodes.mockResolvedValue({

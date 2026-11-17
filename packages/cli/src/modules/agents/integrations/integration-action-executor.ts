@@ -33,6 +33,7 @@ import type {
 	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationMessageContext,
+	IntegrationRecipientCheckParams,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
 import { ChannelRateLimitGuard } from './channel-rate-limit.guard';
@@ -86,6 +87,17 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		private readonly outboundFiles: AgentOutboundFiles,
 	) {}
 
+	checkRecipient(params: IntegrationRecipientCheckParams): string | undefined {
+		return this.integrationRegistry
+			.get(params.descriptor.integration.type)
+			?.checkActionRecipient?.({
+				action: params.action,
+				input: params.input,
+				resourceId: params.resourceId,
+				currentMessageContext: params.currentMessageContext,
+			});
+	}
+
 	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
@@ -102,6 +114,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 
 		const integrationDef = this.integrationRegistry.get(params.descriptor.integration.type);
+		const refusal = this.checkRecipient(params);
+		if (refusal) return integrationError(INTEGRATION_ERROR_CODES.ACTION_DECLINED, refusal);
+
 		const files = await this.checkFiles(params);
 		if (!Array.isArray(files)) return files;
 
@@ -301,7 +316,14 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: IntegrationActionParams,
 		files: AgentChatAttachment[],
 	): Promise<IntegrationActionResult> {
-		const input = sendDmInputSchema.parse(params.input);
+		const parsedInput = sendDmInputSchema.parse(params.input);
+		const input = {
+			...parsedInput,
+			userId:
+				this.integrationRegistry
+					.get(params.descriptor.integration.type)
+					?.normalizeUserId?.(parsedInput.userId) ?? parsedInput.userId,
+		};
 		// The Chat SDK guesses the adapter from the user ID's shape and knows one
 		// shape per platform, so a Teams Entra object ID would not reach Teams.
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
@@ -403,7 +425,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
 	) {
 		const cardPayload = message.card;
-		if (!cardPayload) return message.text ?? '';
+		// A raw string renders as plain text. `{ markdown }` lets the adapter
+		// convert the text to the platform format, like streamed replies do.
+		if (!cardPayload) return { markdown: message.text ?? '' };
 
 		if (params.awaitResponse && (!params.runId || !params.toolCallId)) {
 			throw new Error('Interactive integration actions require runId and toolCallId.');

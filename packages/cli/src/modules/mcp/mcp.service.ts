@@ -20,9 +20,10 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
@@ -40,6 +41,7 @@ import type z from 'zod';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { loginIdOf } from '@/events/login-id';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
@@ -52,7 +54,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -260,7 +261,7 @@ export class McpService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly globalConfig: GlobalConfig,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
@@ -270,7 +271,6 @@ export class McpService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly folderFinderService: FolderFinderService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
 		private readonly executionListService: ExecutionListService,
 		private readonly dataTableProxyService: DataTableProxyService,
@@ -393,6 +393,7 @@ export class McpService {
 		user: User,
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
+		ctx: OperationContext = {},
 	) {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		const caller = auth?.caller;
@@ -448,6 +449,7 @@ export class McpService {
 						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
 						...telemetryCaller,
 						clientName: clientInfo?.name,
+						loginId: loginIdOf(ctx),
 					});
 					return result;
 				} catch (error) {
@@ -460,6 +462,7 @@ export class McpService {
 						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
 						...telemetryCaller,
 						clientName: clientInfo?.name,
+						loginId: loginIdOf(ctx),
 					});
 					throw error;
 				}
@@ -503,12 +506,16 @@ export class McpService {
 	 * The rest of `auth` labels tool-call events: how the request authenticated
 	 * and, for OAuth, which registered client it authenticated as, so usage can
 	 * be attributed per client.
+	 *
+	 * `ctx` is the caller's operation context. Tools that write pass it to the
+	 * services they call, so the audit events name the login the caller used.
 	 */
 	async getServer(
 		user: User,
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
+		ctx: OperationContext = {},
 	) {
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -566,7 +573,7 @@ export class McpService {
 			},
 		);
 
-		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth);
+		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth, ctx);
 		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
@@ -596,16 +603,13 @@ export class McpService {
 
 		const getExecutionTool = createGetExecutionTool(
 			user,
-			this.executionRepository,
+			this.executionService,
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
 		);
 		registerIfAllowed(getExecutionTool);
 
-		// TODO(CAT-4510): the search lists engine v2 executions, but
-		// `get_workflow_execution` above still reads only the control plane, so an
-		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
 			this.executionListService,
@@ -662,6 +666,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(publishWorkflowTool);
 
@@ -671,6 +676,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(unpublishWorkflowTool);
 
@@ -712,7 +718,7 @@ export class McpService {
 		registerIfAllowed(listCredentialsTool);
 		if (featureFlags.credentialDescriptionsEnabled === true) {
 			registerIfAllowed(
-				createUpdateCredentialDescriptionTool(user, this.credentialsService, this.telemetry),
+				createUpdateCredentialDescriptionTool(user, this.credentialsService, this.telemetry, ctx),
 			);
 		}
 
@@ -911,6 +917,7 @@ export class McpService {
 				registerIfAllowed,
 				user,
 				MIGRATION_REPORT_TARGET_VERSION,
+				ctx,
 			);
 			if (migrationReportInstructionsEnabled) readMigrationFindings = reader;
 		}
@@ -927,6 +934,7 @@ export class McpService {
 				allowedToolNames,
 				readMigrationFindings,
 				clientInfo,
+				ctx,
 			);
 		}
 
@@ -937,6 +945,7 @@ export class McpService {
 				registerResource,
 				user,
 				allowedToolNames,
+				ctx,
 			);
 		}
 
@@ -996,6 +1005,7 @@ export class McpService {
 		user: User,
 		registerIfAllowed: RegisterToolFn,
 		installToolAvailable: boolean,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (!installToolAvailable) return;
 
@@ -1016,6 +1026,7 @@ export class McpService {
 				Container.get(CommunityPackagesLifecycleService),
 				this.nodeTypes,
 				this.telemetry,
+				ctx,
 			),
 		);
 	}
@@ -1030,6 +1041,7 @@ export class McpService {
 		allowedToolNames: Set<string> | undefined,
 		readMigrationFindings: ReadWorkflowMigrationFindings | undefined,
 		clientInfo?: McpClientInfo,
+		ctx: OperationContext = {},
 	) {
 		await this.nodeCatalogService.initialize();
 
@@ -1093,6 +1105,7 @@ export class McpService {
 			uninstalledNodeOptions,
 			this.logger,
 			this.postSaveMetrics,
+			ctx,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -1166,6 +1179,7 @@ export class McpService {
 				this.workflowService,
 				this.folderFinderService,
 				this.telemetry,
+				ctx,
 			);
 			registerIfAllowed(moveWorkflowsToFolderTool);
 		}
@@ -1176,6 +1190,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(archiveTool);
 
@@ -1200,6 +1215,7 @@ export class McpService {
 			},
 			this.logger,
 			this.postSaveMetrics,
+			ctx,
 		);
 		registerIfAllowed(updateTool);
 
@@ -1210,10 +1226,11 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(restoreVersionTool);
 
-		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable);
+		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable, ctx);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({

@@ -170,7 +170,7 @@ const toggleLabel = computed(() =>
 					<N8nSwitch
 						:model-value="enabled"
 						size="large"
-						:disabled="!!restriction"
+						:disabled="!!restriction && !enabled"
 						:aria-label="toggleLabel"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"

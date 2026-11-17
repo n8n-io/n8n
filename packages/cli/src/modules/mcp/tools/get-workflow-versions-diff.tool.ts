@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { diff } from 'json-diff';
@@ -6,7 +7,6 @@ import type { IConnections, INode, INodeConnectionsDiff } from 'n8n-workflow';
 import { compareConnections, compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
@@ -194,7 +194,7 @@ export const createGetWorkflowVersionsDiffTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	workflowHistoryService: WorkflowHistoryService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'get_workflow_versions_diff',
 	config: {

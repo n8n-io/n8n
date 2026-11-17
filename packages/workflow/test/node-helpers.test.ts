@@ -29,6 +29,7 @@ import {
 	isHitlToolType,
 	getNodeOutputs,
 	nodeIssuesToString,
+	mergeIssues,
 	findDisplayedProperty,
 	isTriggerNodeType,
 	getCredentialActivationParameters,
@@ -4477,7 +4478,7 @@ describe('NodeHelpers', () => {
 			expect(nodeIssuesToString({})).toEqual([]);
 		});
 
-		it('flattens every issue type in order (execution, parameters, credentials, input, typeUnknown)', () => {
+		it('flattens every issue type in order and leaves out execution', () => {
 			const issues: INodeIssues = {
 				execution: true,
 				parameters: {
@@ -4498,7 +4499,6 @@ describe('NodeHelpers', () => {
 			};
 
 			expect(nodeIssuesToString(issues, node)).toEqual([
-				'Execution Error.',
 				'Parameter "URL" is required.',
 				'Parameter "URL" must be a string.',
 				'Parameter "Method" is required.',
@@ -4510,6 +4510,16 @@ describe('NodeHelpers', () => {
 
 		it('falls back to a generic typeUnknown message when no node is passed', () => {
 			expect(nodeIssuesToString({ typeUnknown: true })).toEqual(['Node Type is not known.']);
+		});
+	});
+
+	describe('mergeIssues', () => {
+		it('does not copy an execution issue', () => {
+			const destination: INodeIssues = {};
+
+			mergeIssues(destination, { execution: true });
+
+			expect(destination.execution).toBeUndefined();
 		});
 	});
 

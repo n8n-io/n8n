@@ -1,6 +1,6 @@
 import type { SerializedCredential } from '@n8n/api-types';
 import { CredentialsFinderService, EventService } from '@n8n/backend-services';
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsEntity, OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnprocessableRequestError, UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
@@ -12,6 +12,7 @@ import { CredentialDescriptionsService } from '@/credentials/credential-descript
 import { CredentialsService } from '@/credentials/credentials.service';
 import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { loginIdOf } from '@/events/login-id';
 
 import {
 	credentialDiffers,
@@ -337,7 +338,7 @@ export class CredentialImporter {
 			);
 			if (saved === null) throw credentialNotFound(group[0]);
 
-			await this.emitCredentialUpdated(context.user, saved, prepared.data);
+			await this.emitCredentialUpdated(context.user, saved, prepared.data, context.ctx);
 			updated.push(...group.map(({ sourceId }) => sourceId));
 		}
 
@@ -352,6 +353,7 @@ export class CredentialImporter {
 		user: User,
 		saved: CredentialsEntity,
 		data: ICredentialDataDecryptedObject,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		this.eventService.emit('credentials-updated', {
 			user,
@@ -367,6 +369,7 @@ export class CredentialImporter {
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(saved.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(saved.type, data),
 			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(saved.type, data),
+			loginId: loginIdOf(ctx),
 		});
 	}
 

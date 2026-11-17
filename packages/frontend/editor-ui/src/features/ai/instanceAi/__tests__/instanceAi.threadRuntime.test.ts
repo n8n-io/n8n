@@ -5,6 +5,7 @@ import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, after
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
@@ -24,6 +25,7 @@ import {
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getPendingAppTargetFromThreadMetadata,
+	threadTargetsAgent,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
 
@@ -1321,6 +1323,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1337,6 +1340,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1417,6 +1421,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
+					approval_mode: 'unavailable',
 				},
 			);
 		});
@@ -1546,11 +1551,42 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
+
+	test.each([
+		{ available: false, metadata: undefined, expected: 'unavailable' },
+		{ available: true, metadata: undefined, expected: 'auto' },
+		{
+			available: true,
+			metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+			expected: 'manual',
+		},
+	])(
+		'sendMessage tracks the approval mode $expected',
+		async ({ available, metadata, expected }) => {
+			const settingsStore = mockedStore(useInstanceAiSettingsStore);
+			settingsStore.approvalModesAvailable = available;
+			settingsStore.approvalMode = 'auto';
+			const runtime = createThreadRuntime(activeThreadId, {
+				onTitleUpdated: vi.fn(),
+				onRunFinish: vi.fn(),
+				getThreadMetadata: () => metadata,
+			});
+			mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+			await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ approval_mode: expected }),
+			);
+		},
+	);
 
 	test('sendMessage falls back and warns for invalid action_source values', async () => {
 		const hooks = {
@@ -1577,6 +1613,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1613,6 +1650,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
+				approval_mode: 'unavailable',
 			},
 		);
 		warnSpy.mockRestore();
@@ -3945,5 +3983,89 @@ describe('createThreadRuntime - older history pages', () => {
 		});
 		await runtime.loadOlderMessages();
 		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
+	});
+});
+
+describe('threadTargetsAgent', () => {
+	it('is true for a thread with a bound or a pending agent', () => {
+		const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiPendingAgentTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: { 'agent-1': target } })).toBe(true);
+	});
+
+	it('is false for a thread without an agent', () => {
+		expect(threadTargetsAgent(undefined)).toBe(false);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: { agentId: 'agent-1' } })).toBe(
+			false,
+		);
+	});
+});
+
+describe('createThreadRuntime - background agent confirmations', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		activeThreadId = 'thread-background-agent';
+	});
+
+	it('attaches a confirmation to the background agent that raised it, even with hidden steps', () => {
+		const runtime = activeRuntime(createRuntimeRegistry());
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					timeline: [],
+					children: [
+						{
+							agentId: 'agent-cloud-browser',
+							role: 'cloud-browser',
+							kind: 'cloud-browser',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'tc-navigate',
+									toolName: 'browser_navigate',
+									args: { url: 'https://example.com' },
+									isLoading: true,
+									confirmation: {
+										requestId: 'req-navigate',
+										severity: 'warning',
+										message: 'browser_navigate: Browser: example.com',
+										inputType: 'resource-decision',
+										resourceDecision: {
+											toolGroup: 'browser',
+											kind: 'host',
+											resource: 'example.com',
+											description: 'Browser: example.com',
+											options: ['denyOnce', 'allowOnce', 'allowForSession'],
+										},
+									},
+								},
+							],
+						},
+					],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingConfirmations[0].agentNode.kind).toBe('cloud-browser');
 	});
 });

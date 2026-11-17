@@ -16,9 +16,10 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeTypeDescription,
+	NodeConnectionType,
 	NodeHint,
 } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -116,35 +117,23 @@ export const getBottomMostNode = <T extends { position: XYPosition }>(nodes: T[]
 	}, nodes[0]);
 };
 
-export const getNodesGroupSize = (nodes: INodeUi[]): [number, number] => {
-	const leftMostNode = getLeftMostNode(nodes);
-	const topMostNode = getTopMostNode(nodes);
-	const rightMostNode = getRightMostNode(nodes);
-	const bottomMostNode = getBottomMostNode(nodes);
-
-	const width =
-		Math.abs(rightMostNode.position[0] - leftMostNode.position[0]) + DEFAULT_NODE_SIZE[0];
-	const height =
-		Math.abs(bottomMostNode.position[1] - topMostNode.position[1]) + DEFAULT_NODE_SIZE[1];
-
-	return [width, height];
-};
-
 /**
- * Checks if the given position is available for a new node
+ * Returns the size of the bounding box of the nodes. Without `getNodeSize`, every node is 96 × 96.
  */
-export const canUsePosition = (
-	position1: XYPosition,
-	position2: XYPosition,
-	size: [number, number] = DEFAULT_NODE_SIZE,
-) => {
-	if (Math.abs(position1[0] - position2[0]) <= size[0]) {
-		if (Math.abs(position1[1] - position2[1]) <= size[1]) {
-			return false;
-		}
+export const getNodesGroupSize = (
+	nodes: INodeUi[],
+	getNodeSize: (node: INodeUi) => [number, number] = () => DEFAULT_NODE_SIZE,
+): [number, number] => {
+	let [xMin, yMin, xMax, yMax] = [Infinity, Infinity, -Infinity, -Infinity];
+	for (const node of nodes) {
+		const [width, height] = getNodeSize(node);
+		xMin = Math.min(xMin, node.position[0]);
+		yMin = Math.min(yMin, node.position[1]);
+		xMax = Math.max(xMax, node.position[0] + width);
+		yMax = Math.max(yMax, node.position[1] + height);
 	}
 
-	return true;
+	return [xMax - xMin, yMax - yMin];
 };
 
 /**
@@ -173,7 +162,19 @@ export function snapToGrid(value: number): number {
 }
 
 /**
- * Returns the new position for a node based on the given position and the nodes in the workflow
+ * A node blocks a position when it overlaps the candidate rectangle or is less
+ * than one grid cell away from it.
+ */
+export function isPositionBlocked(candidate: Rect, obstacle: Rect): boolean {
+	return doRectsOverlap(addPadding(candidate, GRID_SIZE), obstacle);
+}
+
+const isFiniteRect = ({ x, y, width, height }: Rect) =>
+	[x, y, width, height].every((value) => Number.isFinite(value));
+
+/**
+ * Returns the new position for a node based on the given position and the nodes in the workflow.
+ * `getNodeSize` gives the size of each existing node. Without it, every node is 96 × 96.
  */
 export const getNewNodePosition = (
 	nodes: INodeUi[],
@@ -183,11 +184,13 @@ export const getNewNodePosition = (
 		size = DEFAULT_NODE_SIZE,
 		viewport = DEFAULT_VIEWPORT_BOUNDARIES,
 		normalize = true,
+		getNodeSize = () => DEFAULT_NODE_SIZE,
 	}: {
 		offset?: XYPosition;
 		size?: [number, number];
 		viewport?: ViewportBoundaries;
 		normalize?: boolean;
+		getNodeSize?: (node: INodeUi) => [number, number];
 	} = {},
 ): XYPosition => {
 	// Step at least one grid cell, so that the conflict loop always moves the position
@@ -198,28 +201,31 @@ export const getNewNodePosition = (
 	const resolvedPosition: XYPosition = snapPositionToGrid(initialPosition);
 
 	if (normalize) {
-		let conflictFound = false;
-		let i, node;
-		do {
-			conflictFound = false;
-			for (i = 0; i < nodes.length; i++) {
-				node = nodes[i];
+		// A rectangle with a non-finite value overlaps everything, so the loop would never end
+		const obstacles = nodes
+			.filter((node) => node && !NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type))
+			.map((node) => {
+				const [width, height] = getNodeSize(node);
+				return { x: node.position[0], y: node.position[1], width, height };
+			})
+			.filter(isFiniteRect);
+		const isBlocked = () => {
+			const candidate = {
+				x: resolvedPosition[0],
+				y: resolvedPosition[1],
+				width: size[0],
+				height: size[1],
+			};
+			return (
+				isFiniteRect(candidate) &&
+				obstacles.some((obstacle) => isPositionBlocked(candidate, obstacle))
+			);
+		};
 
-				if (!node || NODE_POSITION_CONFLICT_ALLOWLIST.includes(node.type)) {
-					continue;
-				}
-
-				if (!canUsePosition(node.position, resolvedPosition, size)) {
-					conflictFound = true;
-					break;
-				}
-			}
-
-			if (conflictFound) {
-				resolvedPosition[0] += resolvedOffset[0];
-				resolvedPosition[1] += resolvedOffset[1];
-			}
-		} while (conflictFound);
+		while (isBlocked()) {
+			resolvedPosition[0] += resolvedOffset[0];
+			resolvedPosition[1] += resolvedOffset[1];
+		}
 
 		if (resolvedPosition[0] < viewport.xMin + resolvedOffset[0]) {
 			resolvedPosition[0] = viewport.xMin + resolvedOffset[0];
@@ -572,7 +578,7 @@ export function getBounds(
 	return { xMin, yMin, xMax, yMax };
 }
 
-function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
+export function addPadding({ x, y, width, height }: Rect, amount: number): Rect {
 	return {
 		x: x - amount,
 		y: y - amount,
@@ -629,6 +635,7 @@ export function calculateNodeSize(
 	mainInputCount: number,
 	mainOutputCount: number,
 	nonMainInputCount: number,
+	nonMainOutputCount: number,
 	isExperimentalNdvActive: boolean,
 ): { width: number; height: number } {
 	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
@@ -636,7 +643,8 @@ export function calculateNodeSize(
 	const widthScale = isExperimentalNdvActive ? 1.5 : 1;
 
 	if (isConfigurable) {
-		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount);
+		// Non-main inputs sit at the bottom and non-main outputs at the top: the busier side sets the width
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount, nonMainOutputCount);
 
 		return {
 			// Configuration node has extra width so that its centered port aligns to the grid
@@ -653,6 +661,30 @@ export function calculateNodeSize(
 	}
 
 	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
+}
+
+/**
+ * Returns the size of a default-rendered node from its port types, with the rule
+ * of the canvas node: a non-main output makes it a configuration node, and a
+ * configurable node is as wide as its busier side of non-main ports.
+ */
+export function getNodeSizeFromPorts(
+	inputTypes: NodeConnectionType[],
+	outputTypes: NodeConnectionType[],
+): { width: number; height: number } {
+	const isMain = (type: NodeConnectionType) => type === NodeConnectionTypes.Main;
+	const nonMainInputCount = inputTypes.filter((type) => !isMain(type)).length;
+	const nonMainOutputCount = outputTypes.filter((type) => !isMain(type)).length;
+
+	return calculateNodeSize(
+		nonMainOutputCount > 0,
+		nonMainInputCount > 0,
+		inputTypes.filter(isMain).length,
+		outputTypes.filter(isMain).length,
+		nonMainInputCount,
+		nonMainOutputCount,
+		false,
+	);
 }
 
 /** True when the canvas paste handler can import the text: workflow JSON or a workflow URL. */
