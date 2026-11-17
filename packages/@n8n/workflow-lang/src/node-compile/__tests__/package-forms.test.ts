@@ -243,3 +243,42 @@ describe.skipIf(!installed)('node compiler: the column functions of the sheet pa
 		expect(JSON.stringify(out)).toContain('invalid column -1');
 	});
 });
+
+describe('node compiler: a read of a parameter that is not there, in a try with an empty catch', () => {
+	const source = (catchBody: string) => `
+export class Probe {
+	async execute(this: any) {
+		const items = this.getInputData();
+		let kind = 'fallback';
+		try {
+			kind = this.getNodeParameter('notThere', 0);
+		} catch (error) {${catchBody}}
+		return [items.map(() => ({ json: { r: kind } }))];
+	}
+}`;
+	const specialise = (text: string) =>
+		specialiseNode({
+			type: 'n8n-nodes-base.probe',
+			version: 1,
+			entry: ENTRY,
+			readFile: (path) => (path === ENTRY ? text : undefined),
+			parameters: {},
+			aliases: {},
+			instanceId: null,
+		});
+
+	it('keeps the value from before the try', async () => {
+		const result = specialise(source(''));
+		expect(result.errors).toEqual([]);
+		expect(result.source).not.toContain('__missing(');
+		const nodes = { 'nodes/compiled-node.ts': result.source ?? '' };
+		const out = await runReference(workflowSource(['a']), fixture, { nodes });
+		expect(out.status).toBe('ok');
+		expect(out.result).toEqual([{ r: 'fallback' }]);
+	});
+
+	it('keeps the try when the catch has code', () => {
+		const result = specialise(source(" kind = 'caught'; "));
+		expect(result.source ?? '').toContain('__missing(');
+	});
+});

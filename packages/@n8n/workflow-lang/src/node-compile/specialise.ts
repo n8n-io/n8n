@@ -3971,6 +3971,28 @@ class Specialiser {
 			const found = itemBindingOf(e.text, frame);
 			return found?.kind === 'value' && countOfItems(found.value, found.frame, hops + 1);
 		};
+		const atMostItems = (e: ts.Expression, frame: ItemFrame, hops: number): boolean => {
+			if (hops > MAX_INDEX_HOPS) return false;
+			if (countOfItems(e, frame, hops)) return true;
+			if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e))
+				return atMostItems(e.expression, frame, hops);
+			if (ts.isNumericLiteral(e)) return e.text === '0';
+			if (ts.isConditionalExpression(e))
+				return (
+					countOfItems(e.condition, frame, hops) &&
+					ts.isNumericLiteral(e.whenTrue) &&
+					e.whenTrue.text === '1' &&
+					ts.isNumericLiteral(e.whenFalse) &&
+					e.whenFalse.text === '0'
+				);
+			if (!ts.isIdentifier(e)) return false;
+			const found = itemBindingOf(e.text, frame);
+			if (found?.kind === 'value') return atMostItems(found.value, found.frame, hops + 1);
+			return (
+				found?.kind === 'capped' &&
+				found.values.every((value) => atMostItems(value, found.frame, hops + 1))
+			);
+		};
 		const bounded = (
 			index: ts.Expression,
 			frame: ItemFrame,
@@ -3990,8 +4012,9 @@ class Specialiser {
 			if (found === undefined || found.kind === 'other') return false;
 			if (found.kind === 'loop') return !first;
 			if (found.kind === 'limited')
-				return !first && countOfItems(found.limit, found.frame, hops + 1);
+				return !first && atMostItems(found.limit, found.frame, hops + 1);
 			if (found.kind === 'value') return bounded(found.value, found.frame, hops + 1, first);
+			if (found.kind === 'capped') return false;
 			const sites = uses.calls.get(found.unit) ?? [];
 			return (
 				sites.length > 0 &&
@@ -6773,9 +6796,25 @@ class Specialiser {
 			variables.has(st.expression.left.text) &&
 			bindingsOf(root).get(st.expression.left.text) === 1 &&
 			constant(st.expression.right);
+		const missing = (e: ts.Expression): boolean =>
+			ts.isCallExpression(e) &&
+			ts.isIdentifier(e.expression) &&
+			e.expression.text === '__missing' &&
+			e.arguments.every((argument) => ts.isStringLiteral(argument));
+		const failsAtOnce = (st: ts.Statement): boolean =>
+			ts.isExpressionStatement(st) &&
+			(missing(st.expression) ||
+				(ts.isBinaryExpression(st.expression) &&
+					st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+					ts.isIdentifier(st.expression.left) &&
+					missing(st.expression.right)));
 		const visit = (input: ts.Node): ts.Node => {
 			const n = ts.visitEachChild(input, visit, undefined);
-			if (!ts.isTryStatement(n) || n.finallyBlock || !n.tryBlock.statements.every(idle)) return n;
+			if (!ts.isTryStatement(n) || n.finallyBlock) return n;
+			const [first] = n.tryBlock.statements;
+			if (first && n.catchClause?.block.statements.length === 0 && failsAtOnce(first))
+				return f.createBlock([], false);
+			if (!n.tryBlock.statements.every(idle)) return n;
 			return n.tryBlock;
 		};
 		return ts.visitNode(root, visit);
@@ -7986,6 +8025,7 @@ type ItemBinding =
 	| { kind: 'loop' }
 	| { kind: 'limited'; limit: ts.Expression; frame: ItemFrame }
 	| { kind: 'value'; value: ts.Expression; frame: ItemFrame }
+	| { kind: 'capped'; values: ts.Expression[]; frame: ItemFrame }
 	| { kind: 'parameter'; position: number; unit: string }
 	| { kind: 'other' };
 
@@ -8098,7 +8138,16 @@ function itemParameterUses(output: Array<{ name: string; node: ts.Node }>): Item
 					(fixed || !written.has(d.name.text))
 				)
 					frame.names.set(d.name.text, { kind: 'value', value: d.initializer, frame });
-				else other(frame, d.name);
+				else if (ts.isIdentifier(d.name) && d.initializer && scoped) {
+					const writes = plainWritesOf(root, d.name.text, bindingsOf(root));
+					if (writes === undefined) other(frame, d.name);
+					else
+						frame.names.set(d.name.text, {
+							kind: 'capped',
+							values: [d.initializer, ...writes],
+							frame,
+						});
+				} else other(frame, d.name);
 			}
 		};
 		const declareAll = (frame: ItemFrame, statements: readonly ts.Statement[]) => {
@@ -8266,6 +8315,51 @@ function isMemberTarget(target: ts.Expression): boolean {
 	)
 		return isMemberTarget(target.expression);
 	return ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target);
+}
+
+function plainWritesOf(
+	root: ts.Node,
+	name: string,
+	bindings: Map<string, number>,
+): ts.Expression[] | undefined {
+	if (bindings.get(name) !== 1) return undefined;
+	const values: ts.Expression[] = [];
+	let plain = true;
+	const names = (n: ts.Node): boolean =>
+		(ts.isIdentifier(n) && n.text === name) || (ts.forEachChild(n, names) ?? false);
+	const single = (n: ts.Node): boolean =>
+		(!ts.isIdentifier(n) || (bindings.get(n.text) ?? 0) <= 1) &&
+		!(ts.forEachChild(n, (child) => !single(child)) ?? false);
+	const walk = (n: ts.Node) => {
+		if (
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+			n.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+			!isMemberTarget(n.left) &&
+			names(n.left)
+		) {
+			const direct = ts.isIdentifier(n.left) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+			if (direct && single(n.right)) values.push(n.right);
+			else plain = false;
+		}
+		if (
+			(ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) &&
+			(n.operator === ts.SyntaxKind.PlusPlusToken ||
+				n.operator === ts.SyntaxKind.MinusMinusToken) &&
+			!isMemberTarget(n.operand) &&
+			names(n.operand)
+		)
+			plain = false;
+		if (
+			(ts.isForInStatement(n) || ts.isForOfStatement(n)) &&
+			ts.isExpression(n.initializer) &&
+			names(n.initializer)
+		)
+			plain = false;
+		ts.forEachChild(n, walk);
+	};
+	walk(root);
+	return plain ? values : undefined;
 }
 
 function writtenNames(root: ts.Node): Set<string> {
