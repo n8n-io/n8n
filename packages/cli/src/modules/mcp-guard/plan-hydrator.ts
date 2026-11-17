@@ -37,6 +37,9 @@ export interface PlanHydratorDeps {
 	lookups?: (tool: string, args: Record<string, unknown>, result?: unknown) => Plan['reads'];
 	// Last change to an overlay, after the checks. Code adds data here that the real data does not hold.
 	finalize?: (overlay: Record<string, unknown>) => Record<string, unknown>;
+	// Lookup tools that the gym answers first. An object that an agent created in the gym has no
+	// real copy, and a real object with the same key is another object.
+	gymFirst?: ReadonlySet<string>;
 }
 
 interface Verify {
@@ -229,7 +232,15 @@ export class PlanHydrator implements Hydrator {
 	): Promise<boolean> {
 		const ctx: PointerContext = { result, reads: [], args };
 		let fullPrompt = prompt;
-		const lookups = this.deps.lookups?.(tool, args, result).slice(0, MAX_LOOKUPS) ?? [];
+		const wanted = this.deps.lookups?.(tool, args, result).slice(0, MAX_LOOKUPS) ?? [];
+		const { rest: lookups, held } = await this.withoutGymObjects(wanted);
+		if (held.length > 0) {
+			this.seeded.hold(
+				held.flatMap(({ args: a }) => Object.values(a).filter((v) => typeof v === 'string')),
+			);
+			const named = held.map(({ tool: t, args: a }) => `${t} ${JSON.stringify(a)}`).join('; ');
+			fullPrompt = `${fullPrompt}\n\nThe gym holds these objects already. Do not seed them: ${named}`;
+		}
 		if (lookups.length > 0) {
 			const answers = await this.execute(lookups, ctx, stats, true);
 			fullPrompt = `${prompt}\n\nThe call names objects in its args. These are the real results of looking them up (${ctx.reads.length} reads, usable as $reads[n]). Each object that the call names must exist in the gym, also when the real result above has no items. Take it from these results.\n${answers}`;
@@ -256,6 +267,30 @@ export class PlanHydrator implements Hydrator {
 			problem = await this.apply(plan, ctx, verify, repair === MAX_REPAIRS - 1, trace);
 		}
 		return problem === undefined;
+	}
+
+	// Drops the lookups of objects that the gym holds already.
+	private async withoutGymObjects(
+		lookups: Plan['reads'],
+	): Promise<{ rest: Plan['reads']; held: Plan['reads'] }> {
+		const { gymFirst, gym } = this.deps;
+		if (!gymFirst) return { rest: lookups, held: [] };
+		const held = await Promise.all(
+			lookups.map(async ({ tool, args }) => {
+				if (!gymFirst.has(tool)) return false;
+				try {
+					const res = await gym.callTool(tool, args);
+					Container.get(Logger).info(
+						`mcp-guard plan gym check ${tool}: ${res.isError ? 'error' : 'answer'}, ${resultText(res).slice(0, 80)}`,
+					);
+					return !res.isError && resultText(res).trim() !== '';
+				} catch (e) {
+					Container.get(Logger).info(`mcp-guard plan gym check ${tool} failed: ${errText(e)}`);
+					return false;
+				}
+			}),
+		);
+		return { rest: lookups.filter((_, i) => !held[i]), held: lookups.filter((_, i) => held[i]) };
 	}
 
 	private async ask(prompt: string, stats: { turns: number }): Promise<Plan> {
@@ -347,6 +382,9 @@ export class PlanHydrator implements Hydrator {
 		const toSeed = isRecord(fresh) && SeededEntities.isEmpty(fresh) ? undefined : fresh;
 		const overlay = this.deps.finalize && isRecord(toSeed) ? this.deps.finalize(toSeed) : toSeed;
 		trace.sent = overlay;
+		Container.get(Logger).info(
+			`mcp-guard plan seed shape: ${JSON.stringify(shapeOf(overlay)).slice(0, 500)}`,
+		);
 		const events = plan.events.map(clean);
 		if (flagged.length > 0 && !last) {
 			const shown = flagged

@@ -37,14 +37,28 @@ export class SeededEntities {
 	// Refs in lower case -> the stored ref. A model may write `team:lho` for `team:LHO`.
 	private readonly refs = new Map<string, string>();
 
+	// Ids of objects that the gym made itself, for example the issue that an agent created.
+	private readonly held = new Set<string>();
+
+	/** Notes ids that the gym holds, so a plan does not seed another object under them. */
+	hold(ids: string[]): void {
+		for (const id of ids) this.held.add(id.toLowerCase());
+	}
+
+	private holds(key: string): boolean {
+		return (
+			this.seeded.has(key) || [...this.held].some((id) => key === id || key.endsWith(`:${id}`))
+		);
+	}
+
 	/** Removes the entities that the tenant has. Returns what is left to seed. */
 	dedupe(overlay: Record<string, unknown>): Record<string, unknown> {
-		if (this.seeded.size === 0) return overlay;
+		if (this.seeded.size === 0 && this.held.size === 0) return overlay;
 		const next: Record<string, unknown> = structuredClone(overlay);
 		for (const [service, name] of collections(next)) {
 			service[name] = entities(service, name).filter((entity) => {
 				const key = keyOf(entity);
-				return key === undefined || !this.seeded.has(key);
+				return key === undefined || !this.holds(key);
 			});
 		}
 		return this.fixRefs(next) as Record<string, unknown>;

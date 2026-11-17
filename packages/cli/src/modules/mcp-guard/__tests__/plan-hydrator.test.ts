@@ -112,6 +112,7 @@ function setup(
 	gymAnswer: (n: number) => CallToolResult = () => text(`issue TRUST-1209 ${ID}`),
 	lookups?: PlanHydratorDeps['lookups'],
 	seedReport?: (n: number) => unknown,
+	gymFirst?: ReadonlySet<string>,
 ) {
 	const prompts: string[] = [];
 	const seeds: unknown[] = [];
@@ -154,6 +155,7 @@ function setup(
 		instructions: 'rules',
 		llm,
 		lookups,
+		gymFirst,
 	});
 	return { hydrator, prompts, seeds, events, seedErrors, upstreamCalls, gymCalls: () => gymCalls };
 }
@@ -215,6 +217,31 @@ describe('PlanHydrator', () => {
 				linear: { teams: [], projects: [{ ref: 'project:p', team: 'team:LHO' }] },
 			},
 		});
+	});
+
+	it('does not read an object from the real service when the gym holds it', async () => {
+		const lookups = () => [{ tool: 'get_issue', args: { id: 'TRUST-1' } }];
+		const plan = JSON.stringify({ overlay: {} });
+		const gymHas = setup(
+			[plan],
+			() => text(`TRUST-1 ${ID}`),
+			lookups,
+			undefined,
+			new Set(['get_issue']),
+		);
+		await gymHas.hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+		expect(gymHas.upstreamCalls).toEqual([]);
+		expect(gymHas.prompts[0]).toContain('The gym holds these objects already');
+
+		const gymLacks = setup(
+			[plan],
+			() => ({ isError: true, content: [{ type: 'text', text: 'not found' }] }),
+			lookups,
+			undefined,
+			new Set(['get_issue']),
+		);
+		await gymLacks.hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+		expect(gymLacks.upstreamCalls).toEqual([['get_issue', { id: 'TRUST-1' }]]);
 	});
 
 	it('goes back to the model with the gym error, and stops after two repairs', async () => {

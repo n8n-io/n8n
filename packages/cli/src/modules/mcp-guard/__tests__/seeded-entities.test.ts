@@ -56,4 +56,15 @@ describe('SeededEntities', () => {
 		).toBe(false);
 		expect(SeededEntities.isEmpty({ world_version: 1, persona: { name: 'x' } })).toBe(false);
 	});
+
+	it('removes an entity under the id of an object that the gym holds', () => {
+		const seeded = new SeededEntities();
+		seeded.hold(['TRUST-1']);
+		const left = seeded.dedupe({
+			native: {
+				linear: { issues: [{ ref: 'issue:TRUST-1', number: 1 }, { ref: 'issue:TRUST-9' }] },
+			},
+		});
+		expect(left).toEqual({ native: { linear: { issues: [{ ref: 'issue:TRUST-9' }] } } });
+	});
 });

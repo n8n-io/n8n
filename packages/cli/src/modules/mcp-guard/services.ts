@@ -32,6 +32,8 @@ export interface GuardServiceProfile {
 	) => Array<{ tool: string; args: Record<string, unknown> }>;
 	// Last change to an overlay of the plan hydrator, after its checks. Optional.
 	finalize?: (overlay: Record<string, unknown>) => Record<string, unknown>;
+	// Lookup tools that the gym answers before the real service does, see PlanHydratorDeps.
+	gymFirst?: ReadonlySet<string>;
 	// Service part of the instructions of the hydration agent and of the plan hydrator.
 	instructions: string;
 	createHydrator(deps: { admin: GymAdmin; tenant: string; upstream: McpCaller }): Hydrator;
@@ -65,6 +67,7 @@ export const LINEAR_PROFILE: GuardServiceProfile = {
 	// Without the list the real service returns its default fields, which include the ids.
 	lookups: linearLookups,
 	finalize: withUserEmails,
+	gymFirst: new Set(['get_issue']),
 	upstreamReadArgs: (_tool, args) =>
 		Array.isArray(args.fields)
 			? Object.fromEntries(Object.entries(args).filter(([key]) => key !== 'fields'))

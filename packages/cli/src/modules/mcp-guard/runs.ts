@@ -117,6 +117,7 @@ export class RunRegistry {
 				llm: createPlanLlm(model),
 				lookups: profile.lookups,
 				finalize: profile.finalize,
+				gymFirst: profile.gymFirst,
 			});
 		}
 		return profile.createHydrator({ admin, tenant, upstream });
