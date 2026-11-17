@@ -1,6 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { InstanceRegistryProxyService, PostHogClient } from '@n8n/backend-services';
+import {
+	InstanceRegistryProxyService,
+	PostHogClient,
+	TelemetryProxy,
+	type TelemetryTracker,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -18,13 +23,7 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import type {
-	AgentRunTelemetryType,
-	IAgentConfigurationTelemetryProperties,
-	IAgentExecutionTrackProperties,
-	IAgentTurnFinishedTrackProperties,
-	IExecutionTrackProperties,
-} from '@/interfaces';
+import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import type { PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
@@ -80,7 +79,10 @@ interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
-	endpoints_by_client: { editor_ui: Record<string, number> };
+	endpoints_by_client: {
+		editor_ui: Record<string, number>;
+		n8n_node: Record<string, number>;
+	};
 	routes: IApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
@@ -90,48 +92,8 @@ interface IApiInvocationsBuffer {
 	[userId: string]: IApiInvocationsBufferEntry;
 }
 
-interface IAgentExecutionCounts {
-	message_count: number;
-	token_count: number;
-	tool_call_count: number;
-}
-
-interface IAgentExecutionCountsBuffer {
-	[bufferKey: string]: IAgentExecutionCounts & {
-		agent_id: string;
-		user_id?: string;
-		run_type: AgentRunTelemetryType;
-		first_message_at?: string;
-		counts_by_source: Record<string, IAgentExecutionCounts>;
-	};
-}
-
-interface IAgentSessionMetrics {
-	latency_ms: number;
-	cost: number;
-	token_count: number;
-	tool_call_count: number;
-	num_skills: number;
-	turn_count: number;
-	skill_load_count: number;
-	loaded_skill_ids: Set<string>;
-}
-
-interface IAgentSessionMetricsBuffer {
-	[bufferKey: string]: {
-		agent_id: string;
-		user_id?: string;
-		agent_type: IAgentTurnFinishedTrackProperties['agent_type'];
-		run_type: IAgentTurnFinishedTrackProperties['run_type'];
-		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
-		configuration: IAgentConfigurationTelemetryProperties;
-		sessions: Record<string, IAgentSessionMetrics>;
-		sessions_by_source: Record<string, Record<string, IAgentSessionMetrics>>;
-	};
-}
-
 @Service()
-export class Telemetry {
+export class Telemetry implements TelemetryTracker {
 	private rudderStack?: RudderStack;
 
 	private userCloudId?: string;
@@ -141,9 +103,7 @@ export class Telemetry {
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
 
-	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
-
-	private agentSessionMetricsBuffer: IAgentSessionMetricsBuffer = {};
+	private readonly bufferFlushers: (() => void)[] = [];
 
 	/** Event names already reported by `warnAboutMissingUserId`, so each one is said once. */
 	private readonly eventsMissingUserId = new Set<string>();
@@ -206,6 +166,8 @@ export class Telemetry {
 	}
 
 	async init() {
+		Container.get(TelemetryProxy).registerProvider(this);
+
 		const { enabled, backendConfig } = this.globalConfig.diagnostics;
 		if (enabled) {
 			const [key, dataPlaneUrl] = backendConfig.split(';');
@@ -252,8 +214,7 @@ export class Telemetry {
 		}
 
 		this.flushWorkflowExecutionCounts();
-		this.flushAgentExecutionCounts();
-		this.flushAgentSessionMetrics();
+		for (const flush of this.bufferFlushers) flush();
 		this.flushApiInvocations();
 	}
 
@@ -292,10 +253,10 @@ export class Telemetry {
 		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
 			const entry = this.apiInvocationsBuffer[userId];
 			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
+				this.track(TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE, {
 					user_id: userId,
 					total_calls: entry.total_calls,
-					first: entry.first,
+					first: entry.first.toISOString(),
 					endpoints: JSON.stringify(entry.endpoints),
 					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
 					routes: JSON.stringify(entry.routes),
@@ -330,92 +291,6 @@ export class Telemetry {
 		}
 
 		this.executionCountsBuffer = Object.create(null);
-	}
-
-	private getAgentExecutionCountsBufferKey(
-		agentId: string,
-		runType: AgentRunTelemetryType,
-		userId?: string,
-	) {
-		return userId ? `${agentId}:${runType}:${userId}` : `${agentId}:${runType}`;
-	}
-
-	private flushAgentExecutionCounts() {
-		const keysToReport = Object.keys(this.agentExecutionCountsBuffer).filter((bufferKey) => {
-			const data = this.agentExecutionCountsBuffer[bufferKey];
-			return data.message_count + data.token_count + data.tool_call_count > 0;
-		});
-
-		for (const bufferKey of keysToReport) {
-			// Agent-level aggregate window keyed by persisted agent ID, run type and optional
-			// n8n user ID. A resume-only window may legitimately report tokens or tools with
-			// message_count = 0.
-			const { agent_id, user_id, run_type, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
-			this.track(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '3',
-				agent_id,
-				...(user_id ? { user_id } : {}),
-				run_type,
-				...counts,
-			});
-		}
-
-		this.agentExecutionCountsBuffer = {};
-	}
-
-	private getAgentSessionMetricsBufferKey(properties: IAgentTurnFinishedTrackProperties) {
-		return [
-			properties.agent_id,
-			properties.user_id,
-			properties.run_type,
-			properties.turn_status,
-			JSON.stringify(properties.configuration),
-		].join(':');
-	}
-
-	private flushAgentSessionMetrics() {
-		for (const bucket of Object.values(this.agentSessionMetricsBuffer)) {
-			if (Object.keys(bucket.sessions).length === 0) continue;
-
-			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
-				event_version: '1',
-				agent_id: bucket.agent_id,
-				...(bucket.user_id ? { user_id: bucket.user_id } : {}),
-				...(bucket.agent_type ? { agent_type: bucket.agent_type } : {}),
-				...bucket.configuration,
-				run_type: bucket.run_type,
-				turn_status: bucket.turn_status,
-				...this.sumAgentSessionMetrics(bucket.sessions),
-				counts_by_source: Object.fromEntries(
-					Object.entries(bucket.sessions_by_source).map(([source, sessions]) => [
-						source,
-						this.sumAgentSessionMetrics(sessions),
-					]),
-				),
-			});
-		}
-
-		this.agentSessionMetricsBuffer = {};
-	}
-
-	private sumAgentSessionMetrics(sessionsById: Record<string, IAgentSessionMetrics>) {
-		const sessions = Object.values(sessionsById);
-		return {
-			session_count: sessions.length,
-			turn_count: sessions.reduce((total, session) => total + session.turn_count, 0),
-			latency_ms_sum: sessions.reduce((total, session) => total + session.latency_ms, 0),
-			cost_sum: sessions.reduce((total, session) => total + session.cost, 0),
-			token_count_sum: sessions.reduce((total, session) => total + session.token_count, 0),
-			tool_call_count_sum: sessions.reduce((total, session) => total + session.tool_call_count, 0),
-			num_skills_sum: sessions.reduce((total, session) => total + session.num_skills, 0),
-			skill_load_count_sum: sessions.reduce(
-				(total, session) => total + session.skill_load_count,
-				0,
-			),
-			loaded_skill_ids: [
-				...new Set(sessions.flatMap((session) => [...session.loaded_skill_ids])),
-			].sort(),
-		};
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
@@ -483,95 +358,6 @@ export class Telemetry {
 		}
 	}
 
-	trackAgentExecution(properties: IAgentExecutionTrackProperties) {
-		if (!this.rudderStack) return;
-
-		const {
-			agent_id,
-			user_id,
-			run_type,
-			message_count = 0,
-			token_count = 0,
-			tool_call_count = 0,
-		} = properties;
-		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, run_type, user_id);
-
-		this.agentExecutionCountsBuffer[bufferKey] = this.agentExecutionCountsBuffer[bufferKey] ?? {
-			agent_id,
-			...(user_id ? { user_id } : {}),
-			run_type,
-			message_count: 0,
-			token_count: 0,
-			tool_call_count: 0,
-			// No prototype, so every source is an own key.
-			counts_by_source: Object.create(null),
-		};
-
-		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
-		if (message_count > 0) {
-			agentExecutionCounts.first_message_at ??= new Date().toISOString();
-		}
-		agentExecutionCounts.message_count += message_count;
-		agentExecutionCounts.token_count += token_count;
-		agentExecutionCounts.tool_call_count += tool_call_count;
-
-		const source = properties.source || 'unknown';
-		const sourceCounts = (agentExecutionCounts.counts_by_source[source] ??= {
-			message_count: 0,
-			token_count: 0,
-			tool_call_count: 0,
-		});
-		sourceCounts.message_count += message_count;
-		sourceCounts.token_count += token_count;
-		sourceCounts.tool_call_count += tool_call_count;
-	}
-
-	trackAgentTurnFinished(properties: IAgentTurnFinishedTrackProperties) {
-		if (!this.rudderStack) return;
-
-		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
-		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
-			agent_id: properties.agent_id,
-			user_id: properties.user_id,
-			agent_type: properties.agent_type,
-			run_type: properties.run_type,
-			turn_status: properties.turn_status,
-			configuration: properties.configuration,
-			// These maps have no prototype, so every thread id and source is an own key.
-			sessions: Object.create(null),
-			sessions_by_source: Object.create(null),
-		};
-
-		const bucket = this.agentSessionMetricsBuffer[bufferKey];
-		const source = properties.source || 'unknown';
-		bucket.sessions_by_source[source] ??= Object.create(null);
-		const sourceSessions = bucket.sessions_by_source[source];
-		// A session can contain turns from several sources. Keep the total deduplicated.
-		for (const sessions of [bucket.sessions, sourceSessions]) {
-			const session = sessions[properties.thread_id] ?? {
-				latency_ms: 0,
-				cost: 0,
-				token_count: 0,
-				tool_call_count: 0,
-				num_skills: properties.configuration.num_skills,
-				turn_count: 0,
-				skill_load_count: 0,
-				loaded_skill_ids: new Set<string>(),
-			};
-
-			session.latency_ms += properties.latency_ms;
-			session.cost += properties.cost;
-			session.token_count += properties.token_count;
-			session.tool_call_count += properties.tool_call_count;
-			session.skill_load_count += properties.skill_load_count ?? 0;
-			for (const skillId of properties.loaded_skill_ids ?? []) {
-				session.loaded_skill_ids.add(skillId);
-			}
-			session.turn_count++;
-			sessions[properties.thread_id] = session;
-		}
-	}
-
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
@@ -581,20 +367,20 @@ export class Telemetry {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
-			endpoints_by_client: { editor_ui: {} },
+			endpoints_by_client: { editor_ui: {}, n8n_node: {} },
 			routes: [],
 			user_agents: {},
-			clients: { editor_ui: 0, other: 0 },
+			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;
 
 		entry.endpoints[route] = (entry.endpoints[route] ?? 0) + 1;
 
-		// Only editor UI calls are counted per endpoint for now to help keep event size down.
-		if (client === 'editor_ui') {
-			const editorUiEndpoints = entry.endpoints_by_client.editor_ui;
-			editorUiEndpoints[route] = (editorUiEndpoints[route] ?? 0) + 1;
+		// other is left out here. The routes list already counts it.
+		if (client !== 'other') {
+			const clientEndpoints = entry.endpoints_by_client[client];
+			clientEndpoints[route] = (clientEndpoints[route] ?? 0) + 1;
 		}
 
 		const existingRow = entry.routes.find(
@@ -609,6 +395,14 @@ export class Telemetry {
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
 		}
+	}
+
+	isEnabled(): boolean {
+		return this.rudderStack !== undefined;
+	}
+
+	addBufferFlusher(flusher: () => void): void {
+		this.bufferFlushers.push(flusher);
 	}
 
 	/** Sends the queued events now, instead of at the next flush interval. */
@@ -789,13 +583,5 @@ export class Telemetry {
 
 	getApiInvocationsBuffer(): IApiInvocationsBuffer {
 		return this.apiInvocationsBuffer;
-	}
-
-	getAgentExecutionCountsBuffer(): IAgentExecutionCountsBuffer {
-		return this.agentExecutionCountsBuffer;
-	}
-
-	getAgentSessionMetricsBuffer(): IAgentSessionMetricsBuffer {
-		return this.agentSessionMetricsBuffer;
 	}
 }

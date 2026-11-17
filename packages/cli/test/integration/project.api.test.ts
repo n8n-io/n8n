@@ -11,6 +11,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { CacheService, ProjectScopeService } from '@n8n/backend-services';
+import { AgentsConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -297,6 +298,126 @@ describe('GET /projects/sharing-candidates', () => {
 			.get('/projects/sharing-candidates')
 			.query({ take: 50, skip: 0 });
 		expect(resp.status).toBe(403);
+	});
+
+	describe('service accounts', () => {
+		const agentsConfig = Container.get(AgentsConfig);
+
+		afterEach(() => {
+			agentsConfig.serviceAccountsEnabled = false;
+		});
+
+		async function listCandidates(
+			caller: Awaited<ReturnType<typeof createMember>>,
+			{ includeServiceAccounts = true } = {},
+		) {
+			const resp = await testServer
+				.authAgentFor(caller)
+				.get('/projects/sharing-candidates')
+				.query({ take: 50, skip: 0, includeServiceAccounts })
+				.expect(200);
+			return resp.body.data as Array<Project & { accountKind?: string }>;
+		}
+
+		test('owner sees the service account project with its account kind when the flag is on', async () => {
+			agentsConfig.serviceAccountsEnabled = true;
+			const [owner, serviceAccount] = await Promise.all([
+				createOwner(),
+				createServiceAccountWithProject(),
+			]);
+			const team = await createTeamProject(undefined, owner);
+			const [ownerPersonal, serviceAccountPersonal] = await Promise.all([
+				getPersonalProject(owner),
+				getPersonalProject(serviceAccount),
+			]);
+
+			const projects = await listCandidates(owner);
+
+			expect(projects.find((p) => p.id === serviceAccountPersonal.id)?.accountKind).toBe('service');
+			expect(projects.find((p) => p.id === ownerPersonal.id)?.accountKind).toBe('person');
+			const teamProject = projects.find((p) => p.id === team.id);
+			expect(teamProject).toBeDefined();
+			expect(teamProject?.accountKind).toBeUndefined();
+		});
+
+		test('a picker that does not ask for service accounts gets none', async () => {
+			agentsConfig.serviceAccountsEnabled = true;
+			const [owner, serviceAccount] = await Promise.all([
+				createOwner(),
+				createServiceAccountWithProject(),
+			]);
+			const [ownerPersonal, serviceAccountPersonal] = await Promise.all([
+				getPersonalProject(owner),
+				getPersonalProject(serviceAccount),
+			]);
+
+			const projects = await listCandidates(owner, { includeServiceAccounts: false });
+
+			expect(projects.find((p) => p.id === serviceAccountPersonal.id)).toBeUndefined();
+			expect(projects.find((p) => p.id === ownerPersonal.id)?.accountKind).toBe('person');
+		});
+
+		test('member does not see a service account that acts for none of their projects', async () => {
+			agentsConfig.serviceAccountsEnabled = true;
+			const [member, peer, serviceAccount] = await Promise.all([
+				createMember(),
+				createMember(),
+				createServiceAccountWithProject(),
+			]);
+			const [peerPersonal, serviceAccountPersonal] = await Promise.all([
+				getPersonalProject(peer),
+				getPersonalProject(serviceAccount),
+			]);
+
+			const projects = await listCandidates(member);
+
+			expect(projects.find((p) => p.id === serviceAccountPersonal.id)).toBeUndefined();
+			expect(projects.find((p) => p.id === peerPersonal.id)?.accountKind).toBe('person');
+		});
+
+		test.each([
+			['member', createMember],
+			['owner', createOwner],
+		])(
+			'%s does not see the service account project when the flag is off',
+			async (_, createCaller) => {
+				agentsConfig.serviceAccountsEnabled = false;
+				const [caller, serviceAccount] = await Promise.all([
+					createCaller(),
+					createServiceAccountWithProject(),
+				]);
+				const [callerPersonal, serviceAccountPersonal] = await Promise.all([
+					getPersonalProject(caller),
+					getPersonalProject(serviceAccount),
+				]);
+
+				const projects = await listCandidates(caller);
+
+				expect(projects.find((p) => p.id === serviceAccountPersonal.id)).toBeUndefined();
+				expect(projects.find((p) => p.id === callerPersonal.id)).toBeDefined();
+			},
+		);
+	});
+});
+
+describe('GET /projects account kind', () => {
+	test('returns the account kind of each personal project', async () => {
+		const [owner, serviceAccount] = await Promise.all([
+			createOwner(),
+			createServiceAccountWithProject(),
+		]);
+		const team = await createTeamProject();
+		const [ownerPersonal, serviceAccountPersonal] = await Promise.all([
+			getPersonalProject(owner),
+			getPersonalProject(serviceAccount),
+		]);
+
+		const resp = await testServer.authAgentFor(owner).get('/projects').expect(200);
+		const projects = resp.body.data as Array<Project & { accountKind?: string }>;
+
+		expect(projects.find((p) => p.id === serviceAccountPersonal.id)?.accountKind).toBe('service');
+		expect(projects.find((p) => p.id === ownerPersonal.id)?.accountKind).toBe('person');
+		expect(projects.find((p) => p.id === team.id)?.accountKind).toBeUndefined();
 	});
 });
 

@@ -34,6 +34,10 @@ workspace source file and the `workflow_builder_build_workflow` tool
   smallest edit with `workspace_str_replace_file`, then build with the same
   `filePath` (no `workflowId` needed; the build remembers it). Never re-emit the
   whole source, and do not fetch the same unchanged workflow again.
+- **Several files:** when one step writes or changes two or more files (for
+  example the sources of several supporting workflows), put them all in one
+  `workspace_edit_files` call, not one call for each file. Read two or more
+  files with one `workspace_read_files` call.
 
 When the needed node types are already obvious from the request, make one
 `find_tools` call for every tool catalog tool the build will need (for example
