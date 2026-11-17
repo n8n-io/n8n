@@ -29,8 +29,97 @@ import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import { emitStep, lowerFallback } from './steps.ts';
 
-/** n8n globals that the host does not give to code steps. */
-const MISSING_GLOBALS = ['$evaluateExpression', '$secrets'];
+/**
+ * Names of v1's data proxy that the host does not give to code steps. Code that reads one
+ * does not convert, so n8n runs the workflow on v1.
+ */
+const MISSING_GLOBALS = [
+	'$evaluateExpression',
+	'$secrets',
+	'$mode',
+	'$self',
+	'$parameter',
+	'$rawParameter',
+	'$nodeId',
+	'$webhookId',
+	'$agentInfo',
+	'$data',
+	'$tool',
+	'$getPairedItem',
+	'$fromAI',
+	'$fromAi',
+	'$fromai',
+	'$position',
+	'$thisItem',
+	'$thisItemIndex',
+	'$thisRunIndex',
+];
+
+/** True when the code reads the name `global` as an identifier. */
+function readsGlobal(user: string, global: string): boolean {
+	return new RegExp(`(?<![\\w$.])\\${global}(?![\\w$])`).test(user);
+}
+
+/**
+ * Reads that the host cannot give as v1 does, each with the reason. The data of these reads
+ * is in n8n's run data, and the compiled engine does not keep it.
+ */
+const INEXACT_READS: Array<[RegExp, string]> = [
+	[
+		/\$workflow\b(?!\s*\??\.\s*(?:id|name)\b)/,
+		'`$workflow` other than `.id` and `.name`: the active state of the workflow is not known',
+	],
+	[/\$execution\s*\??\.\s*customData\b/, '`$execution.customData`: custom data is not kept'],
+	[/\$input\s*\??\.\s*(?:params|context)\b/, '`$input.params` or `$input.context`'],
+	[
+		/\$items\(\s*[^,()]+,/,
+		'`$items` with an output or a run: the host has the items of one output of the last run',
+	],
+	[
+		/\$\([^()]*\)\s*\??\.\s*(?:all|first|last)\(\s*[^)\s]/,
+		'`.all()`, `.first()` or `.last()` with an output or a run',
+	],
+	[
+		/\$node\b[^;\n]*?\.\s*(?:context|parameter|runIndex)\b/,
+		'`$node[…]` other than `.json`, `.data` and `.binary`',
+	],
+];
+
+/** A member of `$('Node')` that reads the item that v1 pairs with an input item. */
+const PAIRED_MEMBER = '(?:item\\b(?!\\s*[(:])|itemMatching\\b|pairedItem\\b)';
+
+/**
+ * The nodes whose paired items the code reads (`.item`, `.itemMatching(k)`, `.pairedItem(k)`),
+ * or `all` when the code can read the paired items of each node that it names: it keeps the
+ * result of `$(…)` in a value, or gives the name of the node as a value.
+ */
+function pairedReads(user: string): string[] | 'all' {
+	const names: string[] = [];
+	const direct = new RegExp(
+		`\\$\\(\\s*(['"\`])((?:\\\\.|(?!\\1).)*)\\1\\s*\\)\\s*\\??\\.\\s*${PAIRED_MEMBER}`,
+		'g',
+	);
+	for (const m of user.matchAll(direct)) {
+		const name = m[2].replace(/\\(.)/g, '$1');
+		if (!names.includes(name)) names.push(name);
+	}
+	const held = /\$\((?:[^()]|\([^()]*\))*\)(?!\s*\??\.\s*[A-Za-z_$])/.test(user);
+	const computed = /\$\(\s*(?:[^'"`\s)]|`[^`]*\$\{)/.test(user);
+	if (held || computed) {
+		const other = user.replace(/\$input\s*\??\.\s*item\b/g, '');
+		const member = new RegExp(
+			`\\??\\.\\s*${PAIRED_MEMBER}|\\[\\s*['"\`](?:item|itemMatching|pairedItem)['"\`]\\s*\\]`,
+		);
+		if (member.test(other)) return 'all';
+	}
+	return names;
+}
+
+/** True when the code of "each item" mode reads the name `items`, which v1 does not define there. */
+function readsItemsOfAllMode(user: string): boolean {
+	if (!/(?<![\w$.])items\b(?!\s*:)/.test(user)) return false;
+	return !/\b(?:const|let|var)\s+items\b|\bitems\s*=>|[(,]\s*items\s*[,)]/.test(user);
+}
 
 /** Wraps a wire item as an n8n item: `$binary` becomes `binary`, and v1's paired item is the position. */
 const WRAP = `const __wrap = (j, index) => {
@@ -117,35 +206,91 @@ function nodeReferences(code: string): string[] {
 const NODES_PROLOGUE = `const __last = items[items.length - 1];
 const __context = __last && __last.$nodes ? (items.pop(), __last) : { $nodes: {} };
 const __nodes = __context.$nodes;
-// $execution as n8n gives it to the Code node; custom data is not kept.
+// The nodes of the workflow that have no run before this node, for code that computes a name.
+for (const name of __notRun) __nodes[name] = null;
+const __known = (name) => Object.prototype.hasOwnProperty.call(__nodes, name);
+// The index of the item that the code runs for; 0 in "all items" mode, as in v1's data proxy.
+let __current = 0;
+// An error of v1's data proxy: the task runner gives its message without a line, and the
+// error is no Error of the realm of the code.
+const __fail = (message) => {
+	throw Object.defineProperty({ name: 'ExpressionError', message }, 'toString', {
+		value: () => 'ExpressionError: ' + message,
+	});
+};
+// $execution as n8n gives it to the Code node. The converter refuses code that reads custom data.
 const $execution = {
 	...(__context.$execution || {}),
 	customData: { set() {}, setAll() {}, get() { return undefined; }, getAll() { return {}; } },
 };
 const __lists = {};
+// As v1: each read of a node gives the same items.
+const __list = (name) => (__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)));
+// The item of a node that pairs with input item k (v1's pairedItemMethod). The converter gives
+// this code only when v1 pairs the items of the node with the input items by position.
+const __paired = (name, k, matching) => {
+	if (k === undefined) {
+		if (matching) __fail('Missing item index for .itemMatching()');
+		k = __current;
+	}
+	if (!__inputItems()[k]) __fail('Can’t get data');
+	return __list(name)[k];
+};
 const $ = (name) => {
+	if (!__known(name)) __fail("Referenced node doesn't exist");
 	if (__nodes[name] === null) {
 		// A node that has not run before this one: n8n throws when the code reads its data.
-		const fail = () => { throw new Error("Node '" + name + "' hasn't been executed"); };
-		return { all: fail, first: fail, last: fail, itemMatching: fail, get item() { return fail(); }, isExecuted: false };
+		const fail = () => __fail("Node '" + name + "' hasn't been executed");
+		return { all: fail, first: fail, last: fail, itemMatching: fail, pairedItem: fail, get item() { return fail(); }, isExecuted: false };
 	}
-	// As v1: each read of a node gives the same items.
-	const list = (__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)));
-	// itemMatching pairs by position; every item pairs with the only item of a one-item list.
-	const itemMatching = (k) => (list.length === 1 ? list[0] : list[k]);
-	return { all: () => list, first: () => list[0], last: () => list[list.length - 1], item: list[0], itemMatching, isExecuted: list.length > 0 };
+	const list = __list(name);
+	return {
+		all: () => list,
+		first: () => list[0],
+		last: () => list[list.length - 1],
+		get item() { return __paired(name, undefined, false); },
+		itemMatching: (k) => __paired(name, k, true),
+		pairedItem: (k) => __paired(name, k, false),
+		isExecuted: list.length > 0,
+	};
 };
 // $workflow, $runIndex and $prevNode as the converter knows them (see lowerCode).
 const $workflow = __context.$workflow;
 const $runIndex = __context.$runIndex ?? 0;
 const $executionId = __context.$executionId;
 const $prevNode = __context.$prevNode;
-const $node = new Proxy({}, { get: (_, name) => (typeof name !== 'string' ? undefined : ((__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)))[0] ?? { json: undefined, pairedItem: { item: 0 } })) });
+const $nodeVersion = __context.$nodeVersion;
+// \`$node[name]\` of v1's data proxy: the data of the item at the index of the current item.
+const $node = new Proxy({}, { has: () => true, get: (_, name) => {
+	if (typeof name !== 'string') return undefined;
+	if (!__known(name)) __fail("Referenced node doesn't exist");
+	const read = () => {
+		const count = (__nodes[name] || []).length;
+		if (count === 0) __fail("Node '" + name + "' hasn't been executed");
+		if (count <= __current) {
+			__fail('"' + name + '" node has ' + count + " item(s) but you're trying to access item " + __current);
+		}
+		return __list(name)[__current];
+	};
+	return {
+		get json() { return read().json; },
+		get data() { return read().json; },
+		get binary() {
+			const out = {};
+			const binary = read().binary || {};
+			for (const key of Object.keys(binary)) {
+				const { data, ...rest } = binary[key];
+				out[key] = rest;
+			}
+			return out;
+		},
+	};
+} });
 // Legacy \`$items()\` of v1's data proxy: without a name, the input items (the first one only
 // when the node before has "execute once"); \`__inputItems\` gives the list of this mode.
 const $items = (name) => {
 	if (name === undefined) return __context.$itemsOnce ? __inputItems().slice(0, 1) : __inputItems();
-	return (__lists[name] ??= (__nodes[name] || []).map((json, k) => __wrap(json, k)));
+	return __list(name);
 };
 // Legacy \`$item(k)\` of v1's data proxy: the data of item k, with v1's errors. One run of each node.
 const __input = items.slice();
@@ -188,8 +333,18 @@ const FUNCTION_ITEM_BINARY = `	const getBinaryData = () => __item.binary;
 	const getWorkflowStaticData = (type) => $getWorkflowStaticData(type);
 `;
 
-export function allItemsCode(user: string, nodes: boolean, legacyFunction = false): string {
-	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${legacyFunction ? FUNCTION_BINARY : ''}items = items.map((j, k) => __wrap(j, k));
+/** The prologue of code that reads other nodes; `notRun` names the nodes without a run. */
+function nodesPrologue(notRun: string[]): string {
+	return `const __notRun = ${JSON.stringify(notRun)};\n${NODES_PROLOGUE}`;
+}
+
+export function allItemsCode(
+	user: string,
+	nodes: boolean,
+	legacyFunction = false,
+	notRun: string[] = [],
+): string {
+	return `${nodes ? nodesPrologue(notRun) : ''}${WRAP}${legacyFunction ? FUNCTION_BINARY : ''}items = items.map((j, k) => __wrap(j, k));
 const __inputItems = () => items;
 const $input = { all: () => items, first: () => items[0], last: () => items[items.length - 1], item: items[0] };
 // As n8n's runner: in "all items" mode, $json and $input.item are the first item.
@@ -219,16 +374,21 @@ const EACH_ITEM = `const __itemOf = (r, k) => {
 };
 `;
 
-export function eachItemCode(user: string, nodes: boolean, functionItem: boolean): string {
+export function eachItemCode(
+	user: string,
+	nodes: boolean,
+	functionItem: boolean,
+	notRun: string[] = [],
+): string {
 	const invalid = functionItem ? null : eachItemModeError(user);
 	// An object with a message and no stack: the host gives the message as it is.
 	if (invalid !== null) return `throw { message: ${JSON.stringify(invalid)} };\n`;
-	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${EACH_ITEM}const __all = items.map((j, k) => __wrap(j, k));
+	return `${nodes ? nodesPrologue(notRun) : ''}${WRAP}${EACH_ITEM}const __all = items.map((j, k) => __wrap(j, k));
 const __inputItems = () => __all;
 const __out = [];
 for (let $itemIndex = 0; $itemIndex < __all.length; $itemIndex++) {
 	const __item = __all[$itemIndex];
-	const item = ${functionItem ? '__item.json' : '__item'};
+${nodes ? '\t__current = $itemIndex;\n' : ''}	const item = ${functionItem ? '__item.json' : '__item'};
 ${functionItem ? FUNCTION_ITEM_BINARY : ''}	const $json = __all[$itemIndex].json;
 	const $binary = __all[$itemIndex].binary;
 	const $input = { item: __all[$itemIndex], all: () => __all, first: () => __all[0], last: () => __all[__all.length - 1] };
@@ -286,18 +446,37 @@ export function lowerCode(c: NodeContext): void {
 	}
 	// JavaScript that fits the subset runs natively (`code-native/`), else in the host.
 	if (lowerCodeNative(c)) return;
+	const codeField =
+		type === 'n8n-nodes-base.code' || type === 'n8n-nodes-base.aiTransform'
+			? 'jsCode'
+			: 'functionCode';
 	for (const g of MISSING_GLOBALS) {
-		if (user.includes(g)) {
+		if (readsGlobal(user, g)) {
 			throw new NodeFailure(
 				'code-global',
-				`The code uses \`${g.replace('(', '')}\`, which code steps in the fallback host do not have.`,
-				type === 'n8n-nodes-base.code' || type === 'n8n-nodes-base.aiTransform'
-					? 'jsCode'
-					: 'functionCode',
+				`The code uses \`${g}\`, which code steps in the fallback host do not have.`,
+				codeField,
 			);
 		}
 	}
+	for (const [form, reason] of INEXACT_READS) {
+		if (form.test(user)) {
+			throw new NodeFailure(
+				'code-global',
+				`The code reads ${reason}. The fallback host cannot give it as v1 does.`,
+				codeField,
+			);
+		}
+	}
+	if (eachItem && !functionItem && readsItemsOfAllMode(user)) {
+		throw new NodeFailure(
+			'code-global',
+			'The code reads `items` in "each item" mode, where v1 does not define it.',
+			codeField,
+		);
+	}
 	const refs = nodeReferences(user);
+	const notRun: string[] = [];
 	// `$(name)`, `$items(name)` or `$node[name]` with a computed name: the code can read any node,
 	// so it gets every node.
 	// A template literal with `${…}` is a computed name too.
@@ -305,13 +484,32 @@ export function lowerCode(c: NodeContext): void {
 		/(\$|\$items)\(\s*(?:[^'"`\s)]|`[^`]*\$\{)|\$node\s*\[\s*(?:[^'"`\s\]]|`[^`]*\$\{)/.test(user)
 	) {
 		for (const n of c.workflow.nodes) {
-			if (!refs.includes(n.name) && n.name !== c.node.name && c.ranBefore(n.name) !== null) {
-				refs.push(n.name);
-			}
+			if (refs.includes(n.name)) continue;
+			if (n.name !== c.node.name && c.ranBefore(n.name) !== null) refs.push(n.name);
+			else notRun.push(n.name);
 		}
+	}
+	const paired = pairedReads(user);
+	for (const name of paired === 'all' ? refs : paired) {
+		if (name === c.node.name || !c.pairsByPosition(name)) {
+			throw new NodeFailure(
+				'code-node-reference',
+				`The code reads the item of node "${name}" that pairs with an input item, and the pairing is not known: v1 follows the paired items of each node on the way.`,
+				codeField,
+			);
+		}
+	}
+	if (refs.length > 0 && /\.\s*pairedItem\b(?!\s*\()/.test(user)) {
+		throw new NodeFailure(
+			'code-node-reference',
+			'The code reads `pairedItem` of an item and reads other nodes: the paired items of the items of another node are not known.',
+			codeField,
+		);
 	}
 	const lists: string[] = [];
 	for (const name of refs) {
+		// As v1: a name that is not a node of the workflow is an error of `$(…)` itself.
+		if (c.scope.nodeParameters(name) === null) continue;
 		// The node itself has no list before its own run here: it reads as "not executed".
 		const list = name === c.node.name ? null : c.ranBefore(name);
 		if (list === null) {
@@ -323,12 +521,6 @@ export function lowerCode(c: NodeContext): void {
 		}
 		lists.push(`${JSON.stringify(name)}: ${list ?? 'null'}`);
 	}
-	if (refs.length > 0) {
-		c.warn(
-			'code-node-reference',
-			'The code reads other nodes; `.item` gives their first item and `.itemMatching(k)` pairs by position.',
-		);
-	}
 	const usesExecution = user.includes('$execution');
 	const globals: string[] = [];
 	if (usesExecution) globals.push('$execution: ctx.execution()');
@@ -337,6 +529,7 @@ export function lowerCode(c: NodeContext): void {
 		globals.push(`$workflow: { id: ${str(workflowId)}, name: ${str(workflowName)}, active: true }`);
 	}
 	if (user.includes('$runIndex')) globals.push(`$runIndex: ${c.runIndex}`);
+	if (user.includes('$nodeVersion')) globals.push(`$nodeVersion: ${c.version}`);
 	if (user.includes('$executionId')) globals.push('$executionId: ctx.execution().id');
 	if (user.includes('$prevNode')) globals.push(`$prevNode: ${prevNode(c)}`);
 	if (/\$items\(\s*\)/.test(user) && previousRunsOnce(c) === true) globals.push('$itemsOnce: true');
@@ -345,8 +538,8 @@ export function lowerCode(c: NodeContext): void {
 		refs.length > 0 || globals.length > 0 || /\$items\b|\$item\b|\$\(|\$node\b/.test(user);
 	const legacyFunction = type === 'n8n-nodes-base.function';
 	const body = eachItem
-		? eachItemCode(user, context, functionItem)
-		: allItemsCode(user, context, legacyFunction);
+		? eachItemCode(user, context, functionItem, notRun)
+		: allItemsCode(user, context, legacyFunction, notRun);
 	c.markFallback();
 	const fields: Array<[string, Code]> = [['code', raw(templateLiteral(body))]];
 	// Luxon's default zone in the code, as v1 sets it from the workflow.

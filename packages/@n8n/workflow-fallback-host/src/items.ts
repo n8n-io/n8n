@@ -123,16 +123,36 @@ function binaryItem(entry: JsonObject): JsonObject {
 	return { json, binary: entry.binary };
 }
 
+/**
+ * The JSON that v1's engine gives an item with the error `error`: `{ error: error.message }`.
+ * A value without a message gives an empty object, and v1 fails on null.
+ */
+function errorJson(error: JsonValue): JsonObject {
+	if (error === null) {
+		throw new StepInputError("Cannot read properties of null (reading 'message')");
+	}
+	const message = isJsonObject(error) ? error.message : undefined;
+	return message === undefined ? {} : { error: message };
+}
+
 /** The checks of n8n's `validateItem`, then the item as compiled code holds it. */
 function codeResultItem(entry: JsonObject, index: number): JsonObject {
-	const json = entry.json;
-	if (!isJsonObject(json)) {
+	const own = entry.json;
+	if (!isJsonObject(own)) {
 		throw new StepInputError(`A 'json' property isn't an object [item ${index}]`);
 	}
 	const binary = entry.binary;
 	if (binary !== undefined && !isJsonObject(binary)) {
 		throw new StepInputError(`A 'binary' property isn't an object [item ${index}]`);
 	}
+	// As v1's engine (`normalizeNodeErrors`): the JSON of an item with an error is the message
+	// of the error.
+	const json =
+		entry.error !== undefined
+			? errorJson(entry.error)
+			: own.$error !== undefined && own.$json !== undefined
+				? errorJson(own.$error)
+				: own;
 	// As n8n's Code node: the binary data stays as the code made it.
 	return isJsonObject(binary) && Object.keys(binary).length > 0
 		? { ...json, $binary: binary }

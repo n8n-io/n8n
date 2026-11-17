@@ -362,8 +362,8 @@ return [{ json: r }];`,
 		expect(() => run('throw "plain";')).toThrow('plain');
 	});
 
-	it('reports a syntax error', () => {
-		expect(() => run('return {')).toThrow(/syntax error/);
+	it('reports a syntax error with the message of v1, without a prefix', () => {
+		expect(() => run('return [;')).toThrow(/^Unexpected token ';'$/);
 	});
 
 	it('stops a synchronous endless loop', () => {
@@ -378,10 +378,17 @@ return [{ json: r }];`,
 		expect(() => run('await new Promise(() => {});')).toThrow(/never settles/);
 	});
 
-	it('has no require, process or timers', () => {
-		expect(run('return { r: typeof require, p: typeof process, t: typeof setTimeout };')).toEqual([
-			{ r: 'undefined', p: 'undefined', t: 'undefined' },
+	it('has require, as v1 does, and no process', () => {
+		expect(run('return { r: typeof require, p: typeof process };')).toEqual([
+			{ r: 'function', p: 'undefined' },
 		]);
+		expect(() => run("return { os: require('os') };")).toThrow("Module 'os' is disallowed");
+	});
+
+	it('gives btoa, atob and the text coders, as v1 does', () => {
+		expect(
+			run("return { b: btoa('hi'), a: atob('aGk='), n: new TextEncoder().encode('hi').length };"),
+		).toEqual([{ b: 'aGk=', a: 'hi', n: 2 }]);
 	});
 
 	it('does not share state between calls', () => {
@@ -441,8 +448,17 @@ return [{ json: r }];`,
 		);
 	});
 
-	it('rejects a result that is not JSON', () => {
-		expect(() => run('return { n: 1n };')).toThrow(/not JSON/);
+	it('gives a BigInt as its text and fails on a cycle, as v1 does', () => {
+		expect(run('return { n: 1n };')).toEqual([{ n: '1' }]);
+		expect(() => run('const a = {}; a.self = a; return a;')).toThrow(/^Unknown error$/);
+	});
+
+	it('gives the message of the error of an item as its JSON, as v1 does', () => {
+		expect(run("return [{ json: { a: 1 }, error: { message: 'm' } }];")).toEqual([{ error: 'm' }]);
+		expect(run("return [{ json: { a: 1 }, error: 'text' }];")).toEqual([{}]);
+		expect(() => run('return [{ json: { a: 1 }, error: null }];')).toThrow(
+			"Cannot read properties of null (reading 'message')",
+		);
 	});
 });
 

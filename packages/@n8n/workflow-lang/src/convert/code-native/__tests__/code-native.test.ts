@@ -325,11 +325,9 @@ describe('native Code nodes', () => {
 		if (h.ok && n.ok) expect(n.value).toEqual(h.value);
 	});
 
-	it('gives itemMatching in host code steps, also for a computed node name', () => {
+	it('gives itemMatching by position in host code steps, also for a computed node name', () => {
 		const code =
 			"const name = 'Lookup'; let id; try { id = $(name).itemMatching($itemIndex).json.id; } catch (e) { id = e.message; } return { json: { id } };";
-		const one = host(code, 'each', [{ a: 1 }, { a: 2 }], { Lookup: [{ id: 'x' }] });
-		expect(one).toEqual({ ok: true, value: [{ id: 'x' }, { id: 'x' }] });
 		const two = host(code, 'each', [{ a: 1 }, { a: 2 }], { Lookup: [{ id: 'x' }, { id: 'y' }] });
 		expect(two).toEqual({ ok: true, value: [{ id: 'x' }, { id: 'y' }] });
 	});

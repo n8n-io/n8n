@@ -268,14 +268,30 @@ describe('reads of other nodes in a converted workflow', () => {
 		]);
 	});
 
-	it('keeps .itemMatching in the host after a node that can change the number of items', async () => {
+	it('refuses .itemMatching and .item after a node that can change the number of items', () => {
 		const pass = node('Pass', 'code', { jsCode: 'return items.slice(1);' });
-		const read = node('Code', 'code', { jsCode: 'return [$("List").itemMatching(0)];' });
-		const { out } = await converted(
-			[hook, list, pass, read],
-			Object.fromEntries([link('Hook', 'List'), link('List', 'Pass'), link('Pass', 'Code')]),
-		);
-		expect(out.fallbackNodes).toEqual(['Code']);
+		for (const jsCode of [
+			'return [$("List").itemMatching(0)];',
+			'return [$("List").item];',
+			'const list = $("List");\nreturn [list.item];',
+		]) {
+			const out = convertWorkflow(
+				{
+					name: 'References',
+					nodes: [hook, list, pass, node('Code', 'code', { jsCode })],
+					connections: Object.fromEntries([
+						link('Hook', 'List'),
+						link('List', 'Pass'),
+						link('Pass', 'Code'),
+					]),
+				},
+				{ trace: 'all' },
+			);
+			expect(out.ok).toBe(false);
+			expect(out.diagnostics.filter((d) => d.severity === 'error').map((d) => d.code)).toEqual([
+				'code-node-reference',
+			]);
+		}
 	});
 
 	it('keeps .itemMatching in the host for a node with "execute once"', async () => {
