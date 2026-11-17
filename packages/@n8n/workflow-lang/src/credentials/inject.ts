@@ -154,6 +154,40 @@ const MANUAL_RULES: Record<string, ManualRule> = {
 						password: '{{$credentials.authToken}}',
 					},
 				},
+	// ShopifyApi.authenticate: basic auth with the API key and the password.
+	shopifyApi: () => ({
+		basicAuth: { user: '{{$credentials.apiKey}}', password: '{{$credentials.password}}' },
+	}),
+	// ZendeskApi.authenticate: basic auth with the email, the text `/token`, and the API token.
+	zendeskApi: () => ({
+		basicAuth: { user: '{{$credentials.email}}/token', password: '{{$credentials.apiToken}}' },
+	}),
+	// NextCloudApi.authenticate: basic auth with the user and the password.
+	nextCloudApi: () => ({
+		basicAuth: { user: '{{$credentials.user}}', password: '{{$credentials.password}}' },
+	}),
+	// TrelloApi.authenticate: the key and the token in the query.
+	trelloApi: () => ({
+		qs: { key: '{{$credentials.apiKey}}', token: '{{$credentials.apiToken}}' },
+	}),
+	// CalendlyApi.authenticate: a bearer token. A key that is not a text gives an empty token.
+	calendlyApi: (data) => ({
+		headers: {
+			Authorization:
+				data !== undefined && typeof data.apiKey !== 'string'
+					? 'Bearer '
+					: 'Bearer {{$credentials.apiKey}}',
+		},
+	}),
+	// SegmentApi.authenticate: basic auth with the write key and no password.
+	segmentApi: () => ({
+		basicAuth: { user: '{{$credentials.writekey}}', password: '' },
+	}),
+	// LemlistApi.authenticate: basic auth with no user, and the user agent `n8n`.
+	lemlistApi: () => ({
+		headers: { 'user-agent': 'n8n' },
+		basicAuth: { user: '', password: '{{$credentials.apiKey}}' },
+	}),
 	// The HTTP Request node applies these generic types in its own code.
 	httpBasicAuth: () => ({
 		basicAuth: { user: '{{$credentials.user}}', password: '{{$credentials.password}}' },

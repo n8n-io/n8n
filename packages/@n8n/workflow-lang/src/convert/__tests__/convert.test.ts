@@ -402,8 +402,23 @@ describe('credential types that the runtime cannot apply', () => {
 	});
 
 	it('lists the types of every reason that the runtime cannot apply', () => {
-		for (const type of ['githubAppApi', 'metabaseApi', 'aws', 'oAuth1Api', 'zendeskApi']) {
+		for (const type of ['githubAppApi', 'metabaseApi', 'aws', 'oAuth1Api', 'wooCommerceApi']) {
 			expect(NOT_INJECTABLE.has(type)).toBe(true);
 		}
+	});
+
+	it.each([
+		'shopifyApi',
+		'zendeskApi',
+		'nextCloudApi',
+		'trelloApi',
+		'calendlyApi',
+		'segmentApi',
+		'lemlistApi',
+	])('runs an HTTP Request with the credential type %s natively', (type) => {
+		expect(NOT_INJECTABLE.has(type)).toBe(false);
+		const r = convertWorkflow(httpWith(type));
+		expect(r.ok).toBe(true);
+		expect(r.fallbackNodes).not.toContain('Call');
 	});
 });
