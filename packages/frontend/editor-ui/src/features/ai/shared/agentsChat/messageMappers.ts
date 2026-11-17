@@ -24,7 +24,7 @@ import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
-import { newReplyAttachments } from './replyFiles';
+import { addReplyAttachments, newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
 	AgentsChatHostEvent,
@@ -474,6 +474,7 @@ export function applyOpenSuspensions(
 				if (suspension.suspendPayload !== undefined) {
 					toolCall.suspendPayload = suspension.suspendPayload;
 				}
+				addReplyAttachments(msg, toolCall);
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (rebuilt) {
 					rebuilt.runId = suspension.runId;

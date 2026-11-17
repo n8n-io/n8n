@@ -66,9 +66,14 @@ function isValidImageKey(key: string): key is ImageKey {
 	return key in TEST_CONTAINER_IMAGES;
 }
 
+// No CI suite uses these, and LiteLLM alone is about 2.5 GB. Name them to pull them.
+const ON_DEMAND_IMAGE_KEYS = new Set<string>(['litellm']);
+
 function getRequestedImages(args: string[]): string[] {
 	if (args.length === 0) {
-		return Object.values(TEST_CONTAINER_IMAGES);
+		return Object.entries(TEST_CONTAINER_IMAGES)
+			.filter(([key]) => !ON_DEMAND_IMAGE_KEYS.has(key))
+			.map(([, image]) => image);
 	}
 
 	const invalid = args.filter((arg) => !isValidImageKey(arg));

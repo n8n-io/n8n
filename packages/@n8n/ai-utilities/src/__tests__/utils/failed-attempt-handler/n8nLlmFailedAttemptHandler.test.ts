@@ -1,6 +1,7 @@
 import { AsyncCaller } from '@langchain/core/utils/async_caller';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeApiError, UnexpectedError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { makeN8nLlmFailedAttemptHandler } from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';

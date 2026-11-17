@@ -29,6 +29,7 @@ import {
 	ContentTooLargeError,
 	InternalServerError,
 	NotFoundError,
+	ResponseError,
 	ServiceUnavailableError,
 	TooManyRequestsError,
 } from '@n8n/errors';
@@ -68,6 +69,9 @@ export class AiController {
 
 	/** Maps a failure from a service call to the HTTP error the client should see. */
 	private toResponseError(error: unknown) {
+		if (error instanceof ResponseError) {
+			return error;
+		}
 		// The AI assistant service could not be reached (DNS, refused connection, timeout).
 		if (error instanceof NetworkError) {
 			return new ServiceUnavailableError(error.message);

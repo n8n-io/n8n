@@ -5,6 +5,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { callFields, callOperations } from './CallDescription';
@@ -92,7 +93,7 @@ export class Plivo implements INodeType {
 						text: this.getNodeParameter('message', i) as string,
 					} as IDataObject;
 
-					responseData = await plivoApiRequest.call(this, 'POST', '/Message', body);
+					responseData = await plivoApiRequest.call(this, 'POST', requestPath`/Message`, body);
 				}
 			} else if (resource === 'call') {
 				// *********************************************************************
@@ -113,7 +114,7 @@ export class Plivo implements INodeType {
 						answer_method: this.getNodeParameter('answer_method', i) as string,
 					} as IDataObject;
 
-					responseData = await plivoApiRequest.call(this, 'POST', '/Call', body);
+					responseData = await plivoApiRequest.call(this, 'POST', requestPath`/Call`, body);
 				}
 			} else if (resource === 'mms') {
 				// *********************************************************************
@@ -135,7 +136,7 @@ export class Plivo implements INodeType {
 						media_urls: this.getNodeParameter('media_urls', i) as string,
 					} as IDataObject;
 
-					responseData = await plivoApiRequest.call(this, 'POST', '/Message', body);
+					responseData = await plivoApiRequest.call(this, 'POST', requestPath`/Message`, body);
 				}
 			}
 

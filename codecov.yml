@@ -78,6 +78,7 @@ component_management:
         - packages/@n8n/backend-test-utils/**
         - packages/@n8n/cli/**
         - packages/@n8n/client-oauth2/**
+        - packages/@n8n/code-runtime-js/**
         - packages/@n8n/config/**
         - packages/@n8n/constants/**
         - packages/@n8n/crdt/**
@@ -90,12 +91,14 @@ component_management:
         - packages/@n8n/extension-sdk/**
         - packages/@n8n/imap/**
         - packages/@n8n/inbound-auth/**
+        - packages/@n8n/leases/**
         - packages/@n8n/permissions/**
         - packages/@n8n/scan-community-package/**
         - packages/@n8n/syslog-client/**
         - packages/@n8n/task-runner/**
         - packages/@n8n/task-runner-python/**
         - packages/@n8n/tournament/**
+        - packages/@n8n/workflow-engine-check/**
         - packages/@n8n/workflow-sdk/**
     - component_id: frontend_packages
       name: Frontend

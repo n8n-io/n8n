@@ -1,10 +1,5 @@
 # check=skip=InvalidDefaultArgInFrom
 ARG PNPM_VERSION=12.4.2
-ARG PYTHON_VERSION=3.13
-# Each digest pins the multi-arch index of its tag. Change the tag and the digest
-# together. PYTHON_VERSION above is the major.minor of PYTHON_IMAGE.
-ARG PYTHON_IMAGE=python:3.13.18-slim-trixie@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1
-ARG ALPINE_IMAGE=alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # glibc variant of ./Dockerfile, for Code nodes that load a vendor library that
 # needs glibc (Oracle Instant Client, IBM Db2) on an external runner. The runtime
@@ -13,8 +8,12 @@ ARG ALPINE_IMAGE=alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51
 # of the n8n Debian image too.
 # docker/docker-bake.hcl sets these. Build with `pnpm build:docker` or
 # `docker buildx bake`, not plain `docker build`.
+# PYTHON_VERSION is the major.minor of PYTHON_IMAGE.
 ARG BUILDER_IMAGE
 ARG RUNTIME_IMAGE
+ARG PYTHON_IMAGE
+ARG PYTHON_VERSION
+ARG ALPINE_IMAGE
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI

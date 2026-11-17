@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	MultiPartFormData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, requestPath } from 'n8n-workflow';
 
 import { jotformApiRequest } from './GenericFunctions';
 
@@ -86,7 +86,7 @@ export class JotFormTrigger implements INodeType {
 				const qs: IDataObject = {
 					limit: 1000,
 				};
-				const forms = await jotformApiRequest.call(this, 'GET', '/user/forms', {}, qs);
+				const forms = await jotformApiRequest.call(this, 'GET', requestPath`/user/forms`, {}, qs);
 
 				if (!Array.isArray(forms?.content)) return [];
 
@@ -108,9 +108,9 @@ export class JotFormTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('form') as string;
-				const endpoint = `/form/${formId}/webhooks`;
 
 				try {
+					const endpoint = requestPath`/form/${formId}/webhooks`;
 					const responseData = await jotformApiRequest.call(this, 'GET', endpoint);
 
 					const webhookUrls = Object.values(responseData.content as IDataObject);
@@ -130,7 +130,7 @@ export class JotFormTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('form') as string;
-				const endpoint = `/form/${formId}/webhooks`;
+				const endpoint = requestPath`/form/${formId}/webhooks`;
 				const body: IDataObject = {
 					webhookURL: webhookUrl,
 				};
@@ -142,8 +142,8 @@ export class JotFormTrigger implements INodeType {
 				let responseData;
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('form') as string;
-				const endpoint = `/form/${formId}/webhooks/${webhookData.webhookId}`;
 				try {
+					const endpoint = requestPath`/form/${formId}/webhooks/${webhookData.webhookId}`;
 					responseData = await jotformApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;
@@ -182,7 +182,7 @@ export class JotFormTrigger implements INodeType {
 		}
 
 		// Resolve the data by requesting the information via API
-		const endpoint = `/form/${formId}/questions`;
+		const endpoint = requestPath`/form/${formId}/questions`;
 		const responseData = await jotformApiRequest.call(this, 'GET', endpoint, {});
 
 		// Create a dictionary to resolve the keys

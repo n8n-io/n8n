@@ -221,6 +221,24 @@ describe('AgentValidationTooltip', () => {
 		);
 	});
 
+	it('attributes a dangling tool guardrail ref to the guardrail capability', () => {
+		const wrapper = mountTooltip({
+			action: 'publish',
+			issues: [
+				{
+					code: 'invalid_value',
+					path: 'config.guardrails.tools.0.tools.0',
+					capability: { kind: 'guardrail', id: 'guard_1' },
+				},
+			],
+			fallback: 'agents.publish.button.invalidConfigTooltip',
+		});
+
+		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(
+			'agents.publish.issue.guardrail.invalidValue',
+		);
+	});
+
 	it('shows at most five preview messages and adds a hidden-count label', () => {
 		const wrapper = mountTooltip({
 			action: 'preview',

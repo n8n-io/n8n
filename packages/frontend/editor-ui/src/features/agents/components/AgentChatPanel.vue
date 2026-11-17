@@ -15,6 +15,8 @@ import {
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
+	N8nAttachment,
+	N8nAttachmentGroup,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
@@ -22,6 +24,7 @@ import {
 	N8nLink,
 	N8nText,
 	N8nTooltip,
+	type IconName,
 } from '@n8n/design-system';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -51,7 +54,7 @@ import type {
 	ChatMessageQueueSteerAction,
 	ChatMessageQueueItem,
 } from '@/features/ai/shared/components/chatMessageQueue.types';
-import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
+import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
 import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
@@ -103,6 +106,8 @@ import {
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 
+const IME_COMPOSITION_KEYCODE = 229;
+
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
@@ -113,6 +118,8 @@ const props = withDefaults(
 		continueSessionId?: string;
 		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
+		/** Shows this plain icon in the empty state instead of the agent's icon tile. */
+		emptyStateIcon?: IconName;
 		/** Replaces the model-derived attachment support, for pages that get no model. */
 		attachmentCapabilities?: ProviderAttachmentCapabilities;
 		/**
@@ -194,6 +201,8 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'content-change': [hasContent: boolean];
+	/** The composer text became empty: a send or the user cleared it. `sendHostMessage` does not. */
+	'draft-cleared': [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -215,6 +224,19 @@ const emit = defineEmits<{
 	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
+	/**
+	 * The chat posts a new message now, before the server answers, so a refused
+	 * send emits this too. Typed text that cancels an open card emits this, but
+	 * answers to the card do not.
+	 */
+	'message-sending': [
+		payload: {
+			text: string;
+			files: File[];
+			clientContext?: Record<string, unknown>;
+			isFirstMessage: boolean;
+		},
+	];
 }>();
 
 defineSlots<{
@@ -272,6 +294,7 @@ const {
 	isSubmitting,
 	isLoadingHistory,
 	isStreaming,
+	isStreamAttached,
 	refresh,
 	isCancelling,
 	messagingState,
@@ -419,6 +442,29 @@ async function startQueueEdit(item: AgentChatQueueItem) {
 
 /** Allows Option/Alt + Up to edit the last sent queued message */
 function onChatInputKeydown(event: KeyboardEvent) {
+	/** Keep text navigation, modified shortcuts, and composition unchanged. */
+	if (
+		event.key === 'ArrowUp' &&
+		event.target instanceof HTMLTextAreaElement &&
+		event.target === chatInput.value?.getInputElement() &&
+		!event.target.value &&
+		!event.defaultPrevented &&
+		!event.altKey &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		!event.shiftKey &&
+		!event.isComposing &&
+		event.keyCode !== IME_COMPOSITION_KEYCODE &&
+		!event.repeat &&
+		attachedFiles.value.length > 0 &&
+		removingFiles.value.size === 0
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		attachmentGroupRef.value?.focus();
+		return;
+	}
+
 	if (
 		!(event.target instanceof HTMLTextAreaElement) ||
 		event.key !== 'ArrowUp' ||
@@ -706,11 +752,37 @@ const backgroundElapsed = computed(() => {
 });
 
 const attachedFiles = ref<File[]>([]);
-// Host chips for the next message. They do not make a draft: a message still
-// needs text or files.
+const removingFiles = ref(new Set<File>());
+
+/** Clear stale removal state only after the draft file list changes. */
+watch(
+	() => [...attachedFiles.value],
+	(files) => {
+		for (const file of removingFiles.value) {
+			if (!files.includes(file)) removingFiles.value.delete(file);
+		}
+	},
+);
+
+const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
+const draftFileKeys = new WeakMap<File, number>();
+let nextDraftFileKey = 0;
+
+function draftFileKey(file: File): number {
+	let key = draftFileKeys.get(file);
+	if (key === undefined) {
+		key = nextDraftFileKey++;
+		draftFileKeys.set(file, key);
+	}
+	return key;
+}
+
+/** Host chips need text or files before the message can be sent. */
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 const composerChips = computed(() => composerAttachments.value.map(({ chip }) => chip));
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const attachmentGroupRef =
+	useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroupRef');
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
 const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
@@ -993,6 +1065,7 @@ const budgetIncreasePending = ref(false);
 const isRetrying = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
+		removingFiles.value.size > 0 ||
 		isRetrying.value ||
 		!!editingQueueId.value ||
 		isPreparingToSend.value ||
@@ -1123,12 +1196,17 @@ const displayedMessagingState = computed(() =>
 	isPreviewingFirstMessage.value ? 'waitingFirstChunk' : messagingState.value,
 );
 
+// A new n8n Chat has no history, so its first load does not hide the empty state.
+// No hand-off waits behind the load either: this page shows one as a bubble at once.
+const isLoadingNewChat = computed(
+	() => props.centerEmptyState && props.newSession && isLoadingHistory.value,
+);
 const isCenteredEmpty = computed(
 	() =>
 		props.centerEmptyState &&
 		props.newSession &&
 		displayedMessages.value.length === 0 &&
-		!isStreaming.value,
+		(!isStreaming.value || isLoadingNewChat.value),
 );
 
 watch(isStreaming, (v) => emit('update:streaming', v));
@@ -1193,6 +1271,31 @@ async function onSubmit(): Promise<SubmitResult> {
 	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
 }
 
+function emitMessageSending(message: {
+	text: string;
+	files: File[];
+	clientContext?: Record<string, unknown>;
+}) {
+	emit('message-sending', {
+		...message,
+		isFirstMessage: !messages.value.some((entry) => entry.role === 'user'),
+	});
+}
+
+/** Returns a check that is true while the panel still shows the chat it showed at the call. */
+function captureTarget(): () => boolean {
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	return () =>
+		!disposed &&
+		props.projectId === target.projectId &&
+		props.agentId === target.agentId &&
+		props.continueSessionId === target.continueSessionId;
+}
+
 async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
@@ -1201,16 +1304,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (ownedHandoffPreview) handoffPreview = undefined;
 	const ownedClientContext = submittingQueuedExternalMessage ? externalClientContext : undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
-	const target = {
-		projectId: props.projectId,
-		agentId: props.agentId,
-		continueSessionId: props.continueSessionId,
-	};
-	const isCurrentTarget = () =>
-		!disposed &&
-		props.projectId === target.projectId &&
-		props.agentId === target.agentId &&
-		props.continueSessionId === target.continueSessionId;
+	const isCurrentTarget = captureTarget();
 
 	const composerResume = text ? getExtensionComposerResume(text) : undefined;
 	if (composerResume) {
@@ -1225,6 +1319,8 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
+		// Steering sends the text without the files or the client context.
+		emitMessageSending({ text, files: [] });
 		const result = await cancelAndSteer(text, () => {
 			if (!isCurrentTarget()) return;
 			if (inputText.value.trim() === text) inputText.value = '';
@@ -1233,6 +1329,40 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		});
 		return result === 'busy' ? 'busy' : 'sent';
 	}
+
+	return await sendRequest({
+		text,
+		files,
+		fromComposer: true,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	});
+}
+
+interface SendRequest {
+	text: string;
+	files: File[];
+	/**
+	 * The composer holds the message: its staged chips go with it, and an accepted
+	 * send clears the composer. A host send leaves the composer to the user.
+	 */
+	fromComposer: boolean;
+	/** The bubble a hand-off installed before it was sent. */
+	handoffPreview?: ChatMessage;
+	/** Sent with this message only, on top of the `clientContext` prop. */
+	clientContext?: Record<string, unknown>;
+}
+
+async function sendRequest(request: SendRequest): Promise<SubmitResult> {
+	const {
+		text,
+		files,
+		fromComposer,
+		handoffPreview: ownedHandoffPreview,
+		clientContext: ownedClientContext,
+	} = request;
+	const hadNoMessagesBeforeSend = messages.value.length === 0;
+	const isCurrentTarget = captureTarget();
 
 	isPreparingToSend.value = true;
 	try {
@@ -1255,7 +1385,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		let accepted = false;
 		// Build the client context after `beforeSend`, so it reflects the host state at
 		// send time. The staged chip patches go on top of it.
-		const sentAttachments = [...composerAttachments.value];
+		const sentAttachments = fromComposer ? [...composerAttachments.value] : [];
 		const hostClientContext = props.clientContext?.();
 		const clientContext = mergeClientContextPatches(
 			sentAttachments,
@@ -1279,16 +1409,18 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 					agentConfig: fingerprint,
 				});
 			}
+			queueExpanded.value = false;
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
+			if (!fromComposer) return;
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			composerAttachments.value = composerAttachments.value.filter(
 				(attachment) => !sentAttachments.includes(attachment),
 			);
 			externalAttachedFiles = [];
-			queueExpanded.value = false;
 			consumeQueuedExternalMessage(text);
-			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		};
+		emitMessageSending({ text, files, clientContext });
 		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
 		const result = await sending;
@@ -1337,6 +1469,20 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	} finally {
 		budgetIncreasePending.value = false;
 	}
+}
+
+/**
+ * Sends a host message without the composer: the user's draft, files, and staged
+ * chips stay where they are. Unlike `sendMessageFromOutside`, a blocked send is
+ * not queued and does not answer an open card; it returns `'busy'` instead.
+ */
+async function sendHostMessage(
+	text: string,
+	clientContext?: Record<string, unknown>,
+): Promise<SubmitResult> {
+	if (!text) return 'rejected';
+	if (isSubmissionBlocked.value || hasOpenInteraction.value) return 'busy';
+	return await sendRequest({ text, files: [], fromComposer: false, clientContext });
 }
 
 function sendMessageFromOutside(
@@ -1407,6 +1553,12 @@ function isDirty(): boolean {
 }
 
 watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
+watch(
+	() => inputText.value.trim() === '',
+	(isEmpty) => {
+		if (isEmpty) emit('draft-cleared');
+	},
+);
 
 /** Puts text into the composer without sending it. */
 function setDraft(text: string) {
@@ -1543,6 +1695,7 @@ defineExpose({
 	focusInput,
 	getConversationMarkdown,
 	sendMessageFromOutside,
+	sendHostMessage,
 	clearBudgetStops,
 	isDirty,
 	setDraft,
@@ -1557,6 +1710,17 @@ defineExpose({
 	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
 	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
+	/**
+	 * A live stream delivers the events of the run. `isStreaming` is also true for a run
+	 * that the chat follows only through history, for example after a reload.
+	 */
+	isStreamAttached: computed(() => isStreamAttached.value),
+	/** A message is sent and the server has not started the reply yet. */
+	isSubmitting: computed(() => isSubmitting.value),
+	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
+	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The chat shows a card that the run waits on, including a waiting card. */
+	hasOpenInteraction: computed(() => hasOpenInteraction.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
 	isBusy: computed(
 		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,
@@ -1643,7 +1807,7 @@ onBeforeUnmount(() => {
 		<template
 			v-if="
 				displayedMessages.length === 0 &&
-				!isStreaming &&
+				((!isStreaming && !isLoadingHistory) || isLoadingNewChat) &&
 				!stopNotice &&
 				!preparingSummary &&
 				!summaryMissing &&
@@ -1651,7 +1815,7 @@ onBeforeUnmount(() => {
 			"
 		>
 			<slot name="empty-state">
-				<AgentChatEmptyState :agent-config="agentConfig" />
+				<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
 			</slot>
 		</template>
 		<AgentChatMessageList
@@ -1904,7 +2068,10 @@ onBeforeUnmount(() => {
 						"
 						#attachments
 					>
-						<div :class="$style.attachmentsStrip">
+						<div
+							v-if="composerAttachments.length > 0 || $slots['composer-attachments']"
+							:class="$style.attachmentsStrip"
+						>
 							<slot
 								name="composer-attachments"
 								:chips="composerChips"
@@ -1926,14 +2093,25 @@ onBeforeUnmount(() => {
 									@remove="removeComposerAttachment(chip.id)"
 								/>
 							</slot>
-							<AttachmentPreview
-								v-for="(file, index) in attachedFiles"
-								:key="`${file.name}-${index}`"
-								:file="file"
-								is-removable
-								@remove="handleFileRemove"
-							/>
 						</div>
+						<N8nAttachmentGroup
+							v-if="attachedFiles.length > 0"
+							ref="attachmentGroupRef"
+							:class="$style.attachmentGroup"
+						>
+							<N8nAttachment
+								v-for="file in attachedFiles"
+								:key="draftFileKey(file)"
+								:file-name="file.name"
+								:mime-type="file.type"
+								:size-bytes="file.size"
+								:src="previewUrl(file)"
+								:is-removable="true"
+								@remove-start="removingFiles.add(file)"
+								@remove="handleFileRemove(file)"
+								@remove-end="removingFiles.delete(file)"
+							/>
+						</N8nAttachmentGroup>
 					</template>
 					<template #footer-start>
 						<slot name="composer-start" />
@@ -2190,5 +2368,8 @@ onBeforeUnmount(() => {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	word-break: break-word;
+}
+.attachmentGroup {
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 </style>

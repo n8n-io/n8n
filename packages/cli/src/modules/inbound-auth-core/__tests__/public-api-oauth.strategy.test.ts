@@ -52,7 +52,7 @@ const makeUser = (id: string, scopeSlugs: string[]): User =>
 			slug: 'global:member',
 			scopes: scopeSlugs.map((slug) => ({ ...mock(), slug: slug as Scope })),
 		},
-	}) as User;
+	}) as unknown as User;
 
 beforeEach(() => {
 	vi.clearAllMocks();

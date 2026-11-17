@@ -4,8 +4,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 export interface RundeckCredentials {
 	url: string;
@@ -35,17 +37,17 @@ export class RundeckApi {
 
 	protected async request(
 		method: IHttpRequestMethods,
-		endpoint: string,
+		endpoint: RequestPath,
 		body: IDataObject,
 		query: IDataObject,
 	) {
 		const credentialType = 'rundeckApi';
 
-		const options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			rejectUnauthorized: this.shouldValidateCertificates(),
 			method,
 			qs: query,
-			uri: (this.credentials?.url as string) + endpoint,
+			uri: requestUrl`${this.credentials?.url}${endpoint}`,
 			body,
 			json: true,
 		};
@@ -89,10 +91,10 @@ export class RundeckApi {
 			query.filter = filter;
 		}
 
-		return await this.request('POST', `/api/14/job/${jobId}/run`, body, query);
+		return await this.request('POST', requestPath`/api/14/job/${jobId}/run`, body, query);
 	}
 
 	async getJobMetadata(jobId: string): Promise<IDataObject> {
-		return await this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
+		return await this.request('GET', requestPath`/api/18/job/${jobId}/info`, {}, {});
 	}
 }

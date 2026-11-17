@@ -5,6 +5,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	rmSync,
 	unlinkSync,
 	writeFileSync,
 } from 'node:fs';
@@ -13,7 +14,6 @@ import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import { promisify } from 'node:util';
 
-import postgresVersions from './postgres-versions.json';
 import { StartupDeadline } from './startup-deadline';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
@@ -21,28 +21,28 @@ const execAsync = promisify(execCallback);
 
 const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
 const DEFAULT_CHART_REPO = 'https://github.com/n8n-io/n8n-hosting.git';
-const DEFAULT_CHART_REF = 'main';
+// A tag, not a branch, so that a chart change cannot break this stack unseen.
+const DEFAULT_CHART_REF = 'v2.0.0-rc.2';
+const DEFAULT_EXAMPLE = 'standalone';
 const N8N_NODE_PORT = 30080;
 const HEALTH_POLL_INTERVAL_MS = 2_000;
 const CONTAINERD_READY_TIMEOUT_MS = 30_000;
 const K3S_STARTUP_TIMEOUT_MS = 120_000;
 const COMMAND_TIMEOUT_MS = 600_000;
 
-export type HelmStackMode = 'standalone' | 'queue';
-
 export interface HelmStackConfig {
 	/** n8n Docker image to deploy (default: TEST_CONTAINER_IMAGES.n8n) */
 	n8nImage?: string;
 	/** K3s image (default: rancher/k3s:v1.32.2-k3s1) */
 	k3sImage?: string;
-	/** Git ref for the n8n-hosting repo (default: main) */
+	/** Git ref for the n8n-hosting repo (default: the pinned tag) */
 	helmChartRef?: string;
 	/** Git repo URL for the Helm chart (default: n8n-io/n8n-hosting) */
 	helmChartRepo?: string;
 	/** Total startup timeout in ms (default: 300_000) */
 	startupTimeoutMs?: number;
-	/** Deployment mode: standalone (SQLite) or queue (PostgreSQL + Redis + workers) */
-	mode?: HelmStackMode;
+	/** Chart example to install: a file name in `charts/n8n/examples`, without `.yaml` (default: standalone) */
+	example?: string;
 	/** Additional environment variables to inject into n8n pods via Helm set-flags (merge-last-wins over defaults) */
 	env?: Record<string, string>;
 }
@@ -109,13 +109,13 @@ async function preloadImage(
 			await execOnHost(
 				`docker save ${imageName} -o ${tarPath}`,
 				process.env,
-				'Save n8n image',
+				`Save ${imageName}`,
 				deadline,
 			);
 			await execOnHost(
 				`docker cp ${tarPath} ${container.getId()}:/tmp/n8n-image.tar`,
 				process.env,
-				'Copy n8n image',
+				`Copy ${imageName}`,
 				deadline,
 			);
 
@@ -182,13 +182,16 @@ async function cloneChartToHost(
 
 // -- Example values file selection --------------------------------------------
 
-const EXAMPLE_VALUES_FILES: Record<HelmStackMode, string> = {
-	standalone: 'standalone.yaml',
-	queue: 'minimal.yaml',
-};
-
-function getExampleValuesFile(chartDir: string, mode: HelmStackMode): string {
-	return join(chartDir, 'charts', 'n8n', 'examples', EXAMPLE_VALUES_FILES[mode]);
+/** The example, then the overlay that the chart CI installs it with. */
+function resolveValuesFiles(chartDir: string, example: string): string[] {
+	const chartPath = join(chartDir, 'charts', 'n8n');
+	const files = [
+		join(chartPath, 'examples', `${example}.yaml`),
+		join(chartPath, 'ci', 'install', `${example}.yaml`),
+	];
+	const missing = files.find((file) => !existsSync(file));
+	if (missing) throw new Error(`Unknown chart example "${example}": ${missing} not found`);
+	return files;
 }
 
 // -- Helm install flags -------------------------------------------------------
@@ -203,125 +206,32 @@ function parseImageName(imageName: string): { repository: string; tag: string } 
 }
 
 function buildHelmSetFlags(
-	imageName: string,
-	mode: HelmStackMode,
+	image: { repository: string; tag: string; runnersRepository: string },
 	baseUrl: string,
 	envOverrides?: Record<string, string>,
 ): string[] {
-	const { repository, tag } = parseImageName(imageName);
-
-	// Collect env vars as an array, then convert to indexed --set flags.
-	// This avoids fragile manual index tracking and makes it easy to add conditional entries.
-	const extraEnvs: Array<{ name: string; value: string }> = [
-		{ name: 'N8N_DIAGNOSTICS_ENABLED', value: 'false' },
-		{ name: 'N8N_DYNAMIC_BANNERS_ENABLED', value: 'false' },
-		// WEBHOOK_URL tells n8n its externally-accessible address (for invitation links, webhooks, etc.)
-		{ name: 'WEBHOOK_URL', value: baseUrl },
-	];
-
+	const env: Record<string, string> = {
+		N8N_DIAGNOSTICS_ENABLED: 'false',
+		N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+	};
 	// License env vars from host (same pattern as testcontainers stack)
-	if (process.env.N8N_LICENSE_TENANT_ID) {
-		extraEnvs.push({ name: 'N8N_LICENSE_TENANT_ID', value: process.env.N8N_LICENSE_TENANT_ID });
+	for (const name of ['N8N_LICENSE_TENANT_ID', 'N8N_LICENSE_ACTIVATION_KEY', 'N8N_LICENSE_CERT']) {
+		const value = process.env[name];
+		if (value) env[name] = value;
 	}
-	if (process.env.N8N_LICENSE_ACTIVATION_KEY) {
-		extraEnvs.push({
-			name: 'N8N_LICENSE_ACTIVATION_KEY',
-			value: process.env.N8N_LICENSE_ACTIVATION_KEY,
-		});
-	}
-	if (process.env.N8N_LICENSE_CERT) {
-		extraEnvs.push({ name: 'N8N_LICENSE_CERT', value: process.env.N8N_LICENSE_CERT });
-	}
+	Object.assign(env, envOverrides);
 
-	// Caller-provided env overrides (merge-last-wins)
-	if (envOverrides) {
-		for (const [name, value] of Object.entries(envOverrides)) {
-			extraEnvs.push({ name, value });
-		}
-	}
-
-	// Dynamic overrides on top of the example values file (-f).
-	// Mode-specific config (database type, queue settings, etc.) comes from the example file.
-	const flags = [
-		`--set image.repository=${repository}`,
-		`--set image.tag=${tag}`,
+	// Dynamic overrides on top of the example and overlay values files (-f).
+	return [
+		`--set image.repository=${image.repository}`,
+		`--set image.tag=${image.tag}`,
+		`--set taskRunners.image.repository=${image.runnersRepository}`,
+		// The chart defaults public URLs to https. This stack serves plain HTTP
+		// on a NodePort. Webhook URLs follow the editor URL.
+		`--set editor.url=${baseUrl}`,
 		// --set-string because K8s env values must be strings
-		...extraEnvs.flatMap((env, i) => [
-			`--set config.extraEnv[${i}].name=${env.name}`,
-			`--set-string config.extraEnv[${i}].value=${env.value}`,
-		]),
+		...Object.entries(env).map(([name, value]) => `--set-string env.shared.${name}=${value}`),
 	];
-
-	if (mode === 'standalone') {
-		// Override persistence size (example uses 5Gi, we need less for tests)
-		flags.push('--set persistence.size=1Gi');
-	} else {
-		// Override placeholder hosts to point at our Bitnami services
-		flags.push(
-			'--set database.host=postgresql',
-			'--set redis.host=redis-master',
-			// Example file references n8n-core-secrets, we use n8n-secrets
-			'--set secretRefs.existingSecret=n8n-secrets',
-		);
-	}
-
-	return flags;
-}
-
-// -- K8s secrets --------------------------------------------------------------
-
-async function createN8nSecret(env: NodeJS.ProcessEnv, deadline: StartupDeadline): Promise<void> {
-	log('Creating n8n core secrets...');
-	await execOnHost(
-		'kubectl create secret generic n8n-secrets --from-literal=N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing --from-literal=N8N_HOST=localhost --from-literal=N8N_PORT=5678 --from-literal=N8N_PROTOCOL=http',
-		env,
-		'Create n8n core secrets',
-		deadline,
-	);
-}
-
-// -- Queue mode infrastructure ------------------------------------------------
-
-async function deployQueueInfrastructure(
-	env: NodeJS.ProcessEnv,
-	deadline: StartupDeadline,
-): Promise<void> {
-	log('Adding Bitnami Helm repo...');
-	await execOnHost(
-		'helm repo add bitnami https://charts.bitnami.com/bitnami && helm repo update',
-		env,
-		'Add Bitnami repo',
-		deadline,
-	);
-
-	// By digest because the Bitnami catalog only publishes `postgresql:latest`,
-	// which the chart defaults to.
-	const { chartVersion, imageDigest } = postgresVersions.helm;
-
-	log(`Deploying PostgreSQL (chart ${chartVersion})...`);
-	await execOnHost(
-		`helm install postgresql bitnami/postgresql --version ${chartVersion} --set image.digest=${imageDigest} --set auth.username=n8n --set auth.password=n8n-test-password --set auth.database=n8n --set primary.resources.requests.cpu=100m --set primary.resources.requests.memory=256Mi --set primary.resources.limits.cpu=500m --set primary.resources.limits.memory=512Mi --wait --timeout 3m`,
-		env,
-		'Deploy PostgreSQL',
-		deadline,
-	);
-	log('PostgreSQL deployed');
-
-	log('Deploying Redis...');
-	await execOnHost(
-		"helm install redis bitnami/redis --set architecture=standalone --set auth.enabled=false --set-json 'master.disableCommands=[]' --set master.resources.requests.cpu=100m --set master.resources.requests.memory=128Mi --set master.resources.limits.cpu=250m --set master.resources.limits.memory=256Mi --wait --timeout 3m",
-		env,
-		'Deploy Redis',
-		deadline,
-	);
-	log('Redis deployed');
-
-	await execOnHost(
-		'kubectl create secret generic n8n-db-secret --from-literal=password=n8n-test-password',
-		env,
-		'Create DB password secret',
-		deadline,
-	);
 }
 
 // -- Health check -------------------------------------------------------------
@@ -359,32 +269,45 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		helmChartRef = DEFAULT_CHART_REF,
 		helmChartRepo = DEFAULT_CHART_REPO,
 		startupTimeoutMs = 300_000,
-		mode = 'standalone',
+		example = DEFAULT_EXAMPLE,
 		env: envOverrides,
 	} = config;
 	const startupDeadline = new StartupDeadline(startupTimeoutMs);
 
-	const containerName = `n8n-helm-${mode}-${Date.now().toString(36)}`;
+	const containerName = `n8n-helm-${example}-${Date.now().toString(36)}`;
+	const { repository, tag } = parseImageName(n8nImage);
+	// The runner image is built beside the n8n image with the same tag:
+	// `ghcr.io/n8n-io/n8n` → `ghcr.io/n8n-io/runners`.
+	const runnersRepository = repository.replace(/[^/]+$/, 'runners');
+	const runnersImage = `${runnersRepository}:${tag}`;
 
 	log('Starting K3s + Helm stack');
-	log(`  Mode: ${mode}`);
+	log(`  Example: ${example}`);
 	log(`  Container: ${containerName}`);
 	log(`  n8n image: ${n8nImage}`);
+	log(`  Runners image: ${runnersImage}`);
 	log(`  K3s image: ${k3sImage}`);
 	log(`  Chart: ${helmChartRepo} @ ${helmChartRef}`);
 
-	// Step 1: Start K3s with NodePort exposed (bypasses flaky kubectl port-forward)
-	// Ryuk is disabled so the container survives process exit — clean up via stack:helm:clean.
-	log('Starting K3s container (privileged)...');
+	let chartDir = '';
+	let valuesFiles: string[];
 	let k3s: StartedK3sContainer;
 	try {
+		// Step 1: Download the chart first, so that an unknown example fails before K3s starts
+		chartDir = await cloneChartToHost(helmChartRepo, helmChartRef, startupDeadline);
+		valuesFiles = resolveValuesFiles(chartDir, example);
+
+		// Step 2: Start K3s with NodePort exposed (bypasses flaky kubectl port-forward)
+		// Ryuk is disabled so the container survives process exit — clean up via stack:helm:clean.
+		log('Starting K3s container (privileged)...');
 		k3s = await new K3sContainer(k3sImage)
 			.withName(containerName)
-			.withLabels({ 'n8n.helm': 'true', 'n8n.helm.mode': mode })
+			.withLabels({ 'n8n.helm': 'true', 'n8n.helm.example': example })
 			.withExposedPorts(N8N_NODE_PORT)
 			.withStartupTimeout(Math.min(K3S_STARTUP_TIMEOUT_MS, startupDeadline.remainingMs))
 			.start();
 	} catch (error) {
+		if (chartDir) rmSync(chartDir, { recursive: true, force: true });
 		startupDeadline.dispose();
 		throw error;
 	}
@@ -392,10 +315,10 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	const baseUrl = `http://localhost:${hostPort}`;
 	log(`K3s started (NodePort ${N8N_NODE_PORT} -> host ${hostPort})`);
 
-	// Step 2: Write kubeconfig to a stable path and merge into ~/.kube/config
+	// Step 3: Write kubeconfig to a stable path and merge into ~/.kube/config
 	const kubeDir = join(homedir(), '.kube');
 	mkdirSync(kubeDir, { recursive: true });
-	const contextName = `n8n-helm-${mode}`;
+	const contextName = `n8n-helm-${example}`;
 	const kubeConfigPath = join(kubeDir, `${contextName}.yaml`);
 
 	// K3s names everything 'default' — rename to avoid clashing with existing contexts
@@ -432,10 +355,8 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 
 	const env: NodeJS.ProcessEnv = { ...process.env, KUBECONFIG: kubeConfigPath };
 
-	let chartDir = '';
-
 	try {
-		// Step 3: Wait for containerd readiness
+		// Step 4: Wait for containerd readiness
 		log('Waiting for containerd...');
 		const deadline = Date.now() + CONTAINERD_READY_TIMEOUT_MS;
 		while (Date.now() < deadline) {
@@ -445,35 +366,38 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 			await wait(HEALTH_POLL_INTERVAL_MS, { signal: startupDeadline.signal });
 		}
 
-		// Step 4: Preload n8n image into K3s containerd
+		// Step 5: Preload the n8n and runner images into K3s containerd
 		await preloadImage(k3s, n8nImage, startupDeadline);
-		log('Image preloaded');
+		await preloadImage(k3s, runnersImage, startupDeadline);
+		log('Images preloaded');
 
-		// Step 5: Download chart to host
-		chartDir = await cloneChartToHost(helmChartRepo, helmChartRef, startupDeadline);
+		// Step 6: Run the chart's own CI preparation script, so this stack follows the chart
+		log('Creating Secrets and starting the Postgres and Redis fixtures...');
+		await execOnHost(
+			`cd "${chartDir}" && bash charts/n8n/ci/prepare-cluster.sh`,
+			env,
+			'Prepare cluster',
+			startupDeadline,
+		);
 
-		// Step 6: Create n8n core secrets (encryption key, host config)
-		await createN8nSecret(env, startupDeadline);
-
-		// Step 7: Deploy queue infrastructure if needed
-		if (mode === 'queue') {
-			await deployQueueInfrastructure(env, startupDeadline);
-		}
-
-		// Step 8: Install n8n chart using published example values file + dynamic overrides
+		// Step 7: Install the chart with the example, its overlay, and dynamic overrides
 		log('Installing Helm chart (this may take a few minutes)...');
-		const valuesFile = getExampleValuesFile(chartDir, mode);
-		const setFlags = buildHelmSetFlags(n8nImage, mode, baseUrl, envOverrides).join(' ');
-		log(`Using values file: ${valuesFile}`);
+		const valuesFlags = valuesFiles.map((file) => `-f "${file}"`).join(' ');
+		const setFlags = buildHelmSetFlags(
+			{ repository, tag, runnersRepository },
+			baseUrl,
+			envOverrides,
+		).join(' ');
+		log(`Using values files: ${valuesFiles.join(', ')}`);
 		const helmOutput = await execOnHost(
-			`helm install n8n "${chartDir}/charts/n8n" -f "${valuesFile}" ${setFlags} --wait --timeout 5m`,
+			`helm install n8n "${chartDir}/charts/n8n" ${valuesFlags} ${setFlags} --wait --timeout 5m`,
 			env,
 			'Helm install',
 			startupDeadline,
 		);
 		log(`Helm install complete:\n${helmOutput.trim()}`);
 
-		// Step 9: Patch service to NodePort so traffic goes through K3s's exposed port
+		// Step 8: Patch service to NodePort so traffic goes through K3s's exposed port
 		// (bypasses kubectl port-forward which silently breaks after many connections)
 		log(`Patching n8n service to NodePort ${N8N_NODE_PORT}...`);
 		await execOnHost(
@@ -483,7 +407,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 			startupDeadline,
 		);
 
-		// Step 10: Poll health endpoint
+		// Step 9: Poll health endpoint
 		log(`Polling ${baseUrl}/healthz/readiness...`);
 		await pollHealthEndpoint(
 			baseUrl,
@@ -525,7 +449,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 			console.error(podStatus);
 
 			const podLogs = await execOnHost(
-				'kubectl logs -l app.kubernetes.io/name=n8n --tail=50 2>/dev/null || true',
+				'kubectl logs -l app.kubernetes.io/name=n8n --all-containers --tail=50 2>/dev/null || true',
 				env,
 				'debug',
 				startupDeadline,

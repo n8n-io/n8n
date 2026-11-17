@@ -9,6 +9,7 @@ import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
 	AgentChatMessagesResponse,
+	AgentToolGuardrailConfig,
 	BudgetGuardrailConfig,
 	AgentBudgetNotice,
 } from '@n8n/api-types';
@@ -21,8 +22,6 @@ import { OperationalError, UserError } from '@n8n/errors';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { ExternalHooks } from '@/external-hooks';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
 
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import {
@@ -30,6 +29,11 @@ import {
 	type CancelSuspendedRunParams,
 } from './agent-chat-execution.service';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
+import type {
+	AgentRunTelemetryType,
+	IAgentConfigurationTelemetryProperties,
+} from './agent-telemetry.types';
+import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import {
@@ -62,6 +66,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
+import { withToolGuardrails } from './tool-guardrails';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import {
@@ -244,6 +249,10 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	backgroundJobSignal: AgentBackgroundJobSignal;
 	pauseReport?: boolean;
 	abortSignal: AbortSignal;
+	/** Runs after the execution record exists and before the agent starts. */
+	onAdmitted?: () => Promise<void>;
+	/** Runs when the agent runtime starts. */
+	onRuntimeStarted?: () => void;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
 		| {
@@ -255,6 +264,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	onAdmitted?: () => Promise<void>;
+	onRuntimeStarted?: () => void;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
 	/** The channel's episodic scope decision. Absent on an integration resource means off. */
@@ -265,6 +275,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	budget?: BudgetGuardrailConfig;
 	/** See `ReconstructedAgentRuntime.modelCredentialGatewayManaged`. */
 	modelCredentialGatewayManaged?: boolean;
+	/** Saved tool guardrails from the reconstructed runtime. Absent when the config has none. */
+	toolGuardrails?: AgentToolGuardrailConfig[];
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -368,7 +380,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly turnExecutionService: AgentTurnExecutionService,
-		private readonly telemetry: Telemetry,
+		private readonly agentUsageTelemetry: AgentUsageTelemetryService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly agentRunTracingService: AgentRunTracingService,
@@ -919,6 +931,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
 					agentId,
 					message,
 					modelMessage,
@@ -1000,6 +1013,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
 					agentId,
 					projectId,
 					message,
@@ -1061,6 +1075,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
 					agentId,
 					message,
 					memory,
@@ -1120,6 +1135,7 @@ export class AgentExecutionOrchestratorService {
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+					toolGuardrails: runtime.toolGuardrails,
 					agentId,
 					userId: user.id,
 					message,
@@ -1276,6 +1292,7 @@ export class AgentExecutionOrchestratorService {
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
+			onRuntimeStarted: config.onRuntimeStarted,
 			agentInstance: config.agentInstance,
 			toolRegistry: config.toolRegistry,
 			mcpServerAttributions: config.mcpServerAttributions,
@@ -1374,6 +1391,8 @@ export class AgentExecutionOrchestratorService {
 						params.usePublishedVersion === true && Boolean(agent.activeVersion?.schema),
 						this.agentSkillRefs,
 						{},
+						// The record of a rejected run needs the content of an archived agent.
+						{ allowArchived: true },
 					);
 				}
 			} catch (cause) {
@@ -1485,17 +1504,22 @@ export class AgentExecutionOrchestratorService {
 		return {
 			type: 'resume',
 			resumeData: config.resumeData,
-			options: withBudgetGuardrail(
-				this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
-				{
-					budget: runtime.budget,
-					sessionId: memoryScope.threadId,
-					agentId: config.agentId,
-					...(runtime.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
-					...(config.chatSurface === 'preview' && config.onBudgetNotice
-						? { onNotice: config.onBudgetNotice }
-						: {}),
-				},
+			options: withToolGuardrails(
+				withBudgetGuardrail(
+					this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
+					{
+						budget: runtime.budget,
+						sessionId: memoryScope.threadId,
+						agentId: config.agentId,
+						...(runtime.modelCredentialGatewayManaged
+							? { modelCredentialGatewayManaged: true }
+							: {}),
+						...(config.chatSurface === 'preview' && config.onBudgetNotice
+							? { onNotice: config.onBudgetNotice }
+							: {}),
+					},
+				),
+				{ toolGuardrails: runtime.toolGuardrails, toolRegistry: runtime.toolRegistry },
 			),
 			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
 		};
@@ -1556,7 +1580,7 @@ export class AgentExecutionOrchestratorService {
 							),
 					}
 				: {}),
-			executionCounter: createAgentExecutionCounter(this.telemetry, {
+			executionCounter: createAgentExecutionCounter(this.agentUsageTelemetry, {
 				agentId,
 				userId: user?.id,
 				runType,
@@ -1788,6 +1812,7 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+			toolGuardrails: runtime.toolGuardrails,
 			agentId,
 			userId: user.id,
 			message,
@@ -1870,43 +1895,48 @@ export class AgentExecutionOrchestratorService {
 		return {
 			type: 'start',
 			input,
-			options: withBudgetGuardrail(
-				{
-					persistence: { threadId, resourceId, hostMetadata },
-					...(config.pauseReport
-						? {
-								toolsEnabled: false,
-								guardrails: {
-									hooks: [
-										{
-											beforeTool: async () => ({
-												action: 'stop' as const,
-												code: 'background-pause-report',
-											}),
-										},
-									],
-								},
-							}
-						: {}),
-					executionCounter: createAgentExecutionCounter(this.telemetry, {
+			options: withToolGuardrails(
+				withBudgetGuardrail(
+					{
+						persistence: { threadId, resourceId, hostMetadata },
+						...(config.pauseReport
+							? {
+									toolsEnabled: false,
+									guardrails: {
+										hooks: [
+											{
+												beforeTool: async () => ({
+													action: 'stop' as const,
+													code: 'background-pause-report',
+												}),
+											},
+										],
+									},
+								}
+							: {}),
+						executionCounter: createAgentExecutionCounter(this.agentUsageTelemetry, {
+							agentId,
+							userId,
+							runType: telemetry.runType,
+							source,
+						}),
+						...modelStreamStallOptions(this.aiConfig),
+						...(tracing ? { telemetry: tracing } : {}),
+						...(abortSignal ? { abortSignal } : {}),
+					},
+					{
+						budget: config.budget,
+						sessionId: threadId,
 						agentId,
-						userId,
-						runType: telemetry.runType,
-						source,
-					}),
-					...modelStreamStallOptions(this.aiConfig),
-					...(tracing ? { telemetry: tracing } : {}),
-					...(abortSignal ? { abortSignal } : {}),
-				},
-				{
-					budget: config.budget,
-					sessionId: threadId,
-					agentId,
-					...(config.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
-					...(config.chatSurface === 'preview' && config.onBudgetNotice
-						? { onNotice: config.onBudgetNotice }
-						: {}),
-				},
+						...(config.modelCredentialGatewayManaged
+							? { modelCredentialGatewayManaged: true }
+							: {}),
+						...(config.chatSurface === 'preview' && config.onBudgetNotice
+							? { onNotice: config.onBudgetNotice }
+							: {}),
+					},
+				),
+				{ toolGuardrails: config.toolGuardrails, toolRegistry: config.toolRegistry },
 			),
 			recording: this.createChatRecording(config),
 		};
@@ -2008,6 +2038,7 @@ export class AgentExecutionOrchestratorService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
+			toolGuardrails: runtime.toolGuardrails,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,
@@ -2026,6 +2057,8 @@ export class AgentExecutionOrchestratorService {
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
 			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,
+			onAdmitted: config.onAdmitted,
+			onRuntimeStarted: config.onRuntimeStarted,
 		});
 	}
 }

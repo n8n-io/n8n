@@ -115,4 +115,24 @@ describe(`Replaced built-ins (${engineName})`, () => {
 			check(evaluator.evaluate(expression, data, caller, options));
 		}
 	});
+
+	it('keeps lazy date helpers correct after an expression replaces Object.defineProperty', () => {
+		expect(
+			evaluator.evaluate(
+				"{{ (Object.defineProperty = function () { throw new Error('replaced'); }, 'x') }}",
+				data,
+				caller,
+				options,
+			),
+		).toBe('x');
+
+		expect(
+			evaluator.evaluate(
+				'{{ [$now.zoneName, $today.zoneName, $today.toFormat("HH:mm:ss.SSS")] }}',
+				data,
+				caller,
+				options,
+			),
+		).toStrictEqual(['Europe/Paris', 'Europe/Paris', '00:00:00.000']);
+	});
 });

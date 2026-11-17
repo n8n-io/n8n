@@ -1,10 +1,12 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	ICredentialType,
-	IHttpRequestHelper,
-	IHttpRequestOptions,
-	INodeProperties,
+import {
+	requestUrl,
+	type IAuthenticateGeneric,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type IHttpRequestOptions,
+	type INodeProperties,
+	type WithRequestTarget,
 } from 'n8n-workflow';
 
 export class VenafiTlsProtectDatacenterApi implements ICredentialType {
@@ -68,10 +70,8 @@ export class VenafiTlsProtectDatacenterApi implements ICredentialType {
 	];
 
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		const url = `${credentials.domain}/vedauth/authorize/oauth`;
-
-		const requestOptions: IHttpRequestOptions = {
-			url,
+		const requestOptions: WithRequestTarget<IHttpRequestOptions> = {
+			url: requestUrl`${credentials.domain}/vedauth/authorize/oauth`,
 			method: 'POST',
 			json: true,
 			skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,

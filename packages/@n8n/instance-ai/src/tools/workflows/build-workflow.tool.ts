@@ -7,7 +7,7 @@ import {
 import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -604,7 +604,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` then call this tool with filePath. This tool validates the source and returns the findings. ' +
+				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` (`workspace_edit_files` for several files in one call) then call this tool with filePath. This tool validates the source and returns the findings. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
@@ -1536,8 +1536,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							declaredOutputFixtures: compiled.declaredOutputFixtures,
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
-							fallbackModelConfig: context.modelId,
+							model: context.modelId,
+							utilityModel: context.utilityModelId,
 							modelFetch: context.modelFetch,
+							onHelperUsage: context.onHelperUsage,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {
@@ -1696,19 +1698,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						resolvedCredentialsByNode: hasResolvedCredentials
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
-						credentialResolutionNote:
-							hasResolvedCredentials || heldForNewCredentialTypes.length > 0
-								? buildCredentialResolutionNote(
-										mockResult.resolvedCredentialsByNode,
-										heldForNewCredentialTypes,
-										{
-											n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
-												context,
-												mockResult.resolvedCredentialsByNode,
-											),
-										},
-									)
-								: undefined,
+						credentialResolutionNote: buildCredentialResolutionNote(
+							mockResult.resolvedCredentialsByNode,
+							heldForNewCredentialTypes,
+							{
+								n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
+									context,
+									mockResult.resolvedCredentialsByNode,
+								),
+								gatewayRejectionsByNode: mockResult.gatewayRejectionsByNode,
+							},
+						),
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

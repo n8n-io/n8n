@@ -2,7 +2,10 @@ operationId: updateDataTable
 tags:
   - DataTable
 summary: Update a data table
-description: Update a data table's name.
+description: |-
+  Update a data table's name.
+
+  Requires the `dataTable:update` API key scope.
 x-required-scope: dataTable:update
 parameters:
   - schema:

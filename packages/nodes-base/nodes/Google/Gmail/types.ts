@@ -55,6 +55,8 @@ export type Label = {
 
 export type GmailWorkflowStaticData = {
 	lastTimeChecked?: number;
+	/** True after the cursor is bounded to poll time. Preserve it on later clock rollbacks. */
+	lastTimeCheckedIsBounded?: boolean;
 	possibleDuplicates?: string[];
 	/** v1.4+: Message IDs remaining from a previous poll that exceeded maxResults */
 	pendingMessageIds?: string[];
