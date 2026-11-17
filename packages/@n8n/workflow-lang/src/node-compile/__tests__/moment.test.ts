@@ -594,6 +594,61 @@ describe('date packages in a compiled node', () => {
 		}
 	});
 
+	const withParameters = (body: string, parameters: Record<string, unknown>) => {
+		const source = `import moment from 'moment-timezone';
+function formatOf(withTime: boolean) {
+	if (!withTime) return 'yyyy-MM-DD';
+	return '';
+}
+export class Probe {
+	async execute(this: any) {
+		const items = this.getInputData();
+		const returnData: any[] = [];
+		for (let i = 0; i < items.length; i++) {
+			const entry = this.getNodeParameter('entry', i);
+			${body}
+		}
+		return [returnData];
+	}
+}`;
+		return specialiseNode({
+			type: 'n8n-nodes-base.probe',
+			version: 1,
+			entry: ENTRY,
+			readFile: (path) => (path === ENTRY ? source : undefined),
+			parameters,
+			aliases: {},
+			instanceId: null,
+			timezone: NODE_ZONE,
+		});
+	};
+
+	it('takes a zone from the zones in the parameters of the node', () => {
+		const body = `const zone = entry.timezone === 'default' ? this.getTimezone() : entry.timezone;
+			returnData.push({ json: { r: moment.tz(items[i].json.text, zone).format() } });`;
+		const fixed = withParameters(body, {
+			entry: { timezone: 'Europe/Berlin', at: '={{ $json.at }}' },
+		});
+		expect(fixed.errors).toEqual([]);
+		expect(fixed.source).toContain(
+			'__momentZone(zone, ["America/New_York", "Europe/Berlin", "UTC"])',
+		);
+		expect(fixed.zones).toEqual(['America/New_York', 'Europe/Berlin']);
+		const dynamic = withParameters(body, { entry: { timezone: '={{ $json.zone }}' } });
+		expect(dynamic.errors).toEqual([
+			'code: the time zone of a moment is not known at compile time',
+		]);
+	});
+
+	it('takes a format from a function that gives text literals only', () => {
+		const body = `const format = formatOf(entry.withTime);
+			returnData.push({ json: { r: moment(items[i].json.text).format(format) } });`;
+		const result = withParameters(body, { entry: { withTime: '={{ $json.withTime }}' } });
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__momentFormatOf(');
+		expect(result.source).toContain('["yyyy-MM-DD", ["yyyy", "\'-", "MM", "\'-", "DD"]]');
+	});
+
 	it('gives a compile error for a zone that is not known at compile time', () => {
 		const result = probe("import moment from 'moment-timezone';", ['moment.tz(x, x).format()']);
 		expect(result.errors).toEqual(['code: the time zone of a moment is not known at compile time']);

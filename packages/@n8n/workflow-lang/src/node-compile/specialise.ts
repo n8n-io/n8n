@@ -1,6 +1,7 @@
 import ts from 'typescript';
 
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
+import { checkRegex } from '../convert/code-native/regex-syntax.ts';
 import { RUNS_IN_HOST } from '../convert/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
 import { MAX_CREDENTIAL_FLAGS } from '../credentials/flags.ts';
@@ -26,6 +27,10 @@ import {
 	MOMENT_HELPER_USES,
 	MOMENT_HELPERS,
 	MOMENT_PACKAGE,
+	MAX_ZONE_CHOICES,
+	MOMENT_ZONE_CHOICE,
+	momentZoneArgument,
+	momentZones,
 	momentZoneUse,
 } from './moment.ts';
 
@@ -78,6 +83,7 @@ export interface ParameterKind {
 	type: string;
 	extract: boolean;
 	modes?: Record<string, { pattern: string; flags: string } | null>;
+	mapper?: { adds: boolean; conversions: boolean };
 }
 
 export interface UnitOrigin {
@@ -1008,6 +1014,24 @@ const HELPERS: Record<string, string> = {
 	}
 	return entry.value;
 }`,
+	__regexExec: `function __regexExec(pattern: any, input: any, flags?: any): any {
+	if (typeof pattern !== 'string' || typeof input !== 'string' || (flags !== undefined && typeof flags !== 'string')) throw new Error('a regular expression from a value that is not text has no compiled form');
+	let found: any = null;
+	try {
+		found = RegExp.exec(pattern, flags === undefined ? '' : flags, input, 0);
+	} catch (error) {
+		throw new Error('a regular expression that the runtime does not take has no compiled form');
+	}
+	if (found === null) return null;
+	const match: any[] = [];
+	for (let k = 0; k < found.length; k += 2) match.push(found[k] < 0 ? undefined : input.slice(found[k], found[k + 1]));
+	return match;
+}`,
+	__isMapper: `function __isMapper(value: any): boolean {
+	if (value === null || value === undefined || typeof value !== 'object') return false;
+	const keys: any = Object.keys(value);
+	return keys.includes('mappingMode') && keys.includes('schema') && keys.includes('value');
+}`,
 	__isLocator: `function __isLocator(value: any): boolean {
 	if (value === null || value === undefined || typeof value !== 'object') return false;
 	const keys: any = Object.keys(value);
@@ -1447,6 +1471,7 @@ const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 		deepCopy: '__deepCopy',
 		toPathSegment: '__toPathSegment',
 		isResourceLocatorValue: '__isLocator',
+		isResourceMapperValue: '__isMapper',
 		setSafeObjectProperty: '__setSafe',
 		tryToParseNumber: '__toNumber',
 	},
@@ -2353,15 +2378,27 @@ class Specialiser {
 		}
 
 		let extract = false;
+		let skipsValidation = false;
 		if (options && literalOf(options)?.value !== undefined) return node;
 		if (options && !literalOf(options)) {
-			if (!ts.isObjectLiteralExpression(options)) return node;
-			for (const member of options.properties) {
-				if (!ts.isPropertyAssignment(member) || !ts.isIdentifier(member.name)) return node;
-				const flag = literalOf(member.initializer)?.value;
+			const flags = ts.isObjectLiteralExpression(options) ? undefined : this.constantOf(options, 0);
+			if (!ts.isObjectLiteralExpression(options) && !flags) return node;
+			const members: Array<[string, unknown]> = ts.isObjectLiteralExpression(options)
+				? options.properties.map((member): [string, unknown] =>
+						ts.isPropertyAssignment(member) && ts.isIdentifier(member.name)
+							? [member.name.text, literalOf(member.initializer)?.value]
+							: ['', undefined],
+					)
+				: flags?.value === undefined
+					? []
+					: isRecord(flags.value)
+						? Object.entries(flags.value)
+						: [['', undefined]];
+			for (const [name, flag] of members) {
 				if (typeof flag !== 'boolean') return node;
-				if (member.name.text === 'extractValue') extract = flag;
-				else if (member.name.text !== 'skipValidation') return node;
+				if (name === 'extractValue') extract = flag;
+				else if (name === 'skipValidation') skipsValidation = flag;
+				else return node;
 			}
 		}
 		const path = nameArg.text.split('.');
@@ -2371,6 +2408,17 @@ class Specialiser {
 				typeof value === 'object' && value !== null
 					? (value as Record<string, unknown>)[key]
 					: undefined;
+		}
+		if (
+			!skipsValidation &&
+			path.length === 2 &&
+			path[1] === 'value' &&
+			typeof value === 'object' &&
+			value !== null &&
+			this.castsMappedValue(path[0], value)
+		) {
+			this.castParameters.add(nameArg.text);
+			return node;
 		}
 		const dynamic = hasExpression(value);
 		const entry = f.createElementAccessExpression(
@@ -2425,6 +2473,106 @@ class Specialiser {
 		if (late && absent) return node;
 		if (absent) return this.helper('__missing', f.createStringLiteral(nameArg.text));
 		return fallback;
+	}
+
+	private readonly castParameters = new Set<string>();
+
+	private castsMappedValue(head: string, value: unknown): boolean {
+		const field = this.input.parameters[head];
+		if (
+			!isRecord(field) ||
+			!('mappingMode' in field) ||
+			!('schema' in field) ||
+			!('value' in field)
+		)
+			return false;
+		const kind = this.input.parameterKind?.(head);
+		if (kind !== undefined && kind.type !== 'resourceMapper') return false;
+		const schema: unknown = field.schema;
+		if (schema === undefined || schema === null) return false;
+		if (!Array.isArray(schema) || !isRecord(value)) return true;
+		const adds = kind?.mapper?.adds ?? true;
+		const conversions = kind?.mapper?.conversions ?? true;
+		for (const key of Object.keys(value)) {
+			for (const entry of schema) {
+				if (!isRecord(entry)) return true;
+				if (entry.id !== key) continue;
+				const given = value[key];
+				const empty = given === undefined || given === null || hasExpression(given);
+				if (adds && entry.required === true && entry.type !== 'boolean' && empty) return true;
+				if (entry.type === undefined || entry.type === null || entry.type === '') continue;
+				if (typeof entry.type !== 'string' || entry.type.toLowerCase() !== 'string' || conversions)
+					return true;
+			}
+		}
+		return false;
+	}
+
+	private constantOf(e: ts.Expression, hops: number): { value: unknown } | undefined {
+		if (hops > MAX_CONSTANT_HOPS) return undefined;
+		if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e))
+			return this.constantOf(e.expression, hops);
+		const literal = literalOf(e);
+		if (literal) return literal;
+		if (ts.isConditionalExpression(e)) {
+			const test = this.constantOf(e.condition, hops + 1);
+			return test && this.constantOf(test.value ? e.whenTrue : e.whenFalse, hops + 1);
+		}
+		if (ts.isObjectLiteralExpression(e)) {
+			const out: Record<string, unknown> = {};
+			for (const member of e.properties) {
+				if (!ts.isPropertyAssignment(member) || !ts.isIdentifier(member.name)) return undefined;
+				const inner = this.constantOf(member.initializer, hops + 1);
+				if (!inner) return undefined;
+				out[member.name.text] = inner.value;
+			}
+			return { value: out };
+		}
+		if (ts.isPropertyAccessExpression(e) && !e.questionDotToken) {
+			const held = this.constantOf(e.expression, hops + 1);
+			return held && isRecord(held.value) ? { value: held.value[e.name.text] } : undefined;
+		}
+		if (isThisCall(e, 'getNodeParameter')) {
+			const [nameArg, , fallback, options] = e.arguments;
+			if (options || !nameArg || !ts.isStringLiteral(nameArg)) return undefined;
+			let value: unknown = this.input.parameters;
+			for (const key of nameArg.text.split('.')) value = isRecord(value) ? value[key] : undefined;
+			if (hasExpression(value)) return undefined;
+			if (value !== undefined) return { value };
+			return fallback ? this.constantOf(fallback, hops + 1) : undefined;
+		}
+		if (!ts.isIdentifier(e)) return undefined;
+		for (let scope: ts.Node | undefined = e.parent; scope; scope = scope.parent) {
+			if (ts.isFunctionLike(scope) && scope.parameters.some((p) => bindsName(p.name, e.text)))
+				return undefined;
+			const statements =
+				ts.isBlock(scope) || ts.isSourceFile(scope) || ts.isCaseClause(scope)
+					? scope.statements
+					: undefined;
+			for (const statement of statements ?? []) {
+				if (!ts.isVariableStatement(statement)) continue;
+				for (const declared of statement.declarationList.declarations) {
+					if (!bindsName(declared.name, e.text)) continue;
+					const fixed = (statement.declarationList.flags & ts.NodeFlags.Const) !== 0;
+					return fixed && ts.isIdentifier(declared.name) && declared.initializer
+						? this.constantOf(declared.initializer, hops + 1)
+						: undefined;
+				}
+			}
+			if (ts.isForStatement(scope) || ts.isForOfStatement(scope) || ts.isForInStatement(scope)) {
+				const list = scope.initializer;
+				if (
+					list &&
+					ts.isVariableDeclarationList(list) &&
+					list.declarations.some((d) => bindsName(d.name, e.text))
+				)
+					return undefined;
+			}
+			if (ts.isCatchClause(scope) && scope.variableDeclaration) {
+				if (bindsName(scope.variableDeclaration.name, e.text)) return undefined;
+			}
+		}
+		return undefined;
 	}
 
 	private bind(root: ts.Node, unit: Unit, isExecute: boolean): ts.Node {
@@ -2599,6 +2747,14 @@ class Specialiser {
 					? f.createIdentifier('__INSTANCE_ID')
 					: expressionOf(id ?? undefined);
 			}
+			if (
+				ts.isPropertyAccessExpression(node) &&
+				ts.isPropertyAccessExpression(node.expression) &&
+				node.expression.name.text === 'parameters' &&
+				isThisCall(node.expression.expression, 'getNode') &&
+				node.expression.expression.arguments.length === 0
+			)
+				return expressionOf(this.input.parameters[node.name.text] ?? undefined);
 			if (isThisCall(node, 'getNode')) {
 				return expressionOf({
 					name: 'Node',
@@ -2778,6 +2934,26 @@ class Specialiser {
 			if (
 				ts.isCallExpression(node) &&
 				ts.isPropertyAccessExpression(node.expression) &&
+				node.expression.name.text === 'exec' &&
+				ts.isIdentifier(node.expression.expression) &&
+				!localNames.has(node.expression.expression.text) &&
+				(node.arguments.length === 2 || node.arguments.length === 3)
+			) {
+				const engine = unit.file.imports.get(node.expression.expression.text);
+				const pattern = node.arguments[0];
+				const flags = node.arguments.length === 3 ? literalOf(node.arguments[2])?.value : '';
+				if (
+					engine?.from === 'n8n-workflow' &&
+					engine.name === 'safeRegex' &&
+					ts.isPropertyAccessExpression(pattern) &&
+					typeof flags === 'string' &&
+					this.parameterTexts(pattern.name.text).every((text) => checkRegex(text, flags).ok)
+				)
+					return this.helper('__regexExec', ...args(node));
+			}
+			if (
+				ts.isCallExpression(node) &&
+				ts.isPropertyAccessExpression(node.expression) &&
 				node.expression.name.text === 'test' &&
 				ts.isIdentifier(node.expression.expression)
 			) {
@@ -2911,6 +3087,10 @@ class Specialiser {
 					visit: (e) => ts.visitNode(e, visit) as ts.Expression,
 					helper: (name, ...list) => this.helper(name, ...list),
 					error: (message) => this.error(unit.name, message),
+					declared: (name) => {
+						const found = localNames.has(name) ? undefined : unit.file.declarations.get(name);
+						return found && ts.isFunctionDeclaration(found) ? found : undefined;
+					},
 				});
 				if (moment) return moment;
 			}
@@ -3242,6 +3422,15 @@ class Specialiser {
 			const walk = (n: ts.Node) => {
 				if (isThisCall(n, 'getNodeParameter')) {
 					const [parameter, , , options] = n.arguments;
+					const read = parameter ? literalOf(parameter)?.value : undefined;
+					if (typeof read === 'string' && this.castParameters.has(read)) {
+						this.error(
+							name,
+							`the parameter '${read}' is the value of a resource mapper, and v1 changes or checks the type of its fields: this has no compiled form`,
+						);
+						ts.forEachChild(n, walk);
+						return;
+					}
 					this.error(
 						name,
 						parameter && literalOf(parameter) && options
@@ -3263,6 +3452,39 @@ class Specialiser {
 		const uses = itemParameterUses(this.output);
 		for (const where of uses.loose)
 			this.error(where, 'the list of the parameters for each item is used as a value');
+		const itemsOfCaller = (e: ts.Expression, frame: ItemFrame, hops: number): boolean => {
+			if (hops > MAX_INDEX_HOPS) return false;
+			if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e))
+				return itemsOfCaller(e.expression, frame, hops);
+			if (!ts.isIdentifier(e)) return false;
+			const found = itemBindingOf(e.text, frame);
+			if (found === undefined) return e.text === '__items';
+			if (found.kind === 'value') return itemsOfCaller(found.value, found.frame, hops + 1);
+			if (found.kind !== 'parameter') return false;
+			const sites = uses.calls.get(found.unit) ?? [];
+			return (
+				sites.length > 0 &&
+				uses.names.get(found.unit) === sites.length + 1 &&
+				sites.every((site) => {
+					const given = site.call.arguments[found.position];
+					return (
+						given !== undefined &&
+						!site.call.arguments.some(ts.isSpreadElement) &&
+						itemsOfCaller(given, site.frame, hops + 1)
+					);
+				})
+			);
+		};
+		const countOfItems = (e: ts.Expression, frame: ItemFrame, hops: number): boolean => {
+			if (hops > MAX_INDEX_HOPS) return false;
+			if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e))
+				return countOfItems(e.expression, frame, hops);
+			if (ts.isPropertyAccessExpression(e))
+				return e.name.text === 'length' && itemsOfCaller(e.expression, frame, hops);
+			if (!ts.isIdentifier(e)) return false;
+			const found = itemBindingOf(e.text, frame);
+			return found?.kind === 'value' && countOfItems(found.value, found.frame, hops + 1);
+		};
 		const bounded = (
 			index: ts.Expression,
 			frame: ItemFrame,
@@ -3281,6 +3503,8 @@ class Specialiser {
 			const found = itemBindingOf(index.text, frame);
 			if (found === undefined || found.kind === 'other') return false;
 			if (found.kind === 'loop') return !first;
+			if (found.kind === 'limited')
+				return !first && countOfItems(found.limit, found.frame, hops + 1);
 			if (found.kind === 'value') return bounded(found.value, found.frame, hops + 1, first);
 			const sites = uses.calls.get(found.unit) ?? [];
 			return (
@@ -6905,6 +7129,68 @@ class Specialiser {
 		check(root);
 	}
 
+	private parameterTexts(key: string): string[] {
+		const texts: string[] = [];
+		const walk = (value: unknown) => {
+			if (Array.isArray(value)) value.forEach(walk);
+			else if (isRecord(value)) {
+				for (const [name, member] of Object.entries(value)) {
+					if (name === key) texts.push(typeof member === 'string' ? member : '=');
+					walk(member);
+				}
+			}
+		};
+		walk(this.input.parameters);
+		return texts;
+	}
+
+	private zonesInParameters(): string[] {
+		const all = new Set(momentZones());
+		const found = new Set<string>(['UTC']);
+		if (this.input.timezone !== undefined && all.has(this.input.timezone))
+			found.add(this.input.timezone);
+		const walk = (value: unknown) => {
+			if (typeof value === 'string') {
+				if (all.has(value)) found.add(value);
+			} else if (Array.isArray(value)) value.forEach(walk);
+			else if (isRecord(value)) Object.values(value).forEach(walk);
+		};
+		walk(this.input.parameters);
+		return [...found].sort();
+	}
+
+	private zoneChoices(root: ts.Node): ts.Node {
+		let known: string[] | undefined;
+		let found = false;
+		const visit = (input: ts.Node): ts.Node => {
+			const n = ts.visitEachChild(input, visit, undefined);
+			const zone = momentZoneArgument(n);
+			if (!zone || !ts.isCallExpression(n) || ts.isStringLiteral(zone)) return n;
+			const keys = zoneKeys(zone, root);
+			const plainTexts = (key: string) => {
+				const texts = this.parameterTexts(key);
+				return texts.length > 0 && texts.every((text) => !text.startsWith('='));
+			};
+			if (keys.length === 0 || !keys.every(plainTexts)) return n;
+			known ??= this.zonesInParameters();
+			if (known.length > MAX_ZONE_CHOICES) return n;
+			found = true;
+			const choice = this.helper(
+				MOMENT_ZONE_CHOICE,
+				zone,
+				f.createArrayLiteralExpression(known.map((name) => f.createStringLiteral(name))),
+			);
+			return f.updateCallExpression(
+				n,
+				n.expression,
+				n.typeArguments,
+				n.arguments.map((argument) => (argument === zone ? choice : argument)),
+			);
+		};
+		const out = ts.visitNode(root, visit);
+		return found ? out : root;
+	}
+
 	private listSources(root: ts.Node): ts.Node {
 		let found = false;
 		const visit = (input: ts.Node): ts.Node => {
@@ -6935,6 +7221,7 @@ class Specialiser {
 	private print(): string {
 		for (const { node } of this.output) this.bytesUses(node);
 		for (const entry of this.output) entry.node = this.listSources(entry.node);
+		for (const entry of this.output) entry.node = this.zoneChoices(entry.node);
 		for (const { node } of this.output) buffersForBinaryData(node, this.responseBuffers);
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
@@ -7077,7 +7364,7 @@ class Specialiser {
 		const zonesOf = (n: ts.Node) => {
 			const use = momentZoneUse(n);
 			if (use?.error !== undefined) this.error('code', use.error);
-			if (use?.zone !== undefined) this.zones.add(use.zone);
+			for (const zone of use?.zones ?? []) this.zones.add(zone);
 			ts.forEachChild(n, zonesOf);
 		};
 		for (const { node } of this.output) zonesOf(node);
@@ -7148,11 +7435,34 @@ ${t.body}
 	private randoms: RandomShape[] = [];
 }
 
+const MAX_CONSTANT_HOPS = 8;
+
+function zoneKeys(zone: ts.Expression, root: ts.Node): string[] {
+	const keys = new Set<string>();
+	const names = new Set<string>();
+	const read = (n: ts.Node) => {
+		if (ts.isPropertyAccessExpression(n)) keys.add(n.name.text);
+		else if (ts.isIdentifier(n)) names.add(n.text);
+		ts.forEachChild(n, read);
+	};
+	read(zone);
+	const declared = (n: ts.Node) => {
+		if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && names.has(n.name.text)) {
+			if (n.initializer) read(n.initializer);
+			else keys.clear();
+		}
+		ts.forEachChild(n, declared);
+	};
+	if (names.size > 0) declared(root);
+	return [...keys];
+}
+
 const ITEM_PARAMETERS = '__perItem';
 const MAX_INDEX_HOPS = 8;
 
 type ItemBinding =
 	| { kind: 'loop' }
+	| { kind: 'limited'; limit: ts.Expression; frame: ItemFrame }
 	| { kind: 'value'; value: ts.Expression; frame: ItemFrame }
 	| { kind: 'parameter'; position: number; unit: string }
 	| { kind: 'other' };
@@ -7391,11 +7701,15 @@ function itemParameterUses(output: Array<{ name: string; node: ts.Node }>): Item
 						test.operatorToken.kind === ts.SyntaxKind.LessThanToken &&
 						ts.isIdentifier(test.left) &&
 						test.left.text === name &&
-						isInputCount(test.right, frame) &&
 						stepsByOne(n.incrementor, name) &&
 						!writtenNames(n.statement).has(name)
 					)
-						inner.names.set(name, { kind: 'loop' });
+						inner.names.set(
+							name,
+							isInputCount(test.right, frame)
+								? { kind: 'loop' }
+								: { kind: 'limited', limit: test.right, frame },
+						);
 				}
 				ts.forEachChild(n, (child) => walk(child, inner));
 				return;

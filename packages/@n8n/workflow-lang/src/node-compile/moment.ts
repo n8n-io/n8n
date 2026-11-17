@@ -113,6 +113,12 @@ export const MOMENT_HELPERS: Record<string, string> = {
 	if (index === 1) return (full % 4 === 0 && full % 100 !== 0) || full % 400 === 0 ? 29 : 28;
 	return 31 - ((index % 7) % 2);
 }`,
+	__momentZone: `function __momentZone(zone: any, known: any): string {
+	for (const name of known) {
+		if (name === zone) return name;
+	}
+	throw new Error('a time zone that is not in the parameters of the node has no compiled form');
+}`,
 	__momentOffset: `function __momentOffset(zone: string, t: number): number {
 	if (zone === '' || zone === 'utc' || zone === 'UTC' || isNaN(t)) return 0;
 	if (t < 0) throw new Error('a date before 1970 in a time zone has no compiled form');
@@ -242,6 +248,12 @@ export const MOMENT_HELPERS: Record<string, string> = {
 	__momentPad: `function __momentPad(value: number, length: number): string {
 	return String(value).padStart(length, '0');
 }`,
+	__momentFormatOf: `function __momentFormatOf(m: any, format: any, known: any): string {
+	for (const entry of known) {
+		if (entry[0] === format) return __momentFormat(m, entry[1]);
+	}
+	throw new Error('a date format that is not one of the texts of the node code has no compiled form');
+}`,
 	__momentFormat: `function __momentFormat(m: any, parts: any): string {
 	if (isNaN(m.t)) return 'Invalid date';
 	const offset: number = m.o;
@@ -264,6 +276,10 @@ export const MOMENT_HELPERS: Record<string, string> = {
 		const token: string = part;
 		if (token.startsWith("'")) out += token.slice(1);
 		else if (token === 'YYYY') out += __momentPad(year, 4);
+		else if (token === 'yyyy') {
+			if (year < 1) throw new Error('the year of an era before year 1 has no compiled form');
+			out += __momentPad(year, 4);
+		}
 		else if (token === 'YY') out += __momentPad(year % 100, 2);
 		else if (token === 'M') out += String(month + 1);
 		else if (token === 'MM') out += __momentPad(month + 1, 2);
@@ -340,6 +356,7 @@ export const MOMENT_HELPER_USES: Record<string, string[]> = {
 	__momentAdd: ['__momentOffset', '__momentAt', '__momentKeep', '__momentDays'],
 	__momentEdge: ['__momentOffset', '__momentKeep'],
 	__momentFormat: ['__momentPad'],
+	__momentFormatOf: ['__momentFormat', '__momentPad'],
 };
 MOMENT_HELPER_USES.__moment = ['__momentParse', ...MOMENT_HELPER_USES.__momentParse];
 MOMENT_HELPER_USES.__momentIn = ['__momentAt', ...MOMENT_HELPER_USES.__moment];
@@ -363,6 +380,7 @@ const LONG_FORMATS: Record<string, string> = {
 };
 const FORMAT_NAMES = new Set([
 	'YYYY',
+	'yyyy',
 	'YY',
 	'M',
 	'MM',
@@ -500,6 +518,7 @@ export interface MomentEnv {
 	visit: (e: ts.Expression) => ts.Expression;
 	helper: (name: string, ...args: ts.Expression[]) => ts.CallExpression;
 	error: (message: string) => void;
+	declared?: (name: string) => ts.FunctionDeclaration | undefined;
 }
 
 function bare(e: ts.Expression): ts.Expression {
@@ -513,6 +532,56 @@ function text(e: ts.Expression | undefined): string | undefined {
 	return e !== undefined && (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e))
 		? e.text
 		: undefined;
+}
+
+const MAX_FORMAT_CHOICES = 8;
+
+function returnedTexts(body: ts.Block): string[] | undefined {
+	const texts: string[] = [];
+	let literal = true;
+	const walk = (n: ts.Node) => {
+		if (ts.isFunctionLike(n)) return;
+		if (ts.isReturnStatement(n)) {
+			const returned = text(n.expression);
+			if (returned === undefined) literal = false;
+			else if (!texts.includes(returned)) texts.push(returned);
+			return;
+		}
+		ts.forEachChild(n, walk);
+	};
+	body.statements.forEach(walk);
+	const last = body.statements.at(-1);
+	if (!literal || !last || !ts.isReturnStatement(last) || texts.length > MAX_FORMAT_CHOICES)
+		return undefined;
+	return texts;
+}
+
+function formatChoices(
+	arg: ts.Expression,
+	declared: (name: string) => ts.FunctionDeclaration | undefined,
+): string[] | undefined {
+	const name = bare(arg);
+	if (!ts.isIdentifier(name)) return undefined;
+	let made: ts.Expression | undefined;
+	for (let scope: ts.Node | undefined = name.parent; scope && !made; scope = scope.parent) {
+		if (ts.isFunctionLike(scope) && scope.parameters.some((p) => p.name.getText() === name.text))
+			return undefined;
+		const statements =
+			ts.isBlock(scope) || ts.isSourceFile(scope) || ts.isCaseClause(scope) ? scope.statements : [];
+		for (const statement of statements) {
+			if (!ts.isVariableStatement(statement)) continue;
+			for (const declared of statement.declarationList.declarations) {
+				if (!ts.isIdentifier(declared.name) || declared.name.text !== name.text) continue;
+				if ((statement.declarationList.flags & ts.NodeFlags.Const) === 0) return undefined;
+				made = declared.initializer;
+			}
+		}
+	}
+	const call = made ? bare(made) : undefined;
+	if (!call || !ts.isCallExpression(call) || !ts.isIdentifier(call.expression)) return undefined;
+	const declaration = declared(call.expression.text);
+	if (!declaration?.body) return undefined;
+	return returnedTexts(declaration.body);
 }
 
 function plain(args: readonly ts.Expression[]): boolean {
@@ -620,9 +689,32 @@ export function bindMoment(node: ts.Expression, env: MomentEnv): ts.Expression |
 	const args = node.arguments;
 	if (name === 'format' && args.length <= 1) {
 		const format = args.length === 0 ? undefined : text(args[0]);
+		const choices =
+			args.length === 1 && format === undefined
+				? formatChoices(args[0], env.declared ?? (() => undefined))
+				: undefined;
+		if (choices !== undefined) {
+			const known: ts.Expression[] = [];
+			for (const choice of choices) {
+				const parts = momentFormatParts(choice === '' ? undefined : choice);
+				if (typeof parts === 'string') return fail(parts);
+				known.push(
+					f.createArrayLiteralExpression([
+						f.createStringLiteral(choice),
+						f.createArrayLiteralExpression(parts.map((p) => f.createStringLiteral(p))),
+					]),
+				);
+			}
+			return env.helper(
+				'__momentFormatOf',
+				receiver,
+				env.visit(args[0]),
+				f.createArrayLiteralExpression(known),
+			);
+		}
 		if (args.length === 1 && format === undefined)
 			return fail('a date format that is not a text literal');
-		const parts = momentFormatParts(format);
+		const parts = momentFormatParts(format === '' ? undefined : format);
 		if (typeof parts === 'string') return fail(parts);
 		return env.helper(
 			'__momentFormat',
@@ -653,15 +745,45 @@ export function bindMoment(node: ts.Expression, env: MomentEnv): ts.Expression |
 	return fail(`the moment method '${name}' with ${args.length} arguments`);
 }
 
-export function momentZoneUse(node: ts.Node): { zone?: string; error?: string } | undefined {
+export const MOMENT_ZONE_CHOICE = '__momentZone';
+export const MAX_ZONE_CHOICES = 16;
+
+export function momentZoneArgument(node: ts.Node): ts.Expression | undefined {
+	if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return undefined;
+	const name = node.expression.text;
+	return Object.hasOwn(MOMENT_ZONE_HELPERS, name)
+		? node.arguments[MOMENT_ZONE_HELPERS[name]]
+		: undefined;
+}
+
+function zoneChoices(zone: ts.Expression): string[] | undefined {
+	if (
+		!ts.isCallExpression(zone) ||
+		!ts.isIdentifier(zone.expression) ||
+		zone.expression.text !== MOMENT_ZONE_CHOICE ||
+		zone.arguments.length !== 2
+	)
+		return undefined;
+	const known = zone.arguments[1];
+	if (!ts.isArrayLiteralExpression(known) || !known.elements.every(ts.isStringLiteral))
+		return undefined;
+	return known.elements.map((element) => (ts.isStringLiteral(element) ? element.text : ''));
+}
+
+export function momentZoneUse(node: ts.Node): { zones?: string[]; error?: string } | undefined {
 	if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return undefined;
 	const name = node.expression.text;
 	if (!Object.hasOwn(MOMENT_ZONE_HELPERS, name)) return undefined;
 	const zone = node.arguments[MOMENT_ZONE_HELPERS[name]];
-	if (zone === undefined || !ts.isStringLiteral(zone))
+	const choices = zone === undefined ? undefined : zoneChoices(zone);
+	if (zone === undefined || (!ts.isStringLiteral(zone) && choices === undefined))
 		return { error: 'the time zone of a moment is not known at compile time' };
-	if (zone.text === 'UTC') return {};
-	if (!momentZones().includes(zone.text))
-		return { error: `the time zone '${zone.text}' of a moment has no compiled form` };
-	return { zone: zone.text };
+	const zones = (choices ?? (ts.isStringLiteral(zone) ? [zone.text] : [])).filter(
+		(text) => text !== 'UTC',
+	);
+	for (const text of zones) {
+		if (!momentZones().includes(text))
+			return { error: `the time zone '${text}' of a moment has no compiled form` };
+	}
+	return { zones };
 }
