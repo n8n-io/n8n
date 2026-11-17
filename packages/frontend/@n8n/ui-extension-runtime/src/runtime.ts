@@ -19,7 +19,10 @@ export type TranslationParams = Record<string, string | number>;
 export type ViewApi = {
 	useContext: () => ComputedRef<UiExtensionPageContext>;
 	t: (key: string, params?: TranslationParams) => string;
-	/** Run and service data. `null` until the editor sends it, and always for views from MCP clients. */
+	/**
+	 * Run, service and overview data. `null` until the editor sends it, and always
+	 * for views and pages from MCP clients.
+	 */
 	useData: () => ComputedRef<UiExtensionPanelData | null>;
 	/** The editor's locale, such as "en", for `Intl` formatting. "en" until the first context. */
 	useLocale: () => ComputedRef<string>;
@@ -27,6 +30,8 @@ export type ViewApi = {
 	refresh: () => void;
 	/** Asks the editor to open a run. Built-in views only. */
 	openExecution: (workflowId: string, executionId: string) => void;
+	/** Asks the editor to open a workflow. Built-in views only. */
+	openWorkflow: (workflowId: string) => void;
 	/** Asks the editor to open an http(s) URL in a new tab. Built-in views only. */
 	openUrl: (url: string) => void;
 };
@@ -45,6 +50,7 @@ type ActionMessage =
 			type: 'open';
 			target:
 				| { kind: 'execution'; workflowId: string; executionId: string }
+				| { kind: 'workflow'; workflowId: string }
 				| { kind: 'url'; url: string };
 	  };
 
@@ -138,6 +144,8 @@ export function createViewBridge(target: RuntimeWindow) {
 					executionId: String(executionId),
 				},
 			}),
+		openWorkflow: (workflowId) =>
+			postAction({ type: 'open', target: { kind: 'workflow', workflowId: String(workflowId) } }),
 		openUrl: (url) => {
 			if (typeof url === 'string' && isUiExtensionOpenableUrl(url)) {
 				postAction({ type: 'open', target: { kind: 'url', url } });

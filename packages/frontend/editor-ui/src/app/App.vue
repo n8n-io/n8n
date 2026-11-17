@@ -35,6 +35,8 @@ import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useAppSidePanelLayout } from '@/app/composables/useAppSidePanelLayout';
+import { useUiExtensionsHost } from '@/app/composables/useUiExtensionsHost';
+import { UI_EXTENSIONS_HOST_KEY } from '@n8n/frontend-module-ui-extensions';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type {
@@ -84,6 +86,8 @@ useMcpDiscoveryEnrollment();
 // EOF Experiment cleanup
 
 const { isVisible: showSidePanel } = useAppSidePanelLayout();
+// The side panel and the sidebar pages share it.
+provide(UI_EXTENSIONS_HOST_KEY, useUiExtensionsHost());
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);

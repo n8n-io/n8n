@@ -9,7 +9,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
@@ -25,6 +25,7 @@ import {
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
+import { loadPagesNav } from '@n8n/frontend-module-ui-extensions';
 import {
 	AGENT_N8N_CHAT_VIEW,
 	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
@@ -44,6 +45,8 @@ import {
 import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
+
+const UiExtensionPagesNav = defineAsyncComponent(loadPagesNav);
 
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 const INSTANCE_AI_CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
@@ -231,6 +234,7 @@ function onChatItemClick(item: RecentChatItem): void {
 }
 
 const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
+const isUiExtensionsActive = computed(() => settingsStore.isModuleActive('ui-extensions'));
 
 const inbox = computed<IMenuItem>(() => ({
 	id: 'inbox',
@@ -330,6 +334,8 @@ onBeforeUnmount(() => {
 				data-test-id="project-chat-menu-item"
 			/>
 		</div>
+		<!-- Pages from the ui-extensions module: their own group, under the block that ends with Inbox. -->
+		<UiExtensionPagesNav v-if="isUiExtensionsActive" :collapsed="props.collapsed" />
 		<template v-if="hasFavorites">
 			<button
 				v-if="!props.collapsed"

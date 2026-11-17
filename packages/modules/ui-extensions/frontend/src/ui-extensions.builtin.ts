@@ -3,12 +3,16 @@ import type { BaseTextKey } from '@n8n/i18n';
 import arcadeSource from './examples/arcade.view.js?raw';
 import recentRunsSource from './examples/recentRuns.view.js?raw';
 import serviceDataSource from './examples/serviceData.view.js?raw';
-import { BUILTIN_RECENT_RUNS_VIEW_ID } from './ui-extensions.constants';
+import servicesOverviewSource from './examples/servicesOverview.view.js?raw';
+import {
+	BUILTIN_RECENT_RUNS_VIEW_ID,
+	BUILTIN_SERVICES_OVERVIEW_PAGE_ID,
+} from './ui-extensions.constants';
 
 /** A string that a built-in view reads with `n8n.t(key, params)`, and its placeholders. */
 export type BuiltinViewString = { key: BaseTextKey; params?: readonly string[] };
 
-/** A view that ships with n8n. It gets the full page context and translated strings. */
+/** A view or a page that ships with n8n. It gets the full page context and translated strings. */
 export type BuiltinViewDefinition = {
 	id: string;
 	titleKey: BaseTextKey;
@@ -126,8 +130,48 @@ export const BUILTIN_VIEWS: readonly BuiltinViewDefinition[] = [
 	},
 ];
 
+/** Pages of the main sidebar that ship with n8n. They run in the same frame as views. */
+export const BUILTIN_PAGES: readonly BuiltinViewDefinition[] = [
+	{
+		id: BUILTIN_SERVICES_OVERVIEW_PAGE_ID,
+		titleKey: 'uiExtensions.servicesOverview.title',
+		icon: 'plug',
+		source: servicesOverviewSource,
+		usesData: true,
+		strings: [
+			...loadStates,
+			...runStatuses,
+			{ key: 'uiExtensions.servicesOverview.title' },
+			{ key: 'uiExtensions.servicesOverview.subtitle' },
+			{ key: 'uiExtensions.servicesOverview.summary.workflows' },
+			{ key: 'uiExtensions.servicesOverview.summary.active', params: ['count'] },
+			{ key: 'uiExtensions.servicesOverview.summary.services' },
+			{ key: 'uiExtensions.servicesOverview.summary.accounts' },
+			{ key: 'uiExtensions.servicesOverview.summary.successRate' },
+			{ key: 'uiExtensions.servicesOverview.summary.runs', params: ['count'] },
+			{ key: 'uiExtensions.servicesOverview.services' },
+			{ key: 'uiExtensions.servicesOverview.usedIn', params: ['count', 'active'] },
+			{ key: 'uiExtensions.servicesOverview.usedInOne', params: ['active'] },
+			{ key: 'uiExtensions.servicesOverview.health.ok' },
+			{ key: 'uiExtensions.servicesOverview.health.failing' },
+			{ key: 'uiExtensions.servicesOverview.health.unknown' },
+			{ key: 'uiExtensions.servicesOverview.accounts' },
+			{ key: 'uiExtensions.servicesOverview.openWorkflow' },
+			{ key: 'uiExtensions.servicesOverview.noRun' },
+			{ key: 'uiExtensions.servicesOverview.failures' },
+			{ key: 'uiExtensions.servicesOverview.empty.title' },
+			{ key: 'uiExtensions.servicesOverview.empty.hint' },
+			{ key: 'uiExtensions.servicesOverview.partial', params: ['count'] },
+			{ key: 'uiExtensions.recentRuns.summary.noValue' },
+			{ key: 'uiExtensions.recentRuns.unnamedWorkflow' },
+			{ key: 'uiExtensions.recentRuns.openRun' },
+		],
+	},
+];
+
+/** A built-in view or page by its ID. */
 export function getBuiltinView(id: string): BuiltinViewDefinition | undefined {
-	return BUILTIN_VIEWS.find((view) => view.id === id);
+	return BUILTIN_VIEWS.find((view) => view.id === id) ?? BUILTIN_PAGES.find((p) => p.id === id);
 }
 
 /**

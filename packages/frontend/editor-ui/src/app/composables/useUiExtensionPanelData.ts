@@ -67,7 +67,7 @@ function toIso(value: Date | string | null | undefined): string | null {
 	return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function toRun(summary: ExecutionSummary): UiExtensionRun {
+export function toRun(summary: ExecutionSummary): UiExtensionRun {
 	return {
 		id: summary.id,
 		workflowId: summary.workflowId,

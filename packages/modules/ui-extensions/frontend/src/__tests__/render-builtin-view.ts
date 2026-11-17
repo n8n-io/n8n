@@ -1,5 +1,6 @@
 import {
 	UI_EXTENSION_VIEW_FACTORY_GLOBAL,
+	type UiExtensionOverviewData,
 	type UiExtensionPageContext,
 	type UiExtensionPanelData,
 	type UiExtensionRun,
@@ -23,10 +24,11 @@ import * as Vue from 'vue';
 import { builtinViewStrings, getBuiltinView } from '../ui-extensions.builtin';
 import { viewSourceToScript } from '../ui-extensions.frame';
 
-/** A call that a view made to `refresh`, `openExecution` or `openUrl`. */
+/** A call that a view made to `refresh`, `openExecution`, `openWorkflow` or `openUrl`. */
 export type ViewAction =
 	| { type: 'refresh' }
 	| { type: 'openExecution'; workflowId: string; executionId: string }
+	| { type: 'openWorkflow'; workflowId: string }
 	| { type: 'openUrl'; url: string };
 
 /**
@@ -63,6 +65,7 @@ export function renderBuiltinView(
 		refresh: () => actions.push({ type: 'refresh' }),
 		openExecution: (workflowId: string, executionId: string) =>
 			actions.push({ type: 'openExecution', workflowId, executionId }),
+		openWorkflow: (workflowId: string) => actions.push({ type: 'openWorkflow', workflowId }),
 		openUrl: (url: string) => actions.push({ type: 'openUrl', url }),
 	};
 
@@ -183,5 +186,36 @@ export const panelData = (extra: Partial<UiExtensionPanelData> = {}): UiExtensio
 	state: 'ready',
 	runs: null,
 	services: null,
+	...extra,
+});
+
+export const overviewService = (
+	extra: Partial<UiExtensionOverviewData['services'][number]> = {},
+): UiExtensionOverviewData['services'][number] => ({
+	nodeType: 'n8n-nodes-base.slack',
+	displayName: 'Slack',
+	workflowCount: 2,
+	activeWorkflowCount: 1,
+	health: 'ok',
+	accounts: ['Sales Slack'],
+	workflows: [
+		{
+			id: 'wf-1',
+			name: 'Lead routing',
+			active: true,
+			lastRun: { status: 'success', stoppedAt: '2026-11-16T11:55:01.500Z' },
+		},
+		{ id: 'wf-2', name: 'Digest', active: false, lastRun: null },
+	],
+	...extra,
+});
+
+export const overview = (
+	extra: Partial<UiExtensionOverviewData> = {},
+): UiExtensionOverviewData => ({
+	workflows: { total: 3, active: 1, scanned: 3 },
+	runs: { scanned: 4, succeeded: 3, failed: 1 },
+	services: [overviewService()],
+	failures: [run('9', { status: 'error', workflowId: 'wf-2', workflowName: 'Digest' })],
 	...extra,
 });

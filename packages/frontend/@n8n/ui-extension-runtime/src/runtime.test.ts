@@ -232,6 +232,7 @@ describe('createViewBridge', () => {
 
 			bridge.api.refresh();
 			bridge.api.openExecution('w', 'e');
+			bridge.api.openWorkflow('w2');
 			bridge.api.openUrl('https://x.test/a');
 			await flush();
 
@@ -242,6 +243,7 @@ describe('createViewBridge', () => {
 					type: 'open',
 					target: { kind: 'execution', workflowId: 'w', executionId: 'e' },
 				},
+				{ ...envelope, type: 'open', target: { kind: 'workflow', workflowId: 'w2' } },
 				{ ...envelope, type: 'open', target: { kind: 'url', url: 'https://x.test/a' } },
 			]);
 			expect(parent.postMessage).not.toHaveBeenCalled();
@@ -267,6 +269,7 @@ describe('createViewBridge', () => {
 
 			bridge.api.refresh();
 			bridge.api.openExecution('w', 'e');
+			bridge.api.openWorkflow('w');
 			bridge.api.openUrl('https://x.test');
 
 			expect(parent.postMessage).not.toHaveBeenCalled();

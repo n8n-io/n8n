@@ -17,4 +17,11 @@ export interface TabOptions<Value extends string | number> {
 	notification?: boolean;
 	tag?: string;
 	preview?: boolean;
+	/**
+	 * Shows a close button after the tab, and the tab emits `close` for it. The
+	 * Delete key on the tab does the same. Only plain tabs, not `href` or `to` tabs.
+	 */
+	closable?: boolean;
+	/** The accessible name of the close button, such as "Remove Stats". */
+	closeLabel?: string;
 }

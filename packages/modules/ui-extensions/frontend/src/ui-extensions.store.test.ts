@@ -6,7 +6,7 @@ import { nextTick } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import * as api from './ui-extensions.api';
-import { BUILTIN_VIEWS } from './ui-extensions.builtin';
+import { BUILTIN_PAGES, BUILTIN_VIEWS } from './ui-extensions.builtin';
 import { BUILTIN_RECENT_RUNS_VIEW_ID } from './ui-extensions.constants';
 import { useSidePanelStore } from './ui-extensions.store';
 
@@ -16,9 +16,16 @@ const BUILTIN_IDS = BUILTIN_VIEWS.map((view) => view.id);
 
 const view = (id: string, updatedAt = '2026-01-01T00:00:00.000Z'): UiExtensionView => ({
 	id,
+	kind: 'view',
 	title: `View ${id}`,
 	source: 'export default {}',
 	updatedAt,
+});
+
+const page = (id: string, updatedAt = '2026-01-01T00:00:00.000Z'): UiExtensionView => ({
+	...view(id, updatedAt),
+	kind: 'page',
+	title: `Page ${id}`,
 });
 
 const respond = (views: UiExtensionView[]) =>
@@ -27,6 +34,7 @@ const respond = (views: UiExtensionView[]) =>
 beforeEach(() => {
 	localStorage.clear();
 	vi.mocked(api.fetchUiExtensionViews).mockReset();
+	vi.mocked(api.deleteUiExtensionView).mockReset().mockResolvedValue();
 });
 
 describe('useSidePanelStore', () => {
@@ -211,5 +219,95 @@ describe('useSidePanelStore', () => {
 
 		store.width = 1;
 		expect(store.width).toBe(280);
+	});
+
+	describe('pages', () => {
+		it('splits the records by kind, with the built-in page first', async () => {
+			const store = useSidePanelStore();
+			respond([page('p2', '2026-01-03T00:00:00.000Z'), view('v'), page('p1')]);
+
+			await store.fetchViews();
+
+			expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'v']);
+			expect(store.pages.map((p) => p.id)).toEqual([...BUILTIN_PAGES.map((p) => p.id), 'p1', 'p2']);
+			expect(store.pages[0]).toMatchObject({
+				kind: 'page',
+				builtin: true,
+				title: 'Services overview',
+			});
+			expect(store.pages.slice(1).every((p) => !p.builtin)).toBe(true);
+		});
+
+		it('shows the built-in page before any fetch', () => {
+			expect(useSidePanelStore().pages.map((p) => p.id)).toEqual(['builtin:services-overview']);
+		});
+
+		it('does not open the panel for a new page', async () => {
+			const store = useSidePanelStore();
+			respond([]);
+			await store.fetchViews();
+
+			respond([page('p1', '2026-02-01T00:00:00.000Z')]);
+			await store.fetchViews();
+
+			expect(store.isOpen).toBe(false);
+			expect(store.activeViewId).toBe(BUILTIN_RECENT_RUNS_VIEW_ID);
+			expect(store.pages.map((p) => p.id)).toContain('p1');
+		});
+	});
+
+	describe('remove', () => {
+		it('deletes the record, then loads the records again', async () => {
+			const store = useSidePanelStore();
+			respond([view('a'), page('p')]);
+			await store.fetchViews();
+
+			respond([view('a')]);
+			await store.remove('p');
+
+			expect(api.deleteUiExtensionView).toHaveBeenCalledWith(expect.anything(), 'p');
+			expect(api.fetchUiExtensionViews).toHaveBeenCalledTimes(2);
+			expect(store.pages.map((p) => p.id)).not.toContain('p');
+			expect(store.isOpen).toBe(false);
+		});
+
+		it('loads the records again when another editor removed it first', async () => {
+			const store = useSidePanelStore();
+			respond([view('a')]);
+			await store.fetchViews();
+			vi.mocked(api.deleteUiExtensionView).mockRejectedValue(
+				new ResponseError('Not found', { httpStatusCode: 404 }),
+			);
+
+			respond([]);
+			await expect(store.remove('a')).resolves.toBeUndefined();
+
+			expect(store.views.map((v) => v.id)).toEqual(BUILTIN_IDS);
+		});
+
+		it('keeps the record and rethrows another error', async () => {
+			const store = useSidePanelStore();
+			respond([view('a')]);
+			await store.fetchViews();
+			vi.mocked(api.deleteUiExtensionView).mockRejectedValue(new Error('offline'));
+
+			await expect(store.remove('a')).rejects.toThrow('offline');
+
+			expect(api.fetchUiExtensionViews).toHaveBeenCalledTimes(1);
+			expect(store.views.map((v) => v.id)).toContain('a');
+		});
+
+		it('falls back to Recent runs when the active view goes', async () => {
+			const store = useSidePanelStore();
+			respond([view('a')]);
+			await store.fetchViews();
+			store.activeViewId = 'a';
+
+			respond([]);
+			await store.remove('a');
+
+			expect(store.activeViewId).toBe(BUILTIN_RECENT_RUNS_VIEW_ID);
+			expect(store.activeView.id).toBe(BUILTIN_RECENT_RUNS_VIEW_ID);
+		});
 	});
 });

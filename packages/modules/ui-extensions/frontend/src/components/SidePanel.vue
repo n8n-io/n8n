@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { UiExtensionPageContext, UiExtensionPanelData } from '@n8n/api-types';
-import { N8nIconButton, N8nResizeWrapper, N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nResizeWrapper, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, watchEffect } from 'vue';
 
+import { useRemoveUiExtension } from '../composables/useRemoveUiExtension';
 import { getBuiltinView } from '../ui-extensions.builtin';
 import {
 	SIDE_PANEL_MAX_WIDTH,
@@ -34,10 +35,27 @@ const dataEnabled = defineModel<boolean>('dataEnabled', { default: false });
 
 const i18n = useI18n();
 const store = useSidePanelStore();
+const { remove } = useRemoveUiExtension();
 
+// Only the views of the user can be removed. The built-in views stay.
 const tabs = computed(() =>
-	store.views.map((view) => ({ value: view.id, label: view.title, icon: view.icon })),
+	store.views.map((view) => ({
+		value: view.id,
+		label: view.title,
+		icon: view.icon,
+		...(!view.builtin && {
+			closable: true,
+			closeLabel: i18n.baseText('uiExtensions.remove.label', {
+				interpolate: { title: view.title },
+			}),
+		}),
+	})),
 );
+
+function onClose(id: string) {
+	const view = store.views.find((candidate) => candidate.id === id);
+	if (view) void remove(view);
+}
 
 const toggleLabel = computed(() =>
 	i18n.baseText(store.isOpen ? 'uiExtensions.sidePanel.close' : 'uiExtensions.sidePanel.open'),
@@ -78,20 +96,20 @@ onBeforeUnmount(() => window.removeEventListener('focus', onFocus));
 			<div
 				:class="$style.panel"
 				:style="{ width: `${store.width}px` }"
+				role="region"
+				:aria-label="i18n.baseText('uiExtensions.sidePanel.title')"
 				data-test-id="ui-extensions-side-panel-content"
 			>
-				<div :class="$style.header">
-					<N8nText tag="h2" size="small" bold>{{
-						i18n.baseText('uiExtensions.sidePanel.title')
-					}}</N8nText>
+				<div :class="$style.tabRow" data-test-id="ui-extensions-side-panel-tab-row">
+					<N8nTabs
+						v-model="store.activeViewId"
+						:class="$style.tabs"
+						:options="tabs"
+						size="small"
+						data-test-id="ui-extensions-side-panel-tabs"
+						@close="onClose"
+					/>
 				</div>
-				<N8nTabs
-					v-model="store.activeViewId"
-					:class="$style.tabs"
-					:options="tabs"
-					size="small"
-					data-test-id="ui-extensions-side-panel-tabs"
-				/>
 				<ViewFrame
 					v-if="runtime"
 					:key="`${store.activeView.id}:${store.activeView.updatedAt}`"
@@ -107,16 +125,18 @@ onBeforeUnmount(() => window.removeEventListener('focus', onFocus));
 			</div>
 		</N8nResizeWrapper>
 		<div :class="$style.rail" :style="{ width: `${SIDE_PANEL_RAIL_WIDTH}px` }">
-			<N8nIconButton
-				icon="panel-right"
-				variant="ghost"
-				size="small"
-				:aria-label="toggleLabel"
-				:title="toggleLabel"
-				:aria-pressed="store.isOpen"
-				data-test-id="ui-extensions-side-panel-toggle"
-				@click="store.toggle()"
-			/>
+			<div :class="$style.railTop">
+				<N8nIconButton
+					icon="panel-right"
+					variant="ghost"
+					size="small"
+					:aria-label="toggleLabel"
+					:title="toggleLabel"
+					:aria-pressed="store.isOpen"
+					data-test-id="ui-extensions-side-panel-toggle"
+					@click="store.toggle()"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -140,10 +160,20 @@ onBeforeUnmount(() => window.removeEventListener('focus', onFocus));
 	border-right: var(--border);
 }
 
-.header {
+// As high as the main header next to it (64px plus its 1px border), so both
+// bottom borders make one line.
+.tabRow,
+.railTop {
 	display: flex;
-	align-items: center;
-	padding: var(--spacing--xs) var(--spacing--sm) 0;
+	flex-shrink: 0;
+	box-sizing: border-box;
+	height: calc(var(--header--height) * 1px);
+	border-bottom: var(--border);
+}
+
+// The active tab draws its own underline, so the tabs sit on the row's border.
+.tabRow {
+	align-items: flex-end;
 }
 
 .tabs {
@@ -153,7 +183,10 @@ onBeforeUnmount(() => window.removeEventListener('focus', onFocus));
 .rail {
 	display: flex;
 	flex-direction: column;
+}
+
+.railTop {
 	align-items: center;
-	padding-top: var(--spacing--xs);
+	justify-content: center;
 }
 </style>

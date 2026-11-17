@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import { isUiExtensionOpenableUrl } from '@n8n/api-types';
-import {
-	loadSidePanel,
-	type ViewOpenTarget,
-	type ViewRuntimeAssets,
-} from '@n8n/frontend-module-ui-extensions';
+import { loadSidePanel, UI_EXTENSIONS_HOST_KEY } from '@n8n/frontend-module-ui-extensions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -17,9 +12,7 @@ import {
 	shallowRef,
 	watch,
 } from 'vue';
-import { useRouter } from 'vue-router';
 
-import { VIEWS } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useUiExtensionPageContext } from '@/app/composables/useUiExtensionPageContext';
 import { useUiExtensionPanelData } from '@/app/composables/useUiExtensionPanelData';
@@ -39,24 +32,13 @@ const { panelData, refresh } = useUiExtensionPanelData(
 	dataEnabled,
 );
 
-const router = useRouter();
-const rootStore = useRootStore();
 const pushConnectionStore = usePushConnectionStore();
 const settingsStore = useSettingsStore();
-const locale = computed(() => rootStore.defaultLocale);
-const runtime = shallowRef<ViewRuntimeAssets | null>(null);
-
-/**
- * The view runtime is a separate bundle that the frame loads from a string.
- * It is about 1 MB, so it loads only when the panel mounts.
- */
-async function loadRuntime() {
-	const [{ default: js }, { default: css }] = await Promise.all([
-		import('@n8n/ui-extension-runtime/runtime.iife.js?raw'),
-		import('@n8n/ui-extension-runtime/runtime.css?raw'),
-	]);
-	runtime.value = { js, css };
-}
+// App.vue provides the host. It loads the runtime once for the panel and the pages.
+const host = inject(UI_EXTENSIONS_HOST_KEY, null);
+const rootStore = useRootStore();
+const locale = computed(() => host?.locale.value ?? rootStore.defaultLocale);
+const runtime = computed(() => host?.runtime.value ?? null);
 
 // A view from an MCP client must show without a reload on every page, and only
 // some layouts open the push connection. The store counts the owners.
@@ -73,21 +55,8 @@ const stopWaitingForSettings = watch(
 	{ immediate: true },
 );
 
-/** A built-in view asks to open a run, or a page in a service. The module drops other views' asks. */
-function onOpen(target: ViewOpenTarget) {
-	if (target.kind === 'execution') {
-		void router.push({
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: { workflowId: target.workflowId, executionId: target.executionId },
-		});
-		return;
-	}
-	if (isUiExtensionOpenableUrl(target.url))
-		window.open(target.url, '_blank', 'noopener,noreferrer');
-}
-
 onMounted(() => {
-	void loadRuntime();
+	host?.loadRuntime();
 });
 
 onBeforeUnmount(() => {
@@ -105,6 +74,6 @@ onBeforeUnmount(() => {
 		:panel-data="panelData"
 		:locale="locale"
 		@refresh="refresh"
-		@open="onOpen"
+		@open="host?.open($event)"
 	/>
 </template>

@@ -1,14 +1,33 @@
 # @n8n/frontend-module-ui-extensions
 
-The side panel of the editor. Each tab of the panel is a view: the built-in
-"Page summary", or a view that an MCP client made with the
-`create_side_panel_view` tool. Each view runs in a sandboxed iframe on the view
-runtime (`@n8n/ui-extension-runtime`) and gets the page context through
-`postMessage`. A view from an MCP client sees a workflow only when the workflow
-is available in MCP (`ui-extensions.context.ts`).
+The side panel of the editor, and the pages of the main sidebar.
 
-The shell host (`editor-ui/src/app/components/app/AppSidePanel.vue`) computes the
-page context, loads the runtime and renders `loadSidePanel`.
+- Each tab of the panel is a view: one of the built-in views (Recent runs,
+  Service data, Arcade), or a view that an MCP client made with the
+  `create_side_panel_view` tool.
+- Each page shows in its own group of the main sidebar, under Inbox, and opens
+  at `/extensions/pages/<id>` (`UiExtensionPageView.vue`). It is the built-in
+  Services overview page, or a page that an MCP client made with the
+  `create_custom_page` tool.
+
+Views and pages are one record type with a `kind`. Each one runs in a sandboxed
+iframe on the view runtime (`@n8n/ui-extension-runtime`) and gets the page
+context over a `MessagePort`. A view from an MCP client sees a workflow only
+when the workflow is available in MCP (`ui-extensions.context.ts`). A page
+always gets the `other` context, so a page from an MCP client sees no workflow.
+Only built-in views and pages get data, strings and the open actions.
+
+A user removes a view or a page that they added with the `x` on its tab or its
+sidebar item, after a confirmation (`useRemoveUiExtension`). An MCP client
+removes one with `delete_ui_extension`. The server pushes each change to every
+open editor of the user. A user on a removed page goes to `/`.
+
+The shell provides a `UiExtensionsHost` with `UI_EXTENSIONS_HOST_KEY`
+(`editor-ui/src/app/composables/useUiExtensionsHost.ts`): the runtime, which it
+loads once for the panel and the pages, the locale, the overview data and the
+open actions. The panel host (`editor-ui/src/app/components/app/AppSidePanel.vue`)
+computes the page context and renders `loadSidePanel`. `ProjectNavigation.vue`
+renders `loadPagesNav`.
 
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.

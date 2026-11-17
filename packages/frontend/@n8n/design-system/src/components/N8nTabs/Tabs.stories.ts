@@ -134,6 +134,28 @@ export const Overflow: StoryFn = () => ({
 	`,
 });
 
+export const Closable: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return {
+			val: 'recent',
+			options: [
+				{ value: 'recent', label: 'Recent runs', icon: 'history' },
+				{
+					value: 'stats',
+					label: 'Stats',
+					icon: 'chart-column',
+					closable: true,
+					closeLabel: 'Remove Stats',
+				},
+				{ value: 'notes', label: 'Notes', closable: true, closeLabel: 'Remove Notes' },
+			] satisfies Array<TabOptions<string>>,
+		};
+	},
+	methods: { onClose: action('close') },
+	template: '<n8n-tabs v-model="val" size="small" :options="options" @close="onClose" />',
+});
+
 export const OversizedTab: StoryFn = () => ({
 	components: { N8nTabs },
 	data() {

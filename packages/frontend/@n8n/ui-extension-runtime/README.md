@@ -9,6 +9,16 @@ The runtime gives a view:
 - `Vue`: the Vue 3 API, with the template compiler.
 - `n8n.useContext()`: a read-only ref to the page context that the editor sends.
 - `n8n.t(key)`: the translated string for `key`.
+- `n8n.useLocale()`: a read-only ref to the editor's locale.
+
+Built-in views and pages also use `n8n.useData()`, `n8n.refresh()`,
+`n8n.openExecution()`, `n8n.openWorkflow()` and `n8n.openUrl()`. The editor
+sends data to built-in views and pages only, and it ignores their requests from
+any other view or page. `useData()` carries the run and service data, and on
+the built-in Services overview page also the `overview` data.
+
+A page from the main sidebar uses the same runtime and frame as a side panel
+view.
 - These design-system components, registered globally: `N8nText`, `N8nHeading`,
   `N8nCard`, `N8nButton`, `N8nBadge`, `N8nIcon`, `N8nCallout` and `N8nTag`.
 

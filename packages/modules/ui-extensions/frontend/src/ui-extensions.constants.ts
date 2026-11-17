@@ -1,4 +1,8 @@
 export const BUILTIN_RECENT_RUNS_VIEW_ID = 'builtin:recent-runs';
+export const BUILTIN_SERVICES_OVERVIEW_PAGE_ID = 'builtin:services-overview';
+
+/** The route of a page from the main sidebar. */
+export const UI_EXTENSION_PAGE_VIEW = 'UiExtensionPage';
 
 /** Width of the toggle rail, which shows at all times. */
 export const SIDE_PANEL_RAIL_WIDTH = 40;

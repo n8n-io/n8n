@@ -1,12 +1,12 @@
 import type { UiExtensionPageContext } from '@n8n/api-types';
-import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, type ShallowRef } from 'vue';
 import { useRoute } from 'vue-router';
 
-import { CORE_NODES_CATEGORY, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { isServiceNodeType } from '@/app/utils/uiExtensionNodes';
 
 /** Routes that show one workflow on the canvas. */
 const WORKFLOW_ROUTES = new Set<string>([
@@ -24,17 +24,6 @@ const WORKFLOWS_ROUTES = new Set<string>([
 	VIEWS.FOLDERS,
 	VIEWS.PROJECTS_FOLDERS,
 ]);
-
-/**
- * A service node signs in to an outside app, such as Slack or Google Sheets. So it
- * takes credentials and is not one of n8n's core nodes, such as HTTP Request or If.
- */
-function isServiceNodeType(nodeType: INodeTypeDescription): boolean {
-	return (
-		(nodeType.credentials?.length ?? 0) > 0 &&
-		!(nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) ?? false)
-	);
-}
 
 /** `DEFAULT` and an empty value mean that the workflow has no error workflow. */
 function hasErrorWorkflow(errorWorkflow: string | undefined): boolean {

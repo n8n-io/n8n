@@ -11,3 +11,8 @@ export async function fetchUiExtensionViews(context: IRestApiContext): Promise<U
 		return parsed.success ? [parsed.data] : [];
 	});
 }
+
+/** Removes a view or a page of the current user. */
+export async function deleteUiExtensionView(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `/ui-extensions/views/${encodeURIComponent(id)}`);
+}

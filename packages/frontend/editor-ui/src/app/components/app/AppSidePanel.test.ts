@@ -1,17 +1,16 @@
 import { createTestingPinia } from '@pinia/testing';
+import { UI_EXTENSIONS_HOST_KEY, type UiExtensionsHost } from '@n8n/frontend-module-ui-extensions';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { fireEvent } from '@testing-library/vue';
-import { defineComponent, nextTick } from 'vue';
+import { defineComponent, nextTick, ref, shallowRef } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { VIEWS } from '@/app/constants';
 
 import AppSidePanel from './AppSidePanel.vue';
 
 const pushConnect = vi.fn();
 const pushDisconnect = vi.fn();
-const push = vi.fn();
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn(() => ({
@@ -24,18 +23,24 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	useRoute: () => ({ params: {}, query: {}, meta: {}, name: 'SettingsPersonalView' }),
-	useRouter: () => ({ push }),
 }));
 
-vi.mock('@n8n/ui-extension-runtime/runtime.iife.js?raw', () => ({ default: '/* runtime */' }));
-vi.mock('@n8n/ui-extension-runtime/runtime.css?raw', () => ({ default: '/* css */' }));
+function createHost(): UiExtensionsHost {
+	return {
+		runtime: shallowRef(null),
+		locale: ref('en'),
+		useOverviewData: vi.fn(),
+		open: vi.fn(),
+		loadRuntime: vi.fn(),
+	};
+}
 
 const renderComponent = createComponentRenderer(AppSidePanel, {
 	global: { stubs: { SidePanel: true } },
 });
 
 /** Renders the shell with a panel that sends one `open` event, as the module does for a built-in view. */
-async function openFromView(target: unknown) {
+async function openFromView(target: unknown, host: UiExtensionsHost) {
 	const SidePanel = defineComponent({
 		name: 'SidePanel',
 		emits: ['open'],
@@ -43,7 +48,7 @@ async function openFromView(target: unknown) {
 		template: '<button data-test-id="open" @click="$emit(\'open\', target)" />',
 	});
 	const { getByTestId } = createComponentRenderer(AppSidePanel, {
-		global: { stubs: { SidePanel } },
+		global: { stubs: { SidePanel }, provide: { [UI_EXTENSIONS_HOST_KEY as symbol]: host } },
 	})();
 	await fireEvent.click(getByTestId('open'));
 }
@@ -53,7 +58,6 @@ describe('AppSidePanel', () => {
 		createTestingPinia({ stubActions: false });
 		pushConnect.mockClear();
 		pushDisconnect.mockClear();
-		push.mockClear();
 	});
 
 	it('holds a push connection while it is mounted', () => {
@@ -95,35 +99,13 @@ describe('AppSidePanel', () => {
 		expect(pushDisconnect).not.toHaveBeenCalled();
 	});
 
-	it('opens a run in the executions view', async () => {
-		await openFromView({ kind: 'execution', workflowId: 'wf-1', executionId: '7' });
+	it('loads the runtime through the host and passes its open requests on', async () => {
+		const host = createHost();
+		const target = { kind: 'workflow', workflowId: 'wf-1' };
 
-		expect(push).toHaveBeenCalledWith({
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: { workflowId: 'wf-1', executionId: '7' },
-		});
-	});
+		await openFromView(target, host);
 
-	it('opens an http(s) URL in a new tab without access to the editor', async () => {
-		const open = vi.spyOn(window, 'open').mockReturnValue(null);
-
-		await openFromView({ kind: 'url', url: 'https://example.slack.com/archives/C123' });
-
-		expect(open).toHaveBeenCalledWith(
-			'https://example.slack.com/archives/C123',
-			'_blank',
-			'noopener,noreferrer',
-		);
-		open.mockRestore();
-	});
-
-	it('does not open a URL that is not http(s)', async () => {
-		const open = vi.spyOn(window, 'open').mockReturnValue(null);
-
-		await openFromView({ kind: 'url', url: 'javascript:alert(1)' });
-
-		expect(open).not.toHaveBeenCalled();
-		expect(push).not.toHaveBeenCalled();
-		open.mockRestore();
+		expect(host.loadRuntime).toHaveBeenCalledOnce();
+		expect(host.open).toHaveBeenCalledExactlyOnceWith(target);
 	});
 });

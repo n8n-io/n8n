@@ -13,6 +13,7 @@ const workflowContext: UiExtensionPageContext = {
 
 const mcpView: SidePanelView = {
 	id: 'view-1',
+	kind: 'view',
 	title: 'Stats',
 	source: 'export default {}',
 	updatedAt: '2026-01-01T00:00:00.000Z',
@@ -137,6 +138,44 @@ describe('ViewFrame', () => {
 			locale: 'de',
 			data: panelData,
 		});
+	});
+
+	it('sends its strings and its data to the built-in page', async () => {
+		const builtinPage: SidePanelView = {
+			...mcpView,
+			id: 'builtin:services-overview',
+			kind: 'page',
+			builtin: true,
+		};
+		const { received, fromFrame } = renderFrame({
+			view: builtinPage,
+			pageContext: { page: 'other', routeName: 'UiExtensionPage' },
+		});
+
+		fromFrame(ready);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+
+		expect(received[0]).toMatchObject({
+			context: { page: 'other', routeName: 'UiExtensionPage' },
+			strings: { 'uiExtensions.servicesOverview.title': 'Services overview' },
+			data: panelData,
+		});
+	});
+
+	it('sends no strings and no data to a page from an MCP client', async () => {
+		const { received, fromFrame } = renderFrame({
+			view: { ...mcpView, kind: 'page' },
+			pageContext: { page: 'other', routeName: 'UiExtensionPage' },
+		});
+
+		fromFrame(ready);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+
+		expect(received[0]).toMatchObject({
+			context: { page: 'other', routeName: 'UiExtensionPage' },
+			strings: {},
+		});
+		expect(received[0]).not.toHaveProperty('data');
 	});
 
 	it('sends the locale but no data to an MCP view', async () => {
