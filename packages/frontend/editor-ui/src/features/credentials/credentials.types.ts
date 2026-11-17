@@ -1,4 +1,9 @@
-import type { CreateCredentialDto, Iso8601DateTimeString } from '@n8n/api-types';
+import type {
+	CreateCredentialDto,
+	CredentialTypeAvailability,
+	Iso8601DateTimeString,
+} from '@n8n/api-types';
+import type { TypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 import type { ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { Scope } from '@n8n/permissions';
@@ -6,6 +11,10 @@ import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 import type { CredentialPayload } from '@n8n/frontend-module-sdk';
 
 export type { CredentialPayload };
+
+export type CredentialTypeUsability =
+	| { reason: 'typeRestricted'; restriction: CredentialTypeAvailability }
+	| { reason: 'nodesRestricted'; restriction: TypeRestriction; nodeTypeNames: string[] };
 
 export interface ICredentialsResponse
 	extends ICredentialsEncrypted,

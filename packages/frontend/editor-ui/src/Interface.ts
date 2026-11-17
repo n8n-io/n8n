@@ -10,8 +10,11 @@ import type {
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
-import type { CredentialPayload, IUsedCredential } from '@/features/credentials/credentials.types';
-import type { CredentialTypeUsability } from '@/features/credentials/composables/useCredentialTypeUsability';
+import type {
+	CredentialPayload,
+	CredentialTypeUsability,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { DisplayMode, ModalState, SlotResourcesListFilters } from '@n8n/frontend-module-sdk';

@@ -1,4 +1,3 @@
-import type { CredentialTypeAvailability } from '@n8n/api-types';
 import {
 	getCurrentProjectRestrictionLookup,
 	SCOPE_LABEL_KEY,
@@ -11,6 +10,7 @@ import { HTTP_REQUEST_NODE_TYPE, type ICredentialType } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '../credentials.store';
+import type { CredentialTypeUsability } from '../credentials.types';
 import { isCredentialTypeSupported } from '../credentials.utils';
 
 // Same as `nodeCredentialType` in nodes-base/nodes/HttpRequest/V3/Description.ts.
@@ -20,9 +20,7 @@ const HTTP_REQUEST_CREDENTIAL_TYPES = [
 	'has:authenticate',
 ];
 
-export type CredentialTypeUsability =
-	| { reason: 'typeRestricted'; restriction: CredentialTypeAvailability }
-	| { reason: 'nodesRestricted'; restriction: TypeRestriction; nodeTypeNames: string[] };
+export type { CredentialTypeUsability };
 
 export type CredentialTypeUsabilityReason = CredentialTypeUsability['reason'];
 

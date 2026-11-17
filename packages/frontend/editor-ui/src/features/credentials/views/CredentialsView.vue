@@ -122,10 +122,18 @@ const needsSetup = (credential: ICredentialsResponse): boolean => {
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { getCredentialTypeUsability } = useCredentialTypeUsability();
 
+const policyProjectId = computed(() => {
+	const { projectId } = route?.params ?? {};
+	return typeof projectId === 'string' ? projectId : projectsStore.personalProject?.id;
+});
+useTypeAvailability(policyProjectId);
+
 const homeProjectIds = computed(() =>
 	overview.isOverviewSubPage
 		? credentialsStore.allCredentials.flatMap((credential) =>
-				credential.homeProject ? [credential.homeProject.id] : [],
+				credential.homeProject && credential.homeProject.id !== policyProjectId.value
+					? [credential.homeProject.id]
+					: [],
 			)
 		: [],
 );
@@ -147,13 +155,22 @@ function createRestrictionResolver(): (
 	if (!overview.isOverviewSubPage) return () => ({ lookup: currentProject });
 
 	const instanceWide = onlyInstanceWideRestrictions(currentProject);
+	const isPolicyProjectLoaded =
+		typeAvailabilityPoliciesStore.loadedProjectId === policyProjectId.value;
 	const lookupByProjectId = new Map<string, TypeRestrictionLookup | null>();
 	return (credential: ICredentialsResponse) => {
 		const { homeProject } = credential;
 		if (!homeProject) return { lookup: instanceWide };
 
 		if (!lookupByProjectId.has(homeProject.id)) {
-			lookupByProjectId.set(homeProject.id, getProjectRestrictionLookup(homeProject.id));
+			lookupByProjectId.set(
+				homeProject.id,
+				homeProject.id === policyProjectId.value
+					? isPolicyProjectLoaded
+						? currentProject
+						: null
+					: getProjectRestrictionLookup(homeProject.id),
+			);
 		}
 		const lookup = lookupByProjectId.get(homeProject.id);
 		return lookup ? { lookup, projectType: homeProject.type } : { lookup: instanceWide };
@@ -328,6 +345,8 @@ const maybeEditCredential = async () => {
 
 const initialize = async () => {
 	loading.value = true;
+	// Policies can change between visits, so each visit fetches the other projects again.
+	typeAvailabilityPoliciesStore.clearProjectVerdicts();
 	const isVarsEnabled =
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
@@ -372,12 +391,6 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 watch(() => route?.params?.projectId, initialize);
-
-// A new credential goes to this project, so the new credential picker reads its policy.
-useTypeAvailability(() => {
-	const { projectId } = route?.params ?? {};
-	return typeof projectId === 'string' ? projectId : projectsStore.personalProject?.id;
-});
 
 watch(
 	() => props.credentialId,

@@ -308,6 +308,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			getCredentialTypeAvailability,
 			fetchForProjects,
 			getProjectVerdicts,
+			clearProjectVerdicts,
 			fetchSubWorkflowCheck,
 			getSubWorkflowCheck,
 			hasSubWorkflowCheckFailed,

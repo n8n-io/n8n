@@ -720,6 +720,35 @@ describe('CredentialsView', () => {
 				expect(new Set(projectIds)).toEqual(new Set(['team-1', 'team-2']));
 			});
 
+			it('drops the verdicts of other projects on each visit, so a policy change shows', async () => {
+				const policies = setup({});
+
+				renderComponent();
+				await flushPromises();
+
+				expect(policies.clearProjectVerdicts).toHaveBeenCalled();
+			});
+
+			it('uses the loaded policy of the open project and does not fetch it again', async () => {
+				mockedStore(useProjectsStore).personalProject = createTestProject({
+					id: 'personal-1',
+					type: ProjectTypes.Personal,
+				});
+				const policies = setup({ current: { slackApi: 'project' } });
+				policies.loadedProjectId = 'personal-1';
+				mockedStore(useCredentialsStore).allCredentials = [
+					credential('1', 'slackApi', 'personal-1'),
+					credential('2', 'gmailOAuth2', 'team-1'),
+				];
+
+				const { getAllByTestId } = renderComponent();
+
+				const [projectIds] = policies.fetchForProjects.mock.calls[0];
+				expect(projectIds).toEqual(['team-1']);
+				const [personal] = getAllByTestId('resources-list-item');
+				expect(within(personal).getByTestId('credential-card-restricted')).toBeInTheDocument();
+			});
+
 			it("judges each credential by its home project's policy", async () => {
 				setup({ byProject: { 'team-1': { slackApi: 'project' }, 'team-2': {} } });
 				mockedStore(useCredentialsStore).allCredentials = [
