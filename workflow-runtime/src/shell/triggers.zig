@@ -3,6 +3,7 @@
 //! triggers. The shell reads TZif files here; the core never touches files.
 const std = @import("std");
 const core_lib = @import("core");
+const sys = @import("sys.zig");
 const core = core_lib.core;
 const module = core_lib.module;
 
@@ -65,7 +66,7 @@ pub fn zoneEventsNew(gpa: std.mem.Allocator, out: *std.ArrayList(core.Event), by
         if (st) |s| {
             if (core.hasZone(s, name)) continue;
             if (core.zonesAreFull(s)) {
-                std.debug.print("the zone table is full: time zone {s} is not loaded (raise --max-zones)\n", .{name});
+                sys.note("the zone table is full: time zone {s} is not loaded (raise --max-zones)\n", .{name});
             }
         }
         var seen = false;
@@ -98,7 +99,7 @@ pub fn zonePayload(gpa: std.mem.Allocator, name: []const u8) ![]u8 {
     const path = try std.fmt.bufPrintSentinel(&path_buf, "{s}/{s}", .{ dir, name }, 0);
     const fd = std.c.open(path, .{ .ACCMODE = .RDONLY }, @as(std.c.mode_t, 0));
     if (fd < 0) {
-        std.debug.print("time zone {s}: cannot open {s}\n", .{ name, path });
+        sys.note("time zone {s}: cannot open {s}\n", .{ name, path });
         return error.UnknownTimezone;
     }
     defer _ = std.c.close(fd);

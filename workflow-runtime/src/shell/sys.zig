@@ -121,6 +121,14 @@ pub const Poller = struct {
     }
 };
 
+/// A line for the operator, on stderr. A test binary prints none: `zig build`
+/// reports a test run that wrote to stderr as a "failed command", also when
+/// every test passed, so a red line must mean a failure.
+pub fn note(comptime fmt: []const u8, args: anytype) void {
+    if (builtin.is_test) return;
+    std.debug.print(fmt, args);
+}
+
 pub fn nowMs() i64 {
     var ts: c.timespec = undefined;
     _ = c.clock_gettime(c.CLOCK.REALTIME, &ts);

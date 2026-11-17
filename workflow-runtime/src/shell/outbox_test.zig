@@ -523,6 +523,7 @@ test "outbox: a step and a trace line of an execution with data stay until the a
     const run = try bed.adminCall("POST", "/_admin/executions", "{\"workflowId\":\"w1\",\"executionId\":\"77\",\"trigger\":{},\"trace\":true}");
     try std.testing.expectEqual(@as(u16, 202), run.status);
     // started, trace, step started, step completed, finished: five records.
+    try bed.waitSeq(5);
     try std.testing.expectEqual(@as(u64, 5), bed.lastSeq());
     const text = try bed.openStream(0, 5);
     const t = std.testing;
@@ -570,6 +571,7 @@ test "outbox: saveData makes the step lines durable without trace" {
     try std.testing.expectEqual(@as(u16, 200), (try bed.webhook("{\"id\":7}")).status);
     // started, step started, step completed, finished: four records, also
     // without `trace`.
+    try bed.waitSeq(4);
     try std.testing.expectEqual(@as(u64, 4), bed.lastSeq());
     const text = try bed.openStream(0, 4);
     const t = std.testing;
@@ -613,6 +615,7 @@ test "outbox: without saveData the step lines of the sample are best effort" {
     var i: u32 = 0;
     while (i < 3) : (i += 1) try std.testing.expectEqual(@as(u16, 200), (try bed.webhook("{\"id\":7}")).status);
     // Only started and finished are durable for each run.
+    try bed.waitSeq(6);
     try std.testing.expectEqual(@as(u64, 6), bed.lastSeq());
     const text = try bed.readStream(1000, 500);
     const t = std.testing;
@@ -667,6 +670,7 @@ test "outbox: a slow client still gets the lines in publication order" {
     while (i < runs) : (i += 1) try std.testing.expectEqual(@as(u16, 200), (try bed.webhook(body)).status);
     // `saveData`: started, step started, step completed and finished, each
     // one durable (spec 9.2).
+    try bed.waitSeq(4 * runs);
     try std.testing.expectEqual(@as(u64, 4 * runs), bed.lastSeq());
     const text = try bed.readStream(4 * runs, 10_000);
     const t = std.testing;
@@ -732,6 +736,7 @@ test "outbox: a dropped best-effort line does not hold back the durable lines af
     try bed.streamFirst(null, null, 5_000);
     var i: u32 = 0;
     while (i < runs) : (i += 1) try std.testing.expectEqual(@as(u16, 200), (try bed.webhook("{\"id\":7}")).status);
+    try bed.waitSeq(2 * runs);
     try std.testing.expectEqual(@as(u64, 2 * runs), bed.lastSeq());
     // Read until the stream goes quiet: the ring keeps only a few lines, so
     // the count of lines is not known in advance.
@@ -939,6 +944,7 @@ test "outbox: a restart sends the unacked events again, with their seq" {
     // The shard stops and starts again on the same log dir.
     bed.stopNow();
     try bed.serve(&.{wfm});
+    try bed.waitSeq(2);
     try std.testing.expectEqual(@as(u64, 2), bed.lastSeq());
     try std.testing.expect(std.mem.indexOf(u8, (try bed.adminCall("GET", "/_admin/outbox", "")).body, "\"acked\":1,") != null);
     // The client asks after the seq that it handled: the rest comes again.

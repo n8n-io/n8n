@@ -730,6 +730,13 @@ pub const Runner = struct {
 
     pub fn init(gpa: std.mem.Allocator, id: u32, opts: Options, stats: *Stats, stop: *std.atomic.Value(bool)) !*Runner {
         const r = try gpa.create(Runner);
+        // `create` leaves the fields undefined. Give each field its declared
+        // default, so a field that this function does not set is never read
+        // undefined (an optional table then looked present in `deinit`).
+        const info = @typeInfo(Runner).@"struct";
+        inline for (info.field_names, info.field_types, info.field_attrs) |name, T, attrs| {
+            if (attrs.defaultValue(T)) |d| @field(r, name) = d;
+        }
         r.gpa = gpa;
         r.id = id;
         r.opts = opts;
@@ -978,7 +985,7 @@ pub const Runner = struct {
             const tk = try r.sh.resolveInDoubt(now);
             try r.perform(tk.actions);
             r.sh.endBatch();
-            std.debug.print("shard {d}: recovered {d} batches, {d} live, {d} parked\n", .{ r.id, stats.batches, r.sh.st.liveExecutions(), r.sh.st.parkedCount() });
+            sys.note("shard {d}: recovered {d} batches, {d} live, {d} parked\n", .{ r.id, stats.batches, r.sh.st.liveExecutions(), r.sh.st.parkedCount() });
         }
         var evs: std.ArrayList(core.Event) = .empty;
         defer evs.deinit(r.gpa);
@@ -1061,7 +1068,7 @@ pub const Runner = struct {
     }
 
     pub fn run(r: *Runner) void {
-        r.loop() catch |err| std.debug.print("shard {d} stopped: {s}\n", .{ r.id, @errorName(err) });
+        r.loop() catch |err| sys.note("shard {d} stopped: {s}\n", .{ r.id, @errorName(err) });
     }
 
     /// Start the log writer and give the log to it. From here the shard
@@ -1096,13 +1103,13 @@ pub const Runner = struct {
         o.to_writer = null;
         // The shard stops: an output that cannot leave now is lost with its
         // connection, and `left` reports it.
-        r.releaseHeld() catch |e| std.debug.print("shard {d}: held outputs stay: {s}\n", .{ r.id, @errorName(e) });
+        r.releaseHeld() catch |e| sys.note("shard {d}: held outputs stay: {s}\n", .{ r.id, @errorName(e) });
         const left = o.hold.len();
         r.sh.off = null;
         const k = o.counters;
-        std.debug.print("shard {d}: log offload: records={d} bytes={d} in_place={d} sync_requests={d} syncs={d} appends={d}\n", .{ r.id, k.records, k.bytes, k.in_place, k.sync_requests, o.syncs.load(.monotonic), o.appends.load(.monotonic) });
-        std.debug.print("shard {d}: log offload: held={d} released={d} left={d} longest_hold_us={d} ring_full_waits={d} hold_full_waits={d}\n", .{ r.id, k.held, k.released, left, o.longest_hold_ns / 1000, k.ring_full_waits, k.hold_full_waits });
-        std.debug.print("shard {d}: log offload: wakes={d} sleeps={d} writer_wakeups={d} dropped_wakes={d}\n", .{ r.id, k.wakes, k.sleeps, o.writer_wakeups.load(.monotonic), o.dropped_wakes.load(.monotonic) });
+        sys.note("shard {d}: log offload: records={d} bytes={d} in_place={d} sync_requests={d} syncs={d} appends={d}\n", .{ r.id, k.records, k.bytes, k.in_place, k.sync_requests, o.syncs.load(.monotonic), o.appends.load(.monotonic) });
+        sys.note("shard {d}: log offload: held={d} released={d} left={d} longest_hold_us={d} ring_full_waits={d} hold_full_waits={d}\n", .{ r.id, k.held, k.released, left, o.longest_hold_ns / 1000, k.ring_full_waits, k.hold_full_waits });
+        sys.note("shard {d}: log offload: wakes={d} sleeps={d} writer_wakeups={d} dropped_wakes={d}\n", .{ r.id, k.wakes, k.sleeps, o.writer_wakeups.load(.monotonic), o.dropped_wakes.load(.monotonic) });
     }
 
     /// Perform the held outputs whose records are durable, oldest first.
@@ -1156,7 +1163,7 @@ pub const Runner = struct {
         try r.startRing();
         const cpu_start_ns = sys.threadCpuNs();
         // `--stats`: the CPU time of this thread, to compare it for each execution.
-        defer if (r.opts.stats) std.debug.print("shard {d}: thread_cpu_us={d} finished={d}\n", .{ r.id, (sys.threadCpuNs() - cpu_start_ns) / 1000, r.stats.finished.load(.monotonic) });
+        defer if (r.opts.stats) sys.note("shard {d}: thread_cpu_us={d} finished={d}\n", .{ r.id, (sys.threadCpuNs() - cpu_start_ns) / 1000, r.stats.finished.load(.monotonic) });
         try r.startOffload();
         defer r.stopOffload();
         var has_ready = r.start_out.has_ready;
@@ -1299,7 +1306,7 @@ pub const Runner = struct {
         const store = r.ring_store orelse return;
         r.ring_fba.reset();
         store.init(r.ring_fba.allocator(), .{ .buffers = r.opts.ring_buffers, .buffer_size = r.opts.rbuf }) catch |e| {
-            std.debug.print("shard {d}: io_uring is not available ({s}); using epoll\n", .{ r.id, @errorName(e) });
+            sys.note("shard {d}: io_uring is not available ({s}); using epoll\n", .{ r.id, @errorName(e) });
             if (r.opts.io == .uring) return error.IoUringUnavailable;
             return;
         };
@@ -1377,7 +1384,7 @@ pub const Runner = struct {
             // Errors other than a reset are unexpected: name the first ones.
             if (c.res < 0 and c.res != -@as(i32, @backingInt(std.posix.E.CONNRESET))) {
                 r.ring_recv_errors += 1;
-                if (r.ring_recv_errors <= 8) std.debug.print("shard {d}: io_uring recv ended with errno {d}\n", .{ r.id, -c.res });
+                if (r.ring_recv_errors <= 8) sys.note("shard {d}: io_uring recv ended with errno {d}\n", .{ r.id, -c.res });
             }
             cn.close_after = true;
             if (!cn.send_busy and cn.wsent >= cn.wlen) r.closeConn(idx);
@@ -1646,7 +1653,7 @@ pub const Runner = struct {
             body = std.mem.trim(u8, http.member(a.payload, "body") orelse "", " ");
             hdr = http.userHeaders(scratch, http.member(a.payload, "headers") orelse "{}") catch return r.replyRaw(idx, 503, "{\"error\":\"busy\"}");
             // Values can be secrets: the log names only the count.
-            if (hdr.dropped > 0) std.debug.print("respond: dropped {d} header(s) with a bad name or value\n", .{hdr.dropped});
+            if (hdr.dropped > 0) sys.note("respond: dropped {d} header(s) with a bad name or value\n", .{hdr.dropped});
         }
         if (a.seq & core.reply_binary != 0) return r.replyBinary(idx, a.aux, body, hdr, scratch);
         r.replyTyped(idx, a.aux, hdr.content_type orelse "application/json", hdr.lines, body);
@@ -1815,7 +1822,7 @@ pub const Runner = struct {
         // The actions of a batch and the requests in flight bound the list.
         std.debug.assert(r.nlost < r.egress_lost.len);
         if (r.nlost == r.egress_lost.len) {
-            std.debug.print("shard {d}: no room for the result of {d}/{d}\n", .{ r.id, exec_id, seq });
+            sys.note("shard {d}: no room for the result of {d}/{d}\n", .{ r.id, exec_id, seq });
             return;
         }
         r.egress_lost[r.nlost] = .{ .exec_id = exec_id, .seq = seq, .msg = msg };
@@ -1836,7 +1843,7 @@ pub const Runner = struct {
                 // waits for the resume either way.
                 if (http.member(a.payload, "node")) |node| return r.sendFrame(a, std.mem.trim(u8, node, " "), true);
                 var idb: [32]u8 = undefined;
-                std.debug.print("approval waiting: POST /resume/{s}/{d}\n", .{ core.formatExecId(a.exec_id, &idb), a.seq });
+                sys.note("approval waiting: POST /resume/{s}/{d}\n", .{ core.formatExecId(a.exec_id, &idb), a.seq });
             },
             else => {},
         }
@@ -2280,7 +2287,7 @@ pub const Runner = struct {
         }, @backingInt(Kind.ring_file)) catch |e| switch (e) {
             error.OutOfMemory => return error.OutOfMemory,
             error.BadRoot => {
-                std.debug.print("shard {d}: the binary data storage path \"{s}\" is not a directory; responses are not stored\n", .{ r.id, root[0..@min(root.len, 200)] });
+                sys.note("shard {d}: the binary data storage path \"{s}\" is not a directory; responses are not stored\n", .{ r.id, root[0..@min(root.len, 200)] });
                 return;
             },
         };
@@ -2772,7 +2779,7 @@ pub const Runner = struct {
         const room = buf[id.len + 1 ..];
         const doc: []const u8 = if (creds.flagsDoc(text, room)) |d| (if (cred_flags.valid(d)) d else "") else |_| "";
         if (doc.len == 0) {
-            std.debug.print("workflow {s}: its credential flags do not fit {d} bytes or have a slot name that is not text; its compiled nodes get none\n", .{ id, cred_flags.doc_bytes });
+            sys.note("workflow {s}: its credential flags do not fit {d} bytes or have a slot name that is not text; its compiled nodes get none\n", .{ id, cred_flags.doc_bytes });
             room[0..2].* = "{}".*;
             return buf[0 .. id.len + 3];
         }
@@ -2965,7 +2972,7 @@ pub const Runner = struct {
         var cnt = creds.Out.counter();
         admin.encodeDurable(creds.Out, &cnt, ev, now, r.id, seq) catch unreachable;
         if (cnt.len > outbox.max_line_bytes) {
-            std.debug.print("shard {d}: a durable event of {d} bytes does not fit the outbox\n", .{ r.id, cnt.len });
+            sys.note("shard {d}: a durable event of {d} bytes does not fit the outbox\n", .{ r.id, cnt.len });
             return error.EventTooLarge;
         }
         var rec = try ob.begin(seq, @intCast(cnt.len));
@@ -3583,7 +3590,7 @@ pub const Runner = struct {
     fn failHost(r: *Runner, key: FbKey, msg: []const u8) void {
         if (r.fb_failq.items.len == r.fb_failq.capacity) {
             // Only when the core has not taken failures for many batches.
-            std.debug.print("shard {d}: host failure queue full, step {d}/{d} keeps waiting\n", .{ r.id, key.exec_id, key.seq });
+            sys.note("shard {d}: host failure queue full, step {d}/{d} keeps waiting\n", .{ r.id, key.exec_id, key.seq });
             return;
         }
         r.fb_failq.appendAssumeCapacity(.{ .key = key, .msg = msg });
@@ -3787,7 +3794,7 @@ pub const Runner = struct {
         for (r.fb_scratch.items) |k| r.fbRemove(k);
         r.fb_scratch.clearRetainingCapacity();
         std.debug.assert(r.fb_conns[ci].fd < 0 and r.fb_conns[ci].inflight == 0);
-        std.debug.print("a fallback host connection closed; {d} step(s) were on it\n", .{on_conn});
+        sys.note("a fallback host connection closed; {d} step(s) were on it\n", .{on_conn});
     }
 
     /// The steps of connection `ci` that can go again as new steps wait for
@@ -3836,7 +3843,7 @@ pub const Runner = struct {
             c.wbuf.appendSliceAssumeCapacity(fbf.hello_frame);
             c.hello_left = fbf.hello_frame.len;
             r.flushConnFallback(@intCast(i));
-            if (i == 0) std.debug.print("connected to the fallback host\n", .{});
+            if (i == 0) sys.note("connected to the fallback host\n", .{});
         }
         if (failed and !r.anyConnOpen()) r.failAloneQueue();
     }
@@ -3911,7 +3918,7 @@ pub const Runner = struct {
         for (r.fb_conns, 0..) |*c, i| {
             if (c.fd >= 0 and c.stall_since != 0 and now - c.stall_since > fb_stall_ms) r.lostFallback(@intCast(i));
             if (c.fd >= 0 and c.state == .hello and now - c.hello_since > fb_hello_ms) {
-                std.debug.print("the fallback host did not answer the hello in {d} ms; connecting again\n", .{fb_hello_ms});
+                sys.note("the fallback host did not answer the hello in {d} ms; connecting again\n", .{fb_hello_ms});
                 r.lostFallback(@intCast(i));
             }
         }
@@ -3969,7 +3976,7 @@ pub const Runner = struct {
             const len = std.mem.readInt(u32, c.rbuf[off..][0..4], .little);
             if (len > c.rbuf.len - 4) {
                 // It can never fit: the stream cannot go on.
-                std.debug.print("shard {d}: a fallback host frame of {d} bytes is larger than the read buffer\n", .{ r.id, len });
+                sys.note("shard {d}: a fallback host frame of {d} bytes is larger than the read buffer\n", .{ r.id, len });
                 return r.lostFallback(ci);
             }
             if (c.rlen - off - 4 < len) break;
@@ -3993,7 +4000,7 @@ pub const Runner = struct {
                 if (c.state != .hello) return;
                 c.state = .ready;
                 c.hello_left = 0;
-                if (r.fb_version != 2) std.debug.print("the fallback host speaks version 2: {d} worker(s)\n", .{h.workers});
+                if (r.fb_version != 2) sys.note("the fallback host speaks version 2: {d} worker(s)\n", .{h.workers});
                 r.fb_version = 2;
                 r.fb_target = fbf.connectionsFor(h.workers);
                 r.fb_wait_dirty = true;
@@ -4429,6 +4436,16 @@ test "regression: a second client gets its own connection, not the one already o
     const b = try t.client("");
     defer sys.close(b.fd);
     try std.testing.expect(b.idx != a.idx);
+}
+
+test "regression: a shard without an admin port has the default of each field that init does not set" {
+    // `init` left these two undefined. On x86_64 Linux the undefined optional
+    // read as a table, and `deinit` freed it.
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    try std.testing.expect(t.r.renewals == null);
+    try std.testing.expectEqual(@as(i64, 0), t.r.egress_stats_ms);
 }
 
 test "inbound requests leave room for the results of outbound requests" {

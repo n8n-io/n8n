@@ -34,6 +34,8 @@ zig build -Drelease=true                       # ReleaseSafe build
 ./ci.sh precommit                              # fmt, lint, check, Debug tests (before each commit)
 ./ci.sh                                        # the merge tier: + safe tests, sim, counts, corpus, fuzz, leaks, rules
 zig build lint -- --rule undefined             # the known findings of one lint rule (docs/zig-standards.md)
+zig build check -Dtarget=x86_64-linux-gnu      # compile the program and the unit tests for Linux, no binary (on macOS, after each change)
+bench/linux-tests.sh 5                         # run the Debug unit tests 5 times on Linux, in Docker
 ./zig-out/bin/wfrt corpus ../packages/@n8n/workflow-lang/corpus
 ./zig-out/bin/wfrt run module.wfm fixture.json # one differential run
 ./zig-out/bin/wfrt sim --seeds 10000 --crash 30

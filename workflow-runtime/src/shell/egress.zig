@@ -4063,7 +4063,7 @@ pub const Client = struct {
                 break :blk std.fmt.bufPrint(&cb, "conn {d} h2 open={d} settings={any} goaway={any} send_win={d} wbuf={d}/{d} tls_pending={any} queued_read={any} flush_queued={any} last_io={d}ms", .{ ci, h.open, h.got_settings, h.goaway, h.send_win, cn.wsent, cn.wlen, pend, cn.read_queued, cn.flush_queued, c.now_ms - cn.last_io_ms }) catch "conn";
             } else std.fmt.bufPrint(&cb, "conn {d} {s} rlen={d} head={any} body={d} tls_pending={any} queued_read={any} write_armed={any} last_io={d}ms", .{ ci, @tagName(cn.state), cn.rlen, cn.head != null, cn.body_len, pend, cn.read_queued, cn.write_armed, c.now_ms - cn.last_io_ms }) catch "conn";
         }
-        std.debug.print("egress: request {d}/{d} to {s}:{d} has waited {d} ms: {s} sid={d} hdrs_sent={any} headers_done={any} body={d} attempt={d}; origin inflight={d} queued={d} limit={d} conns={d} h2_opening={d} alpn_known={any} h2_known={any} hold={d}ms; {s}\n", .{
+        sys.note("egress: request {d}/{d} to {s}:{d} has waited {d} ms: {s} sid={d} hdrs_sent={any} headers_done={any} body={d} attempt={d}; origin inflight={d} queued={d} limit={d} conns={d} h2_opening={d} alpn_known={any} h2_known={any} hold={d}ms; {s}\n", .{
             r.exec_id,                           r.seq,          o.hostSlice()[0..@min(o.host_len, 120)], o.port,       c.now_ms - r.started_ms, @tagName(r.state),
             r.sid,                               r.hdrs_sent,    r.headers_done,                          r.body_len,   r.attempt,               o.inflight,
             o.queued,                            c.wireLimit(o), o.nconns,                                o.h2_opening, o.alpn_known,            o.h2_known,

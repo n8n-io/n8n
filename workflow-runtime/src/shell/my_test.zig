@@ -189,6 +189,8 @@ fn fakeHarness(cfg: my.Config) !*Harness {
 }
 
 test "mysql fake: the login methods, a wrong password and a method that the client does not have" {
+    // The full login encrypts the password with RSA, which needs OpenSSL (`-Dnet=false` has none).
+    if (!@import("tls.zig").enabled) return error.SkipZigTest;
     const h = try fakeHarness(.{});
     defer h.destroy();
     const s = h.server.?;

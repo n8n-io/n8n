@@ -35,6 +35,10 @@ const Server = struct {
     lfd: c_int,
     stop: std.atomic.Value(bool) = .init(false),
     failed: bool = false,
+    /// The test expects the client to close a connection part way through a
+    /// response (a response that the client refuses): a send that finds the
+    /// connection closed is then no failure of the server.
+    client_may_close: std.atomic.Value(bool) = .init(false),
     upload: []u8,
     upload_len: usize = 0,
     upload_type: [64]u8 = @splat(0),
@@ -87,7 +91,9 @@ const Server = struct {
             } else return error.NoClient;
             defer sys.close(fd);
             sys.setNonBlocking(fd);
-            try s.serveConn(fd);
+            s.serveConn(fd) catch |e| {
+                if (e != error.Closed or !s.client_may_close.load(.acquire)) return e;
+            };
         }
     }
 
@@ -834,6 +840,9 @@ test "a rule of responseBinary stores a response by its content type, and takes 
     const first = try g.store.reserve("{}");
     const second = try g.store.reserve("{}");
     try g.expectInlineBusy(5, "/json/a");
+    // The client refuses the image at its head and closes the connection,
+    // while the server may still send the body.
+    g.server.client_may_close.store(true, .release);
     try g.startWithRule(6, "/chunked/b.png");
     try g.loop.until(5, false);
     try std.testing.expect(std.mem.indexOf(u8, g.sink.err[0..g.sink.err_len], "too many stored responses are in flight (2, --binary-max-transfers) (limit)") != null);

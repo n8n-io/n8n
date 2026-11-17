@@ -53,6 +53,10 @@ Differences from the template, to remove over time:
 
 - `./ci.sh precommit` passes before each commit (budget 30 s; all Debug tests 10 s; lint and check 10 s): fmt, lint, check (also for Linux), the lint's
   tests, test-debug.
+- `zig build check -Dtarget=x86_64-linux-gnu` after each change to `src/`, on macOS too: the engine runs on Linux.
+  `check` compiles the program and the unit tests (step `check-tests`) without a binary, so it finds test code
+  that does not compile on Linux. It does not run the tests: `bench/linux-tests.sh` runs them on Linux in Docker.
+  Run it after a change to the shell (`src/shell`): sockets, files and undefined memory differ from macOS.
 - `./ci.sh merge` passes before a merge (budget 300 s): the above, then test-safe, sim, bench-counts, corpus,
   leak check, growth check (`bench/growth-test.sh`: a shard allocates nothing after startup), rules.
   `CI_NO_BUDGET=1` while parallel agents share the machine.

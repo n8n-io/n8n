@@ -214,7 +214,7 @@ pub const Outbox = struct {
     pub fn flushSync(ob: *Outbox) void {
         if (!ob.dirty or ob.fd < 0) return;
         if (std.c.fsync(ob.fd) != 0) {
-            std.debug.print("shard {d}: the outbox sync failed\n", .{ob.shard});
+            sys.note("shard {d}: the outbox sync failed\n", .{ob.shard});
             return;
         }
         ob.dirty = false;
@@ -334,7 +334,7 @@ pub const Outbox = struct {
             // A limit: the last segment keeps the records, and the ack of a
             // front segment makes room again.
             if (ob.nsegs == 0) return error.OutboxFull;
-            std.debug.print("shard {d}: the outbox holds {d} segments; the last one grows\n", .{ ob.shard, ob.nsegs });
+            sys.note("shard {d}: the outbox holds {d} segments; the last one grows\n", .{ ob.shard, ob.nsegs });
             return ob.openSegment(ob.segs[ob.nsegs - 1].first_seq);
         }
         var pb: [path_bytes]u8 = undefined;
@@ -480,7 +480,7 @@ pub const Outbox = struct {
         const text = std.mem.trim(u8, buf[0..n], " \t\r\n");
         if (text.len == 0) return 0;
         return std.fmt.parseInt(u64, text, 10) catch {
-            std.debug.print("shard {d}: the outbox ack file is not a seq; it reads as 0\n", .{ob.shard});
+            sys.note("shard {d}: the outbox ack file is not a seq; it reads as 0\n", .{ob.shard});
             return 0;
         };
     }

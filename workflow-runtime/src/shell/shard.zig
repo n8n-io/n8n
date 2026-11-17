@@ -263,13 +263,13 @@ pub const Shard = struct {
             nsched = 0;
             sh.skipped_fires += 1;
             if (sh.skipped_fires == 1 or sh.skipped_fires % 1000 == 0) {
-                std.debug.print("shard {d}: the event outbox is full; {d} due schedule fire(s) skipped\n", .{ sh.st.cfg.shard_id, sh.skipped_fires });
+                sys.note("shard {d}: the event outbox is full; {d} due schedule fire(s) skipped\n", .{ sh.st.cfg.shard_id, sh.skipped_fires });
             }
         }
         sh.batch_events.items.len += nsched;
         const evs = sh.batch_events.items;
         if (sh.log_fires) for (evs[evs.len - nsched ..]) |ev| {
-            std.debug.print("schedule: module {d} trigger {d} slot {d}\n", .{ ev.aux, ev.seq, @as(i64, @bitCast(ev.conn)) });
+            sys.note("schedule: module {d} trigger {d} slot {d}\n", .{ ev.aux, ev.seq, @as(i64, @bitCast(ev.conn)) });
         };
 
         var out = try core.step(&sh.st, now_ms, evs, &sh.scratch);

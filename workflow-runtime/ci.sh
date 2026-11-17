@@ -51,6 +51,7 @@ zig build lint check
 lap "lint + check" 10
 # Linux cross-compiles: with the net code (epoll, c-ares and OpenSSL
 # callers; `check` compiles without linking), and without it.
+# `check` includes `check-tests`: the unit tests compile for Linux too.
 # On Linux the native check already covers this, and an explicit target
 # does not search the system library paths.
 if [ "$(uname -s)" != Linux ]; then

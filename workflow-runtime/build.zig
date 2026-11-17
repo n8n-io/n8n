@@ -85,6 +85,16 @@ pub fn build(b: *std.Build) void {
         sanitize(shell_t, tsan, sanitize_c);
         const ct = b.addTest(.{ .root_module = core_t, .name = "core-test" });
         const st = b.addTest(.{ .root_module = shell_t, .name = "shell-test" });
+        // `check` compiles the test code too, without a binary: with
+        // -Dtarget=x86_64-linux-gnu it finds a test that does not compile on
+        // Linux. These are separate compile steps: nothing asks them for a
+        // binary, so they do not link.
+        if (pair[1] == std.builtin.OptimizeMode.Debug) {
+            const check_tests = b.step("check-tests", "Compile the unit tests without producing a binary");
+            check_tests.dependOn(&b.addTest(.{ .root_module = core_t, .name = "core-test-check" }).step);
+            check_tests.dependOn(&b.addTest(.{ .root_module = shell_t, .name = "shell-test-check" }).step);
+            check.dependOn(check_tests);
+        }
         pair[0].dependOn(&b.addRunArtifact(ct).step);
         pair[0].dependOn(&b.addRunArtifact(st).step);
         // The test binaries, installed for Valgrind and for ci.sh, which runs
