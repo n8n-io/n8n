@@ -6,8 +6,8 @@ import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
 	N8nBadge,
+	N8nFeatureMaturityBadges,
 	N8nNotice,
-	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -418,7 +418,7 @@ const sharingCountText = computed(() => {
 					<template #info>
 						<N8nText :bold="true">
 							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.title') }}
-							<N8nPreviewBadge class="ml-4xs" data-test-id="security-type-policies-preview-badge" />
+							<N8nFeatureMaturityBadges class="ml-4xs" feature="securityTypePolicies" />
 						</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.description') }}

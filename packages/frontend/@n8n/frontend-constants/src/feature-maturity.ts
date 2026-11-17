@@ -60,6 +60,7 @@ export const featureMaturity = {
 		limitedEnterpriseSupport: false,
 		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/manage-security-policies',
 	},
+	securityTypePolicies: { preview: true, limitedEnterpriseSupport: false },
 	mcp: {
 		preview: false,
 		limitedEnterpriseSupport: false,
