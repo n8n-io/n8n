@@ -241,3 +241,92 @@ describe('ToolCallRunner error budgeting', () => {
 		},
 	);
 });
+
+describe('ToolCallRunner guardrail after-stage stop', () => {
+	function makeRunner() {
+		const config: AgentRuntimeConfig = {
+			name: 'test-agent',
+			model: 'openai/gpt-5',
+			instructions: '',
+			memory: new InMemoryMemory(),
+		};
+		return {
+			config,
+			runner: new ToolCallRunner({
+				eventBus: new AgentEventBus(),
+				telemetry: new RuntimeTelemetry(config),
+				concurrency: 1,
+				onCancelled: vi.fn(),
+				tokenCounter: vi.fn((text: string) => text.length),
+			}),
+		};
+	}
+
+	function makeCall(tool: BuiltTool) {
+		const toolName = tool.name;
+		const sdkMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [{ type: 'tool-call', toolCallId: 'call-1', toolName, input: {} }],
+			},
+		];
+		const list = new AgentMessageList();
+		list.addResponse(fromAiMessages(sdkMessages));
+		return {
+			toolName,
+			list,
+			params: {
+				toolName,
+				toolCallId: 'call-1',
+				input: {},
+				toolMap: new Map([[toolName, tool]]),
+				list,
+				runId: 'run-1',
+			},
+		};
+	}
+
+	it('turns an afterTool stop into a tool-error outcome', async () => {
+		const handler = vi
+			.fn<NonNullable<BuiltTool['handler']>>()
+			.mockResolvedValue('a result with a http://evil.example link');
+		const tool: BuiltTool = { name: 'fetch_page', description: 'Synthetic tool', handler };
+		const { runner } = makeRunner();
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall({
+			...params,
+			guardrails: {
+				hooks: [
+					{
+						afterTool: async () => ({ action: 'stop' as const, code: 'guardrail.urls.g1' }),
+					},
+				],
+			},
+		});
+
+		expect(outcome).toMatchObject({
+			outcome: 'error',
+			error: expect.stringContaining('Tool result blocked by guardrail: guardrail.urls.g1'),
+		});
+		// The tool ran; only its result is refused.
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the success outcome when the after-stage hook only observes', async () => {
+		const handler = vi.fn<NonNullable<BuiltTool['handler']>>().mockResolvedValue('clean result');
+		const tool: BuiltTool = { name: 'fetch_page', description: 'Synthetic tool', handler };
+		const { runner } = makeRunner();
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall({
+			...params,
+			guardrails: {
+				hooks: [{ afterTool: async () => await Promise.resolve(undefined) }],
+			},
+		});
+
+		expect(outcome).toMatchObject({ outcome: 'success' });
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+});
