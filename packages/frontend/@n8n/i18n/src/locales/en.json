@@ -5562,6 +5562,8 @@
 	"settings.migrationReport.detail.table.runs": "{count} run | {count} runs",
 	"settings.migrationReport.detail.table.lastRun": "last run {time}",
 	"settings.migrationReport.detail.table.neverRun": "never run",
+	"settings.migrationReport.detail.table.neverRunTooltip": "This workflow has never run",
+	"settings.migrationReport.detail.table.staleTooltip": "No runs in over 90 days. This workflow may no longer be in use.",
 	"settings.migrationReport.detail.table.state": "State",
 	"settings.migrationReport.detail.state.open": "Open",
 	"settings.migrationReport.detail.state.open.description": "Still needs a fix before upgrading",
