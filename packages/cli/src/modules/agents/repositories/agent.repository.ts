@@ -796,6 +796,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return true;
 	}
 
+	/** Deletes the agent row. Rows that reference the agent follow their FK rules. */
+	async deleteById(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(Agent, { id });
+	}
+
 	/** The agent that acts as this identity, if there is one. */
 	async findByIdentityId(identityId: string): Promise<Pick<Agent, 'id' | 'name'> | null> {
 		return await this.findOne({ select: ['id', 'name'], where: { identityId } });

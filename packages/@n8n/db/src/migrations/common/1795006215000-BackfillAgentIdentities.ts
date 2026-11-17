@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const fkName = 'FK_agents_identity';
+const batchSize = 500;
 const columnComment = 'Identity the agent acts as, a service account today. Every agent has one';
 const previousColumnComment =
 	'Identity the agent acts as, a service account today. Null for an instance agent or an agent without one';
@@ -55,9 +56,9 @@ export class BackfillAgentIdentities1795006215000 implements ReversibleMigration
 	}
 
 	/**
-	 * One account for each agent, row by row. `runInBatches` pages with OFFSET,
-	 * but this loop removes rows from its own filter, so OFFSET pages would skip
-	 * rows. Instances have few agents, so one query is enough.
+	 * One account for each agent, in batches. Each batch selects agents that still
+	 * have no identity, with LIMIT and no OFFSET: the loop removes rows from its
+	 * own filter, so OFFSET pages would skip rows.
 	 */
 	private async backfillIdentities({ escape, runQuery, logger, migrationName }: MigrationContext) {
 		const t = {
@@ -80,40 +81,51 @@ export class BackfillAgentIdentities1795006215000 implements ReversibleMigration
 			identityId: escape.columnName('identityId'),
 		};
 
-		const agents = await runQuery<Array<{ id: string; name: string }>>(
-			`SELECT ${c.id}, ${c.name} FROM ${t.agents} WHERE ${c.identityId} IS NULL`,
-		);
+		let total = 0;
+		while (true) {
+			const agents = await runQuery<Array<{ id: string; name: string }>>(
+				`SELECT ${c.id}, ${c.name} FROM ${t.agents} WHERE ${c.identityId} IS NULL ORDER BY ${c.id} LIMIT ${batchSize}`,
+			);
+			if (agents.length === 0) break;
+			total += agents.length;
 
-		for (const agent of agents) {
-			const userId = randomUUID();
-			const projectId = generateNanoId();
-			// A service account needs a name. An imported agent can have a blank one.
-			const name = agent.name.trim() === '' ? 'Agent' : agent.name;
+			for (const agent of agents) {
+				const userId = randomUUID();
+				const projectId = generateNanoId();
+				// A service account needs a name. An imported agent can have a blank one.
+				const name = agent.name.trim() === '' ? 'Agent' : agent.name;
 
-			await runQuery(
-				`INSERT INTO ${t.user} (${c.id}, ${c.kind}, ${c.roleSlug}) VALUES (:userId, 'service', 'global:agent')`,
-				{ userId },
-			);
-			await runQuery(`INSERT INTO ${t.details} (${c.userId}, ${c.name}) VALUES (:userId, :name)`, {
-				userId,
-				name,
-			});
-			await runQuery(
-				`INSERT INTO ${t.project} (${c.id}, ${c.name}, ${c.type}, ${c.creatorId}) VALUES (:projectId, :name, 'personal', :userId)`,
-				{ projectId, name, userId },
-			);
-			await runQuery(
-				`INSERT INTO ${t.projectRelation} (${c.projectId}, ${c.userId}, ${c.role}) VALUES (:projectId, :userId, 'project:personalOwner')`,
-				{ projectId, userId },
-			);
-			await runQuery(`UPDATE ${t.agents} SET ${c.identityId} = :userId WHERE ${c.id} = :agentId`, {
-				userId,
-				agentId: agent.id,
-			});
+				await runQuery(
+					`INSERT INTO ${t.user} (${c.id}, ${c.kind}, ${c.roleSlug}) VALUES (:userId, 'service', 'global:agent')`,
+					{ userId },
+				);
+				await runQuery(
+					`INSERT INTO ${t.details} (${c.userId}, ${c.name}) VALUES (:userId, :name)`,
+					{
+						userId,
+						name,
+					},
+				);
+				await runQuery(
+					`INSERT INTO ${t.project} (${c.id}, ${c.name}, ${c.type}, ${c.creatorId}) VALUES (:projectId, :name, 'personal', :userId)`,
+					{ projectId, name, userId },
+				);
+				await runQuery(
+					`INSERT INTO ${t.projectRelation} (${c.projectId}, ${c.userId}, ${c.role}) VALUES (:projectId, :userId, 'project:personalOwner')`,
+					{ projectId, userId },
+				);
+				await runQuery(
+					`UPDATE ${t.agents} SET ${c.identityId} = :userId WHERE ${c.id} = :agentId`,
+					{
+						userId,
+						agentId: agent.id,
+					},
+				);
+			}
 		}
 
-		if (agents.length > 0) {
-			logger.info(`[${migrationName}] Created a service account for ${agents.length} agent(s)`);
+		if (total > 0) {
+			logger.info(`[${migrationName}] Created a service account for ${total} agent(s)`);
 		}
 	}
 

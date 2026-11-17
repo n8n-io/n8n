@@ -17,6 +17,7 @@ import {
 	SharedCredentials,
 	SharedWorkflow,
 	User,
+	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SecurityContext } from '@n8n/permissions';
@@ -393,6 +394,23 @@ describe('Agent service accounts', () => {
 				'transfer blocked',
 			);
 
+			expect(await agentRepo.findOneBy({ id: agent.id })).not.toBeNull();
+			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
+		});
+
+		it('keeps the agent row when the account row cannot be deleted', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId } = await createAgentWithServiceAccount(project.id);
+			vi.spyOn(Container.get(UserRepository), 'deleteAccount').mockRejectedValueOnce(
+				new Error('account delete failed'),
+			);
+
+			await expect(agentsService.delete(agent.id, owner, project.id)).rejects.toThrow(
+				'account delete failed',
+			);
+
+			// Both rows go in one transaction, so a retry still finds the agent.
 			expect(await agentRepo.findOneBy({ id: agent.id })).not.toBeNull();
 			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
 		});

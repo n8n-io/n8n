@@ -107,7 +107,7 @@ describe('ServiceAccountService', () => {
 
 	describe('remove', () => {
 		// These accounts belong to no agent, so there is no agent row to delete first.
-		const noAgent = async () => {};
+		const noAgent = { cleanUp: async () => {}, deleteInTransaction: async () => {} };
 
 		it('removes the account, its details, its personal project and the shares into it', async () => {
 			const person = await createMember();

@@ -1040,8 +1040,8 @@ export class AgentsService {
 		const { projectId: agentProjectId } = agent;
 
 		// The work of the account moves before any cleanup that cannot be undone.
-		// If a policy blocks the transfer, the agent stays as it was. The account
-		// row goes after the agent row.
+		// If a policy blocks the transfer, the agent stays as it was. The agent
+		// row and the account row go in one transaction.
 		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx, async () => {
 			await this.deleteKnowledgeFiles(agentProjectId, agentId);
 
@@ -1057,8 +1057,6 @@ export class AgentsService {
 			await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
 			await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
-
-			await this.agentRepository.remove(agent);
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);

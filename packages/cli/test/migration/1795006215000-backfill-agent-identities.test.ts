@@ -22,6 +22,8 @@ describe('BackfillAgentIdentities migration', () => {
 	const instanceAgentId = randomUUID();
 	const linkedAgentId = randomUUID();
 	const existingIdentityId = randomUUID();
+	const linkedInstanceAgentId = randomUUID();
+	const existingInstanceIdentityId = randomUUID();
 	const versionId = randomUUID();
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
@@ -90,6 +92,14 @@ describe('BackfillAgentIdentities migration', () => {
 			'INSERT INTO {agents} ("id", "name", "projectId", "identityId", "integrations", "tools", "skills") VALUES (:id, \'Linked agent\', :projectId, :identityId, \'[]\', \'{}\', \'{}\')',
 			{ id: linkedAgentId, projectId, identityId: existingIdentityId },
 		);
+		// An instance agent that got its identity when it registered on start.
+		await query('INSERT INTO {user} ("id", "kind") VALUES (:id, \'service\')', {
+			id: existingInstanceIdentityId,
+		});
+		await query(
+			'INSERT INTO {agents} ("id", "name", "projectId", "scope", "identityId", "integrations", "tools", "skills") VALUES (:id, \'Linked assistant\', NULL, \'instance\', :identityId, \'[]\', \'{}\', \'{}\')',
+			{ id: linkedInstanceAgentId, identityId: existingInstanceIdentityId },
+		);
 		// A row with a CASCADE FK to `agents`: recreating `agents` on SQLite must keep it.
 		await query(
 			'INSERT INTO {agent_history} ("versionId", "agentId", "author", "createdAt", "updatedAt") VALUES (:versionId, :agentId, \'Author\', :now, :now)',
@@ -104,7 +114,7 @@ describe('BackfillAgentIdentities migration', () => {
 	it('gives each agent without an identity one service account with a personal project', async () => {
 		await runSingleMigration(MIGRATION_NAME);
 
-		expect(await countServiceAccounts()).toBe(4);
+		expect(await countServiceAccounts()).toBe(5);
 		expect((await query<unknown[]>('SELECT 1 FROM {agent_history}')).length).toBe(1);
 
 		for (const [agentId, name] of [
@@ -131,6 +141,10 @@ describe('BackfillAgentIdentities migration', () => {
 
 	it('keeps the identity of an agent that already has one', async () => {
 		expect(await getIdentityId(linkedAgentId)).toBe(existingIdentityId);
+	});
+
+	it('gives an instance agent with an identity no second service account', async () => {
+		expect(await getIdentityId(linkedInstanceAgentId)).toBe(existingInstanceIdentityId);
 	});
 
 	it('gives each agent a different identity', async () => {
@@ -172,7 +186,7 @@ describe('BackfillAgentIdentities migration', () => {
 		expect(table?.findColumnByName('identityId')).toMatchObject({ isNullable: true });
 		expect(await getIdentityForeignKey()).toMatchObject({ onDelete: 'SET NULL' });
 		expect(await hasUniqueIdentityIndex()).toBe(true);
-		expect(await countServiceAccounts()).toBe(4);
+		expect(await countServiceAccounts()).toBe(5);
 		expect((await query<unknown[]>('SELECT 1 FROM {agent_history}')).length).toBe(1);
 	});
 
@@ -181,7 +195,7 @@ describe('BackfillAgentIdentities migration', () => {
 
 		await runSingleMigration(MIGRATION_NAME);
 
-		expect(await countServiceAccounts()).toBe(4);
+		expect(await countServiceAccounts()).toBe(5);
 		expect(await getAgents()).toEqual(before);
 	});
 });

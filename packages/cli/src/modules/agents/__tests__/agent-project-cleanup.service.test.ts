@@ -43,9 +43,9 @@ describe('AgentProjectCleanupService', () => {
 		vi.resetAllMocks();
 		agents.findByProjectId.mockResolvedValue([]);
 		executions.hasRunningForProject.mockResolvedValue(false);
-		// The real service removes the agent inside this call, before the account row goes.
+		// The real service runs the cleanup inside this call, after the work of the account moved.
 		agentServiceAccount.deleteForAgent.mockImplementation(
-			async (_agent, _actor, _transferId, _ctx, deleteAgent) => await deleteAgent(),
+			async (_agent, _actor, _transferId, _ctx, cleanUp) => await cleanUp(),
 		);
 	});
 	afterEach(() => vi.useRealTimers());
@@ -78,7 +78,8 @@ describe('AgentProjectCleanupService', () => {
 		await vi.advanceTimersByTimeAsync(60_000);
 		await result;
 		expect(agents.findByProjectId).not.toHaveBeenCalled();
-		expect(agents.remove).not.toHaveBeenCalled();
+		expect(executionService.deleteExecutionLogsForAgent).not.toHaveBeenCalled();
+		expect(executionService.deleteMemoryThreadsForProject).not.toHaveBeenCalled();
 	});
 
 	it('does not allow the project cascade when attachment storage fails', async () => {
@@ -106,7 +107,7 @@ describe('AgentProjectCleanupService', () => {
 				ctx,
 				expect.any(Function),
 			);
-			expect(agents.remove).toHaveBeenCalledWith(agent);
+			expect(executionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith(agent.id);
 		}
 	});
 
@@ -119,6 +120,7 @@ describe('AgentProjectCleanupService', () => {
 		await expect(service.cleanupProject('project-1', { actor })).rejects.toThrow(
 			'transfer blocked',
 		);
-		expect(agents.remove).not.toHaveBeenCalled();
+		expect(executionService.deleteExecutionLogsForAgent).not.toHaveBeenCalled();
+		expect(executionService.deleteMemoryThreadsForProject).not.toHaveBeenCalled();
 	});
 });

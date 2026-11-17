@@ -39,17 +39,20 @@ export class AgentServiceAccountService implements ServiceAccountProjectSource {
 	 * moves to that project.
 	 *
 	 * The order keeps the agent intact when a policy blocks the transfer: first
-	 * the work moves, then `deleteAgent` removes the agent, then the account goes.
-	 * The account cannot go first, because every agent needs one.
+	 * the work moves, then `cleanUp` removes the data of the agent, then one
+	 * transaction deletes the agent row and the account row.
 	 */
 	async deleteForAgent(
-		agent: Pick<Agent, 'identityId'>,
+		agent: Pick<Agent, 'id' | 'identityId'>,
 		actor: User | SystemDeletionActor,
 		transferId: string | undefined,
 		ctx: OperationContext,
-		deleteAgent: () => Promise<void>,
+		cleanUp: () => Promise<void>,
 	): Promise<void> {
-		await this.serviceAccountService.remove(agent.identityId, actor, transferId, ctx, deleteAgent);
+		await this.serviceAccountService.remove(agent.identityId, actor, transferId, ctx, {
+			cleanUp,
+			deleteInTransaction: async (txCtx) => await this.agentRepository.deleteById(agent.id, txCtx),
+		});
 	}
 
 	/** The project of each agent, by the ID of its service account. */
