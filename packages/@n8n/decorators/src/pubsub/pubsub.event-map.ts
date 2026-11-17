@@ -63,6 +63,7 @@ export type PubSubCommandMap = {
 	};
 	'reload-agents-settings': never;
 	'reload-mcp-settings': never;
+	'reload-skill-sync-settings': never;
 
 	// #region Community packages
 

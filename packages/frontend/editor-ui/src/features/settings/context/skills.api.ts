@@ -26,6 +26,7 @@ import type {
 	SkillUserDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
+	SkillSyncSettingsDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -297,6 +298,18 @@ export async function acceptSkillSourceUpdates(
 		context,
 		'POST',
 		`${SOURCES_ENDPOINT}/${sourceId}/updates/accept`,
+		payload,
+	);
+}
+
+export async function updateSkillSyncSettings(
+	context: IRestApiContext,
+	payload: SkillSyncSettingsDto,
+): Promise<SkillSyncSettingsDto> {
+	return await makeRestApiRequest<SkillSyncSettingsDto>(
+		context,
+		'PUT',
+		'/skill-sync/settings',
 		payload,
 	);
 }

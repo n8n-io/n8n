@@ -90,6 +90,7 @@ export namespace PubSub {
 		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
 		export type ReloadMcpSettings = ToCommand<'reload-mcp-settings'>;
+		export type ReloadSkillSyncSettings = ToCommand<'reload-skill-sync-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
@@ -152,6 +153,7 @@ export namespace PubSub {
 		| Commands.SelfHealingFailure
 		| Commands.ReloadAgentsSettings
 		| Commands.ReloadMcpSettings
+		| Commands.ReloadSkillSyncSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged

@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -26,14 +28,17 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
 	N8nButton,
+	N8nEnterpriseReadinessBadge,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
@@ -75,7 +80,7 @@ import SkillSourceConnectDialog, {
 import SkillsTable from '../components/SkillsTable.vue';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
-import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
+import { useSkillSyncEnabled, useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
 	canWriteInstanceSkillScope,
@@ -122,7 +127,28 @@ const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
-const skillSyncEnabled = useSkillSyncFlag();
+const skillSyncFlagEnabled = useSkillSyncFlag();
+const skillSyncEnabled = useSkillSyncEnabled();
+const rbacStore = useRBACStore();
+const settingsStore = useSettingsStore();
+const canManageSkillSync = computed(
+	() => skillSyncFlagEnabled.value && rbacStore.hasScope('skill:manage'),
+);
+const skillSyncManagedByEnv = computed(
+	() => settingsStore.moduleSettings.skills?.skillSyncManagedByEnv === true,
+);
+const skillSyncSaving = ref(false);
+
+async function onSkillSyncEnabledChange(enabled: boolean) {
+	skillSyncSaving.value = true;
+	try {
+		await skillsStore.setSkillSyncEnabled(enabled);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.skillSync.saveError'));
+	} finally {
+		skillSyncSaving.value = false;
+	}
+}
 const {
 	showRecommendedSkills,
 	hasVariant: hasRecommendedSkillsVariant,
@@ -1019,7 +1045,29 @@ onMounted(async () => {
 			:title="i18n.baseText('settings.context.skills.title')"
 			:description="i18n.baseText('settings.context.skills.description')"
 			:show-docs-link="false"
-		/>
+		>
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="skills-enterprise-readiness-badge"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
+
+		<N8nSettingsRowGroup v-if="canManageSkillSync" data-test-id="skill-sync-settings">
+			<N8nSettingsEnableRow
+				:title="i18n.baseText('settings.context.skills.skillSync.label')"
+				:description="
+					skillSyncManagedByEnv
+						? i18n.baseText('settings.context.skills.skillSync.managedByEnv')
+						: i18n.baseText('settings.context.skills.skillSync.description')
+				"
+				:enabled="settingsStore.moduleSettings.skills?.skillSyncEnabled === true"
+				:disabled="skillSyncSaving || skillSyncManagedByEnv"
+				switch-test-id="skill-sync-enable-toggle"
+				@update:enabled="onSkillSyncEnabledChange"
+			/>
+		</N8nSettingsRowGroup>
 
 		<div
 			v-if="showRecommendedEmptyState"

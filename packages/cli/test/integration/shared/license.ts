@@ -26,6 +26,7 @@ export class LicenseMocker {
 		const licenseProvider: LicenseProvider = {
 			isLicensed: this.isFeatureEnabled.bind(this),
 			getValue: this.getFeatureValue.bind(this) as LicenseProvider['getValue'],
+			getPlanName: () => 'Community',
 		};
 
 		licenseState.setLicenseProvider(licenseProvider);

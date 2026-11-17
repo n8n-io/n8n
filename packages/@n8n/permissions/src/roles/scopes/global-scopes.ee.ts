@@ -123,6 +123,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'skill:update',
 	'skill:delete',
 	'skill:list',
+	'skill:manage',
 	'projectSkill:create',
 	'projectSkill:read',
 	'projectSkill:update',

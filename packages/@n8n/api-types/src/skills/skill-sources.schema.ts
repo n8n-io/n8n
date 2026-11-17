@@ -437,3 +437,7 @@ export const skillSourceDeleteBlockSchema = z.object({
 });
 
 export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;
+
+export class SkillSyncSettingsDto extends Z.class({
+	enabled: z.boolean(),
+}) {}

@@ -9,6 +9,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { useSkillsStore } from './skills.store';
 
@@ -26,6 +27,7 @@ const replacementCredentials = vi.fn();
 const replaceCredential = vi.fn();
 const getSkill = vi.fn();
 const saveSkill = vi.fn();
+const updateSkillSyncSettings = vi.fn();
 
 vi.mock('./skills.api', () => ({
 	listSkillSources: async (...args: unknown[]) => await sources(...args),
@@ -43,6 +45,7 @@ vi.mock('./skills.api', () => ({
 	getSkillSourceReplacementCredentials: async (...args: unknown[]) =>
 		await replacementCredentials(...args),
 	replaceSkillSourceCredential: async (...args: unknown[]) => await replaceCredential(...args),
+	updateSkillSyncSettings: async (...args: unknown[]) => await updateSkillSyncSettings(...args),
 }));
 
 function deferred<T>() {
@@ -319,6 +322,24 @@ describe('useSkillsStore', () => {
 			await first;
 
 			expect(store.skillNames.get('skill-1')).toBe('brand-tone');
+		});
+	});
+
+	describe('setSkillSyncEnabled', () => {
+		it('saves the switch and applies the saved value to the module settings', async () => {
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings = {
+				skills: { skillSyncEnabled: true, skillSyncManagedByEnv: false },
+			};
+			updateSkillSyncSettings.mockResolvedValue({ enabled: false });
+			const store = useSkillsStore();
+
+			await store.setSkillSyncEnabled(false);
+
+			expect(updateSkillSyncSettings).toHaveBeenCalledWith(useRootStore().restApiContext, {
+				enabled: false,
+			});
+			expect(settingsStore.moduleSettings.skills?.skillSyncEnabled).toBe(false);
 		});
 	});
 });
