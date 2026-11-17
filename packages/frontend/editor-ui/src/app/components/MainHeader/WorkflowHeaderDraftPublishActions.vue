@@ -104,7 +104,7 @@ const toast = useToast();
 const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
-const { isWorkflowReviewsEnabled, isReviewRequiredFor } = useWorkflowReviewsFeature();
+const { isWorkflowReviewsEnabled, reviewRequiredBy } = useWorkflowReviewsFeature();
 const reviewRequiredStore = useReviewRequiredStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
@@ -118,7 +118,10 @@ const reviewsApply = computed(
 	() => isWorkflowReviewsEnabled.value && (!isPersonalWorkflow.value || hasOpenReview.value),
 );
 
-const isApprovalAlwaysRequired = computed(() => isReviewRequiredFor(homeProject.value));
+const approvalRequiredBy = computed(() =>
+	reviewRequiredBy({ id: props.id, homeProject: homeProject.value }),
+);
+const isApprovalRequired = computed(() => approvalRequiredBy.value !== null);
 
 /** Whether the editor holds anything beyond the live version. */
 const hasUnpublishedChanges = computed(
@@ -142,11 +145,11 @@ const savedVersionIsApproved = computed(() => {
 
 const mustSubmitForReview = computed(
 	() =>
-		isApprovalAlwaysRequired.value && !savedVersionIsLive.value && !savedVersionIsApproved.value,
+		isApprovalRequired.value && !savedVersionIsLive.value && !savedVersionIsApproved.value,
 );
 
 const effectiveReviewRequired = computed(() =>
-	isApprovalAlwaysRequired.value
+	isApprovalRequired.value
 		? hasOpenReview.value || mustSubmitForReview.value
 		: hasOpenReview.value || reviewRequiredStore.isReviewRequired(props.id),
 );
@@ -433,6 +436,7 @@ const onPublishButtonClick = async () => {
 	}
 
 	if (!(await ensureWorkflowSaved())) return;
+	await refetchReviewStatus();
 
 	if (reviewsApply.value) {
 		// Best effort: a status that is not fetched yet reads as "no open review".
@@ -449,7 +453,7 @@ const onPublishButtonClick = async () => {
 		}
 
 		// TODO(LIGO-784): once the designed secondary affordance exists, revisit this gate
-		if (!isApprovalAlwaysRequired.value && !publishChoiceDismissed.value) {
+		if (!isApprovalRequired.value && !publishChoiceDismissed.value) {
 			showPublishChoiceDialog.value = true;
 			return;
 		}
@@ -968,10 +972,7 @@ onBeforeUnmount(() => {
 						/>
 					</template>
 					<template v-if="showWorkflowReviewControls" #footer>
-						<WorkflowReviewRequiredToggle
-							:workflow-id="props.id"
-							:locked-by-instance="isApprovalAlwaysRequired"
-						/>
+						<WorkflowReviewRequiredToggle :workflow-id="props.id" :locked-by="approvalRequiredBy" />
 					</template>
 				</N8nActionDropdown>
 			</div>

@@ -18,11 +18,11 @@ vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
 
 const TestHost = defineComponent({
 	components: { N8nDropdownMenu, WorkflowReviewRequiredToggle },
-	props: { lockedByInstance: { type: Boolean, default: false } },
+	props: { lockedBy: { type: String, default: null } },
 	template: `
 		<N8nDropdownMenu :default-open="true" :items="[{ id: 'action', label: 'Action' }]">
 			<template #footer>
-				<WorkflowReviewRequiredToggle workflow-id="workflow-1" :locked-by-instance="lockedByInstance" />
+				<WorkflowReviewRequiredToggle workflow-id="workflow-1" :locked-by="lockedBy" />
 			</template>
 		</N8nDropdownMenu>
 	`,
@@ -105,23 +105,27 @@ describe('WorkflowReviewRequiredToggle', () => {
 		expect(store.isReviewRequired('workflow-2')).toBe(false);
 	});
 
-	it('shows review as required and locked with the reason when the instance always requires approval', async () => {
-		const pinia = createPinia();
-		const store = useReviewRequiredStore(pinia);
-		const { getByRole, getByText } = renderComponent({ pinia, props: { lockedByInstance: true } });
-		await userEvent.click(getByRole('button'));
+	it.each([
+		['instance', 'This instance requires an approved review before a new version is published.'],
+		['project', 'This project requires an approved review before a new version is published.'],
+	])(
+		'shows review as required and locked with the reason when the %s requires approval',
+		async (lockedBy, reason) => {
+			const pinia = createPinia();
+			const store = useReviewRequiredStore(pinia);
+			const { getByRole, getByText } = renderComponent({ pinia, props: { lockedBy } });
+			await userEvent.click(getByRole('button'));
 
-		const reviewItem = getByRole('menuitemcheckbox', { name: /Review required/ });
-		expect(reviewItem).toHaveAttribute('aria-checked', 'true');
-		expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
-		expect(
-			getByText('New versions need an approved review before they can be published.'),
-		).toBeInTheDocument();
+			const reviewItem = getByRole('menuitemcheckbox', { name: /Review required/ });
+			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
+			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
+			expect(getByText(reason)).toBeInTheDocument();
 
-		await userEvent.click(reviewItem);
+			await userEvent.click(reviewItem);
 
-		expect(store.isReviewRequired('workflow-1')).toBe(false);
-	});
+			expect(store.isReviewRequired('workflow-1')).toBe(false);
+		},
+	);
 
 	describe('with an open review', () => {
 		// Seed through fetchStatus — the store exposes its state read-only.

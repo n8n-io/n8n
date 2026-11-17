@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { WorkflowReviewRequirementLevel } from '@n8n/api-types';
 import { computed } from 'vue';
 import { N8nDropdownMenuItem, N8nSwitch, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -8,7 +9,7 @@ import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/review
 
 const props = defineProps<{
 	workflowId: string;
-	lockedByInstance?: boolean;
+	lockedBy?: WorkflowReviewRequirementLevel | null;
 }>();
 
 const i18n = useI18n();
@@ -16,11 +17,14 @@ const reviewRequiredStore = useReviewRequiredStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 
 const hasOpenReview = computed(() => reviewStatusStore.hasOpenReview(props.workflowId));
-const isLocked = computed(() => props.lockedByInstance === true || hasOpenReview.value);
+const isLocked = computed(() => !!props.lockedBy || hasOpenReview.value);
 
 const description = computed(() => {
-	if (props.lockedByInstance) {
-		return i18n.baseText('workflowReviews.reviewRequired.enforcedDescription');
+	if (props.lockedBy === 'instance') {
+		return i18n.baseText('workflowReviews.reviewRequired.enforcedByInstanceDescription');
+	}
+	if (props.lockedBy === 'project') {
+		return i18n.baseText('workflowReviews.reviewRequired.enforcedByProjectDescription');
 	}
 	return hasOpenReview.value
 		? i18n.baseText('workflowReviews.reviewRequired.lockedDescription')
