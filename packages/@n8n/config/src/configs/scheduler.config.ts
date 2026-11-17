@@ -253,12 +253,10 @@ export class SchedulerConfig {
 	triggerNodeMode: 'legacy' | 'new' = 'new';
 
 	/**
-	 * Whether nodes that poll on a schedule (e.g. checking an inbox or API on an
-	 * interval) are scheduled by the durable scheduler instead of n8n's
-	 * in-process timer. Off by default; requires {@link enabled} to also be on.
+	 * Whether poll triggers (for example nodes that check an inbox or API on an interval) run on the durable scheduler instead of n8n's in-process timer. Set to false to go back to the in-process timer. Requires `N8N_SCHEDULER_ENABLED` and `N8N_USE_WORKFLOW_PUBLICATION_SERVICE` to be on. This variable will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED')
-	enabledForPollTriggers: boolean = false;
+	enabledForPollTriggers: boolean = true;
 
 	/**
 	 * How long, in seconds, a single poll of an external source (an inbox, an API)
@@ -276,19 +274,10 @@ export class SchedulerConfig {
 	pollTimeoutSeconds: number = 45;
 
 	/**
-	 * Whether a poll trigger's cursor advance and the execution it produced are saved
-	 * together, atomically. When disabled, a crash between the two can leave a poll
-	 * pointing past items whose execution was never saved (or vice versa).
-	 *
-	 * Requires {@link enabled} and {@link enabledForPollTriggers} to also be on;
-	 * on its own it has no effect.
-	 *
-	 * The env var name keeps its historic `N8N_POLLER_` prefix from before this flag
-	 * moved into the scheduler config; it is referenced by the rollout plan, so do
-	 * not rename it mid-ramp.
+	 * Whether a poll trigger's cursor advance and the execution it produced are saved together, atomically. Set to false to save them separately, so a crash between the two can leave a poll pointing past items whose execution was never saved. Requires `N8N_SCHEDULER_ENABLED`, `N8N_SCHEDULER_POLL_TRIGGERS_ENABLED` and `N8N_USE_WORKFLOW_PUBLICATION_SERVICE` to be on. This variable will be removed in a future version.
 	 */
 	@Env('N8N_POLLER_DURABLE_CURSORS_ENABLED')
-	durableCursorsEnabled: boolean = false;
+	durableCursorsEnabled: boolean = true;
 
 	/**
 	 * Whether n8n's internal maintenance jobs (for example pruning old executions,

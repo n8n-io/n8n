@@ -115,9 +115,9 @@ describe('DeprecationService', () => {
 		['N8N_SCHEDULER_ENABLED', 'true', 'now on by default'],
 		['N8N_SCHEDULER_ENABLED', 'false', 'in-memory scheduler is deprecated'],
 		['N8N_SCHEDULER_POLL_TRIGGERS_ENABLED', 'true', 'now on by default'],
-		['N8N_SCHEDULER_POLL_TRIGGERS_ENABLED', 'false', 'deprecated'],
+		['N8N_SCHEDULER_POLL_TRIGGERS_ENABLED', 'false', 'in-process poll timer is deprecated'],
 		['N8N_POLLER_DURABLE_CURSORS_ENABLED', 'true', 'now on by default'],
-		['N8N_POLLER_DURABLE_CURSORS_ENABLED', 'false', 'deprecated'],
+		['N8N_POLLER_DURABLE_CURSORS_ENABLED', 'false', 'Non-durable poll cursors are deprecated'],
 		['N8N_SCHEDULER_TRIGGER_NODE_MODE', 'new', 'now the default'],
 		['N8N_SCHEDULER_TRIGGER_NODE_MODE', 'legacy', '`legacy` mode is deprecated'],
 	])('should explain the scheduler default when %s is `%s`', (envVar, value, expected) => {
