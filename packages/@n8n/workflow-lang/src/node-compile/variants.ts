@@ -58,10 +58,64 @@ function itemValuesOf(member: WalkMember, sample: unknown): unknown[] | undefine
 	return undefined;
 }
 
+const MAX_GROUP_DEPTH = 2;
+
+function membersTogetherAndAlone(collection: WalkMember): unknown[] {
+	const together: Json = {};
+	for (const member of collection.options ?? []) {
+		if (!member.name) continue;
+		const [sample] = samplesOf(member, member.default);
+		if (sample === undefined) return [];
+		together[member.name] = sample;
+	}
+	const names = Object.keys(together);
+	if (names.length === 0) return [];
+	return [together, ...names.map((name) => ({ [name]: together[name] }))];
+}
+
+function innerGroups(
+	property: WalkProperty,
+	group: WalkMember,
+	field: WalkMember,
+	itemExpression: (field: string) => string,
+	depth: number,
+): { all: unknown[]; withItems?: Json; fields: Record<string, unknown[]> } | undefined {
+	if (depth >= MAX_GROUP_DEPTH) return undefined;
+	const inner: WalkProperty = {
+		name: `${property.name}.${group.name}.${field.name}`,
+		type: 'fixedCollection',
+		options: field.options,
+		typeOptions: field.typeOptions,
+	};
+	const first: Json = {};
+	const withItems: Json = {};
+	const fields: Record<string, unknown[]> = {};
+	const others: Json[] = [];
+	let hasItems = false;
+	for (const innerGroup of field.options ?? []) {
+		const built = groupVariant(inner, innerGroup, itemExpression, depth + 1);
+		if (!built || built.member === undefined) return undefined;
+		first[built.member] = built.values[0];
+		withItems[built.member] = built.form ? built.form.value : built.values[0];
+		if (built.form) {
+			hasItems = true;
+			Object.assign(fields, built.form.fields);
+		}
+		for (const other of built.values.slice(1)) others.push({ [built.member]: other });
+	}
+	if (Object.keys(first).length === 0) return undefined;
+	return {
+		all: [first, ...others.map((other) => ({ ...first, ...other }))],
+		...(hasItems ? { withItems } : {}),
+		fields,
+	};
+}
+
 function groupVariant(
 	property: WalkProperty,
 	group: WalkMember,
 	itemExpression: (field: string) => string,
+	depth = 0,
 ): Variant | undefined {
 	if (!group.name) return undefined;
 	const entry: Json = {};
@@ -72,8 +126,22 @@ function groupVariant(
 	for (const field of group.values ?? []) {
 		if (!field.name || field.type === 'notice') continue;
 		const choices = choicesOf(field);
-		const all =
-			field.type === 'options' && choices.length > 0 ? choices : samplesOf(field, field.default);
+		const nested =
+			field.type === 'fixedCollection'
+				? innerGroups(property, group, field, itemExpression, depth)
+				: undefined;
+		if (field.type === 'fixedCollection' && !nested) return undefined;
+		const all = nested
+			? nested.all
+			: field.type === 'collection'
+				? membersTogetherAndAlone(field)
+				: field.type === 'options' && choices.length > 0
+					? choices
+					: samplesOf(field, field.default);
+		if (nested?.withItems) {
+			withItems[field.name] = nested.withItems;
+			Object.assign(fields, nested.fields);
+		}
 		if (all.length === 0 || all.length > MAX_CHOICES) return undefined;
 		entry[field.name] = all[0];
 		second[field.name] =

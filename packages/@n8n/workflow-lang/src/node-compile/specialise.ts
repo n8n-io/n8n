@@ -2529,6 +2529,10 @@ class Specialiser {
 				)
 					return f.createIdentifier('__THIS');
 			}
+			if (isThisCall(node, 'getExecutionCancelSignal') && node.arguments.length === 0)
+				return f.createObjectLiteralExpression([
+					f.createPropertyAssignment('aborted', f.createFalse()),
+				]);
 			if (isThisCall(node, 'getTimezone') && this.input.timezone !== undefined) {
 				return f.createStringLiteral(this.input.timezone);
 			}
