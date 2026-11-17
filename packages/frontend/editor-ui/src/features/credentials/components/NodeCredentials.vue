@@ -334,6 +334,7 @@ const {
 	() => props.overrideCredType,
 	() => props.showAll,
 	() => props.credentials,
+	() => props.forAgent === true,
 );
 
 const credentialTypeNames = computed(() => {
@@ -441,10 +442,7 @@ function isCredentialResolvable(credentialType: string): boolean {
 }
 
 function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
-	if (props.forAgent || !isPrivateCredentialsEnabled.value) {
-		return null;
-	}
-
+	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
 	if (!id) return null;
 	const credential = findDisplayedCredential(credentialType, id);
@@ -604,9 +602,7 @@ watch(
 		const autoSelected = getAutoSelectedCredential(
 			node.value,
 			props.overrideCredType,
-			props.forAgent
-				? types.flatMap(({ options }) => options).filter((credential) => !credential.isResolvable)
-				: props.credentials,
+			props.forAgent ? types.flatMap(({ options }) => options) : props.credentials,
 		);
 		if (autoSelected) {
 			onCredentialSelected(
@@ -643,6 +639,7 @@ watch(
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
 	const flags = {
+		...(props.forAgent ? { forAgent: true } : {}),
 		...(props.forAssistant ? { forAssistant: true } : {}),
 	};
 	if (props.workflowId) return { workflowId: props.workflowId, ...flags };
@@ -1174,17 +1171,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 	if (!props.standalone) void aiGateway.saveAfterToggle();
 }
 
-function hasUnsupportedAgentCredential(credentialType: string): boolean {
-	const id = selected.value[credentialType]?.id;
-
-	return !!(props.forAgent && id && findDisplayedCredential(credentialType, id)?.isResolvable);
-}
-
 function getIssues(credentialTypeName: string): string[] {
-	if (hasUnsupportedAgentCredential(credentialTypeName)) {
-		return [i18n.baseText('nodeCredentials.agentEndUserUnsupported')];
-	}
-
 	const node = props.node;
 
 	if (node.issues?.credentials === undefined) {
@@ -1957,18 +1944,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								<N8nOption
 									v-else
 									:data-test-id="`node-credentials-select-item-${row.option.id}`"
-									:class="{
-										[$style.restrictedOption]:
-											row.restriction || (forAgent && row.option.isResolvable),
-									}"
+									:class="{ [$style.restrictedOption]: row.restriction }"
 									:label="row.option.name"
 									:value="row.option.id"
-									:disabled="row.restriction !== null || (forAgent && row.option.isResolvable)"
-									@mousedown="
-										(event: MouseEvent) =>
-											(row.restriction || (forAgent && row.option.isResolvable)) &&
-											event.preventDefault()
-									"
+									:disabled="row.restriction !== null"
+									@mousedown="(event: MouseEvent) => row.restriction && event.preventDefault()"
 								>
 									<div :class="$style.credentialOption">
 										<N8nIcon
@@ -1983,11 +1963,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 												placement="top"
 											>
 												<template #content>{{
-													i18n.baseText(
-														forAgent
-															? 'nodeCredentials.agentEndUserUnsupported'
-															: 'credentials.private.tooltip',
-													)
+													i18n.baseText('credentials.private.tooltip')
 												}}</template>
 												<N8nIcon
 													icon="user-round-key"
@@ -1998,13 +1974,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										</div>
 										<N8nText size="small" color="text-light" :class="$style.optionMeta">
 											{{
-												forAgent && row.option.isResolvable
-													? i18n.baseText('nodeCredentials.agentEndUserUnavailable')
-													: row.option.isResolvable
-														? i18n.baseText(
-																'credentialEdit.credentialConfig.credentialType.endUser.title',
-															)
-														: row.option.typeDisplayName
+												row.option.isResolvable
+													? i18n.baseText(
+															'credentialEdit.credentialConfig.credentialType.endUser.title',
+														)
+													: row.option.typeDisplayName
 											}}
 										</N8nText>
 										<CredentialTypeRestrictedMarker
@@ -2143,15 +2117,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<N8nText
-					v-if="hasUnsupportedAgentCredential(type.name) && !hideIssues"
-					color="danger"
-					size="small"
-					role="alert"
-					data-test-id="node-credential-agent-error"
-				>
-					{{ i18n.baseText('nodeCredentials.agentEndUserUnsupported') }}
-				</N8nText>
 				<CredentialPrivateConnectionRow
 					v-if="getSelectedPrivateCredential(type.name) && isDefaultResolver"
 					:credential-type-name="type.name"
@@ -2248,13 +2213,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 // The disabled row keeps the editor's readable disabled color, as in the predefined type list.
-.restrictedOption:global(.is-disabled) {
-	.credentialOption,
-	.optionName,
-	.optionIcon,
-	.checkIcon {
-		color: var(--text-color--disabled);
-	}
+.restrictedOption:global(.is-disabled) .optionName {
+	color: var(--text-color--disabled);
 }
 
 .newCredentialLock {

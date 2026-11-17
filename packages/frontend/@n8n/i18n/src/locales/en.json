@@ -2769,8 +2769,6 @@
 	"nodeCredentials.createNew.permissionDenied": "Your current role does not allow you to create credentials",
 	"nodeCredentials.credentialFor": "Credential for {credentialType}",
 	"nodeCredentials.credentialsLabelShort": "Credential",
-	"nodeCredentials.agentEndUserUnavailable": "Not supported in Agents",
-	"nodeCredentials.agentEndUserUnsupported": "Agents do not support end-user credentials yet. Select a fixed credential.",
 	"nodeCredentials.issues": "Issues",
 	"nodeCredentials.group.availableToYou": "Available to you",
 	"nodeCredentials.group.availableInProject": "Available in {project}",

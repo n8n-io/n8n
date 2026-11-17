@@ -551,50 +551,30 @@ describe('NodeToolSettingsContent', () => {
 			});
 		});
 
-		it.each([false, true])(
-			'requires a fixed replacement for an end-user Agent credential (listed=%s)',
-			async (listed) => {
-				nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
-					...MOCK_NODE_TYPE,
-					properties: [],
-					credentials: undefined,
-				});
-				credentialsStore.getUsableCredentialById = vi
-					.fn()
-					.mockImplementation((id) =>
-						id === 'fixed-cred'
-							? { id, isResolvable: false }
-							: listed
-								? { id, isResolvable: true }
-								: undefined,
-					);
+		it('emits valid=false when an agent tool keeps a credential the agent scope excludes', async () => {
+			const simpleNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [],
+				credentials: undefined,
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(simpleNodeType);
+			credentialsStore.getUsableCredentialById = vi.fn().mockReturnValue(undefined);
 
-				const { emitted, rerender } = renderComponent({
-					props: {
-						forAgent: true,
-						initialNode: createMockNode({
-							parameters: {},
-							credentials: { testApi: { id: 'personal-cred', name: 'Personal' } },
-						}),
-					},
-				});
-
-				await waitFor(() => {
-					expect(emitted('update:valid').at(-1)).toEqual([false]);
-				});
-
-				await rerender({
+			const { emitted } = renderComponent({
+				props: {
+					forAgent: true,
 					initialNode: createMockNode({
 						parameters: {},
-						credentials: { testApi: { id: 'fixed-cred', name: 'Fixed' } },
+						credentials: { testApi: { id: 'personal-cred', name: 'Personal' } },
 					}),
-				});
+				},
+			});
 
-				await waitFor(() => {
-					expect(emitted('update:valid').at(-1)).toEqual([true]);
-				});
-			},
-		);
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions[validEmissions.length - 1][0]).toBe(false);
+			});
+		});
 
 		it('should emit valid=false when node has parameter issues', async () => {
 			vi.spyOn(NodeHelpers, 'getNodeParametersIssues').mockReturnValue({

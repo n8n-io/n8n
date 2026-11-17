@@ -216,20 +216,14 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
-// Keep unsupported selections visible, but require a fixed credential before saving.
+// Agents cannot use personal credentials yet. A saved selection that the
+// agent-scoped fetch no longer returns must block saving.
 const agentCredentialsLoaded = ref(false);
 const hasUnavailableAgentCredential = computed(() => {
 	if (!props.forAgent || !agentCredentialsLoaded.value) return false;
-
-	return Object.values(node.value?.credentials ?? {}).some((credential) => {
-		if (!credential.id) {
-			return false;
-		}
-
-		const available = credentialsStore.getUsableCredentialById(credential.id);
-
-		return !available || available.isResolvable;
-	});
+	return Object.values(node.value?.credentials ?? {}).some(
+		(credential) => credential.id && !credentialsStore.getUsableCredentialById(credential.id),
+	);
 });
 
 const isValid = computed(() => {
@@ -487,6 +481,7 @@ onMounted(async () => {
 			credentialsStore.fetchCredentialTypes(false),
 			credentialsStore.fetchUsableCredentials({
 				projectId,
+				...(props.forAgent ? { forAgent: true } : {}),
 			}),
 		]);
 		agentCredentialsLoaded.value = true;
