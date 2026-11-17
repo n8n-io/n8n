@@ -2995,13 +2995,23 @@ fn redispatchInDoubt(s: *State, exec_id: u64, scratch: *Arena) StepError!void {
 /// The operations of n8n services that only read (spec 9.9).
 const service_reads = [_][]const u8{ "getColumns", "getManyRowsAndCount", "getManyAndCount", "getProjectId", "getProcessedDataCount" };
 
-/// True when the args of a `service` effect name an operation that only reads.
+/// The calls of the service `chatMemory` that can go again (spec 9.9): `load` only reads, and
+/// an `open` that goes twice touches the session twice, which changes no answer.
+const chat_memory_repeats = [_][]const u8{ "open", "load" };
+
+/// True when the args of a `service` effect name an operation that can go again after a crash.
 fn serviceRead(vm: *ops.Vm, args: Value) bool {
     if (value.kindOf(args) != .object) return false;
     const op = vm.objGet(value.payload(args), "op");
     if (value.kindOf(op) != .string) return false;
     const name = vm.str(op);
     for (service_reads) |r| {
+        if (std.mem.eql(u8, name, r)) return true;
+    }
+    const service = vm.objGet(value.payload(args), "service");
+    if (value.kindOf(service) != .string) return false;
+    if (!std.mem.eql(u8, vm.str(service), "chatMemory")) return false;
+    for (chat_memory_repeats) |r| {
         if (std.mem.eql(u8, name, r)) return true;
     }
     return false;
