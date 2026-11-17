@@ -24,18 +24,15 @@ export type InstancePackage = {
 export function instancePromotionExportRequest({
 	user,
 	projectIds,
-	canExportVariableValues,
 }: {
 	user: User;
 	projectIds: string[];
-	canExportVariableValues: boolean;
 }): ExportPackageRequest {
 	return {
 		user,
 		projectIds,
 		includeAgents: false,
 		includeVariableValues: true,
-		canExportVariableValues,
 		includeTags: true,
 		// Archived workflows travel too, so the target archives them instead of removing them.
 		includeArchived: true,

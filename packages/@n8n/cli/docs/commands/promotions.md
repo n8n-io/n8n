@@ -17,8 +17,17 @@ to one repository and apply from another. A project can have its own environment
 for each direction. A direction without a project environment uses the instance
 environment.
 
-Requires the Promotions feature to be licensed. The API key scopes are named
-`promotions:*`.
+Requires the Promotions feature to be licensed. The API key scopes are:
+
+- `promotions:manageProviders`: create, update and delete providers, and list
+  the repositories and branches of a provider
+- `promotions:readProviders`: list and get providers
+- `promotions:manageEnvironments`: create, update and delete environments,
+  connect and disconnect them, and link projects
+- `promotions:readEnvironments`: list and get environments, their projects and
+  their missing projects
+- `promotions:promote`: preview and promote
+- `promotions:apply`: preview, apply and continue
 
 ## Setup example: Git over SSH
 
@@ -303,8 +312,7 @@ personal project is refused, because Apply would delete it on the destination.
 Move it back to its team project first. A workflow or folder on the branch that
 moved to another team project is also refused while its old project still
 exists, because Apply can't move it between projects. Connect the environment first. This command
-works on an `instance` Promote environment only. The API key also needs
-`variable:list` when the workflows reference variables.
+works on an `instance` Promote environment only.
 
 ## `promotion-environment list-changes`
 
@@ -395,8 +403,7 @@ Archived workflows stay on the branch as archived. A selected workflow that was
 deleted leaves this project's branch. A selected workflow that moved into or out
 of the project since the branch was written is refused: move it back
 first. The request fails before any write if the branch does not hold a
-deleted workflow under this project. Connect that environment first. The API key also needs
-`variable:list` when the workflows reference variables.
+deleted workflow under this project. Connect that environment first.
 
 ## `promotion-environment apply`
 

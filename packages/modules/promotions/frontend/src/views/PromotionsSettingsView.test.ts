@@ -240,7 +240,9 @@ describe('PromotionsSettingsView', () => {
 	});
 
 	it('keeps each card busy until its own retry finishes', async () => {
-		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: ['promotions:manageEnvironments'],
+		});
 		const notConnected = { hasCheckout: false, matchesEnvironment: false };
 		const promoteEnvironment = {
 			...applyEnvironment,

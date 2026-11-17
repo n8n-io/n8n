@@ -51,7 +51,7 @@ const createTestRouter = () =>
 const setup = ({
 	activeModules = ['promotions'],
 	environmentsVersion = 'v2',
-	scopes = ['promotions:read', 'promotions:promote', 'promotions:apply'] as Scope[],
+	scopes = ['promotions:promote', 'promotions:apply'] as Scope[],
 }: { activeModules?: string[]; environmentsVersion?: 'v1' | 'v2'; scopes?: Scope[] } = {}) => {
 	createTestingPinia({ stubActions: false });
 
@@ -73,8 +73,8 @@ afterEach(() => {
 describe('PromotionsModule settings link', () => {
 	const link = () => PromotionsModule.settingsPages?.find(({ id }) => id === 'settings-promotions');
 
-	it('is available when promotions are enabled and the user can manage them', () => {
-		setup({ scopes: [...PROMOTIONS_SETTINGS_SCOPES] });
+	it('is available when promotions are enabled and the user can read the setup', () => {
+		setup({ scopes: ['promotions:readProviders', 'promotions:readEnvironments'] });
 
 		expect(link()?.available).toBe(true);
 	});
@@ -113,23 +113,26 @@ describe('PromotionsModule settings route', () => {
 });
 
 describe('PromotionsModule preview routes', () => {
-	it('opens the apply preview of a project with the direction from the route', async () => {
-		setup();
-		const router = createTestRouter();
+	it.each(['promote', 'apply'] as const)(
+		'opens the %s preview of a project for a user with only that direction scope',
+		async (direction) => {
+			setup({ scopes: [`promotions:${direction}`] });
+			const router = createTestRouter();
 
-		await router.push('/projects/p1/promotions/apply');
+			await router.push(`/projects/p1/promotions/${direction}`);
 
-		const route = router.currentRoute.value;
-		expect(route.name).toBe(PROMOTION_PREVIEW_VIEWS.apply);
-		const props = route.matched.at(-1)?.props.default;
-		expect(typeof props === 'function' ? props(route) : props).toEqual({
-			projectId: 'p1',
-			direction: 'apply',
-		});
-	});
+			const route = router.currentRoute.value;
+			expect(route.name).toBe(PROMOTION_PREVIEW_VIEWS[direction]);
+			const props = route.matched.at(-1)?.props.default;
+			expect(typeof props === 'function' ? props(route) : props).toEqual({
+				projectId: 'p1',
+				direction,
+			});
+		},
+	);
 
 	it('leads users who cannot apply changes home', async () => {
-		setup({ scopes: ['promotions:read', 'promotions:promote'] });
+		setup({ scopes: ['promotions:promote'] });
 		const router = createTestRouter();
 
 		await router.push('/projects/p1/promotions/apply');

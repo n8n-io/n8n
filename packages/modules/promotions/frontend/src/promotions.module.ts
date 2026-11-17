@@ -40,9 +40,7 @@ const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
 	// The rbac middleware needs project scopes, which these routes do not load.
 	beforeEnter: () => {
 		const scope = direction === 'promote' ? 'promotions:promote' : 'promotions:apply';
-		const allowed =
-			isPromotionsEnabled() &&
-			useRBACStore().hasScope(['promotions:read', scope], {}, { mode: 'allOf' });
+		const allowed = isPromotionsEnabled() && useRBACStore().hasScope(scope);
 		return allowed || { name: VIEWS.HOMEPAGE };
 	},
 });

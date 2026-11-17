@@ -6,13 +6,10 @@ export const ENVIRONMENTS_DOCS_URL = 'https://docs.n8n.io/administer/environment
 export const ENVIRONMENTS_PLAN_DOCS_URL = `${ENVIRONMENTS_DOCS_URL}/plan-your-environments`;
 export const ENVIRONMENTS_UPGRADE_DOCS_URL = `${ENVIRONMENTS_DOCS_URL}/upgrade-from-environments-classic`;
 
-/** The scopes that the promotion settings page needs. */
+/** The scopes that open the promotion settings page. Each change also needs its manage scope. */
 export const PROMOTIONS_SETTINGS_SCOPES = [
-	'promotions:list',
-	'promotions:read',
-	'promotions:create',
-	'promotions:update',
-	'promotions:delete',
+	'promotions:readProviders',
+	'promotions:readEnvironments',
 ] as const;
 
 export const PROMOTION_PREVIEW_VIEWS = {

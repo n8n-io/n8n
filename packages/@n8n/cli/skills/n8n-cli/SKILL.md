@@ -351,8 +351,10 @@ Key points:
   `--expected-commit-sha` flags go together: pass all three or none. The commit
   SHA must be the full SHA. `--expected-preview-revision` is separate and works
   only with `promote-selection`, `apply-selection` and `apply-selection-continue`.
-- API key scopes for this group are named `promotions:*`. `promote` also needs
-  `variable:list` when the workflows reference variables.
+- API key scopes for this group are named `promotions:*`. Setup commands need
+  `manageProviders`, `readProviders`, `manageEnvironments` or `readEnvironments`.
+  Preview and promote need only `promote`. Preview, apply and continue need
+  only `apply`.
 
 ## Other
 
