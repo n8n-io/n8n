@@ -53,6 +53,10 @@ export type SkillSourceConnected = {
 
 export type SkillSourcePreset = {
 	name: string;
+	description: string;
+	requirements: string;
+	publisher: string;
+	license: string;
 	url: string;
 	location: string;
 	allowedSkippedFiles?: string[];
@@ -204,7 +208,6 @@ watch(
 			credentialOAuth.cancelAuthorize();
 			return;
 		}
-		void loadCredentialTypes();
 		discoverRun += 1;
 		credentialsRun += 1;
 		discovering.value = false;
@@ -223,7 +226,10 @@ watch(
 		repositorySearch.value = props.preset?.url ?? '';
 		resetRepositories();
 		reviewed.value = false;
-		void loadCredentials();
+		if (scope.value) {
+			void loadCredentialTypes();
+			void loadCredentials();
+		}
 	},
 	{ immediate: true },
 );
@@ -779,6 +785,15 @@ function onInteractOutside(event: Event) {
 			<template v-if="preset">
 				<div :class="$style.catalogSelection" data-test-id="skill-source-catalog-selection">
 					<N8nText bold>{{ preset.name }}</N8nText>
+					<N8nText>{{ preset.description }}</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ preset.publisher }} · {{ i18n.baseText('settings.context.skills.catalog.license') }}:
+						{{ preset.license }}
+					</N8nText>
+					<N8nText bold size="small">{{
+						i18n.baseText('settings.context.skills.catalog.requirements')
+					}}</N8nText>
+					<N8nText size="small">{{ preset.requirements }}</N8nText>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.context.skills.connect.catalog.source') }}
 					</N8nText>
@@ -789,7 +804,13 @@ function onInteractOutside(event: Event) {
 					</N8nText>
 				</div>
 				<N8nText color="text-base">
-					{{ i18n.baseText('settings.context.skills.connect.catalog.description') }}
+					{{
+						i18n.baseText(
+							scopeOptions.length
+								? 'settings.context.skills.connect.catalog.description'
+								: 'settings.context.skills.catalog.noPermission',
+						)
+					}}
 				</N8nText>
 			</template>
 			<N8nCallout
@@ -803,7 +824,7 @@ function onInteractOutside(event: Event) {
 					})
 				}}
 			</N8nCallout>
-			<div :class="$style.field">
+			<div v-if="scopeOptions.length" :class="$style.field">
 				<N8nInputLabel :label="scopeLabel" color="text-dark" input-name="skill-source-scope">
 					<N8nSelect2
 						id="skill-source-scope"
@@ -820,7 +841,7 @@ function onInteractOutside(event: Event) {
 				</N8nText>
 			</div>
 			<N8nButton
-				v-if="preset"
+				v-if="preset && scopeOptions.length"
 				:class="$style.credentialToggle"
 				variant="ghost"
 				size="small"
@@ -830,7 +851,11 @@ function onInteractOutside(event: Event) {
 				:aria-controls="credentialOptionsId"
 				@click="showCredential = !showCredential"
 			/>
-			<div v-show="!preset || showCredential" :id="credentialOptionsId" :class="$style.field">
+			<div
+				v-show="scopeOptions.length && (!preset || showCredential)"
+				:id="credentialOptionsId"
+				:class="$style.field"
+			>
 				<N8nInputLabel
 					:label="i18n.baseText('settings.context.skills.connect.credential.label')"
 					color="text-dark"

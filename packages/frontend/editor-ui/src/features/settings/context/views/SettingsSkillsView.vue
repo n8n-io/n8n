@@ -140,7 +140,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const {
-	showRecommendedSkills,
+	showRecommendedSkills: recommendedSkillsEnabled,
 	hasVariant: hasRecommendedSkillsVariant,
 	trackExposure: trackRecommendedSkillsExposure,
 	trackSkillAdded: trackRecommendedSkillAdded,
@@ -152,14 +152,16 @@ const viewTabs = computed(() => [
 	{ value: 'installed', label: i18n.baseText('settings.context.skills.catalog.installed') },
 	{ value: 'discover', label: i18n.baseText('settings.context.skills.catalog.discover') },
 ]);
-watch(skillSyncEnabled, (enabled) => {
-	if (!enabled) activeView.value = 'installed';
-});
+
 function onCatalogSelect(entry: SkillCatalogEntry) {
-	if (uploadBusy.value || scopeOptions.value.length === 0) return;
+	if (uploadBusy.value) return;
 	dropPendingUpload();
 	catalogPreset.value = {
 		name: i18n.baseText(entry.nameKey),
+		description: i18n.baseText(entry.descriptionKey),
+		requirements: i18n.baseText(entry.requirementsKey),
+		publisher: entry.publisher,
+		license: entry.license,
 		url: entry.url,
 		location: entry.location,
 		allowedSkippedFiles: entry.allowedSkippedFiles,
@@ -203,6 +205,13 @@ const showLoading = computed(() => skillsStore.loading && !hasLoaded.value);
 const emptyState = computed<'none' | 'noSkills' | 'noResults'>(() => {
 	if (!hasLoaded.value || loadFailed.value || skillsStore.count > 0) return 'none';
 	return loadedFiltered.value ? 'noResults' : 'noSkills';
+});
+
+watch([skillSyncEnabled, hasLoaded], ([enabled]) => {
+	if (!enabled) activeView.value = 'installed';
+	else if (emptyState.value === 'noSkills' && skillsStore.collapsedSources.length === 0) {
+		activeView.value = 'discover';
+	}
 });
 
 const scopeFilterOptions = computed(() =>
@@ -472,6 +481,10 @@ function dropPendingUpload() {
 
 onBeforeUnmount(dropPendingUpload);
 
+const showRecommendedSkills = computed(
+	() => !skillSyncEnabled.value && recommendedSkillsEnabled.value,
+);
+
 // "Recommended skills" and "Connect to GitHub" are behind flags. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
 	...(skillSyncEnabled.value
@@ -518,6 +531,7 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 
 const recommendedSkillsEligible = computed(
 	() =>
+		!skillSyncEnabled.value &&
 		activeView.value === 'installed' &&
 		emptyState.value === 'noSkills' &&
 		skillsStore.collapsedSources.length === 0 &&
@@ -1332,12 +1346,8 @@ onMounted(async () => {
 				</template>
 			</SkillsTable>
 		</template>
-		<N8nHeading v-if="skillSyncEnabled && showRecommendedEmptyState" tag="h2" size="medium" bold>
-			{{ i18n.baseText('settings.context.skills.catalog.discover') }}
-		</N8nHeading>
 		<SkillCatalog
-			v-if="skillSyncEnabled && (activeView === 'discover' || showRecommendedEmptyState)"
-			:can-create="scopeOptions.length > 0"
+			v-if="skillSyncEnabled && activeView === 'discover'"
 			:loading="uploadBusy"
 			@select="onCatalogSelect"
 		/>

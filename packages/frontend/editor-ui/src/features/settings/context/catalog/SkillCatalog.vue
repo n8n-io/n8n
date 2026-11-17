@@ -4,11 +4,6 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	N8nButton,
 	N8nCard,
-	N8nDialog,
-	N8nDialogBody,
-	N8nDialogDescription,
-	N8nDialogFooter,
-	N8nExternalLink,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -26,12 +21,11 @@ import {
 	type SkillCatalogEntry,
 } from './skillCatalog';
 
-defineProps<{ canCreate: boolean; loading?: boolean }>();
+defineProps<{ loading?: boolean }>();
 const emit = defineEmits<{ select: [entry: SkillCatalogEntry] }>();
 const i18n = useI18n();
 const search = ref('');
 const category = ref('all');
-const selected = ref<SkillCatalogEntry>();
 
 const categoryKeys = {
 	build: 'settings.context.skills.catalog.categories.build',
@@ -83,11 +77,6 @@ const groups = computed(() => {
 		}))
 		.filter((group) => group.skills.length > 0);
 });
-
-function select(entry: SkillCatalogEntry) {
-	selected.value = undefined;
-	emit('select', entry);
-}
 
 function installs(entry: SkillCatalogEntry) {
 	return i18n.baseText('settings.context.skills.catalog.installs', {
@@ -175,7 +164,7 @@ function installs(entry: SkillCatalogEntry) {
 									size="small"
 									data-test-id="skill-catalog-details"
 									:data-attr="`skill-catalog-details-${entry.id}`"
-									@click="selected = entry"
+									@click="emit('select', entry)"
 								>
 									{{ i18n.baseText('settings.context.skills.catalog.details') }}
 									<N8nIcon icon="arrow-right" size="medium" aria-hidden="true" />
@@ -191,53 +180,12 @@ function installs(entry: SkillCatalogEntry) {
 				interpolate: { date: reviewedDate },
 			})
 		}}</N8nText>
-		<N8nDialog
-			v-if="selected"
-			:open="true"
-			:header="i18n.baseText(selected.nameKey)"
-			size="large"
-			data-test-id="skill-catalog-detail"
-			@update:open="!$event && (selected = undefined)"
-		>
-			<N8nDialogBody :class="$style.detail">
-				<N8nDialogDescription>{{ i18n.baseText(selected.descriptionKey) }}</N8nDialogDescription>
-				<N8nText color="text-light">{{ selected.publisher }}</N8nText>
-				<N8nHeading tag="h3" size="small">{{
-					i18n.baseText('settings.context.skills.catalog.requirements')
-				}}</N8nHeading>
-				<N8nText tag="p">{{ i18n.baseText(selected.requirementsKey) }}</N8nText>
-				<N8nText
-					>{{ i18n.baseText('settings.context.skills.catalog.license') }}:
-					{{ selected.license }}</N8nText
-				>
-				<N8nExternalLink :href="selected.url">{{
-					i18n.baseText('settings.context.skills.catalog.source')
-				}}</N8nExternalLink>
-				<N8nText v-if="!canCreate" color="text-light">{{
-					i18n.baseText('settings.context.skills.catalog.noPermission')
-				}}</N8nText>
-			</N8nDialogBody>
-			<N8nDialogFooter>
-				<N8nButton variant="outline" @click="selected = undefined">{{
-					i18n.baseText('generic.close')
-				}}</N8nButton>
-				<N8nButton
-					:disabled="!canCreate || loading"
-					data-test-id="skill-catalog-add"
-					:data-attr="`skill-catalog-add-${selected.id}`"
-					@click="select(selected)"
-				>
-					{{ i18n.baseText('settings.context.skills.catalog.add') }}
-				</N8nButton>
-			</N8nDialogFooter>
-		</N8nDialog>
 	</section>
 </template>
 
 <style module lang="scss">
 .catalog,
-.group,
-.detail {
+.group {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);

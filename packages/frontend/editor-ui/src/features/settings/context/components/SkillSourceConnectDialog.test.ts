@@ -933,6 +933,10 @@ describe('SkillSourceConnectDialog', () => {
 	describe('catalog selection', () => {
 		const preset = {
 			name: 'Brand voice',
+			description: 'Write copy in a consistent voice.',
+			requirements: 'Provide your brand guidelines.',
+			publisher: 'Acme',
+			license: 'MIT',
 			url: 'https://github.com/acme/skills/tree/main/skills/brand-voice',
 			location: 'skills/brand-voice',
 		};
@@ -942,6 +946,10 @@ describe('SkillSourceConnectDialog', () => {
 			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
 			const summary = within(view.getByTestId('skill-source-catalog-selection'));
 			expect(summary.getByText('Brand voice')).toBeVisible();
+			expect(summary.getByText(preset.description)).toBeVisible();
+			expect(summary.getByText(preset.requirements)).toBeVisible();
+			expect(summary.getByText(/Acme.*MIT/)).toBeVisible();
+			expect(view.getAllByRole('dialog')).toHaveLength(1);
 			expect(summary.getByRole('link', { name: preset.url })).toHaveAttribute('href', preset.url);
 			expect(view.queryByTestId('skill-source-repository-select')).not.toBeInTheDocument();
 			expect(view.getByTestId('skill-source-credential-select')).not.toBeVisible();
@@ -957,6 +965,19 @@ describe('SkillSourceConnectDialog', () => {
 				allowedSkippedFiles: [],
 				reuseExistingSource: true,
 			});
+			await userEvent.click(view.getByTestId('skill-source-back'));
+			expect(view.getByText(preset.requirements)).toBeVisible();
+			expect(view.getByTestId('skill-source-scope-select')).toHaveTextContent('Marketing');
+		});
+
+		it('allows reading catalog details without a writable scope', async () => {
+			const view = renderDialog({ props: { open: true, scopeOptions: [], preset } });
+			expect(view.getByText(preset.requirements)).toBeVisible();
+			expect(view.getByText(/permission/)).toBeVisible();
+			expect(view.getByRole('button', { name: 'Review skill' })).toBeDisabled();
+			expect(view.queryByTestId('skill-source-scope-select')).not.toBeInTheDocument();
+			expect(skillsStore.fetchSourceCredentials).not.toHaveBeenCalled();
+			expect(skillsStore.discoverSource).not.toHaveBeenCalled();
 		});
 
 		it('keeps the selected GitHub link when an optional credential is chosen', async () => {

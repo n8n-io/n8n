@@ -937,37 +937,27 @@ describe('SettingsSkillsView', () => {
 			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
 		});
 
-		it.each([false, true])(
-			'shows the catalog below recommendations when Skill Sync is %s',
-			async (enabled) => {
-				assignVariant('variant');
+		it.each(['variant', 'control', undefined])(
+			'shows only the catalog on an empty page when Skill Sync is enabled (recommendations: %s)',
+			async (variant) => {
+				assignVariant(variant);
 				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
-					(flag) => String(flag) === SKILL_SYNC_FLAG && enabled,
+					(flag) => String(flag) === SKILL_SYNC_FLAG,
 				);
-				const view = renderView({
-					global: {
-						stubs: {
-							SkillSourceConnectDialog: {
-								props: ['open', 'preset'],
-								template: '<div v-if="open" data-test-id="catalog-import">{{ preset.url }}</div>',
-							},
-						},
-					},
-				});
-				const recommendations = await view.findByTestId('skills-recommended-empty-state');
-				if (!enabled) {
-					expect(view.queryByTestId('skill-catalog')).not.toBeInTheDocument();
-					return;
-				}
-				const catalog = await view.findByTestId('skill-catalog');
-				expect(
-					recommendations.compareDocumentPosition(catalog) & Node.DOCUMENT_POSITION_FOLLOWING,
-				).toBeTruthy();
-				await userEvent.click(within(catalog).getAllByTestId('skill-catalog-details')[0]);
-				await userEvent.click(await view.findByTestId('skill-catalog-add'));
-				expect(await view.findByTestId('catalog-import')).toHaveTextContent(
-					'https://github.com/n8n-io/skills/tree/main/skills/n8n-workflow-lifecycle-official',
+				const view = renderView();
+				await view.findByTestId('skill-catalog');
+				expect(view.getByRole('tab', { name: 'Discover' })).toHaveAttribute(
+					'aria-selected',
+					'true',
 				);
+				expect(view.queryByTestId('skills-recommended-empty-state')).not.toBeInTheDocument();
+				expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+				expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+				expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+				await userEvent.click(view.getByRole('tab', { name: 'Your skills' }));
+				await userEvent.click(view.getByTestId('skills-create-menu-button'));
+				await view.findByTestId('skills-create-manual');
+				expect(view.queryByTestId('skills-create-recommended')).not.toBeInTheDocument();
 			},
 		);
 
@@ -1608,7 +1598,6 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
 			await view.findByTestId('skill-catalog');
 			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
-			await userEvent.click(await view.findByTestId('skill-catalog-add'));
 			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
 		});
 
@@ -1618,9 +1607,21 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
 			const card = await view.findByTestId('skill-catalog-n8n-memory-optimization');
 			await userEvent.click(within(card).getByRole('button'));
-			await userEvent.click(view.getByTestId('skill-catalog-add'));
 			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('opens catalog details without permission to create skills', async () => {
+			enableSkillSync();
+			mockedStore(useProjectsStore).personalProject = null;
+			mockedStore(useProjectsStore).myProjects = [];
+			const view = renderView();
+			await view.findByTestId('skill-catalog');
+			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
+			const dialog = await view.findByRole('dialog');
+			expect(within(dialog).getByText(/workflow tools/)).toBeVisible();
+			expect(within(dialog).getByText(/permission/)).toBeVisible();
+			expect(within(dialog).getByRole('button', { name: 'Review skill' })).toBeDisabled();
 		});
 
 		it('hides Discover when Skill Sync is disabled', () => {
@@ -1631,6 +1632,8 @@ describe('SettingsSkillsView', () => {
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
 			const view = renderWithDialogStub();
+			await view.findByTestId('skill-catalog');
+			await userEvent.click(view.getByRole('tab', { name: 'Your skills' }));
 
 			await userEvent.click(view.getByTestId('skills-create-menu-button'));
 
@@ -1860,6 +1863,7 @@ describe('SettingsSkillsView', () => {
 				enableSkillSync();
 				localStorage.setItem('n8n-skills-collapsed-sources:anonymous', JSON.stringify(['src-1']));
 				skillsStore.skills = [skill({ sourceId: 'src-1' })];
+				skillsStore.count = 21;
 				skillsStore.sources = [source];
 				skillsStore.fetchSources.mockResolvedValue([source]);
 				skillsStore.fetchSkills.mockImplementation(async (query) => {
