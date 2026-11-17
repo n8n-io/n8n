@@ -548,6 +548,14 @@ pub fn fileSize(fd: c_int) ?u64 {
     return if (end < 0) null else @intCast(end);
 }
 
+/// The host name of the machine, or an empty text.
+pub fn hostName(buf: []u8) []const u8 {
+    if (buf.len < 2) return "";
+    @memset(buf, 0);
+    if (c.gethostname(buf.ptr, buf.len - 1) != 0) return "";
+    return std.mem.sliceTo(buf, 0);
+}
+
 pub fn processId() u32 {
     return @intCast(c.getpid());
 }

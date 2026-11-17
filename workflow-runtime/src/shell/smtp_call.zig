@@ -7,6 +7,7 @@
 const std = @import("std");
 const smtp = @import("core").smtp;
 const creds = @import("creds.zig");
+const http = @import("http.zig");
 const sql_net = @import("sql_net.zig");
 
 const marker_host = " (limit: smtp-host)";
@@ -27,7 +28,7 @@ pub const Settings = struct {
 
 /// Read the `smtp` credential of the slot `name`. The answer is null, or
 /// the text of an error (a constant: it names no value of the credential).
-fn loadSettings(st: *const creds.Store, name: []const u8, out: *Settings) ?[]const u8 {
+pub fn loadSettings(st: *const creds.Store, name: []const u8, out: *Settings) ?[]const u8 {
     const slot = st.slot(name) orelse return "smtp: the credential slot of the call is not in the credentials";
     if (slot.data != .object) return "smtp: the credential of the call is not an object";
     const d = slot.data.object;
@@ -50,6 +51,34 @@ fn loadSettings(st: *const creds.Store, name: []const u8, out: *Settings) ?[]con
     s.pass = sql_net.textOf(d.get("password")) orelse "";
     s.auth = s.user.len > 0 or s.pass.len > 0;
     out.* = s;
+    return null;
+}
+
+/// The arguments of a call. The texts are raw JSON values of the call.
+pub const Call = struct {
+    /// The name of the credential slot.
+    credential: []const u8 = "",
+    /// The sender of the envelope: a string. Empty when the message has none.
+    from: []const u8 = "\"\"",
+    /// The recipients of the envelope: an array of strings.
+    to: []const u8 = "[]",
+    /// The message: a string with the MIME text.
+    message: []const u8 = "",
+    /// `allowUnauthorizedCerts` of the node.
+    insecure: bool = false,
+};
+
+/// Read the arguments. The answer is null, or the text of the error (a
+/// constant: it names no value of the call).
+pub fn parseCall(args: []const u8, call: *Call) ?[]const u8 {
+    call.credential = http.plainString(http.member(args, "credential") orelse "") orelse "";
+    if (call.credential.len == 0) return "smtp: the call needs a credential slot";
+    const from = http.member(args, "from") orelse "null";
+    call.from = if (std.mem.eql(u8, from, "null") or std.mem.eql(u8, from, "false")) "\"\"" else from;
+    call.to = http.member(args, "to") orelse return "smtp: the call needs 'to'";
+    call.message = http.member(args, "message") orelse return "smtp: the call needs 'message'";
+    const insecure = http.member(args, "allowUnauthorizedCerts") orelse "false";
+    call.insecure = std.mem.eql(u8, insecure, "true");
     return null;
 }
 
@@ -91,7 +120,7 @@ pub const Session = struct {
     }
 
     /// Where the next bytes of the server go.
-    fn readSpace(s: *Session) []u8 {
+    pub fn readSpace(s: *Session) []u8 {
         return s.rbuf[s.rlen..];
     }
 
@@ -192,12 +221,13 @@ pub const Session = struct {
 
     /// The payload of the call that ended. The times are those of the
     /// envelope and of the message, in milliseconds.
-    fn writeOutcome(s: *const Session, o: *smtp.Out, envelope_ms: u64, message_ms: u64) error{NoSpace}!Outcome {
+    pub fn writeOutcome(s: *const Session, o: *smtp.Out, envelope_ms: u64, message_ms: u64) error{NoSpace}!Outcome {
         std.debug.assert(s.phase == .ended);
         if (s.client.limitText()) |what| {
             try o.put("smtp: the native client cannot do this: ");
             try o.put(what);
-            try o.put(if (s.client.messageSent()) " (limit)" else marker_host);
+            // The fallback host sends the message only when no MAIL command went out.
+            try o.put(if (s.client.envelopeStarted()) " (limit)" else marker_host);
             return .limit;
         }
         if (s.client.succeeded()) {

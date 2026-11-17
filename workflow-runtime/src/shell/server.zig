@@ -14,6 +14,7 @@ const sys = @import("sys.zig");
 const http = @import("http.zig");
 const egress = @import("egress.zig");
 const pg = @import("pg.zig");
+const smtp = @import("smtp.zig");
 const my = @import("my.zig");
 const my_call = @import("my_call.zig");
 const creds = @import("creds.zig");
@@ -106,6 +107,9 @@ pub const Options = struct {
     /// Off until the client is verified against a real server: such a call then runs in the
     /// fallback host.
     sql_mysql: bool = false,
+    /// `--smtp-native`: `smtp` steps go to the native SMTP client (`smtp.zig`).
+    smtp_native: bool = false,
+    smtp: smtp.Config = .{},
     /// Largest outbound response or request body.
     egress_max_body: u32 = 16 << 20,
     /// Large buffers for bodies over 16 KB, reserved at start.
@@ -376,6 +380,9 @@ const Kind = enum(u8) {
     /// A connection and a name lookup of the MySQL client (`my.zig`).
     mysql = 16,
     mysql_dns = 17,
+    /// A connection and a name lookup of the SMTP client (`smtp.zig`).
+    smtp = 19,
+    smtp_dns = 20,
     /// The log writer synced or made room (`logoff.zig`).
     log_wake = 18,
 };
@@ -586,6 +593,8 @@ pub const Runner = struct {
     sql: *pg.Client,
     /// The MySQL client of the `sql` effect (`dialect: mysql`). It has the limits of `opts.sql`.
     mysql: *my.Client,
+    /// The SMTP client of the `smtp` effect. Null without `--smtp-native`.
+    mail: ?*smtp.Client = null,
     /// Effect errors raised while actions run outlive the batch arena:
     /// they go to the next batch. Two arenas take turns.
     carry: [2]Arena,
@@ -847,6 +856,8 @@ pub const Runner = struct {
         scfg.dns_servers = opts.gym_dns;
         try r.sql.init(gpa, scfg, &r.poller, @backingInt(Kind.sql), @backingInt(Kind.sql_dns));
         try r.startMysql(gpa, scfg);
+        r.mail = null;
+        if (opts.smtp_native) try r.startSmtp(gpa);
         // Virtual memory: pages are used only as large frames come and go.
         // Without --fallback the shard keeps no host buffers.
         r.fb_conns = try gpa.alloc(FbConn, if (opts.fallback != null) fbf.max_conns else 0);
@@ -1030,6 +1041,7 @@ pub const Runner = struct {
         r.egress.deinit();
         r.sql.deinit();
         r.mysql.deinit();
+        if (r.mail) |m| m.deinit();
         if (r.blobs) |b| b.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
         r.poller.deinit();
@@ -1138,7 +1150,7 @@ pub const Runner = struct {
         var next_timer: ?i64 = r.start_out.next_timer_ms;
         while (!r.stop.load(.monotonic)) {
             var timeout: i32 = 50;
-            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork() or r.mysql.hasWork()) timeout = 0;
+            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork() or r.mysql.hasWork() or r.smtpHasWork()) timeout = 0;
             // The stream has durable lines that one pass did not send.
             if (r.stream_more or r.renewalsPending()) timeout = 0;
             // A stored response has a result that found no room.
@@ -1169,6 +1181,7 @@ pub const Runner = struct {
             r.sql.afterEvents(now);
             r.mysql.afterEvents(now);
             r.drainSql();
+            r.pumpSmtp(now);
             r.drainEgressLost();
             r.drainStored(now);
             r.serviceFallback(now);
@@ -1236,6 +1249,8 @@ pub const Runner = struct {
             .sql_dns => r.sql.onDns(@intCast(idx), ev),
             .mysql => r.mysql.onConn(idx, gen, ev, sys.nowMs()),
             .mysql_dns => r.mysql.onDns(@intCast(idx), ev),
+            .smtp => if (r.mail) |m| m.onConn(idx, gen, ev, sys.nowMs()),
+            .smtp_dns => if (r.mail) |m| m.onDns(@intCast(idx), ev),
             .fallback => {
                 if (idx >= r.fb_conns.len) return;
                 const c = &r.fb_conns[idx];
@@ -1797,6 +1812,7 @@ pub const Runner = struct {
             .node, .code => r.sendFallback(a),
             .service => r.startService(a),
             .sql => r.startSql(a),
+            .smtp => r.startSmtpCall(a),
             // A person answers through POST /resume/<exec>/<seq>. The PoC
             // does not send the notification itself.
             .approval => {
@@ -1831,6 +1847,36 @@ pub const Runner = struct {
             .credentials = scfg.credentials,
         };
         try r.mysql.init(gpa, mcfg, &r.poller, @backingInt(Kind.mysql), @backingInt(Kind.mysql_dns));
+    }
+
+    // ---- SMTP (smtp.zig) -------------------------------------------------------------
+
+    fn startSmtp(r: *Runner, gpa: std.mem.Allocator) !void {
+        const m = try gpa.create(smtp.Client);
+        var cfg = r.opts.smtp;
+        cfg.insecure_tls = r.opts.insecure_tls;
+        cfg.ca_file = r.opts.ca_file;
+        cfg.dns_servers = r.opts.gym_dns;
+        try m.init(gpa, cfg, &r.poller, @backingInt(Kind.smtp), @backingInt(Kind.smtp_dns));
+        r.mail = m;
+    }
+
+    /// Without the gate, the marker sends the step to the fallback host.
+    fn startSmtpCall(r: *Runner, a: core.Action) void {
+        const m = r.mail orelse return r.effectError(a.exec_id, a.seq, "smtp: the native SMTP client is not on in this build (limit: smtp-host)");
+        const answer = m.start(a.exec_id, a.seq, a.payload, r.credsFor(a.module), sys.nowMs());
+        r.effectError(a.exec_id, a.seq, answer orelse return);
+    }
+
+    fn smtpHasWork(r: *const Runner) bool {
+        const m = r.mail orelse return false;
+        return m.hasWork();
+    }
+
+    fn pumpSmtp(r: *Runner, now: i64) void {
+        const m = r.mail orelse return;
+        m.afterEvents(now);
+        r.drainSqlOf(m);
     }
 
     /// The `dialect` of the call selects the client.
@@ -5422,6 +5468,95 @@ fn pumpMysql(r: *Runner, server: *my_fake.Server, want: usize) !void {
         r.drainSql();
     }
     return error.NoResult;
+}
+
+const smtp_fake = @import("smtp_fake.zig");
+
+/// `run(t) { return await Send(t) }`: an `smtp` step whose arguments are the trigger.
+fn smtpModule(gpa: std.mem.Allocator) ![]u8 {
+    const Asm = core_lib.asm_.Asm;
+    var m: Asm = .{ .gpa = gpa, .meta = "{\"triggers\":[{\"kind\":\"webhook\",\"path\":\"w\"}]}" };
+    defer m.deinit();
+    const call = try m.step("Send", .smtp);
+    m.beginFunc();
+    try m.emitBc(.loadi, 3, call);
+    try m.emit(.@"suspend", @backingInt(core_lib.module.EffectKind.smtp), 4, 3, 0);
+    try m.emit(.ret, 0, 4, 0, 0);
+    try m.endFunc("run", 1, 5, 0);
+    return m.finish();
+}
+
+/// Start a run of module 0 and give its `smtp` step to the shard, as `perform` does.
+fn startSmtpRun(r: *Runner, args: []const u8) !u64 {
+    const tk = try r.sh.tick(sys.nowMs(), &.{.{ .kind = .start, .aux = 0, .payload = args }});
+    defer r.sh.endBatch();
+    for (tk.actions) |a| {
+        if (a.kind != .dispatch) continue;
+        try std.testing.expectEqual(core_lib.module.EffectKind.smtp, a.effect_kind);
+        try r.dispatch(a);
+        return a.exec_id;
+    }
+    return error.NoDispatch;
+}
+
+test "an smtp step goes to the host without the gate, and to the SMTP client with it" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const gpa = mod_arena.allocator();
+    const mods = [_][]const u8{try smtpModule(gpa)};
+    var t: TestRunner = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .modules = &mods };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    const server = try gpa.create(smtp_fake.Server);
+    try server.init(gpa, &r.poller, kind_pg_fake);
+    defer server.deinit();
+    const doc = try std.fmt.allocPrint(gpa, "{{\"mail\":{{\"data\":{{\"host\":\"127.0.0.1\",\"port\":{d},\"secure\":false,\"user\":\"\",\"password\":\"\",\"hostName\":\"client.test\"}}}}}}", .{server.port});
+    const store = try gpa.create(creds.Store);
+    store.* = try creds.Store.parse(gpa, doc);
+    r.egress.cfg.credentials = store;
+    const args = "{\"credential\":\"mail\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"Subject: hi\\r\\n\\r\\nbody\"}";
+
+    // The gate is off: the marker gives the step to the fallback host, and no connection is made.
+    const one = try startSmtpRun(r, args);
+    r.drainEgressLost();
+    try std.testing.expectEqual(core.EventKind.effect_err, r.events.items[0].kind);
+    try std.testing.expectEqual(one, r.events.items[0].exec_id);
+    try std.testing.expectEqualStrings("smtp: the native SMTP client is not on in this build (limit: smtp-host)", r.events.items[0].payload);
+    try std.testing.expectEqual(@as(u32, 0), server.connections);
+    // The core takes the error: what follows for the run is not a part of this test.
+    _ = try r.sh.tick(sys.nowMs(), r.events.items);
+    r.sh.endBatch();
+    r.events.clearRetainingCapacity();
+
+    // The gate is on: the result of the call is the value of the step.
+    try r.startSmtp(gpa);
+    server.script(&.{
+        .{ .reply = "220 mx.test\r\n" },
+        .{ .expect = "EHLO client.test\r\n", .reply = "250 mx.test\r\n" },
+        .{ .expect = "MAIL FROM:<a@x.test>\r\n", .reply = "250 ok\r\n" },
+        .{ .expect = "RCPT TO:<b@x.test>\r\n", .reply = "250 ok\r\n" },
+        .{ .expect = "DATA\r\n", .reply = "354 go\r\n" },
+        .{ .expect = "Subject: hi\r\n\r\nbody\r\n.\r\n", .reply = "250 queued\r\n" },
+    }, false);
+    const two = try startSmtpRun(r, args);
+    var ready: [64]sys.Ready = @splat(.{ .token = 0, .readable = false, .writable = false, .eof = false });
+    for (0..2000) |_| {
+        if (r.events.items.len >= 1) break;
+        const n = r.poller.wait(&ready, 5);
+        for (ready[0..n]) |ev| {
+            if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
+        }
+        r.pumpSmtp(sys.nowMs());
+    }
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
+    try std.testing.expectEqual(two, r.events.items[0].exec_id);
+    try std.testing.expect(std.mem.startsWith(u8, r.events.items[0].payload, "{\"accepted\":[\"b@x.test\"],\"rejected\":[],\"envelopeTime\":"));
+    try std.testing.expect(std.mem.endsWith(u8, r.events.items[0].payload, "\"messageSize\":24,\"response\":\"250 queued\"}"));
+    try std.testing.expect(server.finished());
+    const done = try finishSqlRun(r, gpa, two);
+    try std.testing.expect(std.mem.indexOf(u8, done, "250 queued") != null);
 }
 
 test "a sql step with the dialect mysql goes to the MySQL client, and its result resumes the run" {
