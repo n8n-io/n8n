@@ -435,10 +435,14 @@ export class AssistantTurnEnvironmentFactory {
 		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
 		// the same load/persist path as above), so they survive restart and are visible
 		// cross-main. Recreate the tracker per run seeded from the freshly loaded grants;
-		// transient (allow_once) approvals are run-scoped and don't carry across runs.
+		// transient (allow_once) approvals are run-scoped and don't carry across runs. A runtime
+		// that creates the tracker again on each approval resume stores them as run-scoped keys.
 		const domainTracker = createDomainAccessTracker({
 			grantedKeys: sessionGrants,
 			persistGrant: grantSessionToolApproval,
+			...(runtime.persistRunScopedDomainGrants
+				? { persistRunGrant: async (key: string) => await runtime.sessionGrants.grant(key) }
+				: {}),
 		});
 		runtime.onDomainAccessTracker(domainTracker);
 		context.domainAccessTracker = domainTracker;

@@ -62,6 +62,12 @@ export interface AssistantTurnRuntime
 	};
 	/** Receives the domain-access tracker that the setup creates for this run. */
 	onDomainAccessTracker(tracker: DomainAccessTracker): void;
+	/**
+	 * Stores "allow once" domain approvals in `sessionGrants` as run-scoped keys. Set it when
+	 * each approval resume creates the tracker again, so a later resume of the run keeps them.
+	 * The runtime must then revoke these keys when the run settles.
+	 */
+	persistRunScopedDomainGrants?: boolean;
 	/** The thread's persisted setup-panel snapshots, oldest first. */
 	readSetupItemsSnapshots(): Promise<Array<{ workflowId: string; items: InstanceAiSetupItem[] }>>;
 	/**

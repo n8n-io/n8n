@@ -182,7 +182,7 @@ async function gateDomainAccess(
 				await gate.tracker.approveDomain(host);
 				return undefined;
 			case 'allowOnce':
-				gate.tracker.approveOnce(gate.runId, host);
+				await gate.tracker.approveOnce(gate.runId, host);
 				return undefined;
 			default:
 				return browserErrorResult('Access denied by user');

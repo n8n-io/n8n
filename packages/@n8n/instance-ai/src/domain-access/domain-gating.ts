@@ -184,7 +184,7 @@ export async function applyDomainAccessResume(options: {
 			default:
 				// Transient: scoped to this run only
 				if (runId) {
-					tracker.approveOnce(runId, host);
+					await tracker.approveOnce(runId, host);
 				}
 				break;
 		}
@@ -222,7 +222,7 @@ export async function applyWebSearchAccessResume(options: {
 			case 'allow_once':
 			default:
 				if (runId) {
-					tracker.approveWebSearchOnce(runId);
+					await tracker.approveWebSearchOnce(runId);
 				}
 				break;
 		}

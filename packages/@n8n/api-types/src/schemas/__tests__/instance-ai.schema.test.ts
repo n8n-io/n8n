@@ -20,6 +20,9 @@ import {
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
+	buildFetchUrlOnceGrantKey,
+	buildWebSearchOnceGrantKey,
+	isRunScopedDomainAccessGrantKey,
 	confirmationRequestPayloadSchema,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
@@ -922,6 +925,37 @@ describe('domain-access grant keys', () => {
 		const parsed = parseDomainAccessGrants(new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY]));
 		expect(parsed.approvedDomains.size).toBe(0);
 		expect(parsed.allDomainsApproved).toBe(true);
+	});
+
+	it('parses run-scoped (allow once) keys by run, not as thread approvals', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set([
+				buildFetchUrlOnceGrantKey('run_a:1', 'example.com'),
+				buildFetchUrlOnceGrantKey('run_a:1', 'other.com'),
+				buildWebSearchOnceGrantKey('run_b'),
+			]),
+		);
+		expect(parsed.runApprovedDomains).toEqual(
+			new Map([['run_a:1', new Set(['example.com', 'other.com'])]]),
+		);
+		expect(parsed.runWebSearchApprovals).toEqual(new Set(['run_b']));
+		expect(parsed.approvedDomains.size).toBe(0);
+		expect(parsed.webSearchApproved).toBe(false);
+	});
+
+	it('ignores malformed run-scoped keys', () => {
+		const parsed = parseDomainAccessGrants(
+			new Set(['fetch-url-once:', 'fetch-url-once:run-1:', 'fetch-url-once:%E0:a.com']),
+		);
+		expect(parsed.runApprovedDomains.size).toBe(0);
+		expect(parsed.approvedDomains.size).toBe(0);
+	});
+
+	it('recognises run-scoped keys', () => {
+		expect(isRunScopedDomainAccessGrantKey(buildFetchUrlOnceGrantKey('run-1', 'a.com'))).toBe(true);
+		expect(isRunScopedDomainAccessGrantKey(buildWebSearchOnceGrantKey('run-1'))).toBe(true);
+		expect(isRunScopedDomainAccessGrantKey(buildFetchUrlGrantKey('a.com'))).toBe(false);
+		expect(isRunScopedDomainAccessGrantKey(WEB_SEARCH_GRANT_KEY)).toBe(false);
 	});
 });
 

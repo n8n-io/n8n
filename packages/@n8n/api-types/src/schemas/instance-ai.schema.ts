@@ -228,11 +228,47 @@ export const FETCH_URL_ALLOW_ALL_GRANT_KEY = 'fetch-url:*';
 /** Grant key for persistently allowing web search. */
 export const WEB_SEARCH_GRANT_KEY = 'web-search';
 
+// "Allow once" approvals are scoped to one run. A runtime that rebuilds the tracker on each
+// approval resume stores them with these keys, so a later resume of the same run keeps them.
+// The run removes them when it settles.
+const FETCH_URL_ONCE_GRANT_PREFIX = 'fetch-url-once:';
+const WEB_SEARCH_ONCE_GRANT_PREFIX = 'web-search-once:';
+
+/** Grant key for allowing fetches from a specific host for one run only. */
+export function buildFetchUrlOnceGrantKey(runId: string, host: string): string {
+	return `${FETCH_URL_ONCE_GRANT_PREFIX}${encodeURIComponent(runId)}:${host}`;
+}
+
+/** Grant key for allowing web search for one run only. */
+export function buildWebSearchOnceGrantKey(runId: string): string {
+	return `${WEB_SEARCH_ONCE_GRANT_PREFIX}${encodeURIComponent(runId)}`;
+}
+
+/** Whether a grant key is a run-scoped ("allow once") domain-access grant. */
+export function isRunScopedDomainAccessGrantKey(key: string): boolean {
+	return (
+		key.startsWith(FETCH_URL_ONCE_GRANT_PREFIX) || key.startsWith(WEB_SEARCH_ONCE_GRANT_PREFIX)
+	);
+}
+
 /** Domain-access state reconstructed from a set of persisted grant keys. */
 export interface DomainAccessGrants {
 	approvedDomains: Set<string>;
 	allDomainsApproved: boolean;
 	webSearchApproved: boolean;
+	/** Run-scoped host approvals: runId → hosts. */
+	runApprovedDomains: Map<string, Set<string>>;
+	/** Runs with a run-scoped web-search approval. */
+	runWebSearchApprovals: Set<string>;
+}
+
+/** Decodes the run id of a run-scoped key. A malformed id returns undefined. */
+function decodeGrantRunId(encoded: string): string | undefined {
+	try {
+		return decodeURIComponent(encoded);
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -243,6 +279,8 @@ export function parseDomainAccessGrants(keys: ReadonlySet<string>): DomainAccess
 	const approvedDomains = new Set<string>();
 	let allDomainsApproved = false;
 	let webSearchApproved = false;
+	const runApprovedDomains = new Map<string, Set<string>>();
+	const runWebSearchApprovals = new Set<string>();
 
 	const fetchUrlPrefix = 'fetch-url:';
 	for (const key of keys) {
@@ -252,10 +290,33 @@ export function parseDomainAccessGrants(keys: ReadonlySet<string>): DomainAccess
 			webSearchApproved = true;
 		} else if (key.startsWith(fetchUrlPrefix)) {
 			approvedDomains.add(key.slice(fetchUrlPrefix.length));
+		} else if (key.startsWith(FETCH_URL_ONCE_GRANT_PREFIX)) {
+			// The run id is URI-encoded, so the first colon ends it.
+			const rest = key.slice(FETCH_URL_ONCE_GRANT_PREFIX.length);
+			const separator = rest.indexOf(':');
+			if (separator <= 0) continue;
+			const runId = decodeGrantRunId(rest.slice(0, separator));
+			const host = rest.slice(separator + 1);
+			if (!runId || !host) continue;
+			let hosts = runApprovedDomains.get(runId);
+			if (!hosts) {
+				hosts = new Set();
+				runApprovedDomains.set(runId, hosts);
+			}
+			hosts.add(host);
+		} else if (key.startsWith(WEB_SEARCH_ONCE_GRANT_PREFIX)) {
+			const runId = decodeGrantRunId(key.slice(WEB_SEARCH_ONCE_GRANT_PREFIX.length));
+			if (runId) runWebSearchApprovals.add(runId);
 		}
 	}
 
-	return { approvedDomains, allDomainsApproved, webSearchApproved };
+	return {
+		approvedDomains,
+		allDomainsApproved,
+		webSearchApproved,
+		runApprovedDomains,
+		runWebSearchApprovals,
+	};
 }
 
 // ---------------------------------------------------------------------------

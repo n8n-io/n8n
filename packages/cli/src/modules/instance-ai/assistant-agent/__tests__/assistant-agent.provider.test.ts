@@ -1,5 +1,11 @@
 import { ModelStreamStallError } from '@n8n/agents';
-import { ASSISTANT_TRACE_EVENT, ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
+import {
+	ASSISTANT_TRACE_EVENT,
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+	buildFetchUrlGrantKey,
+	buildFetchUrlOnceGrantKey,
+	buildWebSearchOnceGrantKey,
+} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
@@ -1035,6 +1041,57 @@ describe('AssistantAgentProvider', () => {
 				await handle.onSettled?.({ executionId: 'exec-1', status: 'errored' });
 
 				expect(archiveIfAiTemporary).toHaveBeenCalledTimes(2);
+			});
+		});
+
+		describe('"allow once" domain approvals', () => {
+			const onceKeys = [
+				buildFetchUrlOnceGrantKey('run-1', 'example.com'),
+				buildWebSearchOnceGrantKey('run-1'),
+				// An earlier run that stopped while it waited on a card.
+				buildFetchUrlOnceGrantKey('run-0', 'old.example.com'),
+			];
+
+			function turnWithOnceGrants() {
+				const sessionGrants = mock<SystemAgentStartTurn['sessionGrants']>();
+				sessionGrants.load.mockResolvedValue(
+					new Set([buildFetchUrlGrantKey('kept.example.com'), 'executions:run:wf-1', ...onceKeys]),
+				);
+				return startTurn({ sessionGrants });
+			}
+
+			it('asks the turn setup to store them, because each resume creates the tracker again', async () => {
+				const { provider, turnEnvironment } = setup();
+
+				await provider.prepareTurn(startTurn());
+
+				const runtime = turnEnvironment.create.mock.calls[0][1];
+				expect(runtime.persistRunScopedDomainGrants).toBe(true);
+			});
+
+			it.each(['completed', 'errored', 'cancelled'] as const)(
+				'removes them when the run ends (%s)',
+				async (status) => {
+					const { provider } = setup();
+					const turn = turnWithOnceGrants();
+
+					const handle = await provider.prepareTurn(turn);
+					await handle.onSettled?.({ executionId: 'exec-1', status });
+
+					expect(vi.mocked(turn.sessionGrants.revoke).mock.calls.map(([key]) => key)).toEqual(
+						onceKeys,
+					);
+				},
+			);
+
+			it('keeps them while the run waits for the user', async () => {
+				const { provider } = setup();
+				const turn = turnWithOnceGrants();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				expect(turn.sessionGrants.revoke).not.toHaveBeenCalled();
 			});
 		});
 

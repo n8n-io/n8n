@@ -1,5 +1,7 @@
 import {
 	buildFetchUrlGrantKey,
+	buildFetchUrlOnceGrantKey,
+	buildWebSearchOnceGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	WEB_SEARCH_GRANT_KEY,
 } from '@n8n/api-types';
@@ -67,23 +69,23 @@ describe('DomainAccessTracker', () => {
 	});
 
 	describe('transient (per-run) approvals', () => {
-		it('approveOnce is visible within the same run', () => {
+		it('approveOnce is visible within the same run', async () => {
 			const tracker = createDomainAccessTracker();
-			tracker.approveOnce('run-1', 'example.com');
+			await tracker.approveOnce('run-1', 'example.com');
 
 			expect(tracker.isHostAllowed('example.com', 'run-1')).toBe(true);
 		});
 
-		it('approveOnce is not visible to a different run', () => {
+		it('approveOnce is not visible to a different run', async () => {
 			const tracker = createDomainAccessTracker();
-			tracker.approveOnce('run-1', 'example.com');
+			await tracker.approveOnce('run-1', 'example.com');
 
 			expect(tracker.isHostAllowed('example.com', 'run-2')).toBe(false);
 		});
 
-		it('approveOnce is not visible without a runId', () => {
+		it('approveOnce is not visible without a runId', async () => {
 			const tracker = createDomainAccessTracker();
-			tracker.approveOnce('run-1', 'example.com');
+			await tracker.approveOnce('run-1', 'example.com');
 
 			expect(tracker.isHostAllowed('example.com')).toBe(false);
 		});
@@ -91,7 +93,7 @@ describe('DomainAccessTracker', () => {
 		it('clearRun removes transient approvals only', async () => {
 			const tracker = createDomainAccessTracker();
 			await tracker.approveDomain('persistent.com');
-			tracker.approveOnce('run-1', 'transient.com');
+			await tracker.approveOnce('run-1', 'transient.com');
 
 			tracker.clearRun('run-1');
 
@@ -99,10 +101,10 @@ describe('DomainAccessTracker', () => {
 			expect(tracker.isHostAllowed('transient.com', 'run-1')).toBe(false);
 		});
 
-		it('clearRun does not affect other runs', () => {
+		it('clearRun does not affect other runs', async () => {
 			const tracker = createDomainAccessTracker();
-			tracker.approveOnce('run-1', 'site-a.com');
-			tracker.approveOnce('run-2', 'site-b.com');
+			await tracker.approveOnce('run-1', 'site-a.com');
+			await tracker.approveOnce('run-2', 'site-b.com');
 
 			tracker.clearRun('run-1');
 
@@ -125,17 +127,17 @@ describe('DomainAccessTracker', () => {
 			expect(tracker.isWebSearchAllowed('run-1')).toBe(true);
 		});
 
-		it('approveWebSearchOnce grants transient run-scoped approval', () => {
+		it('approveWebSearchOnce grants transient run-scoped approval', async () => {
 			const tracker = createDomainAccessTracker();
-			tracker.approveWebSearchOnce('run-1');
+			await tracker.approveWebSearchOnce('run-1');
 			expect(tracker.isWebSearchAllowed('run-1')).toBe(true);
 			expect(tracker.isWebSearchAllowed('run-2')).toBe(false);
 			expect(tracker.isWebSearchAllowed()).toBe(false);
 		});
 
-		it('clearRun removes transient web-search approval', () => {
+		it('clearRun removes transient web-search approval', async () => {
 			const tracker = createDomainAccessTracker();
-			tracker.approveWebSearchOnce('run-1');
+			await tracker.approveWebSearchOnce('run-1');
 			tracker.clearRun('run-1');
 			expect(tracker.isWebSearchAllowed('run-1')).toBe(false);
 		});
@@ -143,7 +145,7 @@ describe('DomainAccessTracker', () => {
 		it('clearRun does not affect persistent web-search approval', async () => {
 			const tracker = createDomainAccessTracker();
 			await tracker.approveWebSearch();
-			tracker.approveWebSearchOnce('run-1');
+			await tracker.approveWebSearchOnce('run-1');
 			tracker.clearRun('run-1');
 			expect(tracker.isWebSearchAllowed()).toBe(true);
 		});
@@ -215,14 +217,51 @@ describe('DomainAccessTracker', () => {
 			expect(persistGrant).toHaveBeenCalledWith(WEB_SEARCH_GRANT_KEY);
 		});
 
-		it('does not persist transient (allow_once) approvals', () => {
+		it('does not persist transient (allow_once) approvals as thread grants', async () => {
 			const persistGrant = vi.fn().mockResolvedValue(undefined);
 			const tracker = createDomainAccessTracker({ persistGrant });
 
-			tracker.approveOnce('run-1', 'example.com');
-			tracker.approveWebSearchOnce('run-1');
+			await tracker.approveOnce('run-1', 'example.com');
+			await tracker.approveWebSearchOnce('run-1');
 
 			expect(persistGrant).not.toHaveBeenCalled();
+		});
+
+		it('persists transient approvals as run-scoped keys when persistRunGrant is set', async () => {
+			const persistGrant = vi.fn().mockResolvedValue(undefined);
+			const persistRunGrant = vi.fn().mockResolvedValue(undefined);
+			const tracker = createDomainAccessTracker({ persistGrant, persistRunGrant });
+
+			await tracker.approveOnce('run-1', 'example.com');
+			await tracker.approveWebSearchOnce('run-1');
+
+			expect(persistGrant).not.toHaveBeenCalled();
+			expect(persistRunGrant).toHaveBeenCalledWith(
+				buildFetchUrlOnceGrantKey('run-1', 'example.com'),
+			);
+			expect(persistRunGrant).toHaveBeenCalledWith(buildWebSearchOnceGrantKey('run-1'));
+		});
+	});
+
+	describe('run-scoped approvals across tracker instances', () => {
+		it('keeps an allow-once approval for the same run in a tracker seeded from the stored keys', async () => {
+			const stored = new Set<string>();
+			const persistRunGrant = async (key: string) => {
+				stored.add(key);
+			};
+			const first = createDomainAccessTracker({ grantedKeys: new Set(stored), persistRunGrant });
+			await first.approveOnce('run-1', 'example.com');
+			await first.approveWebSearchOnce('run-1');
+
+			// A resume creates the tracker again from the stored keys.
+			const resumed = createDomainAccessTracker({ grantedKeys: new Set(stored), persistRunGrant });
+
+			expect(resumed.isHostAllowed('example.com', 'run-1')).toBe(true);
+			expect(resumed.isWebSearchAllowed('run-1')).toBe(true);
+			expect(resumed.isHostAllowed('example.com', 'run-2')).toBe(false);
+			expect(resumed.isHostAllowed('example.com')).toBe(false);
+			expect(resumed.isWebSearchAllowed('run-2')).toBe(false);
+			expect(resumed.isWebSearchAllowed()).toBe(false);
 		});
 	});
 });

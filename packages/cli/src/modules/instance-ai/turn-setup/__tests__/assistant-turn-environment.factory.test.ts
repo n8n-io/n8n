@@ -201,6 +201,65 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
 
+		describe('"allow once" domain approvals', () => {
+			/** Thread grants that the turns of a run share, like the thread grant table. */
+			function createStoredGrants() {
+				const stored = new Set<string>();
+				return {
+					stored,
+					sessionGrants: {
+						load: vi.fn(async () => new Set(stored)),
+						grant: vi.fn(async (key: string) => {
+							stored.add(key);
+						}),
+						revoke: vi.fn(async (key: string) => {
+							stored.delete(key);
+						}),
+					},
+				};
+			}
+
+			it('keeps them across approval resumes of the same run when the runtime stores them', async () => {
+				const { factory } = createSetupFactory();
+				const { sessionGrants } = createStoredGrants();
+				const runtime = () => createRuntime({ sessionGrants, persistRunScopedDomainGrants: true });
+
+				// The user approves example.com once, and the tool resumes in a new tracker.
+				const first = await factory.create(params, runtime());
+				await first.context.domainAccessTracker?.approveOnce(params.runId, 'example.com');
+				await first.context.domainAccessTracker?.approveWebSearchOnce(params.runId);
+
+				// A different card of the same run resumes. Each resume creates the tracker again.
+				const second = await factory.create(params, runtime());
+				const third = await factory.create(params, runtime());
+
+				for (const { context } of [second, third]) {
+					expect(context.domainAccessTracker?.isHostAllowed('example.com', params.runId)).toBe(
+						true,
+					);
+					expect(context.domainAccessTracker?.isWebSearchAllowed(params.runId)).toBe(true);
+					expect(context.domainAccessTracker?.isHostAllowed('example.com', 'run-2')).toBe(false);
+				}
+			});
+
+			it('keeps them in memory only when the runtime does not store them', async () => {
+				const { factory } = createSetupFactory();
+				const { sessionGrants, stored } = createStoredGrants();
+
+				const first = await factory.create(params, createRuntime({ sessionGrants }));
+				await first.context.domainAccessTracker?.approveOnce(params.runId, 'example.com');
+				const second = await factory.create(params, createRuntime({ sessionGrants }));
+
+				expect(stored.size).toBe(0);
+				expect(first.context.domainAccessTracker?.isHostAllowed('example.com', params.runId)).toBe(
+					true,
+				);
+				expect(second.context.domainAccessTracker?.isHostAllowed('example.com', params.runId)).toBe(
+					false,
+				);
+			});
+		});
+
 		it('wires helper usage billing into the context', async () => {
 			const { factory, fields } = createSetupFactory();
 			const claimer = vi.fn();

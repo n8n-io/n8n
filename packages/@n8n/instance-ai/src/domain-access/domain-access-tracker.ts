@@ -1,5 +1,7 @@
 import {
 	buildFetchUrlGrantKey,
+	buildFetchUrlOnceGrantKey,
+	buildWebSearchOnceGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	isAllowedDomain,
 	parseDomainAccessGrants,
@@ -15,8 +17,10 @@ import {
  *   callback (backed by `instance_ai_thread_grants`) so they survive restart and are
  *   visible across mains. The tracker is seeded from the persisted grant keys at
  *   construction via `grantedKeys`.
- * - **Transient** (run-level): `approveOnce(runId, host)`.
- *   These are scoped to a single run and cleared with `clearRun(runId)`.
+ * - **Transient** (run-level): `approveOnce(runId, host)` and `approveWebSearchOnce(runId)`.
+ *   These are scoped to a single run and cleared with `clearRun(runId)`. When the caller
+ *   gives `persistRunGrant`, they are also written through, so a tracker that is created
+ *   again for a resume of the same run keeps them.
  *
  * The check order in `isHostAllowed()` is:
  * 1. `allDomainsApproved` flag (blanket allow)
@@ -38,7 +42,7 @@ export interface DomainAccessTracker {
 	/** Whether all domains are approved. */
 	isAllDomainsApproved(): boolean;
 	/** Grant a one-time transient approval scoped to a specific run. */
-	approveOnce(runId: string, host: string): void;
+	approveOnce(runId: string, host: string): Promise<void>;
 	/** Clear all transient approvals for a run (called when the run finishes). */
 	clearRun(runId: string): void;
 
@@ -47,28 +51,33 @@ export interface DomainAccessTracker {
 	/** Persistently approve web-search for this thread. */
 	approveWebSearch(): Promise<void>;
 	/** Grant a one-time transient web-search approval scoped to a specific run. */
-	approveWebSearchOnce(runId: string): void;
+	approveWebSearchOnce(runId: string): Promise<void>;
 }
 
 export interface DomainAccessTrackerOptions {
-	/** Persisted grant keys to seed persistent approvals from (e.g. loaded per run). */
+	/** Persisted grant keys to seed persistent and run-scoped approvals from (e.g. loaded per run). */
 	grantedKeys?: ReadonlySet<string>;
 	/** Write-through callback invoked when a persistent approval is granted. */
 	persistGrant?: (key: string) => Promise<void>;
+	/**
+	 * Write-through callback invoked when a run-scoped ("allow once") approval is granted.
+	 * Without it, run-scoped approvals stay in memory only.
+	 */
+	persistRunGrant?: (key: string) => Promise<void>;
 }
 
 export function createDomainAccessTracker(
 	options: DomainAccessTrackerOptions = {},
 ): DomainAccessTracker {
-	const { persistGrant } = options;
+	const { persistGrant, persistRunGrant } = options;
 	const seed = parseDomainAccessGrants(options.grantedKeys ?? new Set());
 
 	const approvedDomains = seed.approvedDomains;
-	const transientApprovals = new Map<string, Set<string>>(); // runId → Set<host>
+	const transientApprovals = seed.runApprovedDomains; // runId → Set<host>
 	let allDomainsApproved = seed.allDomainsApproved;
 
 	let webSearchApproved = seed.webSearchApproved;
-	const transientWebSearchApprovals = new Set<string>(); // Set<runId>
+	const transientWebSearchApprovals = seed.runWebSearchApprovals; // Set<runId>
 
 	return {
 		isHostAllowed(host: string, runId?: string): boolean {
@@ -96,13 +105,14 @@ export function createDomainAccessTracker(
 			return allDomainsApproved;
 		},
 
-		approveOnce(runId: string, host: string): void {
+		async approveOnce(runId: string, host: string): Promise<void> {
 			let runHosts = transientApprovals.get(runId);
 			if (!runHosts) {
 				runHosts = new Set();
 				transientApprovals.set(runId, runHosts);
 			}
 			runHosts.add(host);
+			await persistRunGrant?.(buildFetchUrlOnceGrantKey(runId, host));
 		},
 
 		clearRun(runId: string): void {
@@ -121,8 +131,9 @@ export function createDomainAccessTracker(
 			await persistGrant?.(WEB_SEARCH_GRANT_KEY);
 		},
 
-		approveWebSearchOnce(runId: string): void {
+		async approveWebSearchOnce(runId: string): Promise<void> {
 			transientWebSearchApprovals.add(runId);
+			await persistRunGrant?.(buildWebSearchOnceGrantKey(runId));
 		},
 	};
 }

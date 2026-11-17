@@ -54,9 +54,9 @@ describe('checkDomainAccess', () => {
 		expect(result.allowed).toBe(true);
 	});
 
-	it('allows transient run-scoped approvals', () => {
+	it('allows transient run-scoped approvals', async () => {
 		const tracker = createDomainAccessTracker();
-		tracker.approveOnce('run-1', 'example.com');
+		await tracker.approveOnce('run-1', 'example.com');
 
 		const result = checkDomainAccess({
 			url: 'https://example.com/page',
@@ -203,9 +203,9 @@ describe('checkWebSearchAccess', () => {
 		expect(result.allowed).toBe(true);
 	});
 
-	it('allows when tracker has transient web-search approval for the run', () => {
+	it('allows when tracker has transient web-search approval for the run', async () => {
 		const tracker = createDomainAccessTracker();
-		tracker.approveWebSearchOnce('run-1');
+		await tracker.approveWebSearchOnce('run-1');
 		const result = checkWebSearchAccess({
 			query: 'q',
 			tracker,
@@ -215,9 +215,9 @@ describe('checkWebSearchAccess', () => {
 		expect(result.allowed).toBe(true);
 	});
 
-	it('does not leak transient approval across runs', () => {
+	it('does not leak transient approval across runs', async () => {
 		const tracker = createDomainAccessTracker();
-		tracker.approveWebSearchOnce('run-1');
+		await tracker.approveWebSearchOnce('run-1');
 		const result = checkWebSearchAccess({
 			query: 'q',
 			tracker,
@@ -227,9 +227,9 @@ describe('checkWebSearchAccess', () => {
 		expect(result.allowed).toBe(false);
 	});
 
-	it('clearRun removes transient web-search approval', () => {
+	it('clearRun removes transient web-search approval', async () => {
 		const tracker = createDomainAccessTracker();
-		tracker.approveWebSearchOnce('run-1');
+		await tracker.approveWebSearchOnce('run-1');
 		tracker.clearRun('run-1');
 		const result = checkWebSearchAccess({
 			query: 'q',

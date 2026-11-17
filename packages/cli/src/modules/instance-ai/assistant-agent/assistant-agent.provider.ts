@@ -2,6 +2,7 @@ import type { JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
 import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
+	isRunScopedDomainAccessGrantKey,
 	type InstanceAiAgentAttachment,
 	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
@@ -441,6 +442,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
 					if (outcome.status !== 'suspended') {
+						await this.revokeRunScopedDomainGrants(runtime, thread.id, runId);
 						const archived = await this.archiveTemporaryWorkflows(
 							environment.context.workflowService,
 							runtime.temporaryWorkflowMarkers,
@@ -523,6 +525,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			turnState: this.createTurnState(turn.thread.id, options),
 			sessionGrants: turn.sessionGrants,
 			onDomainAccessTracker: () => {},
+			// Each approval resume creates the tracker again. `onSettled` revokes the keys.
+			persistRunScopedDomainGrants: true,
 			// The chat shows the tab of a changed artifact only while a browser shows the
 			// turn. Storing it here also covers a closed browser tab.
 			onArtifactChanged: async (artifact) => {
@@ -708,6 +712,30 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			}
 		}
 		return archived;
+	}
+
+	/**
+	 * Removes the "allow once" domain approvals of the thread when a run ends. A resume
+	 * needs them only while its run waits on a card. This also removes the keys of an
+	 * earlier run that stopped while it waited, so that run asks again. Best effort.
+	 */
+	private async revokeRunScopedDomainGrants(
+		runtime: AssistantTurnRuntime,
+		threadId: string,
+		runId: string,
+	): Promise<void> {
+		try {
+			const keys = await runtime.sessionGrants.load();
+			for (const key of keys) {
+				if (isRunScopedDomainAccessGrantKey(key)) await runtime.sessionGrants.revoke(key);
+			}
+		} catch (error) {
+			this.logger.warn('Failed to remove the run-scoped domain approvals of an Assistant run', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/** Tells the chat which workflows the turn end archived, so it can mark their artifacts. */
