@@ -11,7 +11,7 @@ import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import { Agent } from '../../sdk/agent';
 import { getModelCost } from '../../sdk/catalog';
 import { createCancellation } from '../../sdk/cancellation';
-import { isLlmMessage } from '../../sdk/message';
+import { isLlmMessage, isRuntimeSkillUpdate } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder, wrapToolForApproval } from '../../sdk/tool';
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createRuntimeSkillTools } from '../../skills/tools';
@@ -9294,6 +9294,91 @@ describe('AgentRuntime — mid-run observation', () => {
 			}),
 		]);
 		expect(await memory.getCursor(PERSISTENCE.threadId)).not.toBeNull();
+	});
+
+	it('tells the model once when a loaded skill changes or becomes unavailable', async () => {
+		const skillSource = (instructions?: string): RuntimeSkillSource => ({
+			...createRuntimeSkillSource(
+				instructions
+					? [{ id: 'hub-1', name: 'Triage', description: 'Triage cases.', instructions }]
+					: [],
+			),
+			shouldAppendSkillUpdates: (id) => id === 'hub-1',
+		});
+		const memory = new InMemoryMemory();
+		const run = async (source: RuntimeSkillSource, input: string) => {
+			// No observational memory: its compaction would hide the load result.
+			const runtime = new AgentRuntime({
+				name: 'skill-update-agent',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory,
+				skillSource: source,
+				tools: createRuntimeSkillTools(source),
+			});
+			await runtime.generate(input, { persistence: PERSISTENCE });
+			await runtime.dispose();
+		};
+		const sentText = () => JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages);
+
+		const original = skillSource('Use the inbox queue.');
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('load', 'load_skill', { skillId: 'hub-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'));
+		await run(original, 'Triage this');
+		expect(sentText()).not.toContain('changed after you loaded it');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Updated.'));
+		await run(skillSource('Use the review queue.'), 'Next case');
+		expect(sentText()).toContain('Skill \\"Triage\\" (id \\"hub-1\\") changed after you loaded it');
+		expect(sentText()).not.toContain('Use the review queue.');
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Same.'));
+		await run(skillSource('Use the review queue.'), 'Another case');
+		expect(sentText().split('changed after you loaded it')).toHaveLength(2);
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Gone.'));
+		await run(skillSource(), 'Last case');
+		expect(sentText()).toContain('is no longer available');
+
+		const updates = (await memory.getMessages(PERSISTENCE.threadId)).flatMap((message) =>
+			isRuntimeSkillUpdate(message) ? [message.data.skillUpdate] : [],
+		);
+		expect(updates).toEqual([
+			expect.objectContaining({ skillId: 'hub-1', name: 'Triage', change: 'updated' }),
+			expect.objectContaining({ skillId: 'hub-1', version: null, change: 'unavailable' }),
+		]);
+	});
+
+	it('sends no skill update after compaction hid the load result', async () => {
+		const memory = new InMemoryMemory();
+		const run = async (source: RuntimeSkillSource, input: string) => {
+			const runtime = buildMidRunRuntime(memory, {
+				skillSource: { ...source, shouldAppendSkillUpdates: (id) => id === 'hub-1' },
+				tools: createRuntimeSkillTools(source),
+			});
+			await runtime.generate(input, { persistence: PERSISTENCE });
+			await runtime.dispose();
+		};
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('load', 'load_skill', { skillId: 'hub-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Loaded.'))
+			.mockResolvedValueOnce(makeGenerateSuccess('Changed.'))
+			.mockResolvedValueOnce(makeGenerateSuccess('Gone.'));
+		const skill = { id: 'hub-1', name: 'Triage', description: 'Triage cases.' };
+		await run(createRuntimeSkillSource([{ ...skill, instructions: 'One.' }]), 'Triage this');
+		// The skill text is gone. The model must call load_skill again to use the skill.
+		await run(createRuntimeSkillSource([{ ...skill, instructions: 'Two.' }]), 'Next case');
+		expect(JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages)).not.toContain(
+			'changed after you loaded it',
+		);
+
+		await run(createRuntimeSkillSource([]), 'Last case');
+		expect(JSON.stringify(generateText.mock.calls.at(-1)?.[0].messages)).not.toContain(
+			'is no longer available',
+		);
+		const stored = await memory.getMessages(PERSISTENCE.threadId);
+		expect(stored.filter(isRuntimeSkillUpdate)).toEqual([]);
 	});
 
 	it('keeps skill tool dependencies in the tool list before and after load_skill', async () => {

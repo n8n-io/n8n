@@ -52,8 +52,13 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import { isRuntimeContextCue } from '../../sdk/message';
-import { detectLoadedSkills } from '../../skills/loaded-skills';
-import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import { detectLoadedSkills, detectSeenSkillVersions } from '../../skills/loaded-skills';
+import type {
+	AgentMessage,
+	ContentToolCall,
+	CustomAgentMessage,
+	CustomAgentMessages,
+} from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
@@ -1077,7 +1082,10 @@ export class AgentRuntime {
 		await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
 			threadId: ctx.options?.persistence?.threadId,
 		});
-		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
+		const { toolMap, modelCallContext, skillUpdates } = await this.prepareModelCall(ctx);
+		for (const update of skillUpdates) {
+			await sink.emitMessage?.(update);
+		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
@@ -1135,6 +1143,7 @@ export class AgentRuntime {
 			list,
 		);
 		const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+		const skillUpdates = this.addSkillUpdates(ctx);
 		await this.addContextCues(ctx);
 		const prompt = this.context.buildModelPrompt({
 			list,
@@ -1160,7 +1169,54 @@ export class AgentRuntime {
 			onToolInputStart: this.createWorkspacePrewarmHandler(tools.toolMap),
 		};
 
-		return { toolMap: tools.toolMap, modelCallContext };
+		return { toolMap: tools.toolMap, modelCallContext, skillUpdates };
+	}
+
+	/**
+	 * Tell the model when a skill it loaded changed or became unavailable since
+	 * it last saw it. Each note records the hash it announces, so the note is not
+	 * sent again. Only loads that the model can still see are checked. When
+	 * compaction hid a load, the model must call `load_skill` again, and that call
+	 * returns the current state.
+	 */
+	private addSkillUpdates(ctx: PreparedLoopContext): CustomAgentMessage[] {
+		const source = this.config.skillSource;
+		const shouldCheck = source?.shouldAppendSkillUpdates;
+		if (!source || !shouldCheck) return [];
+		const seenVersions = detectSeenSkillVersions(ctx.list.llmVisibleMessages());
+		const updates: CustomAgentMessage[] = [];
+		for (const [skillId, seen] of seenVersions) {
+			if (!shouldCheck(skillId)) continue;
+			const entry = source.registry.skills.find((skill) => skill.id === skillId);
+			const current = entry?.hash ?? null;
+			// An older load result without a hash line cannot show a change.
+			if (current === seen || (seen === undefined && current !== null)) continue;
+			const label = JSON.stringify(entry?.name ?? skillId);
+			const id = JSON.stringify(skillId);
+			let skillUpdate: CustomAgentMessages['runtimeSkillUpdate']['skillUpdate'];
+			if (current === null) {
+				skillUpdate = {
+					skillId,
+					version: null,
+					change: 'unavailable',
+					content: `Skill ${label} (id ${id}) is no longer available. Do not follow its earlier instructions or reference content.`,
+				};
+			} else {
+				const restored = seen === null;
+				skillUpdate = {
+					skillId,
+					version: current,
+					name: entry?.name,
+					change: restored ? 'restored' : 'updated',
+					content: restored
+						? `Skill ${label} (id ${id}) is available again. Load it with load_skill before you follow it.`
+						: `Skill ${label} (id ${id}) changed after you loaded it. Load it again with load_skill before you follow it. Do not use the earlier copy.`,
+				};
+			}
+			updates.push({ type: 'custom', data: { type: 'n8n:runtime-skill-update', skillUpdate } });
+		}
+		if (updates.length > 0) ctx.list.addInput(updates);
+		return updates;
 	}
 
 	/** Prepare the workspace while the model streams the input of a tool that uses it. */

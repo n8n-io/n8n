@@ -251,6 +251,20 @@ export interface CustomAgentMessages {
 		/** The text the model sees, already wrapped. */
 		content: string;
 	};
+	/** Tells the model that a skill it loaded changed or became unavailable. */
+	runtimeSkillUpdate: {
+		type: 'n8n:runtime-skill-update';
+		skillUpdate: {
+			skillId: string;
+			/** The skill hash this note announces. Null when the skill is unavailable. */
+			version: string | null;
+			/** The text the model sees, without the `<system-reminder>` wrapper. */
+			content: string;
+			name?: string;
+			/** `restored`: a skill that was unavailable is in the catalog again. Older threads also used it when they resent a skill after compaction. */
+			change?: 'updated' | 'restored' | 'unavailable';
+		};
+	};
 	runtimeContextCue: {
 		type: 'n8n:runtime-context-cue';
 		/** Stable cue ids, so a conversation receives each cue only once. */

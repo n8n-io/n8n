@@ -563,3 +563,41 @@ describe('collapsed subline label', () => {
 		expect(subline).not.toContain('Read instance context');
 	});
 });
+
+describe('skill update activity', () => {
+	it('shows an unnamed unavailable skill without exposing its internal ID', async () => {
+		const entry: InstanceAiTimelineEntry = {
+			type: 'skill-update',
+			runId: 'run-1',
+			skillId: 'hub:internal-id',
+			version: null,
+			change: 'unavailable',
+		};
+		const { getByTestId, findByRole, findByText, queryByText } = renderComponent({
+			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		await fireEvent.click(await findByRole('button', { name: 'A loaded skill is unavailable' }));
+		expect(await findByText('The Assistant stopped using this skill')).toBeVisible();
+		expect(queryByText('hub:internal-id')).toBeNull();
+	});
+
+	it('says that the Assistant loads an updated skill again', async () => {
+		const entry: InstanceAiTimelineEntry = {
+			type: 'skill-update',
+			runId: 'run-1',
+			skillId: 'hub:internal-id',
+			name: 'Triage',
+			version: 'v2',
+			change: 'updated',
+		};
+		const { getByTestId, findByRole, findByText } = renderComponent({
+			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		await fireEvent.click(await findByRole('button', { name: 'Skill updated: Triage' }));
+		expect(
+			await findByText('This skill changed. The Assistant loads the new version when it needs it.'),
+		).toBeVisible();
+	});
+});

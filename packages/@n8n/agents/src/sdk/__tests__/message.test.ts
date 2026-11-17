@@ -1,5 +1,10 @@
 import type { AgentMessage } from '../../types/sdk/message';
-import { filterLlmMessages, getCreatedAt, isHostInstruction } from '../message';
+import {
+	filterLlmMessages,
+	getCreatedAt,
+	isHostInstruction,
+	RUNTIME_SKILL_UPDATE_PREAMBLE,
+} from '../message';
 
 declare module '../../types/sdk/message' {
 	interface CustomAgentMessages {
@@ -15,24 +20,35 @@ function userMessage(partial: Partial<AgentMessage> & { createdAt?: unknown }): 
 }
 
 describe('filterLlmMessages', () => {
-	it('drops custom skill update messages', () => {
+	it('only converts skill updates with the runtime discriminator', () => {
 		const skillUpdate = {
 			skillId: 'skill-1',
 			version: 'v2',
-			content: 'Use the current instructions.',
+			content: 'Load the skill again.',
 		};
 		const appUpdate: AgentMessage = { type: 'custom', data: { skillUpdate } };
 		const namespacedAppUpdate: AgentMessage = {
 			type: 'custom',
 			data: { type: 'app:skill-update', skillUpdate },
 		};
-		// Older threads can still store the removed runtime discriminator.
-		const legacyRuntimeUpdate = {
+		const runtimeUpdate: AgentMessage = {
 			type: 'custom',
 			data: { type: 'n8n:runtime-skill-update', skillUpdate },
-		} as unknown as AgentMessage;
+		};
 
-		expect(filterLlmMessages([appUpdate, namespacedAppUpdate, legacyRuntimeUpdate])).toEqual([]);
+		expect(filterLlmMessages([appUpdate, runtimeUpdate, namespacedAppUpdate])).toEqual([
+			{
+				...runtimeUpdate,
+				type: 'llm',
+				role: 'user',
+				content: [
+					{
+						type: 'text',
+						text: `<system-reminder>\n${RUNTIME_SKILL_UPDATE_PREAMBLE}\n\nLoad the skill again.\n</system-reminder>`,
+					},
+				],
+			},
+		]);
 	});
 });
 
