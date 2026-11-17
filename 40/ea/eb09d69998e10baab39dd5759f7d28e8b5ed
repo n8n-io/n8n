@@ -1,0 +1,25 @@
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_d9d64c42591766::t_dc18a7a154e424 569,580
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_d9d64c42591766::t_27f23957a4361c 68,830
+packages/cli/src/workflows/workflow.service.ts
+  s_d9d64c42591766::t_72793b85f3f3fb 1685,1795,1837
+packages/cli/test/integration/policy/workflow-transfer-unpublish.policy.test.ts
+  s_d9d64c42591766::t_68b5a26d5d5d8b 328,340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40eaeb09d69998e10baab39dd5759f7d28e8b5ed",
+  "prompts": {},
+  "sessions": {
+    "s_d9d64c42591766": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13f08a31-ae1e-4bd2-81ba-e3a84a4dafcc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

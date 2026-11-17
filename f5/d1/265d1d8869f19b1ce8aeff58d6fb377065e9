@@ -1,0 +1,19 @@
+packages/cli/test/migration/1794910326111-add-owner-user-id-to-workflows-and-agents.test.ts
+  s_c2acdaa2547ceb::t_ea03691d616eae 1-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f5d1265d1d8869f19b1ce8aeff58d6fb377065e9",
+  "prompts": {},
+  "sessions": {
+    "s_c2acdaa2547ceb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3853d88a-98c9-45e1-afe3-c53837fbb2dd",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
