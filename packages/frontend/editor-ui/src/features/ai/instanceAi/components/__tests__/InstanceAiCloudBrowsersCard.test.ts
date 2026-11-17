@@ -11,8 +11,11 @@ import {
 } from '../../composables/useCloudBrowserTasks';
 import InstanceAiCloudBrowsersCard from '../InstanceAiCloudBrowsersCard.vue';
 
-const { thread } = vi.hoisted(() => ({ thread: { cancelBackgroundTask: vi.fn() } }));
-vi.mock('../../instanceAi.store', () => ({ useThread: () => thread }));
+const { thread, useThread } = vi.hoisted(() => {
+	const thread = { cancelBackgroundTask: vi.fn() };
+	return { thread, useThread: vi.fn(() => thread) };
+});
+vi.mock('../../instanceAi.store', () => ({ useThread }));
 
 const renderComponent = createComponentRenderer(InstanceAiCloudBrowsersCard);
 
@@ -48,10 +51,20 @@ function render(
 describe('InstanceAiCloudBrowsersCard', () => {
 	beforeEach(() => {
 		thread.cancelBackgroundTask.mockReset();
+		useThread.mockClear();
+	});
+
+	it('shows nothing and does not read the thread when the view provides no browser tasks', () => {
+		const { queryByTestId } = renderComponent();
+
+		expect(queryByTestId('instance-ai-cloud-browsers')).not.toBeInTheDocument();
+		expect(useThread).not.toHaveBeenCalled();
 	});
 
 	it('shows nothing when no browser task runs', () => {
-		const { queryByTestId } = renderComponent();
+		const { queryByTestId } = renderComponent({
+			global: { provide: { [CloudBrowserTasksKey as symbol]: computed(() => []) } },
+		});
 
 		expect(queryByTestId('instance-ai-cloud-browsers')).not.toBeInTheDocument();
 	});

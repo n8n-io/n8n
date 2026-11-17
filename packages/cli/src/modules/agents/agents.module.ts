@@ -15,6 +15,10 @@ export class AgentsModule implements ModuleInterface {
 		const { registerSkillUsage } = await import('./register-skill-usage.js');
 		registerSkillUsage();
 
+		// Tell core which agent acts as a service account, so a user deletion keeps it.
+		const { registerServiceAccountUsage } = await import('./register-service-account-usage.js');
+		registerServiceAccountUsage();
+
 		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
 		const { registerKnowledgeSandboxProvider } = await import(
 			'./register-knowledge-sandbox-provider.js'
@@ -57,6 +61,11 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
+
+		// Share pickers show the project of each agent's service account.
+		const { ServiceAccountProjects } = await import('@/services/service-account-projects.js');
+		const { AgentServiceAccountService } = await import('./agent-service-account.service.js');
+		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
 
 		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command

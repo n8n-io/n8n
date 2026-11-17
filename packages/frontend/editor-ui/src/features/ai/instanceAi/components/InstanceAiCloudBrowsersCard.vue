@@ -16,11 +16,9 @@ import { CloudBrowserTasksKey, type CloudBrowserTask } from '../composables/useC
 import { useThread } from '../instanceAi.store';
 
 const i18n = useI18n();
-const thread = useThread();
-const tasks = inject(
-	CloudBrowserTasksKey,
-	computed(() => []),
-);
+// The new assistant-agent view has no cloud browser tasks or thread yet, so skip the thread there.
+const tasks = inject(CloudBrowserTasksKey, undefined);
+const thread = tasks ? useThread() : undefined;
 const liveViews = inject(CloudBrowserLiveViewsKey, undefined);
 const openCloudBrowserTab = inject<((taskId: string) => void) | undefined>(
 	'openCloudBrowserTab',
@@ -39,7 +37,7 @@ const stateIcons: Record<
 
 // A running task the instance no longer runs (for example after a restart) is not shown.
 const rows = computed(() =>
-	tasks.value
+	(tasks?.value ?? [])
 		.filter(
 			(task) => task.state !== 'running' || liveViews?.get(task.taskId)?.status !== 'not-found',
 		)
@@ -106,7 +104,7 @@ function subtitleOf(task: CloudBrowserTask): string {
 							:aria-label="i18n.baseText('instanceAi.cloudBrowser.stop')"
 							:title="i18n.baseText('instanceAi.cloudBrowser.stop')"
 							data-test-id="instance-ai-cloud-browser-stop"
-							@click="thread.cancelBackgroundTask(task.taskId)"
+							@click="thread?.cancelBackgroundTask(task.taskId)"
 						/>
 					</span>
 				</div>

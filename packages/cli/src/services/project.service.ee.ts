@@ -16,7 +16,9 @@ import {
 	type ProjectListOptions,
 	type OperationContext,
 	RoleRepository,
+	type UserKind,
 } from '@n8n/db';
+import { AgentsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import {
 	combineScopes,
@@ -43,11 +45,22 @@ import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
+import { type AccountProject, ServiceAccountProjects } from './service-account-projects';
+
+/** Pickers ask for service accounts only where a share to one has an effect. */
+export type SharingCandidateOptions = ProjectListOptions & { includeServiceAccounts?: boolean };
+
+export type ProjectWithAccountKind = Project & {
+	accountKind?: UserKind;
+	accountProject?: AccountProject;
+};
 
 const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";
 const INSTANCE_ACCESS_REMOVE_ERROR =
 	"This user has access through their instance role and can't be removed from the project.";
+const PERSONAL_PROJECT_MEMBERS_ERROR = "Personal projects can't have members.";
+const PERSONAL_PROJECT_UPDATE_ERROR = "Personal projects can't be updated.";
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -94,6 +107,8 @@ export class ProjectService {
 		private readonly userRepository: UserRepository,
 		private readonly roleRepository: RoleRepository,
 		private readonly txRunner: TransactionRunner,
+		private readonly agentsConfig: AgentsConfig,
+		private readonly serviceAccountProjects: ServiceAccountProjects,
 	) {}
 
 	private get workflowService() {
@@ -269,7 +284,11 @@ export class ProjectService {
 
 		// 8. Remove agent data before project removal cascades delete its records.
 		if (this.moduleRegistry.isActive('agents')) {
-			await (await this.agentProjectCleanupService).cleanupProject(project.id);
+			await (await this.agentProjectCleanupService).cleanupProject(project.id, {
+				actor: user,
+				transferId: targetProject?.id,
+				ctx,
+			});
 		}
 
 		// Capture member user IDs before the project (and its relations) are removed,
@@ -342,10 +361,10 @@ export class ProjectService {
 	 * Mirrors the logic in getMyProjects controller: for each project,
 	 * find the user's ProjectRelation and combine global + project scopes.
 	 */
-	async addUserScopes(
+	async addUserScopes<T extends Project>(
 		user: User,
-		projects: Project[],
-	): Promise<Array<Project & { role: string; scopes: Scope[] }>> {
+		projects: T[],
+	): Promise<Array<T & { role: string; scopes: Scope[] }>> {
 		if (projects.length === 0) return [];
 
 		const relations = await this.projectRelationRepository.findByUserAndProjects(
@@ -383,10 +402,11 @@ export class ProjectService {
 	async getAccessibleProjectsAndCount(
 		user: User,
 		options: ProjectListOptions,
-	): Promise<{ projects: Project[]; count: number }> {
+	): Promise<{ projects: ProjectWithAccountKind[]; count: number }> {
 		const [projects, count] = hasGlobalScope(user, 'project:read')
 			? await this.projectRepository.findAllProjectsAndCount(options)
 			: await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
+		await this.ownershipService.addAccountKinds<ProjectWithAccountKind>(projects);
 		return { projects, count };
 	}
 
@@ -396,12 +416,39 @@ export class ProjectService {
 	// other users. See `ProjectRepository.getShareableProjectsAndCount`.
 	async getShareableProjectsAndCount(
 		user: User,
-		options: ProjectListOptions,
-	): Promise<{ projects: Project[]; count: number }> {
-		const [projects, count] = hasGlobalScope(user, 'project:read')
-			? await this.projectRepository.findAllProjectsAndCount(options)
-			: await this.projectRepository.getShareableProjectsAndCount(user.id, options);
+		{ includeServiceAccounts = false, ...options }: SharingCandidateOptions,
+	): Promise<{ projects: ProjectWithAccountKind[]; count: number }> {
+		const isAdmin = hasGlobalScope(user, 'project:read');
+		const listOptions = {
+			...options,
+			serviceAccountIds: includeServiceAccounts
+				? await this.findShareableServiceAccountIds(user, isAdmin)
+				: [],
+		};
+		const [projects, count] = isAdmin
+			? await this.projectRepository.findAllProjectsAndCount(listOptions)
+			: await this.projectRepository.getShareableProjectsAndCount(user.id, listOptions);
+		await this.ownershipService.addAccountKinds<ProjectWithAccountKind>(projects);
 		return { projects, count };
+	}
+
+	/**
+	 * The service accounts that the user can pick for a new share. `undefined`
+	 * means all of them. With the flag off, there are none. Existing shares still
+	 * show on the resource, so users can revoke them. A member sees only the
+	 * accounts of their own projects, so the agents of other projects stay private.
+	 */
+	private async findShareableServiceAccountIds(
+		user: User,
+		isAdmin: boolean,
+	): Promise<string[] | undefined> {
+		if (!this.agentsConfig.serviceAccountsEnabled) return [];
+		if (isAdmin) return undefined;
+
+		const relations = await this.projectRelationRepository.findAllByUser(user.id);
+		return await this.serviceAccountProjects.findAccountIdsInProjects(
+			relations.map((relation) => relation.projectId),
+		);
 	}
 
 	async getProjectsAndCount({
@@ -531,6 +578,10 @@ export class ProjectService {
 			{ name, icon, description, customTelemetryTags: tags },
 		);
 		if (!result.affected) {
+			const project = await this.projectRepository.findOneBy({ id: projectId });
+			if (project?.type === 'personal') {
+				throw new ForbiddenError(PERSONAL_PROJECT_UPDATE_ERROR);
+			}
 			throw new ProjectNotFoundError(projectId);
 		}
 
@@ -667,10 +718,6 @@ export class ProjectService {
 			'project',
 		);
 
-		if (project.type === 'personal') {
-			throw new ForbiddenError("Can't add users to personal projects.");
-		}
-
 		if (relations.some((r) => r.role === PROJECT_OWNER_ROLE_SLUG)) {
 			throw new ForbiddenError("Can't add a personalOwner to a team project.");
 		}
@@ -761,10 +808,13 @@ export class ProjectService {
 
 	private async getTeamProjectWithRelations(projectId: string) {
 		const project = await this.projectRepository.findOne({
-			where: { id: projectId, type: 'team' },
+			where: { id: projectId },
 			relations: { projectRelations: { role: true } },
 		});
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		if (project.type === 'personal') {
+			throw new ForbiddenError(PERSONAL_PROJECT_MEMBERS_ERROR);
+		}
 		return project;
 	}
 

@@ -13,7 +13,7 @@ import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
@@ -99,7 +99,7 @@ function setup() {
 	);
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),

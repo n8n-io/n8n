@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { PostHogClient } from '@n8n/backend-services';
 import type { User, UserRepository } from '@n8n/db';
 import type { DomainAccessTracker } from '@n8n/instance-ai';
+import type { InstanceSettings } from 'n8n-core';
 import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { mock } from 'vitest-mock-extended';
@@ -33,6 +34,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	let release: ReturnType<typeof vi.spyOn>;
 	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
 	let logger: ReturnType<typeof mock<Logger>>;
+	let instanceSettings: { isMultiMain: boolean };
 
 	beforeEach(() => {
 		logger = mock<Logger>();
@@ -41,12 +43,14 @@ describe('InstanceAiCloudBrowserService', () => {
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
 		postHogClient.getFeatureFlagForInstance.mockReset();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+		instanceSettings = { isMultiMain: false };
 		service = new InstanceAiCloudBrowserService(
 			logger,
 			aiGatewayBrowserUseService,
 			userRepository,
 			credentialsService,
 			postHogClient,
+			instanceSettings as InstanceSettings,
 		);
 		release = vi.spyOn(CloudBrowserLocalMcpServer.prototype, 'release').mockResolvedValue();
 	});
@@ -250,6 +254,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
 
 			expect(await service.isAvailable()).toBe(false);
+		});
+
+		it('is not available on a multi-main instance, and does not read the flag', async () => {
+			instanceSettings.isMultiMain = true;
+
+			expect(await service.isAvailable()).toBe(false);
+			expect(postHogClient.getFeatureFlagForInstance).not.toHaveBeenCalled();
 		});
 	});
 

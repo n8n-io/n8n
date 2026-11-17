@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
 	KnowledgeFileRepository,
-	type AgentKnowledgeTotals,
+	type KnowledgeFileTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import { AgentRepository, type PublishedAgentVectorStores } from './repositories/agent.repository';
@@ -26,7 +26,7 @@ export interface AgentKnowledgeSnapshot {
 export class AgentKnowledgeSnapshotService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: KnowledgeFileRepository,
+		private readonly knowledgeFileRepository: KnowledgeFileRepository,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
@@ -48,12 +48,12 @@ export class AgentKnowledgeSnapshotService {
 	}
 
 	/** With the knowledge module off no file is reachable, so the snapshot counts none. */
-	private async readFileTotals(agentIds: string[]): Promise<Map<string, AgentKnowledgeTotals>> {
+	private async readFileTotals(agentIds: string[]): Promise<Map<string, KnowledgeFileTotals>> {
 		if (!this.knowledgeAvailabilityService.isModuleActive()) {
 			return new Map();
 		}
 
-		return await this.agentFileRepository.getKnowledgeTotalsByAgentIds(agentIds, {});
+		return await this.knowledgeFileRepository.getKnowledgeTotalsByAgentIds(agentIds, {});
 	}
 
 	/** A page with fewer than PAGE_SIZE agents is the last one. */
@@ -90,7 +90,7 @@ function emptySnapshot(): AgentKnowledgeSnapshot {
 function addAgentDataToSnapshot(
 	snapshot: AgentKnowledgeSnapshot,
 	{ vectorStoreProviders }: PublishedAgentVectorStores,
-	fileTotals: AgentKnowledgeTotals | undefined,
+	fileTotals: KnowledgeFileTotals | undefined,
 ) {
 	const hasFiles = fileTotals !== undefined && fileTotals.fileCount > 0;
 	const hasVectorStores = vectorStoreProviders.length > 0;
