@@ -398,22 +398,26 @@ describe('PublicationStatusReporter', () => {
 		);
 	});
 
-	test('failed with triggerStatuses writes rows before marking failed', async () => {
-		const error = new Error('partial registration failed');
+	test('failed with trigger state writes rows before marking failed', async () => {
+		const error = new Error('cron unavailable');
 
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
-			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
-				{
-					nodeId: 'b',
-					nodeName: 'Schedule',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: 'cron unavailable',
-				},
-			],
+			nodeId: 'b',
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
+					{
+						nodeId: 'b',
+						nodeName: 'Schedule',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'cron unavailable',
+					},
+				],
+			},
 		});
 
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
@@ -438,7 +442,7 @@ describe('PublicationStatusReporter', () => {
 		);
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 			1,
-			'partial registration failed',
+			'cron unavailable',
 			operationContext,
 		);
 		expect(retryStateRepository.scheduleRetry).toHaveBeenCalledWith(
@@ -449,11 +453,69 @@ describe('PublicationStatusReporter', () => {
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			{
 				type: 'workflowFailedToActivate',
-				data: { workflowId: 'wf-1', errorMessage: 'partial registration failed', nodeId: 'b' },
+				data: { workflowId: 'wf-1', errorMessage: 'cron unavailable', nodeId: 'b' },
 			},
 			userIds,
 		);
 	});
+
+	test.each(['v-1', 'v-2'])(
+		'preserves running %s trigger rows while reporting a refused request',
+		async (versionId) => {
+			const error = new UserError('Credential access changed');
+			await reporter.report(makeRecord(), {
+				type: 'failed',
+				error,
+				triggerState: {
+					versionId,
+					triggerStatuses: [
+						{ nodeId: 'a', nodeName: 'Live', status: 'activated', triggerKind: 'in-memory' },
+						{
+							nodeId: 'c',
+							nodeName: 'Missing',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: 'Trigger is not registered',
+						},
+					],
+				},
+			});
+
+			expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+				'wf-1',
+				[
+					{
+						nodeId: 'a',
+						versionId,
+						status: 'activated',
+						triggerKind: 'in-memory',
+						errorMessage: null,
+					},
+					{
+						nodeId: 'c',
+						versionId,
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'Trigger is not registered',
+					},
+				],
+				operationContext,
+			);
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, operationContext);
+			expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+				operationContext,
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowFailedToActivate',
+					data: { workflowId: 'wf-1', errorMessage: error.message },
+				},
+				userIds,
+			);
+		},
+	);
 
 	test('failed with several failed triggers pushes no nodeId', async () => {
 		const errorMessage =
@@ -462,22 +524,25 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error: new Error(errorMessage),
-			triggerStatuses: [
-				{
-					nodeId: 'b',
-					nodeName: 'Schedule',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: 'cron unavailable',
-				},
-				{
-					nodeId: 'c',
-					nodeName: 'Cron',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: 'bad cron',
-				},
-			],
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'Schedule',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'cron unavailable',
+					},
+					{
+						nodeId: 'c',
+						nodeName: 'Cron',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'bad cron',
+					},
+				],
+			},
 		});
 
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -492,15 +557,19 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
-			triggerStatuses: [
-				{
-					nodeId: 'fitting',
-					nodeName: 'Fitting',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: error.message,
-				},
-			],
+			nodeId: 'too-long',
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'fitting',
+						nodeName: 'Fitting',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
 		});
 
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -521,15 +590,18 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
-			triggerStatuses: [
-				{
-					nodeId: 'fitting',
-					nodeName: 'Fitting',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: error.message,
-				},
-			],
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'fitting',
+						nodeName: 'Fitting',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
 		});
 
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -541,25 +613,30 @@ describe('PublicationStatusReporter', () => {
 		);
 	});
 
-	// A policy refusal marks every trigger failed with the policy error, so the
-	// one failed row is not the node whose own error this is.
-	test('failed by policy with one failed row pushes no nodeId', async () => {
-		const error = new PolicyViolationError([
-			{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
-		]);
-
+	test.each([
+		{
+			cause: 'policy',
+			error: new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+			]),
+		},
+		{ cause: 'credential access', error: new UserError('Credential access changed') },
+	])('failed by $cause with one failed row pushes no nodeId', async ({ error }) => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
-			triggerStatuses: [
-				{
-					nodeId: 'b',
-					nodeName: 'Schedule',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: error.message,
-				},
-			],
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'Schedule',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
 		});
 
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -729,6 +806,13 @@ describe('PublicationStatusReporter', () => {
 		errorMessage: 'activation failed',
 	});
 
+	const failedState = (
+		...triggerStatuses: TriggerPublicationStatus[]
+	): { versionId: string; triggerStatuses: TriggerPublicationStatus[] } => ({
+		versionId: 'v-2',
+		triggerStatuses,
+	});
+
 	const PERMANENT_FAILURES: Array<[string, PublicationResult]> = [
 		['a missing version', { type: 'version-missing' }],
 		[
@@ -736,7 +820,7 @@ describe('PublicationStatusReporter', () => {
 			{
 				type: 'failed',
 				error: new TriggerNodeIdTooLongError([{ id: 'too-long', name: 'Long' }]),
-				triggerStatuses: [],
+				triggerState: failedState(),
 			},
 		],
 		[
@@ -746,7 +830,7 @@ describe('PublicationStatusReporter', () => {
 				error: new WorkflowActivationError('There was a problem activating the workflow', {
 					cause: new UserError('The polling interval is too short.'),
 				}),
-				triggerStatuses: [failedRow('in-memory')],
+				triggerState: failedState(failedRow('in-memory')),
 			},
 		],
 		[
@@ -761,7 +845,7 @@ describe('PublicationStatusReporter', () => {
 			{
 				type: 'failed',
 				error: new WebhookPathTakenError('Webhook'),
-				triggerStatuses: [failedRow('persisted')],
+				triggerState: failedState(failedRow('persisted')),
 			},
 		],
 	];
@@ -782,14 +866,14 @@ describe('PublicationStatusReporter', () => {
 	const RETRY_FAILURES: Array<[string, PublicationResult]> = [
 		[
 			'an unreachable host for an in-memory trigger',
-			{ type: 'failed', error: unreachable(), triggerStatuses: [failedRow('in-memory')] },
+			{ type: 'failed', error: unreachable(), triggerState: failedState(failedRow('in-memory')) },
 		],
 		[
 			'an external webhook registration during an outage',
 			{
 				type: 'failed',
 				error: new Error('Failed to register the webhook: socket hang up'),
-				triggerStatuses: [failedRow('persisted')],
+				triggerState: failedState(failedRow('persisted')),
 			},
 		],
 		[
@@ -797,7 +881,7 @@ describe('PublicationStatusReporter', () => {
 			{
 				type: 'failed',
 				error: unreachable(),
-				triggerStatuses: [failedRow('in-memory'), failedRow('persisted')],
+				triggerState: failedState(failedRow('in-memory'), failedRow('persisted')),
 			},
 		],
 		[
@@ -808,7 +892,7 @@ describe('PublicationStatusReporter', () => {
 					[new WebhookPathTakenError('Webhook'), unreachable()],
 					'Triggers failed to activate',
 				),
-				triggerStatuses: [failedRow('persisted'), failedRow('in-memory')],
+				triggerState: failedState(failedRow('persisted'), failedRow('in-memory')),
 			},
 		],
 		[
@@ -818,7 +902,7 @@ describe('PublicationStatusReporter', () => {
 				error: new WorkflowActivationError('There was a problem activating the workflow', {
 					cause: new Error('Invalid credentials'),
 				}),
-				triggerStatuses: [failedRow('in-memory')],
+				triggerState: failedState(failedRow('in-memory')),
 			},
 		],
 		[

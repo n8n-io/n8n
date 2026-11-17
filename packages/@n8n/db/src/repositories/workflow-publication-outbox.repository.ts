@@ -15,10 +15,15 @@ import { WorkflowPublicationRetryState } from '../entities/workflow-publication-
 import { databaseNow, retryDueAt } from './workflow-publication-retry-state.repository';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
+import { dbNowLiteral } from '../utils/dialect-time';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
 const SQLITE_ENQUEUE_CHUNK_SIZE = 998;
+
+/** Pending reasons a transfer takes over, because their apply would not re-register unchanged triggers. */
+const REASONS_A_TRANSFER_REPLACES_SQL = `('${WorkflowPublicationReason.Publish}', '${WorkflowPublicationReason.Reconcile}')`;
 
 @Service()
 export class WorkflowPublicationOutboxRepository extends BaseRepository<WorkflowPublicationOutbox> {
@@ -45,6 +50,38 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
+	/** Get the latest request, including its terminal outcome, for publication callers. */
+	async findLatestByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationOutbox | null> {
+		return await this.managerFor(ctx).findOne(WorkflowPublicationOutbox, {
+			where: { workflowId },
+			order: { id: 'DESC' },
+		});
+	}
+
+	/** Read one latest request per workflow without loading its retained history. */
+	async findLatestByWorkflowIds(workflowIds: string[]): Promise<WorkflowPublicationOutbox[]> {
+		const records: WorkflowPublicationOutbox[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			const latest = await this.createQueryBuilder('outbox')
+				.where((qb) => {
+					const latestIds = qb
+						.subQuery()
+						.select('MAX(request.id)')
+						.from(WorkflowPublicationOutbox, 'request')
+						.where('request.workflowId IN (:...workflowIds)', { workflowIds: chunk })
+						.groupBy('request.workflowId')
+						.getQuery();
+					return `outbox.id IN ${latestIds}`;
+				})
+				.getMany();
+			records.push(...latest);
+		}
+		return records;
+	}
+
 	/**
 	 * Enqueue a publication for `workflowId`. If a pending record is already in
 	 * place for the same workflow, its `publishedVersionId` is updated in place,
@@ -62,8 +99,8 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
 	 * the enqueue atomic with a `workflow_entity` update.
 	 *
-	 * The conflict path also supersedes `reason`: a fresher enqueue's intent
-	 * wins (e.g. a user publish replacing a pending startup record).
+	 * The conflict path also supersedes `reason`, except a pending `transfer`,
+	 * which the applier still needs to register every trigger again.
 	 */
 	async enqueue(
 		workflowId: string,
@@ -107,7 +144,9 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status", "reason")
 			 VALUES ($1, $2, '${Status.Pending}', $3)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "reason" = EXCLUDED."reason", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId",
+			   "reason" = CASE WHEN ${tableName}."reason" = '${WorkflowPublicationReason.Transfer}' THEN ${tableName}."reason" ELSE EXCLUDED."reason" END,
+			   "updatedAt" = CURRENT_TIMESTAMP(3)`,
 			[workflowId, publishedVersionId, reason],
 		);
 	}
@@ -124,7 +163,9 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status", "reason")
 			 VALUES (?, ?, '${Status.Pending}', ?)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "reason" = excluded."reason", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId",
+			   "reason" = CASE WHEN ${tableName}."reason" = '${WorkflowPublicationReason.Transfer}' THEN ${tableName}."reason" ELSE excluded."reason" END,
+			   "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
 			[workflowId, publishedVersionId, reason],
 		);
 	}
@@ -170,13 +211,19 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		// record in the gap between them (detection's in-flight exclusion saw an
 		// earlier snapshot). Such a record is at least as fresh as this statement's
 		// snapshot — overwriting it could roll the workflow back to a stale version.
+		// A transfer changes only the reason of such a record, never its version.
+		const onConflict =
+			reason === WorkflowPublicationReason.Transfer
+				? `DO UPDATE SET "reason" = EXCLUDED."reason", "updatedAt" = CURRENT_TIMESTAMP(3)
+				   WHERE ${outboxTableName}."reason" IN ${REASONS_A_TRANSFER_REPLACES_SQL}`
+				: 'DO NOTHING';
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status", "reason")
 			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}', $2
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ANY($1)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO NOTHING`,
+			 ${onConflict}`,
 			[workflowIds, reason],
 		);
 	}
@@ -192,6 +239,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		// statement, while a fresh leader can pass every active workflow at once.
 		// Chunked upserts stay idempotent, so a failure mid-batch just leaves the
 		// remainder for the next reconciliation pass.
+		const onConflict =
+			reason === WorkflowPublicationReason.Transfer
+				? `DO UPDATE SET "reason" = excluded."reason", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')
+				   WHERE ${outboxTableName}."reason" IN ${REASONS_A_TRANSFER_REPLACES_SQL}`
+				: 'DO NOTHING';
 		for (let i = 0; i < workflowIds.length; i += SQLITE_ENQUEUE_CHUNK_SIZE) {
 			const chunk = workflowIds.slice(i, i + SQLITE_ENQUEUE_CHUNK_SIZE);
 			const placeholders = chunk.map(() => '?').join(', ');
@@ -202,7 +254,7 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 				 FROM ${workflowTableName} w
 				 WHERE w."id" IN (${placeholders})
 				 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-				 DO NOTHING`,
+				 ${onConflict}`,
 				[reason, ...chunk],
 			);
 		}
@@ -560,10 +612,15 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		warningMessage?: string,
 	): Promise<void> {
 		const manager = this.managerFor(ctx);
+		// Match trigger-row precision so callers can compare publication outcomes.
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Completed, errorMessage: warningMessage ?? null },
+			{
+				status: Status.Completed,
+				errorMessage: warningMessage ?? null,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
@@ -574,7 +631,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Failed, errorMessage },
+			{
+				status: Status.Failed,
+				errorMessage,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Failed);
 	}
@@ -594,7 +655,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.PartialSuccess, errorMessage },
+			{
+				status: Status.PartialSuccess,
+				errorMessage,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
 	}

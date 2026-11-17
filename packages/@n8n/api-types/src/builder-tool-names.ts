@@ -91,6 +91,7 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	INSERT_DATA_TABLE_ROWS: 'insert_data_table_rows',
 	UPDATE_DATA_TABLE_ROWS: 'update_data_table_rows',
 	DELETE_DATA_TABLE_ROWS: 'delete_data_table_rows',
+	CHANGE_DATA_TABLES: 'change_data_tables',
 	LIST_PROJECTS: 'list_projects',
 	LIST_TAGS: 'list_tags',
 	TAG_WORKFLOW: 'tag_workflow',
@@ -226,9 +227,14 @@ export const DATA_TABLE_TOOL_NAME_BY_ACTION = {
 
 export type DataTableToolAction = keyof typeof DATA_TABLE_TOOL_NAME_BY_ACTION;
 
-export const DATA_TABLE_TOOL_NAMES: readonly string[] = Object.values(
-	DATA_TABLE_TOOL_NAME_BY_ACTION,
-);
+/** One tool that applies an ordered list of table changes behind a single approval. */
+export const CHANGE_DATA_TABLES_TOOL_NAME = SHARED_BUILDER_TOOL_NAMES.CHANGE_DATA_TABLES;
+
+/** Every data table tool name, including the batch tool that has no single action. */
+export const DATA_TABLE_TOOL_NAMES: readonly string[] = [
+	...Object.values(DATA_TABLE_TOOL_NAME_BY_ACTION),
+	CHANGE_DATA_TABLES_TOOL_NAME,
+];
 
 function isDataTableToolAction(key: string): key is DataTableToolAction {
 	return Object.hasOwn(DATA_TABLE_TOOL_NAME_BY_ACTION, key);
@@ -238,6 +244,33 @@ function isDataTableToolAction(key: string): key is DataTableToolAction {
 export const DATA_TABLE_TOOL_ACTIONS: readonly DataTableToolAction[] = Object.keys(
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 ).filter(isDataTableToolAction);
+
+export const DATA_TABLE_READ_TOOL_ACTIONS = [
+	'list',
+	'schema',
+	'query',
+] as const satisfies readonly DataTableToolAction[];
+
+export type DataTableReadToolAction = (typeof DATA_TABLE_READ_TOOL_ACTIONS)[number];
+export type DataTableWriteToolAction = Exclude<DataTableToolAction, DataTableReadToolAction>;
+
+/** Whether a value names a data table action that changes data or schema. */
+export function isDataTableWriteToolAction(value: unknown): value is DataTableWriteToolAction {
+	return (
+		typeof value === 'string' &&
+		isDataTableToolAction(value) &&
+		!DATA_TABLE_READ_TOOL_ACTIONS.some((read) => read === value)
+	);
+}
+
+/** Every action that is not a read. The batch tool now runs these. */
+export const DATA_TABLE_WRITE_TOOL_ACTIONS: readonly DataTableWriteToolAction[] =
+	DATA_TABLE_TOOL_ACTIONS.filter(isDataTableWriteToolAction);
+
+/** Former one-action write tools. Stored calls still use these names, so keep them. */
+export const DATA_TABLE_WRITE_TOOL_NAMES: readonly string[] = DATA_TABLE_WRITE_TOOL_ACTIONS.map(
+	(action) => DATA_TABLE_TOOL_NAME_BY_ACTION[action],
+);
 
 /** Returns the action that a data table tool performs. Session grant keys still use the action. */
 export function getDataTableToolAction(toolName: string): DataTableToolAction | undefined {

@@ -25,7 +25,6 @@ import type {
 	PublicationSkipReason,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
-import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
@@ -121,13 +120,16 @@ export class PublicationStatusReporter {
 				// The record's failure stays the activation error; the abandoned
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				const { triggerStatuses } = result;
+				const { triggerState } = result;
 				const isPermanent = isPermanentFailure(result.error);
 				await this.transactionRunner.run({}, async (ctx) => {
-					if (triggerStatuses) {
+					if (triggerState) {
 						await this.triggerStatusRepository.replaceForWorkflow(
 							record.workflowId,
-							this.toRows(record, triggerStatuses),
+							this.toRows(
+								{ publishedVersionId: triggerState.versionId },
+								triggerState.triggerStatuses,
+							),
 							ctx,
 						);
 					}
@@ -152,17 +154,11 @@ export class PublicationStatusReporter {
 				if (!policyRefusal) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				// Name a node only when the error belongs to it. Shared failures name none.
-				const failedTriggers = (triggerStatuses ?? []).filter((s) => s.status === 'failed');
-				let nodeId: string | undefined;
-				if (result.error instanceof TriggerNodeIdTooLongError) {
-					if (result.error.affectedNodes.length === 1) {
-						nodeId = result.error.affectedNodes[0]?.id;
-					}
-				} else if (!policyRefusal && failedTriggers.length === 1) {
-					nodeId = failedTriggers[0].nodeId;
-				}
-				await this.pushFailedToActivate(record.workflowId, result.error.message, nodeId);
+				await this.pushFailedToActivate(
+					record.workflowId,
+					result.error.message,
+					policyRefusal ? undefined : result.nodeId,
+				);
 				return;
 			}
 
@@ -227,7 +223,7 @@ export class PublicationStatusReporter {
 
 	/** Maps trigger publication statuses to repository row objects, stamping the published version. */
 	private toRows(
-		record: WorkflowPublicationOutbox,
+		record: Pick<WorkflowPublicationOutbox, 'publishedVersionId'>,
 		statuses: TriggerPublicationStatus[],
 	): TriggerStatusRow[] {
 		return statuses.map((triggerStatus) => ({

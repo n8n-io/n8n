@@ -178,6 +178,11 @@ export function buildDataTablesSessionGrantKey(action: string): string {
 	return `data-tables:${action}`;
 }
 
+/** Thread grant for a table the Assistant created in this thread. */
+export function buildOwnedDataTableGrantKey(dataTableId: string): string {
+	return `data-tables:owned:${encodeURIComponent(dataTableId)}`;
+}
+
 // --- Workflow-setup skips ---
 
 const SETUP_SKIP_GRANT_PREFIX = 'workflows:setup-skip:';
@@ -791,6 +796,8 @@ export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayReso
 
 export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
+	/** What resource the approval is for: a site to open (`host`) or a credential to save (`credential-write`). */
+	kind: z.enum(['host', 'credential-write']).optional(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
@@ -1971,6 +1978,7 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
  * there first, and binds it to the thread in the same request.
  */
 export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),
