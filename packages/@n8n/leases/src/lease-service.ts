@@ -20,10 +20,12 @@ export class LeaseService<TTransaction> {
 
 		this.kinds.set(name, kind);
 
-		const options: LeaseKindOptions = { ...DEFAULT_LEASE_KIND_OPTIONS };
-		for (const [key, value] of Object.entries(kind.options ?? {})) {
-			if (value !== undefined) Object.assign(options, { [key]: value });
-		}
+		const {
+			leaseSeconds,
+			startTimeoutSeconds = DEFAULT_LEASE_KIND_OPTIONS.startTimeoutSeconds,
+			maxFailedStarts = DEFAULT_LEASE_KIND_OPTIONS.maxFailedStarts,
+		} = kind.options ?? {};
+		const options: LeaseKindOptions = { leaseSeconds, startTimeoutSeconds, maxFailedStarts };
 
 		this.provider.registerSource(name, kind.source);
 		await this.provider.registerHolder(
