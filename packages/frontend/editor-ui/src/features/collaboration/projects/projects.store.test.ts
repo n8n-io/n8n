@@ -12,6 +12,7 @@ import type { ProjectRole, Scope } from '@n8n/permissions';
 import type { FrontendSettings } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import * as workflowReviewsApi from '@/features/workflow-reviews/workflowReviews.api';
 
 type MockRoute = {
 	params: Record<string, string>;
@@ -38,6 +39,10 @@ vi.mock('./projects.api', () => ({
 }));
 
 vi.mock('@/app/api/workflows.ee', () => ({ moveWorkflowToProject: vi.fn() }));
+vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
+	getProjectWorkflowReviewSettings: vi.fn(),
+	updateProjectWorkflowReviewSettings: vi.fn(),
+}));
 vi.mock('@/features/credentials/credentials.ee.api', () => ({
 	moveCredentialToProject: vi.fn(),
 }));
@@ -417,5 +422,34 @@ describe('useProjectsStore.moveResourceToProject', () => {
 		);
 		expect(workflowsEEApi.moveWorkflowToProject).not.toHaveBeenCalled();
 		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+	});
+});
+
+describe('useProjectsStore workflow review settings', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	it('loads and saves the workflow review settings of a project', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
+			projectApprovalRequired: false,
+		});
+		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
+			projectApprovalRequired: true,
+		});
+		const store = useProjectsStore();
+
+		await store.fetchProjectWorkflowReviewSettings('p1');
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ projectApprovalRequired: false });
+
+		await store.updateCurrentProjectWorkflowReviewSettings('p1', { projectApprovalRequired: true });
+
+		expect(workflowReviewsApi.updateProjectWorkflowReviewSettings).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			{ projectApprovalRequired: true },
+		);
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ projectApprovalRequired: true });
 	});
 });

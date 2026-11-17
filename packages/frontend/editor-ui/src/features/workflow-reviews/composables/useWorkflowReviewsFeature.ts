@@ -22,20 +22,23 @@ export const useWorkflowReviewsFeature = () => {
 		);
 	});
 
+	const isInstanceApprovalRequired = computed(
+		() =>
+			isWorkflowReviewsEnabled.value &&
+			settingsStore.settings.workflowReviews?.alwaysRequired === true,
+	);
+
 	/** An unknown home project counts as a team project, so the rule fails closed. */
 	function isReviewRequiredFor(
 		homeProject: Pick<ProjectSharingData, 'type'> | null | undefined,
 	): boolean {
-		return (
-			isWorkflowReviewsEnabled.value &&
-			settingsStore.settings.workflowReviews?.alwaysRequired === true &&
-			homeProject?.type !== ProjectTypes.Personal
-		);
+		return isInstanceApprovalRequired.value && homeProject?.type !== ProjectTypes.Personal;
 	}
 
 	return {
 		isWorkflowReviewsAvailable,
 		isWorkflowReviewsEnabled,
+		isInstanceApprovalRequired,
 		isReviewRequiredFor,
 	};
 };

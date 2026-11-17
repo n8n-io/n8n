@@ -25,14 +25,20 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type {
 	CreateProjectDto,
 	ProjectPoolSettingsResponse,
+	ProjectWorkflowReviewSettingsResponse,
 	SecretProviderConnection,
 	UpdateProjectDto,
 	UpdateProjectPoolSettingsDto,
+	UpdateProjectWorkflowReviewSettingsDto,
 	WorkflowTransferResult,
 } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import {
+	getProjectWorkflowReviewSettings,
+	updateProjectWorkflowReviewSettings,
+} from '@/features/workflow-reviews/workflowReviews.api';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -53,6 +59,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const personalProject = ref<Project | null>(null);
 	const currentProject = ref<Project | null>(null);
 	const currentProjectPoolSettings = ref<ProjectPoolSettingsResponse | null>(null);
+	const currentProjectWorkflowReviewSettings = ref<ProjectWorkflowReviewSettingsResponse | null>(
+		null,
+	);
 	const projectsCount = ref<ProjectsCount>({
 		personal: 0,
 		team: 0,
@@ -217,6 +226,25 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		dto: UpdateProjectPoolSettingsDto,
 	): Promise<void> => {
 		currentProjectPoolSettings.value = await updateProjectPoolSettings(
+			rootStore.restApiContext,
+			projectId,
+			dto,
+		);
+	};
+
+	const fetchProjectWorkflowReviewSettings = async (projectId: string): Promise<void> => {
+		currentProjectWorkflowReviewSettings.value = null;
+		currentProjectWorkflowReviewSettings.value = await getProjectWorkflowReviewSettings(
+			rootStore.restApiContext,
+			projectId,
+		);
+	};
+
+	const updateCurrentProjectWorkflowReviewSettings = async (
+		projectId: string,
+		dto: UpdateProjectWorkflowReviewSettingsDto,
+	): Promise<void> => {
+		currentProjectWorkflowReviewSettings.value = await updateProjectWorkflowReviewSettings(
 			rootStore.restApiContext,
 			projectId,
 			dto,
@@ -415,6 +443,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		currentProjectPoolSettings,
 		fetchProjectPoolSettings,
 		updateCurrentProjectPoolSettings,
+		currentProjectWorkflowReviewSettings,
+		fetchProjectWorkflowReviewSettings,
+		updateCurrentProjectWorkflowReviewSettings,
 		addMember,
 		updateMemberRole,
 		removeMember,

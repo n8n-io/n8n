@@ -22,6 +22,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { FrontendSettings } from '@n8n/api-types';
+import { EnterpriseEditionFeature } from '@/app/constants';
 
 const mockTrack = vi.fn();
 const mockShowMessage = vi.fn();
@@ -1250,6 +1251,102 @@ describe('ProjectSettings', () => {
 					customTelemetryTags: [{ key: 'env', value: 'production' }],
 				}),
 			);
+		});
+	});
+
+	describe('Require approval', () => {
+		const setWorkflowReviewsPolicy = (policy: { enabled: boolean; alwaysRequired?: boolean }) => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				enterprise: {
+					...settingsStore.settings.enterprise,
+					[EnterpriseEditionFeature.WorkflowReviews]: true,
+				},
+				workflowReviews: policy,
+			} as FrontendSettings;
+		};
+
+		beforeEach(() => {
+			setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: false });
+			projectsStore.currentProjectWorkflowReviewSettings = { projectApprovalRequired: false };
+			projectsStore.fetchProjectWorkflowReviewSettings.mockResolvedValue(undefined);
+			projectsStore.updateProject.mockResolvedValue(undefined);
+			projectsStore.updateCurrentProjectWorkflowReviewSettings.mockResolvedValue(undefined);
+		});
+
+		it('shows Require approval and saves a changed value', async () => {
+			const { getByTestId, getByText } = renderComponent();
+			await nextTick();
+
+			const requireApproval = getByTestId('project-settings-require-approval-switch');
+			expect(requireApproval).toHaveAttribute('aria-checked', 'false');
+			expect(
+				getByText(
+					'New workflow versions in this project need an approved review before they are published.',
+				),
+			).toBeInTheDocument();
+
+			await userEvent.click(requireApproval);
+			await userEvent.click(getByTestId('project-settings-save-button'));
+
+			expect(projectsStore.updateCurrentProjectWorkflowReviewSettings).toHaveBeenCalledWith('123', {
+				projectApprovalRequired: true,
+			});
+		});
+
+		it('sends no workflow review setting on a name-only save', async () => {
+			projectsStore.currentProjectWorkflowReviewSettings = { projectApprovalRequired: true };
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			await userEvent.type(getInput(getByTestId('project-settings-name-input')), ' Renamed');
+			await userEvent.click(getByTestId('project-settings-save-button'));
+
+			expect(projectsStore.updateProject).toHaveBeenCalled();
+			expect(projectsStore.updateCurrentProjectWorkflowReviewSettings).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[
+				'without project:update',
+				() => {
+					projectsStore.currentProject = {
+						...projectsStore.currentProject!,
+						scopes: ['project:read'],
+					};
+				},
+			],
+			['when workflow reviews are off', () => setWorkflowReviewsPolicy({ enabled: false })],
+			[
+				'in a personal space',
+				() => {
+					projectsStore.currentProject = {
+						...projectsStore.currentProject!,
+						type: ProjectTypes.Personal,
+					};
+				},
+			],
+		])('hides Require approval %s', async (_case, arrange) => {
+			arrange();
+			const { queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-settings-require-approval-switch')).not.toBeInTheDocument();
+		});
+
+		it('shows Require approval on and locked when the instance requires approval', async () => {
+			setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: true });
+			const { getByTestId, getByText } = renderComponent();
+			await nextTick();
+
+			const requireApproval = getByTestId('project-settings-require-approval-switch');
+			expect(requireApproval).toHaveAttribute('aria-checked', 'true');
+			expect(requireApproval).toBeDisabled();
+			expect(
+				getByText(
+					'The instance requires approval for every team project. An instance admin can change this.',
+				),
+			).toBeInTheDocument();
 		});
 	});
 
