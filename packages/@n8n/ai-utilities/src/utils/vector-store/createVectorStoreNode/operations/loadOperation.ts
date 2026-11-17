@@ -66,9 +66,12 @@ export async function handleLoadOperation<T extends VectorStore = VectorStore>(
 
 		// Format the documents for the output
 		const serializedDocs = docs.map(([doc, score]) => {
+			// Rerankers can add extra top-level fields (e.g. their own score), so keep them
+			// with the metadata. `id` stays out to keep the output the same for every store.
+			const { pageContent, metadata, id: _id, ...extraFields } = doc;
 			const document = {
-				pageContent: doc.pageContent,
-				...(includeDocumentMetadata ? { metadata: doc.metadata } : {}),
+				pageContent,
+				...(includeDocumentMetadata ? { ...extraFields, metadata } : {}),
 			};
 
 			return {
