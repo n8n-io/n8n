@@ -540,6 +540,35 @@ describe('useNodeCommands', () => {
 				['n8n-nodes-base.slack', false],
 			]);
 		});
+
+		it('should show no explanation for a node type that is only incompatible', () => {
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).mergeSettings({
+				engineType: 'v2',
+			});
+
+			const { items } = searchNodes();
+
+			expect(items.find((item) => item.id === 'n8n-nodes-base.gmail')?.trailing).toBeUndefined();
+		});
+
+		it('should explain the policy for a node type that is also restricted', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'instance' });
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).mergeSettings({
+				engineType: 'v2',
+			});
+
+			const { items } = searchNodes();
+			const gmail = items.find((item) => item.id === 'n8n-nodes-base.gmail');
+
+			expect(gmail?.disabled).toBe(true);
+			expect(gmail?.trailing).toEqual({
+				component: CommandBarRestrictedNode,
+				props: {
+					nodeTypeName: 'Gmail',
+					restriction: expect.objectContaining({ scope: 'instance' }),
+				},
+			});
+		});
 	});
 
 	describe('pagination', () => {

@@ -18,6 +18,7 @@ const INCOMPATIBLE_TYPE = 'n8n-nodes-base.incompatible';
 
 const reason: EngineCompatibilityReason = {
 	code: 'ERROR_WORKFLOW',
+	kind: 'temporary',
 	severity: 'blocking',
 	message: 'Engine v2 does not run an error workflow yet.',
 };

@@ -1315,6 +1315,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	describe('Engine v2 compatibility', () => {
 		const blockingReason: EngineCompatibilityReason = {
 			code: 'TRIGGER_EXTERNAL_IDENTITY',
+			kind: 'temporary',
 			severity: 'blocking',
 			nodeId: triggerNode.id,
 			nodeName: triggerNode.name,

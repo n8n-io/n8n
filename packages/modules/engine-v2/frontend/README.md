@@ -11,19 +11,26 @@ not a default module. Enable it in a dev instance with `N8N_ENABLED_MODULES=engi
 
 The module tells the editor if the open workflow can run on engine v2. Every answer is
 "compatible" unless the `engine-v2` module is active and the workflow setting `engineType` is
-`'v2'`.
+`'v2'`. The rules live in `@n8n/workflow-engine-check`. This module only shows their result.
 
-- `src/engineV2Check.ts` is the only file that knows the contract of
-  `@n8n/workflow-engine-check`. That package is private, and this module is published, so the
-  module can't depend on it at run time. The file holds a copy of its types and a stub check that
-  reports "eligible, no reasons". To use the package, delete the copy and the stub, import them
-  from the package, and add the package to `dependencies`. No other source file changes.
+- `src/engineV2Check.ts` is the only file that imports `@n8n/workflow-engine-check`. The rest of
+  the module uses its names, so a change to the package contract changes this file only.
+- The package can't say if engine v2 runs a node type. So `isNodeTypeSupported` checks a workflow
+  that holds only one node of that type, and counts only the codes in `NODE_TYPE_REASON_CODES`.
+  It keeps each answer. When the package adds a reason code for a node type, add the code to that
+  set. Until then, the node creator shows that type as supported, and the canvas still reports it.
 - `useEngineV2Compatibility` takes getters for the nodes, the connections and the settings of the
   workflow, because the document store belongs to the shell. It returns the reasons, the blocking
-  reasons and `isNodeTypeIncompatible`. The node-type answer is "supported" until the package can
-  answer it (CET-676).
-- `EngineV2CompatibilityCallout` lists the reasons. A known reason code has its own string in
-  `en.json`. An unknown code shows the English `message` of the package.
+  reasons and `isNodeTypeIncompatible`.
+- `EngineV2CompatibilityCallout` lists the reasons. `src/engineV2ReasonText.ts` gives the text of
+  each reason:
+  - A code in `REASON_TEXT_KEYS` shows its own string from `en.json`. A `temporary` reason adds
+    "Run this workflow on engine v1 for now." A code with two meanings uses `CODE.kind` keys.
+  - Any other code shows the English `message` of the package. That covers a new code, and a code
+    whose `message` holds details that a fixed string can't, such as a second node or a count.
+  - To give a new code its own string, add one entry to `REASON_TEXT_KEYS` and one key to
+    `en.json`. When a package rule changes what its `message` says, change the string in the same
+    PR, or remove the entry.
 - Tests replace the check with `mockEngineV2Compatibility` from
   `@n8n/frontend-module-engine-v2/__tests__/mocks`.
 

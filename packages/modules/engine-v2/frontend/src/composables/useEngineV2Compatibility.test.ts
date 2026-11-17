@@ -8,6 +8,7 @@ import { describeEngineV2Block, useEngineV2Compatibility } from './useEngineV2Co
 
 const blockingReason: EngineCompatibilityReason = {
 	code: 'TRIGGER_EXTERNAL_IDENTITY',
+	kind: 'temporary',
 	severity: 'blocking',
 	nodeId: 'node-1',
 	nodeName: 'Webhook',
@@ -16,6 +17,7 @@ const blockingReason: EngineCompatibilityReason = {
 
 const warningReason: EngineCompatibilityReason = {
 	code: 'ERROR_WORKFLOW',
+	kind: 'temporary',
 	severity: 'warning',
 	message: 'Engine v2 does not run an error workflow yet.',
 };

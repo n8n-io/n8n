@@ -1,41 +1,61 @@
-import type { IWorkflowBase } from 'n8n-workflow';
+import {
+	checkEngineV2Eligibility,
+	type EngineV2Eligibility,
+	type EngineV2EligibilityWorkflow,
+	type EngineV2Reason,
+	type EngineV2ReasonCode,
+} from '@n8n/workflow-engine-check';
 
 /*
- * The only file that knows the `@n8n/workflow-engine-check` contract. The package is private,
- * and a published module can't depend on it at run time, so this file holds a copy of its
- * types and a stub check. To use the package, delete the copy and the stub, and import both.
+ * The only file that imports `@n8n/workflow-engine-check`. The rest of the module uses the
+ * names below, so a change to the package contract changes this file only.
  */
-
-export type EngineV2EligibilityWorkflow = Pick<IWorkflowBase, 'nodes' | 'connections' | 'settings'>;
-
-/** Stable identifiers. Consumers key messages and metrics on them, so never rename one. */
-export type EngineV2ReasonCode =
-	| 'ERROR_WORKFLOW'
-	| 'REDACTION_POLICY'
-	| 'END_USER_CREDENTIALS'
-	| 'TRIGGER_EXTERNAL_IDENTITY';
-
-export interface EngineV2Reason {
-	code: EngineV2ReasonCode;
-	severity: 'blocking' | 'warning';
-	nodeId?: string;
-	nodeName?: string;
-	/** English fallback text. */
-	message: string;
-}
-
-export interface EngineV2Eligibility {
-	eligible: boolean;
-	reasons: EngineV2Reason[];
-}
-
-function checkEngineV2Eligibility(_workflow: EngineV2EligibilityWorkflow): EngineV2Eligibility {
-	return { eligible: true, reasons: [] };
-}
 
 export type EngineCompatibilityWorkflow = EngineV2EligibilityWorkflow;
 export type EngineCompatibilityReason = EngineV2Reason;
 export type EngineCompatibility = EngineV2Eligibility;
+
+/**
+ * The codes that the package gives for a node type, wherever the node is in the workflow
+ * (`node-type-rule.ts` in the package). When the package adds a node-type code, add it here.
+ * A code that is missing here makes its node types show as supported in the node creator.
+ * The workflow check still reports them on the canvas.
+ */
+const NODE_TYPE_REASON_CODES: ReadonlySet<EngineV2ReasonCode> = new Set<EngineV2ReasonCode>([
+	'AI_NODE',
+	'CHAT_NODE',
+	'COMMUNITY_NODE',
+	'EVALUATION_NODE',
+	'EXECUTION_DATA_NODE',
+	'FORM_NODE',
+	'MCP_SERVER_TRIGGER',
+	'MESSAGE_AN_AGENT_NODE',
+	'MICROSOFT_AGENT365_TRIGGER',
+	'TIME_SAVED_NODE',
+	'TRIGGER_WAITS_FOR_RUN',
+]);
+
+// The answer depends only on the type, and the node creator asks for every row.
+const nodeTypeSupport = new Map<string, boolean>();
+
+/** The package has no node-type function, so check a workflow that holds only that node. */
+function checkNodeType(nodeTypeName: string): boolean {
+	const { reasons } = checkEngineV2Eligibility({
+		nodes: [
+			{
+				id: 'node-type-probe',
+				name: 'Node type probe',
+				type: nodeTypeName,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		],
+		connections: {},
+		settings: {},
+	});
+	return !reasons.some((reason) => NODE_TYPE_REASON_CODES.has(reason.code));
+}
 
 /**
  * The module calls the check through this object, so that tests can replace a method with
@@ -46,8 +66,12 @@ export const engineV2Check = {
 		return checkEngineV2Eligibility(workflow);
 	},
 
-	/** The package cannot answer per node type yet (CET-676), so every type is supported. */
-	isNodeTypeSupported(_nodeTypeName: string): boolean {
-		return true;
+	isNodeTypeSupported(nodeTypeName: string): boolean {
+		let supported = nodeTypeSupport.get(nodeTypeName);
+		if (supported === undefined) {
+			supported = checkNodeType(nodeTypeName);
+			nodeTypeSupport.set(nodeTypeName, supported);
+		}
+		return supported;
 	},
 };

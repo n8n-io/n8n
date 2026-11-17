@@ -1068,6 +1068,7 @@ describe('NodeView', () => {
 		const incompatible = createTestNode({ type: SET_NODE_TYPE, name: 'Incompatible' });
 		const blockingReason: EngineCompatibilityReason = {
 			code: 'ERROR_WORKFLOW',
+			kind: 'temporary',
 			severity: 'blocking',
 			message: 'Engine v2 does not run an error workflow yet.',
 		};

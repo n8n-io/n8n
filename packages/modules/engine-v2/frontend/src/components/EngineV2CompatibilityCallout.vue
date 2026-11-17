@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { N8nCallout } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { EngineCompatibilityReason } from '../engineV2Check';
+import { describeCompatibilityReason } from '../engineV2ReasonText';
 
 const { reasons } = defineProps<{
 	reasons: EngineCompatibilityReason[];
@@ -11,25 +12,14 @@ const { reasons } = defineProps<{
 
 const i18n = useI18n();
 
-// Keyed by `string`: a newer check can return a code that this map does not know yet.
-const REASON_TEXT_KEYS: Partial<Record<string, BaseTextKey>> = {
-	ERROR_WORKFLOW: 'engineV2Compatibility.reason.errorWorkflow',
-	REDACTION_POLICY: 'engineV2Compatibility.reason.redactionPolicy',
-	END_USER_CREDENTIALS: 'engineV2Compatibility.reason.endUserCredentials',
-	TRIGGER_EXTERNAL_IDENTITY: 'engineV2Compatibility.reason.triggerExternalIdentity',
-};
-
 const hasBlockingReason = computed(() => reasons.some((reason) => reason.severity === 'blocking'));
 
 const items = computed(() =>
-	reasons.map((reason, index) => {
-		const key = REASON_TEXT_KEYS[reason.code];
-		return {
-			id: `${index}-${reason.code}`,
-			nodeName: reason.nodeName,
-			text: key ? i18n.baseText(key) : reason.message,
-		};
-	}),
+	reasons.map((reason, index) => ({
+		id: `${index}-${reason.code}`,
+		nodeName: reason.nodeName,
+		text: describeCompatibilityReason(reason),
+	})),
 );
 </script>
 

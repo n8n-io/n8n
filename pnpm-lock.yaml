@@ -7804,6 +7804,9 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../../../@n8n/workflow-engine-check
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -7838,9 +7841,6 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
-      '@n8n/workflow-engine-check':
-        specifier: workspace:*
-        version: link:../../../@n8n/workflow-engine-check
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
