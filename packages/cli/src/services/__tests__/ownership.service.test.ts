@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowProjectService, type EventService } from '@n8n/backend-services';
+import { WorkflowProjectService, type EventService, PasswordUtility } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	isPerson,
@@ -25,7 +25,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
-import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject, mockServiceAccount } from '@test/mock-objects';
 
 import { CacheService } from '@n8n/backend-services';

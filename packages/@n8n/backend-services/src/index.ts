@@ -47,6 +47,7 @@ export {
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export { UserDeactivationHooks } from './services/user-deactivation-hooks.service';
+export { PasswordUtility } from './services/password.utility';
 export {
 	FavoriteResourceResolverRegistry,
 	type FavoriteResourceMeta,
