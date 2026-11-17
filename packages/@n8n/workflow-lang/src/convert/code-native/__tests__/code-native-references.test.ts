@@ -82,6 +82,27 @@ const CASES: Case[] = [
 	},
 ];
 
+/** Reads of a node that has no run: in the oracle workflow, the Code node itself. */
+const NOT_RUN: Case[] = [
+	{ name: '.isExecuted', code: 'return [{ json: { ran: $("Code").isExecuted } }];' },
+	{
+		name: 'a read behind .isExecuted',
+		code: 'const n = $("Code").isExecuted ? $("Code").first().json.n : -1;\nreturn [{ json: { n } }];',
+	},
+	{ name: '.first() on line 2', code: 'const a = 1;\nreturn [$("Code").first()];' },
+	{ name: '.all()', code: 'return $("Code").all();' },
+	{ name: '.last(0)', code: 'return [$("Code").last(0)];' },
+	{
+		name: '.first() for each item',
+		mode: 'each',
+		code: 'return { json: { n: $("Code").first().json.n } };',
+	},
+	{
+		name: 'the error in a catch block',
+		code: 'try {\n  $("Code").first();\n} catch (e) {\n  return [{ json: { message: e.message, text: String(e) } }];\n}',
+	},
+];
+
 const blockers = (code: string, known: object = {}): string[] => {
 	const r = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => true, ...known });
 	return r.ok ? [] : r.blockers.map((b) => b.feature);
@@ -107,6 +128,26 @@ describe('reads of other nodes that stay in the fallback host', () => {
 			{ defaultOutput: () => 1 },
 		],
 		['$items() when the node before is not fixed', 'return $items();', {}],
+		[
+			'.item of a node that has not run',
+			'return [$("Source").item];',
+			{ hasNode: () => false, notRun: () => true },
+		],
+		[
+			'.itemMatching of a node that has not run',
+			'return [$("Source").itemMatching(0)];',
+			{ hasNode: () => false, notRun: () => true },
+		],
+		[
+			'.first of a node that is not in the workflow',
+			'return [$("Source").first()];',
+			{ hasNode: () => false, notRun: () => false },
+		],
+		[
+			'$node of a node that has not run',
+			'return [{ json: $node["Source"].json }];',
+			{ hasNode: () => false, notRun: () => true },
+		],
 	])('%s', (_name, code, known) => {
 		expect(blockers(code, known)).not.toEqual([]);
 	});
@@ -164,7 +205,35 @@ async function converted(nodes: unknown[], connections: Record<string, unknown>)
 	return { out, items: (run.trace ?? []).find((t) => t.step === 'Code')?.items };
 }
 
+describe.skipIf(!taskRunnerAvailable())(
+	"reads of a node that has not run against n8n's task runner",
+	() => {
+		beforeAll(async () => await startRunner(), 120_000);
+
+		it.each(NOT_RUN)('$name', async (c) => {
+			const mode = c.mode ?? 'all';
+			const runner = await runnerCode(c.code, mode, ITEMS);
+			const known = { notRun: (name: string) => name === 'Code' };
+			expect(nativeCode(c.code, mode, ITEMS, { known })).toEqual(runner);
+		});
+	},
+);
+
 describe('reads of other nodes in a converted workflow', () => {
+	it('gives false for .isExecuted of a node that runs after this node', async () => {
+		const read = node('Code', 'code', {
+			jsCode:
+				'return [{ json: { ran: $("Later").isExecuted, n: $("Later").isExecuted ? $("Later").first().json.n : -1 } }];',
+		});
+		const later = node('Later', 'code', { jsCode: 'return [{ json: { n: 1 } }];' });
+		const { out, items } = await converted(
+			[hook, read, later],
+			Object.fromEntries([link('Hook', 'Code'), link('Code', 'Later')]),
+		);
+		expect(out.fallbackNodes).toEqual([]);
+		expect(items).toEqual([{ ran: false, n: -1 }]);
+	});
+
 	it('pairs by position through a node that gives one item for each item', async () => {
 		const read = node('Code', 'code', {
 			jsCode:

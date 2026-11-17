@@ -116,6 +116,7 @@ export function attemptNative(
 		allowedModules?: string[];
 		pairsByPosition?: (name: string) => boolean;
 		defaultOutput?: (name: string) => number;
+		notRun?: (name: string) => boolean;
 	} = {},
 ): NativeAttempt & { nodes?: string[]; zones?: string[]; allNodes?: string[] } {
 	const src = codeOf(type, parameters);
@@ -321,6 +322,12 @@ export function lowerCodeNative(c: NodeContext): boolean {
 			// With "execute once" the node gets one input item, and the node before has more.
 			pairsByPosition: (name) => c.node.executeOnce !== true && c.pairsByPosition(name),
 			defaultOutput: (name) => c.readOutput(name),
+			// As the host step: a node of the workflow without a list before this node has no run.
+			// In the engine shape a later node of a loop can have a run.
+			notRun: (name) =>
+				!c.engine &&
+				c.scope.nodeParameters(name) !== null &&
+				(name === c.node.name || c.ranBefore(name) === null),
 			check: false,
 			allNodes: c.workflow.nodes
 				.map((n) => n.name)

@@ -108,6 +108,12 @@ export interface CodeNativeInput {
 	 * `getNodeConnectionIndexes`). The default is 0.
 	 */
 	defaultOutput?(name: string): number;
+	/**
+	 * True when node `name` is in the workflow and has no run before this node, for example
+	 * a node of a branch that did not run. v1 then gives false for `$('name').isExecuted`,
+	 * and its error for `.all()`, `.first()` and `.last()`.
+	 */
+	notRun?(name: string): boolean;
 }
 
 export interface Blocker {
@@ -1148,6 +1154,31 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		block(
 			own ? `$input.${member}` : `$('…').${member}`,
 			`\`${own ? '$input' : "$('…')"}.${member}\` has no native form.`,
+		);
+	};
+
+	/** `$('X')` of a node that has no run before this node (`CodeNativeInput.notRun`). */
+	const notRunChain = (base: ts.Node, name: string): void => {
+		const p = base.parent;
+		const member = ts.isPropertyAccessExpression(p) && p.expression === base ? p.name.text : '';
+		const call = ts.isCallExpression(p.parent) && p.parent.expression === p ? p.parent : null;
+		if (!call && member === 'isExecuted') {
+			replace(base.getStart(sf), p.getEnd(), 'false');
+			return;
+		}
+		// v1 fails when the code reads the member, before it reads the arguments.
+		if (
+			call &&
+			['all', 'first', 'last'].includes(member) &&
+			call.arguments.every((x) => ts.isNumericLiteral(x))
+		) {
+			helpers.add('nodeNotRun');
+			replace(base.getStart(sf), call.getEnd(), `nodeNotRun(${JSON.stringify(name)})`);
+			return;
+		}
+		block(
+			'$() of a node that has not run',
+			`The code reads node "${name}", which has not run before this node.`,
 		);
 	};
 
@@ -3011,7 +3042,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (
 			usesHttp ||
 			input.nodeCode ||
-			/itemMatching|pairedItem|\$fromAI|\$evaluateExpression/.test(input.code)
+			/itemMatching|pairedItem|\$fromAI|\$evaluateExpression/.test(input.code) ||
+			// The error of a read of a node that has not run is no Error of the code's realm.
+			[...input.code.matchAll(/\$\(\s*(['"`])((?:\\.|(?!\1).)*)\1\s*\)/g)].some(
+				(m) => !input.hasNode(m[2]) && input.notRun?.(m[2]) === true,
+			)
 		) {
 			return false;
 		}
@@ -4003,6 +4038,10 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				const nodeName = stringArgument(parent);
 				if (nodeName === null) {
 					computedNode(parent);
+					return false;
+				}
+				if (!input.hasNode(nodeName) && input.notRun?.(nodeName) === true) {
+					notRunChain(parent, nodeName);
 					return false;
 				}
 				itemChain(parent, nodeList(nodeName), false, nodeName);

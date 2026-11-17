@@ -1925,6 +1925,13 @@ function mathImul(a: Json, b: Json): number {
 	return (xl * yl + mid) | 0;
 }`,
 	},
+	nodeNotRun: {
+		uses: [],
+		source: `/** The error of v1 for a read of the items of a node that has no run. It has no line. */
+function nodeNotRun(name: string): Json {
+	throw { name: 'ExpressionError', message: "Node '" + name + "' hasn't been executed", $line: null };
+}`,
+	},
 	pairedAt: {
 		uses: [],
 		source: `/**
@@ -1933,10 +1940,10 @@ function mathImul(a: Json, b: Json): number {
  * index counts too. The errors of v1 here have no line.
  */
 function pairedAt(list: Json[], k: Json): Json {
-	if (k === undefined) throw { name: 'Error', message: 'Missing item index for .itemMatching()', $line: null };
+	if (k === undefined) throw { name: 'ExpressionError', message: 'Missing item index for .itemMatching()', $line: null };
 	const index: number = typeof k === 'number' ? k : typeof k === 'string' && String(Number(k)) === k ? Number(k) : -1;
 	if (!(index >= 0 && index < list.length && Math.floor(index) === index)) {
-		throw { name: 'Error', message: 'Can’t get data', $line: null };
+		throw { name: 'ExpressionError', message: 'Can’t get data', $line: null };
 	}
 	return list[index];
 }`,
