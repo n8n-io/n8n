@@ -7,9 +7,15 @@ defineProps<{
 	 * `icon` stops the line at the xsmall chevron.
 	 */
 	mark: 'dot' | 'icon';
-	/** Line from the top of this row's content to the mark. */
+	/**
+	 * Line from the top of this row's content to the mark.
+	 * @default false
+	 */
 	connectAbove?: boolean;
-	/** Line from the mark to the bottom of this row's content. */
+	/**
+	 * Line from the mark to the bottom of this row's content.
+	 * @default false
+	 */
 	connectBelow?: boolean;
 }>();
 

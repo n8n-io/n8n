@@ -543,84 +543,6 @@ describe('N8nVersionHistory', () => {
 		}
 	});
 
-	it('pins a heading at the top and lets the next heading push it up', async () => {
-		const rowHeight = 48;
-		const originalOffsetHeight = Object.getOwnPropertyDescriptor(
-			HTMLElement.prototype,
-			'offsetHeight',
-		);
-		Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
-			configurable: true,
-			value: rowHeight,
-		});
-
-		try {
-			const versions: VersionHistoryItem[] = Array.from({ length: 8 }, (_, index) => ({
-				id: `version-${index}`,
-				label: `Version ${index}`,
-			}));
-			const entries: VersionHistoryEntry[] = [
-				{ type: 'heading', id: 'recent', label: 'Recent' },
-				...versions.slice(0, 6),
-				{ type: 'heading', id: 'older', label: 'Older' },
-				...versions.slice(6),
-			];
-			const { getByTestId, queryByTestId, container } = renderHistory(
-				{ items: entries },
-				{ heading: '<span data-test-id="custom-heading">{{ params.label }}</span>' },
-			);
-			await nextTick();
-
-			expect(queryByTestId('version-history-sticky-heading')).toBeNull();
-
-			const scroller = container.querySelector('.recycle-scroller-wrapper');
-			expect(scroller).toBeInstanceOf(HTMLElement);
-			if (!(scroller instanceof HTMLElement)) return;
-
-			// jsdom drops a scroll offset that exceeds the layout height.
-			let scrollTop = 0;
-			Object.defineProperty(scroller, 'scrollTop', {
-				configurable: true,
-				get: () => scrollTop,
-				set: (value: number) => {
-					scrollTop = value;
-				},
-			});
-
-			scrollTop = rowHeight * 3;
-			await fireEvent.scroll(scroller);
-
-			const pinned = getByTestId('version-history-sticky-heading');
-			expect(pinned).toHaveTextContent('Recent');
-			expect(pinned.querySelector('[data-test-id="custom-heading"]')).toHaveTextContent('Recent');
-			expect(pinned).toHaveAttribute('aria-hidden', 'true');
-			expect(pinned.firstElementChild).not.toHaveAttribute('style');
-
-			// The next heading starts after the first heading and six versions.
-			const olderTop = rowHeight * 7;
-			scrollTop = olderTop - 10;
-			await fireEvent.scroll(scroller);
-
-			const shifting = getByTestId('version-history-sticky-heading');
-			expect(shifting).toHaveTextContent('Recent');
-			expect(shifting.firstElementChild).toHaveStyle({ transform: 'translateY(-38px)' });
-
-			scrollTop = olderTop;
-			await fireEvent.scroll(scroller);
-			expect(queryByTestId('version-history-sticky-heading')).toBeNull();
-
-			scrollTop = olderTop + rowHeight;
-			await fireEvent.scroll(scroller);
-			expect(getByTestId('version-history-sticky-heading')).toHaveTextContent('Older');
-		} finally {
-			if (originalOffsetHeight) {
-				Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
-			} else {
-				Reflect.deleteProperty(HTMLElement.prototype, 'offsetHeight');
-			}
-		}
-	});
-
 	describe('scroll target', () => {
 		const ROW_HEIGHT = 48;
 
@@ -683,7 +605,7 @@ describe('N8nVersionHistory', () => {
 			};
 		}
 
-		it('scrolls a row below the heading that covers it', async () => {
+		it('scrolls a row to its own top when a heading is above it', async () => {
 			await withMeasuredRows(async () => {
 				const versions: VersionHistoryEntry[] = [
 					{ type: 'heading', id: 'recent', label: 'Recent' },
@@ -697,9 +619,9 @@ describe('N8nVersionHistory', () => {
 					renderHistory({ items: versions, scrollToId: 'version-under-older' });
 					await nextTick();
 
-					// Recent, ten versions, Older, then the target. The target starts below Older.
+					// Recent, ten versions, Older, then the target.
 					expect(scrollTo).toHaveBeenCalledWith({
-						top: ROW_HEIGHT * 11,
+						top: ROW_HEIGHT * 12,
 						behavior: 'auto',
 					});
 				} finally {

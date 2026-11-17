@@ -10,7 +10,7 @@ A scrollable list of versions. A line connects the mark on each row. The caller 
 
 - `items: VersionHistoryEntry[]` Versions, newest first. A group hides its versions until the user opens the toggle. Every version id, group id, and heading id must be unique.
 - `selectedId?: string` Id of the open version. Pass it to control the selection. Set it to the current version so the list opens on that row. Omit it and the list keeps the row the user selects. A group that contains the open version starts open.
-- `scrollToId?: string` Id of the row to bring into view. The list scrolls when this id changes. It does not follow the open version. A group that contains this id opens before the scroll. The id can be a version, a group, or a heading. A heading above the row stays in view. The row starts below that heading. Call `scrollTo` to scroll to the same id again.
+- `scrollToId?: string` Id of the row to bring into view. The list scrolls when this id changes. It does not follow the open version. A group that contains this id opens before the scroll. The id can be a version, a group, or a heading. Call `scrollTo` to scroll to the same id again.
 - `defaultSelectedId?: string` Id of the version selected on first render. Use this when the parent does not pass `selectedId`. The list keeps later choices. A passed `selectedId` replaces this value.
 - `label?: string` Accessible name for the list. | `default: "Versions"` (`versionHistory.label`)
 - `loading?: boolean` Show skeleton rows. The list and the empty state stay hidden. | `default: false`
@@ -27,8 +27,6 @@ A group starts collapsed. The toggle shows the caller's label. Activating the to
 **Timeline**
 
 A line runs through the rail and meets each mark. The first mark has no line above it. The last mark has no line below it. A heading ends the line. The next mark starts a new line.
-
-A heading stays at the top of the list while its versions scroll. The next heading pushes it up. Set `--version-history--heading--color--background` to the surface behind the list. The pinned heading uses that color. Leave the variable unset to use `--background--surface`.
 
 **Status**
 
@@ -63,13 +61,13 @@ The open version uses a stronger background than the highlight. The highlight ca
 
 **Methods**
 
-- `scrollTo(id: string)` Scroll that row into view. A group that contains the id opens first. A heading above the row stays in view. The row starts below that heading. The list waits while versions load. Use this to scroll to the same id again.
+- `scrollTo(id: string)` Scroll that row into view. A group that contains the id opens first. The list waits while versions load. Use this to scroll to the same id again.
 
 **Slots**
 
 - `empty` Content shown when `items` is empty. The panel centers it.
 - `actions` `{ item: VersionHistoryItem }` Replaces the compare control and the menu.
-- `heading` `{ id: string, label: string }` Replaces the heading label. The pinned copy uses the same slot. The padding stays, so the label stays lined up with the status dots.
+- `heading` `{ id: string, label: string }` Replaces the heading label. The padding stays, so the label stays lined up with the status dots.
 - `footer` Content after the last row. It scrolls with the list.
 
 **Types**
@@ -91,13 +89,31 @@ interface VersionHistoryItem {
   author?: string;
   createdAt?: string;
   createdAtIso?: string;
+  /**
+   * @default 'default'
+   */
   status?: VersionHistoryStatus;
   statusLabel?: string;
+  /**
+   * @default []
+   */
   actions?: Array<ActionToggleItem<string>>;
+  /**
+   * @default false
+   */
   disabled?: boolean;
+  /**
+   * @default false
+   */
   compareDisabled?: boolean;
+  /**
+   * @default 'Compare'
+   */
   compareTooltip?: string;
   tooltip?: VersionHistoryTooltip;
+  /**
+   * @default false
+   */
   actionsDisabled?: boolean;
 }
 

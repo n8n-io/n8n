@@ -23,7 +23,10 @@ export interface VersionHistoryItem {
 	createdAt?: string;
 	/** ISO time for the time element. */
 	createdAtIso?: string;
-	/** Timeline dot. */
+	/**
+	 * Timeline dot.
+	 * @default 'default'
+	 */
 	status?: VersionHistoryStatus;
 	/** Accessible name for the status dot. */
 	statusLabel?: string;
@@ -31,16 +34,24 @@ export interface VersionHistoryItem {
 	 * Menu items for the row. Each item is an `ActionToggleItem`, so `icon` draws an icon before the label.
 	 * The row hides the menu when this list is empty.
 	 * The compare control stays. Use the `actions` slot to replace both controls.
+	 * @default []
 	 */
 	actions?: Array<ActionToggleItem<string>>;
-	/** The user cannot select this row. Compare and the menu stay available. */
+	/**
+	 * The user cannot select this row. Compare and the menu stay available.
+	 * @default false
+	 */
 	disabled?: boolean;
-	/** Disable the compare control for this row. */
+	/**
+	 * Disable the compare control for this row.
+	 * @default false
+	 */
 	compareDisabled?: boolean;
 	/**
 	 * Tooltip for the compare control.
 	 * A line break starts a second line.
 	 * The accessible name stays "Compare".
+	 * @default 'Compare'
 	 */
 	compareTooltip?: string;
 	/**
@@ -48,7 +59,10 @@ export interface VersionHistoryItem {
 	 * The list shows it to the left of the row.
 	 */
 	tooltip?: VersionHistoryTooltip;
-	/** Disable the menu for this row. */
+	/**
+	 * Disable the menu for this row.
+	 * @default false
+	 */
 	actionsDisabled?: boolean;
 }
 
@@ -113,7 +127,6 @@ export interface VersionHistoryProps {
 	 * The list scrolls when this id changes. It does not follow the open version.
 	 * A group that contains this id opens before the scroll.
 	 * The id can be a version, a group, or a heading.
-	 * A heading above the row stays in view. The row starts below that heading.
 	 * Call `scrollTo` to scroll to the same id again.
 	 */
 	scrollToId?: string;
@@ -124,30 +137,43 @@ export interface VersionHistoryProps {
 	 * A passed `selectedId` replaces this value.
 	 */
 	defaultSelectedId?: string;
-	/** Accessible name for the list. */
+	/**
+	 * Accessible name for the list.
+	 * @default 'Versions'
+	 */
 	label?: string;
 	/**
 	 * Show skeleton rows while versions load.
 	 * The list and the empty state stay hidden.
+	 * @default false
 	 */
 	loading?: boolean;
-	/** Accessible name for the loading state. */
+	/**
+	 * Accessible name for the loading state.
+	 * @default 'Loading versions'
+	 */
 	loadingLabel?: string;
 	/**
 	 * More versions can be loaded.
 	 * The list emits loadMore when the end is near the bottom of the scroll area.
+	 * @default false
 	 */
 	hasMore?: boolean;
 	/**
 	 * A later page is loading.
 	 * The rows stay visible. A status appears at the end of the list.
+	 * @default false
 	 */
 	loadingMore?: boolean;
-	/** Accessible name for the status at the end of the list. */
+	/**
+	 * Accessible name for the status at the end of the list.
+	 * @default 'Loading more versions'
+	 */
 	loadingMoreLabel?: string;
 	/**
 	 * Show the compare control on each version.
 	 * Set this to false to hide compare and keep the menu.
+	 * @default true
 	 */
 	showCompare?: boolean;
 }

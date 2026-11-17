@@ -1,24 +1,33 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { VersionHistoryItem } from './VersionHistory.types';
+import type { VersionHistoryItem, VersionHistoryStatus } from './VersionHistory.types';
 import VersionHistoryRail from './VersionHistoryRail.vue';
-import VersionHistoryStatusDot from './VersionHistoryStatusDot.vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
 import { N8nListboxItem } from '../N8nListbox';
+import N8nStatusDot, { type StatusDotAppearance, type StatusDotVariant } from '../N8nStatusDot';
 import N8nText from '../N8nText/Text.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 const props = withDefaults(
 	defineProps<{
 		item: VersionHistoryItem;
-		/** Show the compare control. The menu stays when this is false. */
+		/**
+		 * Show the compare control. The menu stays when this is false.
+		 * @default true
+		 */
 		showCompare?: boolean;
-		/** Line from the top of the row content to the dot. */
+		/**
+		 * Line from the top of the row content to the dot.
+		 * @default false
+		 */
 		connectAbove?: boolean;
-		/** Line from the dot to the bottom of the row content. */
+		/**
+		 * Line from the dot to the bottom of the row content.
+		 * @default false
+		 */
 		connectBelow?: boolean;
 	}>(),
 	{ showCompare: true },
@@ -59,6 +68,15 @@ const rowTooltipProps = {
 const { t } = useI18n();
 
 const status = computed(() => props.item.status ?? 'default');
+
+const statusMark: Record<
+	VersionHistoryStatus,
+	{ variant: StatusDotVariant; appearance: StatusDotAppearance }
+> = {
+	published: { variant: 'success', appearance: 'fill' },
+	latest: { variant: 'warning', appearance: 'fill' },
+	default: { variant: 'neutral', appearance: 'outline' },
+};
 const actions = computed(() => props.item.actions ?? []);
 const compareLabel = computed(() => t('versionHistory.compare'));
 const compareTooltip = computed(() => props.item.compareTooltip ?? compareLabel.value);
@@ -128,7 +146,11 @@ function onAction(action: string) {
 			<template v-if="item.tooltip" #content>
 				<span :class="$style.tooltipTitle">
 					<span aria-hidden="true">
-						<VersionHistoryStatusDot :status="status" />
+						<N8nStatusDot
+							v-bind="statusMark[status]"
+							data-test-id="version-history-status"
+							:data-status="status"
+						/>
 					</span>
 					<span :class="$style.tooltipTitleText">{{ item.tooltip.title }}</span>
 				</span>
@@ -138,7 +160,11 @@ function onAction(action: string) {
 			</template>
 			<div :class="$style.body">
 				<VersionHistoryRail mark="dot" :connect-above="connectAbove" :connect-below="connectBelow">
-					<VersionHistoryStatusDot :status="status" />
+					<N8nStatusDot
+						v-bind="statusMark[status]"
+						data-test-id="version-history-status"
+						:data-status="status"
+					/>
 				</VersionHistoryRail>
 				<div :class="$style.content">
 					<span :class="$style.mainRow">

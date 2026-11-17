@@ -11,7 +11,15 @@ defineProps<{
 	id: string;
 	label: string;
 	expanded: boolean;
+	/**
+	 * Line from the top of the row content to the chevron.
+	 * @default false
+	 */
 	connectAbove?: boolean;
+	/**
+	 * Line from the chevron to the bottom of the row content.
+	 * @default false
+	 */
 	connectBelow?: boolean;
 }>();
 

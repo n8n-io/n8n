@@ -9,16 +9,11 @@ import type {
 	VersionHistoryTogglePayload,
 } from './VersionHistory.types';
 import {
-	pinnedHeading,
-	scrollTopBelowHeading,
-	type HeadingPlacement,
-	type PinnedHeading,
-} from './stickyHeading';
-import {
 	buildHistoryRows,
 	groupIdForVersion,
 	isHistoryRow,
 	listContainsId,
+	type HistoryRow,
 } from './versionHistoryRows';
 import VersionHistoryGroup from './VersionHistoryGroup.vue';
 import VersionHistoryHeading from './VersionHistoryHeading.vue';
@@ -56,12 +51,12 @@ const emit = defineEmits<{
 	loadMore: [];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
 	/** Content shown when the list is empty. The panel centers it. */
 	empty?: () => unknown;
 	/** Replaces the compare control and the menu. Receives the row. */
 	actions?: (props: { item: VersionHistoryRow }) => unknown;
-	/** Replaces the heading label. The pinned copy uses the same slot. */
+	/** Replaces the heading label. */
 	heading?: (props: { id: string; label: string }) => unknown;
 	/** Content after the last row. It scrolls with the list. */
 	footer?: () => unknown;
@@ -90,22 +85,29 @@ const expandedIds = ref<Set<string>>(new Set());
 const uncontrolledSelectedId = ref<string | undefined>(props.defaultSelectedId);
 const scrollerRef = ref<{
 	$el?: Element;
-	scrollTo: (position: number, behavior?: ScrollBehavior) => void;
-	getItemOffset: (key: string) => number | undefined;
-	getItemSize: (key: string) => number | undefined;
+	scrollToKey: (key: string) => void;
 } | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
-const listScrollTop = ref(0);
-// Measured scrollbar thickness. Keeps the pin off the scrollbar.
-const scrollbarWidth = ref(0);
-const pinned = ref<PinnedHeading | undefined>();
 // The latest row the parent asked to show. Cleared after the scroll runs.
 const pendingScrollId = ref<string | undefined>();
+
+// The scroller has no slot after the last row. This row carries the end marker
+// and the footer so both stay in the scroll height.
+const END_ROW_KEY = 'version-history-end';
+
+interface EndRow {
+	key: typeof END_ROW_KEY;
+	kind: 'end';
+}
+
+function isEndRow(value: unknown): value is EndRow {
+	return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'end';
+}
 
 const listLabel = computed(() => props.label ?? t('versionHistory.label'));
 const loadingLabel = computed(() => props.loadingLabel ?? t('versionHistory.loading'));
 const loadingMoreLabel = computed(() => props.loadingMoreLabel ?? t('versionHistory.loadingMore'));
-// The scroller root is the scrollport. The sentinel sits in its footer.
+// The scroller root is the scrollport. The sentinel is the last row.
 const scrollRoot = computed(() => {
 	const element = scrollerRef.value?.$el ?? null;
 	return element instanceof HTMLElement ? element : null;
@@ -191,6 +193,14 @@ watch(selectedGroupId, (groupId) => openGroup(groupId), { immediate: true });
 
 const rows = computed(() => buildHistoryRows(props.items, expandedIds.value));
 
+const showEnd = computed(() => props.hasMore || props.loadingMore || Boolean(slots.footer));
+
+const scrollerItems = computed((): Array<HistoryRow | EndRow> => {
+	if (!showEnd.value) return rows.value;
+
+	return [...rows.value, { key: END_ROW_KEY, kind: 'end' }];
+});
+
 function onSelect(id: string | undefined) {
 	if (!id) return;
 	if (props.selectedId === undefined) {
@@ -269,34 +279,6 @@ function onGroupKeydown(event: KeyboardEvent) {
 	onToggle(id);
 }
 
-function headingPlacements(): HeadingPlacement[] {
-	const scroller = scrollerRef.value;
-	if (!scroller) return [];
-
-	const placements: HeadingPlacement[] = [];
-	for (const row of rows.value) {
-		if (row.kind !== 'heading') continue;
-		const top = scroller.getItemOffset(row.key);
-		const height = scroller.getItemSize(row.key);
-		if (top === undefined || height === undefined) continue;
-		placements.push({ key: row.key, label: row.label, top, height });
-	}
-
-	return placements;
-}
-
-/** Distance to scroll so the row starts below the heading that covers it. */
-function scrollTopFor(id: string): number | undefined {
-	const scroller = scrollerRef.value;
-	const row = rows.value.find((entry) => entry.key === id);
-	if (!scroller || !row) return undefined;
-
-	const top = scroller.getItemOffset(id);
-	if (top === undefined) return undefined;
-
-	return scrollTopBelowHeading(headingPlacements(), top, row.kind === 'heading');
-}
-
 function flushScroll() {
 	const id = pendingScrollId.value;
 	if (!id || props.loading) return;
@@ -306,103 +288,17 @@ function flushScroll() {
 		return;
 	}
 
-	const top = scrollTopFor(id);
-	if (top === undefined) return;
+	// The row is missing until its group opens. Keep the request for the next pass.
+	if (!rows.value.some((row) => row.key === id)) return;
 
-	scrollerRef.value?.scrollTo(top);
-	pendingScrollId.value = undefined;
-
-	// The first scroll uses estimated row heights. A group that just opened
-	// is still short. Place the rendered row on the following frame.
-	alignScroll(id, 0, 0);
-}
-
-const ALIGN_LIMIT = 6;
-
-function scrollerElement(): HTMLElement | undefined {
-	const element = scrollerRef.value?.$el;
-	return element instanceof HTMLElement ? element : undefined;
-}
-
-function rowElement(root: HTMLElement, id: string): HTMLElement | undefined {
-	const row = root.querySelector(`[data-row-id="${CSS.escape(id)}"]`);
-	return row instanceof HTMLElement ? row : undefined;
-}
-
-function headingBefore(row: HTMLElement): HTMLElement | undefined {
-	const container = row.closest('.recycle-scroller');
-	if (!container) return undefined;
-
-	let heading: HTMLElement | undefined;
-	for (const candidate of container.querySelectorAll('[data-row-id]')) {
-		if (candidate === row) return heading;
-		if (!(candidate instanceof HTMLElement)) continue;
-		if (candidate.querySelector('[data-test-id="version-history-heading"]')) heading = candidate;
-	}
-
-	return heading;
-}
-
-/** Distance from the scroller top to where this row should start. */
-function rowClearance(row: HTMLElement, root: HTMLElement, isHeading: boolean): number {
-	if (isHeading) return 0;
-
-	const rootTop = root.getBoundingClientRect().top;
-	const heading = headingBefore(row);
-	if (heading) {
-		const bottom = heading.getBoundingClientRect().bottom - rootTop;
-		if (bottom > 1) return bottom;
-	}
-
-	const panel = root.closest('[data-test-id="version-history"]');
-	const pin = panel?.querySelector('[data-test-id="version-history-sticky-heading"]');
-	if (pin instanceof HTMLElement && pin.offsetHeight > 0) return pin.offsetHeight;
-
-	return 0;
-}
-
-/** Move the scroll so the rendered row sits below its heading. Returns false when it is already there. */
-function nudgeToward(id: string): boolean {
 	const scroller = scrollerRef.value;
-	const root = scrollerElement();
-	if (!scroller || !root || root.clientHeight === 0) return false;
+	if (!scroller) return;
 
-	const row = rowElement(root, id);
-	if (!row) {
-		const cached = scrollTopFor(id);
-		if (cached === undefined) return false;
-		const before = listScrollTop.value;
-		const direction = cached >= before ? 1 : -1;
-		scroller.scrollTo(before + direction * root.clientHeight);
-		return listScrollTop.value !== before;
-	}
-
-	const historyRow = rows.value.find((entry) => entry.key === id);
-	if (!historyRow) return false;
-
-	const offset = row.getBoundingClientRect().top - root.getBoundingClientRect().top;
-	const delta = offset - rowClearance(row, root, historyRow.kind === 'heading');
-	if (Math.abs(delta) <= 1) return false;
-
-	const before = listScrollTop.value;
-	scroller.scrollTo(before + delta);
-	return listScrollTop.value !== before;
+	scroller.scrollToKey(id);
+	pendingScrollId.value = undefined;
 }
 
-function alignScroll(id: string, attempt: number, stable: number) {
-	requestAnimationFrame(() => {
-		void nextTick(() => {
-			if (pendingScrollId.value) return;
-			// Row heights settle a frame after the list opens a group.
-			// Wait for two frames with no movement before stopping.
-			const nextStable = nudgeToward(id) ? 0 : stable + 1;
-			if (nextStable >= 2 || attempt >= ALIGN_LIMIT) return;
-			alignScroll(id, attempt + 1, nextStable);
-		});
-	});
-}
-
-/** Scroll a row into view. A group that contains the id opens first. A heading above the row stays in view. */
+/** Scroll a row into view. A group that contains the id opens first. */
 function scrollTo(id: string) {
 	pendingScrollId.value = id;
 	openGroup(groupIdForVersion(props.items, id));
@@ -425,48 +321,11 @@ watch(
 	{ immediate: true },
 );
 
-function updatePinnedHeading() {
-	const scroller = scrollerRef.value;
-	const element = scroller?.$el;
-	if (element instanceof HTMLElement) {
-		scrollbarWidth.value = Math.max(0, element.offsetWidth - element.clientWidth);
-	}
-
-	if (!scroller) {
-		pinned.value = undefined;
-		return;
-	}
-
-	pinned.value = pinnedHeading(headingPlacements(), listScrollTop.value);
-}
-
-function onListScroll(top: number) {
-	listScrollTop.value = top;
-	updatePinnedHeading();
+function onListScroll() {
 	maybeLoadMore();
 }
 
-const pinClipStyle = computed(() => {
-	if (!pinned.value) return undefined;
-
-	return {
-		// The clip matches the measured heading row. The value comes from layout, not a token.
-		height: `${pinned.value.height}px`,
-		// The scrollbar sits in the scroller. This inset keeps the pin off it.
-		insetInlineEnd: scrollbarWidth.value > 0 ? `${scrollbarWidth.value}px` : undefined,
-	};
-});
-
-const pinShiftStyle = computed(() => {
-	if (!pinned.value || pinned.value.offset === 0) return undefined;
-
-	return {
-		transform: `translateY(${pinned.value.offset}px)`,
-	};
-});
-
 watch(rows, () => {
-	void nextTick(() => updatePinnedHeading());
 	if (!pendingScrollId.value) return;
 	void nextTick(() => flushScroll());
 });
@@ -493,19 +352,6 @@ defineExpose({ scrollTo });
 		:aria-label="!loading && !rows.length ? listLabel : undefined"
 		:aria-busy="loading ? 'true' : undefined"
 	>
-		<div
-			v-if="pinned && !loading && rows.length"
-			:class="$style.pin"
-			:style="pinClipStyle"
-			data-test-id="version-history-sticky-heading"
-			aria-hidden="true"
-		>
-			<div :class="[$style.row, $style.headingRow, $style.pinHeading]" :style="pinShiftStyle">
-				<VersionHistoryHeading :label="pinned.label">
-					<slot v-if="$slots.heading" name="heading" :id="pinned.key" :label="pinned.label" />
-				</VersionHistoryHeading>
-			</div>
-		</div>
 		<div
 			v-if="loading"
 			:class="$style.loading"
@@ -549,7 +395,7 @@ defineExpose({ scrollTo });
 		>
 			<N8nRecycleScroller
 				ref="scrollerRef"
-				:items="rows"
+				:items="scrollerItems"
 				item-key="key"
 				:item-size="ESTIMATED_ROW_HEIGHT"
 				@scroll="onListScroll"
@@ -562,7 +408,6 @@ defineExpose({ scrollTo });
 							item.isFirst && $style.first,
 							item.isLast && $style.last,
 							item.kind === 'heading' && $style.headingRow,
-							item.kind === 'heading' && pinned?.key === item.key && $style.pinnedSource,
 							!item.connectAbove && !item.isFirst && item.kind !== 'heading' && $style.segmentStart,
 						]"
 						data-test-id="version-history-row"
@@ -606,37 +451,37 @@ defineExpose({ scrollTo });
 							@toggle="onToggle(item.groupId)"
 						/>
 					</div>
-				</template>
-				<template v-if="hasMore || loadingMore || $slots.footer" #footer>
-					<div
-						v-if="hasMore || loadingMore"
-						ref="loadMoreSentinel"
-						:class="[$style.loadMore, loadingMore ? $style.loadingMore : $style.sentinel]"
-						data-test-id="version-history-load-more"
-						:role="loadingMore ? 'status' : undefined"
-						:aria-live="loadingMore ? 'polite' : undefined"
-						:aria-busy="loadingMore ? 'true' : undefined"
-						:aria-hidden="loadingMore ? undefined : 'true'"
-						:aria-label="loadingMore ? loadingMoreLabel : undefined"
-					>
-						<div v-if="loadingMore" :class="$style.skeleton" aria-hidden="true">
-							<span :class="$style.skeletonMark">
-								<span :class="$style.skeletonDot">
-									<N8nLoading variant="circle" />
+					<div v-else-if="isEndRow(item)">
+						<div
+							v-if="hasMore || loadingMore"
+							ref="loadMoreSentinel"
+							:class="[$style.loadMore, loadingMore ? $style.loadingMore : $style.sentinel]"
+							data-test-id="version-history-load-more"
+							:role="loadingMore ? 'status' : undefined"
+							:aria-live="loadingMore ? 'polite' : undefined"
+							:aria-busy="loadingMore ? 'true' : undefined"
+							:aria-hidden="loadingMore ? undefined : 'true'"
+							:aria-label="loadingMore ? loadingMoreLabel : undefined"
+						>
+							<div v-if="loadingMore" :class="$style.skeleton" aria-hidden="true">
+								<span :class="$style.skeletonMark">
+									<span :class="$style.skeletonDot">
+										<N8nLoading variant="circle" />
+									</span>
 								</span>
-							</span>
-							<span :class="$style.skeletonCopy">
-								<span :class="$style.skeletonLine" :style="{ width: '42%' }">
-									<N8nLoading variant="text" />
+								<span :class="$style.skeletonCopy">
+									<span :class="$style.skeletonLine" :style="{ width: '42%' }">
+										<N8nLoading variant="text" />
+									</span>
+									<span :class="$style.skeletonLine" :style="{ width: '68%' }">
+										<N8nLoading variant="text" />
+									</span>
 								</span>
-								<span :class="$style.skeletonLine" :style="{ width: '68%' }">
-									<N8nLoading variant="text" />
-								</span>
-							</span>
+							</div>
 						</div>
-					</div>
-					<div v-if="$slots.footer" :class="$style.footer" data-test-id="version-history-footer">
-						<slot name="footer" />
+						<div v-if="$slots.footer" :class="$style.footer" data-test-id="version-history-footer">
+							<slot name="footer" />
+						</div>
 					</div>
 				</template>
 			</N8nRecycleScroller>
@@ -650,7 +495,6 @@ defineExpose({ scrollTo });
 
 <style lang="scss" module>
 .panel {
-	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -659,31 +503,7 @@ defineExpose({ scrollTo });
 	color: var(--color--text);
 }
 
-// The pin sits over the list. Overflow hides the heading as the next one pushes it up.
-.pin {
-	position: absolute;
-	z-index: 1;
-	inset-block-start: 0;
-	inset-inline: 0;
-	overflow: hidden;
-	pointer-events: none;
-}
-
-.pinHeading {
-	pointer-events: auto;
-	// The parent sets this to the surface behind the list.
-	background-color: var(--version-history--heading--color--background, var(--background--surface));
-}
-
-// The pin draws this heading. Hide this copy so the two do not stack.
-.pinnedSource {
-	opacity: 0;
-}
-
 .list {
-	position: relative;
-	// Stay under the pinned heading. A focused row can still paint above the track.
-	z-index: 0;
 	display: flex;
 	flex-direction: column;
 	flex: 1;

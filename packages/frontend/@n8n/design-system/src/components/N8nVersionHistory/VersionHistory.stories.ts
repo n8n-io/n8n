@@ -293,7 +293,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // The list sits on the page. A border separates it from that surface.
-// The pinned heading uses the same surface.
 const frameStyle = [
 	'box-sizing: border-box',
 	'width: 20rem',
@@ -302,7 +301,6 @@ const frameStyle = [
 	'overflow: hidden',
 	'border: var(--border)',
 	'border-radius: var(--radius)',
-	'--version-history--heading--color--background: var(--color--background--light-2)',
 ].join('; ');
 
 const panelStyle = [
@@ -579,8 +577,7 @@ export const CustomHeading: Story = {
 	parameters: {
 		docs: {
 			description: {
-				story:
-					'The heading slot replaces the label. The pinned heading uses the same slot. This story sits on the main background, so the pin uses that color.',
+				story: 'The heading slot replaces the label.',
 			},
 		},
 	},
