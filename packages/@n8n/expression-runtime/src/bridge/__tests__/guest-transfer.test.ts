@@ -197,6 +197,17 @@ describe('prepareForGuest', () => {
 		expect(result.payload).toBeUndefined();
 	});
 
+	it.each([
+		['fields', Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`k${i}`, i]))],
+		['characters', { body: 'x'.repeat(9_996) }],
+	])('keeps a class instance inside an Error at the limit of %s', (_case, fields) => {
+		const error = Object.assign(new Error('x'), { payload: payloadWith(fields) });
+
+		const result = roundTrip(error) as Error & Record<string, unknown>;
+
+		expect(result.payload).toStrictEqual(fields);
+	});
+
 	it('drops a Promise inside an Error', () => {
 		const error = Object.assign(new Error('x'), { pending: Promise.resolve(1), code: 1 });
 
