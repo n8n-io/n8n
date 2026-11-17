@@ -27,13 +27,14 @@ export function useRemoveUiExtension() {
 	async function remove(record: Pick<SidePanelView, 'id' | 'kind' | 'title' | 'builtin'>) {
 		if (record.builtin) return false;
 		const isPage = record.kind === 'page';
-		// The dialog and the toast render HTML, and an MCP client chose the title.
-		const title = escapeHtml(record.title);
+		// The dialog renders HTML, and an MCP client chose the title. The toast
+		// title is plain text, so it gets the title as it is.
+		const escapedTitle = escapeHtml(record.title);
 
 		const answer = await message.confirm(
 			i18n.baseText(
 				isPage ? 'uiExtensions.remove.page.message' : 'uiExtensions.remove.view.message',
-				{ interpolate: { title } },
+				{ interpolate: { title: escapedTitle } },
 			),
 			i18n.baseText(isPage ? 'uiExtensions.remove.page.title' : 'uiExtensions.remove.view.title'),
 			{
@@ -60,7 +61,7 @@ export function useRemoveUiExtension() {
 			type: 'success',
 			title: i18n.baseText(
 				isPage ? 'uiExtensions.remove.page.success' : 'uiExtensions.remove.view.success',
-				{ interpolate: { title } },
+				{ interpolate: { title: record.title } },
 			),
 		});
 		return true;

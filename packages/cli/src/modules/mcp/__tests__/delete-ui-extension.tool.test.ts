@@ -2,10 +2,9 @@ import {
 	UiExtensionViewNotFoundError,
 	UiExtensionViewsService,
 } from '@n8n/backend-module-ui-extensions';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
-
-import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createDeleteUiExtensionTool } from '../tools/delete-ui-extension.tool';
@@ -23,7 +22,7 @@ describe('delete_ui_extension MCP tool', () => {
 				updatedAt: '2026-01-01T00:00:00.000Z',
 			}),
 		});
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		const tool = createDeleteUiExtensionTool(user, viewsService, telemetry);
 		return { viewsService, telemetry, tool };
 	};

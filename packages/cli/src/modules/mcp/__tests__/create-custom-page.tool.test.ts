@@ -1,9 +1,8 @@
 import { UiExtensionViewsService } from '@n8n/backend-module-ui-extensions';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
-
-import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createCreateCustomPageTool } from '../tools/create-custom-page.tool';
@@ -22,7 +21,7 @@ describe('create_custom_page MCP tool', () => {
 		const viewsService = mockInstance(UiExtensionViewsService, {
 			upsert: vi.fn().mockResolvedValue({ view: savedPage, created: true }),
 		});
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		const tool = createCreateCustomPageTool(user, viewsService, telemetry);
 		return { viewsService, telemetry, tool };
 	};

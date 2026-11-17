@@ -146,7 +146,7 @@ describe('UiExtensionPagesNav', () => {
 		expect(consumeRemovedHere('a')).toBe(false);
 	});
 
-	it('shows a title from an MCP client as text in the dialog and the toast', async () => {
+	it('escapes a title from an MCP client in the dialog, and gives the toast the plain title', async () => {
 		confirm.mockResolvedValue('confirm');
 		const title = '<a href="https://example.com">Pay</a>';
 		vi.mocked(api.fetchUiExtensionViews).mockResolvedValue([
@@ -161,7 +161,8 @@ describe('UiExtensionPagesNav', () => {
 		const [message] = confirm.mock.calls[0] as [string];
 		expect(message).toContain('&lt;a href=');
 		expect(message).not.toContain('<a');
+		// The toast shows its title as text, so it gets the title unescaped.
 		const [toast] = showMessage.mock.calls[0] as [{ title: string }];
-		expect(toast.title).not.toContain('<a');
+		expect(toast.title).toBe(`Removed the page "${title}"`);
 	});
 });

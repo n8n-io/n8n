@@ -1,8 +1,7 @@
 import { UiExtensionViewsService } from '@n8n/backend-module-ui-extensions';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
-
-import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createListUiExtensionsTool } from '../tools/list-ui-extensions.tool';
@@ -30,7 +29,7 @@ describe('list_ui_extensions MCP tool', () => {
 				},
 			]),
 		});
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		const tool = createListUiExtensionsTool(user, viewsService, telemetry);
 		return { viewsService, telemetry, tool };
 	};

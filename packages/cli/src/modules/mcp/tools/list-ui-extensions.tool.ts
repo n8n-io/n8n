@@ -1,9 +1,8 @@
 import { uiExtensionKindSchema } from '@n8n/api-types';
 import type { UiExtensionViewsService } from '@n8n/backend-module-ui-extensions';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
-
-import type { Telemetry } from '@/telemetry';
 
 import { MCP_LIST_UI_EXTENSIONS_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -29,7 +28,7 @@ const outputSchema = {
 export const createListUiExtensionsTool = (
 	user: User,
 	viewsService: UiExtensionViewsService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_LIST_UI_EXTENSIONS_TOOL_NAME,
 	config: {
