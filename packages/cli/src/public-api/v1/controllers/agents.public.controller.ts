@@ -161,11 +161,11 @@ export class AgentsPublicController {
 	@ApiResponse(200, DeletedAgentPublicDto)
 	@ApiErrorResponse(404)
 	async deleteAgent(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId', agentIdParamSchema) agentId: string,
 	): Promise<DeletedAgentPublicDto> {
-		const deleted = await this.agentsService.delete(agentId);
+		const deleted = await this.agentsService.delete(agentId, req.user, undefined, {}, req.ctx);
 
 		if (!deleted) {
 			// the user cannot see this agent, or it does not exist

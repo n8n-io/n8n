@@ -62,7 +62,7 @@ import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboar
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -93,7 +93,7 @@ export class InstanceAiController {
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -916,14 +916,15 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
-		void this.instanceAiService.maybeDeliverCloudBrowserTaskResults(req.user, threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
-			return await this.memoryService.getThreadMessages(req.user.id, threadId, {
+			const rawMessages = await this.memoryService.getThreadMessages(req.user.id, threadId, {
 				limit: query.limit,
 				page: query.page,
 			});
+			void this.instanceAiService.maybeDeliverCloudBrowserTaskResults(req.user, threadId);
+			return rawMessages;
 		}
 
 		// Exclude snapshots for active/suspended runs — they have no matching
@@ -972,6 +973,8 @@ export class InstanceAiController {
 		// would move the cursor past a fact the payload never saw.
 		const nextEventId = await this.eventLog.getNextEventId(threadId);
 		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
+		// Triggered after the cursor read, so the client receives the follow-up run's events over SSE.
+		void this.instanceAiService.maybeDeliverCloudBrowserTaskResults(req.user, threadId);
 		return {
 			...result,
 			nextEventId,

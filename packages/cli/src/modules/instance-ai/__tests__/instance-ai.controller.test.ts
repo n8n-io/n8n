@@ -58,7 +58,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
@@ -107,7 +107,7 @@ describe('InstanceAiController', () => {
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
 	const cloudBrowserService = mock<InstanceAiCloudBrowserService>();
 	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -1881,6 +1881,28 @@ describe('InstanceAiController', () => {
 			);
 		});
 
+		it('should start delivering waiting cloud browser results only after reading the event cursor', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.maybeDeliverCloudBrowserTaskResults.mockResolvedValue();
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			const [cursorRead] = eventLog.getNextEventId.mock.invocationCallOrder;
+			const [deliveryStart] =
+				instanceAiService.maybeDeliverCloudBrowserTaskResults.mock.invocationCallOrder;
+			expect(deliveryStart).toBeGreaterThan(cursorRead);
+		});
+
 		it("should leave out a background task's turn, but not the turn of one detached from it", async () => {
 			instanceAiService.getActiveRunId.mockReturnValue(undefined);
 			instanceAiService.getThreadStatus.mockReturnValue({
@@ -2013,7 +2035,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
-		mock<Telemetry>(),
+		mock<TelemetryProxy>(),
 		mock<InstanceAiCloudBrowserService>(),
 	);
 

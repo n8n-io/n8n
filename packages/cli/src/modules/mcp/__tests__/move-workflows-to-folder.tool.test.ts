@@ -4,8 +4,7 @@ import type { SecurityContext } from '@n8n/permissions';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { FolderFinderService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { FolderFinderService, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -48,7 +47,7 @@ describe('move-workflows-to-folder MCP tool', () => {
 			findFoldersByIdsForUser: vi.fn().mockResolvedValue(folder ? [folder] : []),
 		});
 
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 
 		return { workflowFinderService, workflowService, folderFinderService, telemetry };
 	};

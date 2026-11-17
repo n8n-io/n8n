@@ -9,6 +9,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import type {
 	CredentialUsedByWorkflow,
+	ListQueryDb,
 	User,
 	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
@@ -190,7 +191,21 @@ export class EnterpriseWorkflowService {
 		workflow: WorkflowWithSharingsAndCredentials,
 	): WorkflowWithSharingsMetaDataAndCredentials {
 		const workflowWithMetaData = this.ownershipService.addOwnedByAndSharedWith(workflow);
+		return this.withoutShared(workflow, workflowWithMetaData);
+	}
 
+	/** Like `addOwnerAndSharings`, plus the account kind of each project, for the share modal. */
+	async addOwnerSharingsAndAccountKinds(
+		workflow: WorkflowWithSharingsAndCredentials,
+	): Promise<WorkflowWithSharingsMetaDataAndCredentials> {
+		const workflowWithMetaData = await this.ownershipService.addSharingWithAccountKinds(workflow);
+		return this.withoutShared(workflow, workflowWithMetaData);
+	}
+
+	private withoutShared(
+		workflow: WorkflowWithSharingsAndCredentials,
+		workflowWithMetaData: ListQueryDb.Workflow.WithOwnedByAndSharedWith,
+	): WorkflowWithSharingsMetaDataAndCredentials {
 		const { shared: _shared, ...enrichedWorkflow } = { ...workflow, ...workflowWithMetaData };
 
 		return {

@@ -8,6 +8,7 @@ import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { UnexpectedError, UserError } from '@n8n/errors';
+import { InstanceSettings } from 'n8n-core';
 import { tmpdir } from 'node:os';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -49,6 +50,7 @@ export class InstanceAiCloudBrowserService {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly postHogClient: PostHogClient,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -56,10 +58,12 @@ export class InstanceAiCloudBrowserService {
 	/**
 	 * Whether the cloud browser is available to this instance. The admin setting decides whether
 	 * it is used. Checks the following:
+	 * - the instance runs a single main
 	 * - AI gateway browser use is enabled
 	 * - the PostHog rollout flag is on for the instance
 	 */
 	async isAvailable(): Promise<boolean> {
+		if (this.instanceSettings.isMultiMain) return false;
 		if (!this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled()) return false;
 
 		const featureFlag = await this.postHogClient.getFeatureFlagForInstance(
