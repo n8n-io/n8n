@@ -68,13 +68,14 @@ describe('SkillSyncSettingsService', () => {
 		},
 	);
 
-	it('follows a plan change while no value is saved', async () => {
+	it('reads the plan when it loads, so the backend and the UI agree', async () => {
 		const { service, licenseState } = createService();
 		await service.init();
-		expect(service.isEnabled()).toBe(true);
 
 		licenseState.isEnterprisePlan.mockReturnValue(true);
+		expect(service.isEnabled()).toBe(true);
 
+		await service.load();
 		expect(service.isEnabled()).toBe(false);
 	});
 
