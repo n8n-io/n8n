@@ -24,6 +24,7 @@ import ExecutionRetry from './commands/execution/retry';
 import ExecutionStop from './commands/execution/stop';
 import Login from './commands/login';
 import Logout from './commands/logout';
+import McpSetup from './commands/mcp/setup';
 import PackageExport from './commands/package/export';
 import PackageImport from './commands/package/import';
 import PackageImportSelection from './commands/package/import-selection';
@@ -175,6 +176,8 @@ export const commands = {
 	'user:get': UserGet,
 
 	'skill:install': SkillInstall,
+
+	'mcp:setup': McpSetup,
 
 	'source-control:pull': SourceControlPull,
 

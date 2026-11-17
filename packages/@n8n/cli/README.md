@@ -65,6 +65,7 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 | `source-control` | `pull` |
 | `package` | `export`, `import` _(beta)_, `import-selection` _(beta)_ |
 | `skill` | `install` |
+| `mcp` | `setup` |
 | `audit` | _(top-level)_ |
 | `login` / `logout` | _(top-level)_ |
 
@@ -117,6 +118,25 @@ n8n-cli skill install --target=cursor
 # Windsurf
 n8n-cli skill install --target=windsurf
 ```
+
+### Sync n8n skills into Claude Code
+
+`n8n-cli mcp setup` installs Claude Code hooks that copy the skills of your
+n8n instance into `~/.claude/skills/` as native skills. The CLI keeps no
+credential. Claude Code gets the skills through its own connection to the n8n
+MCP server.
+
+```bash
+claude mcp add --transport http n8n https://<your-instance>/mcp-server/http
+n8n-cli mcp setup
+```
+
+At the start of each session, the agent calls `search_n8n_skills`. A hook
+compares the result with the local copies. Then the agent calls `get_skill`
+for each new or changed skill, and a hook writes the skill folder. The hook
+removes local copies of skills that are gone from n8n. The hooks do not
+change the tool output. They act only on a complete search with no filters.
+The command obeys `CLAUDE_CONFIG_DIR`.
 
 ## Development
 

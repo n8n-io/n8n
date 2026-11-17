@@ -77,6 +77,9 @@
       },
       "skill": {
         "description": "Install n8n CLI skills for AI coding agents"
+      },
+      "mcp": {
+        "description": "Connect Claude Code to the n8n MCP server"
       }
     }
   },
