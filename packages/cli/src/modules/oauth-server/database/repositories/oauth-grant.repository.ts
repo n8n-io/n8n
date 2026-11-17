@@ -24,8 +24,9 @@ export class OAuthGrantRepository extends BaseRepository<User> {
 					select: ['id'],
 					order: { id: 'ASC' },
 					take: batchSize,
+					// Name the table: Postgres cannot lock the outer join to `ServiceAccount.details`.
 					...(manager.connection.options.type === 'postgres'
-						? { lock: { mode: 'pessimistic_write' as const } }
+						? { lock: { mode: 'pessimistic_write' as const, tables: ['user'] } }
 						: {}),
 				});
 				const userIds = users.map(({ id }) => id);
@@ -48,10 +49,11 @@ export class OAuthGrantRepository extends BaseRepository<User> {
 	private async findLockedUser(manager: EntityManager, userId: string): Promise<User | null> {
 		// Updates to this row serialize with grant issuance on PostgreSQL.
 		// SQLite serializes writes and rejects a conflicting read-to-write upgrade.
+		// Name the table: Postgres cannot lock the outer join to `ServiceAccount.details`.
 		return await manager.findOne(User, {
 			where: { id: userId },
 			...(manager.connection.options.type === 'postgres'
-				? { lock: { mode: 'pessimistic_write' as const } }
+				? { lock: { mode: 'pessimistic_write' as const, tables: ['user'] } }
 				: {}),
 		});
 	}

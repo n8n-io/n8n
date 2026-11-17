@@ -315,7 +315,7 @@ watch(
 				? i18n.baseText('experiments.preferencesEmptyState.examples.modalDescription')
 				: undefined
 		"
-		size="medium"
+		size="xlarge"
 		:disable-outside-pointer-events="true"
 		data-test-id="preference-modal"
 		@update:open="emit('update:open', $event)"
@@ -329,7 +329,7 @@ watch(
 				required
 				:label="i18n.baseText('settings.context.preferences.modal.text.label')"
 				:placeholder="i18n.baseText('settings.context.preferences.modal.text.placeholder')"
-				:autosize="{ minRows: 3, maxRows: 8 }"
+				:autosize="{ minRows: 6, maxRows: 16 }"
 				:maxlength="PREFERENCE_TEXT_MAX_LENGTH"
 				:validate-on-blur="false"
 				:validation-rules="contentValidationRules"

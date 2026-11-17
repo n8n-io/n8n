@@ -13,7 +13,10 @@ import {
 } from '../../database';
 import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
-import { noopLifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../../lifecycle-events';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
@@ -34,6 +37,10 @@ const graph: WorkflowGraph = {
 	],
 	edges: [{ from: 'trigger', to: 'step-a', outputIndex: 0, inputIndex: 0 }],
 };
+
+const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
+	noopLifecycleEventPublisher,
+);
 
 describe('execution start (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -68,14 +75,14 @@ describe('execution start (integration)', () => {
 				executionStore,
 				stepStore,
 				orchestrationQueue,
-				noopLifecycleEventPublisher,
+				lifecycleEventPublisherFactory,
 			),
 			new StepSettledHandler(
 				executionStore,
 				stepStore,
 				stepQueue,
 				orchestrationQueue,
-				noopLifecycleEventPublisher,
+				lifecycleEventPublisherFactory,
 				noopExecutionResponseSender,
 				{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 			),
@@ -140,7 +147,7 @@ describe('execution start (integration)', () => {
 			executionStore,
 			stepStore,
 			queue,
-			noopLifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 		);
 
 		const executionId = generateId();

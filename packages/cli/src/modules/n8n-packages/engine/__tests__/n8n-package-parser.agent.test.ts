@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 
 import {
@@ -24,7 +25,12 @@ import type { SerializedAgent } from '../../spec/serialized/agent.schema';
 import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import { N8nPackageParser } from '../n8n-package-parser';
 
-const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
+const parser = new N8nPackageParser(
+	mock<Logger>(),
+	mock<NodeTypes>(),
+	mock<WorkflowSerializer>(),
+	mock<CredentialTypes>(),
+);
 const limits = new PackageImportConfig();
 const agentTarget = 'agents/support';
 const agentPath = `${agentTarget}/agent.json`;
@@ -314,12 +320,11 @@ describe('N8nPackageParser.getSkills', () => {
 		fixture = looseAgentsFixture();
 	});
 
-	it('reads every skill with its scope, owner and frontmatter', async () => {
+	it('reads every skill with its scope and frontmatter', async () => {
 		const skills = await parser.getSkills(memoryReader(fixture));
 		expect(skills.map(({ id }) => id)).toEqual(['support_source_skill', 'research_source_skill']);
 		expect(skills[0]).toMatchObject({
-			scope: 'agent',
-			agentId: 'support_source',
+			scope: 'project',
 			skill: { name: 'Support reference' },
 			frontmatter: { license: 'MIT' },
 		});
@@ -327,8 +332,8 @@ describe('N8nPackageParser.getSkills', () => {
 
 	it.each([
 		['an ID that differs from the manifest', { id: 'other_skill' }, 'declares id'],
-		['an Agent skill without its Agent', { agentId: undefined }, 'failed schema validation'],
-		['a project skill that names an Agent', { scope: 'project' }, 'failed schema validation'],
+		['the scope of one Agent', { scope: 'agent' }, 'failed schema validation'],
+		['a skill that names an Agent', { agentId: 'support_source' }, 'failed schema validation'],
 		['n8n Assistant availability', { availableToAssistant: true }, 'failed schema validation'],
 	])('rejects %s', async (_case, fields, message) => {
 		fixture.files[skillPath] = { ...(fixture.files[skillPath] as object), ...fields };

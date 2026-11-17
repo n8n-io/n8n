@@ -6,7 +6,7 @@ import {
 	getSuccessorNodeIds,
 	type GraphNode,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { CancelExecutionService } from './cancel-execution.service';
@@ -49,7 +49,7 @@ export class StepSettledHandler {
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly cancelExecution: CancelExecutionService,
 	) {}
@@ -102,7 +102,7 @@ export class StepSettledHandler {
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
 		await this.stepStore.cancelPendingSteps(execution.id);
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
@@ -125,9 +125,7 @@ export class StepSettledHandler {
 		if (step.status === 'failed' && step.error) return step.error;
 		// If a different step failed, find it. Note: it's possible multiple steps
 		// may have failed - we choose any for now.
-		const failed = (await this.stepStore.loadAllSteps(execution.id)).find(
-			(row) => row.status === 'failed' && row.error,
-		);
+		const failed = (await this.stepStore.loadFailedSteps(execution.id)).find((row) => row.error);
 		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
@@ -239,7 +237,7 @@ export class StepSettledHandler {
 			failed ? 'failed' : 'completed',
 		);
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,

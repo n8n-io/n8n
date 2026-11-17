@@ -1,8 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';

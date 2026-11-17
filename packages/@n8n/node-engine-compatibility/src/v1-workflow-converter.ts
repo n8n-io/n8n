@@ -77,8 +77,7 @@ export class V1WorkflowConverter {
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
 
 		// In canvas order, top to bottom and then left to right, as v1 orders the
-		// branches it runs. A sub-execution's result follows the graph order, so this is
-		// what makes it follow the canvas.
+		// branches it runs. Anything that reads the graph in node order sees the same order.
 		const liveNodes = rooted.nodes
 			.filter((node) => node.disabled !== true)
 			.sort((a, b) => a.position[1] - b.position[1] || a.position[0] - b.position[0]);
@@ -446,7 +445,7 @@ function toBatchConfig(node: INode): BatchStepConfig {
 	const options: unknown = node.parameters?.options;
 	if (typeof options === 'string') {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" sets its options from an expression, which is not supported yet.`,
+			`Node "${node.name}" sets its options from an expression. Engine v2 needs the options before the workflow runs. Use fixed options.`,
 		);
 	}
 
@@ -461,7 +460,7 @@ function toBatchConfig(node: INode): BatchStepConfig {
 
 	if (typeof batchSize === 'string') {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" sets its batch size from an expression, which is not supported yet.`,
+			`Node "${node.name}" sets its batch size from an expression. Engine v2 needs the batch size before the workflow runs. Use a fixed batch size.`,
 		);
 	}
 

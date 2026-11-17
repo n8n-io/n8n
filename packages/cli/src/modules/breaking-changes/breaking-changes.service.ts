@@ -5,7 +5,7 @@ import {
 	BreakingChangeVersion,
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import {
 	WorkflowHistoryRepository,
 	WorkflowRepository,
@@ -28,8 +28,9 @@ import type {
 	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
+	WorkflowScanContext,
 } from './types';
-import { N8N_VERSION } from '../../constants';
+import { createWorkflowScanContext } from './types';
 
 /** One rule check on one workflow that threw, so its result is unknown. */
 export interface FailedRuleCheck {
@@ -72,16 +73,6 @@ export interface WorkflowHitsResult {
 	publishedHits: WorkflowRuleHit[];
 	failedChecks: FailedRuleCheck[];
 }
-
-const WORKFLOW_FIELDS: Array<keyof WorkflowEntity> = [
-	'id',
-	'name',
-	'active',
-	'activeVersionId',
-	'versionId',
-	'nodes',
-	'updatedAt',
-];
 
 interface WorkflowMetadata {
 	name: string;
@@ -228,33 +219,35 @@ export class BreakingChangeService {
 	private async getAllWorkflowRulesResults(
 		workflowLevelRules: IBreakingChangeWorkflowRule[],
 		batchRules: IBreakingChangeBatchWorkflowRule[],
-		totalWorkflows: number,
 		scanPublished: boolean,
 	): Promise<WorkflowRulesScan> {
 		const allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]> = new Map();
 		const workflowMetadataMap: Map<string, WorkflowMetadata> = new Map();
 		const publishedHits: WorkflowRuleHit[] = [];
 		const failedChecks: FailedRuleCheck[] = [];
+		const context = createWorkflowScanContext();
 
 		// Reset batch rules internal state before processing
 		batchRules.forEach((rule) => rule.reset());
 
 		this.logger.debug('Processing workflows in batches', {
-			totalWorkflows,
 			batchSize: this.batchSize,
 			regularRulesCount: workflowLevelRules.length,
 			batchRulesCount: batchRules.length,
 		});
 
-		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
-			const workflows = await this.workflowRepository.find({
-				select: WORKFLOW_FIELDS,
-				skip,
-				take: this.batchSize,
-				order: { id: 'ASC' },
-			});
+		// Keyset paging: an offset makes the database read past every earlier row for each page.
+		let afterId: string | undefined;
+		let pageIsFull = true;
+		while (pageIsFull) {
+			const workflows = await this.workflowRepository.findMigrationScanPage(
+				afterId,
+				this.batchSize,
+			);
+			pageIsFull = workflows.length === this.batchSize;
 
-			this.logger.debug('Processing batch', { skip, workflowsInBatch: workflows.length });
+			this.logger.debug('Processing batch', { afterId, workflowsInBatch: workflows.length });
+			afterId = workflows.at(-1)?.id;
 
 			// Load statistics separately for all workflows in this batch
 			const workflowIds = workflows.map((w) => w.id);
@@ -296,6 +289,7 @@ export class BreakingChangeService {
 						rule,
 						workflow,
 						nodesGroupedByType,
+						context,
 						failedChecks,
 					);
 					if (result?.isAffected) {
@@ -327,7 +321,7 @@ export class BreakingChangeService {
 				const nodes = publishedNodes.get(workflow.id);
 				if (nodes) {
 					publishedHits.push(
-						...(await this.detectPublishedHits(cleanRules, workflow, nodes, failedChecks)),
+						...(await this.detectPublishedHits(cleanRules, workflow, nodes, context, failedChecks)),
 					);
 				}
 			}
@@ -346,7 +340,7 @@ export class BreakingChangeService {
 	 * The published nodes of each workflow whose latest version is ahead of the
 	 * published one. The other workflows are absent, so they are scanned only once.
 	 */
-	private async loadPublishedNodes(workflows: WorkflowEntity[]): Promise<Map<string, INode[]>> {
+	async loadPublishedNodes(workflows: WorkflowEntity[]): Promise<Map<string, INode[]>> {
 		const workflowIdByVersionId = new Map<string, string>();
 		for (const { id, activeVersionId, versionId } of workflows) {
 			if (activeVersionId && activeVersionId !== versionId) {
@@ -378,13 +372,20 @@ export class BreakingChangeService {
 		rules: IBreakingChangeWorkflowRule[],
 		workflow: WorkflowEntity,
 		publishedNodes: INode[],
+		context: WorkflowScanContext,
 		failedChecks: FailedRuleCheck[],
 	): Promise<WorkflowRuleHit[]> {
 		const published = { ...workflow, nodes: publishedNodes };
 		const nodesGroupedByType = groupNodesByType(publishedNodes);
 		const hits: WorkflowRuleHit[] = [];
 		for (const rule of rules) {
-			const result = await this.runWorkflowRule(rule, published, nodesGroupedByType, failedChecks);
+			const result = await this.runWorkflowRule(
+				rule,
+				published,
+				nodesGroupedByType,
+				context,
+				failedChecks,
+			);
 			if (result?.isAffected) hits.push({ ruleId: rule.id, workflowId: workflow.id });
 		}
 		return hits;
@@ -416,10 +417,11 @@ export class BreakingChangeService {
 		rule: IBreakingChangeWorkflowRule,
 		workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
+		context: WorkflowScanContext,
 		failedChecks: FailedRuleCheck[],
 	): Promise<WorkflowDetectionReport | undefined> {
 		try {
-			return await rule.detectWorkflow(workflow, nodesGroupedByType);
+			return await rule.detectWorkflow(workflow, nodesGroupedByType, context);
 		} catch (error) {
 			this.reportRuleError(error, rule.id, workflow.id);
 			failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
@@ -441,10 +443,7 @@ export class BreakingChangeService {
 		targetVersion: BreakingChangeVersion,
 		workflowId: string,
 	): Promise<WorkflowHitsResult> {
-		const workflow = await this.workflowRepository.findOne({
-			select: WORKFLOW_FIELDS,
-			where: { id: workflowId },
-		});
+		const workflow = await this.workflowRepository.findMigrationScanWorkflow(workflowId);
 		if (!workflow) return { hits: [], publishedHits: [], failedChecks: [] };
 
 		const workflowLevelRules = this.ruleRegistry
@@ -455,15 +454,22 @@ export class BreakingChangeService {
 		const hits: WorkflowRuleHit[] = [];
 		const cleanRules: IBreakingChangeWorkflowRule[] = [];
 		const failedChecks: FailedRuleCheck[] = [];
+		const context = createWorkflowScanContext();
 		for (const rule of workflowLevelRules) {
-			const result = await this.runWorkflowRule(rule, workflow, nodesGroupedByType, failedChecks);
+			const result = await this.runWorkflowRule(
+				rule,
+				workflow,
+				nodesGroupedByType,
+				context,
+				failedChecks,
+			);
 			if (result?.isAffected) hits.push({ ruleId: rule.id, workflowId });
 			else if (result) cleanRules.push(rule);
 		}
 
 		const publishedNodes = (await this.loadPublishedNodes([workflow])).get(workflowId);
 		const publishedHits = publishedNodes
-			? await this.detectPublishedHits(cleanRules, workflow, publishedNodes, failedChecks)
+			? await this.detectPublishedHits(cleanRules, workflow, publishedNodes, context, failedChecks)
 			: [];
 
 		return { hits, publishedHits, failedChecks };
@@ -503,11 +509,10 @@ export class BreakingChangeService {
 		}
 
 		return await this.runAfterPreviousScan(targetVersion, async () => {
-			const totalWorkflows = await this.workflowRepository.count();
 			const scan =
 				'detectWorkflow' in rule
-					? await this.getAllWorkflowRulesResults([rule], [], totalWorkflows, false)
-					: await this.getAllWorkflowRulesResults([], [rule], totalWorkflows, false);
+					? await this.getAllWorkflowRulesResults([rule], [], false)
+					: await this.getAllWorkflowRulesResults([], [rule], false);
 			return scan.results[0];
 		});
 	}
@@ -554,7 +559,7 @@ export class BreakingChangeService {
 
 		const [instanceLevelResults, workflowScan] = await Promise.all([
 			this.getAllInstanceRulesResults(instanceLevelRules),
-			this.getAllWorkflowRulesResults(workflowLevelRules, batchWorkflowRules, totalWorkflows, true),
+			this.getAllWorkflowRulesResults(workflowLevelRules, batchWorkflowRules, true),
 		]);
 
 		const report = this.createDetectionReport(
@@ -584,7 +589,7 @@ export class BreakingChangeService {
 		return {
 			generatedAt: new Date(),
 			targetVersion,
-			currentVersion: N8N_VERSION,
+			currentVersion: getN8nVersion(),
 			workflowResults,
 			instanceResults,
 		};

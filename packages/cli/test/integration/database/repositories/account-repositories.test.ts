@@ -1,7 +1,10 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import {
+	accountFullName,
+	AiPreferenceRepository,
 	User,
 	UserRepository,
+	GLOBAL_AGENT_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	isServiceAccount,
 	isPerson,
@@ -10,9 +13,11 @@ import {
 	ServiceAccountRepository,
 	Person,
 	PersonRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 
 import { createMember } from '../../shared/db/users';
 
@@ -31,7 +36,7 @@ describe('UserRepository (both kinds)', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['User']);
+		await testDb.truncate(['AiPreference', 'Project', 'User']);
 	});
 
 	afterAll(async () => {
@@ -157,6 +162,31 @@ describe('UserRepository (both kinds)', () => {
 		});
 	});
 
+	describe('service account details', () => {
+		it('loads the details of a service account without asking for them', async () => {
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+
+			const users = await userRepository.find({ relations: ['role'] });
+			const byId = new Map(users.map((user) => [user.id, user]));
+
+			expect(accountFullName(byId.get(serviceAccount.id)!)).toBe('Deploy bot');
+			expect(accountFullName(byId.get(person.id)!)).toBe(`${person.firstName} ${person.lastName}`);
+		});
+
+		it('loads the details of a service account reached through a relation', async () => {
+			const serviceAccount = await createServiceAccount();
+			const project = await createTeamProject(undefined, serviceAccount);
+
+			const relations = await Container.get(ProjectRelationRepository).find({
+				where: { projectId: project.id },
+				relations: { user: true },
+			});
+
+			expect(relations.map(({ user }) => accountFullName(user))).toEqual(['Deploy bot']);
+		});
+	});
+
 	describe('PersonRepository', () => {
 		it('finds a person by id, but not a service account', async () => {
 			const personRepository = Container.get(PersonRepository);
@@ -165,6 +195,57 @@ describe('UserRepository (both kinds)', () => {
 
 			expect(await personRepository.findById(person.id)).toBeInstanceOf(Person);
 			expect(await personRepository.findById(serviceAccount.id)).toBeNull();
+		});
+
+		it('finds people by ids, but not service accounts', async () => {
+			const personRepository = Container.get(PersonRepository);
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+
+			const found = await personRepository.findManyByIds([person.id, serviceAccount.id]);
+
+			expect(found.map(({ id }) => id)).toEqual([person.id]);
+		});
+
+		it('finds the people with an eligible role, but not a service account with it', async () => {
+			const personRepository = Container.get(PersonRepository);
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+			const query = {
+				projectId: 'no-project',
+				projectRoleSlugs: [],
+				globalRoleSlugs: [GLOBAL_MEMBER_ROLE.slug],
+			};
+
+			const accounts = await userRepository.findEligibleByProjectOrGlobalRoles(query);
+			const people = await personRepository.findEligibleByProjectOrGlobalRoles(query);
+
+			expect(accounts.map(({ id }) => id).sort()).toEqual([person.id, serviceAccount.id].sort());
+			expect(people.map(({ id }) => id)).toEqual([person.id]);
+		});
+	});
+
+	describe('relations', () => {
+		it('loads a service account that acted as a ServiceAccount', async () => {
+			const serviceAccount = await createServiceAccount();
+			const project = await createTeamProject();
+			const preferences = Container.get(AiPreferenceRepository);
+			const { id } = await preferences.save(
+				preferences.create({
+					id: randomUUID(),
+					content: 'Rule.',
+					source: 'ui',
+					projectId: project.id,
+					createdById: serviceAccount.id,
+				}),
+			);
+
+			const loaded = await preferences.findOneOrFail({
+				where: { id },
+				relations: { createdBy: true },
+			});
+
+			expect(loaded.createdBy).toBeInstanceOf(ServiceAccount);
 		});
 	});
 
@@ -224,6 +305,28 @@ describe('UserRepository (both kinds)', () => {
 			expect(loaded).toBeInstanceOf(ServiceAccount);
 			expect(loaded?.details).toBeInstanceOf(ServiceAccountDetails);
 			expect(loaded?.details.name).toBe('Deploy bot');
+		});
+
+		it('creates an agent service account with the agent role, no scopes and no project memberships', async () => {
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+
+			const created = await serviceAccountRepository.create({
+				name: 'Support agent',
+				role: GLOBAL_AGENT_ROLE,
+			});
+
+			const loaded = await userRepository.findOneOrFail({
+				where: { id: created.id },
+				relations: { role: { scopes: true } },
+			});
+			expect(loaded.role.slug).toBe('global:agent');
+			expect(loaded.role.systemRole).toBe(true);
+			expect(loaded.role.scopes).toEqual([]);
+
+			const memberships = await Container.get(ProjectRelationRepository).find({
+				where: { userId: created.id, project: { type: 'team' } },
+			});
+			expect(memberships).toEqual([]);
 		});
 
 		it.each([

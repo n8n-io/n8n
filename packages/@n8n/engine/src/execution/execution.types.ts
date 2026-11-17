@@ -49,8 +49,8 @@ export interface CallerContext {
 }
 
 /**
- * The execution that started this one, and the step that asked for it. Only
- * the engine's own start path sets it: a caller over HTTP cannot claim a
+ * The parent execution and the parent step that asked for this execution.
+ * Only the engine's own start path sets it: a caller over HTTP cannot claim a
  * parent.
  */
 export interface ParentLink {
@@ -241,8 +241,8 @@ export interface StepError {
 	stack?: string;
 	/**
 	 * Step-type-specific error detail, persisted without inspection — the engine
-	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
-	 * to hand structured detail across the seam; they only throw today.
+	 * owns only `name`/`message`/`stack`. An executor supplies it with
+	 * `attachStepErrorDetails`.
 	 */
 	details?: JsonValue;
 }

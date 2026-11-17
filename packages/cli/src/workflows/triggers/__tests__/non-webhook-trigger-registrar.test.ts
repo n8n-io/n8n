@@ -3,7 +3,8 @@ import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowTriggers, Span, Tracing } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError, WorkflowDeactivationError } from 'n8n-workflow';
+import { WorkflowDeactivationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type {

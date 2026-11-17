@@ -1,4 +1,5 @@
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -9,7 +10,6 @@ import {
 	type SkillService,
 } from '@/modules/skills';
 import { SkillSyncedError } from '@/modules/skills/testing';
-import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -27,8 +27,6 @@ const listItem: SkillListItem = {
 	projectId: 'project-1',
 	projectName: 'Marketing',
 	projectType: 'team',
-	agentId: null,
-	agentName: null,
 	availableToAssistant: false,
 	source: 'ui',
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
@@ -38,6 +36,8 @@ const listItem: SkillListItem = {
 	canEdit: true,
 	canDelete: true,
 	canStopSyncing: false,
+	syncState: null,
+	sourceId: null,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 };
@@ -52,7 +52,7 @@ const detail: SkillDetail = {
 
 describe('McpSkillToolsService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const skillService = mock<SkillService>();
 	const rollout = mock<AssistantSkillsFlagGate>();
 	const service = new McpSkillToolsService(telemetry, skillService, rollout);
@@ -157,6 +157,18 @@ describe('McpSkillToolsService', () => {
 			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
 
 			expect(JSON.stringify(result.structuredContent)).not.toContain('someone@example.com');
+		});
+
+		it('returns no agent fields, because a skill belongs to a project or the instance', async () => {
+			skillService.list.mockResolvedValue({ count: 1, data: [listItem] });
+
+			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
+
+			const [skill] = (result.structuredContent as { skills: Array<Record<string, unknown>> })
+				.skills;
+			expect(skill).toBeDefined();
+			expect(skill).not.toHaveProperty('agentId');
+			expect(skill).not.toHaveProperty('agentName');
 		});
 	});
 

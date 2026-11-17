@@ -1,10 +1,9 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentValidationService } from '../agent-validation.service';
@@ -39,7 +38,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 
 function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const agentRepository = mock<AgentRepository>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({

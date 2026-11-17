@@ -1,3 +1,5 @@
+import '../../../controllers';
+
 import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 

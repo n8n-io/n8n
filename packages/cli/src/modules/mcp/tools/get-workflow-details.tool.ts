@@ -4,8 +4,7 @@ import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { CredentialsFinderService, RoleService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -87,9 +86,10 @@ export const createWorkflowDetailsTool = (
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	roleService: RoleService,
 	projectService: ProjectService,
 	testBaseWebhookUrl: string = baseWebhookUrl,
@@ -130,6 +130,7 @@ export const createWorkflowDetailsTool = (
 					baseWebhookUrl,
 					workflowFinderService,
 					credentialsService,
+					credentialsFinderService,
 					nodeTypes,
 					endpoints,
 					roleService,
@@ -166,6 +167,7 @@ export async function getWorkflowDetails(
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	roleService: RoleService,
@@ -205,6 +207,7 @@ export async function getWorkflowDetails(
 			unsupported,
 			baseWebhookUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflow.id,

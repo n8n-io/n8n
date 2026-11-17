@@ -9,6 +9,7 @@ import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
 import {
+	assertValidStalenessThresholds,
 	CancelExecutionService,
 	ExecutionQueryService,
 	ExecutionStartHandler,
@@ -20,11 +21,25 @@ import {
 	StepWorker,
 	WaitSweeper,
 } from '../execution';
-import { BatchingLifecycleEventPublisher, noopLifecycleEventPublisher } from '../lifecycle-events';
+import type { StalenessThresholds } from '../execution';
+import {
+	BatchingLifecycleEventPublisher,
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../lifecycle-events';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
+import {
+	DEFAULT_RECONCILIATION_BATCH_SIZE,
+	DEFAULT_RECONCILIATION_INTERVAL_MS,
+	QueuedExecutionDetector,
+	QueuedExecutionRepair,
+	QueuedStepDetector,
+	QueuedStepRepair,
+	ReconciliationSweeper,
+} from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
 
@@ -58,6 +73,15 @@ export interface EngineRuntimeOptions {
 	resumeSecret?: string;
 	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
 	waitSweepIntervalMs?: number;
+	/** How many handlers each queue runs at once. Defaults to 1 each. */
+	concurrency?: { step?: number; orchestration?: number };
+	/**
+	 * How long a row can stay `queued` or `running` before the engine treats it
+	 * as stuck. Defaults to `DEFAULT_STALENESS_THRESHOLDS`.
+	 */
+	staleness?: StalenessThresholds;
+	/** How often the engine searches for stuck rows. Defaults to a minute. */
+	reconciliationIntervalMs?: number;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -87,6 +111,9 @@ export function createEngineRuntime({
 	externalDependencies,
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
+	concurrency = {},
+	staleness,
+	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -98,21 +125,30 @@ export function createEngineRuntime({
 		);
 	}
 
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
-	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger);
-	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
+	// Refused here and not at the first write: an invalid threshold would
+	// otherwise fail every write of a row that becomes `queued` or `running`.
+	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
+
+	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
+		concurrency: concurrency.orchestration,
+	});
+	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step });
+	const { executionStore, stepStore, executionViewStore } = createStores(dataSource, staleness);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
 		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
 	const lifecycleEventPublisher: LifecycleEventPublisher = dependencies.lifecycleEventCallback
 		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
 		: noopLifecycleEventPublisher;
+	const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
+		lifecycleEventPublisher,
+	);
 
 	// One cancel path for the API and for an execution that ends with sub-executions.
 	const cancelExecution = new CancelExecutionService(
 		executionStore,
 		stepStore,
-		lifecycleEventPublisher,
+		lifecycleEventPublisherFactory,
 		responseSender,
 		stepQueue,
 	);
@@ -122,19 +158,38 @@ export function createEngineRuntime({
 			executionStore,
 			stepStore,
 			orchestrationQueue,
-			lifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 		),
 		new StepSettledHandler(
 			executionStore,
 			stepStore,
 			stepQueue,
 			orchestrationQueue,
-			lifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 			responseSender,
 			cancelExecution,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
+	const reconciliationSweeper = new ReconciliationSweeper(
+		[
+			new QueuedExecutionDetector(
+				executionStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
+			new QueuedStepDetector(
+				stepStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
+		],
+		{
+			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
+			'step-queued-no-message': new QueuedStepRepair(stepStore, stepQueue),
+		},
+		logger,
+	);
 	// One start path for every execution: the API and a step's sub-execution both admit
 	// and validate here, and only this path can set a parent link.
 	const startExecution = new StartExecutionService(
@@ -150,7 +205,7 @@ export function createEngineRuntime({
 			stepStore,
 			orchestrationQueue,
 			dependencies,
-			lifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 			responseSender,
 			startExecution,
 			cancelExecution,
@@ -178,6 +233,7 @@ export function createEngineRuntime({
 			orchestrationWorker.start();
 			stepWorker.start();
 			waitSweeper.start();
+			reconciliationSweeper.start();
 		},
 
 		stop: async () => {
@@ -185,9 +241,9 @@ export function createEngineRuntime({
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
 
-			// The sweeper stops first: it feeds the step queue, so nothing lands
+			// The sweepers stop first: they feed the queues, so nothing lands
 			// there after the workers have drained.
-			await waitSweeper.stop();
+			await Promise.all([waitSweeper.stop(), reconciliationSweeper.stop()]);
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();

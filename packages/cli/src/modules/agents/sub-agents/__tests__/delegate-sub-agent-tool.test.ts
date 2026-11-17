@@ -9,9 +9,8 @@ import {
 import type { SubAgentSource } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, OperationalError, UserError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import {
@@ -22,6 +21,10 @@ import { createN8nDelegateSubAgentTool } from '../delegate-sub-agent-tool';
 import { formatSubAgentToolOutput } from '../format-sub-agent-tool-output';
 import type { SubAgentRunResult, SubAgentRunner } from '../sub-agent-runner';
 
+const planTask = {
+	planId: '00000000-0000-4000-a000-000000000001',
+	planTaskId: '00000000-0000-4000-a000-000000000002',
+};
 const projectId = 'project-1';
 const parentAgentId = 'parent-agent-1';
 
@@ -142,6 +145,11 @@ describe('createN8nDelegateSubAgentTool', () => {
 					runId: 'parent-run-1',
 					toolCallId: 'tool-call-1',
 					executionCounter,
+					persistence: {
+						threadId: 'parent',
+						resourceId: 'resource',
+						hostMetadata: { n8nPlanTask: planTask },
+					},
 				},
 			),
 		).resolves.toMatchObject({
@@ -158,10 +166,13 @@ describe('createN8nDelegateSubAgentTool', () => {
 				context: 'Focus on auth endpoints.',
 				expectedOutput: 'A short summary.',
 				source,
+				parentThreadId: 'parent',
+				parentResourceId: 'resource',
 				policy: { maxChildren: 2 },
 				taskPath: '/root/research_api_0',
 			},
 			expect.objectContaining({
+				planTask,
 				projectId,
 				credentialProvider,
 				executionCounter: expect.any(Object),
@@ -451,6 +462,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 		const resumeSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.resumeSubAgent;
 		expect(resumeSubAgent).toBeDefined();
+
 		const request = {
 			subAgentId: 'agent-2',
 			taskName: 'Research API',
@@ -464,6 +476,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
 			parentThreadId: 'parent-thread-1',
 			parentExecutionCounter,
+			parentHostMetadata: { n8nPlanTask: planTask },
 		};
 
 		await expect(
@@ -475,7 +488,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 		expect(runner.resumeForeground).toHaveBeenCalledWith(
 			request,
-			expect.objectContaining({ executionCounter: parentExecutionCounter }),
+			expect.objectContaining({ executionCounter: parentExecutionCounter, planTask }),
 		);
 	});
 
@@ -621,6 +634,15 @@ describe('formatSubAgentToolOutput', () => {
 				cost: 0.01,
 			},
 			finishReason: 'stop',
+		});
+	});
+
+	it('tells the parent model when the child files could not be listed', () => {
+		const filesError = 'The files of the sub-agent could not be listed';
+
+		expect(formatSubAgentToolOutput({ ...foregroundResult, filesError })).toMatchObject({
+			status: 'completed',
+			filesError,
 		});
 	});
 });

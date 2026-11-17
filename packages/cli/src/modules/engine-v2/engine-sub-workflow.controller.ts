@@ -7,11 +7,7 @@ import type { ResolveSubWorkflowResponse } from './engine-sub-workflow.contract'
 import { resolveSubWorkflowRequestSchema } from './engine-sub-workflow.contract';
 import { EngineSubWorkflowService } from './engine-sub-workflow.service';
 
-/**
- * Serves `POST /internal/sub-workflows/resolve` for the engine v2 data plane.
- * Validates the body and writes the response. `EngineSubWorkflowService`
- * decides access and builds the graph.
- */
+/** Serves `POST /internal/sub-workflows/resolve` for the engine v2 data plane. */
 @Service()
 export class EngineSubWorkflowController {
 	constructor(private readonly subWorkflowService: EngineSubWorkflowService) {}

@@ -8,7 +8,8 @@ import type {
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, UserError } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { validateUserTargetId, type UserTargetMessages } from '../../../GenericFunctions';
 

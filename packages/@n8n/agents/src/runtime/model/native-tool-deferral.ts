@@ -4,6 +4,7 @@ import type { ModelMessage, Tool, ToolSet } from 'ai';
 import type { ModelConfig, NativeToolDeferralConfig } from '../../types/sdk/agent';
 import { loadAi } from './lazy-ai';
 import { hasAnthropicCacheControl, mergeProviderOptions } from './prompt-cache';
+import { tokenize } from '../tools/tool-search';
 
 type NativeToolDeferralProvider = 'openai' | 'anthropic';
 
@@ -74,6 +75,18 @@ export function eagerTools(tools: ToolSet): ToolSet {
 	);
 }
 
+/**
+ * Provider tool search reads a name such as `my-workflow-3` as one word, so a
+ * search for "My workflow 3" does not find it. Add the words of the name to
+ * the description, which the search splits into words.
+ */
+function searchableDescription(name: string, description: string | undefined) {
+	const tokens = tokenize(name);
+	if (tokens.length < 2) return description;
+	const words = tokens.join(' ');
+	return description ? `${description} (${words})` : `(${words})`;
+}
+
 export function deferLocalTools(
 	tools: ToolSet,
 	provider: NativeToolDeferralProvider,
@@ -94,6 +107,9 @@ export function deferLocalTools(
 		hasDeferredTools ||= deferLoading;
 		nativeTools[name] = {
 			...tool,
+			...(deferLoading && typeof tool.description !== 'function'
+				? { description: searchableDescription(name, tool.description) }
+				: {}),
 			providerOptions: mergeProviderOptions(tool.providerOptions, {
 				[provider]: { deferLoading },
 			}),

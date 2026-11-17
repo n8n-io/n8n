@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import { type INode, isResourceLocatorValue } from 'n8n-workflow';
@@ -40,6 +40,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCards';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
+import { getNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -53,6 +54,8 @@ export const useWorkflowSetupState = (
 		/** Additional parameter names per node that should be shown in setup cards
 		 * (e.g., parameters with placeholder values from the AI builder). */
 		additionalParametersByNode?: Ref<Map<string, string[]>>;
+		/** Give restricted nodes their own card instead of their normal setup. */
+		includeRestricted?: MaybeRefOrGetter<boolean>;
 	},
 ) => {
 	const workflowsStore = useWorkflowsStore();
@@ -295,16 +298,23 @@ export const useWorkflowSetupState = (
 	 * Sorted by execution order (grouped by trigger, DFS through connections).
 	 */
 	const nodesRequiringSetup = computed(() => {
+		const includeRestricted = toValue(options?.includeRestricted);
 		const nodesForSetup = sourceNodes.value
 			.filter((node) => !node.disabled)
-			.map((node) => ({
-				node,
-				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
-				parameterIssues: getNodeParametersIssues(nodeTypesStore, node),
-				isTrigger: isTriggerNode(node),
-			}))
+			.map((node) => {
+				const restriction = includeRestricted ? getNodeTypeRestriction(node.type) : null;
+				// A restricted node only gets a replace card, so it needs no setup checks.
+				return {
+					node,
+					credentialTypes: restriction ? [] : getNodeCredentialTypes(nodeTypesStore, node),
+					parameterIssues: restriction ? {} : getNodeParametersIssues(nodeTypesStore, node),
+					isTrigger: isTriggerNode(node),
+					restriction,
+				};
+			})
 			.filter(
-				({ credentialTypes, isTrigger, parameterIssues, node }) =>
+				({ credentialTypes, isTrigger, parameterIssues, node, restriction }) =>
+					restriction !== null ||
 					stickyNodeIds.value.has(node.id) ||
 					credentialTypes.length > 0 ||
 					isTrigger ||
@@ -346,12 +356,22 @@ export const useWorkflowSetupState = (
 		{ immediate: true },
 	);
 
+	const setupEntries = computed(() =>
+		nodesRequiringSetup.value.filter(({ restriction }) => restriction === null),
+	);
+
+	const restrictedStates = computed<NodeSetupState[]>(() =>
+		nodesRequiringSetup.value.flatMap(({ node, isTrigger, restriction }) =>
+			restriction ? [{ node, parameterIssues: {}, isTrigger, isComplete: false, restriction }] : [],
+		),
+	);
+
 	/**
 	 * The name of the first (leftmost) trigger in the workflow.
 	 * Only this trigger can be executed from setup cards; others are treated as regular nodes.
 	 */
 	const firstTriggerName = computed(() => {
-		const first = nodesRequiringSetup.value.find(({ isTrigger }) => isTrigger);
+		const first = setupEntries.value.find(({ isTrigger }) => isTrigger);
 		return first?.node.name ?? null;
 	});
 
@@ -359,11 +379,11 @@ export const useWorkflowSetupState = (
 	 * All nodes that have credential requirements (includes both triggers and regular nodes).
 	 */
 	const nodesWithCredentials = computed(() =>
-		nodesRequiringSetup.value.filter(({ credentialTypes }) => credentialTypes.length > 0),
+		setupEntries.value.filter(({ credentialTypes }) => credentialTypes.length > 0),
 	);
 
 	const nodesWithMissingParameters = computed(() =>
-		nodesRequiringSetup.value.filter(
+		setupEntries.value.filter(
 			({ parameterIssues, node }) =>
 				stickyParamNodeIds.value.has(node.id) ||
 				Object.keys(parameterIssues).length > 0 ||
@@ -389,7 +409,7 @@ export const useWorkflowSetupState = (
 	 */
 	const perNodeCredTypes = computed(() => {
 		const result = new Set(stickyCredTypesWithParams.value);
-		for (const { credentialTypes, parameterIssues, node } of nodesRequiringSetup.value) {
+		for (const { credentialTypes, parameterIssues, node } of setupEntries.value) {
 			if (Object.keys(parameterIssues).length > 0 || nodeHasTemplateParams(node.name)) {
 				for (const credType of credentialTypes) {
 					result.add(credType);
@@ -468,7 +488,7 @@ export const useWorkflowSetupState = (
 	const triggerStates = computed(() => {
 		if (!firstTriggerName.value) return [];
 
-		const triggerEntry = nodesRequiringSetup.value.find(
+		const triggerEntry = setupEntries.value.find(
 			({ isTrigger, node }) => isTrigger && node.name === firstTriggerName.value,
 		);
 		if (!triggerEntry) return [];
@@ -542,7 +562,7 @@ export const useWorkflowSetupState = (
 			}>
 		>();
 
-		for (const entry of nodesRequiringSetup.value) {
+		for (const entry of setupEntries.value) {
 			const { node, credentialTypes, parameterIssues } = entry;
 			if (credentialTypes.length === 0) continue;
 
@@ -660,7 +680,12 @@ export const useWorkflowSetupState = (
 			isComplete: trigState.isComplete,
 		}));
 
-		const flatCards: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
+		const flatCards: SetupCardItem[] = [
+			...credentialCards,
+			...triggerCards,
+			...nodeStates.value,
+			...restrictedStates.value,
+		]
 			.filter((state) => state.node.type !== MANUAL_TRIGGER_NODE_TYPE)
 			.map((state) => ({ state }));
 

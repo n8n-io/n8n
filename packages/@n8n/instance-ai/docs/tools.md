@@ -13,6 +13,45 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval modes
+
+Each user picks an approval mode in the chat. Auto needs the PostHog flag
+`144_instance_ai_approval_modes`. Without it, every run is Manual and the chat
+shows no selector. With it, a user without a saved choice gets Auto. The judge
+uses `N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL`, or the utility model when that is
+empty or can't be resolved. The mode is stored in `user.settings.instanceAi.approvalMode` through
+`PUT /assistant/preferences`. Auto mode is not part of the Agent Builder: a
+thread that builds or edits an agent, or a message that attaches an agent,
+runs in Manual mode.
+
+Every action passes two checks in order:
+
+1. **Rules.** The admin value in Settings applies first. Block stops the
+   action, Allow runs it, and a thread grant from "Always allow" counts as
+   Allow. Tools behind the SDK approval gate (MCP tools) save their "Always
+   allow" grants as thread grants too (`createThreadApprovalContext`). In Auto, a user's MCP tool permissions can only make the admin's MCP
+   permissions stricter. Manual keeps a user's MCP permissions as they are.
+2. **Mode.** An action set to Ask first suspends for approval. Manual shows the
+   card. Auto reviews the suspension first, in `src/approval-review/`:
+   - fixed rules in `pending-approval.ts` decide first: actions that remove,
+     stop or replace something always show the card, small additions run, and
+     an MCP call too long for the judge to read in full shows the card;
+   - every other plain approval, including web fetches, web searches and MCP
+     tool calls, goes to the judge model, which approves or asks. An error or
+     a timeout shows the card.
+
+Tools need no code for Auto mode. The wrapper in `approval-review.ts` calls a
+tool with a probe `suspend()` and, when the review approves, again with
+`{ approved: true }`. Cards that need input (setup, credentials, questions,
+resource decisions) always show. An approved call emits `auto-approval`, its
+judge tokens are claimed from the user's credits, and a tool keeps the grant
+that its approval gives, as "Allow once" does in Manual mode. Telemetry that
+the probe tracks is sent only when the card shows. `approval-judge.ts`
+describes what the judge reads and how it cuts long input.
+
+The judge sees the user's messages, the user's answers in question cards, and
+the Assistant's text.
+
 ### Approval copy
 
 An approval card has a title and a description. The title names the asset without
@@ -49,8 +88,8 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | Tool | Actions |
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
-| `data_tables` | 11 |
-| `workspace` | 8 |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
+| `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
@@ -61,6 +100,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
+| `apps` | 6 |
 | `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
@@ -342,7 +382,7 @@ this tool with `filePath`.
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
-| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
+| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `move_workflow_to_folder`. Advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
 conversation is bound to, and nothing can redirect it. The field used to exist and
@@ -965,13 +1005,13 @@ returns `nodes`.
 
 ### `get_node_types`
 
-Get TypeScript definitions for one to ten node types, including exact
+Get TypeScript definitions for one or more node types, including exact
 parameters, credentials, display conditions, builder annotations, Gateway
 credits metadata, and webhook or trigger details.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `nodeTypes` | array | yes | One to ten node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
+| `nodeTypes` | array | yes | One or more node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
 
 **Returns**: `{ definitions }`. A definition that cannot load carries an
 `error` field.
@@ -1101,55 +1141,59 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data_tables` (11 actions)
+## Data table tools (11 tools)
 
-Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
-`updatedAt`) are reserved and auto-managed.
+Full CRUD suite for n8n data tables. Each operation is a separate tool. System
+columns (`id`, `createdAt`, `updatedAt`) are reserved and auto-managed. The
+read tools never suspend. The write tools ask for approval unless the
+permission allows them. Stored calls of the former `data_tables` tool still
+resolve to the matching tool.
 
 ### Table operations
 
-| Action | Description |
-|--------|-------------|
-| `list` | List data tables |
-| `create` | Create a data table with columns |
-| `delete` | Delete a data table after confirmation |
-| `schema` | Get the table columns |
+| Tool | Description |
+|------|-------------|
+| `list_data_tables` | List data tables |
+| `create_data_table` | Create a data table with columns |
+| `delete_data_table` | Delete a data table after confirmation |
+| `get_data_table_schema` | Get the table columns |
 
 ### Column operations
 
-| Action | Description |
-|--------|-------------|
-| `add-column` | Add a column to a table |
-| `delete-column` | Remove a column from a table |
-| `rename-column` | Rename a column |
+| Tool | Description |
+|------|-------------|
+| `add_data_table_column` | Add a column to a table |
+| `delete_data_table_column` | Remove a column from a table |
+| `rename_data_table_column` | Rename a column |
 
 ### Row operations
 
-| Action | Description |
-|--------|-------------|
-| `query` | Query rows with optional filters |
-| `insert-rows` | Insert one or more rows |
-| `update-rows` | Update rows matching a filter |
-| `delete-rows` | Delete rows matching a non-empty filter after confirmation |
+| Tool | Description |
+|------|-------------|
+| `query_data_table` | Query rows with optional filters |
+| `insert_data_table_rows` | Insert one or more rows |
+| `update_data_table_rows` | Update rows matching a filter |
+| `delete_data_table_rows` | Delete rows matching a non-empty filter after confirmation |
 
 ---
 
-## `workspace` (4 or 8 actions)
+## Workspace tools (4 or 8 tools)
 
-The registry always contains this tool. Without `workspaceService`, every call
-returns an unavailable error. Folder actions are present only when
+Each action of the former `workspace` tool is its own tool. The registry always
+contains the first four tools. Without `workspaceService`, every call returns an
+unavailable error. The folder tools are present only when
 `workspaceService.listFolders` is available.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
-| `tag-workflow` | Apply tags to a workflow |
-| `list-tags` | List available tags |
-| `cleanup-test-executions` | Remove test execution data |
-| `list-folders` | List folders (conditional) |
-| `create-folder` | Create a new folder (conditional) |
-| `delete-folder` | Delete a folder (conditional) |
-| `move-workflow-to-folder` | Move a workflow to a folder (conditional) |
+| `list_projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
+| `tag_workflow` | Apply tags to a workflow |
+| `list_tags` | List available tags |
+| `cleanup_test_executions` | Remove test execution data |
+| `list_folders` | List folders (conditional) |
+| `create_folder` | Create a new folder (conditional) |
+| `delete_folder` | Delete a folder (conditional) |
+| `move_workflow_to_folder` | Move a workflow to a folder (conditional) |
 
 ---
 
@@ -1232,14 +1276,23 @@ when the supplied credential or node context is enough. `intent` is one of
 Results include registry metadata and can include a hint or error. Answers based
 on returned documents must cite the returned page titles and public URLs.
 
-## `parse-file` *(conditional)*
+## `parse-file`
 
-Parse an attachment from the current user message. The registry adds this tool
-only when the current turn contains a parseable attachment.
+Parse a user file. The registry adds the tool on every turn, with or without
+files, so the tool list stays the same and the prompt cache stays valid. It
+adds one of two versions:
+
+- When the host sets `storedFiles` on the context, the tool reads a stored file
+  of the thread by `fileId`. The Assistant on the Agents runtime uses this
+  version. The model gets each `fileId` from the file attachment label in the
+  conversation.
+- Otherwise, the tool reads an attachment of the current user message by
+  `attachmentIndex`. On a turn without files, it returns an error.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `attachmentIndex` | number | no | 0 | Zero-based attachment index |
+| `fileId` | string | yes (stored-file version) | — | Id of a stored file of the thread |
+| `attachmentIndex` | number | no (current-message version) | 0 | Zero-based attachment index |
 | `format` | enum | no | detected | `csv`, `tsv`, `json`, `xlsx`, `text`, `markdown`, `html`, `pdf`, or `docx` |
 | `hasHeader` | boolean | no | true | Treat the first CSV or TSV row as headers |
 | `delimiter` | string | no | — | One-character CSV delimiter override |
@@ -1296,6 +1349,43 @@ those cases. The model relays a rejection in its own words and never says
 The system prompt carries the judgment of *when* to call it (see
 `getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
 carries *what* it does.
+
+---
+
+## `apps` *(conditional)*
+
+Build n8n Apps. Present only when the apps module is active, the run has a
+bound project and the sandbox is available. The adapter wires `appService`, and
+the turn setup removes it without a sandbox, so the tool, the `app-builder`
+skill and the `<app-targets>` block share one gate. Deferred: the tool is in the
+default `tools` tool group, which the skill lists in `recommended_tool_groups`.
+
+| Action | Scope | Description |
+|--------|-------|-------------|
+| `create` | `app:create` | Create an app in the bound project and open it. The first app of a thread uses the pending app id from thread metadata |
+| `list` | `app:list` | Apps of the bound project (at most 50), optionally filtered by name |
+| `get` | `app:read` | App state |
+| `open` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
+| `commit` | `app:update` | Save the folder as one version and wait for its build |
+| `discard` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
+
+The model edits the folder with the workspace tools and runs `npm ci` and
+`npm run build` there before it commits. The source moves in and out of the
+sandbox as one archive (`AppSourceArchiveService` in the apps module). The
+commit archive is read back as a file, not through command output.
+`apps/<appId>.base-version` holds the draft version the folder started from. A
+commit is based on that version, so a draft that changed since then fails the
+commit with a conflict and the folder stays. A commit leaves out
+`node_modules` and `dist`, and n8n builds the version again.
+
+`create` and every commit add the app to the thread metadata key
+`instanceAiAppTargets`. Reads and opens do not. A thread can build several
+apps. On each user turn the `<app-targets>` block names these apps. They also
+report the app as an `app` artifact through `onArtifactChanged`, so the thread
+shows the app's tab. The `create` and commit results include `app` (`id`,
+`name`, `projectId`) for the frontend.
+
+Errors return `{ error }`.
 
 ---
 
@@ -1538,7 +1628,9 @@ The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
 full-definition replacements. It receives the four node tools: `search_nodes`, `get_node_types`, `get_node_parameter_options`, and `execute_node`.
 External and local MCP tools are added after their names are checked against the
-native tools active for the current request.
+native tools active for the current request. "Always allow" on their approval cards
+saves a thread grant, the same grant that built-in tools use
+(`createThreadApprovalContext`).
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
 through `agent_builder_build_agent`. It does not receive the Instance AI domain registry. It
@@ -1572,7 +1664,7 @@ existing domain.
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Deferral is the right default, but a tool whose job is to reveal
+   that set is listed by name in the tool catalog and run through `call_tool`. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
    searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles

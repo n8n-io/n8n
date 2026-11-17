@@ -180,6 +180,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 						:last-name="item.createdBy.lastName"
 						:email="item.createdBy.email"
 						:is-current-user="item.createdBy.id === usersStore.currentUserId"
+						hide-avatar
 					/>
 					<N8nText
 						v-if="!item.createdBy || item.source !== 'ui'"

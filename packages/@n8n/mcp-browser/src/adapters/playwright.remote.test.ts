@@ -40,6 +40,19 @@ beforeEach(() => {
 	connectOverCDP.mockResolvedValue(fakeBrowser());
 });
 
+/** Runs `fn` with debug logging on and returns everything it logged. */
+async function captureDebugLogs(fn: () => Promise<void>): Promise<string> {
+	const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+	configureLogger({ level: 'debug' });
+	try {
+		await fn();
+		return consoleLog.mock.calls.flat().map(String).join('\n');
+	} finally {
+		configureLogger({ level: 'silent' });
+		consoleLog.mockRestore();
+	}
+}
+
 describe('PlaywrightAdapter remote mode', () => {
 	it('connects to the provided cdpEndpoint with the supplied headers', async () => {
 		const relay = fakeRelay();
@@ -68,6 +81,37 @@ describe('PlaywrightAdapter remote mode', () => {
 			headers: undefined,
 			noDefaults: true,
 		});
+	});
+
+	it('logs an explicit endpoint with its query values masked', async () => {
+		const adapter = new PlaywrightAdapter(config, {
+			relay: fakeRelay(),
+			cdpEndpoint: 'ws://127.0.0.1:5678/browser-use/cdp/sess?token=abc',
+		});
+
+		const logged = await captureDebugLogs(async () => await adapter.launch({ browser: 'chrome' }));
+
+		expect(logged).toContain('ws://127.0.0.1:5678/browser-use/cdp/sess?token=REDACTED');
+		expect(logged).not.toContain('abc');
+	});
+
+	it("logs the relay's own endpoint unchanged", async () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
+
+		const logged = await captureDebugLogs(async () => await adapter.launch({ browser: 'chrome' }));
+
+		expect(logged).toContain('ws://127.0.0.1:9999/cdp/relay-default');
+	});
+
+	it('closes a page through the relay', async () => {
+		const relay = fakeRelay();
+		relay.closeTab = vi.fn().mockResolvedValue(undefined);
+		const adapter = new PlaywrightAdapter(config, { relay });
+		await adapter.launch({ browser: 'chrome' });
+
+		await adapter.closePage('tab-1');
+
+		expect(relay.closeTab).toHaveBeenCalledWith('tab-1');
 	});
 
 	it('rejects file uploads', async () => {
@@ -104,4 +148,219 @@ describe('PlaywrightAdapter remote mode', () => {
 			expect(events.includes('filechooser')).toBe(registered);
 		},
 	);
+});
+
+describe('PlaywrightAdapter page events', () => {
+	interface TrackedState {
+		consoleBuffer: Array<{ text: string }>;
+		errorBuffer: Array<{ message: string }>;
+		networkBuffer: Array<{ url: string }>;
+	}
+
+	/** Tracks a fake page, and returns its buffers and a way to emit page events. */
+	function trackFakePage(adapter: PlaywrightAdapter) {
+		const listeners = new Map<string, (arg: unknown) => void>();
+		const page = {
+			on: vi.fn((event: string, listener: (arg: unknown) => void) =>
+				listeners.set(event, listener),
+			),
+			url: () => 'https://example.com',
+		};
+		const state = (adapter as unknown as { trackPage(page: unknown): TrackedState }).trackPage(
+			page,
+		);
+		const emit = (event: string, arg: unknown) => listeners.get(event)?.(arg);
+		return { state, emit };
+	}
+
+	function consoleMessage(
+		text: string,
+		args = [{ dispose: vi.fn().mockResolvedValue(undefined) }],
+	) {
+		return { type: () => 'log', text: () => text, args: () => args };
+	}
+
+	function response(url: string) {
+		return {
+			url: () => url,
+			request: () => ({ method: () => 'GET' }),
+			status: () => 200,
+			headers: () => ({ 'content-type': 'text/html' }),
+		};
+	}
+
+	function emitThreeOfEach(emit: (event: string, arg: unknown) => void) {
+		for (const n of [1, 2, 3]) {
+			emit('console', consoleMessage(`log ${n}`));
+			emit('pageerror', new Error(`error ${n}`));
+			emit('response', response(`https://example.com/${n}`));
+		}
+	}
+
+	it('keeps only the newest entries of each event type when maxPageEventEntries is set', () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay(), maxPageEventEntries: 2 });
+		const { state, emit } = trackFakePage(adapter);
+
+		emitThreeOfEach(emit);
+
+		expect(state.consoleBuffer.map((e) => e.text)).toEqual(['log 2', 'log 3']);
+		expect(state.errorBuffer.map((e) => e.message)).toEqual(['error 2', 'error 3']);
+		expect(state.networkBuffer.map((e) => e.url)).toEqual([
+			'https://example.com/2',
+			'https://example.com/3',
+		]);
+	});
+
+	it('keeps every entry when maxPageEventEntries is not set', () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
+		const { state, emit } = trackFakePage(adapter);
+
+		emitThreeOfEach(emit);
+
+		expect(state.consoleBuffer).toHaveLength(3);
+		expect(state.errorBuffer).toHaveLength(3);
+		expect(state.networkBuffer).toHaveLength(3);
+	});
+
+	it('releases the argument handles of a console message after it reads the text', () => {
+		const adapter = new PlaywrightAdapter(config, {
+			relay: fakeRelay(),
+			releaseConsoleHandles: true,
+		});
+		const { state, emit } = trackFakePage(adapter);
+		const args = [
+			{ dispose: vi.fn().mockResolvedValue(undefined) },
+			{ dispose: vi.fn().mockRejectedValue(new Error('page closed')) },
+		];
+
+		emit('console', consoleMessage('log {a: 1}', args));
+
+		expect(state.consoleBuffer.map((e) => e.text)).toEqual(['log {a: 1}']);
+		for (const arg of args) expect(arg.dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the argument handles of a console message when releaseConsoleHandles is not set', () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
+		const { emit } = trackFakePage(adapter);
+		const args = [{ dispose: vi.fn().mockResolvedValue(undefined) }];
+
+		emit('console', consoleMessage('log', args));
+
+		expect(args[0].dispose).not.toHaveBeenCalled();
+	});
+});
+
+describe('PlaywrightAdapter remote mode without a relay', () => {
+	const directConfig: ResolvedConfig = { ...config, mode: 'remote' };
+
+	function fakePage(url: string) {
+		return { url: () => url, on: vi.fn(), close: vi.fn().mockResolvedValue(undefined) };
+	}
+
+	function browserWithPages(pages: Array<ReturnType<typeof fakePage>>) {
+		const context = {
+			on: vi.fn(),
+			pages: () => pages,
+			newPage: vi.fn(async () => {
+				const page = fakePage('about:blank');
+				pages.push(page);
+				return page;
+			}),
+		};
+		return {
+			context,
+			contexts: () => [context],
+			newContext: vi.fn(),
+			on: vi.fn(),
+		};
+	}
+
+	it('connects straight to the endpoint', async () => {
+		connectOverCDP.mockResolvedValue(browserWithPages([]));
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com/?signingKey=abc',
+		});
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(connectOverCDP).toHaveBeenCalledWith('wss://connect.example.com/?signingKey=abc', {
+			headers: undefined,
+			noDefaults: true,
+		});
+	});
+
+	it('logs the endpoint with its query values masked', async () => {
+		connectOverCDP.mockResolvedValue(browserWithPages([]));
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com/?signingKey=abc',
+		});
+
+		const logged = await captureDebugLogs(async () => await adapter.launch({ browser: 'chrome' }));
+
+		expect(logged).toContain('wss://connect.example.com/?signingKey=REDACTED');
+		expect(logged).not.toContain('abc');
+	});
+
+	it('throws when no endpoint is given', async () => {
+		const adapter = new PlaywrightAdapter(directConfig);
+
+		await expect(adapter.launch({ browser: 'chrome' })).rejects.toThrow(
+			'Remote mode without a relay requires a CDP endpoint',
+		);
+		expect(connectOverCDP).not.toHaveBeenCalled();
+	});
+
+	it('tracks the pages that were open before it connected', async () => {
+		connectOverCDP.mockResolvedValue(browserWithPages([fakePage('about:blank')]));
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com',
+		});
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(await adapter.listTabs()).toEqual([expect.objectContaining({ url: 'about:blank' })]);
+	});
+
+	it('opens a page when the browser has none, so tools have a page to act on', async () => {
+		const browser = browserWithPages([]);
+		connectOverCDP.mockResolvedValue(browser);
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com',
+		});
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(browser.context.newPage).toHaveBeenCalledTimes(1);
+		expect(await adapter.listTabs()).toEqual([expect.objectContaining({ url: 'about:blank' })]);
+	});
+
+	it('does not open a page when the browser already has one', async () => {
+		const browser = browserWithPages([fakePage('https://example.com/')]);
+		connectOverCDP.mockResolvedValue(browser);
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com',
+		});
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(browser.context.newPage).not.toHaveBeenCalled();
+		expect(await adapter.listTabs()).toEqual([
+			expect.objectContaining({ url: 'https://example.com/' }),
+		]);
+	});
+
+	it('closes a page through Playwright', async () => {
+		const page = fakePage('about:blank');
+		connectOverCDP.mockResolvedValue(browserWithPages([page]));
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: 'wss://connect.example.com',
+		});
+		await adapter.launch({ browser: 'chrome' });
+		const [tab] = await adapter.listTabs();
+
+		await adapter.closePage(tab.id);
+
+		expect(page.close).toHaveBeenCalled();
+		expect(await adapter.listTabs()).toEqual([]);
+	});
 });

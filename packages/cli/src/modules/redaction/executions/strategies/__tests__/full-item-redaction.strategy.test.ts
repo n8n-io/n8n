@@ -474,7 +474,7 @@ describe('FullItemRedactionStrategy', () => {
 			});
 
 			it('sets httpCode: null for post-DB plain-object NodeApiError with null httpCode', async () => {
-				// Exercises the `?? null` fallback in redactError when httpCode is null or absent.
+				// Exercises the `null` fallback in redactExecutionError when httpCode is null or absent.
 				const execution = makeExecution({
 					NodeA: [
 						{
