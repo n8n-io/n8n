@@ -28,6 +28,14 @@ export function canReadMigrationReport(
 	return isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:list');
 }
 
+export function isMcpPreferencesSwitchOn(moduleRegistry: ModuleRegistry): boolean {
+	return moduleRegistry.settings.get('mcp')?.preferencesEnabled === true;
+}
+
+export function isMcpSkillsSwitchOn(moduleRegistry: ModuleRegistry): boolean {
+	return moduleRegistry.settings.get('mcp')?.skillsEnabled === true;
+}
+
 export function areAgentToolsAvailable(
 	globalConfig: GlobalConfig,
 	moduleRegistry: ModuleRegistry,

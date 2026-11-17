@@ -28,7 +28,7 @@ export class McpModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
 	 * The response shape will be
-	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string, autoExposeNewWorkflows: boolean } }`.
+	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string, autoExposeNewWorkflows: boolean, preferencesEnabled: boolean, skillsEnabled: boolean } }`.
 	 */
 	async settings() {
 		const { McpSettingsService } = await import('./mcp.settings.service.js');
@@ -36,11 +36,20 @@ export class McpModule implements ModuleInterface {
 		const mcpSettingsService = Container.get(McpSettingsService);
 		const mcpAccessEnabled = await mcpSettingsService.getEnabled();
 		const autoExposeNewWorkflows = await mcpSettingsService.getAutoExposeNewWorkflows();
+		const preferencesEnabled = await mcpSettingsService.getPreferencesEnabled();
+		const skillsEnabled = await mcpSettingsService.getSkillsEnabled();
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
 		// Canonical resource URL, so the UI shows the URL clients must actually
 		// use when a dedicated MCP base URL is configured.
 		const serverUrl = Container.get(McpProtectedResource).getResourceUrl();
-		return { mcpAccessEnabled, mcpManagedByEnv, serverUrl, autoExposeNewWorkflows };
+		return {
+			mcpAccessEnabled,
+			mcpManagedByEnv,
+			serverUrl,
+			autoExposeNewWorkflows,
+			preferencesEnabled,
+			skillsEnabled,
+		};
 	}
 
 	@OnShutdown()

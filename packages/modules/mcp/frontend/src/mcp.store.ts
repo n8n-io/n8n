@@ -72,6 +72,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	const autoExposeNewWorkflows = computed(
 		() => !!settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows,
 	);
+	const preferencesEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.preferencesEnabled);
+	const skillsEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.skillsEnabled);
 
 	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
 	// reflected; the editor-base fallback covers settings not yet loaded.
@@ -136,7 +138,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return await clampToLastPage(fetchAgentsAvailableForMCP, page, pageSize);
 	}
 
-	// The PATCH endpoint always returns both current values, so local state can
+	// The PATCH endpoint always returns every current value, so local state can
 	// be synced from the response without a follow-up module-settings fetch.
 	function applyMcpSettingsResponse(response: McpSettingsResponse) {
 		settingsStore.moduleSettings.mcp = {
@@ -144,6 +146,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			...(settingsStore.moduleSettings.mcp ?? {}),
 			mcpAccessEnabled: response.mcpAccessEnabled,
 			autoExposeNewWorkflows: response.autoExposeNewWorkflows,
+			preferencesEnabled: response.preferencesEnabled,
+			skillsEnabled: response.skillsEnabled,
 		};
 	}
 
@@ -161,6 +165,22 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		});
 		applyMcpSettingsResponse(response);
 		return response.autoExposeNewWorkflows;
+	}
+
+	async function setPreferencesEnabled(enabled: boolean): Promise<boolean> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			preferencesEnabled: enabled,
+		});
+		applyMcpSettingsResponse(response);
+		return response.preferencesEnabled;
+	}
+
+	async function setSkillsEnabled(enabled: boolean): Promise<boolean> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			skillsEnabled: enabled,
+		});
+		applyMcpSettingsResponse(response);
+		return response.skillsEnabled;
 	}
 
 	// Toggle MCP access for a single workflow
@@ -444,6 +464,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
 		autoExposeNewWorkflows,
+		preferencesEnabled,
+		skillsEnabled,
 		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		fetchWorkflowsAvailableForMCPPage,
@@ -451,6 +473,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
 		setAutoExposeNewWorkflows,
+		setPreferencesEnabled,
+		setSkillsEnabled,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
 		toggleAgentMcpAccess,

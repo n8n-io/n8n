@@ -8,6 +8,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { License } from '@/license';
 import { BadRequestError } from '@n8n/errors';
 import type { CacheService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -25,6 +26,7 @@ describe('McpSettingsService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const logger = mock<Logger>();
 	const collaborationService = mock<CollaborationService>();
+	const license = mock<License>();
 	const globalConfig = {
 		executions: { timeout: -1 },
 	} as unknown as GlobalConfig;
@@ -49,7 +51,50 @@ describe('McpSettingsService', () => {
 			globalConfig,
 			logger,
 			collaborationService,
+			license,
 		);
+	});
+
+	describe.each([
+		{
+			name: 'preferences',
+			key: 'mcp.preferences.enabled',
+			get: async () => await service.getPreferencesEnabled(),
+			set: async (enabled: boolean) => await service.setPreferencesEnabled(enabled),
+		},
+		{
+			name: 'skills',
+			key: 'mcp.skills.enabled',
+			get: async () => await service.getSkillsEnabled(),
+			set: async (enabled: boolean) => await service.setSkillsEnabled(enabled),
+		},
+	])('$name switch', ({ key, get, set }) => {
+		test.each([
+			{ isEnterprisePlan: true, expected: false },
+			{ isEnterprisePlan: false, expected: true },
+		])(
+			'returns $expected when nothing is saved and isEnterprisePlan is $isEnterprisePlan',
+			async ({ isEnterprisePlan, expected }) => {
+				findByKey.mockResolvedValue(null);
+				license.isEnterprisePlan.mockReturnValue(isEnterprisePlan);
+
+				await expect(get()).resolves.toBe(expected);
+				expect(findByKey).toHaveBeenCalledWith(key);
+			},
+		);
+
+		test.each(['true', 'false'])('returns the saved value "%s" on any plan', async (value) => {
+			findByKey.mockResolvedValue(mock<Settings>({ key, value }));
+			license.isEnterprisePlan.mockReturnValue(true);
+
+			await expect(get()).resolves.toBe(value === 'true');
+		});
+
+		test('saves the value', async () => {
+			await set(false);
+
+			expect(upsert).toHaveBeenCalledWith({ key, value: 'false', loadOnStartup: true }, ['key']);
+		});
 	});
 
 	describe('getEnabled', () => {

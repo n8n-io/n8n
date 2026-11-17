@@ -160,7 +160,12 @@ const agentFilterOptions = computed(() =>
 );
 const creators = ref<SkillUserDto[]>([]);
 const loadFailed = ref(false);
-const mcpSkillsEnabled = computed(() => posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG));
+const mcpSkillsEnabled = computed(
+	() =>
+		posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG) &&
+		settingsStore.moduleSettings.mcp?.mcpAccessEnabled === true &&
+		settingsStore.moduleSettings.mcp?.skillsEnabled === true,
+);
 
 // The empty states describe the rows on screen, so they follow the query that loaded
 // them, not the live search input.

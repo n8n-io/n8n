@@ -131,6 +131,22 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_MCP_ACCESS_ENABLED')
 	mcpAccessEnabled: boolean = false;
 
+	/**
+	 * Whether MCP clients can read and save user preferences. n8n reads this value only when
+	 * `N8N_MCP_MANAGED_BY_ENV` is true. When unset, preferences are off on the Enterprise plan
+	 * and on for other plans, unless an admin already changed the setting.
+	 */
+	@Env('N8N_MCP_PREFERENCES_ENABLED')
+	mcpPreferencesEnabled?: boolean;
+
+	/**
+	 * Whether MCP clients can read and change skills. n8n reads this value only when
+	 * `N8N_MCP_MANAGED_BY_ENV` is true. When unset, skills are off on the Enterprise plan and
+	 * on for other plans, unless an admin already changed the setting.
+	 */
+	@Env('N8N_MCP_SKILLS_ENABLED')
+	mcpSkillsEnabled?: boolean;
+
 	// --- Community packages ---
 
 	/**

@@ -58,13 +58,21 @@ describe('McpProtectedResource', () => {
 		postHogClient,
 	);
 
+	function mockModuleSettings(overrides: Record<string, Record<string, unknown>>) {
+		const settings: Record<string, Record<string, unknown>> = {
+			mcp: { preferencesEnabled: true, skillsEnabled: true },
+			...overrides,
+		};
+		vi.mocked(moduleRegistry.settings.get).mockImplementation((name) => settings[name]);
+	}
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
-		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
+		mockModuleSettings({});
 		licenseState.isFoldersLicensed.mockReturnValue(true);
 		Container.set(
 			CommunityPackagesConfig,
@@ -84,7 +92,7 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 			const scopeTools = await resource.getScopeTools();
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).not.toContain('agent:write');
@@ -100,8 +108,24 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
+		it('withholds skill scopes while the MCP Skills switch is off', () => {
+			mockModuleSettings({ mcp: { preferencesEnabled: true, skillsEnabled: false } });
+
+			expect(resource.scopes).not.toContain('skill:read');
+			expect(resource.scopes).not.toContain('skill:write');
+			expect(resource.scopes).toContain('aiPreference:read');
+		});
+
+		it('withholds preference scopes while the MCP Preferences switch is off', () => {
+			mockModuleSettings({ mcp: { preferencesEnabled: false, skillsEnabled: true } });
+
+			expect(resource.scopes).not.toContain('aiPreference:read');
+			expect(resource.scopes).not.toContain('aiPreference:write');
+			expect(resource.scopes).toContain('skill:read');
+		});
+
 		it('keeps skill scopes when Agents is disabled', () => {
-			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			mockModuleSettings({ agents: { enabled: false } });
 
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).toContain('skill:read');

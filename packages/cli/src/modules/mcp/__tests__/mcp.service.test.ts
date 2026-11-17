@@ -91,6 +91,8 @@ import type {
 	ToolHandlerResult,
 } from '../mcp.types';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
+import { McpSkillToolsService } from '../tools/skills/skill-tools.service';
+import { SkillsGate } from '@/modules/skills';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -103,6 +105,14 @@ const mockAiGatewayService = () =>
 	mockInstance(AiGatewayService, {
 		isAvailable: vi.fn().mockResolvedValue({ available: false }),
 	});
+
+const mockModuleRegistry = () => {
+	const moduleRegistry = mockInstance(ModuleRegistry);
+	Object.assign(moduleRegistry, {
+		settings: new Map([['mcp', { preferencesEnabled: true, skillsEnabled: true }]]),
+	});
+	return moduleRegistry;
+};
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
@@ -119,8 +129,10 @@ describe('McpService', () => {
 	let logger: Logger;
 	let eventService: EventService;
 	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
+	let moduleRegistry: Mocked<ModuleRegistry>;
 
 	beforeEach(() => {
+		moduleRegistry = mockModuleRegistry();
 		eventService = mockInstance(EventService);
 		instanceWriteAccess = mockInstance(InstanceWriteAccessService, {
 			isReadOnly: vi.fn().mockReturnValue(false),
@@ -174,7 +186,7 @@ describe('McpService', () => {
 			mockInstance(ErrorWorkflowValidationService),
 			mockAiGatewayService(),
 			mockInstance(McpPostSaveMetricsService),
-			mockInstance(ModuleRegistry),
+			moduleRegistry,
 			eventService,
 			mockInstance(FolderService),
 			aiPreferenceService,
@@ -234,7 +246,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -448,7 +460,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -671,6 +683,42 @@ describe('McpService', () => {
 			expect(typeof server.close).toBe('function');
 			expect(typeof server.registerTool).toBe('function');
 		});
+
+		it.each([true, false])(
+			'registers the preference tools only while the MCP Preferences switch is %s',
+			async (preferencesEnabled) => {
+				moduleRegistry.settings.set('mcp', { preferencesEnabled, skillsEnabled: true });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+				const server = await mcpService.getServer(user, mcpFeatureFlags());
+				const toolNames = Object.keys(
+					(server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools,
+				);
+
+				for (const tool of [
+					'get_user_preferences',
+					'save_user_preference',
+					'update_user_preference',
+					'undo_user_preference',
+				]) {
+					expect(toolNames.includes(tool)).toBe(preferencesEnabled);
+				}
+			},
+		);
+
+		it.each([true, false])(
+			'registers the skill tools only while the MCP Skills switch is %s',
+			async (skillsEnabled) => {
+				moduleRegistry.settings.set('mcp', { preferencesEnabled: true, skillsEnabled });
+				Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
+				const skillTools = mockInstance(McpSkillToolsService);
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+				await mcpService.getServer(user, mcpFeatureFlags());
+
+				expect(skillTools.registerTools).toHaveBeenCalledTimes(skillsEnabled ? 1 : 0);
+			},
+		);
 
 		describe('protocol serving through createMcpHandler', () => {
 			const sseData = (text: string): Array<Record<string, unknown>> =>
@@ -1565,7 +1613,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -1627,7 +1675,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -1714,7 +1762,7 @@ describe('McpService', () => {
 					mockInstance(ErrorWorkflowValidationService),
 					mockAiGatewayService(),
 					mockInstance(McpPostSaveMetricsService),
-					mockInstance(ModuleRegistry),
+					mockModuleRegistry(),
 					mockInstance(EventService),
 					mockInstance(FolderService),
 					mockInstance(AiPreferenceService),

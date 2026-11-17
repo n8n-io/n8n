@@ -119,6 +119,8 @@ const enableMcpSettings = () => {
 			mcpAccessEnabled: true,
 			mcpManagedByEnv: false,
 			autoExposeNewWorkflows: false,
+			preferencesEnabled: true,
+			skillsEnabled: true,
 		},
 	};
 };
@@ -145,6 +147,8 @@ describe('SettingsMCPView', () => {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
+				skillsEnabled: true,
 			},
 		};
 
@@ -660,6 +664,8 @@ describe('SettingsMCPView', () => {
 					mcpAccessEnabled: false,
 					mcpManagedByEnv: true,
 					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
 				},
 			};
 
@@ -828,5 +834,85 @@ describe('SettingsMCPView', () => {
 				'Could not update setting',
 			);
 		});
+	});
+
+	describe('preferences and skills switches', () => {
+		beforeEach(() => {
+			enableMcpSettings();
+			mcpStore.preferencesEnabled = true;
+			mcpStore.skillsEnabled = false;
+		});
+
+		it('shows both switches with their saved values to a user with mcp:manage', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute('aria-checked', 'true');
+			expect(getByTestId('mcp-skills-toggle')).toHaveAttribute('aria-checked', 'false');
+		});
+
+		it('hides the switches from a user without mcp:manage', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByTestId('mcp-preview-features-section')).toBeNull();
+		});
+
+		it('saves the new value of each switch', async () => {
+			mcpStore.setPreferencesEnabled.mockResolvedValue(false);
+			mcpStore.setSkillsEnabled.mockResolvedValue(true);
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('mcp-preferences-toggle'));
+			await waitAllPromises();
+			await userEvent.click(getByTestId('mcp-skills-toggle'));
+			await waitAllPromises();
+
+			expect(mcpStore.setPreferencesEnabled).toHaveBeenCalledWith(false);
+			expect(mcpStore.setSkillsEnabled).toHaveBeenCalledWith(true);
+		});
+
+		it('shows a toast error when saving fails', async () => {
+			mcpStore.setSkillsEnabled.mockRejectedValueOnce(new Error('nope'));
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('mcp-skills-toggle'));
+			await waitAllPromises();
+
+			expect(useToast().showError).toHaveBeenCalledWith(
+				expect.anything(),
+				'Could not update setting',
+			);
+		});
+
+		it('disables the switches when MCP settings are managed by env', async () => {
+			mcpStore.mcpManagedByEnv = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
+			expect(getByTestId('mcp-skills-toggle')).toBeDisabled();
+		});
+
+		it.each([true, false])(
+			'shows the enterprise readiness badge only on the enterprise plan: %s',
+			async (isEnterprisePlan) => {
+				settingsStore.isEnterprisePlan = isEnterprisePlan;
+
+				const { queryAllByTestId } = createComponent({ pinia });
+				await waitAllPromises();
+
+				expect(queryAllByTestId('settings-enable-row-enterprise-readiness-badge')).toHaveLength(
+					isEnterprisePlan ? 2 : 0,
+				);
+			},
+		);
 	});
 });

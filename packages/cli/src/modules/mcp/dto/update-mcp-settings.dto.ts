@@ -4,14 +4,16 @@ import { z } from 'zod';
 const updateMcpSettingsShape = {
 	mcpAccessEnabled: z.boolean().optional(),
 	autoExposeNewWorkflows: z.boolean().optional(),
+	preferencesEnabled: z.boolean().optional(),
+	skillsEnabled: z.boolean().optional(),
 };
 
 const updateMcpSettingsSchema = z
 	.object(updateMcpSettingsShape)
-	.refine(
-		(value) => value.mcpAccessEnabled !== undefined || value.autoExposeNewWorkflows !== undefined,
-		{ message: 'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows' },
-	);
+	.refine((value) => Object.values(value).some((setting) => setting !== undefined), {
+		message:
+			'Provide at least one of mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled or skillsEnabled',
+	});
 
 export class UpdateMcpSettingsDto extends Z.class(updateMcpSettingsShape) {
 	constructor(data: z.infer<typeof updateMcpSettingsSchema>) {

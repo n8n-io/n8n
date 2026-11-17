@@ -13,6 +13,7 @@ import {
 	N8nDialogFooter,
 	N8nNotice,
 	N8nSettingsLayout,
+	N8nSettingsEnableRow,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
@@ -75,6 +76,22 @@ const exposedWorkflowsCount = ref<number | null>(null);
 const autoExposeSaving = ref(false);
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
+
+const previewFeatureSaving = ref(false);
+
+const onTogglePreviewFeature = async (
+	setEnabled: (enabled: boolean) => Promise<boolean>,
+	enabled: boolean,
+) => {
+	previewFeatureSaving.value = true;
+	try {
+		await setEnabled(enabled);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.previewFeatures.error.title'));
+	} finally {
+		previewFeatureSaving.value = false;
+	}
+};
 
 const onAutoExposeSwitchUpdate = (value: string | number | boolean) => {
 	void onToggleAutoExpose(value === true);
@@ -425,6 +442,33 @@ onBeforeUnmount(() => {
 							<N8nSettingsRowConfigure :value="callbackUrlsValue" />
 						</template>
 					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+
+			<N8nSettingsSection
+				v-if="canManageMcpInstance"
+				:title="i18n.baseText('settings.mcp.previewFeatures.title')"
+				data-test-id="mcp-preview-features-section"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.mcp.preferences.title')"
+						:description="i18n.baseText('settings.mcp.preferences.description')"
+						:enabled="mcpStore.preferencesEnabled"
+						:disabled="!canToggleMCP || previewFeatureSaving"
+						:show-enterprise-readiness-badge="settingsStore.isEnterprisePlan"
+						switch-test-id="mcp-preferences-toggle"
+						@update:enabled="onTogglePreviewFeature(mcpStore.setPreferencesEnabled, $event)"
+					/>
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.mcp.skills.title')"
+						:description="i18n.baseText('settings.mcp.skills.description')"
+						:enabled="mcpStore.skillsEnabled"
+						:disabled="!canToggleMCP || previewFeatureSaving"
+						:show-enterprise-readiness-badge="settingsStore.isEnterprisePlan"
+						switch-test-id="mcp-skills-toggle"
+						@update:enabled="onTogglePreviewFeature(mcpStore.setSkillsEnabled, $event)"
+					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 

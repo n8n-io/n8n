@@ -75,6 +75,8 @@ describe('SettingsMCPWorkflowsView', () => {
 				mcpAccessEnabled: true,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
+				skillsEnabled: true,
 			},
 		};
 
@@ -95,6 +97,8 @@ describe('SettingsMCPWorkflowsView', () => {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
+				skillsEnabled: true,
 			},
 		};
 

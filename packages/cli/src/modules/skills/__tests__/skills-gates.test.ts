@@ -13,11 +13,16 @@ import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
 import { SkillsGate } from '../services/skills-gate';
 
 describe('skills gates', () => {
-	function consumerSettings({ agents = false, assistant = false, mcp = false } = {}) {
+	function consumerSettings({
+		agents = false,
+		assistant = false,
+		mcp = false,
+		mcpSkills = true,
+	} = {}) {
 		return new Map<string, ModuleSettings>([
 			['agents', { enabled: agents }],
 			['instance-ai', { enabled: assistant }],
-			['mcp', { mcpAccessEnabled: mcp }],
+			['mcp', { mcpAccessEnabled: mcp, skillsEnabled: mcpSkills }],
 		]);
 	}
 
@@ -51,6 +56,13 @@ describe('skills gates', () => {
 			expect(skillsGate.isEnabled).toBe(true);
 		},
 	);
+
+	it('does not count MCP as a consumer while its Skills switch is off', () => {
+		const { proxy, skillsGate } = createGates(consumerSettings({ mcp: true, mcpSkills: false }));
+		proxy.register(mock<SkillUsage>());
+
+		expect(skillsGate.isEnabled).toBe(false);
+	});
 
 	it('turns skills off while all consumers are off', () => {
 		const { proxy, skillsGate } = createGates(consumerSettings());

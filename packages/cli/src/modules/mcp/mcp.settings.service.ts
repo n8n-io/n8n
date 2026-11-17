@@ -19,6 +19,7 @@ import {
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@n8n/errors';
 import { CacheService } from '@n8n/backend-services';
+import { License } from '@/license';
 import { removeDefaultValues } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -27,6 +28,8 @@ import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-avai
 const KEY = 'mcp.access.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
 const AUTO_EXPOSE_NEW_WORKFLOWS_KEY = 'mcp.autoExposeNewWorkflows';
+const PREFERENCES_ENABLED_KEY = 'mcp.preferences.enabled';
+const SKILLS_ENABLED_KEY = 'mcp.skills.enabled';
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -59,6 +62,7 @@ export class McpSettingsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly collaborationService: CollaborationService,
+		private readonly license: License,
 	) {}
 
 	async getEnabled(em?: EntityManager): Promise<boolean> {
@@ -138,6 +142,33 @@ export class McpSettingsService {
 		);
 
 		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+	}
+
+	async getPreferencesEnabled(): Promise<boolean> {
+		return await this.getPreviewFeatureEnabled(PREFERENCES_ENABLED_KEY);
+	}
+
+	async setPreferencesEnabled(enabled: boolean): Promise<void> {
+		await this.setPreviewFeatureEnabled(PREFERENCES_ENABLED_KEY, enabled);
+	}
+
+	async getSkillsEnabled(): Promise<boolean> {
+		return await this.getPreviewFeatureEnabled(SKILLS_ENABLED_KEY);
+	}
+
+	async setSkillsEnabled(enabled: boolean): Promise<void> {
+		await this.setPreviewFeatureEnabled(SKILLS_ENABLED_KEY, enabled);
+	}
+
+	private async getPreviewFeatureEnabled(key: string): Promise<boolean> {
+		const row = await this.settingsRepository.findByKey(key);
+		return row ? row.value === 'true' : !this.license.isEnterprisePlan();
+	}
+
+	private async setPreviewFeatureEnabled(key: string, enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsert({ key, value: enabled.toString(), loadOnStartup: true }, [
+			'key',
+		]);
 	}
 
 	async bulkSetAvailableInMCP(

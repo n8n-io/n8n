@@ -964,7 +964,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -988,7 +994,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
 			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
@@ -1009,7 +1021,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -1034,7 +1052,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 
 			renderComponent({ pinia });
@@ -1056,7 +1080,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 
 			workflowDocumentStoreRef.value?.setSettings({
@@ -1083,7 +1113,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 
 			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
@@ -1108,7 +1144,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -1133,7 +1175,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+					autoExposeNewWorkflows: false,
+					preferencesEnabled: true,
+					skillsEnabled: true,
+				},
 			});
 
 			renderComponent({ pinia });

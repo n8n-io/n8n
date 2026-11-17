@@ -1331,6 +1331,16 @@ describe('SettingsSkillsView', () => {
 	});
 
 	describe('MCP availability', () => {
+		function mockMcpSettings(mcpAccessEnabled: boolean, skillsEnabled: boolean) {
+			mockedStore(useSettingsStore).moduleSettings = {
+				mcp: { mcpAccessEnabled, skillsEnabled },
+			} as never;
+		}
+
+		beforeEach(() => {
+			mockMcpSettings(true, true);
+		});
+
 		async function openSkill(item: SkillDetail) {
 			skillsStore.skills = [skill()];
 			skillsStore.count = 1;
@@ -1346,6 +1356,29 @@ describe('SettingsSkillsView', () => {
 
 			expect(lastModalData().availableToMCP).toBeUndefined();
 		});
+
+		it.each([
+			[true, false],
+			[false, true],
+		])(
+			'hides the toggle and the table mark while MCP access is %s and its Skills switch is %s',
+			async (mcpAccessEnabled, skillsEnabled) => {
+				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+				mockMcpSettings(mcpAccessEnabled, skillsEnabled);
+				skillsStore.skills = [skill({ availableToMCP: true })];
+				skillsStore.count = 1;
+				skillsStore.fetchSkill.mockResolvedValue(detail({ availableToMCP: true }));
+				const { getByText, queryByTestId } = renderView();
+				await new Promise(process.nextTick);
+
+				expect(queryByTestId('skill-available-to-mcp-icon')).toBeNull();
+
+				await userEvent.click(getByText('research-search'));
+				await new Promise(process.nextTick);
+
+				expect(lastModalData().availableToMCP).toBeUndefined();
+			},
+		);
 
 		it('passes the MCP availability of a skill that has it off, so the editor can turn it on', async () => {
 			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
