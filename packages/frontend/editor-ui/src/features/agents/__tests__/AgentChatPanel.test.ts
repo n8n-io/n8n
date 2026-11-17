@@ -471,6 +471,7 @@ describe('AgentChatPanel', () => {
 			placeholderPreview: Readonly<Ref<string | undefined>>;
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
+			disabled: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -4868,6 +4869,28 @@ describe('AgentChatPanel', () => {
 				const wrapper = mountPanel({ showAttachButton: false });
 
 				expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
+			});
+
+			it('disables the composer, its send and its footer controls while the host disables it', async () => {
+				const wrapper = mountPanel({ disabled: true }, undefined, {
+					'footer-start': (props) =>
+						h('button', { 'data-testid': 'host-menu', disabled: props.disabled }),
+				});
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+				const input = composer(wrapper);
+				const hostMenu = () => wrapper.get('[data-testid="host-menu"]').element;
+
+				expect(input.props('disabled')).toBe(true);
+				expect(input.props('canSubmit')).toBe(false);
+				expect(hostMenu()).toHaveProperty('disabled', true);
+
+				await wrapper.setProps({ disabled: false });
+
+				expect(input.props('disabled')).toBe(false);
+				expect(input.props('canSubmit')).toBe(true);
+				expect(hostMenu()).toHaveProperty('disabled', false);
+				wrapper.unmount();
 			});
 		});
 

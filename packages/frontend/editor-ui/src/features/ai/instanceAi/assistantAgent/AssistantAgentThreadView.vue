@@ -262,8 +262,8 @@ const creditBanner = useCreditWarningBanner(() => creditsStore.isLowCredits);
 const { goToUpgrade } = usePageRedirectionHelper();
 
 /**
- * The server refuses a turn when no credits are left, so the chat does not send it.
- * A refused send keeps the text in the composer, and the banner tells the user why.
+ * The server refuses a turn when no credits are left. The composer is disabled
+ * then, and this also refuses host sends, such as a hand-off or Fix with AI.
  */
 function assertCreditsAvailable(): void {
 	if (creditsStore.isOutOfCredits) throw new Error('No Assistant credits are left');
@@ -782,6 +782,7 @@ function removeStagedNodes(chipId: string): void {
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
+						:disabled="creditsStore.isOutOfCredits"
 						:before-send="assertCreditsAvailable"
 						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"

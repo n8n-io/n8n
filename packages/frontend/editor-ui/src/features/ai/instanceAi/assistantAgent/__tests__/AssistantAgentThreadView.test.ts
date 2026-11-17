@@ -805,6 +805,7 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
+			expect(panelProps.current.disabled).toBe(false);
 			await expect(beforeSend()).resolves.toBeUndefined();
 		});
 
@@ -823,7 +824,7 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
 		});
 
-		it('refuses the send and shows a banner that cannot be dismissed when no credits are left', async () => {
+		it('disables the composer, refuses host sends and shows a banner that cannot be dismissed when no credits are left', async () => {
 			setCredits(100, 100);
 			const { getByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
@@ -833,6 +834,7 @@ describe('AssistantAgentThreadView', () => {
 			const banner = getByTestId('credit-warning-banner-stub');
 			expect(banner).toHaveAttribute('data-dismissible', 'false');
 			expect(banner).toHaveTextContent("You've run out of Assistant credits");
+			expect(panelProps.current.disabled).toBe(true);
 			await expect(beforeSend()).rejects.toThrow();
 		});
 
@@ -843,7 +845,9 @@ describe('AssistantAgentThreadView', () => {
 			await expect(beforeSend()).rejects.toThrow();
 
 			setCredits(200, 100);
+			await flushPromises();
 
+			expect(panelProps.current.disabled).toBe(false);
 			await expect(beforeSend()).resolves.toBeUndefined();
 		});
 	});
