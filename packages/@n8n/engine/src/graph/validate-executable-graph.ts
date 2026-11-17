@@ -54,6 +54,23 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		}
 	}
 
+	// The ready handler reads the policy on every failed try, so a bad one is
+	// refused here rather than found by a step that just failed.
+	for (const node of graph.nodes) {
+		const { retry } = node;
+		if (retry === undefined) continue;
+		if (!Number.isInteger(retry.maxTries) || retry.maxTries < 1) {
+			throw new GraphValidationError(
+				`Node ${name(node.id)} retries with maxTries ${retry.maxTries}; maxTries is a whole number of at least 1`,
+			);
+		}
+		if (!Number.isFinite(retry.waitBetweenTriesMs) || retry.waitBetweenTriesMs < 0) {
+			throw new GraphValidationError(
+				`Node ${name(node.id)} retries with waitBetweenTriesMs ${retry.waitBetweenTriesMs}; the wait is a number of milliseconds of at least 0`,
+			);
+		}
+	}
+
 	// TODO(CAT-3982): same-slot convergence gets a defined meaning (concatenation);
 	// until then it is rejected rather than given accidental semantics.
 	const seenInputSlots = new Set<string>();

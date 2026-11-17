@@ -1,5 +1,11 @@
 import { isBatchStepConfig } from '@n8n/engine';
-import type { BatchStepConfig, GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
+import type {
+	BatchStepConfig,
+	GraphEdge,
+	GraphNode,
+	RetryPolicy,
+	WorkflowGraph,
+} from '@n8n/engine';
 import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
 import { getChildNodes, isTriggerNodeType } from 'n8n-workflow';
 
@@ -23,12 +29,28 @@ import { isRecord } from './guards';
 import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 /** Node settings the step executor ignores, with the label the editor shows for each. */
-const UNSUPPORTED_EXECUTION_SETTINGS: Array<
-	[keyof Pick<INode, 'retryOnFail' | 'executeOnce'>, string]
-> = [
-	['retryOnFail', 'Retry On Fail'],
+const UNSUPPORTED_EXECUTION_SETTINGS: Array<[keyof Pick<INode, 'executeOnce'>, string]> = [
 	['executeOnce', 'Execute Once'],
 ];
+
+/** The bounds v1 applies to the retry settings of a node (`getRetryParams` in `workflow-execute.ts`). */
+const RETRY_DEFAULTS = { maxTries: 3, waitBetweenTriesMs: 1000 };
+const RETRY_BOUNDS = { maxTries: [2, 5], waitBetweenTriesMs: [0, 5000] } as const;
+
+const clamp = (value: number, [min, max]: readonly [number, number]) =>
+	Math.min(max, Math.max(min, value));
+
+/** The engine's retry policy for a node with Retry On Fail, with v1's defaults and bounds. */
+function toRetryPolicy(node: INode): RetryPolicy | undefined {
+	if (node.retryOnFail !== true) return undefined;
+	return {
+		maxTries: clamp(node.maxTries || RETRY_DEFAULTS.maxTries, RETRY_BOUNDS.maxTries),
+		waitBetweenTriesMs: clamp(
+			node.waitBetweenTries || RETRY_DEFAULTS.waitBetweenTriesMs,
+			RETRY_BOUNDS.waitBetweenTriesMs,
+		),
+	};
+}
 
 /**
  * Converts a v1 workflow (node-based JSON) into the Engine v2 `WorkflowGraph`.
@@ -167,7 +189,10 @@ export class V1WorkflowConverter {
 		if (node.alwaysOutputData === true) config.alwaysOutputData = true;
 		if (node.credentials !== undefined) config.credentials = node.credentials;
 
-		return { id: node.id, name: node.name, type: 'v1-node', config };
+		const graphNode: GraphNode = { id: node.id, name: node.name, type: 'v1-node', config };
+		const retry = toRetryPolicy(node);
+		if (retry) graphNode.retry = retry;
+		return graphNode;
 	}
 
 	/**

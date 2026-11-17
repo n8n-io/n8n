@@ -284,6 +284,101 @@ describe('step execution (integration)', () => {
 		expect(step?.outputs).toBeNull();
 	});
 
+	describe('retries', () => {
+		const retryGraph = (maxTries: number): WorkflowGraph => ({
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node', retry: { maxTries, waitBetweenTriesMs: 0 } },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		});
+
+		/** Fails node-a `failures` times, then runs every node to completion. */
+		const flakyExecutor = (failures: number) => {
+			const requests: StepExecutionRequest[] = [];
+			let failed = 0;
+			const executor: IStepExecutor = {
+				execute: async (request) => {
+					requests.push(request);
+					await Promise.resolve();
+					if (request.node.id === 'node-a' && failed < failures) {
+						failed += 1;
+						throw new TypeError(`try ${failed} failed`);
+					}
+					return { outputs: [[{ json: { ran: request.node.id } }]] };
+				},
+			};
+			return { executor, requests };
+		};
+
+		it('runs the step again after its wait, and finishes the execution', async () => {
+			const { executor, requests } = flakyExecutor(2);
+
+			const { execution, steps, events } = await runWorkflow(executor, [{}], {
+				workflowId: 'wf-retry',
+				graph: retryGraph(3),
+				waitSweepIntervalMs: 20,
+			});
+
+			expect(execution.status).toBe('completed');
+			// A try that fails is neither a settlement nor a wait to the outside.
+			expect(events.map(({ type }) => type)).toEqual([
+				'execution:started',
+				'step:started',
+				'step:started',
+				'step:started',
+				'step:completed',
+				'step:started',
+				'step:completed',
+				'execution:completed',
+			]);
+
+			const nodeA = steps.find(({ nodeId }) => nodeId === 'node-a');
+			expect(nodeA?.status).toBe('completed');
+			expect(nodeA?.outputs).toEqual([[{ json: { ran: 'node-a' } }]]);
+			expect(nodeA?.resumeCause).toEqual({ kind: 'deadline' });
+			expect(nodeA?.waitDeclaration).toEqual({
+				resumeAt: expect.any(String),
+				retry: {
+					attempt: 2,
+					lastError: expect.objectContaining({ name: 'TypeError', message: 'try 2 failed' }),
+				},
+			});
+
+			// Every try reads its inputs again, and node-b ran on the output of the try that succeeded.
+			expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-a', 'node-a', 'node-b']);
+			expect(requests[3].inputs).toEqual([[{ json: { ran: 'node-a' } }]]);
+		});
+
+		it('fails the step with the error of its last try', async () => {
+			const { executor, requests } = flakyExecutor(Infinity);
+
+			const { execution, steps, events } = await runWorkflow(executor, [{}], {
+				workflowId: 'wf-retry-exhausted',
+				graph: retryGraph(2),
+				waitSweepIntervalMs: 20,
+			});
+
+			expect(execution.status).toBe('failed');
+			expect(events.map(({ type }) => type)).toEqual([
+				'execution:started',
+				'step:started',
+				'step:started',
+				'step:failed',
+				'execution:failed',
+			]);
+			expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-a']);
+
+			const nodeA = steps.find(({ nodeId }) => nodeId === 'node-a');
+			expect(nodeA?.status).toBe('failed');
+			expect(nodeA?.error).toEqual(expect.objectContaining({ message: 'try 2 failed' }));
+		});
+	});
+
 	it('suspends a step that declares a wait, and reports the execution as waiting', async () => {
 		const waitGraph: WorkflowGraph = {
 			nodes: [

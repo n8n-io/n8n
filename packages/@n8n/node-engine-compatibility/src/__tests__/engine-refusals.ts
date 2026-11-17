@@ -57,12 +57,6 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'CONTINUE_ERROR_OUTPUT' },
 	},
 	{
-		name: 'a node has Retry On Fail on',
-		workflow: fromTrigger('Node', [{ ...noOp('Node'), retryOnFail: true }]),
-		engineError: 'Retry On Fail',
-		check: { code: 'RETRY_ON_FAIL' },
-	},
-	{
 		name: 'a node has Execute Once on',
 		workflow: fromTrigger('Node', [{ ...noOp('Node'), executeOnce: true }]),
 		engineError: 'Execute Once',

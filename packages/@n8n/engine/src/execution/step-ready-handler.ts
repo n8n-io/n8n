@@ -20,9 +20,11 @@ import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isLiveExecutionStatus,
+	isRetryWaitDeclaration,
 	isSettledStatus,
 	hasResumeCondition,
 	type ResumeCause,
+	type RetryWaitDeclaration,
 	type SubExecutionResumeCause,
 	type StepError,
 	type StepKey,
@@ -152,6 +154,17 @@ export class StepReadyHandler {
 				started.kind === 'error'
 					? { kind: 'error', error: toStepError(started.error) }
 					: { kind: 'outputs', outputs: subExecution.outputs };
+		}
+
+		if (run.kind === 'error') {
+			const nextTry = nextTryOf(node, step, dispatch, run.error);
+			if (nextTry) {
+				// A failed try is neither a settlement nor a wait to the outside: the
+				// step stays owed, and the sweeper fires the next try. The execution
+				// keeps its status, so the editor sees the node as running.
+				if (await this.stepStore.suspendStep(event.stepId, nextTry)) this.onStepSuspended();
+				return;
+			}
 		}
 
 		let recorded: boolean;
@@ -285,7 +298,12 @@ export class StepReadyHandler {
 		execution: ExecutionRecord,
 	): Promise<Dispatch> {
 		const { resumeCause } = step;
-		if (resumeCause !== null && resumeCause.kind !== 'subExecution') {
+		// The deadline of a retry wait is the next try, so the node runs again.
+		if (
+			resumeCause !== null &&
+			resumeCause.kind !== 'subExecution' &&
+			!isRetryWaitDeclaration(step.waitDeclaration)
+		) {
 			return { kind: 'replay', cause: resumeCause };
 		}
 		if (node.type === 'batch') return { kind: 'batch' };
@@ -293,7 +311,7 @@ export class StepReadyHandler {
 			kind: 'run',
 			executor: this.executorFor(step, node),
 			inputs: await this.gatherInputs(execution, step),
-			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
+			...(resumeCause?.kind === 'subExecution' ? { subExecutionResult: resumeCause } : {}),
 		};
 	}
 
@@ -501,6 +519,38 @@ function readEdgeValue(
 	}
 	if (row.status !== 'completed') return null;
 	return row.outputs?.[edge.outputIndex] ?? null;
+}
+
+/**
+ * The wait until the next try of a step that just failed, or `undefined` when
+ * the step fails for good: its node has no retry policy, the policy's tries are
+ * spent, or the run was a sub-execution resume, which v1 does not retry either,
+ * as a resumed node has nothing to run again.
+ *
+ * The tries so far are read off the row's retry wait. A step dispatched for the
+ * first time, or resumed by a request or by the deadline of a node's own wait,
+ * is on its first try.
+ */
+function nextTryOf(
+	node: GraphNode,
+	step: StepRecord,
+	dispatch: Dispatch,
+	error: StepError,
+): RetryWaitDeclaration | undefined {
+	const policy = node.retry;
+	if (!policy || dispatch.kind !== 'run' || dispatch.subExecutionResult) return undefined;
+
+	const failedSoFar =
+		step.resumeCause?.kind === 'deadline' && isRetryWaitDeclaration(step.waitDeclaration)
+			? step.waitDeclaration.retry.attempt
+			: 0;
+	const attempt = failedSoFar + 1;
+	if (attempt >= policy.maxTries) return undefined;
+
+	return {
+		resumeAt: new Date(Date.now() + policy.waitBetweenTriesMs).toISOString(),
+		retry: { attempt, lastError: error },
+	};
 }
 
 function toStepError(error: unknown): StepError {

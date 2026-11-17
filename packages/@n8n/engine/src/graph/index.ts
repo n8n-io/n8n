@@ -3,6 +3,7 @@ export type {
 	BatchStepConfig,
 	GraphEdge,
 	GraphNode,
+	RetryPolicy,
 	StepConfig,
 	StepType,
 	StoredWorkflowGraph,
