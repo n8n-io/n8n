@@ -164,7 +164,7 @@ function onDialogOpenUpdate(open: boolean) {
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" size="xlarge" :header="title" @update:open="onDialogOpenUpdate">
+	<N8nDialog :open="modalOpen" size="large" :header="title" @update:open="onDialogOpenUpdate">
 		<form :class="$style.form" novalidate @submit.prevent="onSubmit">
 			<N8nDialogBody>
 				<div>
