@@ -75,6 +75,7 @@ import type {
 	SimplifiedNodeType,
 	ViewCreateElement,
 } from '@/Interface';
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
@@ -111,7 +112,7 @@ export interface NodeViewItem {
 			type?: string;
 			text?: string;
 			/** Feature id. The feature list decides which badges render. */
-			feature?: string;
+			feature?: keyof typeof featureMaturity;
 		};
 		forceIncludeNodes?: string[];
 		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };
