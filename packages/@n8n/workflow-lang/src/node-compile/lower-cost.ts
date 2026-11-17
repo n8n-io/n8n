@@ -74,6 +74,11 @@ const REQUEST_KEYS = [
 ] as const;
 type RequestKey = (typeof REQUEST_KEYS)[number];
 const MAX_REQUEST_FORMS = 16;
+const OPTIONAL_ABSENT = new Set([
+	'multipart: undefined',
+	'json: undefined',
+	'basicAuth: undefined',
+]);
 
 export interface LoweredCode {
 	code: string;
@@ -422,20 +427,24 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 	const method = flags.constants.method ?? (has('method') ? "options.method ?? 'GET'" : "'GET'");
 	if (flags.repeats && method !== "'GET'" && method !== '"GET"')
 		lines.push(`if ((${method}) !== 'GET') ${REPEATS} = false;`);
+	const body = parts ? `parts !== undefined ? undefined : ${encoded}` : encoded;
+	const members = [
+		`method: ${method}`,
+		`url: ${url}`,
+		'headers',
+		`qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'}`,
+		`body: ${body}`,
+		`multipart: ${parts ? 'parts' : 'undefined'}`,
+		`acceptAs: ${flags.legacy ? "'legacy'" : "'request'"}`,
+		`json: ${flags.json}`,
+		`basicAuth: ${has('auth') ? "auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined" : 'undefined'}`,
+		`inject: ${flags.wrapped}`,
+		'credential',
+	].filter((member) => !OPTIONAL_ABSENT.has(member));
 	return `async function ${name}(options) {
 	${lines.join('\n\t')}
 	const response = await ctx.http({
-		method: ${method},
-		url: ${url},
-		headers,
-		qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'},
-		body: ${parts ? `parts !== undefined ? undefined : ${encoded}` : encoded},
-		multipart: ${parts ? 'parts' : 'undefined'},
-		acceptAs: ${flags.legacy ? "'legacy'" : "'request'"},${(flags.constants.json ?? flags.json) === 'undefined' ? '' : `\n\t\tjson: ${flags.constants.json ?? flags.json},`}
-		responseBinary: undefined,
-		basicAuth: ${has('auth') ? "auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined" : 'undefined'},
-		inject: ${flags.wrapped},
-		credential,${flags.tokenOptions ? '\n\t\tskipTokenRefresh: undefined,\n\t\ttokenExpiredStatusCode: undefined,' : ''}
+		${members.join(',\n\t\t')},
 	});
 	if (response.status >= 400${flags.lenient === '' ? '' : ` && !(${flags.lenient})`}) {
 		const failure = new Error('Request failed with status code ' + response.status);
@@ -462,6 +471,7 @@ interface RequestFlags {
 type RequestConstants = Partial<Record<'method' | 'uri' | 'url' | 'headers' | 'json', string>>;
 const FORM_READS = new Set<string>([
 	...REQUEST_KEYS,
+	'json',
 	'encoding',
 	'simple',
 	'resolveWithFullResponse',
@@ -520,7 +530,10 @@ function requestTemplate(
 		} else if (key === 'headers' && isConstantHeaders(value)) {
 			constants.headers = text;
 			dead.push(p);
-		} else if (key === 'json' && isPlainLiteral(value)) {
+		} else if (
+			key === 'json' &&
+			(value.kind === ts.SyntaxKind.TrueKeyword || value.kind === ts.SyntaxKind.FalseKeyword)
+		) {
 			constants.json = text;
 			dead.push(p);
 		} else if (!FORM_READS.has(key) && isPlainLiteral(value)) dead.push(p);
@@ -594,7 +607,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			headersAreObjects: shape.headersAreObjects,
 			tokenOptions,
 			repeats: generalText.includes(REPEATS),
-			json: shape.maybe.has('json') ? 'options.json' : 'undefined',
+			json: template.constants.json ?? (shape.maybe.has('json') ? 'options.json' : 'undefined'),
 			lenient: !honoursLenient
 				? ''
 				: isLegacy
@@ -999,8 +1012,20 @@ function settleTopConstants(sf: ts.SourceFile, changes: Map<ts.Node, Replacement
 	}
 }
 
-function isObjectSpread(n: ts.Node): boolean {
-	return ts.isSpreadAssignment(n) && ts.isObjectLiteralExpression(n.parent);
+function emptyUse(use: ts.Identifier): { node: ts.Node; to: Replacement } | undefined {
+	const p = use.parent;
+	if (ts.isSpreadAssignment(p) && ts.isObjectLiteralExpression(p.parent))
+		return { node: p, to: null };
+	if (!ts.isCallExpression(p)) return undefined;
+	if (isObjectCall(p, 'keys') && p.arguments.length === 1 && p.arguments[0] === use)
+		return { node: p, to: f.createArrayLiteralExpression([]) };
+	const merged =
+		isCallOf(p, '__assign') &&
+		p.arguments.length === 2 &&
+		p.arguments[1] === use &&
+		ts.isIdentifier(p.arguments[0]) &&
+		ts.isExpressionStatement(p.parent);
+	return merged ? { node: p.parent, to: null } : undefined;
 }
 
 function literalMembers(literal: ts.ObjectLiteralExpression): Map<string, Primitive> | undefined {
@@ -1060,9 +1085,9 @@ function settleConstants(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>):
 			const list = declared.initializer;
 			if (!isConst(statement)) continue;
 			if (isEmptyLiteral(list)) {
-				const spreads = uses.references.map((use) => use.parent);
-				if (spreads.length === 0 || !spreads.every(isObjectSpread)) continue;
-				for (const spread of spreads) changes.set(spread, null);
+				const plans = uses.references.map(emptyUse);
+				if (plans.length === 0 || plans.some((plan) => plan === undefined)) continue;
+				for (const plan of plans) if (plan) changes.set(plan.node, plan.to);
 				changes.set(statement, null);
 				continue;
 			}
@@ -1133,6 +1158,48 @@ function joinFirstStores(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>):
 						ts.NodeFlags.Let,
 					),
 				),
+			);
+			changes.set(next, null);
+		}
+	};
+	visit(sf);
+}
+
+function joinFirstMembers(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>): void {
+	const visit = (n: ts.Node) => {
+		ts.forEachChild(n, visit);
+		if (!ts.isBlock(n) && !ts.isSourceFile(n)) return;
+		for (const [at, first] of n.statements.entries()) {
+			const next = n.statements[at + 1];
+			if (!next || !ts.isVariableStatement(first) || !ts.isExpressionStatement(next)) continue;
+			if (first.declarationList.declarations.length !== 1) continue;
+			const declared = first.declarationList.declarations[0];
+			const literal = declared.initializer;
+			if (!ts.isIdentifier(declared.name) || !literal || !ts.isObjectLiteralExpression(literal))
+				continue;
+			const name = declared.name.text;
+			const keys = plainKeys(literal);
+			const store = next.expression;
+			if (!keys || !ts.isBinaryExpression(store)) continue;
+			if (store.operatorToken.kind !== ts.SyntaxKind.EqualsToken) continue;
+			const target = store.left;
+			if (!ts.isPropertyAccessExpression(target) || !ts.isIdentifier(target.expression)) continue;
+			const key = target.name.text;
+			if (target.expression.text !== name || keys.has(key) || key === '__proto__') continue;
+			let plain = true;
+			const scan = (e: ts.Node) => {
+				if (ts.isFunctionLike(e) || (ts.isIdentifier(e) && e.text === name && !isName(e)))
+					plain = false;
+				ts.forEachChild(e, scan);
+			};
+			scan(store.right);
+			if (!plain || changes.has(first) || changes.has(next)) continue;
+			changes.set(
+				literal,
+				f.updateObjectLiteralExpression(literal, [
+					...literal.properties,
+					f.createPropertyAssignment(key, store.right),
+				]),
 			);
 			changes.set(next, null);
 		}
@@ -1233,7 +1300,7 @@ function callSitesOf(sf: ts.SourceFile): CallSites {
 			)
 				found.push(call);
 		}
-		if (found.length !== calls.references.length || fn.name.text === REQUEST) continue;
+		if (found.length !== calls.references.length) continue;
 		functions.set(fn.name.text, fn);
 		sites.set(fn.name.text, found);
 	}
@@ -1454,6 +1521,10 @@ function includedInList(n: ts.CallExpression): boolean | undefined {
 	return values.some(isMarked) || isMarked(asked.value) ? undefined : values.includes(asked.value);
 }
 
+function isEmptyList(e: ts.Expression): boolean {
+	return ts.isArrayLiteralExpression(e) && e.elements.length === 0;
+}
+
 function joinedTemplate(n: ts.TemplateExpression): ts.Expression | undefined {
 	let head = n.head.text;
 	const spans: Array<{ expression: ts.Expression; text: string }> = [];
@@ -1522,6 +1593,9 @@ function simplify(sf: ts.SourceFile, evaluate?: Evaluate): string | undefined {
 			const joined = joinedTemplate(n);
 			if (joined !== undefined) return done(joined);
 		}
+		if (ts.isIfStatement(n) && isEmptyList(n.expression)) return done(n.thenStatement);
+		if (ts.isPropertyAccessExpression(n) && n.name.text === 'length' && isEmptyList(n.expression))
+			return done(primitiveNode(0));
 		if (ts.isIfStatement(n)) {
 			const condition = primitiveOf(n.expression);
 			if (condition)
@@ -1557,6 +1631,7 @@ export function lowerConstants(code: string, evaluate?: Evaluate): string {
 		settleConstants(sf, changes);
 		if (changes.size === 0) settleTopConstants(sf, changes);
 		if (changes.size === 0) joinFirstStores(sf, changes);
+		if (changes.size === 0) joinFirstMembers(sf, changes);
 		if (changes.size === 0) settleSameArguments(sf, changes);
 		if (changes.size === 0) settleAbsentArguments(sf, changes);
 		if (changes.size === 0) dropUnusedFunctions(sf, changes);

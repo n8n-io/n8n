@@ -83,6 +83,18 @@ return items.map((i) => ({ json: {
 		expect(same(code).ok).toBe(true);
 	});
 
+	it('gives the result of JavaScript for a key that is a literal', () => {
+		const code = `return items.map((i) => ({ json: {
+	own: i.json.hasOwnProperty('Date'), missing: Object.hasOwn(i.json, 'zzz'), long: Object.prototype.hasOwnProperty.call(i.json, 'nested'),
+	inherited: i.json.hasOwnProperty('toString'), maker: Object.hasOwn(i.json, 'constructor'), value: Object.prototype.hasOwnProperty.call(i.json, 'valueOf'),
+	index: Object.hasOwn(i.json.tags ?? [], '1'), length: Object.hasOwn(i.json.tags ?? [], 'length'), text: Object.hasOwn(i.json.name ?? '', '0'),
+} }));`;
+		expect(same(code).ok).toBe(true);
+		const literal = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(literal.ok && literal.translation.body).toContain("hasOwnNamedOf(i.json, 'Date')");
+		expect(literal.ok && literal.translation.body).toContain("hasOwnOf(i.json, 'toString')");
+	});
+
 	it('fails for null and undefined as JavaScript does', () => {
 		const code =
 			'return items.map((i) => ({ json: { v: Object.prototype.hasOwnProperty.call(i.json.tags, "a") } }));';

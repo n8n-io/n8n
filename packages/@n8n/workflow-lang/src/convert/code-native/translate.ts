@@ -338,6 +338,21 @@ const STATIC_HELPERS: Record<string, string> = {
 	'Math.imul': 'mathImul',
 };
 
+/** The names that an object inherits from `Object.prototype`. */
+const OBJECT_PROTOTYPE_NAMES: ReadonlySet<string> = new Set(
+	Object.getOwnPropertyNames(Object.prototype),
+);
+
+/**
+ * The helper for an own-property test. A key that is a literal and not a name of
+ * `Object.prototype` needs no test for an inherited name.
+ */
+function ownHelperFor(key: ts.Expression | undefined): string {
+	return key !== undefined && ts.isStringLiteralLike(key) && !OBJECT_PROTOTYPE_NAMES.has(key.text)
+		? 'hasOwnNamedOf'
+		: 'hasOwnOf';
+}
+
 /** Static functions with any number of arguments: the helper takes them as one array. */
 const VARIADIC_HELPERS: Record<string, string> = {
 	'String.fromCharCode': 'fromCharCodes',
@@ -2365,8 +2380,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					isPrototypeHasOwn(callee.expression)
 				) {
 					// \`Object.prototype.hasOwnProperty.call(x, k)\` becomes \`hasOwnOf(x, k)\`.
-					helpers.add('hasOwnOf');
-					replace(n.getStart(sf), n.arguments[0].getStart(sf), 'hasOwnOf(');
+					const ownHelper = ownHelperFor(n.arguments[1]);
+					helpers.add(ownHelper);
+					replace(n.getStart(sf), n.arguments[0].getStart(sf), `${ownHelper}(`);
 					for (const x of n.arguments) visit(x);
 					return;
 				}
@@ -2415,7 +2431,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				}
 				const alias = own(METHOD_ALIASES, name);
 				if (alias) replaceNode(callee.name, alias);
-				const methodHelper = own(METHOD_HELPERS, name);
+				const methodHelper =
+					name === 'hasOwnProperty' ? ownHelperFor(n.arguments[0]) : own(METHOD_HELPERS, name);
 				if (methodHelper && !isDateValue(callee.expression)) toHelper(n, callee, methodHelper);
 				if (
 					ts.isOptionalChain(callee) &&
@@ -2514,7 +2531,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 						}
 					}
 					const full = `${g}.${name}`;
-					const staticHelper = own(STATIC_HELPERS, full);
+					const staticHelper =
+						full === 'Object.hasOwn' ? ownHelperFor(n.arguments[1]) : own(STATIC_HELPERS, full);
 					if (staticHelper) {
 						helpers.add(staticHelper);
 						replace(callee.getStart(sf), callee.getEnd(), staticHelper);

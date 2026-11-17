@@ -30,6 +30,7 @@ import {
 	itemFieldExpression,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
+import { ACCEPTED_COST_RISES } from '../src/node-compile/cost-accepted.ts';
 import { COST } from '../src/node-compile/cost.generated.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
@@ -95,7 +96,7 @@ const MEASURE_COST =
 	SHOW_COST || CHECK_COST || (one === undefined && pattern === undefined && !DIST);
 const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
 const PARALLEL = 6;
-const NODE_TIMEOUT_MS = 2_700_000;
+const NODE_TIMEOUT_MS = Number(process.env.VERIFY_NODE_TIMEOUT_MS) || 2_700_000;
 const UPLOAD_ANSWER = {
 	upload_url: 'https://files.example.com/upload/v1/abc',
 	file_id: 'F1',
@@ -1203,9 +1204,22 @@ ${lines.join('\n')}
 }
 const costKeys = Object.keys(costs).sort();
 const higher = costKeys.filter((key) => COST[key] !== undefined && costs[key].ops > COST[key][0]);
-const risen = higher.filter((key) => !acceptedRises.has(key));
-const acceptedNow = higher.filter((key) => acceptedRises.has(key));
-const idleAccepts = [...acceptedRises].filter((key) => !higher.includes(key));
+const listedFor = (key: string) =>
+	ACCEPTED_COST_RISES.find((entry) => entry.key === key) ??
+	ACCEPTED_COST_RISES.find(
+		(entry) => entry.key.endsWith('*') && key.startsWith(entry.key.slice(0, -1)),
+	);
+const riseOf = (key: string) => costs[key].ops - COST[key][0];
+const isAccepted = (key: string) =>
+	acceptedRises.has(key) || riseOf(key) <= (listedFor(key)?.rise ?? 0);
+const risen = higher.filter((key) => !isAccepted(key));
+const acceptedNow = higher.filter(isAccepted);
+const idleListed = ACCEPTED_COST_RISES.filter(
+	(entry) =>
+		costKeys.some((key) => listedFor(key) === entry) &&
+		!higher.some((key) => listedFor(key) === entry),
+).map((entry) => entry.key);
+const idleAccepts = [...[...acceptedRises].filter((key) => !higher.includes(key)), ...idleListed];
 const recordOf = (key: string): [number, number] =>
 	risen.includes(key) ? COST[key] : [costs[key].ops, costs[key].allocations];
 if (pattern === undefined && !DIST) {
@@ -1288,12 +1302,21 @@ if (CHECK_COST || higher.length > 0 || idleAccepts.length > 0) {
 		console.log(
 			`cost rise accepted: ${key}: ${COST[key][0]} ops recorded, ${costs[key].ops} ops now`,
 		);
+	for (const key of risen) {
+		const listed = listedFor(key);
+		if (listed)
+			console.log(
+				`cost rose more than cost-accepted.ts allows: ${key}: ${riseOf(key)} ops, accepted ${listed.rise}`,
+			);
+	}
 	for (const key of idleAccepts)
-		console.log(`${ACCEPT_RISE} ${key}: this operation did not rise or was not measured`);
+		console.log(
+			`accepted rise of ${key}: this operation did not rise or was not measured; remove it from cost-accepted.ts`,
+		);
 	console.log(
 		risen.length === 0
 			? `cost check: no operation of ${costKeys.length} costs more ops than its record`
-			: `cost check: ${risen.length} operation(s) cost more ops than their record; lower the cost, or give \`${ACCEPT_RISE} <key>\` for a rise that correctness needs`,
+			: `cost check: ${risen.length} operation(s) cost more ops than their record; lower the cost, or add a rise that correctness needs to src/node-compile/cost-accepted.ts with its reason (or give \`${ACCEPT_RISE} <key>\`)`,
 	);
 	if (CHECK_COST && risen.length > 0) process.exitCode = 1;
 }
