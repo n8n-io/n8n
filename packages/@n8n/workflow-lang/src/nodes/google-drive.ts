@@ -1,6 +1,13 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.googleDrive`
- * version 3, operation `fileFolder.search`, with OAuth2.
+ * version 3, operations `fileFolder.search`, `folder.create`, `file.copy`,
+ * `file.move`, `file.deleteFile` and `file.createFromText`, with OAuth2.
+ *
+ * `file.createFromText` sends the text as a `multipart/related` body. v1
+ * writes that body with the `form-data` package; the node writes the same
+ * bytes (the boundary is random in both). `file.upload` needs the bytes of a
+ * stored file in such a body, and an upload in parts for a large file: the
+ * runtime has no form for that, so it runs in the fallback host.
  *
  * The resource locators `filter.folderId` and `filter.driveId` arrive as
  * locators or, from the converter, as their value. A folder or drive given
@@ -39,6 +46,12 @@ interface DriveParameters {
 	driveId?: string | Locator;
 	folderId?: string | Locator;
 	sameFolder?: boolean;
+	content?: unknown;
+}
+
+interface KeyValue {
+	key?: unknown;
+	value?: unknown;
 }
 
 interface DriveOptions {
@@ -48,6 +61,12 @@ interface DriveOptions {
 	copyRequiresWriterPermission?: boolean;
 	description?: string;
 	deletePermanently?: boolean;
+	convertToGoogleDocument?: boolean;
+	keepRevisionForever?: unknown;
+	ocrLanguage?: unknown;
+	useContentAsIndexableText?: unknown;
+	propertiesUi?: { propertyValues?: KeyValue[] };
+	appPropertiesUi?: { appPropertyValues?: KeyValue[] };
 }
 
 const FOLDER = 'application/vnd.google-apps.folder';
@@ -72,6 +91,28 @@ function asText(value: unknown): string {
 		return value.map((v) => (v === null || v === undefined ? '' : asText(v))).join(',');
 	}
 	return '[object Object]';
+}
+
+const DOCUMENT = 'application/vnd.google-apps.document';
+
+/** The key and value rows of a file property option as one object (setFileProperties of v1). */
+function keyValues(rows: KeyValue[] | undefined): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const row of rows ?? []) out[asText(row.key)] = row.value;
+	return out;
+}
+
+/** The count of the bytes of a text in UTF-8. */
+function byteLength(text: string): number {
+	return Ascii.is(text) ? text.length : unescape(encodeURIComponent(text)).length;
+}
+
+/**
+ * One part of the body that the `form-data` package writes for
+ * `append(name, value, { contentType })`.
+ */
+function formPart(boundary: string, name: string, contentType: string, value: string): string {
+	return `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\nContent-Type: ${contentType}\r\n\r\n${value}\r\n`;
 }
 
 const ID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_';
@@ -142,6 +183,20 @@ export default defineNode<DriveParameters>({
 				'options.description',
 			],
 			'file.move': ['authentication="oAuth2"', 'fileId', 'driveId', 'folderId'],
+			'file.createFromText': [
+				'authentication="oAuth2"',
+				'content',
+				'name',
+				'driveId',
+				'folderId',
+				'options',
+				'options.appPropertiesUi',
+				'options.propertiesUi',
+				'options.keepRevisionForever',
+				'options.ocrLanguage',
+				'options.useContentAsIndexableText',
+				'options.convertToGoogleDocument',
+			],
 			'file.deleteFile': [
 				'authentication="oAuth2"',
 				'fileId',
@@ -163,7 +218,7 @@ export default defineNode<DriveParameters>({
 		// file.move, file.deleteFile (googleApiRequest of the v1 node).
 		if (
 			(resource === 'folder' && operation === 'create') ||
-			(resource === 'file' && ['copy', 'move', 'deleteFile'].includes(operation))
+			(resource === 'file' && ['copy', 'move', 'deleteFile', 'createFromText'].includes(operation))
 		) {
 			const api = 'https://www.googleapis.com/drive/v3/files';
 			const headers = { 'Content-Type': 'application/json' };
@@ -206,6 +261,70 @@ export default defineNode<DriveParameters>({
 					const qs: Record<string, unknown> = { ...allDrives };
 					if (options.simplifyOutput === false) qs.fields = '*';
 					out.push(await request('POST', api, qs, body));
+					continue;
+				}
+				if (operation === 'createFromText') {
+					const name = parameters.name || 'Untitled';
+					const document = options.convertToGoogleDocument || false;
+					const mimeType = document ? DOCUMENT : 'text/plain';
+					// setFileProperties of the v1 node writes the properties into the metadata itself.
+					const metadata: Record<string, unknown> = { name, parents: [parent()], mimeType };
+					if (options.propertiesUi) {
+						metadata.properties = keyValues(options.propertiesUi.propertyValues);
+					}
+					if (options.appPropertiesUi) {
+						metadata.appProperties = keyValues(options.appPropertiesUi.appPropertyValues);
+					}
+					const qs: Record<string, unknown> = { ...allDrives };
+					if (options.keepRevisionForever) qs.keepRevisionForever = options.keepRevisionForever;
+					if (options.ocrLanguage) qs.ocrLanguage = options.ocrLanguage;
+					if (options.useContentAsIndexableText) {
+						qs.useContentAsIndexableText = options.useContentAsIndexableText;
+					}
+					const text = asText(parameters.content ?? '');
+					if (document) {
+						const created = await request('POST', api, qs, metadata);
+						const updated = await request(
+							'POST',
+							`https://docs.googleapis.com/v1/documents/${asText(created.id)}:batchUpdate`,
+							{},
+							{
+								requests: [{ insertText: { text, endOfSegmentLocation: { segmentId: '' } } }],
+							},
+						);
+						out.push({ id: updated.documentId });
+						continue;
+					}
+					// The multipart body of the `form-data` package: 26 hyphens and 24 random
+					// hexadecimal digits are the boundary.
+					const half = () =>
+						Math.floor(ctx.random() * 281474976710656)
+							.toString(16)
+							.padStart(12, '0');
+					const boundary = `--------------------------${half()}${half()}`;
+					const upload =
+						formPart(boundary, 'metadata', 'application/json', JSON.stringify(metadata)) +
+						formPart(boundary, 'data', mimeType, text) +
+						`--${boundary}--\r\n`;
+					const sent = await ctx.http<Item>({
+						method: 'POST',
+						url: 'https://www.googleapis.com/upload/drive/v3/files',
+						headers: {
+							'Content-Type': `multipart/related; boundary=${boundary}`,
+							'Content-Length': `${byteLength(upload)}`,
+						},
+						qs: { uploadType: 'multipart', supportsAllDrives: true },
+						body: upload,
+						credential,
+					});
+					if (sent.status >= 400) throw new Error(`Google Drive: HTTP status ${sent.status}`);
+					qs.addParents = parent();
+					const fileBody: Record<string, unknown> = {};
+					for (const key of Object.keys(metadata)) {
+						if (key !== 'parents') fileBody[key] = metadata[key];
+					}
+					const response = await request('PATCH', `${api}/${asText(sent.body.id)}`, qs, fileBody);
+					out.push({ id: response.id });
 					continue;
 				}
 				if (operation === 'copy') {

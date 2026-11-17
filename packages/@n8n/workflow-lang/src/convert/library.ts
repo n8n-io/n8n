@@ -284,6 +284,12 @@ const LOCATOR_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.openAi',
 ]);
 
+/**
+ * Library nodes whose v1 node pairs each output item, and the error item, with the input item
+ * of its run (`constructExecutionMetaData` with `itemData: { item: i }`).
+ */
+const PAIRS_BY_CALL = new Set(['n8n-nodes-base.microsoftTeams']);
+
 /** The oldest version of a node type that its library node runs; older ones run in the host. */
 export const MIN_VERSIONS: Record<string, number> = {
 	// Version 2.0 searches once for all input items.
@@ -566,7 +572,10 @@ export function lowerLibrary(c: NodeContext): void {
 		return;
 	}
 	// v1 runs the node once for each item, so the library node runs once for each item too.
-	emitStep(c, nodeCall(c, type, parameters, c.credential(), true));
+	emitStep(c, {
+		...nodeCall(c, type, parameters, c.credential(), true),
+		pairsByCall: PAIRS_BY_CALL.has(type),
+	});
 }
 
 /**

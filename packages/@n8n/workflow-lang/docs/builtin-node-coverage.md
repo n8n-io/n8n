@@ -15,20 +15,20 @@ A way covers an operation, not each parameter set: a library node sends a call t
 | Way | Node types | Operations | Share | Uses | Share of uses |
 |---|---|---|---|---|---|
 | Native lowering of a core node | 32 | 107 | 1.9% | 50182 | 46.6% |
-| Hand-written library node | 15 | 179 | 3.2% | 27155 | 25.2% |
+| Hand-written library node | 15 | 180 | 3.3% | 27218 | 25.3% |
 | Declarative node, translated | 9 | 88 | 1.6% | 21 | 0.0% |
 | Compiled from the source and verified | 186 | 3295 | 59.7% | 5439 | 5.1% |
 | Trigger (n8n starts the workflow; no step runs) | 108 | 179 | 3.2% | 20130 | 18.7% |
-| None: the fallback host runs it | 206 | 1669 | 30.3% | 4684 | 4.4% |
+| None: the fallback host runs it | 206 | 1668 | 30.2% | 4621 | 4.3% |
 
 ### n8n-nodes-base: operations with no way, by reason
 
 | Reason | Route | Node types | Operations | Uses |
 |---|---|---|---|---|
 | Needs a protocol client that is not HTTP | c | 17 | 243 | 1784 |
+| Binary or file processing, or another runtime primitive | c | 18 | 137 | 1077 |
 | Compiler blocker | a | 102 | 583 | 1073 |
-| Excluded TypeScript feature (closure factory, class, `this` as a value, npm driver or parser) | b | 26 | 277 | 809 |
-| Binary or file processing, or another runtime primitive | c | 15 | 133 | 797 |
+| Excluded TypeScript feature (closure factory, class, `this` as a value, npm driver or parser) | b | 24 | 272 | 466 |
 | Compiles; not proven equal to v1 | a | 63 | 218 | 111 |
 | Declarative node that the translator does not take | a | 21 | 177 | 104 |
 | Local system access (commands, files on disk) | d | 6 | 38 | 6 |
@@ -64,8 +64,8 @@ Each operation with no way gets the cheapest exact route:
 | Route | Work | Node types | Operations | Uses |
 |---|---|---|---|---|
 | a | Compiler, translator or verifier fix | 161 | 978 | 1288 |
-| b | Hand-written library node | 26 | 277 | 809 |
-| c | Runtime primitive, then a library node | 32 | 376 | 2581 |
+| b | Hand-written library node | 24 | 272 | 466 |
+| c | Runtime primitive, then a library node | 35 | 380 | 2861 |
 | d | Stays in the fallback host | 6 | 38 | 6 |
 
 Route (d) and the owner's "100%": Execute Command, Read/Write Files from Disk, the older binary file nodes and Git run a program or open a file on the machine of n8n. A compiled module has no such access, and must never get it. These node types stay correct in the fallback host, under the rules that n8n already has for them (`NODES_EXCLUDE`, the file access allow list). "100% native" cannot include them; "100% of the built-in nodes run, and each node that can be native is native" can.
@@ -98,18 +98,45 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | Primitive | Node types | Operations | Uses | Nodes |
 |---|---|---|---|---|
 | spreadsheet | 4 | 72 | 703 | convertToFile, extractFromFile, googleSheets, spreadsheetFile |
+| binary stream | 5 | 6 | 299 | confluence, discord, googleDrive, theHiveProject, youTube |
 | hash, HMAC and signature | 5 | 28 | 35 | awsS3, crypto, s3, unleashedSoftware, wise |
 | compression | 1 | 2 | 24 | compression |
 | image editing | 1 | 26 | 12 | editImage |
-| file type | 2 | 2 | 12 | databricks, discord |
-| binary stream | 1 | 1 | 7 | youTube |
 | text encoding | 1 | 2 | 4 | moveBinaryData |
+| file type | 1 | 1 | 0 | databricks |
+
+### Route (c): the list for the runtime cards
+
+For each primitive: the node types and the operations with no way that it unlocks, their real uses, the workflows of the coverage run in which one of these node types went to the fallback host (a sum by node type), and the smallest exact surface that the nodes need. A library node on top of the primitive comes after it.
+
+| Primitive | Nodes | Operations | Uses | Falls back in | Surface that the nodes need |
+|---|---|---|---|---|---|
+| spreadsheet | `convertToFile`, `extractFromFile`, `googleSheets`, `spreadsheetFile` | 72 | 703 | 21755 | Read (Extract from File, Spreadsheet File): CSV (delimiter, BOM, encoding, start line, row limit, relaxed quotes, header row or not), XLSX, XLS, ODS, HTML tables and RTF tables through SheetJS: sheet name, cell range, header row, raw values or formatted text, empty cells. Write (Convert to File, Spreadsheet File): CSV, XLSX, XLS, ODS, HTML, RTF with a header row, a sheet name, compression, a file name. The exact part is the cell-to-JSON conversion of SheetJS (dates, numbers, formatted text): the runtime needs it byte for byte, so the first step is a reader and a writer for CSV and XLSX, the two formats of nearly all uses. |
+| Postgres | `crateDb`, `postgres`, `questDb`, `timescaleDb` | 73 | 1112 | 11252 | Another card builds the client. Queries with parameters (`$1`), several statements, a transaction for each run or for each item, large numbers as text or as numbers, TLS modes, an SSH tunnel. Insert, update, upsert and select are SQL text that the node builds. |
+| binary stream | `confluence`, `discord`, `googleDrive`, `theHiveProject`, `youTube` | 6 | 299 | 7354 | An upload of binary data in parts with a known length (resumable upload): the runtime sends a stored file in ranges of 2 MB with `Content-Range`. Google Drive `file.upload` (the largest use of route b by count) also needs a `multipart/related` body with a JSON part and the bytes of a stored file as the second part, with the part headers of the `form-data` package. |
+| SMTP | `emailSend` | 3 | 408 | 4148 | One message for each item: connect (plain, implicit TLS or STARTTLS, with or without certificate check), `EHLO` with the client host name of the credential, `AUTH PLAIN` or `LOGIN`, `MAIL FROM`, `RCPT TO`, `DATA`. The MIME message comes from the same composer that the Gmail node needs (route b): text, HTML, both, attachments from binary data, `Reply-To`, CC, BCC. The output is the answer of the server (`accepted`, `rejected`, `response`, `messageId`, `envelope`). |
+| MySQL | `mySql` | 39 | 72 | 1858 | The wire protocol of MySQL 5.7 and 8: handshake with `mysql_native_password` and `caching_sha2_password`, TLS, text queries with `?` parameters as the client escapes them (`mysql2` `format`), several statements in one query, a transaction, `decimalNumbers`, dates as text, a connect timeout, an SSH tunnel. Results: rows, and the result header of a write (`affectedRows`, `insertId`, `changedRows`). |
+| hash, HMAC and signature | `awsS3`, `crypto`, `s3`, `unleashedSoftware`, `wise` | 28 | 35 | 1228 | `crypto` of Node: digests (MD5, SHA-1, SHA-2, SHA-3, RIPEMD-160, Whirlpool), HMAC with the same list, RSA and ECDSA signatures with a PEM key, random bytes and UUIDs, output as hex or base64, input as text or binary data. Keys are secrets: a signature with a credential key belongs to the credential layer. |
+| Microsoft SQL (TDS) | `microsoftSql` | 12 | 44 | 1224 | TDS 7.4 over TLS with SQL login: a batch of SQL text, parameters by name, the row sets and the row counts of a batch. Options of the credential: `encrypt`, `trustServerCertificate`, the TDS version, the timeouts. The node chunks an insert at 1,000 rows itself. |
+| Snowflake driver | `snowflake` | 6 | 26 | 1118 | The node needs one statement with binds and the rows as objects. The SQL API of Snowflake is HTTP (`/api/v2/statements`) with key-pair or OAuth tokens: a library node over `ctx.http` can replace the driver when its results are proven equal (number and date forms). |
+| FTP/SFTP | `ftp` | 10 | 65 | 1083 | FTP (passive mode, with or without TLS) and SFTP (SSH with a password or a private key): list a directory (also all directories below it), download to binary data, upload from binary data or from text, delete a file or a directory (also with its content), rename with the creation of missing directories. The list output has the fields of each client (`name`, `type`, `size`, `modifyTime`, rights, owner, `path`). |
+| compression | `compression` | 2 | 24 | 551 | ZIP (store and deflate) and gzip of binary data, as `fflate` writes them: compress several binary properties into one archive with a file name, decompress an archive into one binary property for each file (with the MIME type by extension). |
+| Redis | `redis` | 10 | 57 | 373 | RESP2 over TCP or TLS with `AUTH` (user and password) and `SELECT`: `DEL`, `GET`, `SET` (with `EX`, `PX` and `KEEPTTL`), `HGETALL`, `HSET`, `LRANGE`, `SMEMBERS`, `TYPE`, `INCR`, `EXPIRE`, `INFO`, `KEYS`, `LLEN`, `LPOP`, `RPOP`, `LPUSH`, `RPUSH`, `SADD`, `PUBLISH`. The reply types: text, integer, list, nil, error. |
+| image editing | `editImage` | 26 | 12 | 368 | The Edit Image node runs the GraphicsMagick program of the host (`gm`): blur, border, composite, create, crop, draw, text, resize, rotate, shear, transparent, information. Exact pixels need the same program, so it stays in the host until the owner accepts another raster engine. |
+| MongoDB | `mongoDb` | 66 | 0 | 303 | The wire protocol (OP_MSG) with SCRAM-SHA-1 and SCRAM-SHA-256, TLS and `mongodb+srv` DNS: `find` (filter, projection, sort, skip, limit), `aggregate`, `insertMany`, `updateOne` and `updateMany` with upsert, `findOneAndReplace`, `findOneAndUpdate`, `deleteMany`, and the four search-index commands. Extended JSON for ObjectId, dates and numbers, as the node parses and prints them. |
+| SSH | `ssh` | 3 | 0 | 124 | An SSH session with a password or a private key (with passphrase): run one command in a directory and give `code`, `signal`, `stdout`, `stderr`; SFTP upload and download of one file. The command runs on the remote host, not on the host of n8n, so this is a protocol client, not route (d). |
+| text encoding | `moveBinaryData` | 2 | 4 | 61 | `iconv-lite`: decode binary data to text and encode text to binary data in the encodings of the node list (UTF-8, UTF-16, Latin-1, Windows code pages, Shift_JIS, GBK and more), with or without a BOM. Also base64 and JSON forms of binary data. |
+| file type | `databricks` | 1 | 0 | 17 | The file type from the first bytes of binary data (`file-type`), for the MIME type of an upload. |
+| Oracle driver | `oracleDatabase` | 12 | 0 | 15 | Oracle Net (thin mode): statements with binds by name and by position, bind types, `executeMany`, auto commit, fetch as objects, LOB values as text. The largest client of the list for the least use. |
+| MQTT | `mqtt` | 1 | 0 | 4 | MQTT 3.1.1 and 5 over TCP, TLS or WebSocket with user, password, client id and clean session: `CONNECT`, one `PUBLISH` for each item with QoS 0, 1 or 2 and the retain flag, then the acknowledgement of the QoS. |
+| AMQP 1.0 | `amqp` | 1 | 0 | 1 | AMQP 1.0 with SASL plain or anonymous over TCP or TLS: open a sender link to a sink, send one message for each item (body as text or as an object, application properties), wait for the settlement. |
+| LDAP | `ldap` | 6 | 0 | 1 | LDAP v3 over TCP, TLS or STARTTLS with a simple bind: `search` (base, scope, filter text, attributes, size limit, paging), `compare`, `add`, `modify` (add, replace, delete), `modifyDN`, `delete`. Binary attributes come back as base64. |
+| Kafka | `kafka` | 1 | 0 | 0 | A producer: metadata, `Produce` with acks, a timeout, compression (gzip), headers and keys; SASL (plain, SCRAM-256, SCRAM-512) and TLS. Optional: the Confluent schema registry (HTTP) to encode the value as Avro. |
 
 ### Route (b): excluded features
 
 | Feature | Node types | Operations | Uses | Nodes |
 |---|---|---|---|---|
-| npm package form-data | 2 | 4 | 343 | googleDrive, theHiveProject |
 | npm package nodemailer/lib/mail-composer | 1 | 5 | 176 | gmail |
 | npm package nodemailer/lib/addressparser, nodemailer/lib/mail-composer | 1 | 6 | 85 | gmail |
 | npm package rrule | 1 | 7 | 62 | googleCalendar |
@@ -118,7 +145,7 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | npm package mailparser | 1 | 8 | 27 | gmail |
 | npm package html-to-text | 1 | 3 | 17 | html |
 | npm package xml2js | 8 | 72 | 13 | awsElb, awsS3, awsSes, awsSns, awsSqs, nextCloud, splunk, xml |
-| `this` as a value (`const self = this`) | 5 | 75 | 0 | confluence, databricks, microsoftDataverse, microsoftTeams, phantombuster |
+| `this` as a value (`const self = this`) | 5 | 74 | 0 | confluence, databricks, microsoftDataverse, microsoftTeams, phantombuster |
 | file module fs in the source | 1 | 46 | 0 | airtop |
 | npm package get-system-fonts | 1 | 13 | 0 | editImage |
 | npm package xml2js, @smithy/signature-v4, @aws-crypto/sha256-js | 1 | 10 | 0 | awsS3 |
@@ -133,6 +160,20 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | Access | Node types | Operations | Uses | Nodes |
 |---|---|---|---|---|
 | (the node type itself) | 6 | 38 | 6 | executeCommand, git, readBinaryFile, readBinaryFiles, readWriteFile, writeBinaryFile |
+
+### Route (d): the workflows that have these nodes
+
+Of 147671 workflows in the coverage run, 30 have a node of route (d). Of the 77424 workflows that the run marks as fully covered, 10 have one. Of the 17591 certified bundles, the count for each node type is in the column "Workflows". These workflows cannot compile with no fallback-host node while the rule holds that a compiled module has no access to the system.
+
+| Node | Certified bundles | Coverage run | Coverage run, fully covered |
+|---|---|---|---|
+| `executeCommand` | 0 | 0 | 0 |
+| `git` | 0 | 1 | 0 |
+| `localFileTrigger` | 0 | 0 | 0 |
+| `readBinaryFile` | 0 | 1 | 0 |
+| `readBinaryFiles` | 0 | 0 | 0 |
+| `readWriteFile` | 4 | 26 | 10 |
+| `writeBinaryFile` | 0 | 3 | 0 |
 
 ### Route (a): compiler blockers (first blocker of the operation)
 
@@ -220,8 +261,8 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | `postgres` | 955 | 1112 | 57 | c | Postgres |
 | `extractFromFile` | 435 | 493 | 36 | c | spreadsheet |
 | `emailSend` | 408 | 408 | 3 | c | SMTP |
-| `googleDrive` | 1077 | 343 | 2 | b | npm package form-data |
 | `gmail` | 4220 | 288 | 19 | b | npm package nodemailer/lib/mail-composer; npm package mailparser; npm package nodemailer/lib/addressparser, nodemailer/lib/mail-composer |
+| `googleDrive` | 1077 | 280 | 1 | c | binary stream |
 | `convertToFile` | 171 | 176 | 30 | c | spreadsheet |
 | `mySql` | 57 | 72 | 39 | c | MySQL |
 | `ftp` | 49 | 65 | 10 | c | FTP/SFTP |
@@ -236,7 +277,7 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | `compression` | 31 | 24 | 2 | c | compression |
 | `html` | 58 | 17 | 3 | b | npm package html-to-text |
 | `xml` | 13 | 13 | 1 | b | npm package xml2js |
-| `discord` | 53 | 12 | 1 | c | file type |
+| `discord` | 53 | 12 | 1 | c | binary stream |
 | `editImage` | 7 | 12 | 39 | c, b | image editing; npm package get-system-fonts |
 | `youTube` | 11 | 7 | 1 | c | binary stream |
 | `moveBinaryData` | 4 | 4 | 2 | c | text encoding |
@@ -251,7 +292,7 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | `awsSns` | 0 | 0 | 3 | b | npm package xml2js |
 | `awsSqs` | 0 | 0 | 1 | b | npm package xml2js |
 | `awsTranscribe` | 0 | 0 | 4 | b | file module fs/promises in the source |
-| `confluence` | 0 | 0 | 18 | b | `this` as a value (`const self = this`) |
+| `confluence` | 0 | 0 | 18 | b, c | `this` as a value (`const self = this`); binary stream |
 | `crateDb` | 0 | 0 | 6 | c | Postgres |
 | `databricks` | 0 | 0 | 46 | b, c | `this` as a value (`const self = this`); file type |
 | `jwt` | 0 | 0 | 3 | b | npm package jsonwebtoken |
@@ -267,7 +308,7 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | `s3` | 0 | 0 | 12 | b, c | npm package xml2js, aws4; hash, HMAC and signature |
 | `splunk` | 0 | 0 | 21 | b | npm package xml2js |
 | `ssh` | 0 | 0 | 3 | c | SSH |
-| `theHiveProject` | 0 | 0 | 2 | b | npm package form-data |
+| `theHiveProject` | 0 | 0 | 2 | c | binary stream |
 | `timescaleDb` | 0 | 0 | 6 | c | Postgres |
 | `unleashedSoftware` | 0 | 0 | 6 | c | hash, HMAC and signature |
 | `wise` | 0 | 0 | 14 | c | hash, HMAC and signature |
@@ -300,7 +341,7 @@ Operations count each version. "Covered" is each way but "none"; a trigger count
 | `dataTable` | 1292 | 10935 | 1, 1.1 | 14 / 24 | library 14 | 9 | a | compiler: 'this.helpers.getDataTableProxy' has no compiled form; 'this.helpers.getDataTableAggregate |
 | `telegram` | 1262 | 3648 | 1, 1.1, 1.2 | 81 / 81 | native 3, library 3, compiled 75 | 0 | — | — |
 | `wait` | 1209 | 0 | 1, 1.1 | 2 / 2 | native 2 | 0 | — | — |
-| `googleDrive` | 1077 | 6444 | 1, 2, 3 | 43 / 47 | library 5, compiled 38 | 345 | a, b | compiler, excluded: a Buffer has a compiled form only as `Buffer.from(text, encoding).toString(encoding)` with |
+| `googleDrive` | 1077 | 6444 | 1, 2, 3 | 44 / 47 | library 6, compiled 38 | 282 | a, c | compiler, file: a Buffer has a compiled form only as `Buffer.from(text, encoding).toString(encoding)` with |
 | `errorTrigger` | 990 | 0 | 1 | 1 / 1 | trigger 1 | 0 | — | — |
 | `postgres` | 955 | 11251 | 1, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8 | 0 / 57 | — | 1112 | c | protocol: Postgres |
 | `microsoftOutlook` | 929 | 3283 | 1, 2 | 55 / 61 | native 1, library 1, compiled 53 | 66 | a | compiler, verifier: file bytes have a compiled form only as a file of a multipart request and with `length`: ' |
@@ -479,7 +520,7 @@ Operations count each version. "Covered" is each way but "none"; a trigger count
 | `cloudflare` | 0 | 0 | 1 | 4 / 4 | compiled 4 | 0 | — | — |
 | `cockpit` | 0 | 0 | 1 | 5 / 5 | compiled 5 | 0 | — | — |
 | `coda` | 0 | 28 | 1, 1.1 | 36 / 36 | compiled 36 | 0 | — | — |
-| `confluence` | 0 | 0 | 1 | 0 / 18 | — | 0 | b | excluded: `this` as a value (`const self = this`) |
+| `confluence` | 0 | 0 | 1 | 0 / 18 | — | 0 | b, c | excluded, file: `this` as a value (`const self = this`); binary stream |
 | `contentful` | 0 | 3 | 1 | 7 / 7 | compiled 7 | 0 | — | — |
 | `convertKit` | 0 | 19 | 1 | 0 / 15 | — | 0 | a | compiler: the name 'URL' has no declaration that the compiler can read |
 | `convertKitTrigger` | 0 | 0 | 1 | 1 / 1 | trigger 1 | 0 | — | — |
@@ -683,7 +724,7 @@ Operations count each version. "Covered" is each way but "none"; a trigger count
 | `taigaTrigger` | 0 | 0 | 1 | 1 / 1 | trigger 1 | 0 | — | — |
 | `tapfiliate` | 0 | 0 | 1 | 9 / 12 | compiled 9 | 0 | a | verifier, compiler: Property 'metadataValues' does not exist on type '{}'. |
 | `theHive` | 0 | 0 | 1 | 3 / 8 | compiled 3 | 0 | a | compiler, verifier: utility package lodash/set, moment-timezone; utility package moment-timezone |
-| `theHiveProject` | 0 | 7 | 1 | 39 / 48 | compiled 39 | 0 | a, b | excluded, compiler, verifier: npm package form-data; utility package lodash/set |
+| `theHiveProject` | 0 | 7 | 1 | 39 / 48 | compiled 39 | 0 | a, c | file, compiler, verifier: binary stream; utility package lodash/set |
 | `theHiveProjectTrigger` | 0 | 0 | 1 | 1 / 1 | trigger 1 | 0 | — | — |
 | `theHiveTrigger` | 0 | 0 | 1, 2 | 2 / 2 | trigger 2 | 0 | — | — |
 | `timescaleDb` | 0 | 1 | 1, 1.1 | 0 / 6 | — | 0 | c | protocol: Postgres |

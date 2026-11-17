@@ -288,7 +288,7 @@ const PROTOCOLS: Array<[RegExp, string]> = [
 ];
 const FILES: Array<[RegExp, string]> = [
 	[/^(xlsx|@e965\/xlsx)$/, 'spreadsheet'],
-	[/^(node:)?(stream|stream\/promises)$/, 'binary stream'],
+	[/^(node:)?(stream|stream\/promises)$|^form-data$/, 'binary stream'],
 	[/^(node:)?crypto$/, 'hash, HMAC and signature'],
 	[/^(pdfjs-dist|pdfjs-dist\/.*|pdf-parse)$/, 'PDF'],
 	[/^(fflate|node:zlib|zlib)$/, 'compression'],
@@ -298,6 +298,58 @@ const FILES: Array<[RegExp, string]> = [
 	[/^(ics|ical|node-ical)$/, 'calendar file'],
 	[/^(file-type|mime-types)$/, 'file type'],
 ];
+/**
+ * Route (c): what a node needs from each runtime primitive, read from the node sources. The key
+ * is the name of the protocol or of the file primitive above.
+ */
+const SURFACE: Record<string, string> = {
+	Postgres:
+		'Another card builds the client. Queries with parameters (`$1`), several statements, a transaction for each run or for each item, large numbers as text or as numbers, TLS modes, an SSH tunnel. Insert, update, upsert and select are SQL text that the node builds.',
+	MySQL:
+		'The wire protocol of MySQL 5.7 and 8: handshake with `mysql_native_password` and `caching_sha2_password`, TLS, text queries with `?` parameters as the client escapes them (`mysql2` `format`), several statements in one query, a transaction, `decimalNumbers`, dates as text, a connect timeout, an SSH tunnel. Results: rows, and the result header of a write (`affectedRows`, `insertId`, `changedRows`).',
+	'Microsoft SQL (TDS)':
+		'TDS 7.4 over TLS with SQL login: a batch of SQL text, parameters by name, the row sets and the row counts of a batch. Options of the credential: `encrypt`, `trustServerCertificate`, the TDS version, the timeouts. The node chunks an insert at 1,000 rows itself.',
+	'Snowflake driver':
+		'The node needs one statement with binds and the rows as objects. The SQL API of Snowflake is HTTP (`/api/v2/statements`) with key-pair or OAuth tokens: a library node over `ctx.http` can replace the driver when its results are proven equal (number and date forms).',
+	'Oracle driver':
+		'Oracle Net (thin mode): statements with binds by name and by position, bind types, `executeMany`, auto commit, fetch as objects, LOB values as text. The largest client of the list for the least use.',
+	MongoDB:
+		'The wire protocol (OP_MSG) with SCRAM-SHA-1 and SCRAM-SHA-256, TLS and `mongodb+srv` DNS: `find` (filter, projection, sort, skip, limit), `aggregate`, `insertMany`, `updateOne` and `updateMany` with upsert, `findOneAndReplace`, `findOneAndUpdate`, `deleteMany`, and the four search-index commands. Extended JSON for ObjectId, dates and numbers, as the node parses and prints them.',
+	Redis:
+		'RESP2 over TCP or TLS with `AUTH` (user and password) and `SELECT`: `DEL`, `GET`, `SET` (with `EX`, `PX` and `KEEPTTL`), `HGETALL`, `HSET`, `LRANGE`, `SMEMBERS`, `TYPE`, `INCR`, `EXPIRE`, `INFO`, `KEYS`, `LLEN`, `LPOP`, `RPOP`, `LPUSH`, `RPUSH`, `SADD`, `PUBLISH`. The reply types: text, integer, list, nil, error.',
+	SMTP: 'One message for each item: connect (plain, implicit TLS or STARTTLS, with or without certificate check), `EHLO` with the client host name of the credential, `AUTH PLAIN` or `LOGIN`, `MAIL FROM`, `RCPT TO`, `DATA`. The MIME message comes from the same composer that the Gmail node needs (route b): text, HTML, both, attachments from binary data, `Reply-To`, CC, BCC. The output is the answer of the server (`accepted`, `rejected`, `response`, `messageId`, `envelope`).',
+	IMAP: 'Only the IMAP trigger uses it, and n8n runs triggers. No step needs it.',
+	'FTP/SFTP':
+		'FTP (passive mode, with or without TLS) and SFTP (SSH with a password or a private key): list a directory (also all directories below it), download to binary data, upload from binary data or from text, delete a file or a directory (also with its content), rename with the creation of missing directories. The list output has the fields of each client (`name`, `type`, `size`, `modifyTime`, rights, owner, `path`).',
+	SSH: 'An SSH session with a password or a private key (with passphrase): run one command in a directory and give `code`, `signal`, `stdout`, `stderr`; SFTP upload and download of one file. The command runs on the remote host, not on the host of n8n, so this is a protocol client, not route (d).',
+	LDAP: 'LDAP v3 over TCP, TLS or STARTTLS with a simple bind: `search` (base, scope, filter text, attributes, size limit, paging), `compare`, `add`, `modify` (add, replace, delete), `modifyDN`, `delete`. Binary attributes come back as base64.',
+	Kafka:
+		'A producer: metadata, `Produce` with acks, a timeout, compression (gzip), headers and keys; SASL (plain, SCRAM-256, SCRAM-512) and TLS. Optional: the Confluent schema registry (HTTP) to encode the value as Avro.',
+	AMQP: 'AMQP 0-9-1 (RabbitMQ node): open a channel, assert a queue or an exchange with its options, publish with headers and properties, wait for confirms; `deleteMessage` acknowledges the message of the trigger.',
+	'AMQP 1.0':
+		'AMQP 1.0 with SASL plain or anonymous over TCP or TLS: open a sender link to a sink, send one message for each item (body as text or as an object, application properties), wait for the settlement.',
+	MQTT: 'MQTT 3.1.1 and 5 over TCP, TLS or WebSocket with user, password, client id and clean session: `CONNECT`, one `PUBLISH` for each item with QoS 0, 1 or 2 and the retain flag, then the acknowledgement of the QoS.',
+	'TCP socket': 'A plain socket. Read the node source for the exchange before the design.',
+	'WebSocket or event stream': 'A stream that stays open. Only a trigger needs it.',
+	spreadsheet:
+		'Read (Extract from File, Spreadsheet File): CSV (delimiter, BOM, encoding, start line, row limit, relaxed quotes, header row or not), XLSX, XLS, ODS, HTML tables and RTF tables through SheetJS: sheet name, cell range, header row, raw values or formatted text, empty cells. Write (Convert to File, Spreadsheet File): CSV, XLSX, XLS, ODS, HTML, RTF with a header row, a sheet name, compression, a file name. The exact part is the cell-to-JSON conversion of SheetJS (dates, numbers, formatted text): the runtime needs it byte for byte, so the first step is a reader and a writer for CSV and XLSX, the two formats of nearly all uses.',
+	PDF: 'Text extraction of pdf.js: the text of each page (joined or as a list), page count, metadata (`info`, `metadata`, `version`), a password, a page limit. Exact text needs the layout order of pdf.js.',
+	compression:
+		'ZIP (store and deflate) and gzip of binary data, as `fflate` writes them: compress several binary properties into one archive with a file name, decompress an archive into one binary property for each file (with the MIME type by extension).',
+	'image editing':
+		'The Edit Image node runs the GraphicsMagick program of the host (`gm`): blur, border, composite, create, crop, draw, text, resize, rotate, shear, transparent, information. Exact pixels need the same program, so it stays in the host until the owner accepts another raster engine.',
+	'text encoding':
+		'`iconv-lite`: decode binary data to text and encode text to binary data in the encodings of the node list (UTF-8, UTF-16, Latin-1, Windows code pages, Shift_JIS, GBK and more), with or without a BOM. Also base64 and JSON forms of binary data.',
+	'calendar file':
+		'Write one iCalendar event (`ics`): start, end, all-day, title, description, place, attendees, recurrence text.',
+	'file type':
+		'The file type from the first bytes of binary data (`file-type`), for the MIME type of an upload.',
+	'binary stream':
+		'An upload of binary data in parts with a known length (resumable upload): the runtime sends a stored file in ranges of 2 MB with `Content-Range`. Google Drive `file.upload` (the largest use of route b by count) also needs a `multipart/related` body with a JSON part and the bytes of a stored file as the second part, with the part headers of the `form-data` package.',
+	'hash, HMAC and signature':
+		'`crypto` of Node: digests (MD5, SHA-1, SHA-2, SHA-3, RIPEMD-160, Whirlpool), HMAC with the same list, RSA and ECDSA signatures with a PEM key, random bytes and UUIDs, output as hex or base64, input as text or binary data. Keys are secrets: a signature with a credential key belongs to the credential layer.',
+};
+
 const BINARY_HELPER =
 	/this\.helpers\.(getBinaryStream|binaryToBuffer|binaryToString|detectBinaryEncoding|createReadStream)/;
 const CORE_PACKAGES = /^(n8n-workflow|n8n-core|@n8n\/|@utils\/)/;
@@ -562,6 +614,12 @@ interface Usage {
 	operations: Record<string, number>;
 	fallbackRows: number;
 	fallback: Record<string, number>;
+	/** The rows of the coverage run that the run marks as fully covered, and their counts. */
+	coveredRows?: number;
+	fallbackCovered?: Record<string, number>;
+	/** The rows with a node type of route (d): all rows, and the fully covered rows. */
+	localRows?: number;
+	localCoveredRows?: number;
 }
 
 function readUsage(): Usage {
@@ -632,23 +690,36 @@ function countUsage(dir: string): void {
 	if (fallbackFile !== undefined) {
 		usage.fallbackRows = 0;
 		usage.fallback = {};
+		usage.coveredRows = 0;
+		usage.fallbackCovered = {};
+		usage.localRows = 0;
+		usage.localCoveredRows = 0;
 		for (const line of readFileSync(fallbackFile, 'utf8').split('\n')) {
 			if (line === '') continue;
 			const row: unknown = JSON.parse(line);
 			if (!isRecord(row)) continue;
 			usage.fallbackRows++;
+			const covered = row.fc === true;
+			if (covered) usage.coveredRows++;
+			let local = false;
 			for (const short of Array.isArray(row.fallback) ? new Set(row.fallback) : []) {
 				if (typeof short !== 'string') continue;
 				const type = short.startsWith('lc.')
 					? `${LANGCHAIN}.${short.slice(3)}`
 					: `${BASE}.${short}`;
-				if (byType.has(type)) usage.fallback[type] = (usage.fallback[type] ?? 0) + 1;
+				if (!byType.has(type)) continue;
+				usage.fallback[type] = (usage.fallback[type] ?? 0) + 1;
+				if (covered) usage.fallbackCovered[type] = (usage.fallbackCovered[type] ?? 0) + 1;
+				if (LOCAL_TYPES.has(type)) local = true;
 			}
+			if (local) usage.localRows++;
+			if (local && covered) usage.localCoveredRows++;
 		}
 	}
 	usage.types = sorted(usage.types);
 	usage.operations = sorted(usage.operations);
 	usage.fallback = sorted(usage.fallback);
+	if (usage.fallbackCovered) usage.fallbackCovered = sorted(usage.fallbackCovered);
 	writeFileSync(USAGE_FILE, `${JSON.stringify(usage, null, '\t')}\n`);
 }
 
@@ -840,8 +911,51 @@ detailTable(
 	'file',
 	'Primitive',
 );
+{
+	lines.push('### Route (c): the list for the runtime cards', '');
+	lines.push(
+		'For each primitive: the node types and the operations with no way that it unlocks, their real uses, the workflows of the coverage run in which one of these node types went to the fallback host (a sum by node type), and the smallest exact surface that the nodes need. A library node on top of the primitive comes after it.',
+		'',
+	);
+	const of = baseNone.filter((r) => r.reason?.cls === 'protocol' || r.reason?.cls === 'file');
+	const body = [...new Set(of.map((r) => r.reason?.detail ?? ''))]
+		.map((detail) => {
+			const part = of.filter((r) => r.reason?.detail === detail);
+			const names = [...new Set(part.map((r) => r.n.type))];
+			return [
+				detail,
+				names.map((type) => `\`${short(type)}\``).join(', '),
+				part.length,
+				sum(part.map((r) => r.uses)),
+				sum(names.map((type) => usage.fallback[type] ?? 0)),
+				SURFACE[detail] ?? '',
+			];
+		})
+		.sort((a, b) => Number(b[4]) - Number(a[4]) || Number(b[3]) - Number(a[3]));
+	table(
+		['Primitive', 'Nodes', 'Operations', 'Uses', 'Falls back in', 'Surface that the nodes need'],
+		body,
+	);
+}
 detailTable('Route (b): excluded features', 'excluded', 'Feature');
 detailTable('Route (d): local system access', 'local', 'Access');
+{
+	const local = nodeTypes.filter((n) => LOCAL_TYPES.has(n.type));
+	lines.push('### Route (d): the workflows that have these nodes', '');
+	lines.push(
+		`Of ${usage.fallbackRows} workflows in the coverage run, ${usage.localRows ?? 0} have a node of route (d). Of the ${usage.coveredRows ?? 0} workflows that the run marks as fully covered, ${usage.localCoveredRows ?? 0} have one. Of the ${usage.workflows} certified bundles, the count for each node type is in the column "Workflows". These workflows cannot compile with no fallback-host node while the rule holds that a compiled module has no access to the system.`,
+		'',
+	);
+	table(
+		['Node', 'Certified bundles', 'Coverage run', 'Coverage run, fully covered'],
+		local.map((n) => [
+			`\`${short(n.type)}\``,
+			usage.types[n.type] ?? 0,
+			usage.fallback[n.type] ?? 0,
+			usage.fallbackCovered?.[n.type] ?? 0,
+		]),
+	);
+}
 detailTable(
 	'Route (a): compiler blockers (first blocker of the operation)',
 	'compiler',

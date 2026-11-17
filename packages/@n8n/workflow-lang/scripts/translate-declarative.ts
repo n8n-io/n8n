@@ -428,7 +428,11 @@ const HAND_PORTS: Array<[string, number, string]> = [
 		2.2,
 		'message.send, message.getAll and message.get (with `simple` on), message.addLabels, message.removeLabels, message.markAsRead, message.markAsUnread, message.delete',
 	],
-	['n8n-nodes-base.googleDrive', 3, 'fileFolder.search'],
+	[
+		'n8n-nodes-base.googleDrive',
+		3,
+		'fileFolder.search, folder.create, file.copy, file.move, file.deleteFile, file.createFromText',
+	],
 	['n8n-nodes-base.googleCalendar', 1.3, 'event.getAll'],
 	['n8n-nodes-base.telegram', 1.2, 'message.sendMessage'],
 	['n8n-nodes-base.notion', 3, 'databasePage.create, databasePage.getAll'],
