@@ -237,7 +237,8 @@ pub const Options = struct {
     /// after it change single sizes. `sizingLine` says what it reserves.
     pub fn applyInFlight(o: *Options, target: u32) void {
         const n = std.math.clamp(target, 64, 1 << 16);
-        o.in_flight = n;
+        // A target below what the profile gives makes no pool smaller.
+        o.in_flight = @max(n, o.inFlight());
         // A webhook holds a connection while its execution runs; some more
         // for the connections whose request waits.
         o.max_conns = @max(o.max_conns, n + n / 4 + 64);
@@ -4997,6 +4998,33 @@ test "back-pressure: a request that finds no region waits in its connection, in 
     try std.testing.expectEqual(@as(u64, 0), r.sh.st.counters.limit_finished);
     try std.testing.expectEqual(@as(u64, 0), r.sh.st.counters.start_waits);
     try std.testing.expectEqual(@as(u32, 0), r.sh.st.liveExecutions());
+}
+
+test "sizing: --target-in-flight scales every pool on the path of an execution, and makes none smaller" {
+    var o: Options = .{};
+    o.applyEmbedded();
+    const profile = o;
+    // A target below the profile changes no pool of an execution.
+    o.applyInFlight(100);
+    try std.testing.expectEqual(profile.max_conns, o.max_conns);
+    try std.testing.expectEqual(profile.slots, o.slots);
+    try std.testing.expectEqual(profile.regionCounts(), o.regionCounts());
+    try std.testing.expectEqual(profile.heldBytes(), o.heldBytes());
+    try std.testing.expectEqual(profile.max_egress, o.max_egress);
+    // A target above it scales each one.
+    o.applyInFlight(4000);
+    try std.testing.expectEqual(@as(u32, 5064), o.max_conns);
+    try std.testing.expectEqual(@as(u32, 16_000), o.slots);
+    try std.testing.expectEqual([4]u32{ 16_000, 4000, 500, 31 }, o.regionCounts());
+    try std.testing.expectEqual(@as(u32, 4000 * (64 << 10)), o.heldBytes());
+    try std.testing.expectEqual(@as(u32, 16_000), o.max_egress);
+    try std.testing.expectEqual(@as(u32, 8000), o.egress.max_conns);
+    try std.testing.expectEqual(@as(u32, 128), o.egress_big_slots);
+    try std.testing.expectEqual(@as(u32, 32), o.request_big_slots);
+    try std.testing.expectEqual(@as(u32, 1024), o.max_service_calls);
+    try std.testing.expectEqual(@as(u32, 4000), o.max_renewals);
+    // A shard starts with these sizes: the result of every outbound request has room.
+    try std.testing.expect(o.max_egress <= std.math.ceilPowerOfTwoAssert(u32, 2 * o.max_egress) / 2);
 }
 
 test "back-pressure: with every connection slot in use a new connection gets 503 (the bound on new work)" {
