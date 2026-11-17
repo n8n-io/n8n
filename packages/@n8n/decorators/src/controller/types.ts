@@ -151,6 +151,7 @@ export type StaticRouterMetadata = {
 	Pick<
 		RouteMetadata,
 		| 'skipAuth'
+		| 'allowBots'
 		| 'allowSkipPreviewAuth'
 		| 'allowSkipMFA'
 		| 'middlewares'

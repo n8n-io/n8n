@@ -22,6 +22,7 @@ export interface FolderExportRequest {
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
 	includeArchived: boolean;
+	includeAgentFolders?: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
 	 * export (`folders/...`); a project exporter passes `projects/<slug>-<id>` so
@@ -65,7 +66,7 @@ export class FolderExporter {
 	) {}
 
 	async export(request: FolderExportRequest): Promise<FolderExportResult> {
-		const folders = await this.folderFinder.findFolderSubtreesForUser(
+		const accessibleFolders = await this.folderFinder.findFolderSubtreesForUser(
 			request.folderIds,
 			request.user,
 			['folder:read'],
@@ -74,10 +75,14 @@ export class FolderExporter {
 		await assertEveryRequestedEntityAccessible(
 			'folder',
 			request.folderIds,
-			folders,
+			accessibleFolders,
 			async (ids) => await this.folderFinder.findExistingFolderIds(ids),
 		);
 
+		const folders =
+			request.includeAgentFolders === false
+				? accessibleFolders.filter((folder) => folder.resourceType === 'workflow')
+				: accessibleFolders;
 		const { roots, childrenByParent } = this.buildForest(folders);
 
 		const workflowIdsByFolder = await this.workflowFinder.findWorkflowIdsByFolder(

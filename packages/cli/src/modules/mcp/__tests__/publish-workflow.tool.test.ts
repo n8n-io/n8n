@@ -2,6 +2,7 @@ import {
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type OperationContext, User } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
@@ -12,7 +13,6 @@ import z from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -23,13 +23,13 @@ describe('publish-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowService: WorkflowService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowService = mockInstance(WorkflowService);
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		collaborationService = mockInstance(CollaborationService, {

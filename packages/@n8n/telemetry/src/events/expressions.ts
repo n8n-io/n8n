@@ -118,6 +118,12 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 						legacy_type: z.string(),
 						quickjs_type: z.string(),
 						error_class: z.string().optional(),
+						error_origin: z
+							.string()
+							.optional()
+							.describe(
+								'Where the QuickJS error started, as <kind> or <kind>:<class>. The kind is compile, guest, host_callback, guest_uncaught, rebuild, callback_setup, callback_cleanup or bridge. The class is the class of the first error, before the bridge replaces it with a generic Error',
+							),
 						count: z.number(),
 					}),
 				)

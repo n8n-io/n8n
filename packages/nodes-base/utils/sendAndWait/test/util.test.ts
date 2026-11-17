@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 import type {
+	INode,
 	IExecuteFunctions,
 	INodeProperties,
 	IWebhookFunctions,
@@ -25,6 +26,9 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		const node = mock<INode>({ type: 'n8n-nodes-base.gmail', typeVersion: 2.1 });
+		mockExecuteFunctions.getNode.mockReturnValue(node);
+		mockWebhookFunctions.getNode.mockReturnValue(node);
 		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 	});
 

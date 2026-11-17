@@ -239,19 +239,15 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getAttachmentsAt(messageIndex: number): Locator {
-		return this.getUserMessages().nth(messageIndex).getByTestId('chat-file');
+		return this.getUserMessages().nth(messageIndex).locator('.n8n-attachment');
 	}
 
 	/**
-	 * Files staged in the composer but not yet sent, counted via each preview's remove
-	 * control. Two markers are needed: `AttachmentPreview` renders
-	 * `attachment-preview-remove` for image thumbnails, while non-image files fall
-	 * through to `ChatFile`, whose control is `chat-file-remove`. Matching only the
-	 * first would silently count 0 for a staged PDF or CSV.
+	 * Staged files and resource chips expose different remove controls.
 	 */
 	getComposerAttachments(): Locator {
 		return this.getContainer().locator(
-			'[data-test-id="attachment-preview-remove"], [data-test-id="chat-file-remove"]',
+			'[data-test-id="attachment-remove"], [data-test-id^="attachment-preview-remove-"]',
 		);
 	}
 

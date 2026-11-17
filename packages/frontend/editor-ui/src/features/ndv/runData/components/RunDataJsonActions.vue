@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { JSONPath } from 'jsonpath-plus';
 import type { INodeUi } from '@/Interface';
-import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
+import type { IDataObject, IRunExecutionData, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -32,10 +33,12 @@ const props = withDefaults(
 		jsonData: IDataObject[];
 		outputIndex: number | undefined;
 		runIndex: number | undefined;
+		connectionType: NodeConnectionType;
 		execution?: IRunExecutionData;
 	}>(),
 	{
 		selectedJsonPath: nonExistingJsonPath,
+		connectionType: NodeConnectionTypes.Main,
 	},
 );
 
@@ -82,7 +85,7 @@ function getJsonValue(): string {
 					props.runIndex,
 					props.outputIndex,
 					'output',
-					NodeConnectionTypes.Main,
+					props.connectionType,
 					props.execution,
 				),
 			);

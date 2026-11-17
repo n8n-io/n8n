@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import type { Project, ProjectRepository, User } from '@n8n/db';
 import { getSchemaBaseDirs, setSchemaBaseDirs, validateNodeConfig } from '@n8n/workflow-sdk';
 import { NoOp } from 'n8n-nodes-base/dist/nodes/NoOp/NoOp.node';
@@ -11,7 +11,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -21,7 +20,7 @@ import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/valida
 
 describe('MCP Schedule Trigger intervals', () => {
 	const user = mock<User>({ id: 'user-1' });
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const workflowCreationService = mock<WorkflowCreationService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const urlService = mock<UrlService>();

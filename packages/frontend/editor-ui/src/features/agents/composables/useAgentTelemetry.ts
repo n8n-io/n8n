@@ -458,6 +458,7 @@ export function useAgentTelemetry() {
 	}
 
 	return {
+		safeTrack,
 		trackClickedAgentsTab,
 		trackClickedKnowledgeUpload,
 		trackClickedTraceItem,

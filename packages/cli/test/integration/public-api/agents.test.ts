@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+import { createFolder } from '../shared/db/folders';
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils/';
@@ -13,6 +14,17 @@ import { setupTestServer } from '../shared/utils/';
 beforeAll(async () => await testModules.loadModules(['agents']));
 
 const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
+
+/** Builder-only state of the internal `AgentDto` stays off the public responses. */
+const builderOnlyFields = [
+	'isRunnable',
+	'hasPublishHistory',
+	'hasVersionHistory',
+	'skills',
+	'skillHashes',
+	'outdatedSkillIds',
+	'skillVersions',
+];
 
 describe('DELETE /agents/:agentId', () => {
 	let agentRepository: AgentRepository;
@@ -153,17 +165,6 @@ describe('POST /agents', () => {
 		await testDb.truncate(['ProjectRelation', 'Project']);
 	});
 
-	/** Builder-only state of the internal `AgentDto` stays off the public response. */
-	const builderOnlyFields = [
-		'isRunnable',
-		'hasPublishHistory',
-		'hasVersionHistory',
-		'skills',
-		'skillHashes',
-		'outdatedSkillIds',
-		'skillVersions',
-	];
-
 	test('should fail due to missing API Key', async () => {
 		const response = await testServer.publicApiAgentWithoutApiKey().post('/agents');
 
@@ -192,6 +193,7 @@ describe('POST /agents', () => {
 			id: expect.any(String),
 			name: 'My Agent',
 			projectId: personalProject.id,
+			parentFolder: null,
 			availableInMCP: false,
 			isArchived: false,
 			activeVersionId: null,
@@ -349,5 +351,395 @@ describe('POST /agents', () => {
 			.send({ name: 'My Agent', projectId: 'missing-project' });
 
 		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('GET /agents/:agentId', () => {
+	let agentRepository: AgentRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		await agentRepository.delete({});
+		await testDb.truncate(['Folder', 'ProjectRelation', 'Project']);
+	});
+
+	const createAgent = async (projectId: string, id: string) =>
+		await agentRepository.save({
+			id,
+			name: 'My Agent',
+			projectId,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+	test('should return the parent folder in the workflow public API format', async () => {
+		const owner = await createOwnerWithApiKey();
+		const project = await createTeamProject('Agent project', owner);
+		const ancestor = await createFolder(project, { resourceType: 'agent' });
+		const folder = await createFolder(project, { resourceType: 'agent', parentFolder: ancestor });
+		const agent = await createAgent(project.id, 'agent-in-folder');
+		await agentRepository.update(agent.id, { parentFolderId: folder.id });
+
+		const response = await testServer.publicApiAgentFor(owner).get(`/agents/${agent.id}`);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.parentFolder).toEqual({
+			id: folder.id,
+			name: folder.name,
+			parentFolderId: ancestor.id,
+			createdAt: folder.createdAt.toISOString(),
+			updatedAt: folder.updatedAt.toISOString(),
+		});
+		expect(response.body).not.toHaveProperty('parentFolderId');
+	});
+
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/agents/abc123');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/agents/abc123');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to non-existing agent', async () => {
+		const owner = await createOwnerWithApiKey();
+
+		const response = await testServer.publicApiAgentFor(owner).get('/agents/missing-agent');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for an instance agent', async () => {
+		const owner = await createOwnerWithApiKey();
+		await agentRepository.save({
+			id: 'instance-agent',
+			name: 'Instance Agent',
+			projectId: null,
+			scope: 'instance',
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		const response = await testServer.publicApiAgentFor(owner).get('/agents/instance-agent');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return the public agent shape for an agent created via the Public API', async () => {
+		const member: User = await createMemberWithApiKey();
+
+		const created = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Readable Agent',
+				config: { name: 'Readable Agent', model: 'openai/gpt-5', instructions: 'Help users' },
+			});
+		expect(created.statusCode, JSON.stringify(created.body)).toBe(201);
+
+		const response = await testServer.publicApiAgentFor(member).get(`/agents/${created.body.id}`);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({
+			id: created.body.id,
+			name: 'Readable Agent',
+			projectId: created.body.projectId,
+			parentFolder: null,
+			availableInMCP: false,
+			isArchived: false,
+			activeVersionId: null,
+			tools: {},
+			activeVersion: null,
+		});
+		expect(response.body.config).toEqual(created.body.config);
+		expect(response.body.configHash).toBe(created.body.configHash);
+		for (const field of builderOnlyFields) {
+			expect(response.body).not.toHaveProperty(field);
+		}
+	});
+
+	test('should return 403 when the API key lacks the agent:read scope', async () => {
+		const member = await createMemberWithApiKey({ scopes: ['agent:list'] });
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createAgent(personalProject.id, 'agent-kept');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents/agent-kept');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when the user lacks the agent:read project permission', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		// Project role without agent:read: the API key scope alone must not be enough.
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:list'], {
+			roleType: 'project',
+			displayName: 'Agent Lister',
+			description: 'Can list agents but not read one',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+		const agent = await createAgent(teamProject.id, 'agent-kept');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents/agent-kept');
+
+		expect(response.statusCode).toBe(403);
+		expect(await agentRepository.existsBy({ id: agent.id })).toBe(true);
+	});
+
+	test('should return 403 when the agent belongs to a project the user cannot access', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		const teamProject = await createTeamProject('Other Project', owner);
+		const agent = await createAgent(teamProject.id, 'agent-kept');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents/agent-kept');
+
+		expect(response.statusCode).toBe(403);
+		expect(await agentRepository.existsBy({ id: agent.id })).toBe(true);
+	});
+});
+
+describe('GET /agents', () => {
+	let agentRepository: AgentRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		await agentRepository.delete({});
+		await testDb.truncate(['ProjectRelation', 'Project']);
+	});
+
+	const createAgent = async (projectId: string, id: string) =>
+		await agentRepository.save({
+			id,
+			name: `Agent ${id}`,
+			projectId,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/agents');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/agents');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should list lean rows across the projects the caller can list', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member: User = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		const ownerProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(owner.id);
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		await createAgent(personalProject.id, 'agent-personal');
+		await createAgent(teamProject.id, 'agent-team');
+		// In a project the caller cannot see: must stay out of the list.
+		await createAgent(ownerProject.id, 'agent-foreign');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents');
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.nextCursor).toBeNull();
+
+		const rowIds = response.body.data.map((row: { id: string }) => row.id);
+		expect(rowIds).toHaveLength(2);
+		expect(rowIds).toContain('agent-personal');
+		expect(rowIds).toContain('agent-team');
+		expect(rowIds).not.toContain('agent-foreign');
+
+		for (const row of response.body.data) {
+			expect(row).toMatchObject({
+				id: expect.any(String),
+				name: expect.any(String),
+				projectId: expect.any(String),
+				availableInMCP: false,
+				isArchived: false,
+				versionId: 'draft-version',
+				activeVersionId: null,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+			// A list row is not a full-replace body: no config, no builder state.
+			expect(row).not.toHaveProperty('config');
+			expect(row).not.toHaveProperty('configHash');
+			for (const field of builderOnlyFields) {
+				expect(row).not.toHaveProperty(field);
+			}
+		}
+	});
+
+	test('should page through agents with the cursor', async () => {
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createAgent(personalProject.id, 'agent-1');
+		await createAgent(personalProject.id, 'agent-2');
+		await createAgent(personalProject.id, 'agent-3');
+
+		const firstPage = await testServer.publicApiAgentFor(member).get('/agents').query({ limit: 2 });
+
+		expect(firstPage.statusCode, JSON.stringify(firstPage.body)).toBe(200);
+		expect(firstPage.body.data).toHaveLength(2);
+		expect(firstPage.body.nextCursor).toEqual(expect.any(String));
+
+		const secondPage = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents')
+			.query({ limit: 2, cursor: firstPage.body.nextCursor });
+
+		expect(secondPage.statusCode, JSON.stringify(secondPage.body)).toBe(200);
+		expect(secondPage.body.data).toHaveLength(1);
+		expect(secondPage.body.nextCursor).toBeNull();
+	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const member = await createMemberWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents')
+			.query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for a forged cursor that bypasses the page limit', async () => {
+		const member = await createMemberWithApiKey();
+		// A cursor minted by hand, not by this API: its limit exceeds the cap.
+		const cursor = Buffer.from('{"offset":0,"limit":1000000}').toString('base64');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents').query({ cursor });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for a forged cursor with a negative offset', async () => {
+		const member = await createMemberWithApiKey();
+		const cursor = Buffer.from('{"offset":-1,"limit":2}').toString('base64');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents').query({ cursor });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should narrow the list to one project', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, 'project:editor');
+		await createAgent(personalProject.id, 'agent-personal');
+		await createAgent(teamProject.id, 'agent-team');
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.get('/agents')
+			.query({ projectId: teamProject.id });
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.data.map((row: { id: string }) => row.id)).toEqual(['agent-team']);
+	});
+
+	test('should exclude archived agents by default', async () => {
+		const member = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createAgent(personalProject.id, 'agent-live');
+		await agentRepository.save({
+			id: 'agent-archived',
+			name: 'Archived Agent',
+			projectId: personalProject.id,
+			isArchived: true,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents');
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.data.map((row: { id: string }) => row.id)).toEqual(['agent-live']);
+	});
+
+	test('should return 403 when the API key lacks the agent:list scope', async () => {
+		const member = await createMemberWithApiKey({ scopes: ['agent:read'] });
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should exclude agents of projects where the user lacks agent:list', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		// Project role without agent:list: its agents stay out of the list.
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+			roleType: 'project',
+			displayName: 'Agent Reader',
+			description: 'Can read agents but not list them',
+		});
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await createAgent(teamProject.id, 'agent-team');
+		await createAgent(personalProject.id, 'agent-personal');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents');
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.data.map((row: { id: string }) => row.id)).toEqual(['agent-personal']);
 	});
 });
