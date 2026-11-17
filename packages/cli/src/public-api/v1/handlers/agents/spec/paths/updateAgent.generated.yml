@@ -41,14 +41,14 @@ requestBody:
           createdAt: {}
           updatedAt: {}
           tools: {}
+          activeVersion: {}
+          isRunnable: {}
+          hasPublishHistory: {}
+          hasVersionHistory: {}
           skills: {}
           skillHashes: {}
           outdatedSkillIds: {}
           skillVersions: {}
-          isRunnable: {}
-          hasPublishHistory: {}
-          hasVersionHistory: {}
-          activeVersion: {}
           adopted: {}
         required:
           - config

@@ -1,5 +1,5 @@
 import { jsonParse } from 'n8n-workflow';
-import { z } from 'zod';
+import { z, type ZodRawShape } from 'zod';
 
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
@@ -604,6 +604,18 @@ export class UpdateAgentDto implements UpdateAgent {
 	}
 }
 
+/**
+ * Response fields a PUT body may carry but must not write. Derived from the
+ * agent response shapes, so the strict schema cannot drift from them: a new
+ * response field is accepted-and-ignored here without a list to maintain.
+ * `config` and `configHash` are real inputs of this DTO, not managed fields.
+ */
+const serverManagedAgentResponseFields: ZodRawShape = Object.fromEntries(
+	[...Object.keys(agentPublicShape), ...Object.keys(agentBuilderStateShape), 'adopted']
+		.filter((field) => field !== 'config' && field !== 'configHash')
+		.map((field) => [field, strippedAgentField]),
+);
+
 const updateAgentPublicObjectSchema = z
 	.object({
 		// `null` is the retrieved body of an agent that has no configuration
@@ -612,26 +624,7 @@ const updateAgentPublicObjectSchema = z
 		config: AgentJsonConfigSchema.nullable().openapi(alsoNullable({ type: 'object' })),
 		baseConfigHash: z.string().nullable().optional(),
 		configHash: z.string().nullable().optional(),
-		id: strippedAgentField,
-		name: strippedAgentField,
-		projectId: strippedAgentField,
-		project: strippedAgentField,
-		availableInMCP: strippedAgentField,
-		isArchived: strippedAgentField,
-		versionId: strippedAgentField,
-		activeVersionId: strippedAgentField,
-		createdAt: strippedAgentField,
-		updatedAt: strippedAgentField,
-		tools: strippedAgentField,
-		skills: strippedAgentField,
-		skillHashes: strippedAgentField,
-		outdatedSkillIds: strippedAgentField,
-		skillVersions: strippedAgentField,
-		isRunnable: strippedAgentField,
-		hasPublishHistory: strippedAgentField,
-		hasVersionHistory: strippedAgentField,
-		activeVersion: strippedAgentField,
-		adopted: strippedAgentField,
+		...serverManagedAgentResponseFields,
 	})
 	.strict();
 
