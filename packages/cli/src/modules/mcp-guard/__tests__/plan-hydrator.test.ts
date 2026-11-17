@@ -263,6 +263,23 @@ describe('PlanHydrator', () => {
 		expect(prompts).toEqual([]);
 	});
 
+	it('holds the ids that a write result lists, also nested', async () => {
+		const { hydrator, prompts } = setup([]);
+		hydrator.noteWrite('notion-create-pages', text(JSON.stringify({ pages: [{ id: ID }] })));
+		await hydrator.hydrateWrite('notion-update-page', { page_id: ID });
+		expect(prompts).toEqual([]);
+	});
+
+	it('does not ask the model again when the gym build lacks a feature', async () => {
+		const plan = JSON.stringify({ overlay: { a: 1 } });
+		const { hydrator, prompts } = setup([plan, plan], () => ({
+			isError: true,
+			content: [{ type: 'text', text: 'SQL mode is not available in the gym build of Notion' }],
+		}));
+		await hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+		expect(prompts).toHaveLength(1);
+	});
+
 	it('goes back to the model with the gym error, and stops after two repairs', async () => {
 		const bad = JSON.stringify({ overlay: { a: 1 } });
 		const { hydrator, seedErrors, prompts } = setup([bad, bad, bad, bad]);

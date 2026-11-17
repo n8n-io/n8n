@@ -57,6 +57,8 @@ interface Plan {
 
 const MAX_READS = 4;
 const MAX_LOOKUPS = 8;
+// Keys of a write result that hold the id of an object.
+const MADE_ID_KEYS: ReadonlySet<string> = new Set(['id', 'uuid', 'identifier', 'page_id']);
 const MAX_SHOWN = 6000;
 const MAX_REPAIRS: number = 2;
 const MAX_TEXT = 40_000;
@@ -190,14 +192,19 @@ export class PlanHydrator implements Hydrator {
 
 	// The ids of what a write made. A later plan must not seed another object under them.
 	noteWrite(_toolName: string, result: CallToolResult): void {
-		const made = parseJson(resultText(result));
-		if (!isRecord(made)) return;
-		this.seeded.hold(
-			['id', 'uuid', 'identifier'].flatMap((key) => {
-				const value = made[key];
-				return typeof value === 'string' && value !== '' ? [value] : [];
-			}),
-		);
+		const found: string[] = [];
+		const visit = (value: unknown, depth: number) => {
+			if (depth > 3) return;
+			if (Array.isArray(value)) value.forEach((item) => visit(item, depth + 1));
+			else if (isRecord(value)) {
+				for (const [key, item] of Object.entries(value)) {
+					if (MADE_ID_KEYS.has(key) && typeof item === 'string' && item !== '') found.push(item);
+					else visit(item, depth + 1);
+				}
+			}
+		};
+		visit(parseJson(resultText(result)), 0);
+		this.seeded.hold(found);
 	}
 
 	async hydrateWrite(toolName: string, args: Record<string, unknown>): Promise<void> {
@@ -429,8 +436,11 @@ export class PlanHydrator implements Hydrator {
 			return `the gym could not answer the original call: ${errText(e)}`;
 		}
 		const text = resultText(res);
-		if (res.isError)
+		if (res.isError) {
+			// A limit of the gym build. No plan can change it, so the model is not asked again.
+			if (/not available in the gym/i.test(text)) return undefined;
 			return `the gym answered the original call with an error: ${text.slice(0, 500)}`;
+		}
 		// An id that only filters (a project of an empty list) is not in the answer, and not in the real one.
 		const expected = real === undefined ? idsInArgs(args) : shownIds(idsInArgs(args), real);
 		const missing = missingIds(expected, text);
