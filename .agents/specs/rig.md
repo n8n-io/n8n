@@ -281,8 +281,8 @@ The wizard uses arrow-key prompts from `@clack/prompts` (the version that
    - Task runners: external via the launcher, external direct (runner
      components), or internal. For external, the languages (space bar toggles).
 3. **Public HTTPS URL**: no, or a Cloudflare quick tunnel.
-4. **Ports**: only when another environment uses slot 0. The default ports
-   (slot 0), or own ports (the lowest free slot).
+4. **Ports**: only when another environment uses slot 0. Own ports (the
+   lowest free slot), or the default ports (slot 0). Own ports is preselected.
 5. **Name**: the default is the preset name, or `local`, with a number when
    the name exists. An existing name is rejected.
 6. **Summary**: the topology and the components with their ports, then a

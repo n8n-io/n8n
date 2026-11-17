@@ -147,18 +147,22 @@ export async function wizard(givenName?: string): Promise<TopologyInput | undefi
 	const sharing = slotsInUse().get(0);
 	if (sharing) {
 		const slot = freeSlot();
-		topology.slot = await select('Ports', [
-			{
-				value: 0,
-				label: 'Default ports (slot 0)',
-				hint: `same as ${sharing.join(', ')}: they cannot run at the same time`,
-			},
-			{
-				value: slot,
-				label: `Own ports (slot ${slot})`,
-				hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
-			},
-		]);
+		topology.slot = await select(
+			'Ports',
+			[
+				{
+					value: 0,
+					label: 'Default ports (slot 0)',
+					hint: `same as ${sharing.join(', ')}: they cannot run at the same time`,
+				},
+				{
+					value: slot,
+					label: `Own ports (slot ${slot})`,
+					hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
+				},
+			],
+			slot,
+		);
 	}
 	const name =
 		givenName ??
