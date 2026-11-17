@@ -30,7 +30,8 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
 	}),
 }));
 
-vi.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
+vi.mock('@modelcontextprotocol/sdk/client/sse.js', async (importOriginal) => ({
+	...(await importOriginal()),
 	SSEClientTransport: vi.fn(function (url: URL, options: unknown) {
 		sseCtor(url, options);
 		return { type: 'sse', url, options };
@@ -657,5 +658,62 @@ describe('McpConnection — approval declaration', () => {
 		});
 
 		expect(conn.declaresApproval()).toBe(true);
+	});
+});
+
+describe('McpClient HTTP error status', () => {
+	beforeEach(() => {
+		clientConnect.mockReset().mockResolvedValue(undefined);
+		clientListTools.mockReset().mockResolvedValue({ tools: [] });
+		clientClose.mockReset().mockResolvedValue(undefined);
+	});
+
+	it.each(['connect', 'listTools'] as const)(
+		'preserves HTTP status in warnings and verification after %s fails',
+		async (phase) => {
+			const { StreamableHTTPError } = await import(
+				'@modelcontextprotocol/sdk/client/streamableHttp.js'
+			);
+			const error = new StreamableHTTPError(503, 'Unavailable');
+			const originalMessage = error.message;
+			(phase === 'connect' ? clientConnect : clientListTools).mockRejectedValue(error);
+			const client = new McpClient([
+				{ name: 'unavailable', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+			]);
+			try {
+				expect(await client.listTools()).toEqual([]);
+				expect(client.getConnectionFailures()).toEqual([
+					{ server: 'unavailable', error: `HTTP 503: ${originalMessage}` },
+				]);
+				expect(await client.verify()).toEqual({
+					ok: false,
+					errors: [{ server: 'unavailable', error: `HTTP 503: ${originalMessage}` }],
+				});
+				expect(error.message).toBe(originalMessage);
+				expect(error.code).toBe(503);
+			} finally {
+				await client.close();
+			}
+		},
+	);
+
+	it('retains SSE status in a nested connection error', async () => {
+		const { SseError } = await import('@modelcontextprotocol/sdk/client/sse.js');
+		clientConnect.mockRejectedValue(
+			new Error('Connection failed', {
+				cause: new SseError(429, 'Unavailable', undefined),
+			}),
+		);
+		const client = new McpClient([
+			{ name: 'limited', url: 'https://example.test/sse', transport: 'sse' },
+		]);
+		try {
+			await client.listTools();
+			expect(client.getConnectionFailures()).toEqual([
+				{ server: 'limited', error: 'Connection failed. HTTP 429: SSE error: Unavailable' },
+			]);
+		} finally {
+			await client.close();
+		}
 	});
 });
