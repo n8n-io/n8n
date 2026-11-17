@@ -24,6 +24,7 @@ import {
 	logTrigger,
 	markPendingReconcile,
 	reconcileSubscriptions,
+	renewSubscriptions,
 	storedSubscriptionsCover,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
@@ -371,19 +372,32 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				// instance start fails, the legacy activation manager queues retries instead. So
 				// stored subscriptions that GET by id shows live stay: the listing allows only 40
 				// requests per 20 s for an app across all tenants, and the next listing reconciles.
+				// Where exactly one stored id on a required resource shows the stored secret, the node
+				// tries to renew it. A failure other than a 404 only warns, and the subscription keeps
+				// its expiry. A 404 means the subscription is gone: its id leaves the stored ids, and
+				// the stored subscriptions stay while another stored id still covers its resource. A
+				// throw here is costly: `delete()` also removes the stored secret, so the next attempt
+				// cannot keep anything without a listing.
 				let subscriptions: SubscriptionResponse[];
 				try {
 					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 				} catch (error) {
-					if (
-						clientState !== undefined &&
-						(await storedSubscriptionsCover.call(this, webhookUrl, clientState, event))
-					) {
-						logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
-							error: ensureError(error).message,
-						});
-						markPendingReconcile(webhookData, true);
-						return true;
+					const cover =
+						clientState === undefined
+							? undefined
+							: await storedSubscriptionsCover.call(this, webhookUrl, clientState, event);
+					if (cover !== undefined) {
+						const { gone } = await renewSubscriptions.call(this, cover.renew);
+						if (cover.covering.every((ids) => ids.some((id) => !gone.has(id)))) {
+							if (gone.size > 0) {
+								webhookData.subscriptionIds = storedIds.filter((id) => !gone.has(id));
+							}
+							logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
+								error: ensureError(error).message,
+							});
+							markPendingReconcile(webhookData, true);
+							return true;
+						}
 					}
 					throw error;
 				}
@@ -412,6 +426,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					subscriptions,
 					// An unproven leftover is replaced: a failed create here throws, and core retries.
 					holdUnproven: false,
+					renewKeepers: true,
 				});
 				// A resource without a live subscription is a dark trigger, so the activation
 				// fails with the Graph error. A failed removal only warns: the next reconcile

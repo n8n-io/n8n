@@ -4,7 +4,8 @@ import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
-import { getPromotionPreview } from '../promotions.api';
+import { getPromotionEnvironmentChanges, getPromotionPreview } from '../promotions.api';
+import { fetchPromotionEnvironments } from '../promotionsSettings.api';
 import { isPreviewNotConfigured } from '../promotionErrors';
 import type { ApplyCheckResult } from '../promotions.types';
 import { buildSelectionGraph } from '../promotionPreview.selection';
@@ -20,10 +21,14 @@ type PromotionPreviewState =
 	| 'ready';
 
 /**
- * Loads the preview of one project and direction for the preview page. On Apply, the preview
- * also holds the blockers, so both describe the same source.
+ * Loads the preview of one project and direction for the preview page. Without a project, it
+ * loads the Apply of the whole instance. On Apply, the preview also holds the blockers, so both
+ * describe the same source.
  */
-export function usePromotionPreview(projectId: Ref<string>, direction: Ref<PromotionDirection>) {
+export function usePromotionPreview(
+	projectId: Ref<string | undefined>,
+	direction: Ref<PromotionDirection>,
+) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
 
@@ -58,11 +63,26 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		refreshFailed.value = false;
 
 		try {
-			const result = await getPromotionPreview(
-				rootStore.publicApiContext,
-				requested.projectId,
-				requested.direction,
-			);
+			let result: PromotionPreview;
+			if (requested.projectId === undefined) {
+				const environments = await fetchPromotionEnvironments(rootStore.publicApiContext, {
+					scope: 'instance',
+				});
+				if (!isLatest()) return;
+				const environment = environments.find(({ direction }) => direction === requested.direction);
+				if (!environment) {
+					preview.value = null;
+					state.value = 'disconnected';
+					return;
+				}
+				result = await getPromotionEnvironmentChanges(rootStore.publicApiContext, environment.id);
+			} else {
+				result = await getPromotionPreview(
+					rootStore.publicApiContext,
+					requested.projectId,
+					requested.direction,
+				);
+			}
 			if (!isLatest()) return;
 			preview.value = result;
 			lastRefreshedAt.value = new Date();

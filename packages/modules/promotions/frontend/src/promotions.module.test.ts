@@ -12,6 +12,7 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 
 import { PromotionsModule } from './promotions.module';
 import {
+	PROMOTION_INSTANCE_APPLY_VIEW,
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_SETTINGS_SCOPES,
 	PROMOTIONS_SETTINGS_VIEW,
@@ -113,6 +114,15 @@ describe('PromotionsModule settings route', () => {
 });
 
 describe('PromotionsModule preview routes', () => {
+	it('opens the whole-instance Apply preview with only the apply scope', async () => {
+		setup({ scopes: ['promotions:apply'] });
+		const router = createTestRouter();
+
+		await router.push('/promotions/apply');
+
+		expect(router.currentRoute.value.name).toBe(PROMOTION_INSTANCE_APPLY_VIEW);
+	});
+
 	it.each(['promote', 'apply'] as const)(
 		'opens the %s preview of a project for a user with only that direction scope',
 		async (direction) => {
