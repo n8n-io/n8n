@@ -42,6 +42,7 @@ replacement.
 | `await ctx.approval({ name, message, via?, timeout? })` | `approval` (4) | `{ approved: boolean, by?: string, data?: object }` |
 | `await ctx.respond({ name, status?, body, headers? })` | `respond` (5) | `undefined` |
 | `await ctx.service({ name, service, op, args? })` | `service` (6) | the JSON result of the service (9.9) |
+| `await ctx.sql({ name, credential, dialect, statements, mode?, largeNumbers?, dates?, connectTimeoutMs?, timeoutMs? })` | `sql` (7) | `{ results, connect? }` (9.10) |
 | `ctx.now()` | none | number, ms since epoch, from the batch clock |
 | `ctx.random()` | none | number in [0, 1), from the execution PRNG |
 
@@ -355,7 +356,7 @@ to its `SUSPEND`s. `credential` is the name of a credential slot; the runtime
 applies the credential to the request (section 7). A library module can
 import only from `@n8n/workflow-lang`, so each module holds its own helpers.
 
-The node context has `ctx.http`, `ctx.service`, `ctx.staticData`,
+The node context has `ctx.http`, `ctx.service`, `ctx.sql`, `ctx.staticData`,
 `ctx.random()` and `ctx.wait({ duration })`. Each other ctx call is error
 `WL012`. `ctx.random()` is the `RANDOM` instruction, as in a workflow.
 `await ctx.wait({ duration })` is a pause in milliseconds inside the step of
@@ -1714,6 +1715,124 @@ is `file` (the test bed's file store).
 * Test bed: the engine-test adapter answers with `runDataTableCall`
   (`src/services/data-table.ts`) over the fallback host's file store
   (`WF_FALLBACK_DATA_TABLES_DIR`).
+
+### 9.10 SQL statements (`ctx.sql`)
+
+A node that uses a database driver in v1 (Postgres first) has no HTTP
+request to send. A `sql` effect (kind 7) gives statements to the runtime,
+which has a client for the wire protocol of the database and a bounded
+pool of connections for each credential and host:
+
+```ts
+await ctx.sql({
+	name,
+	credential,              // a credential slot; the runtime reads host, port, user and password
+	dialect: 'postgres',
+	mode,                    // 'single' (default) | 'transaction' | 'independently'
+	statements: [{ text: 'SELECT id FROM t WHERE a = $1', values: ['x'] }],
+	largeNumbers,            // 'text' (default) | 'numbers'
+	dates,                   // 'text' (default) | 'legacy'
+	connectTimeoutMs,
+	timeoutMs,               // total; the runtime default is 300,000
+})
+// in a library node: await ctx.sql({ credential, dialect, statements, ... })
+```
+
+* **Bind values.** The text of a statement holds `$1` to `$n`. The runtime
+  sends `values[i - 1]` as a bind value in the extended query protocol. It
+  never writes a value into the text. A value is a string, a number, a
+  boolean or null. The runtime declares the parameter type so that a bind
+  value means what the literal that pg-promise writes means: null and a
+  string have the unknown type, a boolean is `bool`, a number whose text is
+  an integer is `int4` when it fits, else `int8` when it fits, and each
+  other number is `numeric`. An array or an object is an error: node code
+  gives an object as JSON text. A statement is one SQL command, with 1 to
+  256 statements in a call (`--sql-max-statements`).
+* **Modes.** `single`: one statement runs alone. More than one statement
+  runs between `BEGIN` and `COMMIT`; the first failure does `ROLLBACK` and
+  ends the call. `transaction`: `BEGIN` also for one statement; else as
+  `single`. `independently`: each statement runs alone, a failure is
+  recorded, and the next statement runs.
+* **Result.** A database error is data, not a failed step:
+
+  ```ts
+  interface SqlResult {
+    results: Array<SqlRows | SqlFailure>; // in statement order
+    connect?: SqlError;                   // the connection failed: results is []
+  }
+  interface SqlRows { command: string; rowCount: number | null; rows: Item[] }
+  interface SqlFailure { error: SqlError }
+  ```
+
+  In the modes `single` and `transaction`, `results` ends with the first
+  failure. A row is an object with a key for each column, in column order;
+  the last column of a name wins. `SqlError` has `message` and the fields of
+  the error response of the server with the names of node-postgres
+  (`length`, `severity`, `code`, `detail`, `hint`, `position`,
+  `internalPosition`, `internalQuery`, `where`, `schema`, `table`, `column`,
+  `dataType`, `constraint`, `file`, `line`, `routine`). A `connect` error
+  that is not from the server has the text and the code of Node.js, so node
+  code can apply the mapping of v1: `connect ECONNREFUSED <ip>:<port>`,
+  `getaddrinfo ENOTFOUND <host>`, `connect ETIMEDOUT <ip>:<port>`,
+  `timeout expired` (after `connectTimeoutMs`), and `The server does not
+  support SSL connections`. An error of the server at the start (a wrong
+  password, a database that is not there) is a `connect` error with the
+  fields of the server.
+* **Column types.** The runtime reads each column as text and gives the
+  JSON value that node-postgres and the v1 node (version 2.7 and later)
+  give:
+
+  | Type | JSON |
+  |---|---|
+  | `bool` | boolean |
+  | `int2`, `int4`, `oid` | number |
+  | `float4`, `float8` | number; NaN and the infinities are null |
+  | `int8` | text; a number with `largeNumbers: 'numbers'` (`parseInt`) |
+  | `numeric` | text; a number with `largeNumbers: 'numbers'` (`parseFloat`, NaN is null) |
+  | `json`, `jsonb` | the JSON value |
+  | `bytea` | `{ "type": "Buffer", "data": [byte, ...] }` |
+  | `date` | the text of the server |
+  | `timestamptz` | `new Date(text).toISOString()`; a text that is not a date (`infinity`) stays |
+  | `timestamp` | as `timestamptz`, only with `--sql-timestamp-zone utc`: v1 reads the text in the zone of its process |
+  | SQL NULL | null |
+  | each other type | the text of the server |
+
+* **Limits that send the node to the fallback host.** v1 has none of these
+  limits, so a call that reaches one fails with an effect error whose text
+  ends with a marker, and n8n runs the v1 node in the fallback host
+  (`needsFallbackHost` in the compiled-engine module of n8n). The runtime
+  checks every statement of a call (Parse and Describe) before it runs one,
+  so a marker means that the call committed nothing.
+
+  | Marker | Cause |
+  |---|---|
+  | `(limit: sql-max-result)` | the result is larger than `--sql-max-result-kb` |
+  | `(limit: sql-type)` | a column type without an exact native form: the array types that node-postgres parses, `interval`, `point`, `circle`, `date` with `dates: 'legacy'`, `timestamp` without `--sql-timestamp-zone utc`; or a value of such a kind |
+  | `(limit: sql-statement)` | the text is not one command with bind values: more than one command, a parameter whose type the server cannot find where a literal has one (`42P18`), a parameter where the command takes none (`42P02`), a syntax error at a `$n` |
+  | `(limit: sql-credential)` | the credential uses the SSH tunnel, or a CA or client certificate |
+  | `(limit: sql-host)` | thrown by a library node, before it sends a statement, for an input that it cannot send with bind values |
+
+  Other effect errors have no marker: arguments that are not valid, a slot
+  that is not there, a full queue of the pool (`(limit)`), the total
+  timeout.
+* **Credential.** The slot holds the fields of the n8n credential type
+  `postgres`. TLS is as in v1 (`getPostgresConfig`):
+  `allowUnauthorizedCerts` gives TLS without verification, else an `ssl`
+  value other than `disable` gives TLS with verification, else there is no
+  TLS. Code never reads these values, and no log line has them.
+* **Validation.** `WL032`: a `ctx.sql` call without `credential`, with a
+  `dialect` that is not the literal `'postgres'`, without `statements`, with
+  a literal statement without `text`, with a `text` that is a template with
+  a value in it, or with a literal array or object as a bind value.
+* **Fixtures.** The reference runner and the test VM answer a `sql` effect
+  from the fixture by step name, as for the other effects. `{ "$error":
+  "<text>" }` is an effect error.
+* **Converter.** `ConvertOptions.sql: true` says that the runtime runs
+  `sql` effects. The Postgres node (versions 2.5 and later, operations
+  `executeQuery`, `select` and `deleteTable`, a node that stops the workflow
+  on an error) is then the library node `src/nodes/postgres.ts`, with the
+  fallback-host form of the node after it for a call that ends with a
+  marker. Each other Postgres node runs in the fallback host.
 
 ## 10. Fallback host steps (AI clusters, binary data, Python)
 

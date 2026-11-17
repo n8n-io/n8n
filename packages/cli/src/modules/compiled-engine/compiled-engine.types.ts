@@ -368,8 +368,20 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
  * The end of the error text of `wfrt` for a limit that the v1 engine does not have. The
  * fallback host runs the node code of v1, so the node runs there without the limit.
  * `(limit: binary-max-file)`: a response is larger than `--binary-max-file-mb`.
+ * The `sql` effect (spec 9.10 of the workflow language) and the Postgres library node end a
+ * call that has no exact native form with one of the `sql-` markers, before a statement is
+ * committed: a result larger than `--sql-max-result-kb`, a column type or a value without a
+ * native form, a text that is not one command with bind values, a credential with an SSH
+ * tunnel or a certificate, and an input that the library node cannot send with bind values.
  */
-const HOST_LIMIT_MARKERS = ['(limit: binary-max-file)'];
+const HOST_LIMIT_MARKERS = [
+	'(limit: binary-max-file)',
+	'(limit: sql-max-result)',
+	'(limit: sql-type)',
+	'(limit: sql-statement)',
+	'(limit: sql-credential)',
+	'(limit: sql-host)',
+];
 
 /**
  * The end of the step name of the fallback-host form of a compiled node (`HOST_STEP` of the

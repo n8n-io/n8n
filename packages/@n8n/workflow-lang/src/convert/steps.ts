@@ -679,7 +679,7 @@ export function tryCompiledNode(c: NodeContext): boolean {
 export const HOST_STEP = ' (fallback host)';
 
 /** The fallback-host form of a node, written apart from the source, with its own output names. */
-interface HostForm {
+export interface HostForm {
 	text: string;
 	out: string;
 	errors: string;
@@ -693,8 +693,12 @@ function renamed(c: NodeContext, out: string, errors: string): NodeContext {
 /**
  * Writes the fallback-host form of a node (the code of `lowerHost`) one level below the
  * current place. Null when the host form has no code here: the caller does not compile the node.
+ * `lower` writes the host form of a node that has a library node.
  */
-function hostFormOf(c: NodeContext): HostForm | null {
+export function hostFormOf(
+	c: NodeContext,
+	lower: (to: NodeContext) => void = lowerHost,
+): HostForm | null {
 	const w = new Writer();
 	w.depth = c.w.depth + 1;
 	const form = { out: c.local('InHost'), errors: c.local('InHostErrors') };
@@ -708,7 +712,7 @@ function hostFormOf(c: NodeContext): HostForm | null {
 		markFallback: () => {},
 	};
 	try {
-		lowerHost(to);
+		lower(to);
 	} catch (error) {
 		if (error instanceof NodeFailure) return null;
 		throw error;
@@ -722,7 +726,7 @@ function hostFormOf(c: NodeContext): HostForm | null {
  * marks the error of that limit when it sent only GET requests (`RUNS_IN_HOST`): v1 can
  * send a GET again. The node then runs in the host, in the same run, as the v1 node.
  */
-function emitWithHostForm(
+export function emitWithHostForm(
 	c: NodeContext,
 	errorOutput: boolean,
 	emitForm: (to: NodeContext, hostLimit: boolean) => void,
