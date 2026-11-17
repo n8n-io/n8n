@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component, type Ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -31,7 +31,7 @@ import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import type { ContextChip } from '../instanceAi.contextChip';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
-	USER_TYPED_MESSAGE,
+	resolveAuthorship,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillPayload,
@@ -98,14 +98,10 @@ const props = withDefaults(
 		placeholderKey?: BaseTextKey;
 		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
+		// Experiment cleanup (124_workflow_previews_above_assistant)
 		previewPromptKey?: BaseTextKey | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
-		fixedRows?: number | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
-		submitLabel?: string;
-		submitActiveRequiresFocus?: boolean;
 		contextChip?: ContextChip | null;
 		mentionsEnabled?: boolean;
 		mentionProjectId?: string;
@@ -127,9 +123,6 @@ const props = withDefaults(
 		contextualSuggestion: null,
 		isWorkflowBuilderAvailable: true,
 		previewPromptKey: null,
-		fixedRows: null,
-		submitLabel: undefined,
-		submitActiveRequiresFocus: false,
 		contextChip: null,
 		mentionsEnabled: false,
 		mentionProjectId: undefined,
@@ -159,10 +152,7 @@ const emit = defineEmits<{
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	// Fires when the composer goes between empty and non-empty so the split
-	// empty state can pause its cycling placeholders only once the user types
-	// (auto-focus on mount must NOT pause the cycle).
+	// Placeholder previews pause for draft content.
 	'content-change': [hasContent: boolean];
 }>();
 
@@ -190,7 +180,7 @@ const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
  */
 const activePrefill = ref<ActivePrefill | null>(null);
 
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
+// Experiment cleanup (124_workflow_previews_above_assistant)
 const typedPreview = ref('');
 const TYPEWRITER_SPEED_MS = 9;
 let typewriterTimer: ReturnType<typeof setInterval> | null = null;
@@ -202,7 +192,7 @@ function stopTypewriter() {
 	}
 }
 
-// Only the split-empty-state preview prompt (the `previewPromptKey` prop) types
+// Only the workflow preview prompt (the `previewPromptKey` prop) types
 // out; the suggestion hover ghost (previewPrompt) stays instant.
 watch(
 	() => props.previewPromptKey,
@@ -270,7 +260,6 @@ defineExpose({
 	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
 	// Lets a host disable other controls (e.g. an agent picker) while a file
@@ -324,8 +313,7 @@ const attachedEncodedBytes = computed(() =>
 	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
 );
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
-watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
+watch(isComposerDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
@@ -405,7 +393,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	await mentions.replaceActiveRange(selection.item.label);
+	await mentions.clearActiveRange();
 }
 
 const canSubmit = computed(() =>
@@ -437,7 +425,7 @@ const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
-	// Experiment cleanup: remove with instanceAiSplitEmptyState. Split types the prompt out.
+	// Experiment cleanup (124_workflow_previews_above_assistant). Types the prompt out.
 	if (props.previewPromptKey && isInputVisuallyEmpty.value) {
 		return typedPreview.value;
 	}
@@ -454,6 +442,15 @@ const placeholder = computed(() => {
 	}
 	return props.placeholder ?? i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
+
+const canPreviewPlaceholder = computed(
+	() =>
+		!isGatedBySetup.value &&
+		!props.previewPromptKey &&
+		!previewPrompt.value &&
+		!props.amendContext &&
+		!props.contextualSuggestion,
+);
 
 watch(
 	[shouldTrackVisibleSuggestions, resolvedSuggestionCatalogVersion, () => props.currentThreadId],
@@ -500,23 +497,6 @@ function emitSubmittedMessage(
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
-}
-
-/**
- * The composer is the only place that knows whether the text came from a
- * pre-fill, so it resolves authorship for every send that leaves it.
- */
-function resolveAuthorship(
-	message: string,
-	prefill: ActivePrefill | null,
-): InstanceAiMessageAuthorship {
-	if (!prefill) return USER_TYPED_MESSAGE;
-	return {
-		kind: 'prefill',
-		prefillType: prefill.prefillType,
-		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
-		promptModified: message !== prefill.text.trim(),
-	};
 }
 
 function resetDraftComposer() {
@@ -610,8 +590,7 @@ function submitComposerMessage(
 	resetDraftComposer();
 }
 
-// Experiment cleanup: remove with instanceAiSplitEmptyState. A split example row
-// click sends the prompt directly — attribute the submit (unedited) without a
+// A suggestion click sends the prompt directly — attribute the submit (unedited) without a
 // separate 'selected' event, since there is no insert step.
 function submitSuggestion(payload: SuggestionSelectionPayload) {
 	const prompt = getSuggestionPrompt(payload);
@@ -857,10 +836,6 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 }
 
 const resizable = computed(() => {
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	if (props.fixedRows) {
-		return { minRows: props.fixedRows, maxRows: props.fixedRows };
-	}
 	if (previewPrompt.value) {
 		return { minRows: DEFAULT_AUTOSIZE_ROWS, maxRows: DEFAULT_AUTOSIZE_ROWS };
 	}
@@ -884,13 +859,12 @@ const resizable = computed(() => {
 			:model-value="inputText"
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
+			:placeholder-preview="canPreviewPlaceholder ? props.placeholderPreview : undefined"
 			:is-streaming="props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
 			:autosize="resizable"
 			:composer-height="props.composerHeight"
-			:button-label="props.submitLabel"
-			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="showAttach"
@@ -936,7 +910,11 @@ const resizable = computed(() => {
 				</div>
 			</template>
 			<template
-				v-if="$slots['footer-start'] || props.attachOnlyMimeTypes === undefined"
+				v-if="
+					$slots['footer-start'] ||
+					$slots['footer-after-menu'] ||
+					props.attachOnlyMimeTypes === undefined
+				"
 				#footer-start
 			>
 				<slot name="footer-start" />
@@ -944,8 +922,11 @@ const resizable = computed(() => {
 					v-if="props.attachOnlyMimeTypes === undefined"
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"
+					:project-id="props.mentionProjectId"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
+				<!-- Controls that sit to the right of the add menu, such as the approval mode. -->
+				<slot name="footer-after-menu" />
 			</template>
 			<template v-if="shouldShowMentions" #right-actions>
 				<AssistantAtMentionPicker

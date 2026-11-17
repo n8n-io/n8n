@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { OperationalError } from '@n8n/errors';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';

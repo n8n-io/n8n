@@ -15,7 +15,7 @@ import { OperationalError } from '@n8n/errors';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import type {
 	FailedTriggerPublicationStatus,

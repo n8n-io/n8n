@@ -5,8 +5,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 
@@ -213,7 +214,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
-	let endPoint = '';
+	let endPoint: RequestPath;
 	let qs: IDataObject = {};
 
 	const baseId = this.getNodeParameter('projectId', 0, undefined, {
@@ -229,7 +230,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const returnAll = this.getNodeParameter('returnAll', i);
 			qs = this.getNodeParameter('options', i, {});
 
-			endPoint = `/api/v3/data/${baseId}/${table}/records`;
+			endPoint = requestPath`/api/v3/data/${baseId}/${table}/records`;
 
 			if (qs.sort) {
 				const properties = (qs.sort as IDataObject).property as Array<{

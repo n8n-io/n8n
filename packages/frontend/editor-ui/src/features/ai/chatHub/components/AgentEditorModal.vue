@@ -487,7 +487,9 @@ watch(documentVisibility, (visibility) => {
 					v-if="isEditMode"
 					variant="outline"
 					icon="trash-2"
+					icon-only
 					data-test-id="agent-editor-delete"
+					:aria-label="i18n.baseText('chatHub.agent.editor.delete')"
 					:disabled="isDeleting"
 					:loading="isDeleting"
 					@click="onDelete"

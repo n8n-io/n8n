@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -76,7 +76,7 @@ export const execute: ConfluenceOperation = async function (
 
 	const pages = await fetchPaginatedResults.call(
 		this,
-		`/wiki/api/v2/labels/${encodeURIComponent(labelId)}/pages`,
+		requestPath`/wiki/api/v2/labels/${labelId}/pages`,
 		limit,
 		qs,
 	);

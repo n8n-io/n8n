@@ -129,6 +129,8 @@ A benchmark scenario defines one or multiple steps to execute and measure. It co
 
 Available scenarios are located in [`./scenarios`](./scenarios/).
 
+A workflow keeps the `id` from its file when the CLI imports it. Before the import, the CLI deletes the benchmark workflows (names that start with `[BENCHMARK]`) that have the same name or the same `id`. If a different workflow uses the same `id`, the import fails and the CLI does not change that workflow. To call a workflow from another workflow (for example as a sub-workflow), set a fixed `id` in the workflow file that is called and use that `id` in the workflow that calls it.
+
 ## n8n setups
 
 An n8n setup defines one n8n runtime configuration with Docker Compose. The setups are in [`scripts/n8n-setups`](scripts/n8n-setups/).

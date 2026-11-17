@@ -39,9 +39,9 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
-import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import { RestrictedTypeCallout } from '@n8n/frontend-module-type-availability-policies';
+import { useChatToolRestriction } from '@/features/ai/chatHub/composables/useChatToolRestriction';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 defineOptions({ inheritAttrs: false });
@@ -84,15 +84,11 @@ const chatStore = useChatStore();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
-
-// Chat tools run as workflows in the personal project, so that project's policy applies.
-useTypeAvailability(() => projectsStore.personalProject?.id);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -117,6 +113,12 @@ const settingsOnConfirm = ref<((node: INode) => void) | null>(null);
 const settingsContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const settingsNodeName = ref('');
 const settingsIsValid = ref(false);
+
+const {
+	isRestricted: settingsIsRestricted,
+	restriction: settingsRestriction,
+	typeName: settingsTypeName,
+} = useChatToolRestriction(() => settingsNode.value?.type);
 
 const tools = computed<ChatHubToolDto[]>(() => chatStore.configuredTools);
 
@@ -420,12 +422,19 @@ function onDialogOpenUpdate(open: boolean) {
 					<N8nDialogTitle>
 						<N8nInlineTextEdit
 							:model-value="settingsNodeName"
+							:read-only="settingsIsRestricted"
 							:max-width="350"
 							@update:model-value="handleSettingsChangeName"
 						/>
 					</N8nDialogTitle>
 				</div>
-				<N8nButton variant="solid" size="small" :disabled="!settingsIsValid" @click="handleSave">
+				<N8nButton
+					variant="solid"
+					size="small"
+					:disabled="!settingsIsValid || settingsIsRestricted"
+					data-test-id="chat-tool-settings-save"
+					@click="handleSave"
+				>
 					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
 				</N8nButton>
 			</div>
@@ -491,11 +500,19 @@ function onDialogOpenUpdate(open: boolean) {
 			</div>
 
 			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->
-			<div v-if="currentView === 'settings' && settingsNode">
+			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
+				<RestrictedTypeCallout
+					v-if="settingsIsRestricted"
+					surface="chatTool"
+					:type-name="settingsTypeName"
+					:restriction="settingsRestriction"
+					:class="$style.settingsCallout"
+				/>
 				<NodeToolSettingsContent
 					ref="settingsContentRef"
 					:initial-node="settingsNode"
 					:existing-tool-names="settingsExistingToolNames"
+					:read-only="settingsIsRestricted"
 					@update:valid="settingsIsValid = $event"
 					@update:node-name="settingsNodeName = $event"
 				/>
@@ -540,6 +557,21 @@ function onDialogOpenUpdate(open: boolean) {
 	display: flex;
 	flex-direction: column;
 	max-height: 60vh;
+}
+
+.settingsWrapper {
+	display: flex;
+	flex-direction: column;
+	max-height: 60vh;
+	overflow: hidden;
+	margin-right: calc(-1 * var(--spacing--lg));
+	padding-top: var(--spacing--sm);
+}
+
+.settingsCallout {
+	flex-shrink: 0;
+	margin-right: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .section {

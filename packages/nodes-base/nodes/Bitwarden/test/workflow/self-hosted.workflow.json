@@ -1,0 +1,58 @@
+{
+	"name": "Bitwarden Self-hosted Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "get",
+				"collectionId": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70"
+			},
+			"id": "node-0",
+			"name": "Collection Get",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Collection Get": [
+			{
+				"json": {
+					"id": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70",
+					"object": "collection"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Collection Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

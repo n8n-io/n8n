@@ -65,7 +65,7 @@ describe('VectorStoreConnectionTestService.testConnection', () => {
 		expect(result).toEqual({ success: true });
 		expect(credentialProvider.resolve).toHaveBeenCalledTimes(1);
 		expect(credentialProvider.resolve).toHaveBeenCalledWith(postgresConfig.credential);
-		expect(buildVectorStoreBackend).toHaveBeenCalledWith(postgresConfig, credentialProvider, {
+		expect(buildVectorStoreBackend).toHaveBeenCalledWith(postgresConfig, expect.anything(), {
 			apiKey: 'store-key',
 		});
 		expect(backend.query).toHaveBeenCalledWith([0, 0], { topK: 1 });
@@ -76,10 +76,16 @@ describe('VectorStoreConnectionTestService.testConnection', () => {
 		vi.useFakeTimers();
 		try {
 			const backend = makeBackend();
-			backend.query.mockImplementation(async () => await new Promise<never>(() => {}));
+			const queryStarted = new Promise<void>((resolve) => {
+				backend.query.mockImplementation(async () => {
+					resolve();
+					return await new Promise<never>(() => {});
+				});
+			});
 			vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
 
 			const resultPromise = service.testConnection(postgresConfig, credentialProvider);
+			await queryStarted;
 			await vi.advanceTimersByTimeAsync(15_000);
 			const result = await resultPromise;
 
@@ -119,14 +125,33 @@ describe('VectorStoreConnectionTestService.testConnection', () => {
 		}
 	});
 
-	it('surfaces the probe query error and still closes the backend', async () => {
+	it('sanitises query errors using both credentials and closes the backend', async () => {
+		credentialProvider.resolve.mockImplementation(async (id) =>
+			id === 'embed-cred'
+				? { apiKey: 'opaque-embedding-value' }
+				: { password: 'opaque-store-value' },
+		);
+		vi.mocked(resolveEmbeddingProviderOptionsFromCredential).mockImplementation(
+			async (id, _model, provider) => {
+				await provider.resolve(id);
+				return {};
+			},
+		);
 		const backend = makeBackend();
-		backend.query.mockRejectedValue(new Error('connection refused'));
 		vi.mocked(buildVectorStoreBackend).mockResolvedValue(backend);
+		backend.query.mockRejectedValue(
+			new Error(
+				'Rejected opaque-store-value and opaque-embedding-value at db.example/documents\n    at query (/private/provider.ts:1:2)',
+			),
+		);
 
 		const result = await service.testConnection(postgresConfig, credentialProvider);
 
-		expect(result).toEqual({ success: false, message: 'connection refused' });
+		expect(result).toEqual({
+			success: false,
+			message: 'Rejected [REDACTED] and [REDACTED] at db.example/documents',
+		});
+		expect(credentialProvider.resolve.mock.calls).toEqual([['postgres-cred'], ['embed-cred']]);
 		expect(backend.close).toHaveBeenCalledTimes(1);
 	});
 

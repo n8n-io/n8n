@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { googleBigQueryApiRequest } from '../transport';
 
@@ -10,7 +11,7 @@ export async function getDatasets(this: ILoadOptionsFunctions): Promise<INodePro
 	const { datasets } = await googleBigQueryApiRequest.call(
 		this,
 		'GET',
-		`/v2/projects/${projectId}/datasets`,
+		requestPath`/v2/projects/${projectId}/datasets`,
 	);
 	for (const dataset of datasets) {
 		returnData.push({
@@ -37,7 +38,7 @@ export async function getSchema(this: ILoadOptionsFunctions): Promise<INodePrope
 	const { schema } = await googleBigQueryApiRequest.call(
 		this,
 		'GET',
-		`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+		requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
 		{},
 	);
 

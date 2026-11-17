@@ -10,8 +10,10 @@ import type {
 	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
+	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
@@ -43,7 +45,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	IDisplayOptions,
@@ -65,6 +67,7 @@ import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
+import type { InstanceAiApprovalReviewer } from './approval-review/approval-review';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -182,6 +185,11 @@ export interface ExecutionResult {
 	workflowPinnedNodeNames?: string[];
 	/** Nodes whose output items carry file data, which `data` omits. */
 	binaryOutputNodeNames?: string[];
+	/**
+	 * Time-based Wait nodes that a verification run executed without their
+	 * delay. They ran and passed their input through, but did not wait.
+	 */
+	skippedWaitNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -854,6 +862,14 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Why AI Gateway cannot serve a credential type it covers on this node, or
+	 *  undefined when it can or does not cover the type. Applies the rule the
+	 *  engine applies when the workflow runs: node type, type version, action
+	 *  (with node defaults applied) and hidden properties. */
+	getAiGatewayNodeRejection?(
+		node: Pick<NodeJSON, 'type' | 'typeVersion' | 'parameters'>,
+		credType: string,
+	): Promise<string | undefined>;
 	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
 	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
@@ -1728,14 +1744,21 @@ export interface InstanceAiContext {
 	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
 	onboardingThread?: boolean;
 	/**
-	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
-	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
-	 * destructiveness classification), which otherwise resolve an eval model
-	 * from environment API keys that proxy-managed deployments don't have.
+	 * Host-resolved main model for the current run (proxy-managed on cloud).
+	 * Domain tools use it for helper calls when no utility model is set.
 	 */
 	modelId?: ModelConfig;
+	/**
+	 * Host-resolved utility model: the configured or default small model on the
+	 * main model's provider. The verification helpers (destructiveness
+	 * classification, simulation fixtures) run on it. Absent →
+	 * utility calls use `modelId`.
+	 */
+	utilityModelId?: ModelConfig;
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
+	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+	onHelperUsage?: HelperUsageHook;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -1793,6 +1816,16 @@ export interface InstanceAiContext {
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/**
+	 * Auto mode: reviews an approval before its card shows, and runs the action
+	 * when the review approves it. Absent means Manual mode.
+	 */
+	approvalReviewer?: InstanceAiApprovalReviewer;
+	/**
+	 * When true, a user's MCP tool permissions can only make the admin's
+	 * permissions stricter. Otherwise they replace them.
+	 */
+	enforceAdminMcpPermissions?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
@@ -1989,6 +2022,22 @@ export interface McpServerConfig {
 	};
 }
 
+// ── Helper model usage ───────────────────────────────────────────────────────
+
+/** Token usage of one helper LLM call, such as the destructiveness classifier. */
+export interface HelperModelUsageReport {
+	/** Helper name, for example `verification-simulation-fixtures`. */
+	helper: string;
+	/** Catalog model id the host prices the call by, for example `anthropic/claude-haiku-5-5`. */
+	model: string;
+	usage: TokenUsage;
+	/** Unique for each call, so hosts can build idempotent billing keys. */
+	reportId: string;
+}
+
+/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+export type HelperUsageHook = (report: HelperModelUsageReport) => Promise<void>;
+
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
@@ -1996,9 +2045,20 @@ export interface InstanceAiMemoryConfig {
 	threadTtlDays?: number;
 	observationalMemory?: {
 		observerThresholdTokens: number;
-		reflectorThresholdTokens: number;
+		/** Fixed Reflector threshold. When unset, the SDK uses a share of the memory window. */
+		reflectorThresholdTokens?: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Memory policy options, passed through to the agents SDK. Unset options use the SDK defaults. */
+		policy?: Pick<
+			ObservationalMemoryConfig,
+			| 'windowShares'
+			| 'logPlacement'
+			| 'failurePolicy'
+			| 'maxObserverBatchesAfterTurn'
+			| 'reflectionMode'
+			| 'historyRecall'
+		>;
 		/** Model for the Observer and Reflector. Defaults to the agent's model. */
 		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */

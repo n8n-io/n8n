@@ -7,6 +7,8 @@ import type {
 	PromotionResourceChange,
 	PromotionVariableScope,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
@@ -15,8 +17,10 @@ import type {
 	InventoryWorkflow,
 	PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import {
@@ -127,6 +131,26 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 		}
 	}
 	return changes;
+}
+
+/** The manifest without tags. With workflow tags disabled, Apply ignores them. */
+export function withoutTags(manifest: PackageManifest): PackageManifest {
+	return {
+		...manifest,
+		tags: undefined,
+		requirements: manifest.requirements && { ...manifest.requirements, tags: undefined },
+	};
+}
+
+/**
+ * A workflow file without its `tagIds`, so that it matches the export of this instance when
+ * workflow tags are disabled.
+ */
+export function withoutTagIds(content: string): string {
+	const workflow = jsonParse<unknown>(content, { fallbackValue: null });
+	if (!isRecord(workflow) || !('tagIds' in workflow)) return content;
+	const { tagIds: _tagIds, ...rest } = workflow;
+	return formatEntityFile(rest);
 }
 
 /** The package data that the Apply check reads besides the plan. */

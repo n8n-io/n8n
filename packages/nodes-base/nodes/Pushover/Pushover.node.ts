@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { pushoverApiRequest } from './GenericFunctions';
 
@@ -281,7 +281,12 @@ export class Pushover implements INodeType {
 	methods = {
 		loadOptions: {
 			async getSounds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { sounds } = await pushoverApiRequest.call(this, 'GET', '/sounds.json', {});
+				const { sounds } = await pushoverApiRequest.call(
+					this,
+					'GET',
+					requestPath`/sounds.json`,
+					{},
+				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const key of Object.keys(sounds as IDataObject)) {
 					returnData.push({
@@ -351,7 +356,12 @@ export class Pushover implements INodeType {
 							}
 						}
 
-						responseData = await pushoverApiRequest.call(this, 'POST', '/messages.json', body);
+						responseData = await pushoverApiRequest.call(
+							this,
+							'POST',
+							requestPath`/messages.json`,
+							body,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },

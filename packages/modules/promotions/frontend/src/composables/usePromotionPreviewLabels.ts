@@ -95,7 +95,7 @@ export function usePromotionPreviewLabels() {
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
-	/** The checkbox of a project or folder selects the workflows inside it. */
+	/** The checkbox of a project or folder selects it and everything inside it. */
 	function selectLabel(resource: PromotionResource): string {
 		const interpolate = { name: resource.name };
 		return isContainer(resource)

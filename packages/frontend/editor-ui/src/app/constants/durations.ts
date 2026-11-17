@@ -66,3 +66,10 @@ export const HOVER_DELAY = {
 // `DEBOUNCE_TIME` moved to `@n8n/frontend-constants/durations` so a module outside the
 // shell can debounce with the same values. Re-exported here for existing importers.
 export { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
+
+/** Timing for the Agent builder's template prompt preview. */
+export const AGENT_PROMPT_INSPIRATION_TIMING = {
+	TYPE: 35,
+	ERASE: 15,
+	HOLD: 5 * TIME.SECOND,
+} as const;

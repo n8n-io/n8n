@@ -250,7 +250,7 @@ async function prepareMcpQueueExecution(
 		firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 	if (!isMcpListToolsRelay(mcpListToolsRelayValue)) return false;
 
-	const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+	const { Publisher } = await import('@n8n/backend-services');
 	const publisher = Container.get(Publisher);
 	await publisher.publishMcpRelay({
 		sessionId: mcpListToolsRelayValue.sessionId,

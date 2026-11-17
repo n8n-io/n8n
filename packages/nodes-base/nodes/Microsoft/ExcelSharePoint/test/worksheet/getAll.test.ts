@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -21,7 +22,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
 const SHEET1 = { id: '{00000000-0000-0000-0000-000000000001}', name: 'Sheet1', position: 0 };
 const SHEET2 = { id: '{00000000-0000-0000-0000-000000000002}', name: 'Sheet2', position: 1 };
 
@@ -70,7 +71,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Many', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`${WORKBOOK_ROOT}/workbook/worksheets`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets`,
 			{},
 			{ $top: 50 },
 		);
@@ -83,7 +84,10 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Many', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequestAllItems).toHaveBeenCalledWith(`${WORKBOOK_ROOT}/workbook/worksheets`, {});
+		expect(apiRequestAllItems).toHaveBeenCalledWith(
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets`,
+			{},
+		);
 		expect(apiRequest).not.toHaveBeenCalled();
 		expect(result[0].map((item) => item.json)).toEqual([SHEET1, SHEET2]);
 	});
@@ -96,7 +100,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Many', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`${WORKBOOK_ROOT}/workbook/worksheets`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets`,
 			{},
 			{ $select: 'id,name', $top: 100 },
 		);
