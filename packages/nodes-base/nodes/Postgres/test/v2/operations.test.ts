@@ -1346,6 +1346,9 @@ describe('Test PostgresV2, select operation with Start After', () => {
 
 	// A unit test cannot run the column query. Each of these conditions stops a column whose pages can skip or repeat rows.
 	it.each([
+		'n.nspname = $1 AND c.relname = $2 AND a.attname = $3',
+		'format_type(COALESCE(NULLIF(t.typbasetype, 0), a.atttypid), NULL) AS data_type',
+		'i.indrelid = c.oid',
 		'(i.indisprimary OR i.indisunique)',
 		'i.indkey[0] = a.attnum',
 		'i.indisvalid',
@@ -1680,7 +1683,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 	])('should throw when the column is %s', async (_, column, columnInfo, message) => {
 		const { db, one } = createColumnInfoDb(columnInfo);
 
-		await expect(runSelect(selectParameters({ column, value: '5' }), db)).rejects.toThrow(message);
+		await expect(runSelect(selectParameters({ column, value: '' }), db)).rejects.toThrow(message);
 		expect(one).not.toHaveBeenCalled();
 		expect(runQueries).not.toHaveBeenCalled();
 	});
@@ -1701,12 +1704,26 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		expect(runQueries).not.toHaveBeenCalled();
 	});
 
-	it('should page by a text column when no row has empty text', async () => {
+	it('should give the first page of a text column when no row has empty text', async () => {
 		const { db, one } = createColumnInfoDb({ data_type: 'text', is_text: true });
+
+		await runSelect(selectParameters({ column: 'slug', value: '' }), db);
+
+		expect(one).toHaveBeenCalledTimes(1);
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'slug',
+			100,
+		]);
+	});
+
+	it('should not look for empty text when the value is set', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'text', is_text: true }, true);
 
 		await runSelect(selectParameters({ column: 'slug', value: 'about' }), db);
 
-		expect(one).toHaveBeenCalledTimes(1);
+		expect(one).not.toHaveBeenCalled();
 		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
 			'public',
 			'orders',
@@ -1717,15 +1734,37 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		]);
 	});
 
+	it('should look for empty text only in the runs with an empty value', async () => {
+		const { db, oneOrNone, one } = createColumnInfoDb({ data_type: 'text', is_text: true });
+		const itemValues = ['about', '', 'blog'];
+		const context = createMockExecuteFunction(selectParameters({}));
+		const getNodeParameter = context.getNodeParameter.bind(context);
+		context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) => {
+			if (name === 'startAfter.values') return { column: 'slug', value: itemValues[itemIndex] };
+			return getNodeParameter(name, itemIndex, ...(rest as []));
+		}) as IExecuteFunctions['getNodeParameter'];
+
+		await select.execute.call(
+			context,
+			runQueries,
+			itemValues.map(() => ({ json: {} })),
+			{},
+			db,
+		);
+
+		expect(oneOrNone).toHaveBeenCalledTimes(2);
+		expect(one).toHaveBeenCalledTimes(1);
+	});
+
 	it('should not look for empty text in a column that is not text', async () => {
 		const { db, one } = createColumnInfoDb({ data_type: 'integer' }, true);
 
-		await runSelect(selectParameters({ column: 'id', value: '5' }), db);
+		await runSelect(selectParameters({ column: 'id', value: '' }), db);
 
 		expect(one).not.toHaveBeenCalled();
 	});
 
-	// Without a unique index, the lookup reads the full table before each page
+	// Without a unique index, the lookup reads the full table
 	it('should look for empty text only after the unique index check', async () => {
 		const { db, one } = createColumnInfoDb(
 			{ data_type: 'text', is_text: true, is_unique: false },
@@ -1775,7 +1814,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			const [schema, table, column] = itemColumns[itemIndex];
 			if (name === 'schema') return schema;
 			if (name === 'table') return table;
-			if (name === 'startAfter.values') return { column, value: '5' };
+			if (name === 'startAfter.values') return { column, value: '' };
 			return getNodeParameter(name, itemIndex, ...(rest as []));
 		}) as IExecuteFunctions['getNodeParameter'];
 

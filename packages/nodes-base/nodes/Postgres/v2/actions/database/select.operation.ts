@@ -142,7 +142,9 @@ export async function execute(
 
 			sortRules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
 
-			const columnKey = JSON.stringify([schema, table, column]);
+			// Only an empty Value can start the walk again, so only then the node looks for empty text
+			const valueIsEmpty = startAfter.value === undefined;
+			const columnKey = JSON.stringify([schema, table, column, valueIsEmpty]);
 			if (!checkedStartAfterColumns.has(columnKey)) {
 				await checkStartAfterColumn(
 					db,
@@ -152,6 +154,7 @@ export async function execute(
 					table,
 					column,
 					nodeOptions.largeNumbersOutput,
+					valueIsEmpty,
 				);
 				checkedStartAfterColumns.add(columnKey);
 			}

@@ -782,6 +782,7 @@ async function getStartAfterColumnProblem(
 	table: string,
 	column: string,
 	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
+	lookForEmptyText: boolean,
 ): Promise<{ message: string; description: string } | undefined> {
 	const columnInfo = await getStartAfterColumnInfo(db, schema, table, column);
 
@@ -830,7 +831,7 @@ async function getStartAfterColumnProblem(
 		};
 	}
 	// After the unique index check, so the lookup can use the index
-	if (columnInfo.is_text && (await hasEmptyText(db, schema, table, column))) {
+	if (lookForEmptyText && columnInfo.is_text && (await hasEmptyText(db, schema, table, column))) {
 		return {
 			message: `Column "${column}" has empty text in one row`,
 			description:
@@ -849,8 +850,16 @@ export async function checkStartAfterColumn(
 	table: string,
 	column: string,
 	largeNumbersOutput?: PostgresNodeOptions['largeNumbersOutput'],
+	lookForEmptyText = true,
 ) {
-	const problem = await getStartAfterColumnProblem(db, schema, table, column, largeNumbersOutput);
+	const problem = await getStartAfterColumnProblem(
+		db,
+		schema,
+		table,
+		column,
+		largeNumbersOutput,
+		lookForEmptyText,
+	);
 	if (problem) {
 		throw new NodeOperationError(node, problem.message, {
 			itemIndex,
