@@ -1026,6 +1026,10 @@ export const RULES: Rule[] = [
 			{ pattern: /^localeCompare with a locale or options: /, locate: member('localeCompare') },
 			{ pattern: /^locale [a-z ]+: / },
 			{
+				pattern: /^Date: toLocaleString of a value of unknown kind/,
+				locate: member('toLocaleString'),
+			},
+			{
 				pattern: /^Date\(\): /,
 				locate: identifier('Date'),
 			},
