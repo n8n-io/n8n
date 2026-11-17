@@ -431,6 +431,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			'updatedAt',
 			'isGlobal',
 			'isResolvable',
+			'isPlaceholder',
 			'resolverId',
 		];
 
@@ -750,6 +751,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			'updatedAt',
 			'isGlobal',
 			'isResolvable',
+			'isPlaceholder',
 			'resolverId',
 		];
 

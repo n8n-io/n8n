@@ -68,6 +68,13 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	resolvableAllowFallback: boolean;
 
 	/**
+	 * Whether the credential is an empty placeholder that an incomplete promotion Apply created.
+	 * A placeholder holds no secret values, so a workflow that uses it must not go live.
+	 */
+	@Column({ default: false })
+	isPlaceholder: boolean;
+
+	/**
 	 * ID of the dynamic credential resolver associated with this credential.
 	 */
 	@Column({ type: 'varchar', nullable: true })

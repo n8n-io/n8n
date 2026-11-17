@@ -7,9 +7,11 @@ import path from 'node:path';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type {
-	PackageRequirementConsumer,
-	PackageRequirements,
+import {
+	packageRequirementReasonSchema,
+	type PackageRequirementConsumer,
+	type PackageRequirementReason,
+	type PackageRequirements,
 } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { remapPath, type ContainerMove } from './branch-placement';
@@ -334,10 +336,19 @@ function mergeRequirementRows<T extends { usedBy: PackageRequirementConsumer[] }
 			byKey.delete(key);
 			continue;
 		}
-		byKey.set(key, { ...row, usedBy });
+		// The staging export does not know why a target is not on the branch. Keep the reason
+		// that the branch records while the row stays.
+		const reason = reasonOf(row) ?? reasonOf(byKey.get(key));
+		byKey.set(key, { ...row, ...(reason ? { reason } : {}), usedBy });
 	}
 	const rows = [...byKey.values()];
 	return rows.length > 0 ? rows : undefined;
+}
+
+function reasonOf(row: unknown): PackageRequirementReason | undefined {
+	if (typeof row !== 'object' || row === null || !('reason' in row)) return undefined;
+	const parsed = packageRequirementReasonSchema.safeParse(row.reason);
+	return parsed.success ? parsed.data : undefined;
 }
 
 function remainingUsers(

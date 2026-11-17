@@ -5,11 +5,20 @@ const requirementUsage = {
 	usedBy: z.array(packageRequirementConsumerSchema).min(1),
 };
 
+/**
+ * Why the target of a requirement is not in the package. Promotion writes it, and Apply reads
+ * it to tell a gap that the user confirmed from a reference that already fails on the source.
+ * Optional: a reader of an older version drops the key.
+ */
+export const packageRequirementReasonSchema = z.enum(['confirmed-gap', 'broken-on-source']);
+export type PackageRequirementReason = z.infer<typeof packageRequirementReasonSchema>;
+
 export const packageCredentialRequirementSchema = z
 	.object({
 		id: z.string().min(1),
 		name: z.string().min(1).optional(),
 		type: z.string().min(1).optional(),
+		reason: packageRequirementReasonSchema.optional(),
 		...requirementUsage,
 	})
 	.superRefine((credential, ctx) => {
@@ -37,6 +46,7 @@ export const packageDataTableRequirementSchema = z.object({
 export const packageWorkflowRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1).optional(),
+	reason: packageRequirementReasonSchema.optional(),
 	...requirementUsage,
 });
 

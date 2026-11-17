@@ -235,6 +235,7 @@ type WorkflowCredentialResult = {
 	isManaged: boolean;
 	isGlobal: boolean;
 	isResolvable: boolean;
+	isPlaceholder: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
@@ -718,6 +719,7 @@ export class CredentialsService {
 			isManaged: c.isManaged,
 			isGlobal: c.isGlobal,
 			isResolvable: c.isResolvable,
+			isPlaceholder: c.isPlaceholder ?? false,
 			homeProject: c.homeProject,
 			sharedWithProjects: c.sharedWithProjects,
 			currentUserHasAccess: true,
@@ -2191,6 +2193,8 @@ export class CredentialsService {
 			projectId: string;
 			data?: ICredentialDataDecryptedObject;
 			description?: string | null;
+			/** Marks the stub as a placeholder of an incomplete promotion Apply. */
+			placeholder?: boolean;
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
@@ -2210,6 +2214,7 @@ export class CredentialsService {
 			...encryptedCredential,
 			isManaged: false,
 			isResolvable: false,
+			isPlaceholder: opts.placeholder === true,
 		});
 
 		try {
