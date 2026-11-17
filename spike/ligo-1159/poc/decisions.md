@@ -763,3 +763,55 @@ the provider token in the keychain of the host, and later stalled on a keychain
 prompt ("Git operation stalled"). The HTTP(S) Git configuration now starts with
 an empty `credential.helper`, so Git asks only the helper of n8n. This also
 applies to source control, which shares the helper.
+
+## UI verification (stream U)
+
+### U1. A credential of a project is a row of that project
+
+The previews listed a credential only as a dependency of a listed workflow, so
+the owner could not find it. Now the export of a project for a preview holds
+every project credential that the project owns (no placeholder, no instance
+credential), and a changed one is a selectable row under its project, on
+Promote and on Apply. "Select all" sends it as `credentialIds`. The reports of
+the previews count these rows as part of the operation.
+
+### U2. A credential travels only with a workflow of its owner project
+
+The link of a workflow to a credential of another project has
+`included: false`, as for a sub-workflow. The row of a credential whose owner
+project the view does not hold shows no change. On an Apply, a top-level
+credential of an existing branch still travels with the workflow.
+
+### U3. `neededByBranch` on a credential row of a Promote preview
+
+Set when the branch already has a requirement row for the credential and does
+not hold its file. The page then says "Other projects wait for this
+credential". The row names no workflow and no project.
+
+### U4. A project page sends a selected credential through the environment route
+
+Only `promote-selection` and `apply-selection` take `credentialIds`. A project
+page uses them when the selection holds a credential that no selected workflow
+of the project brings. That request carries no `expectedPreviewRevision`,
+because the revision of the project page is not the revision of the
+environment view. The dependency gate still runs.
+
+### U5. Kept items of an instance Apply show no change
+
+The instance Apply preview sets `change: unchanged` on a workflow that the
+report keeps and on the content of a kept project. The revision stays the one
+of the plan. In the changes view, a kept workflow reads "Stays" while every
+change is selected.
+
+### U6. The home selector replaces the `unknown-owner` conflict in the page
+
+The check keeps `unknown-owner` for a top-level credential (decision of the
+gate). The page does not treat it as a blocker of the workflow when the report
+offers a home choice. With a home, the page shows the credential as missing in
+that project, as the server does when it gets `credentialHomes`.
+
+### U7. A viewer has no changes view in the user interface
+
+The API answers a read-only view to a project viewer (decision A2). The route
+guard of the page still needs the right to operate a project, so the viewer
+goes to the home page.

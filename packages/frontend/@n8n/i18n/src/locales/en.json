@@ -11198,7 +11198,7 @@
 	"promotions.preview.card.viewBlockers": "View blockers",
 	"promotions.preview.marker.gap": "Not included",
 	"promotions.preview.marker.kept": "Stays",
-	"promotions.preview.card.kept": "The branch does not hold this workflow. The Apply of the whole instance keeps it, because a workflow of the branch calls it. An Apply of a selection that holds this row deletes it.",
+	"promotions.preview.card.kept": "The branch does not hold this workflow. The Apply of the whole instance keeps it, because a workflow of the branch calls it. To delete it, apply its project.",
 	"promotions.preview.marker.ownerMove": "Moves to this project",
 	"promotions.preview.marker.neededByBranch": "Requested",
 	"promotions.preview.card.gap.promote": "This Promote does not write this item. A selected workflow uses it, so the reference is a gap.",
