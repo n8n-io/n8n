@@ -3,6 +3,7 @@ import type { ModelMessage, SystemModelMessage } from 'ai';
 
 import { toAiMessages } from './messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
+import { detectLoadedSkills } from '../../skills/loaded-skills';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
 import type {
 	AgentDbMessage,
@@ -134,6 +135,12 @@ export class AgentMessageList {
 	 * re-derive it from the persisted cursor.
 	 */
 	private observationMaskBoundary: { createdAt: Date; id: string } | undefined;
+
+	/**
+	 * Skills that `load_skill` loaded in thread messages that this run did not
+	 * load, because the resume point starts after them.
+	 */
+	private earlierLoadedSkillIds = new Set<string>();
 
 	/**
 	 * Normalize an AgentMessage into an AgentDbMessage and push it onto `this.all`,
@@ -454,6 +461,16 @@ export class AgentMessageList {
 		});
 	}
 
+	/** Record skills that earlier messages loaded, when the list does not hold those messages. */
+	addEarlierLoadedSkills(skillIds: Iterable<string>): void {
+		for (const id of skillIds) this.earlierLoadedSkillIds.add(id);
+	}
+
+	/** Skills that `load_skill` loaded in the thread, also where compaction hides the call. */
+	loadedSkillIds(): Set<string> {
+		return new Set([...this.earlierLoadedSkillIds, ...detectLoadedSkills(this.all)]);
+	}
+
 	/** All messages currently in the list, as live references. */
 	messages(): readonly AgentDbMessage[] {
 		return this.all;
@@ -466,6 +483,9 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
+			...(this.earlierLoadedSkillIds.size > 0 && {
+				earlierLoadedSkillIds: [...this.earlierLoadedSkillIds],
+			}),
 		};
 	}
 
@@ -484,6 +504,7 @@ export class AgentMessageList {
 			if (inputIdSet.has(msg.id)) list.inputSet.add(msg);
 			if (responseIdSet.has(msg.id)) list.responseSet.add(msg);
 		}
+		list.addEarlierLoadedSkills(data.earlierLoadedSkillIds ?? []);
 		list.sortAllByCreatedAt();
 		return list;
 	}

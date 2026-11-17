@@ -52,7 +52,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import { isRuntimeContextCue } from '../../sdk/message';
-import { detectLoadedSkills } from '../../context-cues/provider';
+import { detectLoadedSkills } from '../../skills/loaded-skills';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
@@ -1349,6 +1349,7 @@ export class AgentRuntime {
 		);
 		const request = {
 			messages,
+			loadedSkillIds: list.loadedSkillIds(),
 			sentCueIds,
 			persistence: options?.persistence,
 			abortSignal: abortScope.signal,

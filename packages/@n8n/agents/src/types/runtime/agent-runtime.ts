@@ -50,6 +50,11 @@ export interface ContextCueEntry {
 export interface ContextCueRequest {
 	/** Messages the model sees, oldest first, before this model call. */
 	messages: readonly AgentMessage[];
+	/**
+	 * Skills that `load_skill` loaded anywhere in the thread, also in messages
+	 * that compaction hides. Without it, only `messages` count.
+	 */
+	loadedSkillIds?: ReadonlySet<string>;
 	/** Ids of the cues that the conversation already contains. */
 	sentCueIds: ReadonlySet<string>;
 	persistence?: AgentPersistenceOptions;

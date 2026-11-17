@@ -157,6 +157,13 @@ describe('createContextCueProvider', () => {
 		expect(await provider(request({}, []))).toEqual([]);
 	});
 
+	it('stays active when compaction hides the load_skill call', async () => {
+		const provider = createContextCueProvider({ sets, embeddingModel: model, threshold: 0.8 });
+		expect(await provider(request({ loadedSkillIds: new Set(['builder']) }, []))).toEqual([
+			{ id: contextCueId('builder', 'a'), content: 'Rule A' },
+		]);
+	});
+
 	it('uses the canonical id from the result when the skill is loaded by name', async () => {
 		const provider = createContextCueProvider({ sets, embeddingModel: model, threshold: 0.8 });
 		const loadByName: AgentMessage = {
