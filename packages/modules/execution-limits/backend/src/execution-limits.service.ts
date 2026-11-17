@@ -15,6 +15,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import {
 	findDuplicateProjectIds,
 	findProjectLimitsAboveInstanceLimit,
+	isDefaultProjectLimitAboveInstanceLimit,
 } from './execution-limit-rules';
 import { ExecutionLimitSettingsStore } from './execution-limit-settings.store';
 import type { ProjectLimit } from './execution-limits.types';
@@ -45,6 +46,7 @@ export class ExecutionLimitsService {
 	/**
 	 * Changes the given settings and keeps the others. A `null` maximum removes that limit.
 	 * An instance limit below a project limit is accepted. The project limit stays as it is.
+	 * The default limit for new projects cannot be above the instance limit.
 	 */
 	async updateSettings(changes: Partial<ExecutionLimitSettings>): Promise<ExecutionLimitSettings> {
 		return await this.commit(async (ctx) => {
@@ -53,6 +55,11 @@ export class ExecutionLimitsService {
 			const merged = executionLimitSettingsSchema.safeParse({ ...current, ...changes });
 			if (!merged.success) {
 				throw BadRequestError.wrap('The execution limit settings are not valid', merged.error);
+			}
+			if (isDefaultProjectLimitAboveInstanceLimit(merged.data)) {
+				throw new BadRequestError(
+					'The default limit for new projects cannot be above the instance limit',
+				);
 			}
 
 			await this.settingsStore.write(merged.data, ctx);

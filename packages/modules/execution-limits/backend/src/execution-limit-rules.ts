@@ -1,3 +1,5 @@
+import type { ExecutionLimitSettings } from '@n8n/api-types';
+
 import type { ProjectLimit } from './execution-limits.types';
 
 /** The project ids that occur more than one time in `limits`. */
@@ -26,4 +28,16 @@ export function findProjectLimitsAboveInstanceLimit(
 	return limits
 		.filter(({ maxExecutions }) => maxExecutions > instanceMaxExecutions)
 		.map(({ projectId }) => projectId);
+}
+
+/** A default limit for new projects equal to the instance limit is allowed. */
+export function isDefaultProjectLimitAboveInstanceLimit({
+	instanceMaxExecutions,
+	defaultProjectMaxExecutions,
+}: ExecutionLimitSettings): boolean {
+	return (
+		instanceMaxExecutions !== null &&
+		defaultProjectMaxExecutions !== null &&
+		defaultProjectMaxExecutions > instanceMaxExecutions
+	);
 }

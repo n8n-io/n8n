@@ -69,6 +69,25 @@ describe('ExecutionLimitsService', () => {
 			expect((await service.getSettings()).instanceMaxExecutions).toBe(1000);
 		});
 
+		it('rejects a default limit for new projects above the instance limit', async () => {
+			await service.updateSettings({
+				instanceMaxExecutions: 100,
+				defaultProjectMaxExecutions: 100,
+			});
+
+			await expect(service.updateSettings({ defaultProjectMaxExecutions: 101 })).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(service.updateSettings({ instanceMaxExecutions: 99 })).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(await service.getSettings()).toMatchObject({
+				instanceMaxExecutions: 100,
+				defaultProjectMaxExecutions: 100,
+			});
+		});
+
 		it('accepts an instance limit below a project limit and keeps the project limit', async () => {
 			const project = await createTeamProject();
 			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 500 }]);
