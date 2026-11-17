@@ -48,8 +48,18 @@ export class LeaseService<TTransaction> {
 
 	/** Sync the leases of every registered kind. */
 	async syncAll(): Promise<void> {
+		const failed: string[] = [];
+		const errors: unknown[] = [];
 		for (const kind of this.kinds.keys()) {
-			await this.provider.sync(kind);
+			try {
+				await this.provider.sync(kind);
+			} catch (error) {
+				failed.push(kind);
+				errors.push(error);
+			}
+		}
+		if (errors.length > 0) {
+			throw new AggregateError(errors, `Failed to sync lease kinds: ${failed.join(', ')}`);
 		}
 	}
 

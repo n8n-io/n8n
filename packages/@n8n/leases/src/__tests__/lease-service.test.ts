@@ -143,6 +143,25 @@ describe('LeaseService', () => {
 
 			expect(provider.sync.mock.calls).toEqual([['first'], ['second']]);
 		});
+
+		it('syncs every kind when one fails, then rejects with every failure', async () => {
+			const firstError = new Error('first failed');
+			const thirdError = new Error('third failed');
+			provider.sync
+				.mockRejectedValueOnce(firstError)
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(thirdError);
+			await service.registerKind(makeKind({ name: 'first' }));
+			await service.registerKind(makeKind({ name: 'second' }));
+			await service.registerKind(makeKind({ name: 'third' }));
+
+			const error = await service.syncAll().catch((e: unknown) => e);
+
+			expect(provider.sync.mock.calls).toEqual([['first'], ['second'], ['third']]);
+			expect(error).toBeInstanceOf(AggregateError);
+			expect((error as AggregateError).errors).toEqual([firstError, thirdError]);
+			expect((error as AggregateError).message).toBe('Failed to sync lease kinds: first, third');
+		});
 	});
 
 	describe('status', () => {
