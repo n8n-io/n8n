@@ -97,6 +97,7 @@ onMounted(() => {
 	// fullscreen so its `z-index` can paint above the sidebar.
 	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
 		isolation: auto;
+		z-index: auto;
 	}
 }
 
@@ -134,6 +135,17 @@ onMounted(() => {
 		min-height: 0;
 		background-color: var(--app-shell--content--color--background);
 		overflow: hidden;
+		// The content sits above the rail, with rounded left corners and a soft shadow on it.
+		position: relative;
+		z-index: 1;
+		border-radius: var(--app-shell--surface--radius) 0 0 var(--app-shell--surface--radius);
+		box-shadow: var(--app-shell--surface--shadow);
+	}
+
+	// A docked navigation panel starts the surface, so the content needs no corners of its own.
+	&:has(:global(#side-menu[data-docked='true'])) .content {
+		border-radius: 0;
+		box-shadow: none;
 	}
 
 	// A thin thumb on a clear track, so the scrollbar blends into the panel.

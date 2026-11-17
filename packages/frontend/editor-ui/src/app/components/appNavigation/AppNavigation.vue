@@ -211,6 +211,7 @@ onBeforeUnmount(() => {
 	<div
 		id="side-menu"
 		ref="navigation"
+		:data-docked="isDocked"
 		:class="[$style.navigation, { [$style.expanded]: isExpanded }]"
 		data-test-id="app-navigation"
 	>
@@ -338,8 +339,6 @@ $panel-width: 240px;
 
 .navigation {
 	position: relative;
-	// Lifts the floating panel above the page next to it.
-	z-index: 2;
 	display: flex;
 	height: 100%;
 }
@@ -430,10 +429,15 @@ $panel-width: 240px;
 	flex: none;
 	min-height: 0;
 	background-color: var(--app-shell--nav-panel--color--background);
+	// With the content, the panel forms one surface above the rail.
+	border-radius: var(--app-shell--surface--radius) 0 0 var(--app-shell--surface--radius);
+	box-shadow: var(--app-shell--surface--shadow);
 }
 
 .floating {
 	position: absolute;
+	// Above the content, which sits above the rail to cast its shadow.
+	z-index: 3;
 	top: var(--spacing--2xs);
 	bottom: var(--spacing--2xs);
 	left: $rail-width;
