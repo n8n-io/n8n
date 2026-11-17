@@ -8,6 +8,7 @@ an attachment for maintenance.
 from datetime import date
 
 from footintel.analysis.tickets import FOLLOWED, _team_followed, national_followed
+from footintel.names_fr import fr_names
 from footintel.notify.tickets import SITE
 
 _STATE = {"gagné": "gagné ✅", "perdu": "perdu ❌", "en cours": "pas encore réglé ⏳"}
@@ -103,4 +104,4 @@ def plain_week(tickets: list[dict], matches: list[dict], today: date, retrained:
 
     won = sum(t["state"] == "gagné" for t in played)
     subject = f"Ta semaine — {won} ticket(s) gagné(s) sur {len(played)}" if played else "Ta semaine en clair"
-    return subject, "\n".join(lines)
+    return subject, fr_names("\n".join(lines))

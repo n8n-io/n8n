@@ -1269,3 +1269,21 @@ def test_tickets_follow_priced_national_matches_and_dr_congo():
     # Clubs keep their own rule.
     assert is_followed({"competition": "ENG-PL", "home": "Leeds", "away": "Hull", "source": "marché"})
     assert not is_followed({"competition": "ITA-SA", "home": "Parma", "away": "Genoa", "source": "marché"})
+
+
+def test_national_team_names_are_french_in_the_tickets_email():
+    from footintel.names_fr import fr_names, table
+    from footintel.notify.tickets import tickets_text
+
+    # The site file is the single list; first names stay untouched (D85).
+    assert table()["Wales"] == "Pays de Galles" and "Jordan" not in table()
+    assert fr_names("Northern Ireland – Republic of Ireland, DR Congo") == "Irlande du Nord – Irlande, RD Congo"
+    assert fr_names("Jordan Henderson, Guinea-Bissau") == "Jordan Henderson, Guinée-Bissau"
+    leg = {"match": "Wales – Portugal", "label": "2UP Portugal", "price": 1.6, "fair": 1.58, "prob": 0.63,
+           "kickoff_utc": "2026-11-17T19:45:00+00:00", "known": False}
+    day = {"date": "2026-11-17", "n_followed": 2, "matches": [],
+           "missing": [{"tag": "A", "name": "Restreint", "needs": 5}, {"tag": "B", "name": "Large", "needs": 6}],
+           "tickets": [{"tag": "D", "name": "Court", "odds": 2.6, "prob": 0.38, "ev": -0.02, "legs": [leg]}]}
+    _, body = tickets_text({"days": [day]}, date(2026, 11, 17))
+    assert "Pays de Galles – Portugal" in body and "Wales" not in body
+    assert "Tickets A et B non construits : il faut au moins 5 matchs" in body
