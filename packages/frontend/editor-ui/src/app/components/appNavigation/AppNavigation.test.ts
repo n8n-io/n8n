@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { VIEWS } from '@/app/constants';
@@ -45,6 +46,14 @@ const sectionsFor = (itemId: string | null | undefined): AppNavSection[] =>
 							icon: 'workflow',
 							to: '/workflows',
 							active: false,
+						},
+						{
+							id: `${itemId}-favorite`,
+							label: 'Starred workflow',
+							icon: 'workflow',
+							to: '/workflows',
+							active: false,
+							favorite: { resourceId: 'wf-1', resourceType: 'workflow' },
 						},
 					],
 				},
@@ -152,6 +161,20 @@ describe('AppNavigation', () => {
 
 		await router.push('/insights');
 		await waitFor(() => expect(insights).toHaveAttribute('aria-current', 'page'));
+	});
+
+	it('unstars a favorite from its row in the panel', async () => {
+		const { getAllByTestId } = setup({
+			collapsed: false,
+			before: () => {
+				mockedStore(useFavoritesStore).toggleFavorite = vi.fn(async () => {});
+			},
+		});
+
+		const [unstar] = getAllByTestId('app-nav-unfavorite');
+		await fireEvent.click(unstar);
+
+		expect(mockedStore(useFavoritesStore).toggleFavorite).toHaveBeenCalledWith('wf-1', 'workflow');
 	});
 
 	describe('expanded', () => {

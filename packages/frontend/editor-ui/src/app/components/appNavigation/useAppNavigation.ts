@@ -10,6 +10,12 @@ import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
+import type { FavoriteResourceType } from '@/app/api/favorites';
+import {
+	useFavoriteNavItems,
+	type FavoriteGroupItem,
+} from '@/features/collaboration/projects/composables/useFavoriteNavItems';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import {
 	canConfigureSelfHealing,
@@ -52,6 +58,8 @@ export type AppNavLink = {
 	preview?: boolean;
 	/** Set on recent chats, so the panel can show the chat's own icon. */
 	chat?: RecentChatItem;
+	/** Set on favorites, so the panel can offer to unstar them. */
+	favorite?: { resourceId: string; resourceType: FavoriteResourceType };
 };
 
 export type AppNavSection = {
@@ -126,6 +134,13 @@ const PAGE_ICONS: Record<string, IconName> = {
 };
 const DEFAULT_PAGE_ICON: IconName = 'layers';
 
+const FAVORITE_ICONS: Partial<Record<FavoriteResourceType, IconName>> = {
+	workflow: 'workflow',
+	agent: 'bot',
+	dataTable: 'table',
+	folder: 'folder',
+};
+
 export const projectItemId = (projectId: string) => `${PROJECT_ITEM_PREFIX}${projectId}`;
 
 /**
@@ -143,13 +158,21 @@ export function useAppNavigation() {
 
 	const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
 
-	const teamProjects = computed(() =>
-		projectsStore.isTeamProjectFeatureEnabled
-			? projectsStore.myProjects
-					.filter((project) => project.type === ProjectTypes.Team)
-					.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-			: [],
-	);
+	const favoritesStore = useFavoritesStore();
+	const favoriteNavItems = useFavoriteNavItems();
+
+	// Starred projects come first in the rail, then the rest, each by name.
+	const teamProjects = computed(() => {
+		if (!projectsStore.isTeamProjectFeatureEnabled) return [];
+		const starred = new Set(favoritesStore.projectFavoriteIds);
+		return projectsStore.myProjects
+			.filter((project) => project.type === ProjectTypes.Team)
+			.sort(
+				(a, b) =>
+					Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
+					(a.name ?? '').localeCompare(b.name ?? ''),
+			);
+	});
 
 	const projectRoute = (projectId: string): RouteLocationRaw => ({
 		name: VIEWS.PROJECTS_WORKFLOWS,
@@ -404,11 +427,58 @@ export function useAppNavigation() {
 	}
 
 	/** The panel sections of one rail item. */
+	/** The open page is the favorite: same route, and the same ids in its params and query */
+	function isFavoriteActive(to: RouteLocationRaw) {
+		if (typeof to === 'string' || !('name' in to) || to.name !== routeName.value) return false;
+		const params = 'params' in to && to.params ? to.params : {};
+		const query = 'query' in to && to.query ? to.query : {};
+		return (
+			Object.entries(params).every(([key, value]) => route.params[key] === value) &&
+			Object.entries(query).every(([key, value]) => route.query[key] === value)
+		);
+	}
+
+	/**
+	 * The starred workflows, agents, data tables and folders, in the order the user starred
+	 * them. Starred projects are not listed: they come first in the rail instead.
+	 */
+	function favoritesSection(): AppNavSection {
+		const entries = new Map<string, FavoriteGroupItem>(
+			[
+				...favoriteNavItems.favoriteWorkflowItems.value,
+				...favoriteNavItems.favoriteAgentItems.value,
+				...favoriteNavItems.favoriteDataTableItems.value,
+				...favoriteNavItems.favoriteFolderItems.value,
+			].map((entry) => [`${entry.resourceType}:${entry.resourceId}`, entry]),
+		);
+		const links = favoritesStore.favorites.flatMap<AppNavLink>((favorite) => {
+			const entry = entries.get(`${favorite.resourceType}:${favorite.resourceId}`);
+			const to = entry?.menuItem.route?.to;
+			if (!entry || !to) return [];
+			return [
+				{
+					id: entry.menuItem.id,
+					label: entry.menuItem.label,
+					icon: FAVORITE_ICONS[entry.resourceType] ?? DEFAULT_PAGE_ICON,
+					to,
+					active: isFavoriteActive(to),
+					favorite: { resourceId: entry.resourceId, resourceType: entry.resourceType },
+				},
+			];
+		});
+		return {
+			id: 'overview-favorites',
+			title: i18n.baseText('favorites.menu.title'),
+			links,
+			emptyText: i18n.baseText('appNavigation.favorites.empty'),
+		};
+	}
+
 	function sectionsFor(itemId: string | null | undefined): AppNavSection[] {
 		if (!itemId) return [];
 		if (itemId === ASSISTANT_ITEM_ID) return assistantSections();
 		if (itemId === OVERVIEW_ITEM_ID) {
-			return [{ id: 'overview-pages', links: pageLinks('overview') }];
+			return [{ id: 'overview-pages', links: pageLinks('overview') }, favoritesSection()];
 		}
 		if (itemId === INBOX_ITEM_ID) {
 			return [

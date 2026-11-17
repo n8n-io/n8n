@@ -9,6 +9,8 @@ import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
+import type { UserFavorite } from '@/app/api/favorites';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -53,6 +55,13 @@ vi.mock('@/features/agents/n8nChatPage/useRecentChats', () => ({
 const personal = { id: 'personal-1', type: 'personal', name: 'Jane' } as Project;
 const teamProject = (id: string, name: string, scopes: Scope[] = []): ProjectListItem =>
 	({ id, name, type: 'team', role: 'project:editor', scopes }) as ProjectListItem;
+
+const favorite = (
+	resourceId: string,
+	resourceType: UserFavorite['resourceType'],
+	resourceName: string,
+	resourceProjectId?: string,
+): UserFavorite => ({ id: 1, userId: 'u1', resourceId, resourceType, resourceName, resourceProjectId });
 
 function setup() {
 	const scope = effectScope();
@@ -132,6 +141,19 @@ describe('useAppNavigation', () => {
 				'project',
 				'project',
 				'project',
+			]);
+		});
+
+		it('puts starred team projects first, each group by name', () => {
+			mockedStore(useFavoritesStore).favorites = [
+				favorite('team-b', 'project', 'Beta'),
+			];
+			const { nav } = setup();
+
+			expect(nav.railItems.value.map((item) => item.id).slice(3)).toEqual([
+				projectItemId('personal-1'),
+				projectItemId('team-b'),
+				projectItemId('team-a'),
 			]);
 		});
 
@@ -317,6 +339,32 @@ describe('useAppNavigation', () => {
 
 			expect(chats).toMatchObject({ id: 'assistant-chats', links: [], viewAll: undefined });
 			expect(chats.emptyText).toBeTruthy();
+		});
+
+		it('lists the starred items under Overview in starred order, without projects', () => {
+			mockedStore(useFavoritesStore).favorites = [
+				favorite('agent-1', 'agent', 'Support bot', 'team-a'),
+				favorite('team-a', 'project', 'alpha'),
+				favorite('wf-1', 'workflow', 'Sync orders'),
+			];
+			route.current.name = VIEWS.WORKFLOW;
+			route.current.params = { workflowId: 'wf-1' };
+
+			const [, favorites] = setup().nav.sectionsFor(OVERVIEW_ITEM_ID);
+
+			expect(favorites.id).toBe('overview-favorites');
+			expect(favorites.links.map(({ label, icon, active }) => ({ label, icon, active }))).toEqual([
+				{ label: 'Support bot', icon: 'bot', active: false },
+				{ label: 'Sync orders', icon: 'workflow', active: true },
+			]);
+			expect(favorites.links[1].favorite).toEqual({ resourceId: 'wf-1', resourceType: 'workflow' });
+		});
+
+		it('keeps an empty Favorites section with a hint when nothing is starred', () => {
+			const [, favorites] = setup().nav.sectionsFor(OVERVIEW_ITEM_ID);
+
+			expect(favorites.links).toEqual([]);
+			expect(favorites.emptyText).toBeTruthy();
 		});
 
 		it('gives the Inbox a single link', () => {

@@ -19,6 +19,7 @@ const emit = defineEmits<{
 	toggle: [];
 	search: [event: MouseEvent];
 	navigate: [link: AppNavLink];
+	unfavorite: [link: AppNavLink];
 }>();
 
 const i18n = useI18n();
@@ -113,7 +114,7 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 					<div
 						v-for="link in section.links"
 						:key="link.id"
-						:class="{ [$style.inactive]: !link.active }"
+						:class="[$style.link, { [$style.inactive]: !link.active }]"
 						data-test-id="app-nav-link"
 						:data-active="link.active"
 						@click="emit('navigate', link)"
@@ -123,6 +124,16 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 								<RecentChatIcon :item="link.chat" />
 							</template>
 						</N8nMenuItem>
+						<N8nIconButton
+							v-if="link.favorite"
+							:class="$style.unfavorite"
+							variant="ghost"
+							size="mini"
+							icon="x"
+							:aria-label="i18n.baseText('favorites.remove')"
+							data-test-id="app-nav-unfavorite"
+							@click.stop.prevent="emit('unfavorite', link)"
+						/>
 					</div>
 				</section>
 			</nav>
@@ -144,7 +155,7 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 	align-items: center;
 	gap: var(--spacing--4xs);
 	height: var(--spacing--2xl);
-	padding: 0 var(--spacing--3xs) 0 var(--spacing--xs);
+	padding: 0 var(--spacing--3xs) 0 var(--spacing--sm);
 	flex: none;
 }
 
@@ -193,6 +204,30 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 }
 
 // A router link is marked active on any route below its path; only our own state counts.
+.link {
+	position: relative;
+
+	// The unstar button shows on hover, over the end of the row.
+	&:hover .unfavorite,
+	.unfavorite:focus-visible {
+		opacity: 1;
+	}
+}
+
+.unfavorite {
+	position: absolute;
+	top: 50%;
+	right: var(--spacing--4xs);
+	transform: translateY(-50%);
+	opacity: 0;
+}
+
+@media (hover: none) {
+	.unfavorite {
+		opacity: 1;
+	}
+}
+
 .inactive {
 	:global(.router-link-active) {
 		background-color: transparent;

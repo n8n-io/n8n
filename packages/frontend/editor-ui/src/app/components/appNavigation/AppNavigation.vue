@@ -18,6 +18,7 @@ import { VIEWS } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import MainSidebarAccountMenu from '@/app/components/MainSidebarAccountMenu.vue';
@@ -111,7 +112,16 @@ function onRailItemClick(itemId: string) {
 	if (itemId === ASSISTANT_ITEM_ID) agentTelemetry.trackClickedSidebarItem({ item: 'new_chat' });
 }
 
+const favoritesStore = useFavoritesStore();
+
+async function onUnfavorite(link: AppNavLink) {
+	if (!link.favorite) return;
+	await favoritesStore.toggleFavorite(link.favorite.resourceId, link.favorite.resourceType);
+}
+
 function onLinkNavigate(link: AppNavLink) {
+	// A starred workflow can live in any project, so it opens without a current project.
+	if (link.favorite?.resourceType === 'workflow') projectsStore.setCurrentProject(null);
 	if (link.id === 'new-chat') {
 		agentTelemetry.trackClickedSidebarItem({ item: 'new_chat' });
 	} else if (link.chat) {
@@ -291,6 +301,7 @@ onBeforeUnmount(() => {
 				@toggle="toggle"
 				@search="openCommandBar"
 				@navigate="onLinkNavigate"
+				@unfavorite="onUnfavorite"
 			/>
 		</div>
 
@@ -314,6 +325,7 @@ onBeforeUnmount(() => {
 					@toggle="toggle"
 					@search="openCommandBar"
 					@navigate="onLinkNavigate"
+					@unfavorite="onUnfavorite"
 				/>
 			</div>
 		</Transition>
