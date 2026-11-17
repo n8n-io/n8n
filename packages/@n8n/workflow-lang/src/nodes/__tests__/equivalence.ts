@@ -157,6 +157,11 @@ export interface Recording {
 	 * `settings`): the engine keeps it on the run data and passes the input items on.
 	 */
 	nodeError?: string;
+	/**
+	 * The pauses of the v1 node (`sleep`), in order and in milliseconds. The recorder does not
+	 * wait for them. Absent when the node did not pause.
+	 */
+	waits?: number[];
 	/** The error message when the v1 node failed. */
 	error?: string;
 	/** The description and the HTTP code of `error`, or of `nodeError`. */
@@ -302,6 +307,19 @@ export function normalizeRequest(raw: RawRequest): NormalRequest {
 			user: typeof user === 'string' ? user : '',
 			password: typeof password === 'string' ? password : '',
 		};
+	}
+	// A basic `Authorization` header is the same request as the `auth` option: one form for both.
+	const basic = /^Basic ([A-Za-z0-9+/]+=*)$/.exec(headers.authorization ?? '');
+	if (basic) {
+		const text = Buffer.from(basic[1], 'base64').toString('utf8');
+		const colon = text.indexOf(':');
+		const sent = { user: text.slice(0, colon), password: text.slice(colon + 1) };
+		const whole = colon >= 0 && Buffer.from(text, 'utf8').toString('base64') === basic[1];
+		const given = out.basicAuth;
+		if (whole && (!given || (given.user === sent.user && given.password === sent.password))) {
+			out.basicAuth = sent;
+			delete headers.authorization;
+		}
 	}
 	if (raw.qsFormat !== undefined) out.qsFormat = raw.qsFormat;
 	return out;
