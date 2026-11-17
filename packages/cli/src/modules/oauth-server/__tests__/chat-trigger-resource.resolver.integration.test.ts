@@ -37,8 +37,8 @@ const rootAgentFor = (user: Person) => {
 import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
-// The OAuth server owns chat metadata. Loading instance MCP also loads its tool graph
-// in the setup hook and can exceed the hook timeout under CI load.
+// This suite starts backend modules and a database. The integration runner reuses
+// the migrated SQLite template in CI.
 const testServer = setupTestServer({
 	modules: ['inbound-auth-core', 'oauth-server'],
 	endpointGroups: ['oauth-server'],
