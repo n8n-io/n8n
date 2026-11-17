@@ -10,6 +10,7 @@ import {
 	metaOpenApi,
 	nodeGroupsOpenApi,
 	nodesOpenApi,
+	ownerUserIdOpenApi,
 	parentFolderOpenApi,
 	pinDataOpenApi,
 	settingsOpenApi,
@@ -98,6 +99,7 @@ export const workflowPublicSchema = z.object({
 	versionCounter: z.number(),
 	sourceWorkflowId: z.string().nullable(),
 	triggerCount: z.number(),
+	ownerUserId: z.string().nullable().openapi(ownerUserIdOpenApi),
 	nodes: nodesPublicSchema,
 	connections: connectionsPublicSchema,
 	nodeGroups: nodeGroupsPublicSchema,
@@ -109,6 +111,11 @@ export const workflowPublicSchema = z.object({
 	shared: z.array(sharedWorkflowPublicSchema),
 	activeVersion: activeWorkflowVersionPublicSchema.nullable(),
 });
+
+export class WorkflowOwnerPublicDto extends Z.class(
+	{ ownerUserId: z.string().uuid().nullable().openapi(ownerUserIdOpenApi) },
+	{ strict: true },
+) {}
 
 export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}
 

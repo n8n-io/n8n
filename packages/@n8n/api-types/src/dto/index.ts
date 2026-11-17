@@ -279,6 +279,7 @@ export {
 	type CallableSubworkflowsResponse,
 } from './workflows/list-callable-subworkflows-query.dto';
 export {
+	WorkflowOwnerPublicDto,
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
 	RetrievedWorkflowPublicDto,

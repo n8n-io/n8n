@@ -18,6 +18,7 @@ import {
 	UpdateWorkflowPublicDto,
 	UpdateWorkflowQueryDto,
 	WorkflowListPublicDto,
+	WorkflowOwnerPublicDto,
 	WorkflowPublicDto,
 	WorkflowPublishBlockedErrorPublicDto,
 	WorkflowPublishForbiddenErrorPublicDto,
@@ -74,6 +75,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
@@ -226,6 +228,7 @@ export class WorkflowsPublicController {
 		private readonly tagService: TagService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -272,6 +275,7 @@ export class WorkflowsPublicController {
 					active: query.active,
 					tagNames: query.tags ? parseTagNames(query.tags) : undefined,
 					projectId: query.projectId,
+					ownerUserId: query.ownerUserId === 'none' ? null : query.ownerUserId,
 				},
 				offset,
 				limit,
@@ -299,6 +303,7 @@ export class WorkflowsPublicController {
 				isArchived: workflow.isArchived,
 				versionId: workflow.versionId,
 				triggerCount: workflow.triggerCount,
+				ownerUserId: workflow.ownerUserId,
 				nodes: workflow.nodes,
 				connections: workflow.connections,
 				nodeGroups: workflow.nodeGroups,
@@ -578,6 +583,34 @@ export class WorkflowsPublicController {
 		);
 	}
 
+	@Put('/:workflowId/owner')
+	@ApiKeyScope('workflow:manageOwner')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Set the owner of a workflow')
+	@ApiDescription(
+		'Set or clear the owner of a workflow. The new owner must be a person who is a member of ' +
+			'the project that contains the workflow. A caller with the `workflow:manageOwner` ' +
+			'permission can set or clear the owner. The current owner can give the workflow to ' +
+			'another member, but cannot clear the owner.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowOwnerPublicDto)
+	@ApiErrorResponse(404)
+	async setWorkflowOwner(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Body body: WorkflowOwnerPublicDto,
+	): Promise<WorkflowOwnerPublicDto> {
+		await this.resourceOwnerService.setOwner(
+			req.user,
+			{ type: 'workflow', id: workflowId },
+			body.ownerUserId,
+		);
+
+		return { ownerUserId: body.ownerUserId };
+	}
+
 	/** Every public workflow field except the relations each route loads differently. */
 	private toWorkflowFieldsPublicDto(
 		workflow: WorkflowEntity,
@@ -597,6 +630,7 @@ export class WorkflowsPublicController {
 			versionCounter: workflow.versionCounter,
 			sourceWorkflowId: workflow.sourceWorkflowId,
 			triggerCount: workflow.triggerCount,
+			ownerUserId: workflow.ownerUserId,
 			nodes: workflow.nodes,
 			connections: workflow.connections,
 			nodeGroups: workflow.nodeGroups,

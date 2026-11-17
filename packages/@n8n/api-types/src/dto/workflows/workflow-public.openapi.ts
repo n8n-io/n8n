@@ -328,6 +328,15 @@ export const listParentFolderOpenApi: ZodOpenAPIMetadata = {
 		'Folder that contains the workflow, or null at the project root. The field is present only when `includeParentFolder` is `true`.',
 };
 
+export const ownerUserIdOpenApi: ZodOpenAPIMetadata = {
+	description: 'ID of the user who owns the workflow, or null when the workflow has no owner.',
+};
+
+export const ownerUserIdFilterOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'Return only the workflows that this user owns. Use `none` to return only the workflows that have no owner.',
+};
+
 export const includeParentFolderOpenApi: ZodOpenAPIMetadata = {
 	description:
 		'Set to `true` to add `parentFolder` to each workflow. `parentFolder` holds the folder `id`, or is `null` at the project root.',
@@ -402,6 +411,11 @@ export const workflowCreateReadOnlyFieldDocs = {
 		readOnly: true,
 		description: 'Number of active trigger nodes in the workflow',
 	},
+	ownerUserId: alsoNullable({
+		type: 'string',
+		readOnly: true,
+		description: 'Use `PUT /workflows/{workflowId}/owner` to change the owner.',
+	}),
 	meta: alsoNullable({
 		type: 'object',
 		readOnly: true,

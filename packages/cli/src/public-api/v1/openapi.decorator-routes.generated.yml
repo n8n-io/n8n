@@ -446,6 +446,9 @@ paths:
   /workflows/{workflowId}/transfer:
     put:
       $ref: ./handlers/workflows/spec/paths/transferWorkflow.generated.yml
+  /workflows/{workflowId}/owner:
+    put:
+      $ref: ./handlers/workflows/spec/paths/setWorkflowOwner.generated.yml
   /workflows/{workflowId}/publish:
     post:
       $ref: ./handlers/workflows/spec/paths/publishWorkflow.generated.yml
