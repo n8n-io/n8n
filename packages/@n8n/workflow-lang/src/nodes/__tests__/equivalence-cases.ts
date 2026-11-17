@@ -10,6 +10,7 @@ import { DATA_TABLE_CASES } from './data-table-cases.ts';
 import { SHEETS_APPEND_CASES } from './google-sheets-append-cases.ts';
 import { SHEETS_SERVICE_ACCOUNT_CASES } from './google-sheets-service-account-cases.ts';
 import { SHEETS_UPSERT_CASES } from './google-sheets-upsert-cases.ts';
+import { HTTP_ERROR_CASES } from './http-error-cases.ts';
 import { MICROSOFT_TEAMS_CASES } from './microsoft-teams-cases.ts';
 
 const rl = (value: string) => ({ __rl: true, mode: 'id', value });
@@ -2832,6 +2833,7 @@ export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...SHEETS_UPSERT_CASES,
 	...SHEETS_APPEND_CASES,
 	...SHEETS_SERVICE_ACCOUNT_CASES,
+	...HTTP_ERROR_CASES,
 	...MICROSOFT_TEAMS_CASES,
 	...AI_CASES,
 	...ANTHROPIC_CASES,

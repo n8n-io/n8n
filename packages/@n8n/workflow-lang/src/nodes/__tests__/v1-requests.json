@@ -7893,6 +7893,594 @@
 			}
 		]
 	},
+	"googleSheets failed request 400": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters"
+	},
+	"googleSheets failed sheet lookup 400": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters"
+	},
+	"googleCalendar failed request 400": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters"
+	},
+	"microsoftOutlook failed request 400": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Request failed with status code 400"
+	},
+	"googleSheets failed request 403": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"googleSheets failed sheet lookup 403": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"googleCalendar failed request 403": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"microsoftOutlook failed request 403": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
+	"googleSheets failed request 404": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found"
+	},
+	"googleSheets failed sheet lookup 404": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found"
+	},
+	"googleCalendar failed request 404": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found"
+	},
+	"microsoftOutlook failed request 404": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The resource you are requesting could not be found"
+	},
+	"googleSheets failed request 429": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you"
+	},
+	"googleSheets failed sheet lookup 429": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you"
+	},
+	"googleCalendar failed request 429": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you"
+	},
+	"microsoftOutlook failed request 429": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service is receiving too many requests from you"
+	},
+	"googleSheets failed request 500": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request"
+	},
+	"googleSheets failed sheet lookup 500": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request"
+	},
+	"googleCalendar failed request 500": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request"
+	},
+	"microsoftOutlook failed request 500": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The service was not able to process your request"
+	},
+	"microsoftOutlook failed request 400 with the message of Microsoft Graph": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "The request is not valid."
+	},
+	"microsoftOutlook failed send 403": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/me/sendMail",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"message": {
+						"body": {
+							"content": " "
+						},
+						"subject": "Hi",
+						"toRecipients": [
+							{
+								"emailAddress": {
+									"address": "ada@example.com"
+								}
+							}
+						]
+					},
+					"saveToSentItems": true
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Forbidden - perhaps check your credentials?"
+	},
 	"microsoftTeams channel.create": {
 		"requests": [
 			{

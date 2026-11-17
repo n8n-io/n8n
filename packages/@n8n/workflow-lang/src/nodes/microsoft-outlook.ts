@@ -74,6 +74,42 @@ function createMessage(fields: Record<string, unknown>): Item {
 	return message;
 }
 
+/**
+ * The message of the NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES):
+ * the message of v1 for a failed request.
+ */
+function statusMessage(status: number): string {
+	if (status === 400) return 'Bad request - please check your parameters';
+	if (status === 401) return 'Authorization failed - please check your credentials';
+	if (status === 402) return 'Payment required - perhaps check your payment details?';
+	if (status === 403) return 'Forbidden - perhaps check your credentials?';
+	if (status === 404) return 'The resource you are requesting could not be found';
+	if (status === 405) {
+		return 'Method not allowed - please check you are using the right HTTP method';
+	}
+	if (status === 429) return 'The service is receiving too many requests from you';
+	if (status === 500) return 'The service was not able to process your request';
+	if (status === 502) return 'Bad gateway - the service failed to handle your request';
+	if (status === 503) {
+		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
+	}
+	if (status === 504) return 'Gateway timed out - perhaps try again later?';
+	return status < 500
+		? 'Your request is invalid or could not be processed by the service'
+		: 'The service failed to process your request';
+}
+
+/**
+ * The message of v1 for a failed request of the Outlook node: for status 400 the node gives
+ * the message of the answer of Microsoft Graph when there is one.
+ */
+function outlookError(status: number, body: unknown): string {
+	if (status !== 400) return statusMessage(status);
+	const error = isRecord(body) ? body.error : undefined;
+	const text = isRecord(body) && body.message ? body.message : isRecord(error) ? error.message : '';
+	return typeof text === 'string' && text !== '' ? text : 'Request failed with status code 400';
+}
+
 export default defineNode<OutlookParameters>({
 	type: 'n8n-nodes-base.microsoftOutlook',
 	version: 2,
@@ -135,7 +171,7 @@ export default defineNode<OutlookParameters>({
 								credential,
 							});
 				if (response.status >= 400) {
-					throw new Error(`Microsoft Outlook: HTTP status ${response.status}`);
+					throw new Error(outlookError(response.status, response.body));
 				}
 				done.push({ success: true });
 			}
@@ -174,7 +210,7 @@ export default defineNode<OutlookParameters>({
 				credential,
 			});
 			if (response.status >= 400) {
-				throw new Error(`Microsoft Outlook: HTTP status ${response.status}`);
+				throw new Error(outlookError(response.status, response.body));
 			}
 			out.push({ success: true });
 		}

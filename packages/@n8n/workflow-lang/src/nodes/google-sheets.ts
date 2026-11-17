@@ -386,6 +386,31 @@ function withoutRowNumber(item: Item): Item {
  */
 const SHEETS_TOKEN = '{{$credentials.n8nMinted.m116a0d8b.access_token}}';
 
+/**
+ * The message of the NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES):
+ * the message of v1 for a failed request.
+ */
+function statusMessage(status: number): string {
+	if (status === 400) return 'Bad request - please check your parameters';
+	if (status === 401) return 'Authorization failed - please check your credentials';
+	if (status === 402) return 'Payment required - perhaps check your payment details?';
+	if (status === 403) return 'Forbidden - perhaps check your credentials?';
+	if (status === 404) return 'The resource you are requesting could not be found';
+	if (status === 405) {
+		return 'Method not allowed - please check you are using the right HTTP method';
+	}
+	if (status === 429) return 'The service is receiving too many requests from you';
+	if (status === 500) return 'The service was not able to process your request';
+	if (status === 502) return 'Bad gateway - the service failed to handle your request';
+	if (status === 503) {
+		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
+	}
+	if (status === 504) return 'Gateway timed out - perhaps try again later?';
+	return status < 500
+		? 'Your request is invalid or could not be processed by the service'
+		: 'The service failed to process your request';
+}
+
 export default defineNode<SheetsParameters>({
 	type: 'n8n-nodes-base.googleSheets',
 	version: 4.7,
@@ -514,7 +539,7 @@ export default defineNode<SheetsParameters>({
 		const headers: Record<string, string> = oauth
 			? { 'Content-Type': 'application/json' }
 			: { 'Content-Type': 'application/json', Authorization: `Bearer ${SHEETS_TOKEN}` };
-		const fail = (status: number) => new Error(`Google Sheets: HTTP status ${status}`);
+		const fail = (status: number) => new Error(statusMessage(status));
 
 		// spreadsheetGetSheet of the v1 node.
 		const sheetParam = parameters.sheetName;
