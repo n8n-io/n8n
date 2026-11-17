@@ -7407,6 +7407,80 @@
 			"httpCode": "400"
 		}
 	},
+	"notion databasePage.create: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"notion databasePage.create: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "Request failed with status code 401",
+			"httpCode": "401"
+		}
+	},
 	"notion databasePage.create: failed request 403 with a JSON body": {
 		"requests": [
 			{
@@ -7651,6 +7725,92 @@
 		"errorDetail": {
 			"description": "Request failed with status code 400",
 			"httpCode": "400"
+		}
+	},
+	"supabase row.get: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials: The value is not valid.",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"supabase row.get: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials: Request failed with status code 401",
+		"errorDetail": {
+			"description": "Request failed with status code 401",
+			"httpCode": "401"
 		}
 	},
 	"supabase row.get: failed request 403 with a JSON body": {

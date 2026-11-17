@@ -2878,9 +2878,6 @@ const ALL_STATUSES = [400, 401, 403, 404, 429, 500];
 // (compiled-engine-credentials.ts, `refreshOAuth2`), and the step fails with that message
 // (`settle`). The reference runner of this test has no renewal, so the node would get the 401.
 const OAUTH_STATUSES = [400, 403, 404, 429, 500];
-// Status 401 with `helpers.httpRequestWithAuthentication` has no case yet: the requests of v1
-// and of the library node differ for it (not examined).
-const NO_401 = OAUTH_STATUSES;
 const statusOnly = (text: string) => text;
 const bodyText = () => FAILURE_TEXT;
 const clientText = (status: number) => `Request failed with status code ${status}`;
@@ -2895,10 +2892,10 @@ const FAILED_REQUEST_CASES: EquivalenceCase[] = [
 		statusOnly,
 		bodyText,
 	),
-	...failedRequests('notion databasePage.create', NO_401, statusOnly, clientText),
+	...failedRequests('notion databasePage.create', ALL_STATUSES, statusOnly, clientText),
 	...failedRequests(
 		'supabase row.get',
-		NO_401,
+		ALL_STATUSES,
 		(text, description, json) => `${text}: ${json ? description.json : description.text}`,
 		clientText,
 	),
