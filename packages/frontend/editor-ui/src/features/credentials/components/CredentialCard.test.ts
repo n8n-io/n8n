@@ -605,16 +605,18 @@ describe('CredentialCard', () => {
 			expect(emitted('click')).toBeUndefined();
 		});
 
-		it('dims a credential of a blocked type only', () => {
-			const blocked = renderComponent({
-				props: { data: createCredential({ restriction: typeRestricted }) },
-			});
-			const nodesOnly = renderComponent({
-				props: { data: createCredential({ restriction: nodesRestricted }) },
+		it.each([typeRestricted, nodesRestricted])('dims a $reason credential', (restriction) => {
+			const { container } = renderComponent({
+				props: { data: createCredential({ restriction }) },
 			});
 
-			expect(blocked.container.firstElementChild?.className).toMatch(/blocked/);
-			expect(nodesOnly.container.firstElementChild?.className).not.toMatch(/blocked/);
+			expect(container.firstElementChild?.className).toMatch(/restricted/);
+		});
+
+		it('does not dim a usable credential', () => {
+			const { container } = renderComponent({ props: { data: createCredential() } });
+
+			expect(container.firstElementChild?.className).not.toMatch(/restricted/);
 		});
 	});
 });

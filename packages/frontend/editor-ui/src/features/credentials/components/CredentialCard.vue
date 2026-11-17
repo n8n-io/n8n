@@ -246,10 +246,7 @@ function moveResource() {
 </script>
 
 <template>
-	<N8nCard
-		:class="[$style.cardLink, { [$style.blocked]: restriction?.blocked }]"
-		@click.stop="onClick"
-	>
+	<N8nCard :class="[$style.cardLink, { [$style.restricted]: restriction }]" @click.stop="onClick">
 		<template #prepend>
 			<CredentialIcon :class="$style.dimmable" :credential-type-name="credentialType?.name ?? ''" />
 		</template>
@@ -401,8 +398,7 @@ function moveResource() {
 	}
 }
 
-// Workflows cannot use a credential of a blocked type. The card still opens, like a restricted node.
-.blocked .dimmable {
+.restricted .dimmable {
 	opacity: 0.5;
 }
 
