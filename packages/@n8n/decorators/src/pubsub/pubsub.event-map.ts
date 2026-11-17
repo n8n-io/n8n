@@ -477,6 +477,12 @@ export type PubSubCommandMap = {
 	 */
 	'reload-type-availability-policies': never;
 
+	/**
+	 * Reload the execution limits held in memory. Published after a limit write commits.
+	 * The writing process reloads its own copy, so this is not a self-send command.
+	 */
+	'reload-execution-limits': never;
+
 	// #endregion
 };
 
