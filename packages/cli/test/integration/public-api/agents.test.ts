@@ -4,7 +4,11 @@ import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
+import { AgentTestRunService } from '@/modules/agents/agent-test-run.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 
 import { createFolder } from '../shared/db/folders';
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -741,5 +745,255 @@ describe('GET /agents', () => {
 
 		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
 		expect(response.body.data.map((row: { id: string }) => row.id)).toEqual(['agent-personal']);
+	});
+});
+
+describe('POST /agents/:agentId/run and stop', () => {
+	let agentRepository: AgentRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		vi.restoreAllMocks();
+		await agentRepository.delete({});
+		await testDb.truncate(['ProjectRelation', 'Project']);
+	});
+
+	const createAgent = async (projectId: string, id: string, schema: unknown = null) =>
+		await agentRepository.save({
+			id,
+			name: 'My Agent',
+			projectId,
+			schema: schema as never,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+	const personalProjectId = async (user: User) =>
+		(await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id)).id;
+
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/agents/agent-1/run');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should return 403 when the API key lacks agent:execute', async () => {
+		const owner = await createOwnerWithApiKey({ scopes: ['agent:read'] });
+		await createAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when the user lacks agent:execute on the project', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+			roleType: 'project',
+			displayName: 'Agent Reader',
+			description: 'Can read agents but not run them',
+		});
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+		await createAgent(teamProject.id, 'agent-1');
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 400 for an empty body', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer.publicApiAgentFor(owner).post('/agents/agent-1/run').send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 for an unknown agent', async () => {
+		const owner = await createOwnerWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/missing/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for an unknown session', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello', sessionId: 'missing-session' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 422 when the agent is not ready to run', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createAgent(await personalProjectId(owner), 'agent-1');
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toContain('not ready to run');
+	});
+
+	test('should return 422 when the agent uses a tool that needs approval', async () => {
+		const owner = await createOwnerWithApiKey();
+		await createAgent(await personalProjectId(owner), 'agent-1', {
+			name: 'My Agent',
+			model: '',
+			instructions: '',
+			tools: [{ type: 'workflow', workflow: 'Lookup', requireApproval: true }],
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toContain('needs approval');
+	});
+
+	test('should return the final response and continue the same session', async () => {
+		const owner = await createOwnerWithApiKey();
+		const projectId = await personalProjectId(owner);
+		await createAgent(projectId, 'agent-1');
+		const threads = Container.get(AgentExecutionThreadRepository);
+		const executions = Container.get(AgentExecutionRepository);
+		await threads.save(
+			threads.create({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'My Agent',
+				projectId,
+				ownerId: owner.id,
+				accessScope: 'user',
+				sessionNumber: 1,
+			}),
+		);
+		await executions.save(
+			executions.create({
+				id: 'execution-1',
+				threadId: 'thread-1',
+				status: 'success',
+				source: 'public_api',
+				promptTokens: 2,
+				completionTokens: 3,
+				totalTokens: 5,
+				cost: 0.1,
+			}),
+		);
+		const run = vi.spyOn(Container.get(AgentTestRunService), 'executeDraftRun').mockResolvedValue({
+			status: 'completed',
+			response: 'Hello',
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+		});
+
+		const first = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Hello' });
+		const second = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/run')
+			.send({ message: 'Again', sessionId: 'thread-1' });
+
+		expect(first.statusCode, JSON.stringify(first.body)).toBe(200);
+		expect(first.body).toMatchObject({
+			response: 'Hello',
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			status: 'success',
+			usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.1 },
+		});
+		expect(second.statusCode).toBe(200);
+		expect(run).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: 'thread-1' }));
+	});
+
+	test('should stop a running execution and return the status of a finished one', async () => {
+		const owner = await createOwnerWithApiKey();
+		const projectId = await personalProjectId(owner);
+		await createAgent(projectId, 'agent-1');
+		const threads = Container.get(AgentExecutionThreadRepository);
+		const executions = Container.get(AgentExecutionRepository);
+		await threads.save(
+			threads.create({
+				id: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'My Agent',
+				projectId,
+				ownerId: owner.id,
+				accessScope: 'user',
+				sessionNumber: 1,
+			}),
+		);
+		await executions.save(
+			executions.create({
+				id: 'execution-done',
+				threadId: 'thread-1',
+				status: 'success',
+				source: 'public_api',
+			}),
+		);
+		await executions.save(
+			executions.create({
+				id: 'execution-running',
+				threadId: 'thread-1',
+				status: 'running',
+				source: 'public_api',
+			}),
+		);
+		const cancel = vi
+			.spyOn(Container.get(AgentChatExecutionService), 'requestCancel')
+			.mockResolvedValue(true);
+
+		const finished = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/executions/execution-done/stop');
+		const running = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/executions/execution-running/stop');
+		const missing = await testServer
+			.publicApiAgentFor(owner)
+			.post('/agents/agent-1/executions/missing/stop');
+
+		expect(finished.statusCode, JSON.stringify(finished.body)).toBe(200);
+		expect(finished.body).toEqual({ executionId: 'execution-done', status: 'success' });
+		expect(running.body).toEqual({
+			executionId: 'execution-running',
+			status: 'cancel_requested',
+		});
+		expect(cancel).toHaveBeenCalledTimes(1);
+		expect(missing.statusCode).toBe(404);
 	});
 });

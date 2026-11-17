@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
 import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import type { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { toAgentPublicDto, type AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
 import type { AgentsService, DeletedAgentSnapshot } from '@/modules/agents/agents.service';
@@ -25,6 +26,8 @@ describe('AgentsPublicController route metadata', () => {
 			'deleteAgent',
 			'getAgent',
 			'listAgents',
+			'runAgent',
+			'stopAgentExecution',
 		]);
 	});
 
@@ -84,6 +87,35 @@ describe('AgentsPublicController route metadata', () => {
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 	});
+
+	it('runAgent requires the agent:execute API key scope and project RBAC check', () => {
+		expect(routes.get('runAgent')?.apiKeyScope).toBe('agent:execute');
+		expect(routes.get('runAgent')?.accessScope).toEqual({
+			scope: 'agent:execute',
+			globalOnly: false,
+		});
+	});
+
+	it('runAgent answers 200 and documents 404 and 422', () => {
+		const route = routes.get('runAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.map((response) => response.status)).toEqual(
+			expect.arrayContaining([404, 422]),
+		);
+	});
+
+	it('stopAgentExecution requires the agent:execute API key scope and project RBAC check', () => {
+		expect(routes.get('stopAgentExecution')?.apiKeyScope).toBe('agent:execute');
+		expect(routes.get('stopAgentExecution')?.accessScope).toEqual({
+			scope: 'agent:execute',
+			globalOnly: false,
+		});
+		expect(routes.get('stopAgentExecution')?.successStatus).toBe(200);
+		expect(
+			routes.get('stopAgentExecution')?.errorResponses?.some((response) => response.status === 404),
+		).toBe(true);
+	});
 });
 
 const fullAgentDto = {
@@ -121,6 +153,7 @@ describe('AgentsPublicController createAgent', () => {
 		agentResponseMapper,
 		agentDefaultModelResolverService,
 		agentCustomToolsService,
+		mock<AgentPublicRunService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -259,6 +292,7 @@ describe('AgentsPublicController getAgent', () => {
 		agentResponseMapper,
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -312,6 +346,7 @@ describe('AgentsPublicController listAgents', () => {
 		agentResponseMapper,
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -418,6 +453,7 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentResponseMapper,
 		agentDefaultModelResolverService,
 		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -455,5 +491,36 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentsService.delete.mockResolvedValue(null);
 
 		await expect(controller.deleteAgent(req, res, 'missing-agent')).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentsPublicController run and stop', () => {
+	const agentPublicRunService = mock<AgentPublicRunService>();
+	const controller = new AgentsPublicController(
+		mock<AgentsService>(),
+		mock<AgentResponseMapper>(),
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		agentPublicRunService,
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	it('delegates a run to the public run service', async () => {
+		const body = { response: 'Hello', sessionId: 'session-1', executionId: 'execution-1' };
+		agentPublicRunService.run.mockResolvedValue(body as never);
+
+		await expect(controller.runAgent(req, res, 'agent-1', { message: 'Hi' })).resolves.toBe(body);
+		expect(agentPublicRunService.run).toHaveBeenCalledWith(req.user, 'agent-1', { message: 'Hi' });
+	});
+
+	it('delegates a stop to the public run service', async () => {
+		const body = { executionId: 'execution-1', status: 'cancel_requested' };
+		agentPublicRunService.stop.mockResolvedValue(body);
+
+		await expect(controller.stopAgentExecution(req, res, 'agent-1', 'execution-1')).resolves.toBe(
+			body,
+		);
+		expect(agentPublicRunService.stop).toHaveBeenCalledWith(req.user, 'agent-1', 'execution-1');
 	});
 });

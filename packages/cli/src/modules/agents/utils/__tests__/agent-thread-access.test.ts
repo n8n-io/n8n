@@ -26,6 +26,7 @@ describe('chatSurfaceForKind', () => {
 describe('canContinueThreadOnSurface', () => {
 	it.each([
 		['preview', 'chat', false],
+		['preview', 'public_api', false],
 		['n8n-chat', N8N_CHAT_PRODUCTION_SOURCE, false],
 		['system', SYSTEM_CHAT_SOURCE, true],
 	] as const)(

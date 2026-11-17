@@ -97,6 +97,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'whatsapp',
 	'teams',
 	'webhook',
+	'public_api',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -165,6 +166,43 @@ export type ListAgentsOptions = {
 	filter?: AgentListFilter;
 	sortBy?: AgentsListSortBy;
 };
+
+export class RunAgentPublicDto extends Z.class(
+	{
+		message: z.string().trim().min(1).describe('The message to send to the agent.'),
+		sessionId: z.string().min(1).optional().describe('The session to continue.'),
+	},
+	{ strict: true },
+) {}
+
+const agentRunStatusSchema = z.enum([
+	'running',
+	'success',
+	'error',
+	'cancelled',
+	'interrupted',
+	'awaiting',
+]);
+
+export class AgentRunPublicDto extends Z.class({
+	response: z.string().describe('The final text of the run.'),
+	sessionId: z.string().describe('The session this run belongs to.'),
+	executionId: z.string().describe('The execution id of this run.'),
+	status: agentRunStatusSchema,
+	usage: z.object({
+		promptTokens: z.number().nullable(),
+		completionTokens: z.number().nullable(),
+		totalTokens: z.number().nullable(),
+		cost: z.number().nullable(),
+	}),
+	error: z.string().nullable().optional(),
+}) {}
+
+export class StoppedAgentExecutionPublicDto extends Z.class({
+	executionId: z.string(),
+	/** A running run returns `cancel_requested`. A finished run returns its status. */
+	status: z.string(),
+}) {}
 
 export class ListAgentSessionsQueryDto extends Z.class({
 	cursor: z.string().optional(),

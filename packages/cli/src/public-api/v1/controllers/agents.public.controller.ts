@@ -1,11 +1,15 @@
 import {
+	agentExecutionIdParamSchema,
 	agentIdParamSchema,
 	AgentListPublicDto,
 	AgentPublicDto,
+	AgentRunPublicDto,
 	CreatedAgentPublicDto,
 	CreateAgentPublicDto,
 	DeletedAgentPublicDto,
 	ListAgentsPublicQueryDto,
+	RunAgentPublicDto,
+	StoppedAgentExecutionPublicDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -28,6 +32,7 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import {
 	AgentResponseMapper,
@@ -47,6 +52,7 @@ export class AgentsPublicController {
 		private readonly agentResponseMapper: AgentResponseMapper,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
+		private readonly agentPublicRunService: AgentPublicRunService,
 	) {}
 
 	@Post('/')
@@ -143,6 +149,48 @@ export class AgentsPublicController {
 			data: data.map(mapAgentListPublicItem),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
 		};
+	}
+
+	@Post('/:agentId/run')
+	@ApiKeyScope('agent:execute')
+	@ProjectScope('agent:execute')
+	@ApiSummary('Run an agent')
+	@ApiDescription(
+		'Run the current draft of an agent and wait for the final response. ' +
+			'Omit sessionId to start a session. Send the same sessionId to continue that session. ' +
+			'The user of the API key also needs permission to read the agent. ' +
+			'The Public API rejects an agent that uses a tool which needs approval.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentRunPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(422)
+	async runAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Body body: RunAgentPublicDto,
+	): Promise<AgentRunPublicDto> {
+		return await this.agentPublicRunService.run(req.user, agentId, body);
+	}
+
+	@Post('/:agentId/executions/:executionId/stop')
+	@ApiKeyScope('agent:execute')
+	@ProjectScope('agent:execute')
+	@ApiSummary('Stop an agent run')
+	@ApiDescription(
+		'Stop a run of this agent. A finished run returns its status. An unknown execution returns 404.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, StoppedAgentExecutionPublicDto)
+	@ApiErrorResponse(404)
+	async stopAgentExecution(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Param('executionId', agentExecutionIdParamSchema) executionId: string,
+	): Promise<StoppedAgentExecutionPublicDto> {
+		return await this.agentPublicRunService.stop(req.user, agentId, executionId);
 	}
 
 	@Delete('/:agentId')

@@ -140,6 +140,7 @@ export const API_KEY_RESOURCES = {
 		'publish',
 		'unpublish',
 		'delete',
+		'execute',
 	] as const,
 	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
