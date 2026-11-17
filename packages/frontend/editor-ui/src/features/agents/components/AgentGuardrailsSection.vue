@@ -80,6 +80,13 @@ function toolsSummary(guardrail: AgentToolGuardrailConfig): string {
 		: i18n.baseText('agents.builder.guardrails.chip.allTools');
 }
 
+/** One translated string, so a locale can reorder kind and tools around the separators. */
+function metaSummary(guardrail: AgentToolGuardrailConfig): string {
+	return i18n.baseText('agents.builder.guardrails.chip.metaTools', {
+		interpolate: { kind: kindLabel(guardrail), tools: toolsSummary(guardrail) },
+	});
+}
+
 function onAddSelect(kind: string) {
 	if (props.disabled) return;
 	createKind.value = kind as AgentToolGuardrailKind;
@@ -131,9 +138,7 @@ function onModalRemove() {
 					>
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
-							<span :class="$style.chipMeta">
-								· {{ kindLabel(guardrail) }} · {{ toolsSummary(guardrail) }}
-							</span>
+							<span :class="$style.chipMeta">{{ metaSummary(guardrail) }}</span>
 						</span>
 					</AgentChipButton>
 				</AgentItemContextMenu>
@@ -194,6 +199,7 @@ function onModalRemove() {
 			:guardrail="editingGuardrail"
 			:kind="createKind"
 			:tools="tools"
+			:existing-ids="guardrails.map((guardrail) => guardrail.id)"
 			:disabled="disabled"
 			@update:open="modalOpen = $event"
 			@save="onModalSave"

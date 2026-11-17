@@ -33,6 +33,7 @@ import type { IWorkflowDb } from '@/Interface';
 import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
 import type { AgentToolConfigData } from '../components/AgentToolConfigContent.vue';
+import type { ToolGuardrailsWiring } from '../components/AgentToolGuardrailsSection.vue';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
@@ -414,11 +415,19 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		mcpServers: AgentJsonMcpServerConfig[] = [],
 		projectId = PROJECT_ID,
 		mode: ToolPickerMode = 'tools',
+		guardrails?: ToolGuardrailsWiring,
 	) {
 		return renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { tools, mcpServers, onConfirm, projectId, mode },
+				data: {
+					tools,
+					mcpServers,
+					onConfirm,
+					projectId,
+					mode,
+					...(guardrails ? { guardrails } : {}),
+				},
 			},
 		});
 	}
@@ -1590,6 +1599,78 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				`nodeType:${WIKIPEDIA.name}`,
 			]);
 			expect(nodeItems.every((item) => !('restriction' in item && item.restriction))).toBe(true);
+		});
+	});
+
+	describe('tool guardrails wiring', () => {
+		it('hands the wiring to the configure step of a connected tool', async () => {
+			// A connected node row activates "add another instance"; a restricted
+			// one opens the existing configuration, which is the path the
+			// guardrails section rides on.
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const guardrails: ToolGuardrailsWiring = {
+				getGuardrails: () => [],
+				getTools: () => [],
+				onUpdateGuardrails: vi.fn(),
+			};
+
+			render([toolRef(SLACK.name)], vi.fn(), [], PROJECT_ID, 'tools', guardrails);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			const handed =
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer'
+					? data.guardrails
+					: undefined;
+			expect(handed).toBeDefined();
+			// Props arrive behind a reactive proxy, so compare the wiring's own
+			// functions rather than the wrapper object identity.
+			expect(handed?.getGuardrails).toBe(guardrails.getGuardrails);
+			expect(handed?.getTools).toBe(guardrails.getTools);
+			expect(handed?.onUpdateGuardrails).toBe(guardrails.onUpdateGuardrails);
+		});
+
+		it('adds no wiring to the configure step of a tool being added', async () => {
+			const guardrails: ToolGuardrailsWiring = {
+				getGuardrails: () => [],
+				getTools: () => [],
+				onUpdateGuardrails: vi.fn(),
+			};
+
+			render([], vi.fn(), [], PROJECT_ID, 'tools', guardrails);
+			await flushPromises();
+
+			const wikipedia = getItems().find((item) => item.id === `nodeType:${WIKIPEDIA.name}`);
+			emitOpenDetail(wikipedia!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer'
+					? data.guardrails
+					: 'unexpected mcp data',
+			).toBeUndefined();
+		});
+
+		it('adds no wiring when the host passes none', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			render([toolRef(SLACK.name)]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(
+				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer'
+					? data.guardrails
+					: 'unexpected mcp data',
+			).toBeUndefined();
 		});
 	});
 });

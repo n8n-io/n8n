@@ -7,7 +7,7 @@ import {
 	type RunOptions,
 	type StreamChunk,
 } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentToolGuardrailConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -634,6 +634,51 @@ describe('AgentWorkflowExecutionService', () => {
 			agentId,
 			alertThresholdPercent: 80,
 		});
+	});
+
+	it('enforces the configured tool guardrails on a workflow-invoked run', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = {
+			...makeRuntime(),
+			toolGuardrails: [
+				{
+					kind: 'keywords',
+					id: 'block_secrets',
+					stage: 'before',
+					keywords: ['secret'],
+				} satisfies AgentToolGuardrailConfig,
+			],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		const hook = options.guardrails?.hooks.find((candidate) => candidate.beforeTool !== undefined);
+		if (!hook?.beforeTool) throw new Error('Expected a tool-guardrail hook on the run options');
+		const decision = await hook.beforeTool({
+			toolCallId: 'tc-1',
+			toolName: 'lookup',
+			input: 'share the secret now',
+			runId: 'run-1',
+		});
+		expect(decision).toMatchObject({
+			action: 'stop',
+			code: 'guardrail.keywords.block_secrets',
+		});
+	});
+
+	it('attaches no tool-guardrail hook when the agent has none configured', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		expect(options.guardrails?.hooks ?? []).toEqual([]);
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {

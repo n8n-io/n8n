@@ -178,7 +178,42 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				if (agentId.value !== targetAgentId) return;
 				scheduleConfigUpdate(withToolGuardrails(localConfig.value, tools));
 			},
+			validationIssues: () =>
+				validationIssues?.value.filter((issue) => issue.capability.kind === 'guardrail') ?? [],
 		};
+	}
+
+	/**
+	 * Renaming a node tool must not orphan guardrail refs that name it: the
+	 * publish gate refuses a config whose refs point at no configured tool.
+	 * Follows each rename with a config write, so both surfaces (the edit-tool
+	 * modal and the tools picker) keep the refs attached.
+	 */
+	function migrateGuardrailsForToolRenames(renames: Array<{ from: string; to: string }>): void {
+		const byFrom = new Map(
+			renames
+				.filter(({ from, to }) => from !== '' && to !== '' && from !== to)
+				.map(({ from, to }) => [from, to]),
+		);
+		if (byFrom.size === 0) return;
+		const guardrails = localConfig.value?.config?.guardrails?.tools;
+		if (!guardrails?.length) return;
+		const touched = guardrails.some((guardrail) =>
+			(guardrail.tools ?? []).some((ref) => ref.type === 'node' && byFrom.has(ref.name)),
+		);
+		if (!touched) return;
+		const next = guardrails.map((guardrail) => {
+			if (!guardrail.tools) return guardrail;
+			return {
+				...guardrail,
+				tools: guardrail.tools.map((ref) =>
+					ref.type === 'node' && byFrom.has(ref.name)
+						? { ...ref, name: byFrom.get(ref.name) as string }
+						: ref,
+				),
+			};
+		});
+		scheduleConfigUpdate(withToolGuardrails(localConfig.value, next));
 	}
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
@@ -201,10 +236,20 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					mcpServers?: AgentJsonMcpServerConfig[];
 				}) => {
 					if (agentId.value !== targetAgentId) return;
+					// Rename detection diffs against the tools as saved, so it
+					// must read them before the update below replaces the list.
+					const previousTools = localConfig.value?.tools ?? [];
 					scheduleConfigUpdate({
 						...(payload.tools && { tools: payload.tools }),
 						...(payload.mcpServers && { mcpServers: payload.mcpServers }),
 					});
+					if (!toolGuardrailsEnabled || !payload.tools) return;
+					const renames = payload.tools.flatMap((next, index) => {
+						const before = previousTools[index];
+						if (before?.type !== 'node' || next.type !== 'node') return [];
+						return before.name === next.name ? [] : [{ from: before.name, to: next.name }];
+					});
+					migrateGuardrailsForToolRenames(renames);
 				},
 			},
 		});
@@ -247,15 +292,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
 						) ?? [],
 					...(toolGuardrailsEnabled &&
-						tool.type !== 'custom' && {
-							guardrails: {
-								...toolGuardrailsWiring(agentId.value),
-								validationIssues: () =>
-									validationIssues?.value.filter(
-										(issue) => issue.capability.kind === 'guardrail',
-									) ?? [],
-							},
-						}),
+						tool.type !== 'custom' && { guardrails: toolGuardrailsWiring(agentId.value) }),
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,
@@ -265,6 +302,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						const nextTools = [...(localConfig.value?.tools ?? [])];
 						nextTools[toolIndex] = updatedTool;
 						scheduleConfigUpdate({ tools: nextTools });
+						// Follow a node-tool rename so guardrail refs stay attached.
+						if (toolGuardrailsEnabled && tool.type === 'node' && updatedTool.type === 'node') {
+							migrateGuardrailsForToolRenames([{ from: tool.name, to: updatedTool.name }]);
+						}
 					},
 					onRemove: () => {
 						if (!localConfig.value?.tools?.[toolIndex]) return;

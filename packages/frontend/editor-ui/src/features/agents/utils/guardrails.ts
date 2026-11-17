@@ -62,15 +62,30 @@ export const PII_ENTITY_LABELS: Record<ToolGuardrailPiiEntity, string> = {
 	FI_PERSONAL_IDENTITY_CODE: 'FI personal identity code',
 };
 
-/** Slug of the name that passes the schema's `[A-Za-z0-9_-]` id check. */
-export function slugifyGuardrailId(name: string, kind: AgentToolGuardrailKind): string {
+/**
+ * Slug of the name that passes the schema's `[A-Za-z0-9_-]` id check. An empty
+ * name falls back to the kind plus a random suffix. A slug already used by a
+ * guardrail picks up a counter, so two names that normalize the same way cannot
+ * produce a duplicate id.
+ */
+export function slugifyGuardrailId(
+	name: string,
+	kind: AgentToolGuardrailKind,
+	reservedIds: Iterable<string> = [],
+): string {
+	const taken = new Set(reservedIds);
 	const slug = name
 		.trim()
 		.toLowerCase()
 		.replace(/[^a-z0-9_-]+/g, '_')
 		.replace(/_{2,}/g, '_')
 		.replace(/^_+|_+$/g, '');
-	return slug || `${kind}_${Math.random().toString(36).slice(2, 8)}`;
+	const base = slug || `${kind}_${Math.random().toString(36).slice(2, 8)}`;
+	if (!taken.has(base)) return base;
+	for (let counter = 2; ; counter++) {
+		const candidate = `${base}-${counter}`;
+		if (!taken.has(candidate)) return candidate;
+	}
 }
 
 export function configuredToolGuardrails(

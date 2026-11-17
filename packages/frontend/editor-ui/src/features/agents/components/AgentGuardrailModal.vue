@@ -39,6 +39,8 @@ const props = withDefaults(
 		kind?: AgentToolGuardrailKind;
 		/** The agent's configured tools, for the "Which tools" picker. */
 		tools?: AgentJsonToolRef[];
+		/** Ids of guardrails that already exist, so a create cannot duplicate one. */
+		existingIds?: string[];
 		disabled?: boolean;
 	}>(),
 	{
@@ -206,7 +208,8 @@ const canSave = computed(() => {
 function buildConfig(): AgentToolGuardrailConfig {
 	// The id is stable across edits; a create derives it from the name.
 	const shared = {
-		id: props.guardrail?.id ?? slugifyGuardrailId(name.value, selectedKind.value),
+		id:
+			props.guardrail?.id ?? slugifyGuardrailId(name.value, selectedKind.value, props.existingIds),
 		...(name.value.trim() ? { name: name.value.trim() } : {}),
 		stage: stage.value,
 		...(toolScope.value === 'selected' ? { tools: selectedTools.value } : {}),

@@ -19,6 +19,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.guardrails.add': 'Add guardrail',
 				'agents.builder.guardrails.chip.allTools': 'All tools',
 				'agents.builder.guardrails.chip.nTools': '{count} tool | {count} tools',
+				'agents.builder.guardrails.chip.metaTools': '· {kind} · {tools}',
 				'agents.builder.guardrails.kind.keywords': 'Blocked keywords',
 				'agents.builder.guardrails.kind.jailbreak': 'Jailbreak detection',
 				'agents.builder.guardrails.kind.nsfw': 'NSFW detection',

@@ -24,6 +24,7 @@ import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import type { BuiltTool, ToolSuspendOptions } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
+import { GuardrailStopError } from '../guardrails/guardrail-stop-error';
 import type {
 	ProcessToolCallParams,
 	ToolCallExecutorDeps,
@@ -156,10 +157,7 @@ export class ToolCallRunner {
 		if (guardrails && guardCtx && !params.previouslySuspended) {
 			const stop = await guardrails.beforeTool(guardCtx);
 			if (stop) {
-				return await this.toolError(
-					params,
-					new Error(`Tool call stopped by guardrail: ${stop.code}`),
-				);
+				return await this.toolError(params, new GuardrailStopError('before', stop.code));
 			}
 		}
 
@@ -214,6 +212,11 @@ export class ToolCallRunner {
 					'Run aborted',
 					'[Tool call canceled because the run stopped]',
 				);
+			}
+			// A guardrail refusal is runtime-authored text: it reaches the model
+			// plainly even for untrusted tools, matching the before-stage stop.
+			if (error instanceof GuardrailStopError) {
+				return await this.toolError(params, error);
 			}
 			return await this.toolError(params, error, builtTool);
 		}
@@ -462,7 +465,7 @@ export class ToolCallRunner {
 					if (guardrails && guardCtx && !isSuspendedToolResult(result)) {
 						const stop = await guardrails.afterTool(guardCtx, result);
 						if (stop) {
-							throw new Error(`Tool result blocked by guardrail: ${stop.code}`);
+							throw new GuardrailStopError('after', stop.code);
 						}
 					}
 					return result;

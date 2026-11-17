@@ -298,6 +298,100 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		};
 		expect(modalData.guardrails).toBeUndefined();
 	});
+
+	it('follows a node-tool rename from the edit-tool modal into its guardrail refs', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const nodeTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as AgentJsonToolConfig;
+		localConfig.value = makeConfig({
+			tools: [nodeTool],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['secret'],
+							tools: [{ type: 'node', name: 'HTTP Request' }],
+						},
+					],
+				},
+			},
+		});
+
+		actions.onOpenToolFromList({ kind: 'tool', toolType: 'node', id: 'HTTP Request' });
+		const modalData = uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY].data as unknown as {
+			onConfirm: (tool: AgentJsonToolConfig) => void;
+		};
+		modalData.onConfirm({ ...nodeTool, name: 'Fetch data' });
+
+		const renameCall = scheduleConfigUpdate.mock.calls.find(
+			([update]) => 'config' in (update as object),
+		);
+		expect(renameCall?.[0]).toEqual({
+			config: {
+				guardrails: {
+					tools: [
+						expect.objectContaining({ id: 'g1', tools: [{ type: 'node', name: 'Fetch data' }] }),
+					],
+				},
+			},
+		});
+	});
+
+	it('follows a node-tool rename from the tools-modal confirm into its guardrail refs', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const nodeTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as AgentJsonToolConfig;
+		localConfig.value = makeConfig({
+			tools: [nodeTool],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['secret'],
+							tools: [{ type: 'node', name: 'HTTP Request' }],
+						},
+					],
+				},
+			},
+		});
+
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		modalData.onConfirm({ tools: [{ ...nodeTool, name: 'Fetch data' }] });
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			tools: [{ ...nodeTool, name: 'Fetch data' }],
+		});
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			config: {
+				guardrails: {
+					tools: [
+						expect.objectContaining({ id: 'g1', tools: [{ type: 'node', name: 'Fetch data' }] }),
+					],
+				},
+			},
+		});
+	});
 });
 
 type SkillModalData = {

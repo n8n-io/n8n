@@ -73,6 +73,19 @@ function kindLabel(guardrail: AgentToolGuardrailConfig): string {
 	return i18n.baseText(guardrailKindLabelKey(guardrail.kind));
 }
 
+/** Translated as one string, so a locale can reorder the chip metadata. */
+function metaKind(guardrail: AgentToolGuardrailConfig): string {
+	return i18n.baseText('agents.builder.guardrails.chip.metaKind', {
+		interpolate: { kind: kindLabel(guardrail) },
+	});
+}
+
+function metaWithTools(guardrail: AgentToolGuardrailConfig, tools: string): string {
+	return i18n.baseText('agents.builder.guardrails.chip.metaTools', {
+		interpolate: { kind: kindLabel(guardrail), tools },
+	});
+}
+
 function issueReasons(guardrail: AgentToolGuardrailConfig): string[] {
 	return guardrailIssueMessages.value.get(guardrail.id) ?? [];
 }
@@ -108,7 +121,7 @@ function onModalSave(guardrail: AgentToolGuardrailConfig) {
 					>
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
-							<span :class="$style.chipMeta">· {{ kindLabel(guardrail) }}</span>
+							<span :class="$style.chipMeta">{{ metaKind(guardrail) }}</span>
 						</span>
 					</AgentChipButton>
 				</div>
@@ -123,8 +136,9 @@ function onModalSave(guardrail: AgentToolGuardrailConfig) {
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
 							<span :class="$style.chipMeta">
-								· {{ kindLabel(guardrail) }} ·
-								{{ i18n.baseText('agents.builder.guardrails.chip.allTools') }}
+								{{
+									metaWithTools(guardrail, i18n.baseText('agents.builder.guardrails.chip.allTools'))
+								}}
 							</span>
 						</span>
 					</AgentChipButton>
@@ -173,6 +187,7 @@ function onModalSave(guardrail: AgentToolGuardrailConfig) {
 			:guardrail="null"
 			:kind="createKind"
 			:tools="getTools()"
+			:existing-ids="guardrails.map((guardrail) => guardrail.id)"
 			@update:open="modalOpen = $event"
 			@save="onModalSave"
 		/>

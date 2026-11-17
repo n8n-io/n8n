@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput, N8nTag } from '@n8n/design-system';
+import { N8nIconButton, N8nInput, N8nTag } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 
 const props = withDefaults(
@@ -7,7 +8,7 @@ const props = withDefaults(
 		modelValue: string[];
 		placeholder?: string;
 		disabled?: boolean;
-		/** Input data-testid; tags append `-tag`. */
+		/** Input data-testid; tags append `-tag`, the remove button `-tag-remove`. */
 		testId: string;
 	}>(),
 	{
@@ -18,6 +19,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>();
 
+const i18n = useI18n();
 const draft = ref('');
 
 function add() {
@@ -32,6 +34,12 @@ function remove(value: string) {
 		'update:modelValue',
 		props.modelValue.filter((entry) => entry !== value),
 	);
+}
+
+function removeLabel(value: string) {
+	return i18n.baseText('agents.builder.guardrails.tagInput.remove', {
+		interpolate: { value },
+	});
 }
 </script>
 
@@ -56,15 +64,15 @@ function remove(value: string) {
 			>
 				<template #tag>
 					<span :class="$style.tagText" :title="value">{{ value }}</span>
-					<button
-						type="button"
-						:class="$style.remove"
-						:aria-label="`Remove ${value}`"
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="removeLabel(value)"
 						:disabled="disabled"
+						:data-testid="`${testId}-tag-remove`"
 						@click="remove(value)"
-					>
-						<N8nIcon icon="x" :size="12" />
-					</button>
+					/>
 				</template>
 			</N8nTag>
 		</div>
@@ -88,20 +96,6 @@ function remove(value: string) {
 /* Space the remove button from the tag text. */
 .tag {
 	gap: var(--spacing--3xs);
-}
-
-.remove {
-	display: inline-flex;
-	align-items: center;
-	border: 0;
-	padding: 0;
-	background: transparent;
-	cursor: pointer;
-	color: inherit;
-
-	&:disabled {
-		cursor: default;
-	}
 }
 
 /* Mirrors the line-height reset of N8nTag's own .text span. The tag root sets

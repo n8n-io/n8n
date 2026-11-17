@@ -187,6 +187,7 @@ function mountModal(
 		guardrail: AgentToolGuardrailConfig | null;
 		kind: AgentToolGuardrailConfig['kind'];
 		tools: AgentJsonToolRef[];
+		existingIds: string[];
 		disabled: boolean;
 	}> = {},
 ) {
@@ -277,6 +278,19 @@ describe('AgentGuardrailModal', () => {
 		const saved = savedConfig(wrapper);
 		expect(saved.id).toMatch(/^keywords_[a-z0-9]+$/);
 		expect('name' in saved).toBe(false);
+	});
+
+	it('suffices a slug that another guardrail already uses', async () => {
+		const wrapper = mountModal({ existingIds: ['block_secrets'] });
+
+		await wrapper.find('[data-testid="agent-guardrail-name-input"]').setValue('Block secrets');
+		const keywordInput = wrapper.find('[data-testid="agent-guardrail-keywords"]');
+		await keywordInput.setValue('secret');
+		await keywordInput.trigger('keydown.enter');
+		await saveButton(wrapper).trigger('click');
+
+		// A create cannot duplicate an existing id: the slug picks up a counter.
+		expect(savedConfig(wrapper).id).toBe('block_secrets-2');
 	});
 
 	it('writes typed tool refs for selected tools and stays disabled until one is picked', async () => {
