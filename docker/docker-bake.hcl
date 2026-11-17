@@ -54,6 +54,14 @@ variable "NODE_24_RUNTIME_IMAGE" {
   default = "n8nio/base:24.22.1-c4188d049e9d3b3e9ed6337439fa1cb134979925@sha256:711f03f1f2cfaa3bc0bc65bdf9dbd0cd929d8e4620fcdb5729b53b51d85578f2"
 }
 
+# Already-published non-PC Node 24 images. Test only: the n8n-pc target uses them.
+variable "NODE_24_PATCHED_BUILDER_IMAGE" {
+  default = "n8nio/node-patched:24.22.3-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72-dev@sha256:d44a16584e09816f819b55e57ee7c2ad1d44923df4486e2f1de6f39f277c53d8"
+}
+variable "NODE_24_PATCHED_RUNTIME_IMAGE" {
+  default = "n8nio/node-patched:24.22.3-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72@sha256:12a55d6c29f16cf68b744095af1a7848a53b3466d84b84b09f498fa09caead5c"
+}
+
 # Other base images. The runners take their Python version from the image tag.
 variable "ALPINE_IMAGE" {
   default = "alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a"
@@ -135,8 +143,8 @@ target "n8n-pc" {
   inherits = ["n8n"]
   tags     = tags(N8N_PC_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}-pc")
   args = {
-    BUILDER_IMAGE     = PC_BUILDER_IMAGE
-    RUNTIME_IMAGE     = PC_RUNTIME_IMAGE
+    BUILDER_IMAGE     = NODE_24_PATCHED_BUILDER_IMAGE
+    RUNTIME_IMAGE     = NODE_24_PATCHED_RUNTIME_IMAGE
     IMAGE_DESCRIPTION = "Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)"
   }
 }
