@@ -1,0 +1,63 @@
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_dfe3f914c8bb46::t_c9ee4f534e422e 199-230
+packages/@n8n/agents/src/sdk/tool.ts
+  s_dfe3f914c8bb46::t_4e40a4518e2beb 47-50,134,146-148,153-155,175-178
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_dfe3f914c8bb46::t_8e92b697c207bc 201-203
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_dfe3f914c8bb46::t_38ce54a9f7745f 46,1063-1072,2448-2452,2534-2537,3171
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_dfe3f914c8bb46::t_151442a17763db 27-31,285,937-940,1024,1820-1823,1893
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_4e4abc98f46f25 4-8,64-67,69
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_936f1600694394 25,90,235,243,245,324-330,347-348,350,487-516,518-522,524-525,571-572,579-589,593-613,624,644-645,658-659,667
+packages/cli/src/modules/agents/approval/__tests__/approval-description.test.ts
+  s_dfe3f914c8bb46::t_14a452ae6fc06e 42-45,84
+packages/cli/src/modules/agents/approval/__tests__/decision-result.test.ts
+  s_dfe3f914c8bb46::t_e713c09c81bcc7 38-77
+packages/cli/src/modules/agents/approval/__tests__/review-requester.test.ts
+  s_dfe3f914c8bb46::t_cbb80175640796 1-55
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_34bb47e844e7f0 42,98,178-189,221-226,236-240,330,343-348,353,358
+packages/cli/src/modules/agents/approval/approval-description.ts
+  s_dfe3f914c8bb46::t_a53123e1e7ae42 13,22,35,52
+packages/cli/src/modules/agents/approval/decision-result.ts
+  s_dfe3f914c8bb46::t_7053dc9c4a5c82 7-9,11,17
+packages/cli/src/modules/agents/approval/review-requester.ts
+  s_dfe3f914c8bb46::t_5b96fa67d52f59 1-37
+packages/cli/src/modules/agents/builder/skills/human-review.skill.ts
+  s_dfe3f914c8bb46::t_7d2fb5dc255fce 64-67,78-81,93-98
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_50f9abcbabd83b 54
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_53f476f0c40340 53-56,92,94,104,178,186-193
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_1f24fda6be305e 613-615,621-626,670
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_181c1a7f87198c 5,10,138-161,188-207
+packages/frontend/editor-ui/src/features/agents/components/AgentPillField.vue
+  s_dfe3f914c8bb46::t_4cfa405e206a2c 72
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.test.ts
+  s_dfe3f914c8bb46::t_16df83a139f1ac 4-10,18,23-25,28-32,34-60,63-108,114-137,141,143-153,155,157-158,160-170
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.ts
+  s_dfe3f914c8bb46::t_f88d0a73701020 6,24-25,32,43,46,49-81
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_1d3f225858a66b 40,254-255,317,331-341,344-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1d96a64ebec85b141ffcf627388ede805e2f045",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

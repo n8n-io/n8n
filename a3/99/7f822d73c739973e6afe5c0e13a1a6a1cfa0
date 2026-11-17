@@ -1,0 +1,22 @@
+.agents/review-rules/db-migrations/conventions-and-tests.md
+  h_8fb27e0cdf6d1e 10-11,15-16,31-41
+.agents/review-rules/db-migrations/data-safety.md
+  h_8fb27e0cdf6d1e 10-11,16-17,22-23,25,28-33
+.agents/review-rules/db-migrations/necessity-and-schema-design.md
+  h_8fb27e0cdf6d1e 15-16
+.agents/review-rules/db-migrations/performance-and-scale.md
+  h_8fb27e0cdf6d1e 11-12,17-19
+.agents/skills/db-migrations/SKILL.md
+  h_8fb27e0cdf6d1e 122-130,159-160,288-300,320-329,336-340,435-460,609-622,638-650,718-727,838-839,846,848,885-900
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3997f822d73c739973e6afe5c0e13a1a6a1cfa0",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

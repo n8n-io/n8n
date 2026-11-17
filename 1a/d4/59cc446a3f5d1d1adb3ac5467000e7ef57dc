@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_67791ba69a1c7a::t_e5c462af5c01c3 554-561,563-565,568,570-571,573-577
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_67791ba69a1c7a::t_e5c462af5c01c3 337,445,605,642,1947,1950-1951,1966,1977-1981,2216-2217
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_67791ba69a1c7a::t_e5c462af5c01c3 312,326,550,560
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_67791ba69a1c7a::t_e5c462af5c01c3 219-220,224-226,484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ad459cc446a3f5d1d1adb3ac5467000e7ef57dc",
+  "prompts": {},
+  "sessions": {
+    "s_67791ba69a1c7a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e53c-6d5a-77e2-82bf-5563ed9116bd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
