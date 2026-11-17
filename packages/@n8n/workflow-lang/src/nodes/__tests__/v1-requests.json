@@ -1404,7 +1404,8 @@
 						]
 					},
 					"saveToSentItems": false
-				}
+				},
+				"qsFormat": "brackets"
 			},
 			{
 				"method": "POST",
@@ -1453,13 +1454,99 @@
 						]
 					},
 					"saveToSentItems": false
-				}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
 			{
 				"success": true
 			},
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftOutlook message.move": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/AAMkAGI2=/move",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"body": {
+					"destinationId": "AQMkADAw-folder"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/AAMkAGI2=/move",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"body": {
+					"destinationId": "AQMkADAw-folder"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			},
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftOutlook message.delete shared mailbox": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/users/team@example.com/messages/AAMkAGI2=",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
 			{
 				"success": true
 			}
@@ -1489,7 +1576,15 @@
 						]
 					},
 					"saveToSentItems": true
-				}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
 			}
 		],
 		"output": [
@@ -4348,6 +4443,48 @@
 			}
 		]
 	},
+	"googleCalendar event.delete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_123",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_123",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			},
+			{
+				"success": true
+			}
+		]
+	},
 	"googleCalendar event.getAll US dates": {
 		"requests": [
 			{
@@ -6981,6 +7118,548 @@
 			}
 		],
 		"error": "Column names were updated after the node's setup"
+	},
+	"googleSheets sheet.clear whole sheet": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"a": 1
+			},
+			{
+				"a": 2
+			}
+		]
+	},
+	"googleSheets sheet.clear whole sheet and keep the first row": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!1:1",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!1:1",
+				"qs": {
+					"valueInputOption": "RAW"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sheet1!1:1",
+					"values": [["Name", "Count"]]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [{}]
+	},
+	"googleSheets sheet.clear rows": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!3:6:clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1!3:6"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [{}]
+	},
+	"googleSheets sheet.clear columns": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!Y:AA:clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1!Y:AA"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [{}]
+	},
+	"googleSheets sheet.clear one column": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!B:B:clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1!B:B"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [{}]
+	},
+	"googleSheets sheet.clear a range with a sheet name in it": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!B2:C9:clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1!B2:C9"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [{}]
+	},
+	"googleSheets sheet.clear the default range": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!A:F:clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1!A:F"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [{}]
+	},
+	"googleSheets sheet.delete rows": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"deleteDimension": {
+								"range": {
+									"sheetId": "0",
+									"dimension": "ROWS",
+									"startIndex": 4,
+									"endIndex": 7
+								}
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"deleteDimension": {
+								"range": {
+									"sheetId": "0",
+									"dimension": "ROWS",
+									"startIndex": 4,
+									"endIndex": 7
+								}
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"googleSheets sheet.delete one row by default": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"deleteDimension": {
+								"range": {
+									"sheetId": "0",
+									"dimension": "ROWS",
+									"startIndex": 1,
+									"endIndex": 2
+								}
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"googleSheets sheet.delete columns": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"deleteDimension": {
+								"range": {
+									"sheetId": "0",
+									"dimension": "COLUMNS",
+									"startIndex": 27,
+									"endIndex": 29
+								}
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
 	},
 	"googleSheets sheet.read with a service account": {
 		"requests": [
@@ -25858,6 +26537,88 @@
 			]
 		],
 		"nodePaired": [true, true]
+	},
+	"googleSheets sheet.clear rows and keep the first row": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!3:6:clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1!3:6"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"output": [{}]
+	},
+	"googleSheets sheet.clear with a failed request": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Bad request - please check your parameters"
 	},
 	"gmail message.reply with both reply options": {
 		"requests": [

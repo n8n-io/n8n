@@ -1,8 +1,9 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.googleSheets`
  * version 4.7, operations `sheet.read` (get rows), `sheet.append` (append
- * row), `sheet.update` (update row) and `sheet.appendOrUpdate` (append or
- * update row, versions 4.1 and later, once for all items with `batch`).
+ * row), `sheet.update` (update row), `sheet.appendOrUpdate` (append or
+ * update row, versions 4.1 and later, once for all items with `batch`),
+ * `sheet.clear` and `sheet.delete` (rows or columns; both once for all items).
  *
  * It sends the same request sequence as the v1 node: the sheet lookup, the
  * sheet data, then the write. With a service account, the token of v1 comes
@@ -71,6 +72,14 @@ interface SheetsParameters {
 	filtersUI?: { values?: LookupValue[] };
 	combineFilters?: string;
 	readVersion?: number;
+	clear?: string;
+	keepFirstRow?: boolean;
+	startIndex?: string | number;
+	rowsToDelete?: number;
+	columnsToDelete?: number;
+	range?: string;
+	toDelete?: string;
+	numberToDelete?: number;
 	/** Append checks the sheet's columns against `columns.schema` (version 4.4 and later). */
 	schemaCheck?: boolean;
 	/** Append sends the cells as RAW (version 4.0, v1's `cellFormatDefault`). */
@@ -100,6 +109,28 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /** encodeURIComponent, native (spec section 4.3). */
 function encodeComponent(text: string): string {
 	return encodeURIComponent(text);
+}
+
+/** getColumnNumber of the v1 node: `A` is 1, `AA` is 27. A value that is not text gives 0. */
+function columnNumber(position: unknown): number {
+	if (typeof position !== 'string') return 0;
+	let out = 0;
+	for (let k = 0; k < position.length; k++) out = out * 26 + position.charCodeAt(k) - 64;
+	return out;
+}
+
+/** getColumnName of the v1 node: 1 is `A`, 27 is `AA`. */
+function columnName(column: number): string {
+	// The characters with the codes 40 to 90: v1 adds a remainder below zero to the code of `A`.
+	const chars = '()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	let rest = column;
+	let letters = '';
+	do {
+		rest -= 1;
+		letters = chars.charAt(25 + (rest % 26)) + letters;
+		rest = Math.trunc(rest / 26);
+	} while (rest > 0);
+	return letters;
 }
 
 /** encodeRange of the v1 node: a quoted, encoded sheet name, or an encoded name with a range. */
@@ -416,6 +447,27 @@ export default defineNode<SheetsParameters>({
 				'options.valueRenderMode',
 				'batch',
 			],
+			'sheet.clear': [
+				'authentication',
+				'documentId',
+				'sheetName',
+				'clear',
+				'keepFirstRow',
+				'startIndex',
+				'rowsToDelete',
+				'columnsToDelete',
+				'range',
+				'batch',
+			],
+			'sheet.delete': [
+				'authentication',
+				'documentId',
+				'sheetName',
+				'toDelete',
+				'startIndex',
+				'numberToDelete',
+				'batch',
+			],
 			'sheet.update': [
 				'authentication',
 				'documentId',
@@ -444,7 +496,7 @@ export default defineNode<SheetsParameters>({
 		const operation = parameters.operation ?? 'read';
 		if (
 			resource !== 'sheet' ||
-			!['read', 'append', 'update', 'appendOrUpdate'].includes(operation)
+			!['read', 'append', 'update', 'appendOrUpdate', 'clear', 'delete'].includes(operation)
 		) {
 			throw new Error(`Google Sheets: ${resource}.${operation} is not in the compiled library`);
 		}
@@ -499,6 +551,96 @@ export default defineNode<SheetsParameters>({
 		const inputs = items ?? [{}];
 		const options = parameters.options ?? {};
 		const out: Item[] = [];
+
+		if (operation === 'clear' || operation === 'delete') {
+			// v1 finds the sheet once, then works through the items with the values of each item.
+			const send = async (
+				method: string,
+				url: string,
+				qs: Record<string, unknown>,
+				body: unknown,
+			) => {
+				const response = await ctx.http<{ values?: Row[] }>({
+					acceptAs: 'legacy',
+					json: true,
+					method,
+					url,
+					headers,
+					qs,
+					body,
+					credential,
+					inject: oauth,
+				});
+				if (response.status >= 400) throw fail(response.status);
+				return response.body;
+			};
+			for (const p of parameters.batch ?? inputs.map(() => parameters)) {
+				if (operation === 'delete') {
+					const kind = p.toDelete ?? 'rows';
+					const count = p.numberToDelete ?? 1;
+					const requests: Item[] = [];
+					if (kind === 'rows' || kind === 'columns') {
+						const start =
+							kind === 'rows'
+								? Number(p.startIndex ?? 2) - 1
+								: columnNumber(p.startIndex ?? 'A') - 1;
+						requests.push({
+							deleteDimension: {
+								range: {
+									sheetId,
+									dimension: kind === 'rows' ? 'ROWS' : 'COLUMNS',
+									startIndex: start,
+									endIndex: count === 1 ? start + 1 : start + count,
+								},
+							},
+						});
+					}
+					await send('POST', `${base}:batchUpdate`, {}, { requests });
+					continue;
+				}
+				const kind = p.clear ?? 'wholeSheet';
+				let range = '';
+				if (kind === 'specificRows') {
+					const start = Number(p.startIndex ?? 1);
+					const count = p.rowsToDelete ?? 1;
+					range = `${title}!${start}:${count === 1 ? start : start + count - 1}`;
+				}
+				if (kind === 'specificColumns') {
+					const start = p.startIndex ?? 'A';
+					const count = p.columnsToDelete ?? 1;
+					const first = columnNumber(start);
+					range = `${title}!${String(start)}:${columnName(count === 1 ? first : first + count - 1)}`;
+				}
+				if (kind === 'specificRange') {
+					const field = String(p.range ?? 'A:F');
+					range = `${title}!${field.includes('!') ? field.split('!')[1] || '' : field}`;
+				}
+				if (kind === 'wholeSheet') range = title;
+				const clear = `${base}/values/${encodeRange(range)}:clear`;
+				const cleared = { spreadsheetId: spreadsheetId(parameters.documentId), range };
+				// The option shows only for the whole sheet.
+				if (p.keepFirstRow && kind === 'wholeSheet') {
+					const first = await send(
+						'GET',
+						`${base}/values/${encodeRange(`${range}!1:1`)}`,
+						{ valueRenderOption: 'FORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
+						undefined,
+					);
+					await send('POST', clear, {}, cleared);
+					const row = `${range.split('!')[0]}!1:1`;
+					await send(
+						'PUT',
+						`${base}/values/${encodeRange(row)}`,
+						{ valueInputOption: 'RAW' },
+						{ range: row, values: first.values },
+					);
+				} else {
+					await send('POST', clear, {}, cleared);
+				}
+			}
+			// A clear gives the input items; a delete gives one item.
+			return operation === 'clear' ? inputs : [{ success: true }];
+		}
 
 		if (operation === 'read') {
 			const filters = parameters.filtersUI?.values ?? [];

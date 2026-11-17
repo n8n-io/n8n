@@ -34,6 +34,7 @@ interface CalendarOptions {
 }
 
 interface CalendarParameters {
+	eventId?: unknown;
 	resource?: string;
 	operation?: string;
 	authentication?: string;
@@ -116,6 +117,13 @@ export default defineNode<CalendarParameters>({
 		resource: 'event',
 		operation: { event: 'create' },
 		operations: {
+			'event.delete': [
+				'authentication="oAuth2"',
+				'calendar',
+				'eventId',
+				'options',
+				'options.sendUpdates',
+			],
 			'event.getAll': [
 				'authentication="oAuth2"',
 				'calendar',
@@ -143,10 +151,32 @@ export default defineNode<CalendarParameters>({
 	async run(ctx, parameters, items, credential) {
 		const resource = parameters.resource ?? 'event';
 		const operation = parameters.operation ?? 'create';
-		if (resource !== 'event' || operation !== 'getAll') {
+		if (resource !== 'event' || (operation !== 'getAll' && operation !== 'delete')) {
 			throw new Error(`Google Calendar: ${resource}.${operation} is not in the compiled library`);
 		}
 		const headers = { 'Content-Type': 'application/json' };
+		if (operation === 'delete') {
+			// v1 sets `sendUpdates` in a query that it does not send.
+			const done: Item[] = [];
+			for (const _item of items ?? [{}]) {
+				const calendarId = encodeOnce(locatorValue(parameters.calendar));
+				const response = await ctx.http<unknown>({
+					acceptAs: 'legacy',
+					json: true,
+					method: 'DELETE',
+					url: `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${String(parameters.eventId)}`,
+					headers,
+					qs: {},
+					body: undefined,
+					credential,
+				});
+				if (response.status >= 400) {
+					throw new Error(`Google Calendar: HTTP status ${response.status}`);
+				}
+				done.push({ success: true });
+			}
+			return done;
+		}
 		const out: Item[] = [];
 		for (const _item of items ?? [{}]) {
 			const calendarId = encodeOnce(locatorValue(parameters.calendar));

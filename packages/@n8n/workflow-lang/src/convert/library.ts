@@ -81,7 +81,7 @@ type Adapter = (
 	node?: { onError?: string },
 ) => Record<string, unknown>;
 
-const ADAPTERS: Record<string, Adapter> = {
+export const ADAPTERS: Record<string, Adapter> = {
 	...Object.fromEntries(
 		Object.entries(VENDOR_NODES).map(([type, vendor]): [string, Adapter] => [
 			type,
@@ -230,6 +230,10 @@ const ADAPTERS: Record<string, Adapter> = {
 			...(version >= 2.2 ? { replyToHeader: true } : {}),
 		};
 	},
+	// v1 reads the id of a folder URL with a regular expression: such a call runs in the host
+	// (the marker `folderUrl` is not in the `supports` list).
+	'n8n-nodes-base.microsoftOutlook': (p) =>
+		isRecord(p.folderId) && p.folderId.mode === 'url' ? { ...p, folderUrl: true } : p,
 	'n8n-nodes-base.slack': (p, version) => {
 		const out: Record<string, unknown> = { ...p };
 		const other = isRecord(p.otherOptions) ? p.otherOptions : {};
@@ -575,7 +579,9 @@ const BATCH_OPERATIONS: Record<string, (key: string, p: Record<string, unknown>)
 	'n8n-nodes-base.postgres': () => true,
 	'n8n-nodes-base.mySql': () => true,
 	// Append and append or update read the sheet once, then write the rows of all items.
-	'n8n-nodes-base.googleSheets': (key) => key === 'sheet.appendOrUpdate' || key === 'sheet.append',
+	// A clear and a delete find the sheet once, then work through the items.
+	'n8n-nodes-base.googleSheets': (key) =>
+		['sheet.appendOrUpdate', 'sheet.append', 'sheet.clear', 'sheet.delete'].includes(key),
 };
 
 let supports: Map<string, Support> | undefined;
