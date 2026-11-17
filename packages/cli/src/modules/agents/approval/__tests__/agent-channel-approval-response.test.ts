@@ -9,11 +9,8 @@ import { mock } from 'vitest-mock-extended';
 import type { INode, IRunExecutionData, IExecuteData } from 'n8n-workflow';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { WaitTracker } from '@/wait-tracker';
-import {
-	AgentChannelHitlService,
-	APPROVAL_JOB_LOOKUP_DELAYS_MS,
-} from '../agent-channel-hitl.service';
+import { ResponseWaitTracker } from '@/executions/response-wait-tracker.service';
+import { AgentChannelHitlService } from '../agent-channel-hitl.service';
 import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegration,
@@ -30,9 +27,8 @@ const secret = 'test-channel-response-secret';
 function setup() {
 	const executions = mock<ExecutionPersistence>();
 	const jobs = mock<AgentBackgroundJobRepository>();
-	const tracker = mock<WaitTracker>();
-	tracker.startExecution.mockResolvedValue(true);
-	Container.set(WaitTracker, tracker);
+	const tracker = mock<ResponseWaitTracker>();
+	Container.set(ResponseWaitTracker, tracker);
 	const registry = new ChatIntegrationRegistry();
 	// A plain object: `mock()` wraps the shared adapter again in every test.
 	for (const [type, hitl, credentialType] of [
@@ -111,7 +107,7 @@ it.each([true, false])('resumes the durable child workflow with approved=%s', as
 	const { event, tracker, respond } = setup();
 	event.actionId = buildHitlCallbackReference('123', approved ? 'a' : 'd', secret);
 	expect(await respond()).toBe(approved);
-	expect(tracker.startExecution).toHaveBeenCalledWith('123', {
+	expect(tracker.respond).toHaveBeenCalledWith('123', {
 		nodeId: 'approval-node',
 		data: [
 			{
@@ -149,7 +145,7 @@ it.each(['slack', 'telegram', 'discord'] as const)(
 		expect(
 			await service.respond('agent', 'project', { type, credentialId: 'credential' }, event),
 		).toBe(true);
-		expect(tracker.startExecution).toHaveBeenCalledOnce();
+		expect(tracker.respond).toHaveBeenCalledOnce();
 	},
 );
 
@@ -209,7 +205,7 @@ it.each([
 			channelId: { __rl: true, mode: 'id', value: 'another-channel' },
 		};
 	expect(await respond()).toBe('unavailable');
-	expect(tracker.startExecution).not.toHaveBeenCalled();
+	expect(tracker.respond).not.toHaveBeenCalled();
 });
 
 it('reads the job again when the response arrives before the job is saved', async () => {
@@ -256,6 +252,6 @@ it('reports the response as unavailable when the resume is refused', async () =>
 
 it('treats a concurrent response as already handled', async () => {
 	const { tracker, respond } = setup();
-	tracker.startExecution.mockRejectedValue(new ExecutionAlreadyResumingError('123'));
+	tracker.respond.mockRejectedValue(new ExecutionAlreadyResumingError('123'));
 	expect(await respond()).toBe('unavailable');
 });
