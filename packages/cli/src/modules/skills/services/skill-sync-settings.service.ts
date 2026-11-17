@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { SettingsRepository } from '@n8n/db';
+import { SettingsRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { SkillSourceRepository } from '../database/repositories/skill-source.repository';
@@ -18,6 +18,7 @@ export class SkillSyncSettingsService {
 		private readonly licenseState: LicenseState,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly sourceRepository: SkillSourceRepository,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	get isManagedByEnv(): boolean {
@@ -49,6 +50,16 @@ export class SkillSyncSettingsService {
 		if (this.isManagedByEnv || this.savedEnabled !== undefined) return;
 		if (!this.isEnterprisePlan) return;
 		if (!(await this.sourceRepository.hasAnySource())) return;
-		await this.setEnabled(true);
+		const saved = await this.txRunner.run(
+			{},
+			async (ctx) =>
+				await this.settingsRepository.getOrCreateWithReadLock(
+					SKILL_SYNC_ENABLED_KEY,
+					'true',
+					true,
+					ctx,
+				),
+		);
+		this.savedEnabled = saved.value === 'true';
 	}
 }

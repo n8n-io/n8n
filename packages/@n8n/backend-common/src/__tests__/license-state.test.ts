@@ -18,17 +18,13 @@ describe('LicenseState', () => {
 	});
 
 	describe('isEnterprisePlan', () => {
-		it.each([
-			{ planName: 'Enterprise', expected: true },
-			{ planName: 'Business', expected: false },
-			{ planName: 'Community', expected: false },
-		])('is $expected for the $planName plan', ({ planName, expected }) => {
+		it.each([true, false])('returns %s when the provider returns %s', (enterprise) => {
 			const provider = mock<LicenseProvider>();
-			provider.getPlanName.mockReturnValue(planName);
+			provider.isEnterprisePlan.mockReturnValue(enterprise);
 			const licenseState = new LicenseState();
 			licenseState.setLicenseProvider(provider);
 
-			expect(licenseState.isEnterprisePlan()).toBe(expected);
+			expect(licenseState.isEnterprisePlan()).toBe(enterprise);
 		});
 	});
 });

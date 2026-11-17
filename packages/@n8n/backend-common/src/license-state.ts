@@ -53,7 +53,7 @@ export class LicenseState {
 	isEnterprisePlan() {
 		this.assertProvider();
 
-		return this.licenseProvider.getPlanName() === 'Enterprise';
+		return this.licenseProvider.isEnterprisePlan();
 	}
 
 	// --------------------

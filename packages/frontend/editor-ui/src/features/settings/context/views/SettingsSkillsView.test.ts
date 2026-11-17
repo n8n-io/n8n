@@ -1671,6 +1671,29 @@ describe('SettingsSkillsView', () => {
 						'Could not save the Skill Sync setting',
 					),
 				);
+				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
+			});
+
+			it('falls back to the plain list when another admin turned Skill Sync off', async () => {
+				enableSkillSync();
+				const settingsStore = mockedStore(useSettingsStore);
+				settingsStore.getModuleSettings.mockImplementation(async () => {
+					settingsStore.moduleSettings = {
+						skills: { skillSyncEnabled: false, skillSyncManagedByEnv: false },
+					};
+				});
+				skillsStore.fetchSkills.mockImplementation(async (query) => {
+					if (query?.groupBy === 'source') throw new Error('Not found');
+				});
+				skillsStore.fetchSources.mockRejectedValue(new Error('Not found'));
+				renderWithDialogStub();
+
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.not.objectContaining({ groupBy: 'source' }),
+					),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
 			});
 
 			it('locks the switch while env manages it', async () => {

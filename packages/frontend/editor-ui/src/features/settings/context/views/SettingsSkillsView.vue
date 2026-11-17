@@ -139,6 +139,11 @@ const skillSyncManagedByEnv = computed(
 );
 const skillSyncSaving = ref(false);
 
+async function isSkillSyncTurnedOff() {
+	await settingsStore.getModuleSettings().catch(() => undefined);
+	return !skillSyncEnabled.value;
+}
+
 async function onSkillSyncEnabledChange(enabled: boolean) {
 	skillSyncSaving.value = true;
 	try {
@@ -308,6 +313,7 @@ async function load(focusSourceId?: string) {
 		loadedFiltered.value = filtered;
 	} catch (error) {
 		if (!isLatest()) return;
+		if (query.groupBy === 'source' && (await isSkillSyncTurnedOff())) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
 	} finally {
@@ -913,6 +919,7 @@ async function loadSources() {
 		const kept = collapsedSourceIds.value.filter((id) => known.has(id));
 		if (kept.length !== collapsedSourceIds.value.length) collapsedSourceIds.value = kept;
 	} catch (error) {
+		if (await isSkillSyncTurnedOff()) return;
 		showError(error, i18n.baseText('settings.context.skills.sources.error.load'));
 	}
 }
@@ -1062,7 +1069,7 @@ onMounted(async () => {
 						? i18n.baseText('settings.context.skills.skillSync.managedByEnv')
 						: i18n.baseText('settings.context.skills.skillSync.description')
 				"
-				:enabled="settingsStore.moduleSettings.skills?.skillSyncEnabled === true"
+				:enabled="skillSyncEnabled"
 				:disabled="skillSyncSaving || skillSyncManagedByEnv"
 				switch-test-id="skill-sync-enable-toggle"
 				@update:enabled="onSkillSyncEnabledChange"

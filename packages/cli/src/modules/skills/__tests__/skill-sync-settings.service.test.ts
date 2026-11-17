@@ -1,6 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import type { Settings, SettingsRepository } from '@n8n/db';
+import type { OperationContext, Settings, SettingsRepository, TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { SkillSourceRepository } from '../database/repositories/skill-source.repository';
@@ -30,13 +30,22 @@ function createService({
 	settingsRepository.findByKeyInContext.mockResolvedValue(
 		saved === undefined ? null : mock<Settings>({ key: KEY, value: String(saved) }),
 	);
+	settingsRepository.getOrCreateWithReadLock.mockImplementation(async (key, value) =>
+		mock<Settings>({ key, value }),
+	);
 	const sourceRepository = mock<SkillSourceRepository>();
 	sourceRepository.hasAnySource.mockResolvedValue(hasSource);
+	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(
+		async (_ctx: OperationContext, work: (ctx: OperationContext) => Promise<unknown>) =>
+			await work({}),
+	);
 	const service = new SkillSyncSettingsService(
 		config,
 		licenseState,
 		settingsRepository,
 		sourceRepository,
+		txRunner,
 	);
 	return { service, licenseState, settingsRepository };
 }
@@ -94,6 +103,7 @@ describe('SkillSyncSettingsService', () => {
 			expect(service.isManagedByEnv).toBe(true);
 			expect(service.isEnabled()).toBe(envEnabled);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(settingsRepository.getOrCreateWithReadLock).not.toHaveBeenCalled();
 		},
 	);
 
@@ -102,7 +112,17 @@ describe('SkillSyncSettingsService', () => {
 		await service.init();
 
 		expect(service.isEnabled()).toBe(true);
-		expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(KEY, 'true', true, {});
+		expect(settingsRepository.getOrCreateWithReadLock).toHaveBeenCalledWith(KEY, 'true', true, {});
+	});
+
+	it('keeps a value that another main saved during startup', async () => {
+		const { service, settingsRepository } = createService({ enterprise: true, hasSource: true });
+		settingsRepository.getOrCreateWithReadLock.mockResolvedValue(
+			mock<Settings>({ key: KEY, value: 'false' }),
+		);
+		await service.init();
+
+		expect(service.isEnabled()).toBe(false);
 	});
 
 	it.each([
@@ -116,6 +136,7 @@ describe('SkillSyncSettingsService', () => {
 			await service.init();
 
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(settingsRepository.getOrCreateWithReadLock).not.toHaveBeenCalled();
 		},
 	);
 

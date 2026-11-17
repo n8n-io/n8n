@@ -69,7 +69,7 @@ export async function initOtelTestEnvironment() {
 	Container.get(LicenseState).setLicenseProvider({
 		isLicensed: (feature) => feature === LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES,
 		getValue: () => undefined,
-		getPlanName: () => 'Community',
+		isEnterprisePlan: () => false,
 	});
 	const distNodes = loadNodesFromDist([
 		'n8n-nodes-base.executeWorkflow',

@@ -78,6 +78,8 @@ describe('Skill Sync switch', () => {
 
 		expect(Container.get(SkillSyncSettingsService).isEnabled()).toBe(true);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		await Container.get(ModuleRegistry).refreshModuleSettings('skills');
+		expect(moduleSettings()).toEqual({ skillSyncEnabled: true, skillSyncManagedByEnv: true });
 	});
 
 	it('hides the source routes while the switch is off, and keeps the sources and synced skills', async () => {
