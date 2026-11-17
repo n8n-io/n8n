@@ -469,8 +469,22 @@ function planOperations(
 				return;
 			}
 		} else if (ts.isObjectBindingPattern(x) || ts.isArrayBindingPattern(x)) {
-			reason ??= 'destructuring';
-			return;
+			// The full response of a request is an object: reading its members cannot fail.
+			const from =
+				ts.isVariableDeclaration(x.parent) && x.parent.initializer
+					? strip(x.parent.initializer)
+					: undefined;
+			const response =
+				ts.isObjectBindingPattern(x) &&
+				from !== undefined &&
+				ts.isAwaitExpression(from) &&
+				known.awaited?.(from) === 'http' &&
+				/\breturnFullResponse\s*:\s*true\b/.test(from.getText()) &&
+				x.elements.every((el) => ts.isIdentifier(el.name) && el.initializer === undefined);
+			if (!response) {
+				reason ??= 'destructuring';
+				return;
+			}
 		} else if (
 			ts.isBinaryExpression(x) &&
 			(x.operatorToken.kind === ts.SyntaxKind.InKeyword ||

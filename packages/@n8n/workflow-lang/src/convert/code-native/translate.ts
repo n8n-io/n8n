@@ -169,6 +169,7 @@ const HTTP_OPTIONS = new Set([
 	'qs',
 	'timeout',
 	'ignoreHttpStatusErrors',
+	'returnFullResponse',
 ]);
 
 /** `this.helpers.httpRequest`. */
@@ -189,14 +190,16 @@ function isHttpHelper(e: ts.Expression): boolean {
  * a reason when it has none, and null when the expression is not such a call.
  *
  * The options are an object literal with known names, so every option that the native form
- * does not send (a proxy, a response as bytes, the full response) keeps the node in the host.
- * `method` and `ignoreHttpStatusErrors` are literals: they decide the form of the request.
+ * does not send (a proxy, a response as bytes) keeps the node in the host. `method`,
+ * `ignoreHttpStatusErrors` and `returnFullResponse` are literals: they decide the form of
+ * the request and of the result. `isRequest` tells if a callee is the request helper.
  */
 export function httpRequestOptions(
 	n: ts.AwaitExpression,
+	isRequest: (callee: ts.Expression) => boolean = isHttpHelper,
 ): ts.ObjectLiteralExpression | string | null {
 	const call = stripParens(n.expression);
-	if (!ts.isCallExpression(call) || !isHttpHelper(stripParens(call.expression))) return null;
+	if (!ts.isCallExpression(call) || !isRequest(stripParens(call.expression))) return null;
 	const options = call.arguments.length === 1 ? stripParens(call.arguments[0]) : undefined;
 	if (options === undefined || !ts.isObjectLiteralExpression(options)) {
 		return 'options that are not an object literal';
@@ -219,11 +222,11 @@ export function httpRequestOptions(
 			return 'a computed method';
 		}
 		if (
-			name === 'ignoreHttpStatusErrors' &&
+			(name === 'ignoreHttpStatusErrors' || name === 'returnFullResponse') &&
 			value?.kind !== ts.SyntaxKind.TrueKeyword &&
 			value?.kind !== ts.SyntaxKind.FalseKeyword
 		) {
-			return '`ignoreHttpStatusErrors` that is not true or false';
+			return `\`${name}\` that is not true or false`;
 		}
 	}
 	return options;
@@ -1365,12 +1368,119 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 */
 	const usesHttp =
 		!input.nodeCode &&
-		/\bhelpers\s*\.\s*httpRequest\b/.test(input.code) &&
+		/\.\s*httpRequest\b/.test(input.code) &&
 		!/multipart\/form-data/i.test(input.code) &&
 		// In strict mode, \`this\` of a called function is undefined.
 		!/use strict/.test(input.code);
 	/** `async` and `await` stay as they are: the code makes requests. */
 	const keepsAsync = input.nodeCode !== undefined || usesHttp;
+
+	/**
+	 * Other names of the request helper. Code often keeps \`this\`, \`this.helpers\` or
+	 * \`this.helpers.httpRequest\` (also with \`.bind(this)\`) in a constant, and n8n's task
+	 * runner also gives \`helpers\` as a global. A constant counts when the code uses it only
+	 * to make awaited requests: then its declaration has no native form of its own and goes.
+	 */
+	const requestNames = new Map<ts.Symbol, 'this' | 'helpers' | 'request'>();
+	const requestDeclarations = new Set<ts.Node>();
+	const requestKind = (e: ts.Expression): 'this' | 'helpers' | 'request' | null => {
+		const x = stripParens(e);
+		if (x.kind === ts.SyntaxKind.ThisKeyword) return 'this';
+		if (ts.isIdentifier(x)) {
+			const sym = checker.getSymbolAtLocation(x);
+			const known = sym === undefined ? undefined : requestNames.get(sym);
+			if (known !== undefined) return known;
+			return x.text === 'helpers' && isFree(x) ? 'helpers' : null;
+		}
+		if (ts.isPropertyAccessExpression(x) && !x.questionDotToken) {
+			const inner = requestKind(x.expression);
+			if (inner === 'this' && x.name.text === 'helpers') return 'helpers';
+			if (inner === 'helpers' && x.name.text === 'httpRequest') return 'request';
+			return null;
+		}
+		if (
+			ts.isCallExpression(x) &&
+			ts.isPropertyAccessExpression(x.expression) &&
+			x.expression.name.text === 'bind' &&
+			x.arguments.length === 1
+		) {
+			const bound = requestKind(x.arguments[0]);
+			return requestKind(x.expression.expression) === 'request' &&
+				(bound === 'this' || bound === 'helpers')
+				? 'request'
+				: null;
+		}
+		return null;
+	};
+	const isRequest = (callee: ts.Expression): boolean => requestKind(callee) === 'request';
+	/**
+	 * The full response (\`returnFullResponse: true\`) also has the headers and the status text
+	 * of the transport, which native code does not give as v1 does. So the code must read only
+	 * \`body\` and \`statusCode\` of it: from a constant that holds the response, or in a
+	 * destructuring declaration.
+	 */
+	const fullResponseFits = (
+		n: ts.AwaitExpression,
+		options: ts.ObjectLiteralExpression,
+	): boolean => {
+		const full = options.properties.some(
+			(p) =>
+				ts.isPropertyAssignment(p) &&
+				(ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+				p.name.text === 'returnFullResponse' &&
+				stripParens(p.initializer).kind === ts.SyntaxKind.TrueKeyword,
+		);
+		if (!full) return true;
+		let p: ts.Node = n.parent;
+		while (ts.isParenthesizedExpression(p)) p = p.parent;
+		if (
+			!ts.isVariableDeclaration(p) ||
+			!ts.isVariableDeclarationList(p.parent) ||
+			(p.parent.flags & ts.NodeFlags.Const) === 0
+		) {
+			return false;
+		}
+		const read = (name: string): boolean => name === 'body' || name === 'statusCode';
+		if (ts.isObjectBindingPattern(p.name)) {
+			return p.name.elements.every((el) => {
+				const key = el.propertyName ?? el.name;
+				return !el.dotDotDotToken && ts.isIdentifier(key) && read(key.text);
+			});
+		}
+		if (!ts.isIdentifier(p.name)) return false;
+		const declared = p.name;
+		const sym = checker.getSymbolAtLocation(declared);
+		let fits = sym !== undefined;
+		const scan = (x: ts.Node): void => {
+			if (!fits) return;
+			if (
+				ts.isIdentifier(x) &&
+				x !== declared &&
+				!isNameOf(x) &&
+				checker.getSymbolAtLocation(x) === sym
+			) {
+				const use = x.parent;
+				const reads =
+					ts.isPropertyAccessExpression(use) &&
+					use.expression === x &&
+					read(use.name.text) &&
+					!(
+						ts.isBinaryExpression(use.parent) &&
+						use.parent.left === use &&
+						use.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+						use.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+					);
+				if (!reads) fits = false;
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+		return fits;
+	};
+	const hasThis = (x: ts.Node): boolean =>
+		x.kind === ts.SyntaxKind.ThisKeyword || (ts.forEachChild(x, hasThis) ?? false);
+	/** True when the code uses a constant of the request helper for something else. */
+	let requestNameMisuse = false;
 	/** True when `id` names a local async function. */
 	const isAsyncFunction = (id: ts.Identifier): boolean => {
 		const declarations = checker.getSymbolAtLocation(id)?.declarations ?? [];
@@ -1419,13 +1529,61 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		return false;
 	};
 
+	if (usesHttp && root.body) {
+		const declare = (x: ts.Node): void => {
+			if (
+				ts.isVariableStatement(x) &&
+				(x.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+				x.declarationList.declarations.length === 1
+			) {
+				const d = x.declarationList.declarations[0];
+				const kind = d.initializer === undefined ? null : requestKind(d.initializer);
+				const sym = ts.isIdentifier(d.name) ? checker.getSymbolAtLocation(d.name) : undefined;
+				if (kind !== null && sym !== undefined && d.initializer !== undefined) {
+					if (hasThis(d.initializer) && !thisIsContext(d)) requestNameMisuse = true;
+					requestNames.set(sym, kind);
+					requestDeclarations.add(x);
+					return;
+				}
+			}
+			ts.forEachChild(x, declare);
+		};
+		declare(root.body);
+		// Each use of such a constant is in a declaration of another one, or in the callee of an
+		// awaited request.
+		const uses = (x: ts.Node, allowed: boolean): void => {
+			if (ts.isIdentifier(x) && !isNameOf(x)) {
+				const sym = checker.getSymbolAtLocation(x);
+				const declared = ts.isVariableDeclaration(x.parent) && x.parent.name === x;
+				if (sym !== undefined && requestNames.has(sym) && !declared && !allowed) {
+					requestNameMisuse = true;
+				}
+				return;
+			}
+			if (requestDeclarations.has(x)) {
+				ts.forEachChild(x, (c) => uses(c, true));
+				return;
+			}
+			if (ts.isAwaitExpression(x)) {
+				const call = stripParens(x.expression);
+				if (ts.isCallExpression(call) && isRequest(stripParens(call.expression))) {
+					uses(call.expression, true);
+					for (const arg of call.arguments) uses(arg, false);
+					return;
+				}
+			}
+			ts.forEachChild(x, (c) => uses(c, allowed));
+		};
+		uses(root.body, false);
+	}
+
 	/**
 	 * What an `await` waits for in code that makes requests: a request (`http`), a call of a
 	 * local async function or `Promise.all` (`call`), or a value that is not a promise (null).
 	 */
 	const awaited = (n: ts.AwaitExpression): 'http' | 'call' | null => {
 		if (!usesHttp) return null;
-		if (httpRequestOptions(n) !== null) return 'http';
+		if (httpRequestOptions(n, isRequest) !== null) return 'http';
 		const call = stripParens(n.expression);
 		if (!ts.isCallExpression(call)) return null;
 		const callee = stripParens(call.expression);
@@ -1732,6 +1890,102 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		);
 	};
 
+	/** True when the code provably changes no input (\`provesReadOnly\`): then no input value is a Date. */
+	let inputsStay: boolean | undefined;
+	/** Methods of a list that give each item to their callback as its first parameter. */
+	const ITEM_CALLBACKS = new Set(['map', 'forEach', 'filter', 'find', 'some', 'every', 'flatMap']);
+	/**
+	 * True when the value of \`e\` comes from the JSON of an input item or of another node,
+	 * through reads of members only: \`$json.a.b\`, \`items[0].json.x\`, the parameter of a
+	 * callback over such a list, a constant that holds such a value.
+	 */
+	const isInputValue = (e: ts.Expression, depth: number): boolean => {
+		if (depth > 6) return false;
+		let x = stripParens(e);
+		while (ts.isPropertyAccessExpression(x) || ts.isElementAccessExpression(x)) {
+			x = stripParens(x.expression);
+		}
+		if (ts.isCallExpression(x)) {
+			const callee = stripParens(x.expression);
+			if (ts.isIdentifier(callee)) return callee.text === '$' && isFree(callee);
+			// \`$input.first()\`, \`$('Node').all()\`.
+			return (
+				ts.isPropertyAccessExpression(callee) &&
+				['first', 'last', 'all'].includes(callee.name.text) &&
+				isInputValue(callee.expression, depth + 1)
+			);
+		}
+		if (!ts.isIdentifier(x)) return false;
+		if (isFree(x)) return ['$json', 'item', 'items', '$input', '$node'].includes(x.text);
+		const declarations = checker.getSymbolAtLocation(x)?.declarations ?? [];
+		if (declarations.length !== 1) return false;
+		const d = declarations[0];
+		if (ts.isVariableDeclaration(d) && ts.isVariableDeclarationList(d.parent)) {
+			if ((d.parent.flags & ts.NodeFlags.Const) === 0 || !ts.isIdentifier(d.name)) return false;
+			const loop = d.parent.parent;
+			if (ts.isForOfStatement(loop)) return isInputValue(loop.expression, depth + 1);
+			return d.initializer !== undefined && isInputValue(d.initializer, depth + 1);
+		}
+		if (ts.isParameter(d) && ts.isIdentifier(d.name) && isFunctionNode(d.parent)) {
+			const fn = d.parent;
+			const call = fn.parent;
+			if (!ts.isCallExpression(call) || call.arguments[0] !== fn || fn.parameters[0] !== d) {
+				return false;
+			}
+			const callee = stripParens(call.expression);
+			return (
+				ts.isPropertyAccessExpression(callee) &&
+				ITEM_CALLBACKS.has(callee.name.text) &&
+				isInputValue(callee.expression, depth + 1)
+			);
+		}
+		return false;
+	};
+	/** Methods whose result is text. */
+	const TEXT_METHODS = new Set([
+		'toFixed',
+		'toString',
+		'join',
+		'trim',
+		'toUpperCase',
+		'toLowerCase',
+	]);
+	/**
+	 * True when the value of \`e\` is no Date for certain: a number or a text by its form, a
+	 * constant with such a value, or a value of the input in code that changes no input (the
+	 * input is JSON, which has no Date).
+	 */
+	const isNotDate = (e: ts.Expression, depth: number): boolean => {
+		if (depth > 6) return false;
+		const x = stripParens(e);
+		if (isNumberValue(x) || ts.isStringLiteralLike(x) || ts.isTemplateExpression(x)) return true;
+		// \`a + b\` is a number or a text.
+		if (ts.isBinaryExpression(x) && x.operatorToken.kind === ts.SyntaxKind.PlusToken) return true;
+		if (ts.isCallExpression(x)) {
+			const callee = stripParens(x.expression);
+			if (ts.isPropertyAccessExpression(callee) && TEXT_METHODS.has(callee.name.text)) return true;
+			if (ts.isIdentifier(callee) && callee.text === 'String' && isFree(callee)) return true;
+		}
+		if (ts.isIdentifier(x) && !isFree(x)) {
+			const declarations = checker.getSymbolAtLocation(x)?.declarations ?? [];
+			const d = declarations.length === 1 ? declarations[0] : undefined;
+			if (
+				d !== undefined &&
+				ts.isVariableDeclaration(d) &&
+				ts.isVariableDeclarationList(d.parent) &&
+				(d.parent.flags & ts.NodeFlags.Const) !== 0 &&
+				d.initializer !== undefined &&
+				!ts.isForOfStatement(d.parent.parent) &&
+				isNotDate(d.initializer, depth + 1)
+			) {
+				return true;
+			}
+		}
+		if (!isInputValue(x, 0)) return false;
+		inputsStay ??= provesReadOnly(root, checker, input.mode);
+		return inputsStay;
+	};
+
 	/** \`x.toLocaleString(locale, options)\` and the Date forms. True when it wrote the call. */
 	const localeMethod = (
 		n: ts.CallExpression,
@@ -1757,10 +2011,10 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const entry = tableEntry(name, a);
 		const typedDate = isDateValue(recv);
 		const isDate = name !== 'toLocaleString' || typedDate;
-		if (!isDate && !isNumberValue(recv) && (makesDates || usesLuxon)) {
+		if (!isDate && !isNotDate(recv, 0) && (makesDates || usesLuxon)) {
 			// A Date that went through an untyped place is text in native code, and the text of
-			// \`toLocaleString\` of text is the text itself. So the value must be a number for
-			// certain, or the code must make no Date at all.
+			// \`toLocaleString\` of text is the text itself. So the value must be no Date for
+			// certain (\`isNotDate\`), or the code must make no Date at all.
 			block(
 				'Date: toLocaleString of a value of unknown kind',
 				'`toLocaleString` needs a value whose kind is known in code that makes dates.',
@@ -1999,6 +2253,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	// ---- the walk ----------------------------------------------------------
 
 	const visit = (n: ts.Node): void => {
+		// A constant for the request helper: its uses are requests, which need no such constant.
+		if (requestDeclarations.has(n) && !requestNameMisuse) {
+			replaceNode(n, '');
+			return;
+		}
 		const errName = errTextNodes.get(n);
 		if (errName !== undefined) {
 			// The error of a failed request is a plain object in v1: its text is another one.
@@ -2099,8 +2358,22 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (ts.isAwaitExpression(n) && !input.nodeCode) {
 			const kind = awaited(n);
 			if (kind === 'http') {
-				const options = httpRequestOptions(n);
-				if (!thisIsContext(n)) {
+				const options = httpRequestOptions(n, isRequest);
+				if (requestNameMisuse) {
+					block(
+						'this.helpers.httpRequest',
+						'A constant that holds `this`, the helpers or the request helper has another use.',
+					);
+					return;
+				}
+				if (typeof options !== 'string' && options !== null && !fullResponseFits(n, options)) {
+					block(
+						'this.helpers.httpRequest',
+						'The full response of `this.helpers.httpRequest` has a native form only for reads of its `body` and `statusCode`.',
+					);
+					return;
+				}
+				if (hasThis(n.expression) && !thisIsContext(n)) {
 					block(
 						'this.helpers.httpRequest',
 						'`this.helpers.httpRequest` in a function whose `this` can be another value has no native form.',

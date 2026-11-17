@@ -287,6 +287,27 @@ describe('toLocaleString of a Date', () => {
 		expect(same(code).ok).toBe(true);
 	});
 
+	it('formats values that are no Date in code that makes dates', () => {
+		const code = `const stamp = new Date(1700000000000).toISOString();
+return items.map((i) => {
+	const total = i.json.price * i.json.qty;
+	const label = i.json.price.toFixed(2);
+	const row = i.json;
+	return { json: { stamp, a: i.json.price.toLocaleString('en-US'), b: total.toLocaleString('en-US'), c: label.toLocaleString(), d: (row.qty + 1).toLocaleString('de-DE'), e: row.name.toLocaleString(), f: row.tags.toLocaleString('en-US') } };
+});`;
+		const input = [
+			{ price: 1234.5, qty: 3, name: 'n', tags: [1000, 'a'] },
+			{ price: 12, qty: 1000, name: 2500, tags: { a: 1 } },
+		];
+		expect(same(code, 'all', input).ok).toBe(true);
+	});
+
+	it('keeps a value of the input in the host when the code changes the input', () => {
+		const code = `const d = new Date(5);
+return items.map((i) => { i.json.when = d; return { json: { a: i.json.when.toLocaleString('en-US') } }; });`;
+		expect(blockersOf(code)).toContain('Date: toLocaleString of a value of unknown kind');
+	});
+
 	it('keeps date options on a value of unknown kind in the host', () => {
 		const code = `const parse = (v) => new Date(v);
 return items.map((i) => ({ json: { text: parse(i.json.n).toLocaleString('en-US', { dateStyle: 'medium' }) } }));`;

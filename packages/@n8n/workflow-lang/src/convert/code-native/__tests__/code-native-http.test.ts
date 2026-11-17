@@ -509,10 +509,6 @@ return out;`;
 
 	it.each([
 		[
-			'the full response',
-			"await this.helpers.httpRequest({ url: 'http://localhost/x', returnFullResponse: true })",
-		],
-		[
 			'bytes',
 			"await this.helpers.httpRequest({ url: 'http://localhost/x', encoding: 'arraybuffer' })",
 		],
@@ -570,6 +566,85 @@ return out;`;
 			"'use strict'; return [{ json: await this.helpers.httpRequest({ url: 'http://localhost/x' }) }];",
 		],
 	])('keeps a request in %s in the host: `this` can be another value', (_, code) => {
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(t.ok && checkTranslation(t.translation, 'all').ok).toBe(false);
+	});
+
+	it.each([
+		[
+			'a constant for the bound helper',
+			`const http = this.helpers.httpRequest.bind(this);
+const out = [];
+for (const i of items) out.push({ json: await http({ url: i.json.base + '/json', json: true }) });
+return out;`,
+		],
+		[
+			'constants for this and its helpers',
+			`const self = this;
+const tools = self.helpers;
+const call = async (url) => {
+	try {
+		return await tools.httpRequest({ method: 'POST', url, body: { a: 1 } });
+	} catch (e) {
+		return { failed: e.message, status: e.status };
+	}
+};
+return [{ json: { ok: await call(items[0].json.base + '/echo'), bad: await call(items[0].json.base + '/status/409') } }];`,
+		],
+		[
+			'the global helpers',
+			"return [{ json: await helpers.httpRequest({ url: items[0].json.base + '/text-json' }) }];",
+		],
+		[
+			'the status and the body of the full response',
+			`const out = [];
+for (const path of ['/json', '/status/404', '/text', '/empty/1']) {
+	const res = await this.helpers.httpRequest({ url: items[0].json.base + path, returnFullResponse: true, ignoreHttpStatusErrors: true });
+	out.push({ json: { status: res.statusCode, body: res.body, ok: res.statusCode < 300 } });
+}
+return out;`,
+		],
+		[
+			'a destructured full response',
+			`try {
+	const { body, statusCode: code } = await this.helpers.httpRequest({ method: 'POST', url: items[0].json.base + '/echo', body: { a: 1 }, returnFullResponse: true });
+	const failed = await this.helpers.httpRequest({ url: items[0].json.base + '/status/500', returnFullResponse: true });
+	return [{ json: { body, code, failed: failed.statusCode } }];
+} catch (e) {
+	return [{ json: { message: e.message, status: e.status } }];
+}`,
+		],
+	])('makes requests through %s', async (_, code) => {
+		expect((await same(code, [rows[0]])).ok).toBe(true);
+		expect(seen.length).toBeGreaterThan(0);
+	});
+
+	it.each([
+		[
+			'the headers of the full response',
+			"const res = await this.helpers.httpRequest({ url: 'http://localhost/x', returnFullResponse: true }); return [{ json: { h: res.headers } }];",
+		],
+		[
+			'the full response as a value',
+			"const res = await this.helpers.httpRequest({ url: 'http://localhost/x', returnFullResponse: true }); return [{ json: res }];",
+		],
+		[
+			'a full response that the code does not keep in a constant',
+			"return [{ json: (await this.helpers.httpRequest({ url: 'http://localhost/x', returnFullResponse: true })).body }];",
+		],
+		[
+			'a constant of the helpers with another use',
+			"const h = this.helpers; const b = h.prepareBinaryData; return [{ json: await h.httpRequest({ url: 'http://localhost/x' }) }];",
+		],
+		[
+			'a constant of this with another use',
+			"const self = this; const f = () => self; return [{ json: await self.helpers.httpRequest({ url: 'http://localhost/x' }) }];",
+		],
+		[
+			'a request through a constant that the code does not await',
+			"const http = this.helpers.httpRequest; const p = http({ url: 'http://localhost/x' }); return [{ json: await p }];",
+		],
+	])('keeps %s in the host', (_, code) => {
 		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
 		expect(t.ok && checkTranslation(t.translation, 'all').ok).toBe(false);
 	});

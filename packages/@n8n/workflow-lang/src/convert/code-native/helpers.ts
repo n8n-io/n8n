@@ -1767,7 +1767,8 @@ function codeHttpResult(o: Json, r: Json): Json {
 		error.code = status >= 400 && status < 500 ? 'ERR_BAD_REQUEST' : 'ERR_BAD_RESPONSE';
 		throw error;
 	}
-	return body;
+	// The full response: the code reads only these members of it (\`fullResponseFits\`).
+	return o.returnFullResponse ? { body, statusCode: status } : body;
 }`,
 	},
 	mcheck: {
