@@ -18,7 +18,7 @@ const Span = struct { at: u32 = 0, len: u32 = 0 };
 /// The `code` of a nodemailer error.
 pub const Code = enum(u8) { protocol, connection, tls, auth, envelope, message, timeout, socket, dns };
 
-pub fn codeName(code: Code) []const u8 {
+fn codeName(code: Code) []const u8 {
     return switch (code) {
         .protocol => "EPROTOCOL",
         .connection => "ECONNECTION",
@@ -204,6 +204,17 @@ pub const Client = struct {
         c.out.put("\r\n") catch return c.limit("the commands");
         c.state = then;
         return .wait;
+    }
+
+    /// The shell reached a limit of its buffers: the call ends.
+    pub fn onLimit(c: *Client, what: []const u8) void {
+        c.failure = .{ .limit = true, .command = what };
+        c.state = .failed;
+    }
+
+    /// The server took the message.
+    pub fn succeeded(c: *const Client) bool {
+        return c.state == .done;
     }
 
     /// One complete reply of the server, as `takeReply` gives it.

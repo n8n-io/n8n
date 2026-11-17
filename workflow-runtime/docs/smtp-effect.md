@@ -1,7 +1,8 @@
 # The `smtp` effect: a native SMTP client for the Send Email node
 
-Status: the statement of v1 and the pure state machine (`src/core/smtp.zig`) are built and tested. The shell
-client, the effect kind and the library node are not built: see "What is built". Until they are, the Send
+Status: the statement of v1, the pure state machine (`src/core/smtp.zig`) and the session over byte buffers
+with the settings of the credential (`src/shell/smtp_call.zig`) are built and tested. The connection on the
+event loop, the effect kind and the library node are not built: see "What is built". Until they are, the Send
 Email node runs in the fallback host, as before.
 
 ## Why
@@ -151,7 +152,8 @@ them, and the password leaves the call slot when the call ends.
 |---|---|
 | The statement of v1 | This file |
 | The state machine, the reply framing, the DATA encoding, the result and the error JSON | `src/core/smtp.zig`, with tests against scripted dialogues |
-| The shell client (socket, name lookup, TLS and the STARTTLS upgrade, time limits, call slots, the credential), the fake server, the effect kind | Not built |
+| The settings from the `smtp` credential (`loadSettings`), and `Session`: one message over a read and a write buffer, with the message sent in parts and the outcome (`info`, `{"error":…}`, or a limit with or without the marker `smtp-host`) | `src/shell/smtp_call.zig`, with tests against a scripted server in memory |
+| The connection on the event loop of the shard (socket, name lookup, TLS and the STARTTLS upgrade through `tls.zig`, the four time limits, call slots, the password wiped at the end), a fake server on a socket in the style of `pg_fake.zig`, the effect kind `smtp`, the arguments of the call | Not built. `pg.zig` is the model: one connection for each call, no pool |
 | The effect in the SDK and the reference runner, the `emailSend` library node, the converter lowering | Not built |
 
 ## Tests
@@ -168,3 +170,9 @@ them, and the password leaves the call slot when the call ends.
 - Addresses that nodemailer refuses; SMTPUTF8 and its message for `550`.
 - A closed connection, with and without a last reply; the time limits; a socket error.
 - Replies in parts, blank lines, Latin-1 bytes; the DATA encoding.
+
+`src/shell/smtp_call.zig` (fast tier): the server sends three bytes at a time.
+
+- STARTTLS with bytes after the `220` reply (dropped), login, and a message larger than the write buffer.
+- A refused login; a close with a last reply; a server with only CRAM-MD5 (the marker `smtp-host`).
+- The settings of the credential: `secure`, the default port, `disableStartTls`, `hostName`, no user.
