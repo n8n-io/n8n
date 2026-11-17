@@ -159,6 +159,7 @@ const renderBlocks = computed(() =>
 		toolCallsById.value,
 		childrenById.value,
 		props.agentNode.status,
+		preferencesEnabled.value,
 	),
 );
 
@@ -363,7 +364,7 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 
 					<!-- A preference the assistant saved: edit or undo it from the latest turn -->
 					<PreferenceCard
-						v-else-if="block.type === 'preference' && preferencesEnabled"
+						v-else-if="block.type === 'preference'"
 						:tool-call="block.toolCall"
 						:run-id="props.runId ?? ''"
 						:read-only="!canActOnPreferenceCard"

@@ -1001,6 +1001,10 @@ describe('FrontendService', () => {
 	});
 
 	describe('aiPreferences setting', () => {
+		afterEach(() => {
+			Object.assign(aiPreferenceSettingsService, { isSwitchOn: true, isManagedByEnv: false });
+		});
+
 		it('reports the switch and whether the env manages it', async () => {
 			const { service } = createMockService();
 			Object.assign(aiPreferenceSettingsService, { isSwitchOn: false, isManagedByEnv: true });

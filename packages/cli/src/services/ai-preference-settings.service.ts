@@ -66,6 +66,7 @@ export class AiPreferenceSettingsService {
 	}
 
 	@OnPubSubEvent('reload-ai-preference-settings', { instanceType: 'main' })
+	@OnPubSubEvent('pubsub-reconnected', { instanceType: 'main' })
 	async reload(): Promise<void> {
 		const row = await this.settingsRepository.findByKey(AI_PREFERENCES_ENABLED_KEY);
 		this.saved = row ? row.value === 'true' : undefined;

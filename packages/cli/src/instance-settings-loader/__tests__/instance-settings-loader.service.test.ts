@@ -63,6 +63,7 @@ describe('InstanceSettingsLoaderService', () => {
 
 		expect(ownerLoader.run).toHaveBeenCalled();
 		expect(securityPolicyLoader.run).not.toHaveBeenCalled();
+		expect(aiPreferencesLoader.run).not.toHaveBeenCalled();
 		expect(logStreamingLoader.run).not.toHaveBeenCalled();
 		expect(mcpLoader.run).not.toHaveBeenCalled();
 		expect(communityPackagesLoader.run).not.toHaveBeenCalled();

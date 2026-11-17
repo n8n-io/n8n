@@ -8,7 +8,7 @@ import AgentTimeline from '../components/AgentTimeline.vue';
 const renderComponent = createThreadComponentRenderer(AgentTimeline, {
 	global: {
 		stubs: {
-			ThinkingBlock: { template: '<div />' },
+			ThinkingBlock: { template: '<div data-test-id="thinking-block-stub" />' },
 			AgentSection: { template: '<div />' },
 			TimelineTextSegment: { template: '<div />' },
 			PreferenceCard: { template: '<div data-test-id="preference-card-stub" />' },
@@ -61,5 +61,27 @@ describe('AgentTimeline preference card', () => {
 
 		expect(queryByTestId('preference-card-stub')).toBeNull();
 		expect(container.textContent).not.toContain('save_user_preference');
+	});
+
+	it('keeps the thinking around a hidden save in one block', () => {
+		setPreferences(false);
+		const node = {
+			...rootNode,
+			status: 'active',
+			toolCalls: [
+				...rootNode.toolCalls,
+				{ toolCallId: 'tc-read', toolName: 'get_workflow', args: {}, isLoading: false, result: {} },
+			],
+			timeline: [
+				{ type: 'reasoning', responseId: 'r1', content: 'First thought.' },
+				{ type: 'tool-call', responseId: 'r1', toolCallId: 'tc-save' },
+				{ type: 'tool-call', responseId: 'r1', toolCallId: 'tc-read' },
+				{ type: 'text', responseId: 'r2', content: 'Done.' },
+			],
+		} as unknown as InstanceAiAgentNode;
+
+		const { queryAllByTestId } = renderComponent({ props: { agentNode: node } });
+
+		expect(queryAllByTestId('thinking-block-stub')).toHaveLength(1);
 	});
 });

@@ -732,7 +732,7 @@ describe('SettingsPreferencesView', () => {
 			expect(queryByTestId('preferences-enable-toggle')).toBeNull();
 		});
 
-		it('shows an admin the switch above the list', async () => {
+		it('shows an admin the switch in the header, above the list', async () => {
 			permissions.managePreferences = true;
 			contextStore.preferences = [preference()];
 			contextStore.count = 1;
@@ -744,7 +744,7 @@ describe('SettingsPreferencesView', () => {
 			expect(getByText('Keep replies short.')).toBeInTheDocument();
 		});
 
-		it('shows an admin only the switch while preferences are off, and loads nothing', async () => {
+		it('shows an admin the switch and the off state while preferences are off, and loads nothing', async () => {
 			permissions.managePreferences = true;
 			setPreferences({ switchOn: false });
 
@@ -752,6 +752,7 @@ describe('SettingsPreferencesView', () => {
 			await new Promise(process.nextTick);
 
 			expect(getByTestId('preferences-enable-toggle')).toHaveAttribute('aria-checked', 'false');
+			expect(getByTestId('preferences-off-state')).toHaveTextContent('Preferences are off');
 			expect(queryByTestId('preferences-search')).toBeNull();
 			expect(contextStore.fetchPreferences).not.toHaveBeenCalled();
 			expect(trackMock).not.toHaveBeenCalled();
@@ -769,7 +770,12 @@ describe('SettingsPreferencesView', () => {
 			await userEvent.click(getByTestId('preferences-enable-toggle'));
 
 			expect(contextStore.setPreferencesEnabled).toHaveBeenCalledWith(true);
-			await waitFor(() => expect(contextStore.fetchPreferences).toHaveBeenCalled());
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+					expect.objectContaining({ count: 0 }),
+				),
+			);
 		});
 
 		it('says which consumer to turn on when the switch is on but nothing reads preferences', async () => {
@@ -792,11 +798,10 @@ describe('SettingsPreferencesView', () => {
 			permissions.managePreferences = true;
 			setPreferences({ switchOn: true, managedByEnv: true });
 
-			const { getByTestId, getByText } = renderView();
+			const { getByTestId } = renderView();
 			await new Promise(process.nextTick);
 
 			expect(getByTestId('preferences-enable-toggle')).toBeDisabled();
-			expect(getByText('Managed via environment variables')).toBeInTheDocument();
 		});
 	});
 
