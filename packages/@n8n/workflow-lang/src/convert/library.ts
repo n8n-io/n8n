@@ -1008,6 +1008,22 @@ export function lowerLibrary(c: NodeContext): void {
 		});
 		return;
 	}
+	// A Gmail read without "simplify" parses the raw message. The library node parses the
+	// messages that it reads exactly as mailparser. For each other message it sent only GET
+	// requests and ends with the mark of `RUNS_IN_HOST`: the host runs the v1 node.
+	const gmailRaw =
+		type === 'n8n-nodes-base.gmail' &&
+		(resource === 'message' || resource === '') &&
+		(operation === 'get' || operation === 'getAll') &&
+		adapted.simple === false;
+	if (gmailRaw) {
+		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
+		const hostForm = hostFormOf(c, inHost);
+		if (hostForm === null) return inHost(c);
+		const call = nodeCall(c, type, parameters, c.credential(), true);
+		emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
+		return;
+	}
 	// v1 runs the node once for each item, so the library node runs once for each item too.
 	emitStep(c, {
 		...nodeCall(c, type, parameters, c.credential(), true),
