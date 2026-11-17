@@ -1,9 +1,9 @@
 import { SKILL_SYNC_FLAG } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { PostHogClient, Publisher } from '@n8n/backend-services';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { SettingsRepository, type User } from '@n8n/db';
+import { Settings, SettingsRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -115,5 +115,48 @@ describe('Skill Sync switch', () => {
 
 		expect(Container.get(SkillSyncSettingsService).isEnabled()).toBe(false);
 		expect(moduleSettings()).toMatchObject({ skillSyncEnabled: false });
+	});
+
+	describe('at startup on the enterprise plan', () => {
+		const settingsService = () => Container.get(SkillSyncSettingsService);
+		const savedValue = async () =>
+			(await Container.get(SettingsRepository).findByKey('skills.skillSync.enabled'))?.value;
+
+		beforeEach(async () => {
+			vi.spyOn(Container.get(LicenseState), 'isEnterprisePlan').mockReturnValue(true);
+			await Container.get(DataSource).manager.delete(Settings, { key: 'skills.skillSync.enabled' });
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('keeps Skill Sync on and saves it when a skill source exists', async () => {
+			const skill = await createSkill();
+			await linkSkill(skill.id, { projectId: null, createdById: ownerUser.id });
+
+			await settingsService().init();
+
+			expect(settingsService().isEnabled()).toBe(true);
+			expect(await savedValue()).toBe('true');
+		});
+
+		it('leaves Skill Sync off and saves nothing without a skill source', async () => {
+			await settingsService().init();
+
+			expect(settingsService().isEnabled()).toBe(false);
+			expect(await savedValue()).toBeUndefined();
+		});
+
+		it('keeps a saved off value even when a skill source exists', async () => {
+			const skill = await createSkill();
+			await linkSkill(skill.id, { projectId: null, createdById: ownerUser.id });
+			await settingsService().setEnabled(false);
+
+			await settingsService().init();
+
+			expect(settingsService().isEnabled()).toBe(false);
+			expect(await savedValue()).toBe('false');
+		});
 	});
 });
