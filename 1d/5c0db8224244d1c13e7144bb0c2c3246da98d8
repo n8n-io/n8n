@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.ts
+  s_9f48b7a1051278::t_5479658c34058f 42-47
+  s_9f48b7a1051278::t_01cd4749d2bbf5 414-417
+packages/frontend/editor-ui/src/app/components/WorkflowCanvasHostBody.vue
+  s_9f48b7a1051278::t_9a19789f4ac7f2 2,4,11-12,48-50,52-59,89,102,149-161
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.test.ts
+  s_9f48b7a1051278::t_b035c2349a24a0 15,152,156,302-336
+  s_9f48b7a1051278::t_c236a84be1e066 337-338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d5c0db8224244d1c13e7144bb0c2c3246da98d8",
+  "prompts": {},
+  "sessions": {
+    "s_9f48b7a1051278": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ab8f5d0-838a-435f-a8f1-a34648e73ae8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

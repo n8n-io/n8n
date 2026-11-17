@@ -1,0 +1,14 @@
+packages/cli/src/executions/execution.service.ts
+  h_8fb27e0cdf6d1e 815-817
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04d22338b2c3e4ee97f9ef05e27c6b31ad8ab5b1",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
