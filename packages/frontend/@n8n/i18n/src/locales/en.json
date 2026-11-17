@@ -5856,6 +5856,7 @@
 	"uiExtensions.servicesOverview.summary.accounts": "Accounts in use",
 	"uiExtensions.servicesOverview.summary.successRate": "Success rate",
 	"uiExtensions.servicesOverview.summary.runs": "Of the last {count} runs",
+	"uiExtensions.servicesOverview.summary.runsOne": "Of the last run",
 	"uiExtensions.servicesOverview.services": "Services",
 	"uiExtensions.servicesOverview.usedIn": "Used in {count} workflows ({active} active)",
 	"uiExtensions.servicesOverview.usedInOne": "Used in 1 workflow ({active} active)",

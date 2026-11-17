@@ -12,29 +12,34 @@ import { VIEWS } from '@/app/constants';
 import { useUiExtensionOverviewData } from '@/app/composables/useUiExtensionOverviewData';
 
 /**
+ * The view runtime is a separate bundle that the frame loads from a string.
+ * It is about 1 MB, so it loads only when a panel or a page needs it.
+ */
+async function importRuntime(): Promise<ViewRuntimeAssets> {
+	const [{ default: js }, { default: css }] = await Promise.all([
+		import('@n8n/ui-extension-runtime/runtime.iife.js?raw'),
+		import('@n8n/ui-extension-runtime/runtime.css?raw'),
+	]);
+	return { js, css };
+}
+
+/**
  * What the side panel and the sidebar pages get from the editor: the view
  * runtime, the locale, the overview data and the open actions. App.vue provides
  * it, so the panel and the page route share one runtime load.
  */
-export function useUiExtensionsHost(): UiExtensionsHost {
+export function useUiExtensionsHost(load = importRuntime): UiExtensionsHost {
 	const router = useRouter();
 	const rootStore = useRootStore();
 
 	const runtime = shallowRef<ViewRuntimeAssets | null>(null);
 	let runtimeLoad: Promise<void> | null = null;
 
-	/**
-	 * The view runtime is a separate bundle that the frame loads from a string.
-	 * It is about 1 MB, so it loads only when a panel or a page needs it.
-	 */
+	/** The panel and the pages share one load. */
 	function loadRuntime() {
 		runtimeLoad ??= (async () => {
 			try {
-				const [{ default: js }, { default: css }] = await Promise.all([
-					import('@n8n/ui-extension-runtime/runtime.iife.js?raw'),
-					import('@n8n/ui-extension-runtime/runtime.css?raw'),
-				]);
-				runtime.value = { js, css };
+				runtime.value = await load();
 			} catch {
 				// A failed chunk load can work on the next try.
 				runtimeLoad = null;

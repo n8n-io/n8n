@@ -133,6 +133,53 @@ describe(buildOverview, () => {
 		expect(result.failures.map((r) => r.id)).toEqual(['4', '2']);
 	});
 
+	it('sorts the runs by start time, so a long run does not hide a newer failure', () => {
+		const started = (
+			id: string,
+			workflowId: string,
+			status: UiExtensionRun['status'],
+			at: string,
+		) => ({
+			...run(id, workflowId, status),
+			startedAt: at,
+		});
+		const result = buildOverview(
+			[workflow('long', [node(SLACK)]), workflow('broken', [node(SHEETS)])],
+			{ total: 2, active: 0 },
+			// The executions list puts the running run first, though it started first.
+			[
+				started('1', 'long', 'running', '2026-11-16T09:00:00.000Z'),
+				started('3', 'broken', 'success', '2026-11-16T10:00:00.000Z'),
+				started('4', 'broken', 'error', '2026-11-16T11:00:00.000Z'),
+				started('2', 'long', 'error', '2026-11-16T10:30:00.000Z'),
+			],
+			getNodeType,
+		);
+		const bySlug = Object.fromEntries(result.services.map((s) => [s.nodeType, s]));
+
+		// The newest run of "broken" failed, though the list showed its success first.
+		expect(bySlug[SHEETS].health).toBe('failing');
+		// The running run has no result. The newest finished run of "long" failed.
+		expect(bySlug[SLACK].health).toBe('failing');
+		expect(bySlug[SLACK].workflows[0].lastRun).toEqual({
+			status: 'error',
+			stoppedAt: '2026-11-16T11:00:01.000Z',
+		});
+		expect(result.failures.map((r) => r.id)).toEqual(['4', '2']);
+	});
+
+	it('takes no health from a run that is still running', () => {
+		const result = buildOverview(
+			[workflow('1', [node(SLACK)])],
+			{ total: 1, active: 0 },
+			[run('1', '1', 'running')],
+			getNodeType,
+		);
+
+		expect(result.services[0].health).toBe('unknown');
+		expect(result.services[0].workflows[0].lastRun?.status).toBe('running');
+	});
+
 	it('is unknown when no workflow of the service ran', () => {
 		const result = buildOverview(
 			[workflow('1', [node(SLACK)])],

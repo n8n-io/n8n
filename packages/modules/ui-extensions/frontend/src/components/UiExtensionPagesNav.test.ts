@@ -10,13 +10,17 @@ import UiExtensionPagesNav from './UiExtensionPagesNav.vue';
 
 vi.mock('../ui-extensions.api');
 
-const { confirm, showMessage } = vi.hoisted(() => ({ confirm: vi.fn(), showMessage: vi.fn() }));
+const { confirm, showMessage, showError } = vi.hoisted(() => ({
+	confirm: vi.fn(),
+	showMessage: vi.fn(),
+	showError: vi.fn(),
+}));
 vi.mock('@n8n/design-system', async (importOriginal) => ({
 	...(await importOriginal()),
 	useMessage: () => ({ confirm }),
 }));
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage, showError: vi.fn() }),
+	useToast: () => ({ showMessage, showError }),
 }));
 
 const page = (id: string, updatedAt: string) => ({
@@ -125,5 +129,39 @@ describe('UiExtensionPagesNav', () => {
 
 		expect(api.deleteUiExtensionView).not.toHaveBeenCalled();
 		expect(getByText('Page a')).toBeTruthy();
+	});
+
+	it('keeps the page, shows an error and forgets the removal when it fails', async () => {
+		confirm.mockResolvedValue('confirm');
+		vi.mocked(api.deleteUiExtensionView).mockRejectedValue(new Error('offline'));
+		const { getByRole, getByText } = await renderNav();
+
+		await fireEvent.click(getByRole('button', { name: 'Remove Page a' }));
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't remove the page");
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(getByText('Page a')).toBeTruthy();
+		// A later "page was removed" redirect for this page still shows its toast.
+		expect(consumeRemovedHere('a')).toBe(false);
+	});
+
+	it('shows a title from an MCP client as text in the dialog and the toast', async () => {
+		confirm.mockResolvedValue('confirm');
+		const title = '<a href="https://example.com">Pay</a>';
+		vi.mocked(api.fetchUiExtensionViews).mockResolvedValue([
+			{ ...page('x', '2026-01-03T00:00:00.000Z'), title },
+		]);
+		const { getByRole } = await renderNav();
+		vi.mocked(api.fetchUiExtensionViews).mockResolvedValue([]);
+
+		await fireEvent.click(getByRole('button', { name: `Remove ${title}` }));
+		await flushPromises();
+
+		const [message] = confirm.mock.calls[0] as [string];
+		expect(message).toContain('&lt;a href=');
+		expect(message).not.toContain('<a');
+		const [toast] = showMessage.mock.calls[0] as [{ title: string }];
+		expect(toast.title).not.toContain('<a');
 	});
 });

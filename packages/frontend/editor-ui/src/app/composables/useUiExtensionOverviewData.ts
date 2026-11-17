@@ -16,6 +16,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isServiceNodeType } from '@/app/utils/uiExtensionNodes';
 
 const FAILED_STATUSES = new Set<string>(['error', 'crashed']);
+const FINISHED_STATUSES = new Set<string>(['success', 'error', 'crashed', 'canceled']);
+
+/** Newest start first. A run with no start time goes last. */
+const byNewestStart = (a: UiExtensionRun, b: UiExtensionRun) =>
+	(b.startedAt ?? '').localeCompare(a.startedAt ?? '');
 
 type Service = UiExtensionOverviewData['services'][number];
 type OverviewWorkflow = Pick<IWorkflowDb, 'id' | 'name' | 'active' | 'nodes'>;
@@ -23,8 +28,8 @@ type GetNodeType = (type: string, version?: number) => INodeTypeDescription | nu
 
 /**
  * Builds the overview from the newest workflows and runs. A service is a node
- * type that signs in to an outside app. Its health comes from the newest run of
- * each workflow that uses it.
+ * type that signs in to an outside app. Its health comes from the newest
+ * finished run of each workflow that uses it.
  */
 export function buildOverview(
 	workflows: OverviewWorkflow[],
@@ -32,10 +37,15 @@ export function buildOverview(
 	runs: UiExtensionRun[],
 	getNodeType: GetNodeType,
 ): UiExtensionOverviewData {
-	// Runs come newest first, so the first run of a workflow is its newest.
+	// The executions list puts running runs first, so sort by the start time.
+	const newestFirst = [...runs].sort(byNewestStart);
 	const lastRunByWorkflow = new Map<string, UiExtensionRun>();
-	for (const run of runs) {
+	const lastFinishedRunByWorkflow = new Map<string, UiExtensionRun>();
+	for (const run of newestFirst) {
 		if (!lastRunByWorkflow.has(run.workflowId)) lastRunByWorkflow.set(run.workflowId, run);
+		if (FINISHED_STATUSES.has(run.status) && !lastFinishedRunByWorkflow.has(run.workflowId)) {
+			lastFinishedRunByWorkflow.set(run.workflowId, run);
+		}
 	}
 
 	type Usage = {
@@ -70,7 +80,9 @@ export function buildOverview(
 
 	const services: Service[] = [...usage.entries()]
 		.map(([nodeType, entry]): Service => {
-			const lastRuns = entry.workflows.map((workflow) => lastRunByWorkflow.get(workflow.id));
+			const lastRuns = entry.workflows.map((workflow) =>
+				lastFinishedRunByWorkflow.get(workflow.id),
+			);
 			const health: Service['health'] = lastRuns.some(
 				(run) => run && FAILED_STATUSES.has(run.status),
 			)
@@ -111,7 +123,7 @@ export function buildOverview(
 			failed: runs.filter((run) => FAILED_STATUSES.has(run.status)).length,
 		},
 		services,
-		failures: runs
+		failures: newestFirst
 			.filter((run) => FAILED_STATUSES.has(run.status))
 			.slice(0, UI_EXTENSION_DATA_LIMITS.overviewFailures),
 	};

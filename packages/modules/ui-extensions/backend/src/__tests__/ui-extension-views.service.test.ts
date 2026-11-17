@@ -378,6 +378,22 @@ describe('UiExtensionViewsService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
+		it('emits nothing when the commit fails after the write', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(storedViews([view('a')]));
+			// The work inside the transaction succeeds, and then the commit fails.
+			transactionRunner.run.mockImplementation(async (_ctx, fn) => {
+				await fn(trxCtx);
+				throw new Error('commit failed');
+			});
+
+			await expect(service.upsert('user-1', { title: 'T', source: 'x' })).rejects.toThrow(
+				'commit failed',
+			);
+			await expect(service.remove('user-1', 'a')).rejects.toThrow('commit failed');
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('emits nothing when the input is not valid', async () => {
 			await expect(service.upsert('user-1', { title: '', source: 'x' })).rejects.toThrow();
 			expect(eventService.emit).not.toHaveBeenCalled();

@@ -149,6 +149,7 @@ export const BUILTIN_PAGES: readonly BuiltinViewDefinition[] = [
 			{ key: 'uiExtensions.servicesOverview.summary.accounts' },
 			{ key: 'uiExtensions.servicesOverview.summary.successRate' },
 			{ key: 'uiExtensions.servicesOverview.summary.runs', params: ['count'] },
+			{ key: 'uiExtensions.servicesOverview.summary.runsOne' },
 			{ key: 'uiExtensions.servicesOverview.services' },
 			{ key: 'uiExtensions.servicesOverview.usedIn', params: ['count', 'active'] },
 			{ key: 'uiExtensions.servicesOverview.usedInOne', params: ['active'] },

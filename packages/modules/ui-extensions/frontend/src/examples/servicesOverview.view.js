@@ -77,9 +77,14 @@ export default {
 							: new Intl.NumberFormat(locale.value, { style: 'percent' }).format(
 									value.runs.succeeded / finished,
 								),
-					detail: t('uiExtensions.servicesOverview.summary.runs', {
-						count: numberFormat.format(value.runs.scanned),
-					}),
+					detail: t(
+						value.runs.scanned === 1
+							? 'uiExtensions.servicesOverview.summary.runsOne'
+							: 'uiExtensions.servicesOverview.summary.runs',
+						{
+							count: numberFormat.format(value.runs.scanned),
+						},
+					),
 				},
 			];
 		});

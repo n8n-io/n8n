@@ -23,23 +23,41 @@ describe('Services overview page', () => {
 		vi.useRealTimers();
 	});
 
-	it('shows the summary, a card for each service and the recent failures', () => {
-		const { getByTestId, getAllByTestId } = render(panelData({ overview: overview() }));
+	it('shows the summary, a card for each service in order and the recent failures', () => {
+		const sheets = overviewService({
+			nodeType: 'n8n-nodes-base.googleSheets',
+			displayName: 'Google Sheets',
+			workflowCount: 1,
+			activeWorkflowCount: 0,
+			health: 'unknown',
+			accounts: ['Finance Sheets'],
+			workflows: [{ id: 'wf-3', name: 'Budget sync', active: false, lastRun: null }],
+		});
+		const { getByTestId, getAllByTestId } = render(
+			panelData({ overview: overview({ services: [overviewService(), sheets] }) }),
+		);
 
 		expect(getByTestId('services-overview-stat-workflows').textContent).toContain('3');
 		expect(getByTestId('services-overview-stat-workflows').textContent).toContain('Active: 1');
-		expect(getByTestId('services-overview-stat-services').textContent).toContain('1');
-		expect(getByTestId('services-overview-stat-accounts').textContent).toContain('1');
+		expect(getByTestId('services-overview-stat-services').textContent).toContain('2');
+		expect(getByTestId('services-overview-stat-accounts').textContent).toContain('2');
 		expect(getByTestId('services-overview-stat-successRate').textContent).toContain('75%');
 
-		const [card] = getAllByTestId('services-overview-card');
-		expect(card.textContent).toContain('Slack');
-		expect(card.textContent).toContain('Used in 2 workflows (1 active)');
-		expect(card.textContent).toContain('Healthy');
-		expect(card.textContent).toContain('Sales Slack');
+		const cards = getAllByTestId('services-overview-card');
+		expect(cards).toHaveLength(2);
+		const [slackCard, sheetsCard] = cards;
+		expect(slackCard.textContent).toContain('Slack');
+		expect(slackCard.textContent).toContain('Used in 2 workflows (1 active)');
+		expect(slackCard.textContent).toContain('Healthy');
+		expect(slackCard.textContent).toContain('Sales Slack');
+		expect(sheetsCard.textContent).toContain('Google Sheets');
+		expect(sheetsCard.textContent).toContain('Used in 1 workflow (0 active)');
+		expect(sheetsCard.textContent).toContain('No recent runs');
+		expect(sheetsCard.textContent).toContain('Finance Sheets');
 		expect(getAllByTestId('services-overview-workflow').map((el) => el.textContent)).toEqual([
 			expect.stringContaining('Lead routing'),
 			expect.stringContaining('Digest'),
+			expect.stringContaining('Budget sync'),
 		]);
 
 		expect(getAllByTestId('services-overview-failure')[0].textContent).toContain('Digest');
@@ -92,6 +110,17 @@ describe('Services overview page', () => {
 		);
 
 		expect(getByTestId('services-overview-partial').textContent).toContain('200');
+	});
+
+	it.each([
+		[1, 'Of the last run'],
+		[4, 'Of the last 4 runs'],
+	])('counts %i scanned runs in words', (scanned, text) => {
+		const { getByTestId } = render(
+			panelData({ overview: overview({ runs: { scanned, succeeded: 1, failed: 0 } }) }),
+		);
+
+		expect(getByTestId('services-overview-stat-successRate').textContent).toContain(text);
 	});
 
 	it('shows no success rate without finished runs', () => {

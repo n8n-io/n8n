@@ -22,10 +22,41 @@ describe('useUiExtensionsHost', () => {
 	});
 
 	it('loads the runtime once, however often it is asked', async () => {
-		const host = useUiExtensionsHost();
+		const load = vi.fn().mockResolvedValue({ js: 'js', css: 'css' });
+		const host = useUiExtensionsHost(load);
 		expect(host.runtime.value).toBeNull();
 
 		host.loadRuntime();
+		host.loadRuntime();
+		await flushPromises();
+		host.loadRuntime();
+		await flushPromises();
+
+		expect(load).toHaveBeenCalledOnce();
+		expect(host.runtime.value).toEqual({ js: 'js', css: 'css' });
+	});
+
+	it('loads the runtime again after a failed load', async () => {
+		const load = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('chunk failed'))
+			.mockResolvedValue({ js: 'js', css: 'css' });
+		const host = useUiExtensionsHost(load);
+
+		host.loadRuntime();
+		await flushPromises();
+		expect(host.runtime.value).toBeNull();
+
+		host.loadRuntime();
+		await flushPromises();
+
+		expect(load).toHaveBeenCalledTimes(2);
+		expect(host.runtime.value).toEqual({ js: 'js', css: 'css' });
+	});
+
+	it('loads the runtime bundle as strings by default', async () => {
+		const host = useUiExtensionsHost();
+
 		host.loadRuntime();
 		await flushPromises();
 
