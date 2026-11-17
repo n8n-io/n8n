@@ -1699,6 +1699,7 @@ describe('SettingsSkillsView', () => {
 				});
 				skillsStore.fetchSkills.mockImplementation(async (query) => {
 					if (query?.groupBy === 'source') throw new Error('Not found');
+					return { data: [], count: 0, page: 1, pageCount: 1 };
 				});
 				skillsStore.fetchSources.mockRejectedValue(new Error('Not found'));
 				renderWithDialogStub();
