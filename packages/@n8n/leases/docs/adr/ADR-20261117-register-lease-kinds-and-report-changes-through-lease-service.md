@@ -1,0 +1,56 @@
+# Register lease kinds and report changes through LeaseService
+
+Date: 2026-11-17
+
+Status: Active
+
+Decision Owner: Core Application
+
+Source: https://linear.app/n8n/issue/CAP-757
+
+## Context
+
+A lease kind is a family of leases with one handler, for example the triggers of published
+workflows. A consumer registers its kinds and tells the backend when the leases it wants change.
+The `LeaseProvider` port is the contract that a backend implements. The port takes options as
+given and does not check kind names.
+
+Each kind needs a name that is safe to store and to show, and options that are complete. Several
+consumers and possibly several backends use the port.
+
+## Decision
+
+Consumers register lease kinds and report changes through `LeaseService`. They never call the
+`LeaseProvider` directly.
+
+`LeaseService` owns the rules for a kind. A kind name has lower case letters, digits and dashes,
+starts with a letter, and has at most 24 characters. A name is registered once. The kind's options
+are merged over the defaults: a start timeout of 60 seconds and 5 failed starts. The service then
+gives the provider the source of the kind, its complete options and its handler.
+
+The main reason is that the rules for a kind are in one place, for every consumer and every
+backend.
+
+## Alternatives Considered
+
+1. **Consumers call the `LeaseProvider` directly.** We rejected it because each consumer would
+   repeat the name check and the defaults. The rules would drift between consumers.
+2. **Each backend checks names and applies defaults.** We rejected it because each backend would
+   repeat the rules. A consumer would get different behaviour from different backends.
+
+## Consequences
+
+1. A backend gets only valid names and complete options. It does not check them again.
+2. A change to the name rule or to a default changes one class.
+3. `LeaseService` rejects a call for a kind that is not registered, before the call reaches the
+   backend.
+4. `LeaseService` keeps the registered kinds in memory. Each process registers its kinds when it
+   starts.
+
+## Links
+
+RFC: https://app.notion.com/p/4055b6e0c94f81bd8f96c22c386c778c
+
+Documentation: https://app.notion.com/p/4165b6e0c94f81b1a074da1a750f16d3
+
+Related ADRs: ADR-20261113-add-a-dependency-free-leaf-package-for-lease-contracts
