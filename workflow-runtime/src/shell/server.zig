@@ -5515,7 +5515,7 @@ test "an smtp step goes to the host without the gate, and to the SMTP client wit
     const store = try gpa.create(creds.Store);
     store.* = try creds.Store.parse(gpa, doc);
     r.egress.cfg.credentials = store;
-    const args = "{\"credential\":\"mail\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"Subject: hi\\r\\n\\r\\nbody\"}";
+    const args = "{\"credential\":\"mail\",\"from\":\"a@x.test\",\"to\":\"b@x.test\",\"subject\":\"hi\",\"text\":\"body\"}";
 
     // The gate is off: the marker gives the step to the fallback host, and no connection is made.
     const one = try startSmtpRun(r, args);
@@ -5531,13 +5531,14 @@ test "an smtp step goes to the host without the gate, and to the SMTP client wit
 
     // The gate is on: the result of the call is the value of the step.
     try r.startSmtp(gpa);
+    if (r.mail) |m| m.cfg.entropy = smtp_fake.entropy;
     server.script(&.{
         .{ .reply = "220 mx.test\r\n" },
         .{ .expect = "EHLO client.test\r\n", .reply = "250 mx.test\r\n" },
         .{ .expect = "MAIL FROM:<a@x.test>\r\n", .reply = "250 ok\r\n" },
         .{ .expect = "RCPT TO:<b@x.test>\r\n", .reply = "250 ok\r\n" },
         .{ .expect = "DATA\r\n", .reply = "354 go\r\n" },
-        .{ .expect = "Subject: hi\r\n\r\nbody\r\n.\r\n", .reply = "250 queued\r\n" },
+        .{ .expect = smtp_fake.textMessage("b@x.test", "body"), .reply = "250 queued\r\n" },
     }, false);
     const two = try startSmtpRun(r, args);
     var ready: [64]sys.Ready = @splat(.{ .token = 0, .readable = false, .writable = false, .eof = false });
@@ -5553,7 +5554,7 @@ test "an smtp step goes to the host without the gate, and to the SMTP client wit
     try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
     try std.testing.expectEqual(two, r.events.items[0].exec_id);
     try std.testing.expect(std.mem.startsWith(u8, r.events.items[0].payload, "{\"accepted\":[\"b@x.test\"],\"rejected\":[],\"envelopeTime\":"));
-    try std.testing.expect(std.mem.endsWith(u8, r.events.items[0].payload, "\"messageSize\":24,\"response\":\"250 queued\"}"));
+    try std.testing.expect(std.mem.endsWith(u8, r.events.items[0].payload, "\"response\":\"250 queued\",\"envelope\":{\"from\":\"a@x.test\",\"to\":[\"b@x.test\"]},\"messageId\":\"<02020202-0202-0202-0202-020202020202@x.test>\"}"));
     try std.testing.expect(server.finished());
     const done = try finishSqlRun(r, gpa, two);
     try std.testing.expect(std.mem.indexOf(u8, done, "250 queued") != null);

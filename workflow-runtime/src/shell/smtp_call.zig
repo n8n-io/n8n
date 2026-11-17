@@ -54,16 +54,11 @@ pub fn loadSettings(st: *const creds.Store, name: []const u8, out: *Settings) ?[
     return null;
 }
 
-/// The arguments of a call. The texts are raw JSON values of the call.
+/// The arguments of a call that the session needs. The fields of the
+/// message stay in the call: `smtp.zig` gives them to the message builder.
 pub const Call = struct {
     /// The name of the credential slot.
     credential: []const u8 = "",
-    /// The sender of the envelope: a string. Empty when the message has none.
-    from: []const u8 = "\"\"",
-    /// The recipients of the envelope: an array of strings.
-    to: []const u8 = "[]",
-    /// The message: a string with the MIME text.
-    message: []const u8 = "",
     /// `allowUnauthorizedCerts` of the node.
     insecure: bool = false,
 };
@@ -73,10 +68,6 @@ pub const Call = struct {
 pub fn parseCall(args: []const u8, call: *Call) ?[]const u8 {
     call.credential = http.plainString(http.member(args, "credential") orelse "") orelse "";
     if (call.credential.len == 0) return "smtp: the call needs a credential slot";
-    const from = http.member(args, "from") orelse "null";
-    call.from = if (std.mem.eql(u8, from, "null") or std.mem.eql(u8, from, "false")) "\"\"" else from;
-    call.to = http.member(args, "to") orelse return "smtp: the call needs 'to'";
-    call.message = http.member(args, "message") orelse return "smtp: the call needs 'message'";
     const insecure = http.member(args, "allowUnauthorizedCerts") orelse "false";
     call.insecure = std.mem.eql(u8, insecure, "true");
     return null;

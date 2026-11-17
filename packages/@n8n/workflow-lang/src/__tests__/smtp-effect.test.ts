@@ -23,11 +23,13 @@ const SEND = wrap(`const out = await ctx.smtp({
 			name: 'Send',
 			credential: 'mail',
 			from: 'a@x.test',
-			to: [trigger.body.to],
-			message: 'Subject: hi\\r\\n\\r\\nbody',
+			to: trigger.body.to,
+			subject: 'hi',
+			text: 'body',
+			attachments: [{ filename: 'a.txt', data: 'YQ==' }],
 		});
 		if ('error' in out) return { failed: out.error.message, code: out.error.code };
-		return { accepted: out.accepted, response: out.response };`);
+		return { accepted: out.accepted, response: out.response, id: out.messageId };`);
 
 const fixture = (result: unknown) => ({
 	trigger: { body: { to: 'b@x.test' }, headers: {}, query: {} },
@@ -52,8 +54,10 @@ describe('the smtp effect', () => {
 				messageTime: 5,
 				messageSize: 24,
 				response: '250 queued',
+				envelope: { from: 'a@x.test', to: ['b@x.test'] },
+				messageId: '<1@x.test>',
 			},
-			{ accepted: ['b@x.test'], response: '250 queued' },
+			{ accepted: ['b@x.test'], response: '250 queued', id: '<1@x.test>' },
 		],
 		[
 			'an error of the server',
@@ -84,8 +88,10 @@ describe('the smtp effect', () => {
 						name: 'Send',
 						credential: 'mail',
 						from: 'a@x.test',
-						to: ['b@x.test'],
-						message: 'Subject: hi\r\n\r\nbody',
+						to: 'b@x.test',
+						subject: 'hi',
+						text: 'body',
+						attachments: [{ filename: 'a.txt', data: 'YQ==' }],
 					},
 				},
 			]);
@@ -99,7 +105,7 @@ describe('the smtp effect', () => {
 
 	it('needs a credential slot', () => {
 		const source = wrap(
-			"return await ctx.smtp({ name: 'Send', from: '', to: [], message: '' } as never);",
+			"return await ctx.smtp({ name: 'Send', from: '', to: '', text: '' } as never);",
 		);
 		expect(compile(source).diagnostics.map((d) => d.code)).toContain('WL032');
 	});

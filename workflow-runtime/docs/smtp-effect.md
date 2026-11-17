@@ -1,18 +1,19 @@
 # The `smtp` effect: a native SMTP client for the Send Email node
 
 Status: the runtime side is built and tested against a scripted server: the pure state machine
-(`src/core/smtp.zig`), the session and the settings of the credential (`src/shell/smtp_call.zig`), the
-connection on the event loop (`src/shell/smtp.zig`) and the effect kind 8, behind `--smtp-native` (off by
-default). The SDK, the compiler and the reference runner have `ctx.smtp`. The `emailSend` library node, the
-converter lowering and the recording against v1 are not built: see "What is built". Until they are, the Send
-Email node runs in the fallback host, as before.
+(`src/core/smtp.zig`), the message builder (`src/core/mail.zig`), the session and the settings of the
+credential (`src/shell/smtp_call.zig`), the connection on the event loop (`src/shell/smtp.zig`) and the effect
+kind 8, behind `--smtp-native` (off by default). The SDK, the compiler and the reference runner have
+`ctx.smtp` with the fields of the message. The `emailSend` library node, the converter lowering and the
+recording against v1 are not built: see "What is built". Until they are, the Send Email node runs in the
+fallback host, as before.
 
 ## Why
 
 The Send Email node (`emailSend`) sends with nodemailer over SMTP. A compiled module cannot use nodemailer:
 `configureTransport` does not compile. The node keeps 121 of 4,876 sampled workflows out of full compilation.
-The `smtp` effect lets a library node give a built message and an envelope to the runtime, and the runtime
-speaks SMTP itself.
+The `smtp` effect lets a library node give the fields of a message to the runtime. The runtime builds the
+message and speaks SMTP itself.
 
 ## What v1 does
 
@@ -86,7 +87,7 @@ MailComposer builds the message (`M/mail-composer/index.js:65-121`, `M/mime-node
 - **Headers of the root**, in this order: From, To, Cc, Reply-To, Subject, Message-ID, Content-Transfer-Encoding
   (a root that is not multipart), Date, MIME-Version, then Content-Type last (`M/mail-composer/index.js:103-115`,
   `M/mime-node/index.js:603-630`). Bcc is not written (`M/mime-node/index.js:709-714`).
-- **Random and time values.** `Message-ID` is `<8hex-4hex-4hex-4hex-12hex@domain>` from 20 random bytes; the
+- **Random and time values.** `Message-ID` is `<8hex-4hex-4hex-4hex-12hex@domain>` from 16 random bytes; the
   domain is the part after `@` of the envelope sender, or `localhost` (`_generateMessageId`). `Date` is the time
   of the build in UTC with `+0000` (`:614-615`). A boundary is `--_NmP-<16 random bytes in hex>-Part_<n>`
   (`_generateBoundary`).
@@ -127,11 +128,13 @@ stateDiagram-v2
 - `Client` holds the state of one message. `onReply` gives the next step: `wait`, `tls`, `data`, `done` or
   `failed`. `onSecured`, `onClose`, `onTimeout` and `onTransportError` are the other events.
 - `Stuffer` encodes the message for DATA and counts `messageSize`.
-- `writeResult` writes `info` without `envelope` and `messageId`: the node knows both. `writeFailure` writes
-  `{"error":{message, code, response?, responseCode?, command, rejected?, rejectedErrors?}}`.
+- `writeResult` writes `info` without `envelope` and `messageId`: the shell adds both from the builder.
+  `writeFailure` writes `{"error":{message, code, response?, responseCode?, command, rejected?, rejectedErrors?}}`.
 
-The call of the effect is `{credential, from, to, message, allowUnauthorizedCerts?}` (`SmtpRequest` of the
-SDK). The shell reads host, port, `secure`, `disableStartTls`, `hostName`, user and password from the
+The call of the effect is `{credential, from?, to?, cc?, bcc?, replyTo?, subject?, text?, html?, attachments?,
+allowUnauthorizedCerts?}` (`SmtpRequest` of the SDK). An attachment is `{filename, cid?, data, id?}`: `data` is
+base64, or the mode name of n8n's binary data store with the file in `id`, and the shell then reads the stored
+file (`binary_store.zig`). The attribution is not a field: the node adds it to `text` or `html`. The shell reads host, port, `secure`, `disableStartTls`, `hostName`, user and password from the
 credentials document when the call starts, as the `sql` effect does. Node code never sees them. The values are
 copied into the call slot. The copy is overwritten when the MAIL command is written (the login is over), the
 login commands leave the write buffer when it is empty after that, and both are overwritten again when the
@@ -139,6 +142,41 @@ call ends.
 
 Without `--smtp-native` the shard has no SMTP client, and an `smtp` step ends with
 `smtp: the native SMTP client is not on in this build (limit: smtp-host)`.
+
+## The message builder
+
+`src/core/mail.zig` builds the message from the fields: `build(fields, entropy, work)`. It allocates nothing:
+the message, the envelope and a work space of 256 KiB are buffers of the caller. The call slot has the message
+buffer (`--smtp-max-message-kb`), and the shard has one work space.
+
+**Equal to nodemailer byte for byte** (500 generated field sets, `mailcase_tables.zig`):
+
+- The structure: one text part, `multipart/alternative` for text and HTML, `multipart/related` for HTML with
+  files that have a `cid`, `multipart/mixed` with other files, one file alone, and a message without a body.
+- The header order of each node, and the fold of a header at 76 characters.
+- The addresses of From, To, Cc and Reply-To: `a@b`, `<a@b>`, `Name <a@b>` and `"Name" <a@b>`, the quotes of a
+  name, the encoded words of a name that is not ASCII, the domain in lower case. Bcc gives no header.
+- The Subject: a line break becomes a space, and a value with `"`, a control character or a character that
+  is not ASCII goes as encoded words (Q or B by the count of nodemailer, 52 characters for each word).
+- The encoding of a text part: `7bit`, quoted-printable or base64 (`getTransferEncoding`). Quoted-printable
+  has the soft line breaks of `qp.wrap`, and the slices of 64 KiB and the white space at the end as
+  `qp.Encoder` handles them.
+- A file: base64 in lines of 76, the content type from the table of nodemailer (`mailmime_tables.zig`, 1,013
+  extensions), `name` and `filename` with their quotes, `Content-ID`, and `inline` for an image with a `cid`.
+- The envelope: the first address of From (or of Reply-To), and each address of To, Cc and Bcc once.
+
+**From the runtime, in the format of nodemailer:** 8 random bytes for the boundaries
+(`--_NmP-<16 hex>-Part_<n>`), 16 random bytes for the Message-ID (`<8-4-4-4-12 hex@domain>`), and the clock
+for the Date header (`Tue, 17 Nov 2026 10:00:00 +0000`). A comparison with v1 must mask these 32 hex digits,
+the 16 hex digits of each boundary and the Date value. The vectors do not mask them: the generator gives
+nodemailer the same bytes and the same time.
+
+**Not built here: the builder answers `error.HostOnly`, and the call ends with the marker `smtp-host`
+before a connection is open.** An address with a group, a comment, an escape in quotes, a local part or a
+domain that is not ASCII, a domain that is an IP address, has an IDNA label or ends with a dot; a name with
+`@`, a control character or a Unicode space; a file name that is not printable ASCII, has `"`, or has 75
+characters or more; a file of the type `message/*`; a `cid` that is not printable ASCII; a field that is not
+valid UTF-8; more than 16 files or 256 recipients.
 
 ## The hand-over to the host
 
@@ -148,7 +186,7 @@ message must go out once, so the marker is raised only while no MAIL command is 
 | Where | Case |
 |---|---|
 | `Runner.startSmtpCall` (`server.zig`) | The gate is off |
-| `Client.prepare` (`smtp.zig`), before a connection | The call is over `--smtp-max-message-kb`, has more than 256 recipients, or the credential has a `secure` that is not a boolean, a port over 65535, or a value that is too long |
+| `Client.prepare` and `compose` (`smtp.zig`), before a connection | The call or the message is over `--smtp-max-message-kb`, the builder does not take the message (see "The message builder"), a stored file cannot be read, or the credential has a `secure` that is not a boolean, a port over 65535, or a value that is too long |
 | `Client.hostOnly` (`smtp.zig`), which asserts that the envelope did not start | A host name without an address (nodemailer has its own resolver and text), a connect error for a host with more than one address (Node.js reports all of them in one error), a TLS handshake that failed (the text of Node.js has no native form) |
 | `onEhlo` and `connected` (`core/smtp.zig`), before AUTH | An EHLO reply that is not ASCII; a server that offers only CRAM-MD5 |
 | `Session.writeOutcome` (`smtp_call.zig`) | Any other limit of the buffers, when `envelopeStarted` is false |
@@ -179,32 +217,28 @@ send the message.
 | The settings from the `smtp` credential (`loadSettings`), and `Session`: one message over a read and a write buffer, with the message sent in parts and the outcome (`info`, `{"error":…}`, or a limit with or without the marker `smtp-host`) | `src/shell/smtp_call.zig`, with tests against a scripted server in memory |
 | The connection on the event loop of the shard: socket, name lookup, TLS from the first byte and after STARTTLS through `tls.zig`, the four time limits, call slots (`--smtp-max-requests`, 16), the arguments of the call, the credential | `src/shell/smtp.zig`; `src/shell/smtp_fake.zig` is the scripted server on a loopback socket, with TLS |
 | The effect kind `smtp` (8) and the gate `--smtp-native` | `src/core/module.zig`, `src/shell/server.zig`, `src/main.zig` |
-| `ctx.smtp` in the SDK, the compiler, the reference runner and the test VM | `packages/@n8n/workflow-lang`: `src/sdk/index.ts`, `src/compiler`, `src/reference/runner.ts`, `src/__tests__/smtp-effect.test.ts` |
-| The `emailSend` library node with the message of MailComposer, the converter lowering, the recording of v1 against a loopback server | Not built: see "What the library node needs" |
+| The message of MailComposer from the fields, with the content types of nodemailer | `src/core/mail.zig`, `src/core/mailmime_tables.zig`; vectors from the real nodemailer in `src/core/mailcase_tables.zig` (`node src/core/gen_mail_cases.mjs`, run by hand); the fuzz target `fuzz mail builder` |
+| `ctx.smtp` with the fields, in the SDK, the compiler, the reference runner and the test VM | `packages/@n8n/workflow-lang`: `src/sdk/index.ts`, `src/compiler`, `src/reference/runner.ts`, `src/__tests__/smtp-effect.test.ts` |
+| The `emailSend` library node, the converter lowering behind a convert option, the n8n setting, the recording of v1 against a loopback server | Not built: see "What the library node needs" |
 
 ## What the library node needs
 
-These facts decide the design of the node. They come from the source of nodemailer 10.1.4 (`M`).
+The runtime builds the message, so the node has no MIME code. It does what `send.operation.ts` does:
 
-- **Quoted-printable is the usual body encoding.** The default format of version 2.1 is HTML with the
-  attribution. The attribution has a line over 76 characters, so the body is never `7bit`: it is
-  quoted-printable or base64 (`M/mime-node/index.js:571-597`). The same bytes need the encoder of
-  `M/qp/index.js`, with its line wrap. The Gmail library node says why it has none: a loop for each byte in the
-  bytecode costs more than the node. Two ways are open: a native codec in the prelude, or a message that the
-  runtime builds from the fields (the call would carry `subject`, `text`, `html` and the addresses, and the
-  result would carry `envelope` and `messageId`). The second way needs no bytecode for each byte.
-- **The Date header needs a clock.** A library node has `ctx.random` and no `ctx.now`.
-- **The attribution link has the instance id.** The converter has it (`ConvertOptions.instance`), as the
-  Telegram node uses it.
-- **An attachment needs the type table of nodemailer.** v1 gives no content type, so nodemailer reads it from
-  the file name (`M/mime-funcs/mime-types.js`, about 2,100 lines). It is not the table of the runtime.
-- **Headers.** Addresses go through `addressparser` (the Gmail node has a port for the usual forms). A value
-  that is not ASCII goes as encoded words of 52 characters, and a line over 76 is folded
-  (`M/mime-funcs/index.js`).
-- **Bytes that can differ from v1:** the 32 hex digits of the Message-ID, the Date value, and the 16 hex digits
-  of each boundary (in the Content-Type header and in each delimiter line). Every other byte must be equal.
-- **Per item.** v1 makes one transport and one message for each item, pairs each result with its item, and with
-  "continue on fail" gives `{ error: message }`. An error is `NodeApiError(node, error)`.
+- **Fields.** `toMailAddressString` for the addresses, `toMailString` for the subject and the bodies, `text`
+  for the formats `text` and `both`, `html` for `html` and `both`.
+- **The attribution.** On when the option is not set and the version is 2.1 or more. The link has the
+  instance id (`ConvertOptions.instance`, as the Telegram node uses it).
+- **Attachments.** Only when the item has binary data: `{filename: fileName || 'unknown', cid, data, id}` for
+  each name of `attachments` (`prepareBinariesDataList`), and the same without `cid` for each name of
+  `fileAttachments`.
+- **The result.** The result of the effect is `info`. An `{error}` result becomes `NodeApiError(node, error)`,
+  and with "continue on fail" the item `{ error: message }`. Each result has the paired item of its input.
+- **Per item.** v1 makes one transport and one message for each item.
+- **The gate.** The converter links the node only when the caller says that the runtime has `--smtp-native`
+  (a convert option from an n8n setting that is off by default, as `mysql` is). `sendAndWait` stays in the host.
+- **The recording.** The v1 node against a loopback SMTP server: compare `info` and the received message, with
+  `envelopeTime`, `messageTime`, the Message-ID, the Date and the boundaries masked.
 
 ## Tests
 
@@ -221,6 +255,13 @@ These facts decide the design of the node. They come from the source of nodemail
 - A closed connection, with and without a last reply; the time limits; a socket error.
 - Replies in parts, blank lines, Latin-1 bytes; the DATA encoding.
 
+`src/core/mail.zig` (fast tier):
+
+- Each of the 500 vectors: the message, the envelope and the Message-ID equal nodemailer, or the builder
+  refuses the fields. More than 6 of 10 vectors must build.
+- A buffer that is too small is a limit, and no byte goes past it. The Date header.
+- `fuzz mail builder` (`src/core/fuzz_test.zig`): any bytes in the fields.
+
 `src/shell/smtp_call.zig` (fast tier): the server sends three bytes at a time.
 
 - STARTTLS with bytes after the `220` reply (dropped), login, and a message larger than the write buffer.
@@ -230,7 +271,9 @@ These facts decide the design of the node. They come from the source of nodemail
 `src/shell/smtp_test.zig` (fast tier), the client on the event loop against `smtp_fake.zig` on a loopback
 socket:
 
-- Login, a pipelined envelope, a rejected recipient among accepted ones, the message on the wire, no QUIT.
+- Login, a pipelined envelope, a rejected recipient among accepted ones, the built message on the wire with
+  fixed random bytes and time, `envelope` and `messageId` of the result, a Bcc recipient, no QUIT.
+- A field that is not a string, and an address group (the marker `smtp-host`, no connection).
 - A refused login; a close with a last reply; a refused connection (`connect ECONNREFUSED 127.0.0.1:1`).
 - The hand-over for CRAM-MD5 and for an EHLO reply that is not ASCII: the server saw only EHLO.
 - The time limit of the greeting; the limit of the call slots.
@@ -246,5 +289,7 @@ runner and the bytecode VM.
 
 `wfrt --smtp-native` against a real SMTP server (for example Mailpit or Postfix on loopback): one message with
 `secure` on port 465, one with STARTTLS on 587, one without TLS, each with and without a login, and one with a
-refused recipient. Compare `info` and the received message with the v1 node on the same server. Mask
-`envelopeTime`, `messageTime`, and, once the library node exists, Message-ID, Date and the boundaries.
+refused recipient. Send these forms: text, HTML with the attribution, both, a subject and a name that are not
+ASCII, a body over 64 KiB, an inline image with a `cid`, and a file from the binary data store. Compare `info`
+and the received message with the v1 node on the same server. Mask `envelopeTime`, `messageTime`, the hex
+digits of the Message-ID, the Date value and the hex digits of the boundaries.
