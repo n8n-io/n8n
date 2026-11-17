@@ -59,7 +59,6 @@ import { inheritIntegrationMessageContext } from '../integration-message-context
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import type { IntegrationMessageContext } from '../integration-tool-types';
-import { createWhatsAppIntegration } from './helpers/whatsapp/replay-test-context';
 import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
@@ -320,6 +319,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			action: 'send_dm',
 			input: { userId: '+447397567320', message: { text: 'Hello' } },
 			awaitResponse: false,
+			resourceId: taskRunMemoryResourceId('task-1'),
 		});
 
 		expect(adapter.openDM).toHaveBeenCalledWith('447397567320');
