@@ -151,7 +151,14 @@ export class PromotionChangeService {
 			this.promotionsService.readApplyPackageAtCommit(projectId, branch.commitSha),
 			exportInstancePackage(this.packagesService, user, [projectId]),
 		]);
-		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
+		const input = await this.environmentResolver.resolveForProject(projectId, 'apply');
+		const preview = await this.applyPreviewService.build({
+			user,
+			projectId,
+			input,
+			files,
+			instance,
+		});
 		return {
 			commitSha: branch.commitSha,
 			source: { environmentId: branch.environmentId, branchName: branch.branchName },
@@ -169,7 +176,8 @@ export class PromotionChangeService {
 	): Promise<PromotionInstanceApplyPreview> {
 		const { commitSha, source, files } =
 			await this.promotionsService.readInstanceApplyPackage(environmentId);
-		const preview = await this.applyPreviewService.buildInstance({ user, files });
+		const input = await this.environmentResolver.resolveForEnvironment(environmentId, 'apply');
+		const preview = await this.applyPreviewService.buildInstance({ user, input, files });
 		return { commitSha, source, ...preview };
 	}
 

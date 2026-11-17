@@ -482,6 +482,40 @@ oneOf:
       type:
         type: string
         enum:
+          - cross-project-move-blocked
+      kind:
+        type: string
+        enum:
+          - forbidden
+          - unconfirmed
+      entity:
+        type: string
+        enum:
+          - workflow
+          - folder
+      id:
+        type: string
+      name:
+        type: string
+      fromProjectId:
+        type: string
+      toProjectId:
+        type: string
+      missingScope:
+        type: string
+    required:
+      - type
+      - kind
+      - entity
+      - id
+      - name
+      - fromProjectId
+      - toProjectId
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - data-table-unresolved
       kind:
         type: string

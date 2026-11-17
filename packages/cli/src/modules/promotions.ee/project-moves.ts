@@ -221,7 +221,9 @@ export function selectionWithMoves(
 }
 
 /** The Promote refusal for a move into a personal project. It names each item, never the project. */
-export function describeMovesIntoPersonalProjects(moves: readonly PromoteMove[]): string {
+export function describeMovesIntoPersonalProjects(
+	moves: ReadonlyArray<Pick<PromoteMove, 'kind' | 'id' | 'name'>>,
+): string {
 	const items = moves
 		.map(({ kind, id, name }) => `${kind} "${name}" (${id})`)
 		.sort()
@@ -240,7 +242,7 @@ export function movesIntoPersonalProjects(moves: BlockingMoves): BlockingMoves {
 }
 
 /** What a moved row needs: the item and both projects. Promote and Apply moves both fit. */
-type MovedItem = {
+export type MovedItem = {
 	kind: 'workflow' | 'folder';
 	id: string;
 	fromProject: MoveProject;
@@ -404,4 +406,163 @@ export function promoteDeletionCallers({
 			];
 		})
 		.sort((a, b) => a.target.id.localeCompare(b.target.id));
+}
+
+/** Why an Apply cannot do a move. The check reports it on the `moved` conflict. */
+export type ApplyMoveBlock = NonNullable<BlockingMove['blockedBy']>;
+
+/** What the user can do in the projects that the moves of an operation change. */
+export interface MoveProjectAccess {
+	/** The environment covers the project. */
+	covered: ReadonlySet<string>;
+	/** The environment covers the project and the user has the right of the operation in it. */
+	operable: ReadonlySet<string>;
+	/** The user can read the project, so a row and a message can name it. */
+	readable: ReadonlySet<string>;
+	/** The name of each team project. */
+	names: ReadonlyMap<string, string>;
+}
+
+/**
+ * Sorts the moves of an Apply plan into the ones that the Apply does and the ones that stop it.
+ *
+ * - `planned`: `plan.crossProjectMoves.moves` of the final plan.
+ * - `known`: every move of the package (`crossProjectMoves`), to describe a refused move.
+ * - `relevant`: the moves of `known` that the operation touches. One into or out of a personal
+ *   project is never planned, so it stops the Apply as before.
+ * - `refusedBefore`: moves that the caller refused before the plan.
+ * - `branchProjects`: the projects of the package.
+ * - `confirmable`: the Apply can move an item out of a project that the package does not hold,
+ *   after the user confirms. False for a project Apply.
+ *
+ * A move needs the right in each of the two projects. The projects of the operation are checked
+ * by the caller. The old project of a move is checked here when the operation does not hold it.
+ */
+export function classifyApplyMoves({
+	planned,
+	known,
+	relevant,
+	refusedBefore = [],
+	branchProjects,
+	access,
+	confirmable,
+}: {
+	planned: readonly PlannedCrossProjectMove[];
+	known: BlockingMoves;
+	relevant: BlockingMoves;
+	refusedBefore?: ReadonlyArray<{
+		kind: 'workflow' | 'folder';
+		id: string;
+		blockedBy: ApplyMoveBlock;
+	}>;
+	branchProjects: ReadonlyArray<{ id: string; name: string }>;
+	access: MoveProjectAccess;
+	confirmable: boolean;
+}): { allowed: PlannedCrossProjectMove[]; refused: BlockingMoves } {
+	const branchNames = new Map(branchProjects.map(({ id, name }) => [id, name]));
+	const allowed: PlannedCrossProjectMove[] = [];
+	const blocks = new Map<string, ApplyMoveBlock>(
+		refusedBefore.map(({ kind, id, blockedBy }) => [`${kind}:${id}`, blockedBy]),
+	);
+	const accessBlock = (projectId: string): ApplyMoveBlock =>
+		access.covered.has(projectId) ? 'other-project-forbidden' : 'other-project-not-covered';
+
+	for (const move of planned) {
+		const key = `${move.kind}:${move.id}`;
+		if (blocks.has(key)) continue;
+		if (move.fromProjectInOperation) {
+			allowed.push(move);
+		} else if (branchNames.has(move.fromProjectId)) {
+			// The caller adds the old project to the operation when the user has the right in it.
+			blocks.set(key, accessBlock(move.fromProjectId));
+		} else if (!confirmable) {
+			blocks.set(key, 'project-not-on-branch');
+		} else if (!access.operable.has(move.fromProjectId)) {
+			blocks.set(key, accessBlock(move.fromProjectId));
+		} else {
+			allowed.push(move);
+		}
+	}
+
+	const plannedKeys = new Set(planned.map(({ kind, id }) => `${kind}:${id}`));
+	const describe = (kind: 'workflow' | 'folder', list: BlockingMove[], shown: BlockingMove[]) => {
+		const byId = new Map(list.map((move) => [move.id, move]));
+		const refused = new Map<string, BlockingMove>();
+		// Not planned: only a personal project stops the Apply. `toInstanceProject` leaves its name out.
+		for (const move of shown) {
+			if (!plannedKeys.has(`${kind}:${move.id}`) && move.instanceProject.name === undefined) {
+				refused.set(move.id, { ...move, blockedBy: 'personal-project' });
+			}
+		}
+		for (const [key, blockedBy] of blocks) {
+			const [blockedKind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+			if (blockedKind !== kind) continue;
+			const plannedMove = planned.find((move) => move.kind === kind && move.id === id);
+			const move: BlockingMove | undefined =
+				byId.get(id) ??
+				(plannedMove && {
+					id,
+					name: plannedMove.name,
+					project: {
+						id: plannedMove.toProjectId,
+						name: branchNames.get(plannedMove.toProjectId) ?? plannedMove.toProjectId,
+					},
+					projectExists: true,
+					instanceProject: { id: plannedMove.fromProjectId },
+				});
+			if (move) refused.set(id, { ...move, blockedBy });
+		}
+		// A refused move names a project of this instance only when the user can read it.
+		return [...refused.values()]
+			.map((move): BlockingMove => {
+				const { id, name } = move.instanceProject;
+				const teamName =
+					name ?? (move.blockedBy === 'personal-project' ? undefined : access.names.get(id));
+				return {
+					...move,
+					project:
+						move.projectExists && !access.readable.has(move.project.id)
+							? { id: move.project.id, name: move.project.id }
+							: move.project,
+					instanceProject:
+						access.readable.has(id) && teamName !== undefined ? { id, name: teamName } : { id },
+				};
+			})
+			.sort((a, b) => a.id.localeCompare(b.id));
+	};
+
+	return {
+		allowed,
+		refused: {
+			workflows: describe('workflow', known.workflows, relevant.workflows),
+			folders: describe('folder', known.folders, relevant.folders),
+		},
+	};
+}
+
+/** The moves of an Apply as the moved rows of the preview read them. */
+export function applyMovedItems(
+	plannedMoves: readonly PromotionPlannedMove[],
+	refused: BlockingMoves,
+): MovedItem[] {
+	const refusedItems = (kind: 'workflow' | 'folder', list: BlockingMove[]) =>
+		list.map(
+			({ id, project, instanceProject }): MovedItem => ({
+				kind,
+				id,
+				fromProject: instanceProject,
+				// `classifyApplyMoves` puts the id in the place of a name that the user cannot read.
+				toProject: project.name === project.id ? { id: project.id } : project,
+			}),
+		);
+	return [
+		...plannedMoves.map(({ kind, id, fromProject, toProject }) => ({
+			kind,
+			id,
+			fromProject,
+			toProject,
+		})),
+		...refusedItems('workflow', refused.workflows),
+		...refusedItems('folder', refused.folders),
+	];
 }

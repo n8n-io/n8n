@@ -119,6 +119,14 @@ properties:
     type: boolean
   placeholder:
     type: boolean
+  detail:
+    type: string
+    enum:
+      - placeholder-on-source
+      - sharing-not-licensed
+      - confirmed-gap
+      - legacy-reference
+      - published-version
 required:
   - id
   - consumer

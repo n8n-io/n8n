@@ -352,8 +352,8 @@ export class WorkingCopyUpdater {
 			const branch = await this.scanBranch(exportFolder);
 			for (const project of projectsOf(selection)) {
 				this.assertDeletionsOnBranch(branch.state, project);
-				// Seam for cross-project moves: a selected workflow that the branch holds under another
-				// project is refused here.
+				// Without `allowCrossProjectMoves`, a selected workflow that the branch holds under
+				// another project is refused here.
 				this.assertNoCrossProjectMoves(branch.state, project);
 			}
 			return branch;
@@ -445,21 +445,24 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * With `allowCrossProjectMoves`, a folder directory may come from another project. A project
-	 * directory never does: the directory of another project holds content that stays there.
+	 * With `allowCrossProjectMoves`, a folder directory may come from another project of the branch,
+	 * and it takes its content with it. Each moved directory must still start inside a project of
+	 * the branch and end inside a project of the export.
 	 */
-	private assertOnlyFoldersCrossProjects(
+	private assertContainerMovesStayInProjects(
 		branch: BranchLayout,
-		projectId: string,
+		staging: PackageManifest,
 		moves: readonly ContainerMove[],
 	): void {
-		const projectTarget = branch.projects?.find((p) => p.id === projectId)?.target;
-		const foreignProject = moves.find(
-			({ kind, from }) => kind === 'projects' && from !== projectTarget,
+		const holder = (projects: BranchLayout['projects'], target: string) =>
+			projects?.find((project) => project.target === target || isUnder(target, project.target));
+		const stray = moves.find(
+			({ from, to }) =>
+				holder(branch.projects, from) === undefined || holder(staging.projects, to) === undefined,
 		);
-		if (foreignProject) {
+		if (stray) {
 			throw new BadRequestError(
-				`"${foreignProject.from}" is the directory of another project on the branch. Remove it and retry.`,
+				`"${stray.from}" is outside every project on the branch. Remove it and retry.`,
 			);
 		}
 	}
@@ -501,10 +504,12 @@ export class WorkingCopyUpdater {
 				.filter((p) => !projectIds.includes(p.id))
 				.map((p) => p.target);
 			const moves = containerMoves(existing, staging);
-			// TODO(poc-integration): honour `allowCrossProjectMoves` (assertOnlyFoldersCrossProjects) for a multi-project selection.
-			void this.assertOnlyFoldersCrossProjects;
-			// Seam for cross-project moves: a folder that changes project is refused here.
-			this.assertNoCrossProjectContainerMoves(existing, staging, projectIds, moves);
+			// One flag for the whole Promote: a moved folder can come from a project outside the selection.
+			if (projects.some(({ allowCrossProjectMoves }) => allowCrossProjectMoves)) {
+				this.assertContainerMovesStayInProjects(existing, staging, moves);
+			} else {
+				this.assertNoCrossProjectContainerMoves(existing, staging, projectIds, moves);
+			}
 			const remaining: BranchLayout = {
 				...existing,
 				workflows: (existing.workflows ?? []).filter(
