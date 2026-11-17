@@ -451,3 +451,47 @@ describe('node compiler: binary data of a response', () => {
 		expect(out.result).toEqual([{ body: 'hello bytes' }]);
 	});
 });
+
+describe('node compiler: the file size limit of the runtime', () => {
+	const source = `export class Probe {
+	async execute(this: any) {
+		const items = this.getInputData();
+		const returnData: any[] = [];
+		for (let i = 0; i < items.length; i++) {
+			const download = this.getNodeParameter('download', i) as boolean;
+			const options: any = { uri: 'https://x.io/files/7' };
+			if (download) options.encoding = null;
+			const response = await this.helpers.request(options);
+			if (download) {
+				returnData.push({ json: {}, binary: { data: await this.helpers.prepareBinaryData(Buffer.from(response), 'a.txt') } });
+			} else {
+				returnData.push({ json: { response } });
+			}
+		}
+		return [returnData];
+	}
+}`;
+	const compileWith = (download: boolean) =>
+		specialiseNode({
+			type: 'n8n-nodes-base.probe',
+			version: 1,
+			entry: ENTRY,
+			readFile: (path) => (path === ENTRY ? source : undefined),
+			parameters: { download },
+			aliases: {},
+			instanceId: null,
+		});
+
+	it('counts the requests only in a module that can ask for the bytes of a response', () => {
+		const stores = compileWith(true);
+		expect(stores.errors).toEqual([]);
+		expect(stores.marksFileLimit).toBe(true);
+		expect(stores.source).toContain('__repeats');
+		const plain = compileWith(false);
+		expect(plain.errors).toEqual([]);
+		expect(plain.marksFileLimit).toBe(false);
+		expect(plain.source).not.toContain('__repeats');
+		expect(plain.source).not.toContain('__isFileLimit');
+		expect(plain.source).not.toContain('__isLimit');
+	});
+});

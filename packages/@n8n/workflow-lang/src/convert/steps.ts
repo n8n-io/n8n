@@ -522,18 +522,18 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		return false;
 	}
 	// A node that stores a response can reach the largest size of a stored file, which v1 does
-	// not have: its fallback-host form is in the source too. A node with lineage has one form.
+	// not have: its fallback-host form is in the source too.
 	// The host form runs the node again for all items. So the compiled form is one call for all
 	// items: a call for each item cannot tell what the calls before it sent.
-	if (compiled.storesResponses && !lineage && !once) {
+	if (compiled.marksFileLimit && !lineage && !once) {
 		c.info(
 			'node-compile',
 			'The node stores a response, and under this error setting it has no check of one call for all items.',
 		);
 		return false;
 	}
-	const hostForm = compiled.storesResponses && !lineage ? hostFormOf(c) : null;
-	if (compiled.storesResponses && !lineage && hostForm === null) {
+	const hostForm = compiled.marksFileLimit ? hostFormOf(c) : null;
+	if (compiled.marksFileLimit && hostForm === null) {
 		c.info(
 			'node-compile',
 			'The node stores a response, and its fallback-host form has no code in this place.',
@@ -648,7 +648,7 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	);
 	const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);
 	const emitForm = (to: NodeContext, hostLimit: boolean) => {
-		if (lineage) emitPairedStep(to, call);
+		if (lineage) emitPairedStep(to, call, null);
 		else if (onError === 'stopWorkflow') emitStep(to, { ...call, hostLimit });
 		else if (once) {
 			const retry = errorRetry(to);
@@ -670,6 +670,7 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		}
 	};
 	if (hostForm === null) emitForm(c, false);
+	else if (lineage) emitPairedStep(c, call, hostForm);
 	else emitWithHostForm(c, onError === 'continueErrorOutput', emitForm, hostForm);
 	c.markCompiled?.();
 	return true;
@@ -761,13 +762,43 @@ export function emitWithHostForm(
  * Emits one call of a compiled node that gives the paired item of each output item
  * (`{ items, paired }`), and declares output 0. The node stops the workflow when it fails,
  * and has no "retry on fail".
+ *
+ * With `host`, the node runs in the fallback host when the module marks the error of the file
+ * size limit (`emitWithHostForm`). The host gives no paired items, so the run has none: the
+ * later node pairs by position, as v1's engine does for a node that gives none.
  */
-function emitPairedStep(c: NodeContext, call: StepCall): void {
+function emitPairedStep(c: NodeContext, call: StepCall, host: HostForm | null): void {
 	const { w, input } = c;
 	const run = c.local('Run');
 	const empty = '{ items: [], paired: [] }';
 	const opts = options(c, call, input);
-	if (c.traceAll) {
+	if (host) {
+		const inHost = c.local('RunsInHost');
+		c.helper('fileLimitInHost');
+		w.line(`let ${run}: Json = ${empty};`);
+		w.line(`let ${inHost} = false;`);
+		w.open(`if (${input}.length > 0) {`);
+		w.open('try {');
+		const head = `${run} = await ctx.node(`;
+		w.block(`${head}${c.print(opts, head)});`);
+		w.close('} catch (error) {');
+		w.depth++;
+		w.open('if (!fileLimitInHost(error)) {');
+		if (c.traceAll) {
+			w.line(
+				`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
+			);
+		}
+		w.line('throw error;');
+		w.close();
+		w.line(`${inHost} = true;`);
+		w.close();
+		w.close();
+		w.open(`if (${inHost}) {`);
+		w.append(host.text.split('\n'));
+		w.line(`${run} = { items: ${host.out}, paired: ${host.out}.map(() => null) };`);
+		w.close();
+	} else if (c.traceAll) {
 		w.line(`let ${run}: Json = ${empty};`);
 		w.open(`if (${input}.length > 0) {`);
 		w.open('try {');
