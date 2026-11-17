@@ -29,11 +29,12 @@ export interface RoutedInput {
 	version: number;
 	entry: string;
 	readFile: ReadFile;
-	hasCredential: (type: string) => boolean;
+	credentialFields: (type: string) => Json | undefined;
 }
 
 const ITEM = '__routedItem';
 const MAX_FILES = 200;
+const HOOK_PREFIX = 'routedHook';
 const OWN_RUN_METHODS = new Set(['execute', 'poll', 'trigger', 'webhook', 'supplyData']);
 const REQUEST_SETTINGS = ['batching', 'proxy', 'timeout', 'allowUnauthorizedCerts'];
 const SINGLE_CONTEXT = /IExecuteSingleFunctions|IExecutePaginationFunctions/;
@@ -338,6 +339,168 @@ function findHook(
 	return { file: homes[0] };
 }
 
+function fileMark(path: string): string {
+	let h = 0x811c9dc5;
+	for (let k = 0; k < path.length; k++) {
+		h ^= path.charCodeAt(k);
+		h = Math.imul(h, 0x01000193) >>> 0;
+	}
+	return h.toString(16);
+}
+
+function compact(code: string): string {
+	return code
+		.replace(/\s+/g, '')
+		.replace(/^"usestrict";/, '')
+		.replace(/\(0,\w+_\d+\.(\w+)\)/g, '$1')
+		.replace(/\b\w+_\d+\./g, '')
+		.replace(/^\(/, '')
+		.replace(/\);?$/, '')
+		.replace(/;$/, '');
+}
+
+function namedHook(entry: string, readFile: ReadFile, built: string): string {
+	const wanted = compact(built);
+	const seen = new Set<string>([entry]);
+	const queue = [entry];
+	const names: Array<{ name: string; file: string }> = [];
+	for (let k = 0; k < queue.length && k < MAX_FILES; k++) {
+		const text = readFile(queue[k]);
+		if (text === undefined) continue;
+		const sf = parse(queue[k], text);
+		for (const [name, fn] of functionsOf(sf)) {
+			if (!name.startsWith(HOOK_PREFIX)) continue;
+			const anonymous = fn
+				.getText(sf)
+				.replace(/^export\s+/, '')
+				.replace(`function ${name}(`, 'function (');
+			const js = ts.transpileModule(`(${anonymous})`, {
+				compilerOptions: { target: ts.ScriptTarget.ES2021, removeComments: true },
+			}).outputText;
+			if (compact(js) === wanted) names.push({ name, file: queue[k] });
+		}
+		for (const specifier of relativeImports(text)) {
+			const target = resolveModule(queue[k], specifier, readFile);
+			if (target !== undefined && !seen.has(target)) {
+				seen.add(target);
+				queue.push(target);
+			}
+		}
+	}
+	if (names.length === 0 || names.some((found) => found.file !== names[0].file))
+		throw new RoutingRefusal(
+			`a hook without a name has ${names.length} functions with its code in the files of the node`,
+		);
+	return names[0].name;
+}
+
+export function flatNamespaces(path: string, text: string): string {
+	if (!/\bnamespace\s/.test(text)) return text;
+	const sf = parse(path, text);
+	const spaces = new Set<string>();
+	const members: string[] = [];
+	const edits: Array<{ at: number; end: number; text: string }> = [];
+	const declaredIn = (statement: ts.Statement): string[] => {
+		if (ts.isVariableStatement(statement))
+			return statement.declarationList.declarations.flatMap((d) =>
+				ts.isIdentifier(d.name) ? [d.name.text] : ['{}'],
+			);
+		const name: unknown = Reflect.get(statement, 'name');
+		return typeof name === 'object' && name !== null && ts.isIdentifier(name as ts.Node)
+			? [(name as ts.Identifier).text]
+			: [];
+	};
+	let flat = true;
+	const open = (statements: readonly ts.Statement[]) => {
+		for (const statement of statements) {
+			if (!ts.isModuleDeclaration(statement)) {
+				members.push(...declaredIn(statement));
+				continue;
+			}
+			if (
+				!ts.isIdentifier(statement.name) ||
+				!statement.body ||
+				!ts.isModuleBlock(statement.body)
+			) {
+				flat = false;
+				continue;
+			}
+			spaces.add(statement.name.text);
+			const body = statement.body;
+			edits.push({ at: statement.getStart(sf), end: body.getStart(sf) + 1, text: '' });
+			edits.push({ at: body.getEnd() - 1, end: body.getEnd(), text: '' });
+			open(body.statements);
+		}
+	};
+	open(sf.statements);
+	const names = members.filter((name) => name !== '{}');
+	if (!flat || members.includes('{}') || new Set(names).size !== names.length) return text;
+	if (names.some((name) => spaces.has(name))) return text;
+	const inSpace = (node: ts.Node): boolean =>
+		ts.isIdentifier(node)
+			? spaces.has(node.text)
+			: ts.isPropertyAccessExpression(node)
+				? spaces.has(node.name.text) && inSpace(node.expression)
+				: ts.isQualifiedName(node)
+					? spaces.has(node.right.text) && inSpace(node.left)
+					: false;
+	const visit = (node: ts.Node): void => {
+		if (
+			ts.isPropertyAccessExpression(node) &&
+			inSpace(node.expression) &&
+			!spaces.has(node.name.text)
+		) {
+			edits.push({ at: node.getStart(sf), end: node.getEnd(), text: node.name.text });
+			return;
+		}
+		if (ts.isQualifiedName(node) && inSpace(node.left) && !spaces.has(node.right.text)) {
+			edits.push({ at: node.getStart(sf), end: node.getEnd(), text: node.right.text });
+			return;
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(sf);
+	let out = text;
+	for (const edit of edits.sort((a, b) => b.at - a.at || b.end - a.end))
+		out = out.slice(0, edit.at) + edit.text + out.slice(edit.end);
+	return out;
+}
+
+export function namedHooks(path: string, text: string): string {
+	if (!SINGLE_CONTEXT.test(text) || !/function\s*\(/.test(text)) return text;
+	const sf = parse(path, text);
+	const found: ts.FunctionExpression[] = [];
+	const visit = (node: ts.Node, nested: boolean): void => {
+		const scope =
+			ts.isFunctionDeclaration(node) ||
+			ts.isFunctionExpression(node) ||
+			ts.isArrowFunction(node) ||
+			ts.isMethodDeclaration(node);
+		if (
+			ts.isFunctionExpression(node) &&
+			!node.name &&
+			!nested &&
+			ts.isArrayLiteralExpression(node.parent) &&
+			contextKindOf(node, sf) === 'single'
+		)
+			found.push(node);
+		ts.forEachChild(node, (child) => visit(child, nested || scope));
+	};
+	visit(sf, false);
+	if (found.length === 0 || found.length > MAX_FILES) return text;
+	let out = text;
+	const added: string[] = [];
+	for (let k = found.length - 1; k >= 0; k--) {
+		const name = `${HOOK_PREFIX}${fileMark(path)}n${k}`;
+		const code = found[k].getText(sf);
+		const named = code.replace(/^(async\s+)?function\s*\(/, `$1function ${name}(`);
+		if (named === code) return text;
+		added.unshift(`export ${named}`);
+		out = out.slice(0, found[k].getStart(sf)) + name + out.slice(found[k].getEnd());
+	}
+	return `${out}\n${added.join('\n')}\n`;
+}
+
 interface PostAction {
 	hook?: string;
 	action?: Json;
@@ -360,7 +523,7 @@ class RoutedWriter {
 
 	pagination: unknown;
 
-	mayPaginate = false;
+	readonly paginates: Array<boolean | 'expression'> = [];
 
 	private counter = 0;
 
@@ -388,8 +551,10 @@ class RoutedWriter {
 	}
 
 	private hookName(fn: unknown): string {
-		const name = typeof fn === 'function' ? fn.name : '';
-		if (!/^[A-Za-z_$][\w$]*$/.test(name)) throw new RoutingRefusal('a hook without a name');
+		if (typeof fn !== 'function') throw new RoutingRefusal('a hook that is not a function');
+		const name = /^[A-Za-z_$][\w$]*$/.test(fn.name)
+			? fn.name
+			: namedHook(this.input.entry, this.input.readFile, fn.toString());
 		const known = this.hooks.get(name);
 		if (known !== undefined) return name;
 		const found = findHook(this.input.entry, this.input.readFile, name);
@@ -530,7 +695,18 @@ class RoutedWriter {
 					typeof send.paginate === 'string' && send.paginate.startsWith('=')
 						? routingValue(send.paginate, scope)
 						: routingLiteral(send.paginate);
-				if (send.paginate !== false) this.mayPaginate = true;
+				const stored = at(this.input.parameters, path);
+				const own =
+					typeof send.paginate === 'string' && /^=\{\{\s*\$value\s*\}\}$/.test(send.paginate);
+				this.paginates.push(
+					typeof send.paginate !== 'string'
+						? Boolean(send.paginate)
+						: own && typeof stored === 'boolean'
+							? stored
+							: send.paginate.startsWith('=')
+								? 'expression'
+								: true,
+				);
 				const flag = this.fresh('paginate');
 				this.emit(`const ${flag} = !!${paginate};`);
 				this.emit(`if (paginate === undefined) paginate = ${flag};`);
@@ -677,67 +853,6 @@ function requestCode(credentialType: string | undefined, options: string): strin
 		: `await this.helpers.httpRequestWithAuthentication.call(this, ${JSON.stringify(credentialType)}, routingRequest(${options}))`;
 }
 
-function paginationCode(
-	writer: RoutedWriter,
-	credentialType: string | undefined,
-	indent: string,
-): string[] {
-	const pagination = writer.pagination;
-	if (typeof pagination === 'function') throw new RoutingRefusal('pagination by a function');
-	const lines: string[] = [];
-	const emit = (line: string) => lines.push(`${indent}${line}`);
-	const properties = recordOf(recordOf(pagination)?.properties) ?? {};
-	const type = recordOf(pagination)?.type;
-	emit('if (!requestOptions.qs) requestOptions.qs = {};');
-	if (type === 'generic') {
-		const scope = writer.scope({ request: 'requestOptions', response: 'pageResponse' });
-		emit('let pageResponse: any = {};');
-		emit('let more: any = false;');
-		emit('do {');
-		emit(`\tconst pageRequest: any = ${routingValue(properties.request, scope)};`);
-		emit(
-			`\tpageResponse = ${requestCode(credentialType, '{ ...requestOptions, ...pageRequest }')};`,
-		);
-		lines.push(...postCode(writer, 'pageResponse', 'pageItems', `${indent}\t`));
-		emit('\tfor (const pageItem of pageItems) responseItems.push(pageItem);');
-		emit(`\tmore = ${routingValue(properties.continue, scope)};`);
-		emit('} while (more);');
-	} else if (type === 'offset') {
-		const holder = properties.type === 'body' ? 'body' : 'qs';
-		const limit = routingLiteral(properties.limitParameter);
-		const offset = routingLiteral(properties.offsetParameter);
-		const size = routingLiteral(properties.pageSize);
-		if (typeof properties.pageSize !== 'number')
-			throw new RoutingRefusal('offset pagination without a page size');
-		if (holder === 'body') emit('if (!requestOptions.body) requestOptions.body = {};');
-		emit(`requestOptions.${holder}[${limit}] = ${size};`);
-		emit(`requestOptions.${holder}[${offset}] = 0;`);
-		emit('let pageLength = 0;');
-		emit('do {');
-		emit('\tif (maxResults) {');
-		emit('\t\tconst missing = maxResults - responseItems.length;');
-		emit('\t\tif (missing < 1) break;');
-		emit(`\t\trequestOptions.${holder}[${limit}] = Math.min(${size}, missing);`);
-		emit('\t}');
-		emit(`\tconst pageResponse: any = ${requestCode(credentialType, 'requestOptions')};`);
-		lines.push(...postCode(writer, 'pageResponse', 'pageItems', `${indent}\t`));
-		emit(`\trequestOptions.${holder}[${offset}] = requestOptions.${holder}[${offset}] + ${size};`);
-		emit('\tlet pageData: any[] = pageItems;');
-		if (properties.rootProperty) {
-			const root = routingLiteral(properties.rootProperty);
-			emit(`\tconst pageRoot: any = get(pageItems[0].json, ${root});`);
-			emit(
-				`\tif (pageRoot === undefined) throw new NodeOperationError(this.getNode(), ${routingLiteral(`The rootProperty "${String(properties.rootProperty)}" could not be found on item.`)}, { itemIndex: i });`,
-			);
-			emit('\tpageData = pageRoot.map((json: any) => ({ json }));');
-		}
-		emit('\tfor (const pageItem of pageData) responseItems.push(pageItem);');
-		emit('\tpageLength = pageData.length;');
-		emit(`} while (pageLength > 0 && pageLength === ${size});`);
-	}
-	return lines;
-}
-
 function credentialTypeOf(input: RoutedInput): string | undefined {
 	const credentials = listOf(Reflect.get(input.description, 'credentials')).filter(isRecord);
 	if (credentials.length === 0) return undefined;
@@ -752,8 +867,14 @@ function credentialTypeOf(input: RoutedInput): string | undefined {
 		if (!chosen) throw new RoutingRefusal('no credential type for the authentication method');
 	}
 	const name = String(chosen.name);
-	if (chosen.required !== true && !input.hasCredential(name))
-		throw new RoutingRefusal(`the optional credential '${name}' is not set`);
+	const fields = input.credentialFields(name);
+	if (fields === undefined)
+		throw new RoutingRefusal(`the public fields of the credential '${name}' are not known`);
+	const limit = fields.allowedHttpRequestDomains;
+	if (limit !== undefined && limit !== 'all')
+		throw new RoutingRefusal(
+			`the credential '${name}' limits its domains ('${String(limit)}'), and the check of the node has no compiled form`,
+		);
 	return name;
 }
 
@@ -826,9 +947,12 @@ function generate(input: RoutedInput, path: string): string {
 	for (const property of input.description.properties) {
 		if (isRecord(property)) writer.property(property, [], 'requestOptions', {});
 	}
-	const paged = writer.pagination !== undefined && writer.mayPaginate;
+	const first = writer.paginates[0];
+	if (writer.pagination !== undefined && first !== undefined && first !== false)
+		throw new RoutingRefusal(
+			'the operation gets its results over several requests, and the order of the requests of several items has no compiled form',
+		);
 	const post = postCode(writer, 'response', 'responseItems', '\t\t\t\t\t');
-	const pages = paged ? paginationCode(writer, credentialType, '\t\t\t\t\t') : [];
 	const imports = [...writer.hooks].map(([name, file]) => {
 		const specifier = relative(dirname(path), file).replace(/\.ts$/, '');
 		return `import { ${name} } from ${JSON.stringify(specifier.startsWith('.') ? specifier : `./${specifier}`)};`;
@@ -873,15 +997,7 @@ function generate(input: RoutedInput, path: string): string {
 			(hook) => `\t\t\t\trequestOptions = await ${hook}.call(this, i, requestOptions);`,
 		),
 		'\t\t\t\trequestOptions.returnFullResponse = true;',
-		...(paged
-			? [
-					'\t\t\t\tif (paginate) {',
-					'\t\t\t\t\tconst responseItems: any[] = [];',
-					...pages,
-					'\t\t\t\t\toutcomes.push({ items: responseItems, maxResults });',
-					'\t\t\t\t} else {',
-				]
-			: ['\t\t\t\t{']),
+		'\t\t\t\t{',
 		`\t\t\t\t\tconst response: any = ${requestCode(credentialType, 'requestOptions')};`,
 		...post,
 		'\t\t\t\t\toutcomes.push({ items: responseItems, maxResults });',
@@ -916,9 +1032,17 @@ function generate(input: RoutedInput, path: string): string {
 export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[] } {
 	const path = join(dirname(input.entry), '__routed.node.ts');
 	const refusals: string[] = [];
+	const prepared = new Map<string, string | undefined>();
+	const plain: ReadFile = (file) => {
+		if (prepared.has(file)) return prepared.get(file);
+		const text = input.readFile(file);
+		const out = text === undefined ? undefined : namedHooks(file, flatNamespaces(file, text));
+		if (prepared.size < MAX_FILES) prepared.set(file, out);
+		return out;
+	};
 	let source: string;
 	try {
-		source = generate(input, path);
+		source = generate({ ...input, readFile: plain }, path);
 	} catch (error) {
 		if (!(error instanceof RoutingRefusal)) throw error;
 		return { errors: [`the routing of the node stays in the host: ${error.message}`] };
@@ -927,11 +1051,11 @@ export function routedEntry(input: RoutedInput): RoutedEntry | { errors: string[
 	const readFile: ReadFile = (file) => {
 		if (file === path) return source;
 		if (rewritten.has(file)) return rewritten.get(file);
-		const text = input.readFile(file);
+		const text = plain(file);
 		const out =
 			text === undefined
 				? undefined
-				: singleItemSource(file, text, input.readFile, (reason) => refusals.push(reason));
+				: singleItemSource(file, text, plain, (reason) => refusals.push(reason));
 		if (rewritten.size < MAX_FILES) rewritten.set(file, out);
 		return out;
 	};
