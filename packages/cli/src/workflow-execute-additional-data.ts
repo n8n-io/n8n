@@ -358,6 +358,8 @@ export async function executeWorkflow(
 			workflowData.nodes,
 			options.returnLastRunOnly ?? false,
 		);
+		runData.executionData.rootExecutionMode ??=
+			additionalData.rootExecutionMode ?? options.executionMode;
 	}
 
 	try {

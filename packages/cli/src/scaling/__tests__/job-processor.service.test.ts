@@ -911,6 +911,44 @@ describe('JobProcessor', () => {
 		expect(additionalData.restartExecutionId).toBe(restartExecutionId);
 	});
 
+	it('should restore the root execution mode on additionalData from the execution data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+			data: mock<IRunExecutionData>({
+				resultData: { runData: {} },
+				executionData: undefined,
+				rootExecutionMode: 'manual',
+			}),
+		});
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		expect(additionalData.rootExecutionMode).toBe('manual');
+	});
+
 	it('should rehydrate the manual-execution identity onto additionalData from job data', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const execution = mock<IExecutionResponse>({
