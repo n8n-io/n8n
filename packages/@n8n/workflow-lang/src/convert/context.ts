@@ -87,6 +87,8 @@ export interface NodeContext {
 	codeNodes?: 'native' | 'host';
 	/** Built-in modules that code can load with `require` (`ConvertOptions.codeModules`). */
 	codeModules?: string[];
+	/** Code nodes can hold a Date as a Date value (`ConvertOptions.dateValues`). */
+	dateValues?: boolean;
 	/** The n8n instance (`ConvertOptions.instance`), when the caller gives it. */
 	instance?: { baseUrl: string; id: string };
 	/** Sources of nodes for the node compiler (`ConvertOptions.nodeSources`). */

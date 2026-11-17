@@ -25,6 +25,8 @@ pub const ObjKind = enum(u8) {
     bytes = 10,
     /// The bytes of grown strings (`StrBuf`), shared by their `StrRef`s.
     strbuf = 11,
+    /// A Date value (`DateObj`): a Date in a place without the type Date.
+    date = 12,
 };
 
 pub const Hdr = extern struct {
@@ -34,6 +36,18 @@ pub const Hdr = extern struct {
     /// stores its new offset here.
     size: u32,
 };
+
+/// A Date value (spec section 4.5). A `ref` value names it, so `typeof` gives
+/// "object", a truth test gives true and `===` compares the offsets.
+pub const DateObj = extern struct {
+    hdr: Hdr,
+    /// The time value in ms since the epoch, or NaN for an invalid date.
+    time: f64,
+};
+
+comptime {
+    std.debug.assert(@sizeOf(DateObj) == 16);
+}
 
 pub const Str = extern struct {
     hdr: Hdr,
@@ -443,6 +457,19 @@ pub const Region = struct {
         return p[0..n];
     }
 
+    pub fn newDate(r: *Region, time: f64) Error!u32 {
+        const off = try r.alloc(.date, @sizeOf(DateObj));
+        r.at(DateObj, off).time = time;
+        std.debug.assert(r.hdr(off).kind == .date);
+        return off;
+    }
+
+    /// The time value of the Date value at `off`.
+    pub fn dateTime(r: *const Region, off: u32) f64 {
+        std.debug.assert(r.hdr(off).kind == .date);
+        return r.at(DateObj, off).time;
+    }
+
     pub fn newBytes(r: *Region, n: u32) Error!u32 {
         const off = try r.alloc(.bytes, @sizeOf(Hdr) + n);
         if (mem.enabled) mem.wr(r.probe, .bytes_block, .vals_fill, r.buf.ptr + off + @sizeOf(Hdr), n);
@@ -629,7 +656,7 @@ inline fn structureOf(kind: ObjKind) mem.Structure {
         .exec => .exec_root,
         .fibres => .fibre_table,
         .frames => .frames,
-        .bytes, .forwarded => .bytes_block,
+        .bytes, .forwarded, .date => .bytes_block,
     };
 }
 
@@ -711,7 +738,7 @@ fn scanObject(src: *Region, dst: *Region, off: u32, kind: ObjKind) Error!void {
                 dst.at(StrRef, off).data = data;
             }
         },
-        .bytes, .strbuf => {},
+        .bytes, .strbuf, .date => {},
         .vals => try forwardVals(src, dst, dst.valsAt(off, dst.valsCap(off))),
         .array => {
             const new_items = try forward(src, dst, dst.at(Arr, off).items);

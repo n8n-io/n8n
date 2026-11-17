@@ -553,12 +553,20 @@ not a closure. The new library names of `CALLN` are `Date.value` and
 
 The reference runner has JavaScript Dates, so a Date is its own Date value
 there. The test VM holds a Date value as a JavaScript Date. The Zig runtime
-does not have the kind yet: it needs the heap kind (header and one f64, a
-leaf for the copy and the snapshot), the Date arm of `toNumber`,
-`appendScalarString`, `toPrimitiveForCompare` and the JSON writer, and the
-two library functions. Until then no converter gives `Date.value` to the
-runtime: the translation of Code nodes makes Date values only with the
-option `dateValues`.
+has the heap kind `date` (`DateObj`: the header and one f64, a leaf for the
+copy and the snapshot) behind a `ref` value, the Date arm of `toNumber`,
+`appendScalarString`, `toPrimitiveForCompare` and the two JSON writers, and
+the two library functions.
+
+The translation of Code nodes makes Date values only with the option
+`dateValues` (`ConvertOptions.dateValues`), which is off until one
+verification runs converted Code nodes with Date values on the Zig runtime
+against v1. With the option, code that could see two objects for one Date
+stays in the host: a variable gives one Date value only, it must be a
+constant that starts with `new Date`, and no code calls a setter of a Date
+variable. A method of a Date that the code reads as a value, and a helper
+of the translation that is not proven to read a Date value as JavaScript
+does (`DATE_VALUE_HELPERS`), stay in the host too.
 
 **Setters.** A setter stores the new time value back into its variable:
 `d.setHours(0)` becomes `d = Date.prototype.setHours(d, 0)`. Because a

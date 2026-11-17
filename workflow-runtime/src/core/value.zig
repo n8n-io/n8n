@@ -12,7 +12,7 @@ pub const Kind = enum(u3) {
     string = 4,
     array = 5,
     object = 6,
-    /// Closures and cells. The object header tells them apart.
+    /// Closures, cells and Date values. The object header tells them apart.
     ref = 7,
 };
 

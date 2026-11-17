@@ -114,6 +114,7 @@ export function attemptNative(
 		nodeName?: string;
 		itemsOfFirstOnly?: boolean;
 		allowedModules?: string[];
+		dateValues?: boolean;
 		pairsByPosition?: (name: string) => boolean;
 		defaultOutput?: (name: string) => number;
 		notRun?: (name: string) => boolean;
@@ -326,6 +327,7 @@ export function lowerCodeNative(c: NodeContext): boolean {
 			nodeName: c.node.name,
 			itemsOfFirstOnly: previousRunsOnce(c),
 			allowedModules: c.codeModules,
+			dateValues: c.dateValues,
 			// With "execute once" the node gets one input item, and the node before has more.
 			pairsByPosition: (name) => c.node.executeOnce !== true && c.pairsByPosition(name),
 			defaultOutput: (name) => c.readOutput(name),
