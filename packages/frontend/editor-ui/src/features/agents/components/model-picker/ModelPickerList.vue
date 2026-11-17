@@ -6,10 +6,10 @@ import {
 	N8nText,
 	N8nTooltip,
 	N8nVisuallyHidden,
-	type IconName,
 } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { useIntersectionObserver } from '@vueuse/core';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 
 import { getProviderCredentialTypes, isAgentModelProvider } from '../../model-providers';
 import ModelSelectorTriggerIcon from '../model-selector/ModelSelectorTriggerIcon.vue';
@@ -17,6 +17,7 @@ import {
 	formatContext,
 	formatCost,
 	meterRatio,
+	MODEL_PICKER_FEATURES,
 	type ModelPickerFeature,
 	type ModelPickerModel,
 } from './modelPicker.utils';
@@ -42,16 +43,18 @@ const props = defineProps<{
 	selectedModelId?: string;
 	/** Largest value of each metric in the catalog. The bars scale against it. */
 	maxima: ModelPickerMaxima;
+	/** Rows to show at first, and to add each time the end of the list scrolls into view. All when unset. */
+	pageSize?: number;
 }>();
 
 const emit = defineEmits<{ select: [modelId: string] }>();
 
 const i18n = useI18n();
 
-const FEATURES: Array<{ id: ModelPickerFeature; icon: IconName; labelKey: BaseTextKey }> = [
-	{ id: 'vision', icon: 'image', labelKey: 'agents.modelPicker.feature.vision' },
-	{ id: 'reasoning', icon: 'brain', labelKey: 'agents.modelPicker.feature.reasoning' },
-];
+const FEATURES = (Object.keys(MODEL_PICKER_FEATURES) as ModelPickerFeature[]).map((id) => ({
+	id,
+	...MODEL_PICKER_FEATURES[id],
+}));
 
 const columns = computed<Array<{ id: keyof ModelPickerMaxima; label: string }>>(() => [
 	{ id: 'context', label: i18n.baseText('agents.modelPicker.column.context') },
@@ -59,8 +62,14 @@ const columns = computed<Array<{ id: keyof ModelPickerMaxima; label: string }>>(
 	{ id: 'output', label: i18n.baseText('agents.modelPicker.column.output') },
 ]);
 
-function metric(model: ModelPickerModel, id: keyof ModelPickerMaxima) {
-	const value = id === 'context' ? model.limits?.context : model.cost?.[id];
+type MetricId = keyof ModelPickerMaxima;
+
+function metricValue(model: ModelPickerModel, id: MetricId): number | undefined {
+	return id === 'context' ? model.limits?.context : model.cost?.[id];
+}
+
+function metric(model: ModelPickerModel, id: MetricId) {
+	const value = metricValue(model, id);
 	if (value === undefined) return null;
 	return {
 		text: id === 'context' ? formatContext(value) : formatCost(value),
@@ -68,15 +77,60 @@ function metric(model: ModelPickerModel, id: keyof ModelPickerMaxima) {
 	};
 }
 
+/** Both lists sort. Like the Design System data table: high to low, low to high, then off. */
+const sort = ref<{ id: MetricId; desc: boolean } | null>(null);
+
+function toggleSort(id: MetricId) {
+	if (sort.value?.id !== id) sort.value = { id, desc: true };
+	else if (sort.value.desc) sort.value = { id, desc: false };
+	else sort.value = null;
+}
+
+/** Spoken after the column name, since the arrow is hidden from screen readers. */
+function sortState(id: MetricId): string {
+	if (sort.value?.id !== id) return '';
+	return i18n.baseText(
+		sort.value.desc ? 'agents.modelPicker.sort.descending' : 'agents.modelPicker.sort.ascending',
+	);
+}
+
+/** The rows in sort order. Models without a value for the column go last in both directions. */
+const sortedRows = computed(() => {
+	const current = sort.value;
+	if (!current) return props.rows;
+	const direction = current.desc ? -1 : 1;
+	return [...props.rows].sort((a, b) => {
+		const left = metricValue(a.model, current.id);
+		const right = metricValue(b.model, current.id);
+		if (left === undefined || right === undefined) {
+			return Number(left === undefined) - Number(right === undefined);
+		}
+		return (left - right) * direction;
+	});
+});
+
+/** How many rows are drawn. A long catalog draws a page at a time, like the earlier prototype. */
+const limit = ref(props.pageSize ?? Infinity);
+watch([() => props.rows, sort], () => {
+	limit.value = props.pageSize ?? Infinity;
+});
+const hasMore = computed(() => sortedRows.value.length > limit.value);
+
+/** Reaching the end of the drawn rows draws the next page. There is nothing to click. */
+const moreSentinel = useTemplateRef('moreSentinel');
+useIntersectionObserver(moreSentinel, ([entry]) => {
+	if (entry?.isIntersecting && hasMore.value) limit.value += props.pageSize ?? Infinity;
+});
+
 const displayRows = computed(() =>
-	props.rows.map(({ model, presetLabel }) => ({
+	sortedRows.value.slice(0, limit.value).map(({ model, presetLabel }) => ({
 		model,
 		presetLabel,
 		// Labs that are also agent providers have an icon. Other labs get the default icon.
 		iconCredentialType: isAgentModelProvider(model.lab)
 			? getProviderCredentialTypes(model.lab)[0]
 			: null,
-		features: FEATURES.filter((feature) => model[feature.id]),
+		features: FEATURES.filter((feature) => feature.has(model)),
 		metrics: columns.value.map((column) => ({ ...column, value: metric(model, column.id) })),
 	})),
 );
@@ -100,9 +154,24 @@ function onSelect(modelId: string | undefined) {
 			>
 				{{ i18n.baseText('agents.modelPicker.column.features') }}
 			</N8nText>
-			<N8nText v-for="column in columns" :key="column.id" size="xsmall" color="text-light">
-				{{ column.label }}
-			</N8nText>
+			<template v-for="column in columns" :key="column.id">
+				<button
+					type="button"
+					:class="$style.sortButton"
+					:data-testid="`agent-model-picker-sort-${column.id}`"
+					@click="toggleSort(column.id)"
+				>
+					<N8nText size="xsmall" :color="sort?.id === column.id ? 'text-dark' : 'text-light'">
+						{{ column.label }}
+						<span v-if="sort?.id === column.id" aria-hidden="true">
+							{{ sort.desc ? '↓' : '↑' }}
+						</span>
+						<N8nVisuallyHidden v-if="sort?.id === column.id">
+							{{ sortState(column.id) }}
+						</N8nVisuallyHidden>
+					</N8nText>
+				</button>
+			</template>
 		</div>
 
 		<N8nListbox
@@ -116,13 +185,6 @@ function onSelect(modelId: string | undefined) {
 				:value="row.model.id"
 				data-testid="agent-model-picker-row"
 			>
-				<!-- The option owns the selected state. This mark only shows it. -->
-				<template v-if="props.variant === 'presets'" #leading>
-					<span
-						:class="[$style.radio, row.model.id === props.selectedModelId && $style.radioChecked]"
-						aria-hidden="true"
-					/>
-				</template>
 				<div :class="$style.grid">
 					<div :class="$style.identity">
 						<N8nText
@@ -144,6 +206,7 @@ function onSelect(modelId: string | undefined) {
 								v-if="props.variant === 'all' && row.presetLabel"
 								:content="row.presetLabel"
 								placement="top"
+								:enterable="false"
 							>
 								<N8nIcon
 									icon="star"
@@ -161,6 +224,7 @@ function onSelect(modelId: string | undefined) {
 							:key="feature.id"
 							:content="i18n.baseText(feature.labelKey)"
 							placement="top"
+							:enterable="false"
 						>
 							<N8nIcon
 								:icon="feature.icon"
@@ -172,40 +236,67 @@ function onSelect(modelId: string | undefined) {
 					</div>
 
 					<div v-for="column in row.metrics" :key="column.id" :class="$style.metric">
-						<template v-if="column.value">
-							<span :class="$style.meter" aria-hidden="true">
-								<span :class="$style.meterFill" :style="{ width: column.value.width }" />
-							</span>
-							<N8nText size="xsmall" color="text-light" :class="$style.metricValue">
-								<N8nVisuallyHidden>{{ column.label }}</N8nVisuallyHidden>
-								{{ column.value.text }}
-							</N8nText>
-						</template>
+						<!-- An empty track keeps the row's rhythm when the catalog lists no value. -->
+						<span :class="$style.meter" aria-hidden="true">
+							<span
+								v-if="column.value"
+								:class="$style.meterFill"
+								:style="{ width: column.value.width }"
+							/>
+						</span>
+						<N8nText size="xsmall" color="text-light" :class="$style.metricValue">
+							<N8nVisuallyHidden>{{ column.label }}</N8nVisuallyHidden>
+							<template v-if="column.value">{{ column.value.text }}</template>
+							<template v-else>
+								<span aria-hidden="true" :class="$style.missing">
+									{{ i18n.baseText('agents.modelPicker.metric.missingMark') }}
+								</span>
+								<N8nVisuallyHidden>
+									{{ i18n.baseText('agents.modelPicker.metric.missing') }}
+								</N8nVisuallyHidden>
+							</template>
+						</N8nText>
 					</div>
 
-					<div v-if="props.variant === 'all'" :class="$style.status">
-						<template v-if="row.model.id === props.selectedModelId">
-							<N8nIcon icon="check" size="small" color="success" />
-							<N8nText size="xsmall" color="text-light" :class="$style.statusText">
-								{{ i18n.baseText('agents.modelSelector.connected') }}
-							</N8nText>
-						</template>
+					<!-- The option owns the selected state. This tick, like the one in the menus, only shows it. -->
+					<div :class="$style.status">
+						<N8nIcon
+							v-if="row.model.id === props.selectedModelId"
+							icon="check"
+							size="large"
+							color="text-light"
+							aria-hidden="true"
+							data-testid="agent-model-picker-selected"
+						/>
 					</div>
 				</div>
 			</N8nListboxItem>
 		</N8nListbox>
+		<div v-if="hasMore" ref="moreSentinel" :class="$style.moreSentinel" aria-hidden="true" />
 	</div>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/focus';
+
+/* Close to the end of the drawn rows, so the next page is ready before the user reaches it. */
+.moreSentinel {
+	height: var(--spacing--5xl);
+	margin-top: calc(-1 * var(--spacing--5xl));
+	pointer-events: none;
+}
+
 .list {
 	--model-picker--metric-width: calc(var(--spacing--2xl) * 2);
-	--model-picker--status-width: calc(var(--spacing--2xl) * 2);
-	--model-picker--columns: minmax(0, 1fr) repeat(3, var(--model-picker--metric-width));
+	/* Room for the selected tick, the large check icon of the menus. */
+	--model-picker--status-width: var(--spacing--md);
+	--model-picker--columns: minmax(0, 1fr) repeat(3, var(--model-picker--metric-width))
+		var(--model-picker--status-width);
 }
 
 .all {
-	--model-picker--columns: minmax(0, 1fr) var(--spacing--3xl)
+	/* Room for four feature icons. A model with more shows them on a second line. */
+	--model-picker--columns: minmax(0, 1fr) calc(var(--spacing--3xl) + var(--spacing--md))
 		repeat(3, var(--model-picker--metric-width)) var(--model-picker--status-width);
 }
 
@@ -216,13 +307,41 @@ function onSelect(modelId: string | undefined) {
 	gap: var(--spacing--2xs);
 }
 
-/* The header stays above the rows when the list scrolls, with the same inset as an item. */
+/*
+ * Plain labels over a subtle line, like the product's selectable lists. The header
+ * stays above the rows when the list scrolls, so it takes the dialog's own background.
+ */
 .header {
 	position: sticky;
 	top: 0;
 	z-index: 1;
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	background-color: var(--background--surface);
+	border-bottom: var(--border-width) var(--border-style) var(--border-color--subtle);
+	background-color: light-dark(var(--background--surface), var(--background--subtle));
+}
+
+/* The same space below the header line as above and below the other dividers in the picker. */
+.header + * {
+	padding-top: var(--spacing--2xs);
+}
+
+/* A header label that sorts the list. It looks like the plain labels until hovered. */
+.sortButton {
+	display: flex;
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+
+	&:hover span {
+		color: var(--text-color);
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .identity {
@@ -250,33 +369,6 @@ function onSelect(modelId: string | undefined) {
 	flex-shrink: 0;
 	justify-content: center;
 	width: var(--spacing--md);
-}
-
-/* Same look as the Design System radio. A real radio cannot go inside a list option. */
-.radio {
-	position: relative;
-	display: block;
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--full);
-	background-color: var(--background--surface);
-}
-
-.radioChecked {
-	border-color: var(--background--brand--hover);
-	background-color: var(--background--brand);
-
-	&::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		width: var(--spacing--3xs);
-		height: var(--spacing--3xs);
-		margin: auto;
-		border-radius: var(--radius--full);
-		background-color: var(--background--surface);
-	}
 }
 
 .presetLabel,
@@ -315,15 +407,18 @@ function onSelect(modelId: string | undefined) {
 	background-color: var(--text-color--subtler);
 }
 
+.missing {
+	color: var(--text-color--subtler);
+}
+
 .metricValue {
 	font-variant-numeric: tabular-nums;
 }
 
-/* A narrow dialog keeps the numbers and drops the bars, the features, and the status text. */
+/* A narrow dialog keeps the numbers and the tick, and drops the bars and the features. */
 @media (max-width: 480px) {
 	.list {
 		--model-picker--metric-width: var(--spacing--2xl);
-		--model-picker--status-width: var(--spacing--sm);
 	}
 
 	.all {
@@ -343,8 +438,7 @@ function onSelect(modelId: string | undefined) {
 	}
 
 	.features,
-	.meter,
-	.statusText {
+	.meter {
 		display: none;
 	}
 }

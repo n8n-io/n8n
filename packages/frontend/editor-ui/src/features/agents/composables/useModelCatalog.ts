@@ -1,6 +1,10 @@
 import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { pinPrioritizedModels, type AgentModelsUnavailableReason } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	pinPrioritizedModels,
+	type AgentModelsUnavailableReason,
+} from '@n8n/api-types';
 import {
 	getModelCatalog,
 	getProviderModels,
@@ -36,6 +40,16 @@ const unavailableByKey = ref<Record<string, boolean>>({});
 const unavailableReasonByKey = ref<Record<string, AgentModelsUnavailableReason | undefined>>({});
 const verifiedFetchesInFlight = new Set<string>();
 const verificationStatusByKey = ref<Record<string, 'loading' | 'resolved' | 'failed'>>({});
+
+/**
+ * ponytail: prototype-only. The model picker prototype stands in for the AI
+ * gateway on a local n8n, which cannot reach the real one. While it does, gateway
+ * credentials list the catalog's models instead of asking the gateway.
+ */
+const gatewayUsesCatalog = ref(false);
+export function setGatewayUsesCatalog(value: boolean) {
+	gatewayUsesCatalog.value = value;
+}
 
 function createEmptyModelsResponse(): AgentModelsByProvider {
 	const response: AgentModelsByProvider = {};
@@ -171,7 +185,9 @@ export function useModelCatalog() {
 			let unavailable = false;
 			let unavailableReason: AgentModelsUnavailableReason | undefined;
 			const projectId = activeProjectId.value;
-			if (projectId) {
+			const skipVerification =
+				gatewayUsesCatalog.value && providerCredentialId === AI_GATEWAY_MANAGED_TAG;
+			if (projectId && !skipVerification) {
 				ensureVerifiedModels(projectId, provider, providerCredentialId);
 				const key = `${projectId}|${provider}|${providerCredentialId}`;
 				models = verifiedModelsByKey.value[key] ?? undefined;

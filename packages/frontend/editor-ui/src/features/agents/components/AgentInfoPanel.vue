@@ -35,6 +35,8 @@ import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentModelPicker from './model-picker/AgentModelPicker.vue';
+import { useModelPickerScenario } from './model-picker/modelPickerScenarios';
+import ModelPickerScenarioSwitch from './model-picker/ModelPickerScenarioSwitch.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -77,6 +79,8 @@ const projectId = useAgentProjectId(() => props.projectId);
 // catalog and keeps the selection in the browser, so it does not change the
 // agent. Replace the opt-in with a feature flag when the picker saves the model.
 const isModelPickerPrototype = useLocalStorage('N8N_AGENT_MODEL_PICKER_PROTOTYPE', false);
+// ponytail: a prototype scenario can show the shipped selector, to compare the two designs.
+const { showsCurrentPicker } = useModelPickerScenario();
 
 const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
@@ -295,8 +299,9 @@ defineExpose({ focusInstructions, focusModel });
 							{{ i18n.baseText('agents.builder.agent.model.description') }}
 						</N8nText>
 					</div>
+					<ModelPickerScenarioSwitch v-if="isModelPickerPrototype" />
 					<AgentModelPicker
-						v-if="isModelPickerPrototype"
+						v-if="isModelPickerPrototype && !showsCurrentPicker"
 						ref="modelPicker"
 						:disabled="props.disabled"
 					/>

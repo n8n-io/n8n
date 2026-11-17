@@ -9,7 +9,7 @@ import {
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
@@ -22,8 +22,6 @@ import type { ModelPickerConnection } from './modelPicker.utils';
 interface ItemData {
 	/** Shows the icon of this credential type. */
 	credentialType?: string;
-	/** Some, but not all, credentials of the provider are on. */
-	indeterminate?: boolean;
 	description?: string;
 	balance?: string;
 }
@@ -50,6 +48,33 @@ function setEnabled(connections: ModelPickerConnection[], enabled: boolean) {
 	const ids = connections.map((connection) => connection.id);
 	const others = enabledIds.value.filter((id) => !ids.includes(id));
 	enabledIds.value = enabled ? [...others, ...ids] : others;
+}
+
+/** The credential each provider used last, so that turning the provider back on restores it. */
+const lastCredentialIds = reactive(new Map<AgentModelProvider, string>());
+
+/** Turns on one credential of a provider and turns off the others. */
+function selectCredential(
+	provider: AgentModelProvider,
+	credentials: ModelPickerConnection[],
+	connection: ModelPickerConnection,
+) {
+	// One write: the model value only updates after the parent re-renders.
+	const ids = credentials.map((credential) => credential.id);
+	enabledIds.value = [...enabledIds.value.filter((id) => !ids.includes(id)), connection.id];
+	lastCredentialIds.set(provider, connection.id);
+}
+
+/** Turns a provider off, or back on with the credential it used last. */
+function toggleProvider(provider: AgentModelProvider, credentials: ModelPickerConnection[]) {
+	const enabled = credentials.find(isEnabled);
+	if (enabled) {
+		lastCredentialIds.set(provider, enabled.id);
+		setEnabled(credentials, false);
+		return;
+	}
+	const last = credentials.find((connection) => connection.id === lastCredentialIds.get(provider));
+	selectCredential(provider, credentials, last ?? credentials[0]);
 }
 
 const gateways = computed(() =>
@@ -98,24 +123,22 @@ const menu = computed(() => {
 	});
 
 	const providerItems = [...credentialsByProvider.value].map<Item>(([provider, credentials]) => {
-		const enabled = credentials.filter(isEnabled);
 		const displayName = AGENT_MODEL_PROVIDER_DEFINITIONS[provider].displayName;
 		const credentialType = getProviderCredentialTypes(provider)[0];
 
-		actions.set(`provider:${provider}`, () => setEnabled(credentials, enabled.length === 0));
+		actions.set(`provider:${provider}`, () => toggleProvider(provider, credentials));
 		actions.set(`create:${provider}`, () => emit('createCredential', provider));
 
 		return {
 			id: `provider:${provider}`,
 			label: displayName,
 			checkbox: true,
-			checked: enabled.length > 0,
-			// A click on the label turns all credentials of the provider on or off.
+			checked: credentials.some(isEnabled),
+			// A click on the label turns the provider on or off.
 			selectable: true,
 			keepOpen: true,
 			data: {
 				credentialType,
-				indeterminate: enabled.length > 0 && enabled.length < credentials.length,
 				description: i18n.baseText('agents.modelPicker.credentialCount', {
 					adjustToNumber: credentials.length,
 					interpolate: { count: String(credentials.length) },
@@ -131,11 +154,11 @@ const menu = computed(() => {
 					disabled: true,
 				},
 				...credentials.map<Item>((connection) => {
-					actions.set(connection.id, () => setEnabled([connection], !isEnabled(connection)));
+					actions.set(connection.id, () => selectCredential(provider, credentials, connection));
 					return {
 						id: connection.id,
 						label: connection.name,
-						checkbox: true,
+						// One credential per provider is on. The menu marks it with a check.
 						checked: isEnabled(connection),
 						keepOpen: true,
 						data: { credentialType },
@@ -146,6 +169,8 @@ const menu = computed(() => {
 					label: createLabel,
 					icon: { type: 'icon', value: 'plus' },
 					divided: true,
+					// The credential step takes focus, so the menu must not hand it back to its button.
+					suppressCloseAutoFocus: true,
 				},
 			],
 		};
@@ -156,7 +181,13 @@ const menu = computed(() => {
 	const items: Item[] = [
 		...gatewayItems,
 		...providerItems,
-		{ id: 'create', label: createLabel, icon: { type: 'icon', value: 'plus' }, divided: true },
+		{
+			id: 'create',
+			label: createLabel,
+			icon: { type: 'icon', value: 'plus' },
+			divided: true,
+			suppressCloseAutoFocus: true,
+		},
 	];
 	return { items, actions };
 });
@@ -200,7 +231,6 @@ function onCheckboxClick(event: MouseEvent, item: Item) {
 				>
 					<N8nCheckbox
 						:model-value="item.checked"
-						:indeterminate="item.data?.indeterminate"
 						:class="$style.passive"
 						tabindex="-1"
 						aria-hidden="true"
@@ -229,6 +259,14 @@ function onCheckboxClick(event: MouseEvent, item: Item) {
 
 		<template #item-trailing="{ item, ui }">
 			<N8nBadge v-if="item.data?.balance" :class="ui.class">{{ item.data.balance }}</N8nBadge>
+			<!-- Room for the menu's tick on unticked credentials, so the menu keeps its width when the tick moves. -->
+			<N8nIcon
+				v-else-if="item.checked === false && !item.checkbox"
+				icon="check"
+				size="large"
+				:class="[ui.class, $style.tickSpace]"
+				aria-hidden="true"
+			/>
 		</template>
 	</N8nDropdownMenu>
 </template>
@@ -244,10 +282,13 @@ function onCheckboxClick(event: MouseEvent, item: Item) {
 	display: inline-flex;
 }
 
+.tickSpace {
+	visibility: hidden;
+}
+
 .passive {
 	pointer-events: none;
 }
-
 .label {
 	display: flex;
 	flex-direction: column;

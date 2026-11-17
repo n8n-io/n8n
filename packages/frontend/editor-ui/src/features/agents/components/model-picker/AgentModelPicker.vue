@@ -8,27 +8,44 @@ import {
 	N8nButton,
 	N8nCheckbox,
 	N8nDropdownMenu,
+	N8nEmptyState,
 	N8nIcon,
 	N8nInput,
+	N8nListbox,
+	N8nListboxItem,
 	N8nText,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import sortBy from 'lodash/sortBy';
-import { computed, nextTick, reactive, ref, useTemplateRef } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	nextTick,
+	reactive,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
+
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 import {
+	AGENT_MODEL_PROVIDER_DEFINITIONS,
+	AGENT_MODEL_PROVIDERS,
 	getProviderCredentialTypes,
 	isAgentModelProvider,
 	type AgentModelProvider,
 } from '../../model-providers';
 import AgentModalMultiStep from '../modals/AgentModalMultiStep.vue';
 import ModelSelectorTriggerIcon from '../model-selector/ModelSelectorTriggerIcon.vue';
-import { FAKE_MODEL_CATALOG, FAKE_MODEL_CONNECTIONS } from './fakeModelCatalog';
+import { FAKE_MODEL_CATALOG } from './fakeModelCatalog';
+import { MODEL_PICKER_SCENARIOS, useModelPickerScenario } from './modelPickerScenarios';
 import {
 	connectionsForModel,
 	filterModels,
 	getPresets,
+	MODEL_PICKER_FEATURES,
 	pickConnection,
 	type ModelPickerConnection,
 	type ModelPickerCostFilter,
@@ -41,14 +58,15 @@ import {
 import ModelPickerList from './ModelPickerList.vue';
 import ModelPickerProviders from './ModelPickerProviders.vue';
 
+/** Loaded on first use. It brings the credential editor, which the model list does not need. */
+const ModelPickerCredentialForm = defineAsyncComponent(
+	async () => await import('./ModelPickerCredentialForm.vue'),
+);
+
 const PRESET_LABELS: Record<ModelPickerPresetId, BaseTextKey> = {
 	recommended: 'agents.modelPicker.preset.recommended',
 	cheaper: 'agents.modelPicker.preset.cheaper',
 	largestContext: 'agents.modelPicker.preset.largestContext',
-};
-const FEATURE_LABELS: Record<ModelPickerFeature, BaseTextKey> = {
-	vision: 'agents.modelPicker.feature.vision',
-	reasoning: 'agents.modelPicker.feature.reasoning',
 };
 const COST_LABELS: Record<ModelPickerCostFilter, BaseTextKey> = {
 	any: 'agents.modelPicker.cost.any',
@@ -61,13 +79,13 @@ const props = withDefaults(
 	defineProps<{
 		/** Models to offer. The fake catalog is the default until the real catalog is connected. */
 		models?: ModelPickerModel[];
-		/** Gateway credits and credentials that can pay for model calls. */
+		/** Gateway credits and credentials that can pay for model calls. The prototype scenario sets them when omitted. */
 		connections?: ModelPickerConnection[];
 		disabled?: boolean;
 	}>(),
 	{
 		models: () => FAKE_MODEL_CATALOG,
-		connections: () => FAKE_MODEL_CONNECTIONS,
+		connections: undefined,
 		disabled: false,
 	},
 );
@@ -75,20 +93,39 @@ const props = withDefaults(
 /** The model and the connection that pays for it. Kept in the picker when the host does not bind it. */
 const selection = defineModel<ModelPickerSelection | null>('selection', { default: null });
 
-const emit = defineEmits<{
-	createCredential: [provider?: AgentModelProvider];
-}>();
-
 const i18n = useI18n();
 const searchInput = useTemplateRef('searchInput');
+const credentialForm = useTemplateRef('credentialForm');
 
 const open = ref(false);
-const step = ref<'select' | 'list'>('select');
-const enabledConnectionIds = ref(props.connections.map((connection) => connection.id));
+const step = ref<'select' | 'list' | 'credential'>('select');
+
+const { scenario, skipKeyCheck } = useModelPickerScenario();
+const startConnections = computed(
+	() => props.connections ?? MODEL_PICKER_SCENARIOS[scenario.value].connections,
+);
+
+/** Credentials created in the picker. The fake connections do not come from the server, so the picker keeps them. */
+const createdConnections = ref<ModelPickerConnection[]>([]);
+const allConnections = computed(() => [...startConnections.value, ...createdConnections.value]);
+
+/** All gateways, and the first credential of each provider. A provider uses one credential at a time. */
+function defaultEnabledIds(list: ModelPickerConnection[]): string[] {
+	return list
+		.filter(
+			(connection, index, all) =>
+				connection.kind !== 'credential' ||
+				all.findIndex(
+					(other) => other.kind === 'credential' && other.providers[0] === connection.providers[0],
+				) === index,
+		)
+		.map((connection) => connection.id);
+}
+const enabledConnectionIds = ref(defaultEnabledIds(startConnections.value));
 const filters = reactive<ModelPickerFilters>({ search: '', features: [], cost: 'any' });
 
 const enabledConnections = computed(() =>
-	props.connections.filter((connection) => enabledConnectionIds.value.includes(connection.id)),
+	allConnections.value.filter((connection) => enabledConnectionIds.value.includes(connection.id)),
 );
 const availableModels = computed(() =>
 	props.models.filter((model) => connectionsForModel(model, enabledConnections.value).length > 0),
@@ -100,6 +137,21 @@ const presetRows = computed(() =>
 		presetLabel: i18n.baseText(PRESET_LABELS[id]),
 	})),
 );
+
+/**
+ * The first page: the selected model first when it is not a suggestion, so the
+ * active model is always in view, then the suggestions.
+ */
+const suggestionRows = computed(() => {
+	const model = selectedModel.value;
+	if (!model || presetRows.value.some((row) => row.model.id === model.id)) {
+		return presetRows.value;
+	}
+	return [
+		{ model, presetLabel: i18n.baseText('agents.modelPicker.preset.selected') },
+		...presetRows.value,
+	];
+});
 
 /** The filtered list, with the suggested models first, in the order of the suggestions. */
 const allRows = computed(() => {
@@ -123,28 +175,45 @@ const selectedModel = computed(() =>
 	props.models.find((model) => model.id === selection.value?.modelId),
 );
 const selectedConnection = computed(() =>
-	props.connections.find((connection) => connection.id === selection.value?.connectionId),
+	allConnections.value.find((connection) => connection.id === selection.value?.connectionId),
 );
 const triggerIconCredentialType = computed(() => {
 	const lab = selectedModel.value?.lab;
 	return lab && isAgentModelProvider(lab) ? getProviderCredentialTypes(lab)[0] : null;
 });
 
-/** Connections that can serve the selected model. */
+const CREATE_CONNECTION_ID = 'create';
+
+/** Every provider, with the ones that serve the selected model first. */
+const createProviders = computed(() => {
+	const serving = selectedModel.value?.providers ?? [];
+	return [...serving, ...AGENT_MODEL_PROVIDERS.filter((provider) => !serving.includes(provider))];
+});
+
+/** Connections that can serve the selected model, then a way to add a credential. */
 const connectionItems = computed<DropdownMenuItemProps[]>(() =>
 	selectedModel.value
-		? connectionsForModel(selectedModel.value, enabledConnections.value).map((connection) => ({
-				id: connection.id,
-				label: connection.name,
-				checked: connection.id === selection.value?.connectionId,
-			}))
+		? [
+				...connectionsForModel(selectedModel.value, enabledConnections.value).map((connection) => ({
+					id: connection.id,
+					label: connection.name,
+					checked: connection.id === selection.value?.connectionId,
+				})),
+				{
+					id: CREATE_CONNECTION_ID,
+					label: i18n.baseText('agents.modelSelector.configureCredentials'),
+					icon: { type: 'icon', value: 'plus' },
+					divided: true,
+					suppressCloseAutoFocus: true,
+				},
+			]
 		: [],
 );
 
-const featureItems = computed<Array<DropdownMenuItemProps<ModelPickerFeature>>>(() =>
-	(['vision', 'reasoning'] as const).map((feature) => ({
+const featureItems = computed<DropdownMenuItemProps[]>(() =>
+	(Object.keys(MODEL_PICKER_FEATURES) as ModelPickerFeature[]).map((feature) => ({
 		id: feature,
-		label: i18n.baseText(FEATURE_LABELS[feature]),
+		label: i18n.baseText(MODEL_PICKER_FEATURES[feature].labelKey),
 		checkbox: true,
 		checked: filters.features.includes(feature),
 		keepOpen: true,
@@ -161,6 +230,7 @@ const costItems = computed<Array<DropdownMenuItemProps<ModelPickerCostFilter>>>(
 
 function openPicker() {
 	if (props.disabled) return;
+	credentialFlow.value = null;
 	step.value = 'select';
 	open.value = true;
 }
@@ -181,14 +251,182 @@ function selectModel(modelId: string) {
 }
 
 function selectConnection(connectionId: string) {
+	if (connectionId === CREATE_CONNECTION_ID) {
+		startCredential(createProviders.value, null);
+		return;
+	}
 	if (selection.value) selection.value = { ...selection.value, connectionId };
 }
 
-function toggleFeature(feature: ModelPickerFeature) {
+/** Shows the whole list again. */
+function clearFilters() {
+	filters.search = '';
+	filters.features = [];
+	filters.cost = 'any';
+	searchInput.value?.focus();
+}
+
+function toggleFeature(id: string) {
+	if (!(id in MODEL_PICKER_FEATURES)) return;
+	const feature = id as ModelPickerFeature;
 	filters.features = filters.features.includes(feature)
 		? filters.features.filter((candidate) => candidate !== feature)
 		: [...filters.features, feature];
 }
+
+/**
+ * Creating a credential: the providers to choose from, the chosen one, and the
+ * step to return to. No return step means the flow started outside the dialog,
+ * so saving closes it.
+ */
+const credentialFlow = ref<{
+	providers: AgentModelProvider[];
+	provider?: AgentModelProvider;
+	returnStep: 'select' | 'list' | null;
+} | null>(null);
+
+const credentialProvider = computed(() => credentialFlow.value?.provider);
+
+/** Narrows the provider choice by name. */
+const providerSearch = ref('');
+const providerSearchInput = useTemplateRef('providerSearchInput');
+const providerChoices = computed(() => {
+	const query = providerSearch.value.trim().toLowerCase();
+	const providers = credentialFlow.value?.providers ?? [];
+	if (!query) return providers;
+	return providers.filter((provider) =>
+		AGENT_MODEL_PROVIDER_DEFINITIONS[provider].displayName.toLowerCase().includes(query),
+	);
+});
+
+/** The search takes focus whenever the provider choice appears, so typing filters at once. */
+async function focusProviderSearch() {
+	providerSearch.value = '';
+	await nextTick();
+	providerSearchInput.value?.focus();
+}
+
+/** Enter in the search picks the first match. */
+function chooseFirstProvider() {
+	const [first] = providerChoices.value;
+	if (first) chooseCredentialProvider(first);
+}
+
+function startCredential(
+	providers: readonly AgentModelProvider[],
+	returnStep: 'select' | 'list' | null,
+) {
+	const choices = providers.length > 0 ? [...providers] : [...AGENT_MODEL_PROVIDERS];
+	credentialFlow.value = {
+		providers: choices,
+		provider: choices.length === 1 ? choices[0] : undefined,
+		returnStep,
+	};
+	step.value = 'credential';
+	open.value = true;
+	if (!credentialFlow.value.provider) void focusProviderSearch();
+}
+
+/** Starts from the Providers menu, which can open on either step. */
+function onProvidersCreate(provider?: AgentModelProvider) {
+	if (step.value === 'credential') return;
+	startCredential(provider ? [provider] : [], step.value);
+}
+
+function chooseCredentialProvider(provider: string | undefined) {
+	const flow = credentialFlow.value;
+	if (flow && provider && isAgentModelProvider(provider)) flow.provider = provider;
+}
+
+const canGoBack = computed(() => {
+	if (step.value === 'list') return true;
+	const flow = credentialFlow.value;
+	if (step.value !== 'credential' || !flow) return false;
+	return Boolean(flow.returnStep) || (Boolean(flow.provider) && flow.providers.length > 1);
+});
+
+function goBack() {
+	const flow = credentialFlow.value;
+	if (step.value !== 'credential' || !flow) {
+		step.value = 'select';
+		return;
+	}
+	if (flow.provider && flow.providers.length > 1) {
+		flow.provider = undefined;
+		void focusProviderSearch();
+		return;
+	}
+	step.value = flow.returnStep ?? 'select';
+	credentialFlow.value = null;
+}
+
+const credentialTitle = computed(() =>
+	credentialProvider.value
+		? i18n.baseText('agents.modelSelector.connectTo', {
+				interpolate: {
+					provider: AGENT_MODEL_PROVIDER_DEFINITIONS[credentialProvider.value].displayName,
+				},
+			})
+		: i18n.baseText('agents.modelSelector.configureCredentials'),
+);
+
+/** Adds the new credential, makes it the one its provider uses, and selects it when it serves the model. */
+function onCredentialCreated(credential: ICredentialsResponse) {
+	const flow = credentialFlow.value;
+	const provider = flow?.provider;
+	if (!flow || !provider) return;
+
+	const connection: ModelPickerConnection = {
+		id: credential.id,
+		name: credential.name,
+		kind: 'credential',
+		providers: [provider],
+	};
+	createdConnections.value = [...createdConnections.value, connection];
+	const sameProvider = allConnections.value
+		.filter((other) => other.kind === 'credential' && other.providers[0] === provider)
+		.map((other) => other.id);
+	enabledConnectionIds.value = [
+		...enabledConnectionIds.value.filter((id) => !sameProvider.includes(id)),
+		connection.id,
+	];
+
+	const model = selectedModel.value;
+	const servesModel = model?.providers.includes(provider);
+	const selectionOff = !enabledConnectionIds.value.includes(selection.value?.connectionId ?? '');
+	if (model && servesModel && (flow.returnStep === null || selectionOff)) {
+		selection.value = { modelId: model.id, connectionId: connection.id };
+	}
+
+	credentialFlow.value = null;
+	if (flow.returnStep) step.value = flow.returnStep;
+	else open.value = false;
+}
+
+/** A new scenario starts the walkthrough again: nothing created, nothing selected. */
+watch(startConnections, (list) => {
+	open.value = false;
+	step.value = 'select';
+	credentialFlow.value = null;
+	createdConnections.value = [];
+	enabledConnectionIds.value = defaultEnabledIds(list);
+	selection.value = null;
+	selectRecommended();
+});
+
+/**
+ * With providers connected, the agent starts on the recommended model, like the
+ * product's default when a credential can run it. With none, it stays a draft.
+ */
+function selectRecommended() {
+	if (selection.value) return;
+	const recommended = getPresets(availableModels.value).find(({ id }) => id === 'recommended');
+	const connection = recommended && pickConnection(recommended.model, enabledConnections.value);
+	if (recommended && connection) {
+		selection.value = { modelId: recommended.model.id, connectionId: connection.id };
+	}
+}
+selectRecommended();
 
 defineExpose({ open: openPicker });
 </script>
@@ -232,6 +470,16 @@ defineExpose({ open: openPicker });
 						{{ selectedConnection.name }}
 					</N8nBadge>
 				</template>
+				<template #item-trailing="{ item, ui }">
+					<!-- Room for the menu's tick on unticked rows, so the menu keeps its width when the tick moves. -->
+					<N8nIcon
+						v-if="item.checked === false"
+						icon="check"
+						size="large"
+						:class="[ui.class, $style.tickSpace]"
+						aria-hidden="true"
+					/>
+				</template>
 			</N8nDropdownMenu>
 
 			<N8nIcon icon="arrow-right" size="small" :class="$style.arrow" />
@@ -240,51 +488,139 @@ defineExpose({ open: openPicker });
 		<AgentModalMultiStep
 			:open="open"
 			:step="step"
-			:title="i18n.baseText('agents.builder.agent.model.label')"
-			:show-back="step === 'list'"
-			:show-footer="false"
+			:title="
+				step === 'credential' ? credentialTitle : i18n.baseText('agents.builder.agent.model.label')
+			"
+			:show-back="canGoBack"
+			:show-footer="step === 'credential' && Boolean(credentialProvider)"
+			:busy="credentialForm?.isSaving ?? false"
 			data-testid="agent-model-picker-modal"
 			@update:open="open = $event"
-			@back="step = 'select'"
+			@back="goBack"
 		>
-			<template #headerActions>
-				<ModelPickerProviders
-					v-model="enabledConnectionIds"
-					:connections="props.connections"
-					@create-credential="emit('createCredential', $event)"
+			<template v-if="step === 'credential' && credentialProvider" #titlePrefix>
+				<ModelSelectorTriggerIcon
+					:credential-type-name="getProviderCredentialTypes(credentialProvider)[0]"
 				/>
 			</template>
 
+			<template #headerActions>
+				<!--
+					Hidden, not removed, on the credential step. The dialog's focus trap
+					remembers this button while its menu is open. If the button left the
+					page, the trap would pull focus out of the provider search.
+				-->
+				<span v-show="step !== 'credential'" :class="$style.providersAction">
+					<ModelPickerProviders
+						v-model="enabledConnectionIds"
+						:connections="allConnections"
+						@create-credential="onProvidersCreate"
+					/>
+				</span>
+			</template>
+
+			<div v-if="step === 'credential' && credentialFlow" :class="$style.credentialStep">
+				<ModelPickerCredentialForm
+					v-if="credentialFlow.provider"
+					ref="credentialForm"
+					:key="credentialFlow.provider"
+					:check-key="!skipKeyCheck"
+					:provider="credentialFlow.provider"
+					@created="onCredentialCreated"
+				/>
+				<div v-else :class="$style.providerChoice">
+					<N8nInput
+						ref="providerSearchInput"
+						v-model="providerSearch"
+						:placeholder="i18n.baseText('agents.modelPicker.credential.searchProviders')"
+						clearable
+						data-testid="agent-model-picker-provider-search"
+						@keydown.enter.prevent="chooseFirstProvider"
+					>
+						<template #prefix><N8nIcon icon="search" /></template>
+					</N8nInput>
+					<N8nListbox
+						v-if="providerChoices.length > 0"
+						:label="i18n.baseText('agents.modelPicker.credential.chooseProvider')"
+						@update:model-value="chooseCredentialProvider"
+					>
+						<N8nListboxItem
+							v-for="provider in providerChoices"
+							:key="provider"
+							:value="provider"
+							:data-testid="`agent-model-picker-credential-provider-${provider}`"
+						>
+							<template #leading>
+								<ModelSelectorTriggerIcon
+									:credential-type-name="getProviderCredentialTypes(provider)[0]"
+								/>
+							</template>
+							<N8nText size="medium" color="text-dark">
+								{{ AGENT_MODEL_PROVIDER_DEFINITIONS[provider].displayName }}
+							</N8nText>
+							<template #trailing>
+								<N8nIcon icon="chevron-right" size="small" color="text-light" />
+							</template>
+						</N8nListboxItem>
+					</N8nListbox>
+					<N8nEmptyState
+						v-else
+						:icon="{ type: 'icon', value: 'search' }"
+						:heading="i18n.baseText('agents.modelPicker.credential.noProviders')"
+						:description="i18n.baseText('agents.modelPicker.credential.noProvidersHint')"
+						:class="$style.emptyState"
+					/>
+				</div>
+			</div>
+
 			<!-- Both steps stay mounted, so Back keeps the search, the filters, and the scroll position. -->
 			<div v-show="step === 'select'" :class="$style.step">
+				<N8nEmptyState
+					v-if="allConnections.length === 0"
+					:icon="{ type: 'icon', value: 'key-round' }"
+					:heading="i18n.baseText('agents.modelPicker.empty.heading')"
+					:description="i18n.baseText('agents.modelPicker.empty.description')"
+					:button-text="i18n.baseText('agents.modelSelector.configureCredentials')"
+					button-icon="plus"
+					:class="$style.emptyState"
+					data-testid="agent-model-picker-empty"
+					@click:button="startCredential([], 'select')"
+				/>
 				<ModelPickerList
-					v-if="presetRows.length > 0"
+					v-else-if="suggestionRows.length > 0"
 					variant="presets"
-					:rows="presetRows"
+					:rows="suggestionRows"
 					:label="i18n.baseText('agents.modelPicker.suggested')"
 					:selected-model-id="selection?.modelId"
 					:maxima="maxima"
 					@select="selectModel"
 				/>
-				<N8nText v-else size="small" color="text-light" :class="$style.empty">
-					{{ i18n.baseText('agents.modelPicker.noProviders') }}
-				</N8nText>
-				<N8nButton
-					variant="ghost"
-					:class="$style.allModels"
-					:disabled="availableModels.length === 0"
-					data-agent-modal-autofocus
-					data-testid="agent-model-picker-show-all"
-					@click="showAllModels"
-				>
-					{{
-						i18n.baseText('agents.modelPicker.allModels', {
-							adjustToNumber: availableModels.length,
-							interpolate: { count: String(availableModels.length) },
-						})
-					}}
-					<N8nIcon icon="arrow-right" size="small" />
-				</N8nButton>
+				<N8nEmptyState
+					v-else
+					:icon="{ type: 'icon', value: 'key-round' }"
+					:heading="i18n.baseText('agents.modelPicker.noProviders.heading')"
+					:description="i18n.baseText('agents.modelPicker.noProviders.description')"
+					:class="$style.emptyState"
+					data-testid="agent-model-picker-no-providers"
+				/>
+				<div v-if="allConnections.length > 0" :class="$style.allModelsRow">
+					<N8nButton
+						variant="ghost"
+						:class="$style.allModels"
+						:disabled="availableModels.length === 0"
+						data-agent-modal-autofocus
+						data-testid="agent-model-picker-show-all"
+						@click="showAllModels"
+					>
+						{{
+							i18n.baseText('agents.modelPicker.allModels', {
+								adjustToNumber: availableModels.length,
+								interpolate: { count: String(availableModels.length) },
+							})
+						}}
+						<N8nIcon icon="arrow-right" size="small" />
+					</N8nButton>
+				</div>
 			</div>
 
 			<div v-show="step === 'list'" :class="[$style.step, $style.listStep]">
@@ -352,19 +688,40 @@ defineExpose({ open: openPicker });
 						:label="i18n.baseText('agents.modelPicker.allModelsLabel')"
 						:selected-model-id="selection?.modelId"
 						:maxima="maxima"
+						:page-size="100"
 						@select="selectModel"
 					/>
-					<N8nText v-else size="small" color="text-light" :class="$style.empty">
-						{{
-							i18n.baseText(
-								availableModels.length > 0
-									? 'agents.modelSelector.noMatch'
-									: 'agents.modelPicker.noProviders',
-							)
-						}}
-					</N8nText>
+					<N8nEmptyState
+						v-else-if="availableModels.length > 0"
+						:icon="{ type: 'icon', value: 'search' }"
+						:heading="i18n.baseText('agents.modelPicker.noMatch.heading')"
+						:description="i18n.baseText('agents.modelPicker.noMatch.description')"
+						:button-text="i18n.baseText('agents.modelPicker.noMatch.clear')"
+						button-variant="outline"
+						:class="$style.emptyState"
+						data-testid="agent-model-picker-no-match"
+						@click:button="clearFilters"
+					/>
+					<N8nEmptyState
+						v-else
+						:icon="{ type: 'icon', value: 'key-round' }"
+						:heading="i18n.baseText('agents.modelPicker.noProviders.heading')"
+						:description="i18n.baseText('agents.modelPicker.noProviders.description')"
+						:class="$style.emptyState"
+					/>
 				</div>
 			</div>
+
+			<template v-if="step === 'credential' && credentialProvider" #footerActions>
+				<N8nButton
+					variant="solid"
+					:loading="credentialForm?.isSaving ?? false"
+					data-testid="agent-model-picker-credential-save"
+					@click="credentialForm?.save()"
+				>
+					{{ i18n.baseText('generic.save') }}
+				</N8nButton>
+			</template>
 		</AgentModalMultiStep>
 	</div>
 </template>
@@ -372,6 +729,29 @@ defineExpose({ open: openPicker });
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/focus';
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
+
+/* The credential step sits in the same dialog as the model list. */
+.tickSpace {
+	visibility: hidden;
+}
+
+.providersAction {
+	display: inline-flex;
+}
+
+.providerChoice {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	/* The same height as the model steps, so the dialog does not shrink while the search filters. */
+	min-height: min(60dvh, calc(var(--height--5xl) * 5));
+}
+
+.credentialStep {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
 
 /* The dialog is a sibling of the trigger. The wrapper must not change the host layout. */
 .root {
@@ -460,6 +840,19 @@ defineExpose({ open: openPicker });
 	height: min(60dvh, calc(var(--height--5xl) * 5));
 }
 
+/* The empty state fills the first page, centred like the other empty pages. */
+.emptyState {
+	flex: 1;
+	justify-content: center;
+	padding: var(--spacing--xl) 0;
+}
+
+/* A subtle divider sets the full list apart from the suggestions. The step gap is the space above it. */
+.allModelsRow {
+	padding-top: var(--spacing--2xs);
+	border-top: var(--border-width) var(--border-style) var(--border-color--subtle);
+}
+
 .allModels {
 	justify-content: space-between;
 	width: 100%;
@@ -487,10 +880,5 @@ defineExpose({ open: openPicker });
 
 .passive {
 	pointer-events: none;
-}
-
-.empty {
-	padding: var(--spacing--xl) 0;
-	text-align: center;
 }
 </style>
