@@ -315,6 +315,27 @@ function resolveUrl(base: string, location: string): string {
 	return parts.join('/');
 }
 
+/**
+ * The headers with the `accept` header that the v1 node (version 3 and later) adds for the
+ * response format, when the request has none.
+ */
+function withAccept(
+	headers: Record<string, string>,
+	options: ResponseOptions,
+	version: number,
+): Record<string, string> {
+	if (version < 3) return headers;
+	if (Object.keys(headers).some((name) => name.toLowerCase() === 'accept')) return headers;
+	const format = options.responseFormat;
+	const accept =
+		format === 'json'
+			? 'application/json,text/*;q=0.99'
+			: format === 'text'
+				? 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1'
+				: 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+	return { ...headers, accept };
+}
+
 /** The scheme, the host and the port of a URL, in lower case. */
 function originOf(url: string): string {
 	const scheme = url.indexOf('://');
@@ -535,7 +556,7 @@ export default defineNode<HttpRequestParameters>({
 			const pageResponse = await ctx.http<unknown>({
 				method,
 				url,
-				headers: textValues(headers),
+				headers: withAccept(textValues(headers), options, version),
 				qs: query,
 				body,
 				credential,
@@ -568,7 +589,8 @@ export default defineNode<HttpRequestParameters>({
 			}
 			return [pageItem];
 		}
-		const sent = requestParts(parameters);
+		const parts = requestParts(parameters);
+		const sent = { ...parts, headers: withAccept(parts.headers, options, version) };
 		let response: HttpResponse<unknown>;
 		try {
 			response = await ctx.http<unknown>({

@@ -12,7 +12,9 @@
 			"args": {
 				"method": "GET",
 				"url": "https://api.github.com/repos/n8n-io/n8n/issues",
-				"headers": {},
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
 				"qs": {
 					"state": "open"
 				},
@@ -60,7 +62,9 @@
 			"args": {
 				"method": "GET",
 				"url": "https://status.example.com",
-				"headers": {},
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
 				"qs": {},
 				"allowedDomains": true
 			}

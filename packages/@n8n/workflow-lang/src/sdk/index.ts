@@ -47,6 +47,10 @@ export interface WebhookEvent<TBody> {
 	path?: string;
 	/** Files of the request, by binary property name. */
 	$binary?: Record<string, BinaryProperty>;
+	/** A manual run of n8n: the `webhookUrl` of the trigger item, or an empty text for none. */
+	webhookUrl?: string;
+	/** A manual run of n8n: `test`, or the `executionMode` of the trigger item, or an empty text. */
+	executionMode?: string;
 }
 
 export type ScheduleUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';

@@ -69,8 +69,9 @@ N8N_URL=http://localhost:5678 node packages/cli/scripts/compiled-engine-node-com
 ```
 
 A node ran compiled from its source when the compile response has the diagnostic `node-compiled` for it. The place
-`native` in the response does not tell a compiled node from a library node. A request of `wfrt` has the user agent
-`n8n-wfrt`.
+`native` in the response does not tell a compiled node from a library node.
+
+State on 2026-11-17, second pass: 16 cases, 15 equal to v1, 1 open (case o).
 
 | Case | Runs as | Result |
 |---|---|---|
@@ -79,8 +80,17 @@ A node ran compiled from its source when the compile response has the diagnostic
 | c. The same, `postId` as an expression, three items | compiled from source | Equal to v1: three requests |
 | d. The same, `onError: continueRegularOutput`, the stub answers 400 | compiled from source | Equal to v1 |
 | e. Crypto (no compiled form) | fallback host | Equal to v1 |
-| f. Manual run of the workflow of b | compiled from source | Equal to v1 in 10 of 13 runs: see "Open" |
+| f. Manual run of the workflow of b | compiled from source | Equal to v1 (25 of 25 runs) |
 | g. HTTP Request, OAuth2 client credentials, the stub answers 401 one time | library node | Equal to v1: 401, one token request, one resend |
+| h. HTTP Request, credential that allows no domain | library node | Equal to v1: the message of n8n, no request |
+| i. The item of the Webhook trigger | module code | Equal to v1: `headers.host`, `webhookUrl`, `executionMode` |
+| j. Discourse `post.get`, the stub answers 400, the node stops the workflow | compiled from source | Equal to v1: status 500, `{"message":"Error in workflow"}` |
+| k. HTTP Request, allowed domains with the host of the request | library node | Equal to v1: one request |
+| l. HTTP Request, allowed domains without the host of the request | library node | Equal to v1: the error item of n8n, no request |
+| m. HTTP Request, allowed domains, redirect to a host that is not in the list | library node | Equal to v1: one request, then the error of the redirect (v1 adds a stack) |
+| n. HTTP Request 4.4, redirect to another host, credential in the `Authorization` header | library node | Equal to v1: the second request has no `Authorization` header |
+| o. The same with node version 4.2 | library node | Open: see below |
+| p. HTTP Request without a credential | library node | Equal to v1: `user-agent: n8n`, the `accept` header of the response format |
 
 Closed by this check:
 
@@ -90,14 +100,25 @@ Closed by this check:
 | With the node compiler on, a workflow with a node to compile did not compile (`Cannot read properties of undefined`): the search for the file of a node class called the getters of all loaded modules | The search reads data properties only (`findExportingFile`, unit test) |
 | No node with a credential ran compiled in n8n. n8n adds the field `allowedHttpRequestDomains` to each credential type that authenticates. Its default `all` was a credential class that the verified list does not have | The value `all` is not a class. Another value is a class, so the node runs in the fallback host (unit test) |
 | An OAuth2 client-credentials credential without a token failed (`has no value at "oauthTokenData.access_token"`). v1 gets the first token at the first request | n8n gets the first token when it builds the credentials document (unit test) |
+| The compiled HTTP Request node did not apply the allowed domains of its credential | The credentials document has the setting of each slot (`allowedDomains`). The runtime applies it to each request that has the member `allowedDomains: true` (`request.zig`, `domains.zig`), with the matching rules and the messages of n8n. The library HTTP Request node sets the member. With a list of domains, a redirect goes back to the node, so each URL is checked. Tests: `domains.zig` (each rule), `request.zig`, the credentials test of the n8n module, cases h, k, l, m |
+| After a redirect to another origin, the library HTTP Request node sent the credential again | From node version 4.4 the request to another origin has no authentication, as in v1 (`sendCredentialsOnCrossOriginRedirect` is false by default). Case n |
+| A manual run could lose the run data of a node: n8n handled the `finished` event before earlier node events of the same execution. The events with and without an outbox position were in two chains (`CompiledEngineService.acceptEvent`) | Each event also waits for the earlier events of its execution (unit test, case f) |
+| The item of the Webhook trigger had no `webhookUrl` and no `executionMode`, and `headers.host` was the address of `wfrt` | The converter adds the two fields when it knows the webhook URLs of n8n (`ConvertOptions.webhookUrls`). The forwarder sends the request with `node:http`, which keeps `host` and the place of `connection` (unit tests, case i) |
+| The body of the 500 response of a failed production webhook run had the fields of the node error | `wfrt` answers `{"message":"Error in workflow"}` to the caller of a webhook (`reply_failed`). The reason goes to n8n with the `finished` event (case j) |
+| `user-agent: n8n-wfrt` | The default is `n8n`, as the default of n8n. The library HTTP Request node (version 3 and later) sends the `accept` header of the v1 node for the response format (case p) |
+| A version that did not compile was published: the workflow was active and its webhook answered 404 from `wfrt` | The publication and the activation ask the compiled engine first. A version that does not compile gets no trigger, and the publication fails with the reason, as for a version that n8n cannot load (unit test of the applier) |
+| A fallback host worker could leave a step without an answer when the path to the step handler failed | An error on that path, a rejection of the handler promise, and a failed service call that the node did not wait for end that step with the error. The worker goes on (unit and e2e tests of the host) |
 
 Open, found by this check:
 
 | Difference | Source | What closes it |
 |---|---|---|
-| The compiled HTTP Request node does not read `allowedHttpRequestDomains` and `allowedDomains` of its credential. With the value `none`, v1 refuses the request, and the compiled engine sends it with the credential (case h) | `getCredentialAllowedDomains` in the v1 node (`HttpRequest/GenericFunctions.ts`) and in `routing-node.ts`; the converter has no code for the fields | The converter writes the check into the module, or keeps such a node in the fallback host |
-| A manual run can lose the run data of a node that is not a leaf. The `finished` event (outbox) can come before the `step` and `trace` events (ring) of the same execution. `CompiledEngineDispatcher.finish` saves the execution at `finished` and ignores later events (case f, 3 of 13 runs) | `compiled-engine.dispatcher.ts`, `finish` and `apply` | `wfrt` sends `finished` after the ring events of the execution, or `finished` names the last trace and the dispatcher waits for it |
-| The item of the Webhook trigger has no `webhookUrl` and no `executionMode`, and `headers.host` is the address of `wfrt` (case i). The fetch call of the forwarder cannot set `host` | `Webhook/utils.ts` (v1); `compiled-webhook.forwarder.ts` | The runtime adds the two fields; the forwarder sends the host in a header that `wfrt` reads |
-| When a node fails in a production webhook run, the body of the 500 response has the name, the message, the HTTP code and the description of the node error. v1 answers `{"message":"Error in workflow"}` (case j) | `wfrt` webhook response | The response of v1 |
-| A request of a compiled node has other transport headers: `user-agent: n8n-wfrt` (v1: `n8n`), `accept: application/json,text/*;q=0.9,*/*;q=0.8` (v1: `application/json`), `accept-encoding: identity`, no `connection: close` | stub recordings of case b | Decide; the `accept` header can change the answer of an API |
-| When the publish compile fails, `POST /workflows/:id/activate` succeeds and the workflow is active, but `wfrt` has no route: the webhook answers 404 `no route`. Seen one time, with the compile error of the second closed row | `workflow-publication-applier.ts`, `apply` returns `failed` after the publish | Run the workflow on v1, or refuse the publish with the compile error |
+| Before node version 4.4, the v1 HTTP Request node sends the `Authorization` header to another origin after a redirect. The runtime removes it for a GET or HEAD request (case o). The node option `sendCredentialsOnCrossOriginRedirect` is not read | `egress.zig` `redirect`; `HttpRequestV3.node.ts` | The library node sends each redirect itself and reads the option |
+| On a redirect to another origin without authentication, the library node also leaves out a header or a query parameter that the credential adds under another name. v1 removes only `Authorization`, `Proxy-Authorization`, `Cookie` and the basic auth | `http-request.ts` (`inject: false`) | Decide: the compiled form sends less |
+| The allowed domains are applied for the library HTTP Request node only. The GraphQL node and nodes with a declarative description run in the fallback host or compiled from source; with a value other than `all` a node that would compile from its source runs in the fallback host, with the code of v1 (not checked in this run) | this work | A compiled form of `getCredentialAllowedDomains` with `credentialOwnedSurface` |
+| The message of a refused host has at most 96 bytes of the host and 280 bytes of the list | `request.zig` | A longer message buffer |
+| A request of a node that is compiled from its source has `accept: application/json,text/*;q=0.9,*/*;q=0.8`. v1 sends `application/json` for a request with `json: true`, else `*/*`. `accept-encoding` is `identity`, and there is no `connection: close` | stub recordings of case b | The node compiler writes the `accept` header from the `json` option of the request |
+| The user agent settings of n8n (`N8N_ENFORCE_GLOBAL_USER_AGENT`, `N8N_GLOBAL_USER_AGENT_VALUE`) are not passed to `wfrt` | `user-agent.ts` of n8n | A start option of `wfrt` |
+| The item of the Webhook trigger has no `jwtPayload` (JWT authentication of the Webhook node) | `Webhook/utils.ts` | The runtime gives the payload |
+| The fault of the benchmark run (a host worker with `Unhandled rejection ... Unknown service "credentials"`) was not reproduced: each call of the service in the host and in n8n-core is awaited. The defences of the last closed row are in place | `step-worker.ts`, `service-calls.ts` | The log of the benchmark machine with the node type of the step |
+| No end-to-end case has a workflow that does not compile: the converter gave no compile error for the workflows that were tried | this work | A workflow that the converter refuses |

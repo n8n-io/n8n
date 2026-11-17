@@ -1267,8 +1267,14 @@ pub const Runner = struct {
     /// A reply action: JSON or binary body, with the headers of ctx.respond.
     /// The header lines and a decoded binary body are built in the free
     /// part of the batch arena and copied to the connection buffer.
+    /// The body that n8n sends when a run that a webhook started fails.
+    const webhook_failed_body = "{\"message\":\"Error in workflow\"}";
+
     fn replyFromCore(r: *Runner, idx: u32, a: core.Action) void {
         std.debug.assert(r.in_perform);
+        // A run that failed: the caller of a webhook gets the answer of n8n. The reason
+        // goes to n8n with the `finished` event, not to the caller.
+        if (a.seq & core.reply_failed != 0) return r.replyRaw(idx, 500, webhook_failed_body);
         var fba = r.batchFba();
         const scratch = fba.allocator();
         var body = a.payload;

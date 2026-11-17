@@ -191,7 +191,15 @@ export class CompiledEngineSync {
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			settings: workflowData.settings,
+			webhookUrls: this.webhookUrls(),
 		});
+	}
+
+	/** The URLs of n8n for production and test webhooks, as the Webhook node of v1 gets them. */
+	private webhookUrls() {
+		const base = this.urlService.getWebhookBaseUrl().replace(/\/$/, '');
+		const { webhook, webhookTest } = this.globalConfig.endpoints;
+		return { production: `${base}/${webhook}`, test: `${base}/${webhookTest}` };
 	}
 
 	/**

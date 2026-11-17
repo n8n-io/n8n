@@ -35,6 +35,11 @@ export interface CompileInput {
 	settings?: IWorkflowSettings | null;
 	/** The trigger node to start from, by name. The default is the converter's choice. */
 	trigger?: string;
+	/**
+	 * The URLs of n8n for production and test webhooks, without a slash at the end. The item
+	 * of a Webhook trigger gets its `webhookUrl` from them, as the item of the v1 node.
+	 */
+	webhookUrls?: { production: string; test: string };
 }
 
 interface StepInfo {
@@ -281,6 +286,7 @@ export class CompiledWorkflowCompiler {
 			.update(JSON.stringify([...subWorkflows.entries()]))
 			.update(getGlobalState().defaultTimezone)
 			.update(input.trigger ?? '')
+			.update(JSON.stringify(input.webhookUrls ?? null))
 			// A module holds the public fields of its credentials: other fields give another module.
 			.update(JSON.stringify([this.compileNodes, ...publicCredentials.entries()]))
 			// A node that stores a response compiles only when `wfrt` has the file store.
@@ -363,6 +369,7 @@ export class CompiledWorkflowCompiler {
 			// n8n runs every trigger that `wfrt` does not run itself (`n8nTriggerNodeIds`).
 			hostTriggers: true,
 			...(input.trigger === undefined ? {} : { trigger: input.trigger }),
+			...(input.webhookUrls === undefined ? {} : { webhookUrls: input.webhookUrls }),
 			resolveWorkflow: (id: string) => subWorkflows.get(id),
 			timezone: getGlobalState().defaultTimezone,
 			instance: {

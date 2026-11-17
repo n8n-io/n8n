@@ -266,7 +266,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
     if (fa.basic_auth) |raw| {
         if (!eq(raw, "null")) try requestBasicAuth(raw, slot, &out, diag);
     }
-    if (!have.ua) try out.put("user-agent: n8n-wfrt\r\n");
+    if (!have.ua) try out.put("user-agent: n8n\r\n");
     if (!have.accept) try out.put("accept: application/json,text/*;q=0.9,*/*;q=0.8\r\n");
     // The runtime does not decompress, so it asks for identity.
     try out.put("accept-encoding: identity\r\n");
@@ -1292,7 +1292,7 @@ test "binary body: base64, the file store, multipart, and a retry in a larger bu
     try std.testing.expect(std.mem.indexOf(u8, buf[b.url_len..b.hdr_end], "content-length: 12\r\n") != null);
 
     // Too large for a small buffer: NoSpace, so egress builds it again in a large one.
-    var small: [160]u8 = undefined;
+    var small: [152]u8 = undefined;
     try std.testing.expectError(error.NoSpace, build(stored, null, null, &small, &diag));
     // A missing file and an id outside the store fail with a reason.
     try std.testing.expectError(error.Invalid, build("{\"url\":\"http://x.io/\",\"method\":\"POST\",\"body\":{\"$binary\":{\"data\":\"filesystem-v2\",\"id\":\"filesystem-v2:workflows/wf1/executions/7/binary_data/none\"}}}", null, null, &buf, &diag));

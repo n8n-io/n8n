@@ -55,6 +55,7 @@ import { lowerFallback, tryCompiledNode } from './steps.ts';
 import { lowerSendAndWait } from './waits.ts';
 import { calleeTriggerItems, findSubworkflowStart, resolveCallee } from './subworkflow.ts';
 import { DEFAULT_TIMEZONE, isTriggerType, planTrigger, pollSchedules } from './triggers.ts';
+import type { WebhookUrls } from './triggers.ts';
 import type { ConvertDiagnostic, N8nNode, N8nWorkflow } from './types.ts';
 import { isRecord, text } from './types.ts';
 
@@ -121,6 +122,11 @@ export interface ConvertOptions {
 	 * its place.
 	 */
 	hostTriggers?: boolean;
+	/**
+	 * The URLs of n8n for production and test webhooks. With them, the item of a Webhook
+	 * trigger has `webhookUrl` and `executionMode`, as the item of the v1 node.
+	 */
+	webhookUrls?: WebhookUrls;
 	/** Names of Code nodes that always run in the fallback host. */
 	hostCodeNodes?: string[];
 	/**
@@ -1778,6 +1784,7 @@ export class ModuleGenerator {
 				this.options.scheduleItem,
 				typeof wf.id === 'string' && wf.id !== '' ? wf.id : undefined,
 				this.options.hostTriggers === true,
+				this.options.webhookUrls,
 			);
 		for (const h of plan.helpers ?? []) this.helpers.add(h);
 		for (const z of plan.zones ?? []) this.zones.add(z);

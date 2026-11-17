@@ -102,6 +102,10 @@ function comparable(requests) {
 		apiUsername: r.headers['api-username'],
 		authorization: r.headers.authorization?.replace(/token-\d+/, 'token-N'),
 		stubKey: r.headers['x-stub-key'],
+		userAgent: r.headers['user-agent'],
+		// The `accept` header of a compiled node is a known difference: only the HTTP Request
+		// node of the case `p` is compared.
+		...(r.path.startsWith('/plain/') ? { accept: r.headers.accept } : {}),
 		contentType: r.headers['content-type'],
 	}));
 }
@@ -373,7 +377,8 @@ async function runOn(engine, spec) {
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify(call.body),
 			});
-			const text = await response.text();
+			// The path has the name of the engine: the two responses must not differ by it.
+			const text = (await response.text()).replaceAll(path, 'e2e-path');
 			let json;
 			try {
 				json = JSON.parse(text);
@@ -524,14 +529,28 @@ async function main() {
 			nodes: [discourse(discourseCredential, '7')],
 			calls: [{ body: {}, failWith: 400 }],
 			compiledNodes: ['Discourse'],
-			open: 'the body of the 500 response of the webhook is not the body of v1',
 		},
 		{
 			key: 'i',
 			title: 'the item of the Webhook trigger',
 			nodes: [],
 			calls: [{ body: { name: 'Ada' } }],
-			open: 'the item has the host of wfrt, and no webhookUrl and no executionMode',
+		},
+		{
+			key: 'p',
+			title: 'HTTP Request without a credential: the default headers',
+			nodes: [
+				{
+					id: 'q',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [400, 0],
+					parameters: { url: `${STUB}/plain/headers` },
+				},
+			],
+			calls: [{ body: {} }],
+			check: (run) => run.calls[0]?.requests[0]?.userAgent === 'n8n',
 		},
 		{
 			key: 'h',

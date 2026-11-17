@@ -200,6 +200,8 @@ describe('CompiledEngineDispatcher', () => {
 				params: {},
 				query: {},
 				body: null,
+				// No trigger item: the module gives the item of a test webhook.
+				executionMode: 'test',
 			},
 			trace: true,
 		});

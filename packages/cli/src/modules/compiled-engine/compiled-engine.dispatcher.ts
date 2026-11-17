@@ -310,15 +310,20 @@ export class CompiledEngineDispatcher {
 			path: typeof path === 'string' ? `/webhook/${path}` : '',
 		};
 		if (isRecord(json)) {
+			// The item that the editor or a test webhook gave: the module adds no field to it.
+			// An empty text says that the item has no such field.
 			return {
 				...request,
 				headers: json.headers ?? {},
 				params: json.params ?? {},
 				query: json.query ?? {},
 				body: json.body ?? null,
+				webhookUrl: typeof json.webhookUrl === 'string' ? json.webhookUrl : '',
+				executionMode: typeof json.executionMode === 'string' ? json.executionMode : '',
 			};
 		}
-		return { ...request, headers: {}, params: {}, query: {}, body: null };
+		// No item: the module gives the test URL of the webhook, as the v1 node in a manual run.
+		return { ...request, headers: {}, params: {}, query: {}, body: null, executionMode: 'test' };
 	}
 
 	// ----- events -----
