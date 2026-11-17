@@ -91,11 +91,11 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { ApplyPreviewService } from '../apply-preview.service';
+import { PromotePreviewService } from '../promote-preview.service';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
-import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -111,7 +111,7 @@ import {
 	createGitRemoteSeed,
 	type TestRemote,
 } from './utils/git-remote-fixture';
-import { writeInstancePromotionPackage } from './utils/promotion-fixtures';
+import { expectPushed, writeInstancePromotionPackage } from './utils/promotion-fixtures';
 
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
@@ -233,6 +233,7 @@ beforeEach(async () => {
 		Container.get(FolderService),
 		packagesService,
 		Container.get(ApplyPreviewService),
+		Container.get(PromotePreviewService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
 		Container.get(PromotionRunRepository),
@@ -515,10 +516,9 @@ function changeService() {
 		service,
 		packagesService,
 		Container.get(ApplyPreviewService),
-		Container.get(SharedWorkflowRepository),
+		Container.get(PromotePreviewService),
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
-		Container.get(PromotionReviewGateService),
 	);
 }
 
@@ -3198,6 +3198,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w1',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteGit = createFixtureGit(remote.bareDir);
 		expect((await remoteGit.revparse([`${result.git.branchName}^`])).trim()).toBe(baseCommit);
@@ -3231,6 +3232,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w4',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const { dir } = await inspectBranch(remote.bareDir);
 		const onBranch = await readBranchEntities(dir, 'workflow.json');
@@ -3277,6 +3279,7 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Add w3',
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteGit = createFixtureGit(remote.bareDir);
 		expect(result.git.branchName).toMatch(
@@ -3536,6 +3539,7 @@ describe('Promote a project selection', () => {
 			workflowIds: [w3.id],
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
 
 		const remoteHead = (await createFixtureGit(remote.bareDir).revparse(['main'])).trim();
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
@@ -3673,12 +3677,15 @@ describe('Promote from a clean checkout', () => {
 		return { started, resume, spy };
 	};
 
-	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) =>
-		await service.promoteProjectSelection(projectId, owner, {
+	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) => {
+		const result = await service.promoteProjectSelection(projectId, owner, {
 			workflowIds: [workflowId],
 			commitMessage,
 			canExportVariableValues: true,
 		});
+		expectPushed(result);
+		return result;
+	};
 
 	const committedPaths = async (bareDir: string, commitSha: string) =>
 		(await createFixtureGit(bareDir).raw(['show', '--name-only', '--format=', commitSha]))

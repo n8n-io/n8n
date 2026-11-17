@@ -574,6 +574,83 @@ export class AgentRepository extends BaseRepository<Agent> {
 		);
 	}
 
+	async moveToFolder(
+		agentId: string,
+		projectId: string,
+		parentFolderId: string | null,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			Agent,
+			{ id: agentId, projectId, scope: projectScope },
+			{ parentFolderId },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findInFolders(projectId: string, folderIds: string[]): Promise<ProjectAgent[]> {
+		const agents: ProjectAgent[] = [];
+
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			const found = await this.find({
+				where: { projectId, scope: projectScope, parentFolderId: In(batch) },
+			});
+			agents.push(...found.filter(isProjectAgent));
+		}
+
+		return agents;
+	}
+
+	async countByFolder(projectId: string, folderIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			const rows = await this.createQueryBuilder('agent')
+				.select('agent.parentFolderId', 'folderId')
+				.addSelect('COUNT(agent.id)', 'count')
+				.where(projectScopeSql)
+				.andWhere('agent.projectId = :projectId', { projectId })
+				.andWhere('agent.parentFolderId IN (:...folderIds)', { folderIds: batch })
+				.andWhere('agent.isArchived = :isArchived', { isArchived: false })
+				.groupBy('agent.parentFolderId')
+				.getRawMany<{ folderId: string; count: string }>();
+
+			for (const row of rows) {
+				counts.set(row.folderId, Number(row.count));
+			}
+		}
+
+		return counts;
+	}
+
+	async relocateFolderContents(
+		projectId: string,
+		fromFolderId: string,
+		toFolderId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
+			Agent,
+			{ projectId, scope: projectScope, parentFolderId: fromFolderId },
+			{ parentFolderId: toFolderId },
+		);
+	}
+
+	async moveArchivedFolderContentsToRoot(
+		projectId: string,
+		folderIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const batch of chunkIds([...new Set(folderIds)])) {
+			await this.managerFor(ctx).update(
+				Agent,
+				{ projectId, scope: projectScope, parentFolderId: In(batch), isArchived: true },
+				{ parentFolderId: null },
+			);
+		}
+	}
+
 	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
 		const agent = await this.findByIdAndProjectId(id, projectId);
 		return hasN8nChatChannel(agent?.activeVersion?.schema?.integrations);
@@ -624,6 +701,46 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findIdentityId(id: string): Promise<string | null> {
 		const agent = await this.findOne({ select: ['identityId'], where: { id } });
 		return agent?.identityId ?? null;
+	}
+
+	/** The agent that acts as this identity, if there is one. */
+	async findByIdentityId(identityId: string): Promise<Pick<Agent, 'id' | 'name'> | null> {
+		return await this.findOne({ select: ['id', 'name'], where: { identityId } });
+	}
+
+	/** Maps each of `identityIds` to the project of its agent. Instance agents have no project. */
+	async findProjectsByIdentityIds(
+		identityIds: string[],
+	): Promise<Map<string, { id: string; name: string }>> {
+		const projectByIdentity = new Map<string, { id: string; name: string }>();
+		for (const batch of chunkIds(identityIds)) {
+			const rows = await this.createQueryBuilder('agent')
+				.select('agent.identityId', 'identityId')
+				.addSelect('project.id', 'projectId')
+				.addSelect('project.name', 'projectName')
+				.innerJoin('agent.project', 'project')
+				.where('agent.identityId IN (:...batch)', { batch })
+				.getRawMany<{ identityId: string; projectId: string; projectName: string }>();
+			for (const { identityId, projectId, projectName } of rows) {
+				projectByIdentity.set(identityId, { id: projectId, name: projectName });
+			}
+		}
+		return projectByIdentity;
+	}
+
+	/** The identities of the agents in these projects. */
+	async findIdentityIdsInProjects(projectIds: string[]): Promise<string[]> {
+		const identityIds: string[] = [];
+		for (const batch of chunkIds(projectIds)) {
+			const agents = await this.find({
+				select: ['identityId'],
+				where: { projectId: In(batch), identityId: Not(IsNull()) },
+			});
+			for (const { identityId } of agents) {
+				if (identityId) identityIds.push(identityId);
+			}
+		}
+		return identityIds;
 	}
 
 	/** Sets the identity only when the agent has none. Returns false when another write set it first. */

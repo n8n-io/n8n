@@ -201,6 +201,9 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nAttachment: (await importOriginal<typeof import('@n8n/design-system')>()).N8nAttachment,
+	N8nAttachmentGroup: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nAttachmentGroup,
 	N8nApprovalCard: (await importOriginal<typeof import('@n8n/design-system')>()).N8nApprovalCard,
 	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
 		.N8nAiActivityStepGroup,
@@ -1646,6 +1649,29 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		},
 	);
+
+	it('focuses draft attachments with Up and restores input focus with Escape', async () => {
+		const wrapper = mountPanel({}, document.body);
+		try {
+			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+			composer.vm.$emit('files-selected', [
+				new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+			]);
+			await flushPromises();
+			const textbox = wrapper.get('textarea');
+			textbox.element.focus();
+			await textbox.trigger('keydown', { key: 'ArrowUp' });
+			expect(document.activeElement).toBe(wrapper.get('.n8n-attachment').element);
+			await wrapper.get('.n8n-attachment').trigger('keydown', { key: 'Escape' });
+			expect(document.activeElement).toBe(textbox.element);
+			composer.vm.$emit('update:modelValue', 'Draft');
+			await flushPromises();
+			await textbox.trigger('keydown', { key: 'ArrowUp' });
+			expect(document.activeElement).toBe(textbox.element);
+		} finally {
+			wrapper.unmount();
+		}
+	});
 
 	it('edits the last queued message with Alt+ArrowUp from the composer', async () => {
 		queuedMessagesMock.value = ['first', 'last'].map((message, index) => ({

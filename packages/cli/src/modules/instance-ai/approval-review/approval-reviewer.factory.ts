@@ -22,7 +22,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { raceAbort } from '@n8n/utils/race-abort';
 
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { cleanStoredUserMessage } from '../internal-messages';
@@ -55,6 +55,14 @@ export interface ApprovalReviewerParams {
 	reviewTimeoutMs?: number;
 }
 
+/** What telemetry reports about one review that went to the judge. */
+interface JudgeReview {
+	startedAt: number;
+	/** Known once the judge model resolves, also when the judge fails later. */
+	model?: string;
+	judgeRun?: ApprovalJudgeResult;
+}
+
 /** Builds the Auto mode reviewer of one Assistant run. */
 @Service()
 export class InstanceAiApprovalReviewerFactory {
@@ -63,17 +71,19 @@ export class InstanceAiApprovalReviewerFactory {
 	constructor(
 		logger: Logger,
 		private readonly creditService: InstanceAiCreditService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
 
 	create(params: ApprovalReviewerParams): InstanceAiApprovalReviewer {
 		let judgeModel: Promise<ModelConfig> | undefined;
-		const judgeRuns = new WeakMap<PendingApproval, ApprovalJudgeResult>();
+		const judgeReviews = new WeakMap<PendingApproval, JudgeReview>();
 
 		return {
 			judge: async (approval) => {
+				const review: JudgeReview = { startedAt: Date.now() };
+				judgeReviews.set(approval, review);
 				const signal = AbortSignal.any([
 					params.abortSignal,
 					AbortSignal.timeout(params.reviewTimeoutMs ?? APPROVAL_REVIEW_TIMEOUT_MS),
@@ -99,6 +109,7 @@ export class InstanceAiApprovalReviewerFactory {
 				try {
 					judgeModel ??= params.resolveJudgeModel();
 					model = await raceAbort(judgeModel, signal, stopped);
+					review.model = modelConfigId(model);
 					const messages = await raceAbort(
 						params.memory.getMessages(params.threadId, {
 							limit: CONVERSATION_MESSAGE_LIMIT,
@@ -125,7 +136,7 @@ export class InstanceAiApprovalReviewerFactory {
 					{ conversation, approval, olderMessagesLeftOut },
 					{ model, modelFetch: params.modelFetch, abortSignal: signal, telemetry },
 				);
-				judgeRuns.set(approval, result);
+				review.judgeRun = result;
 				const modelName = result.model ?? modelConfigId(model);
 				if (modelName) this.claimJudgeUsage(params, approval, modelName, result.usage);
 				if (!result.ok) return fail(result.error);
@@ -146,7 +157,7 @@ export class InstanceAiApprovalReviewerFactory {
 						},
 					});
 				}
-				this.trackReview(params, approval, outcome, judgeRuns.get(approval));
+				this.trackReview(params, approval, outcome, judgeReviews.get(approval));
 			},
 		};
 	}
@@ -178,12 +189,15 @@ export class InstanceAiApprovalReviewerFactory {
 		params: ApprovalReviewerParams,
 		approval: PendingApproval,
 		outcome: ApprovalReviewOutcome,
-		judgeRun: ApprovalJudgeResult | undefined,
+		review: JudgeReview | undefined,
 	): void {
+		const judgeRun = review?.judgeRun;
+		const judgeModel = judgeRun?.model ?? review?.model;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.APPROVAL_DECIDED_IN_AUTO_MODE, {
 			user_id: params.user.id,
 			thread_id: params.threadId,
 			run_id: params.runId,
+			...(approval.toolCallId ? { tool_call_id: approval.toolCallId } : {}),
 			tool_name: approval.toolName,
 			is_mcp_tool: approval.mcp !== undefined,
 			severity: approval.severity,
@@ -192,7 +206,9 @@ export class InstanceAiApprovalReviewerFactory {
 			decided_by: outcome.decidedBy,
 			judge_failed: outcome.judgeFailed === true,
 			...(judgeRun ? { judge_duration_ms: judgeRun.durationMs } : {}),
-			...(judgeRun?.ok && judgeRun.model ? { judge_model: judgeRun.model } : {}),
+			// The review ends when this runs, so the duration includes model setup and the thread read.
+			...(review ? { review_duration_ms: Date.now() - review.startedAt } : {}),
+			...(judgeModel ? { judge_model: judgeModel } : {}),
 		});
 	}
 }

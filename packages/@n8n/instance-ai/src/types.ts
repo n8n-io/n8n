@@ -34,6 +34,7 @@ import type {
 	SkillScope,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiApprovalMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiEvent,
 	InstanceAiFileAttachment,
@@ -1821,6 +1822,8 @@ export interface InstanceAiContext {
 	 * when the review approves it. Absent means Manual mode.
 	 */
 	approvalReviewer?: InstanceAiApprovalReviewer;
+	/** The approval mode of this run. Absent while approval modes are off. */
+	approvalMode?: InstanceAiApprovalMode;
 	/**
 	 * When true, a user's MCP tool permissions can only make the admin's
 	 * permissions stricter. Otherwise they replace them.

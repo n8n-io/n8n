@@ -17,13 +17,16 @@ export type ProjectSearchFn = (query: string) => Promise<ProjectSearchResult>;
  * personal projects in addition to projects they have a relation to — without
  * that, the share dropdown would be empty for `global:member` users.
  *
+ * Pass `includeServiceAccounts` only where a share to a service account has an
+ * effect, such as the knowledge collection picker. Other pickers get none.
+ *
  * Pass `type` when the caller accepts only one kind of project. The endpoint
  * returns one page and sorts team projects first, so a caller that drops the
  * other kind on the client gets an empty dropdown once team projects fill that
  * page.
  */
 export function useRemoteProjectSearch(
-	options: { type?: 'personal' | 'team' } = {},
+	options: { type?: 'personal' | 'team'; includeServiceAccounts?: boolean } = {},
 ): ProjectSearchFn {
 	const store = useProjectsStore();
 	return async (query: string) => {
@@ -31,6 +34,7 @@ export function useRemoteProjectSearch(
 			search: query,
 			take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
 			...(options.type ? { type: options.type } : {}),
+			...(options.includeServiceAccounts ? { includeServiceAccounts: true } : {}),
 		});
 	};
 }

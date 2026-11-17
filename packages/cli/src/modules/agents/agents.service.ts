@@ -27,6 +27,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	In,
 	isUniqueConstraintError,
+	type OperationContext,
 	ProjectRelationRepository,
 	ProjectRepository,
 	TransactionRunner,
@@ -569,8 +570,16 @@ export class AgentsService {
 		);
 	}
 
-	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
-		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	/**
+	 * With `projectId`: scoped lookup (internal REST). Without it the agent is
+	 * resolved by ID alone — Public API, where `@ProjectScope` has already
+	 * authorized the user against the agent's project. Returns no instance
+	 * agent.
+	 */
+	async findById(agentId: string, projectId?: string): Promise<ProjectAgent | null> {
+		return projectId
+			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
+			: await this.agentRepository.findById(agentId);
 	}
 
 	/**
@@ -917,11 +926,16 @@ export class AgentsService {
 	 *
 	 * `requireArchived`: reject the delete of an agent that a user did not
 	 * archive first.
+	 *
+	 * `actor` is the user who deletes the agent. The audit event of the service
+	 * account removal names this user.
 	 */
 	async delete(
 		agentId: string,
+		actor: User,
 		projectId?: string,
 		{ requireArchived = false }: { requireArchived?: boolean } = {},
+		ctx: OperationContext = {},
 	): Promise<DeletedAgentSnapshot | null> {
 		const agent = projectId
 			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
@@ -948,6 +962,11 @@ export class AgentsService {
 		// Cleanup is keyed to the agent's own project, so the Public API path
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
+
+		// Remove the account before any cleanup that cannot be undone. If the
+		// removal fails, for example because a policy blocks the transfer of its
+		// work, the agent stays as it was.
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
 
 		await this.deleteKnowledgeFiles(agentProjectId, agentId);
 
