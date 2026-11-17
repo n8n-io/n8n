@@ -53,7 +53,6 @@ const featureMaturityStub: FeatureMaturityCatalog = {
 		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
 	},
 	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
-	// Page header stories read the docs link from these entries.
 	instance: {
 		preview: false,
 		limitedEnterpriseSupport: false,
