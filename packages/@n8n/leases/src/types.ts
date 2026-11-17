@@ -79,6 +79,13 @@ export interface LeaseKindOptions {
 	maxFailedStarts: number | null;
 }
 
+export const MAX_LEASE_KIND_LENGTH = 24;
+
+export const DEFAULT_LEASE_KIND_OPTIONS = Object.freeze({
+	startTimeoutSeconds: 60,
+	maxFailedStarts: 5,
+} satisfies LeaseKindOptions);
+
 export type LeaseState = 'pending' | 'held' | 'failing';
 
 export interface LeaseStatus {
@@ -93,6 +100,7 @@ export interface LeaseStatus {
 
 /** A family of leases with one handler, for example the triggers of published workflows. */
 export interface LeaseKind<TTransaction> {
+	/** Lower case letters, digits and dashes, starting with a letter, at most {@link MAX_LEASE_KIND_LENGTH} characters. */
 	name: string;
 	handler: LeaseHandler<TTransaction>;
 	source: LeaseSource;
