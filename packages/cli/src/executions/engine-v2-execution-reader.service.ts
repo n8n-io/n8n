@@ -1,4 +1,4 @@
-import type { IExecutionResponse } from '@n8n/db';
+import type { IExecutionBase, IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	ExecutionListItem,
@@ -190,20 +190,49 @@ export class EngineV2ExecutionReader {
 		return { id: snapshot.id, workflowId: snapshot.workflowId };
 	}
 
-	/** `undefined` for absent and for inaccessible alike, so neither reveals the other. */
+	/**
+	 * `undefined` for absent and for inaccessible alike, so neither reveals the
+	 * other.
+	 *
+	 * The steps are the run data, so `includeData` decides both.
+	 */
 	async findOne(
 		executionId: ExecutionIdV2,
 		sharedWorkflowIds: string[],
-	): Promise<IExecutionResponse | undefined> {
+		options?: { includeData?: true },
+	): Promise<IExecutionResponse | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+		options: { includeData: false },
+	): Promise<IExecutionBase | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+		options?: { includeData?: boolean },
+	): Promise<IExecutionResponse | IExecutionBase | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+		{ includeData = true }: { includeData?: boolean } = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
 		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
 		// authorize before reading.
-		const snapshot = await this.dataPlane.getExecution(executionId, { includeSteps: true });
+		const snapshot = await this.dataPlane.getExecution(executionId, {
+			includeSteps: includeData,
+		});
 		if (!snapshot) return undefined;
 
 		// The `workflow:read` check.
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
-		return await this.fromSnapshot(snapshot);
+		if (includeData) return await this.fromSnapshot(snapshot);
+
+		// Checked in both modes, so a metadata read and a data read agree on
+		// whether the execution exists.
+		if (!asWorkflowSnapshot(snapshot.workflow)) return undefined;
+
+		return this.toExecutionBase(snapshot);
 	}
 
 	/**
@@ -226,11 +255,7 @@ export class EngineV2ExecutionReader {
 		);
 	}
 
-	private toExecutionResponse(
-		snapshot: ExecutionSnapshot,
-		workflow: WorkflowRunDocument,
-		data: IRunExecutionData,
-	): IExecutionResponse {
+	private toExecutionBase(snapshot: ExecutionSnapshot): IExecutionBase {
 		// No real run timing yet (CAT-4234), so both come from the row.
 		const startedAt = new Date(snapshot.createdAt);
 
@@ -244,6 +269,16 @@ export class EngineV2ExecutionReader {
 			startedAt,
 			stoppedAt: snapshot.finishedAt ? new Date(snapshot.finishedAt) : undefined,
 			storedAt: 'db',
+		};
+	}
+
+	private toExecutionResponse(
+		snapshot: ExecutionSnapshot,
+		workflow: WorkflowRunDocument,
+		data: IRunExecutionData,
+	): IExecutionResponse {
+		return {
+			...this.toExecutionBase(snapshot),
 			data,
 			// The same projection the v1 path reports, so the editor sees one shape.
 			// The cast: the declared type overstates what either path returns.
