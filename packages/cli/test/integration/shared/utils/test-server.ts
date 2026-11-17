@@ -124,7 +124,8 @@ export const setupTestServer = ({
 	enabledFeatures,
 	quotas,
 	modules,
-	setupTimeout,
+	// Module loading and database setup need the integration hook budget in API suites too.
+	setupTimeout = 30_000,
 	reuseServer,
 }: SetupProps): TestServer => {
 	const app = express();

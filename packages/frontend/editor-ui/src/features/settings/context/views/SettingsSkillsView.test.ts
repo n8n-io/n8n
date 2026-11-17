@@ -896,6 +896,7 @@ describe('SettingsSkillsView', () => {
 					'recommended-skill-use-button',
 				),
 			);
+			await vi.dynamicImportSettled();
 			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
 		}
 

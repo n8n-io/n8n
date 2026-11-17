@@ -617,7 +617,8 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
-				buildDatabaseConfig({ pingTimeoutMs: 200, pingMaxFailuresBeforeRecovery: 1 }),
+				// The healthy probe must complete a new TCP connection and authentication on CI.
+				buildDatabaseConfig({ pingMaxFailuresBeforeRecovery: 1 }),
 				logger,
 				mock<ErrorReporter>(),
 				mock<DbConnectionMetrics>(),

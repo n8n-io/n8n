@@ -112,8 +112,9 @@ const allowConnect = () => {
 const fillInput = async (testId: string, value: string) => {
 	const element = await screen.findByTestId(testId);
 	const input = within(element).queryByRole('textbox') ?? element;
-	await userEvent.clear(input);
-	await userEvent.type(input, value);
+	const user = userEvent.setup();
+	await user.clear(input);
+	await user.paste(value);
 };
 
 describe('PromotionEnvironmentView', () => {
@@ -202,7 +203,8 @@ describe('PromotionEnvironmentView', () => {
 		await renderAt('/add/promote');
 
 		await userEvent.click(await screen.findByTestId('promotion-provider-type-git'));
-		await fillInput('promotion-environment-name-input', 'Production{Enter}');
+		await fillInput('promotion-environment-name-input', 'Production');
+		await userEvent.keyboard('{Enter}');
 
 		await waitFor(() => expect(api.createPromotionEnvironment).toHaveBeenCalledTimes(1));
 	});

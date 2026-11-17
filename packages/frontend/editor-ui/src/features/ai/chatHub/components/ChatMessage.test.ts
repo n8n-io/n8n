@@ -39,7 +39,9 @@ describe('ChatMessage', () => {
 			pinia,
 		});
 
-		// Wait for highlight.js to load and apply syntax highlighting
+		await vi.dynamicImportSettled();
+
+		// Wait for Vue to apply the loaded language modules.
 		await waitFor(() => {
 			const highlightedElements = container.querySelectorAll('.hljs-keyword');
 
