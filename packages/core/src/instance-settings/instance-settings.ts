@@ -68,7 +68,7 @@ export class InstanceSettings {
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
 	 * Set on first boot (random, or derived from the encryption key when a
-	 * licence certificate exists), then read from DB.
+	 * license certificate exists), then read from DB.
 	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
@@ -136,7 +136,7 @@ export class InstanceSettings {
 			'instance.id',
 			process.env.N8N_INSTANCE_ID,
 			canSeed,
-			// A licence certificate is bound to the derived ID, so only installs without one get a random ID.
+			// A license certificate is bound to the derived ID, so only installs without one get a random ID.
 			() => (keepDerivedInstanceId ? this.instanceId : randomBytes(32).toString('hex')),
 			(v) => {
 				this.instanceId = v;

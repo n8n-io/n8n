@@ -236,7 +236,7 @@ describe('InstanceSettings', () => {
 	describe('initialize', () => {
 		const mockRepo = {
 			findActiveIdentifier: vi.fn(),
-			seedActiveIdentifier: vi.fn(),
+			seedActiveIdentifier: vi.fn<(type: string, value: string) => Promise<void>>(),
 			findActiveSigningSecret: vi.fn(),
 			seedSigningSecret: vi.fn(),
 		};
@@ -371,6 +371,18 @@ describe('InstanceSettings', () => {
 
 				await settings.initialize(mockRepo);
 
+				expect(settings.instanceId).toEqual('winner-id');
+			});
+
+			it('should use the winner row over its own random instanceId when a concurrent insert is ignored', async () => {
+				mockRepo.findActiveIdentifier
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce({ value: 'winner-id' });
+
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: false });
+
+				const [, seededId] = mockRepo.seedActiveIdentifier.mock.calls[0];
+				expect(seededId).not.toEqual('winner-id');
 				expect(settings.instanceId).toEqual('winner-id');
 			});
 		});

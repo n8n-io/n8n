@@ -1,12 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { SettingsRepository } from '@n8n/db';
-import type { Settings } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
-import { mock } from 'vitest-mock-extended';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 import { License } from '@/license';
@@ -121,48 +118,38 @@ describe('initSystemTasks', () => {
 	});
 });
 
-describe('hasLicenseCert', () => {
-	const licenseConfig = Container.get(GlobalConfig).license;
-	const originalCert = licenseConfig.cert;
-	const settingsRepository = mockInstance(SettingsRepository);
+describe('keepsDerivedInstanceId', () => {
+	const license = mockInstance(License);
 
-	afterEach(() => {
-		licenseConfig.cert = originalCert;
+	class SeedingCommand extends TestCommand {
+		override seedsInstanceIdentity = true;
+	}
+
+	it('should keep the derived ID for a command that does not seed, without reading the certificate', async () => {
+		// @ts-expect-error Protected method
+		expect(await new TestCommand().keepsDerivedInstanceId()).toBe(true);
+		expect(license.loadCertStr).not.toHaveBeenCalled();
 	});
 
-	it('should report a certificate set in N8N_LICENSE_CERT without reading the DB', async () => {
-		licenseConfig.cert = 'env-cert';
+	it('should keep the derived ID for a seeding command when a license certificate exists', async () => {
+		license.loadCertStr.mockResolvedValue('cert');
 
 		// @ts-expect-error Protected method
-		expect(await new TestCommand().hasLicenseCert()).toBe(true);
-		expect(settingsRepository.findOneBy).not.toHaveBeenCalled();
+		expect(await new SeedingCommand().keepsDerivedInstanceId()).toBe(true);
 	});
 
-	it('should report a certificate stored in the DB', async () => {
-		licenseConfig.cert = '';
-		settingsRepository.findOneBy.mockResolvedValue(
-			mock<Settings>({ key: 'license.cert', value: 'db-cert' }),
-		);
+	it('should not keep the derived ID for a seeding command without a license certificate', async () => {
+		license.loadCertStr.mockResolvedValue('');
 
 		// @ts-expect-error Protected method
-		expect(await new TestCommand().hasLicenseCert()).toBe(true);
-		expect(settingsRepository.findOneBy).toHaveBeenCalledWith({ key: 'license.cert' });
+		expect(await new SeedingCommand().keepsDerivedInstanceId()).toBe(false);
 	});
 
-	it('should report no certificate when neither the env var nor the DB has one', async () => {
-		licenseConfig.cert = '';
-		settingsRepository.findOneBy.mockResolvedValue(null);
+	it('should keep the derived ID when the certificate check fails, so a licensed install keeps its ID', async () => {
+		license.loadCertStr.mockRejectedValue(new Error('permission denied'));
 
 		// @ts-expect-error Protected method
-		expect(await new TestCommand().hasLicenseCert()).toBe(false);
-	});
-
-	it('should report a certificate when the DB check fails, so a licensed install keeps its ID', async () => {
-		licenseConfig.cert = '';
-		settingsRepository.findOneBy.mockRejectedValue(new Error('permission denied'));
-
-		// @ts-expect-error Protected method
-		expect(await new TestCommand().hasLicenseCert()).toBe(true);
+		expect(await new SeedingCommand().keepsDerivedInstanceId()).toBe(true);
 		expect(logger.warn).toHaveBeenCalled();
 	});
 });
