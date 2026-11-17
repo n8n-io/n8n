@@ -811,12 +811,28 @@ export function lowerSplitOut(c: NodeContext): void {
 		);
 	}
 	const fields = splitList(p.fieldToSplitOut).map((f) => f.replace(/^\$json\./, ''));
-	if (fields.includes('$binary'))
-		throw new NodeFailure('binary', 'Binary data is not supported.', 'fieldToSplitOut');
 	const destinations = splitList(opts.destinationFieldName);
-	c.helper('splitOut');
+	// The name of a row field for binary data, and "Include Binary" as an expression, have
+	// no place in the helper.
+	if (fields.includes('$binary') && destinations.length > 0) {
+		throw new NodeFailure(
+			'binary',
+			'Binary data with a destination field is not supported.',
+			'options.destinationFieldName',
+		);
+	}
+	if (opts.includeBinary !== undefined && typeof opts.includeBinary !== 'boolean') {
+		throw new NodeFailure(
+			'binary',
+			'The option "Include Binary" is not a fixed value.',
+			'options.includeBinary',
+		);
+	}
+	// The helper with binary data is for the field `$binary` and for "Include Binary" only.
+	const files = fields.includes('$binary') || opts.includeBinary === true;
+	c.helper(files ? 'splitOutFiles' : 'splitOut');
 	c.w.line(
-		`const ${c.output(0)}: Json[] = splitOut(${c.input}, ${flat(literal(fields))}, ${flat(literal(destinations))}, ${str(text(p.include, 'noOtherFields'))}, ${flat(literal(splitList(p.fieldsToInclude)))}, ${String(opts.disableDotNotation !== true)});`,
+		`const ${c.output(0)}: Json[] = ${files ? 'splitOutFiles' : 'splitOut'}(${c.input}, ${flat(literal(fields))}, ${flat(literal(destinations))}, ${str(text(p.include, 'noOtherFields'))}, ${flat(literal(splitList(p.fieldsToInclude)))}, ${String(opts.disableDotNotation !== true)}${files ? `, ${String(opts.includeBinary === true)}` : ''});`,
 	);
 }
 
