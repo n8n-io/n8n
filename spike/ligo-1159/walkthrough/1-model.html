@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart LR
+    subgraph S["Content: what the operation carries"]
+        W["Workflows and folders&lt;br/&gt;of project P"]
+        O["Resources that P owns"]
+    end
+    subgraph R["Requirements: referenced, not carried"]
+        C["Credential owned&lt;br/&gt;by project Q"]
+        SW["Sub-workflow or error&lt;br/&gt;workflow in project R"]
+        V["Global variable"]
+    end
+    W -- uses --&gt; C
+    W -- calls --&gt; SW
+    W -- reads --&gt; V
+    R --&gt; D{{"The destination must&lt;br/&gt;satisfy each one"}}
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>

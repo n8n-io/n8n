@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart LR
+    P["&lt;b&gt;Promote&lt;/b&gt;&lt;br/&gt;Always succeeds.&lt;br/&gt;Warns about what the&lt;br/&gt;branch will not hold."] --&gt; B[("Branch")]
+    B --&gt; A{"&lt;b&gt;Apply&lt;/b&gt;&lt;br/&gt;Is every dependency&lt;br/&gt;usable on the&lt;br/&gt;destination?"}
+    A -- yes --&gt; OK["Applies.&lt;br/&gt;No extra step."]
+    A -- no --&gt; S["Stops before any write.&lt;br/&gt;Offers an action&lt;br/&gt;for each gap."]
+    S --&gt; A1["Create the&lt;br/&gt;credential one time"]
+    S --&gt; A2["Give a project access&lt;br/&gt;to the credential"]
+    S --&gt; A3["Apply the other project first,&lt;br/&gt;or apply anyway"]
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>

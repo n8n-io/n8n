@@ -1,0 +1,4 @@
+A = Astra (nassau)
+B = Opus (topeka)
+C = Fable (ngerulmud)
+D = Sol (minnetonka-v1)

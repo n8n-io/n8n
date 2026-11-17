@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart LR
+    subgraph P1["Phase 1: shared credentials"]
+        direction TB
+        T1["1. Access has no action"] --&gt; T2["2. No home for a credential"]
+        T3["3. LIGO-1250: created one time"]
+    end
+    subgraph P2["Phase 2: workflow dependencies"]
+        direction TB
+        T4["4. Apply gate"] -- "one release" --&gt; T5["5. Instance Promote does not fail"]
+        T5 --&gt; T6["6. Promote shows the state"]
+        T4 --&gt; T7["7. Caller policy"]
+        T4 --&gt; T8["8. Deleted workflow with callers"]
+        T9["9. Data table of another project"]
+    end
+    subgraph P3["Phase 3: owner hint"]
+        direction TB
+        T10["10. Package names owner&lt;br/&gt;and global state"] --&gt; T11["11. Apply uses the hint"]
+    end
+    subgraph P4["Phase 4: moves"]
+        direction TB
+        T13["13. Instance Apply moves"] --&gt; T14["14. Project Apply moves"]
+        T14 -- "one release" --&gt; T15["15. Promote writes a move"]
+        T12["12. LIGO-1258: one moved row"] --&gt; T15
+    end
+    P1 --&gt; P2 --&gt; P3 --&gt; P4
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>

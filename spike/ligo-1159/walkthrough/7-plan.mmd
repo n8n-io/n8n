@@ -1,0 +1,25 @@
+flowchart LR
+    subgraph P1["Phase 1: shared credentials"]
+        direction TB
+        T1["1. Access has no action"] --> T2["2. No home for a credential"]
+        T3["3. LIGO-1250: created one time"]
+    end
+    subgraph P2["Phase 2: workflow dependencies"]
+        direction TB
+        T4["4. Apply gate"] -- "one release" --> T5["5. Instance Promote does not fail"]
+        T5 --> T6["6. Promote shows the state"]
+        T4 --> T7["7. Caller policy"]
+        T4 --> T8["8. Deleted workflow with callers"]
+        T9["9. Data table of another project"]
+    end
+    subgraph P3["Phase 3: owner hint"]
+        direction TB
+        T10["10. Package names owner<br/>and global state"] --> T11["11. Apply uses the hint"]
+    end
+    subgraph P4["Phase 4: moves"]
+        direction TB
+        T13["13. Instance Apply moves"] --> T14["14. Project Apply moves"]
+        T14 -- "one release" --> T15["15. Promote writes a move"]
+        T12["12. LIGO-1258: one moved row"] --> T15
+    end
+    P1 --> P2 --> P3 --> P4

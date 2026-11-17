@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart TD
+    R["Reference from a workflow&lt;br/&gt;that this Apply writes"] --&gt; Q1{"Target is content&lt;br/&gt;of this Apply?"}
+    Q1 -- yes --&gt; C1["Apply writes it"]
+    Q1 -- no --&gt; Q2{"On the destination by id,&lt;br/&gt;and not deleted by this Apply?"}
+    Q2 -- yes --&gt; Q3{"Usable by the&lt;br/&gt;consumer project?"}
+    Q2 -- no --&gt; M["MISSING"]
+    Q3 -- yes --&gt; S["SATISFIED&lt;br/&gt;No step"]
+    Q3 -- no --&gt; N["NEEDS ACCESS"]
+    M -- "credential or variable" --&gt; B1["Create it one time&lt;br/&gt;at its home"]
+    M -- workflow --&gt; B2["Blocker: fix it&lt;br/&gt;or accept it"]
+    N --&gt; B3["Grant that the user confirms,&lt;br/&gt;or a row that says who can grant"]
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>

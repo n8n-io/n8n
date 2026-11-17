@@ -1,0 +1,16 @@
+flowchart TD
+    A["Dependency outside the selection"] --> T{Type}
+    T -- credential --> N["Note with the owner project.<br/>No warning."]
+    T -- workflow --> B{"Will the branch<br/>hold it?"}
+    B -- yes --> OK["No warning"]
+    B -- no --> W["Warning with the next step"]
+    W --- W1["Same project:<br/>select it too"]
+    W --- W2["Other team project:<br/>promote it from there"]
+    W --- W3["Personal project:<br/>move it to a team project"]
+    W --- W4["Does not exist:<br/>broken reference"]
+    N --> P(["Promote succeeds"])
+    OK --> P
+    W1 --> P
+    W2 --> P
+    W3 --> P
+    W4 --> P

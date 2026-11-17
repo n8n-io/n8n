@@ -1,0 +1,71 @@
+# Critique of submission C
+
+Scope: `submissions/C/01-current-state.md`, `02-solution.md`, `03-ticket-plan.md`, the decision matrix, the fact-check results, and the repository source. I ran no code.
+
+## Findings
+
+### C-1 (major) The missing-workflow-dependency gate counts a workflow as "on the destination" when the same Apply deletes it
+
+C's rule (02 §4.2b): "A reference is satisfied when the plan writes that id or the destination has it (`findOwningProjectsByWorkflowId`)." The rule looks only at the workflows that the plan writes, and at the destination state before the Apply. It ignores the deletions that the same Apply makes. Three paths delete a workflow that the gate would report as satisfied:
+
+- **Explicit delete on project Apply.** A selection can name S for deletion and W, which calls S. The engine deletes S and keeps the reference in W. Test `n8n-packages/__tests__/import-package-selection.integration.test.ts:574-603` ("allows deletion of a workflow that is only referenced by the selection"): `subWorkflowRefOf(WFA)` is still `WFB` after WFB is removed. Promotion uses hard delete (`apply-preview.service.ts:68-69`).
+- **Overwrite reconciliation on instance Apply.** Each project scope keeps only the sub-workflow requirements of its own workflows (`engine/project-package-importer.ts:434-440`, `entities/workflow/workflow-remover.ts:250-255`). W in project A calls S in project B. S is not on the branch (deleted on the source, or the branch is a partial view after LIGO-1268). S is on the destination, so the gate says "satisfied". Then reconciliation of B hard-deletes S. After ticket 5, instance Promote writes this branch without an error. C's statement "Instance Apply only meets the 'not on the branch' case" is exactly this case, and the gate misses it.
+- **Confirmed project deletion on instance Apply.** `reconcileTeamProjects` deletes the project's workflows with no migration target (`promotions.service.ts:1522-1540`, `project.service.ee.ts:211-257`). Callers in other projects keep the id.
+
+The gate also checks only callers that the plan writes. A destination workflow that the Apply does not touch and that calls a deleted workflow is never checked.
+
+Consequence: C's central promise for phase 2 ("Never let a broken reference reach the destination in silence", 02 §1 item 2; ticket 6 "Apply stops before any write") does not hold. The gate must subtract planned deletions (explicit, reconciliation, project deletion) from "the destination has it", and check reverse references of deleted ids.
+
+### C-2 (major) "Sharing is derived from use" grants more access on the destination than the source had
+
+C's premise (02 §2.3): "A workflow of P that uses C proves that P needs access to C. This is the smallest set of grants that makes the promoted workflows run." The code does not support the premise:
+
+- **Personal route.** On the source, a team workflow can run with a credential that P has no sharing row for, through the acting user's own access (`executions/pre-execution-checks/credentials-permission-checker.ts:418-474`, `personalRouteIds`). Under C, the destination Apply grants every member of P access to that credential. The source never gave P that access.
+- **Git is the input.** The package does not carry sharing (F04), and C rejects carrying it (§5.2). So the destination cannot tell "P had access on the source" from "a commit added a node that references credential id X". Anyone who can write to the branch can produce an "access to grant" row for any credential id on the destination. The only gate is the admin's confirmation.
+- **One flag confirms all grants.** `grantCredentialAccess` is a single boolean on Continue (§4.1b). The grants after a creation in the same flow are computed on Continue, after the home was chosen, so the user confirms a list that the check could not show. An API or CLI caller that always sends the flag grants whatever the branch says.
+- **API keys.** Promotion Apply does not pass API key scopes to the import (`promotions.public.controller.ts` reads `apiKeyScopes` only for the direction and `variable:list`). The public API key scope list has no `credential:share` (`@n8n/permissions/src/public-api-permissions.ee.ts:89-93`). C checks `credential:share` on the user role only (§4.1b). So a key with only `promotions:apply` can change credential sharing.
+
+C lists "Apply grants credential access" as a decision to challenge (§6.1.1). But the limits that C names ("only for projects whose promoted workflows use the credential", "only when the user could share it by hand") do not bound the grant to the source state. A final design needs a source-side signal (P actually holds a share), or per-grant confirmation that the check can show in full, plus an API-key scope check.
+
+### C-3 (major) The default home "the consumer project" gives that project owner rights over a credential that it only used
+
+Phase 1a and ticket 1: a missing credential without an owner gets a home that the user selects. "The default is the consumer project when there is exactly one" (02 §3.3, ticket 1). The default applies to a credential owned by another team project after a project Promote (case C2), and to every personal credential (C3).
+
+- A home project holds the `credential:owner` sharing role: `credential:read, update, delete, share, unshare, move` (`@n8n/permissions/src/roles/scopes/credential-sharing-scopes.ee.ts:3-14`). A consumer with a share holds only `credential:read, connect` (line 16). With the default, P's editors and admins can change, delete and re-share a credential that on the source belonged to team Q or to one person.
+- With `credentialConflictPolicy: Overwrite`, a credential owned by a project in the Apply is an update candidate (`credential-conflict-policy.ts:25-54`). The P-owned copy is updated by every later Apply from the top-level file, so the ownership drift is permanent and active.
+- If P is later deleted by a confirmed instance Apply, its owned credentials are deleted with it (`project.service.ee.ts:211-257`). The other consumer projects that got access through C's grants lose the credential.
+
+C accepts that ownership can differ between instances (§6.1.5). It does not address that the default turns a use right into an owner right. A safe default is "no default" for a credential that the source home does not own, or a default that the user must confirm with the owner-rights consequence shown.
+
+### C-4 (major) Unsafe intermediate states in the ticket order
+
+- **Ticket 1 before ticket 3 breaks the Apply dialog.** Ticket 1 makes `ownerProject` optional on a missing credential binding. The frontend dereferences it without a guard: `usePromotionBindings.ts:68` (`binding.ownerProject.id`), `PromotionBindingsDialog.vue:168` (`binding.ownerProject.name`), `usePromotionBindingCreation.ts:99`. The graph orders T1 → T3, so ticket 1 can ship alone. Today the same case is a clean `unknown-owner` blocker. After ticket 1 alone, the dialog throws. The OpenAPI change from required to optional `ownerProject` is also a breaking change for typed public-API clients. C keeps `unknown-owner` in the enum "for older clients", but does not keep the old shape.
+- **Ticket 6 before ticket 8 turns silent success into a block with no exit in the UI.** The frontend treats every conflict code except `destructive-change` and `project-deletion` as hard (`usePromotionBindings.ts:48-52`), and any hard conflict sets mode `blocked` with no Continue (lines 145-146). The plan says "Tickets 4, 5+6 and 11 ... can run in parallel" and puts ticket 8 after 6. With 5+6 shipped and 8 not shipped, a branch with one personal or deleted sub-workflow reference blocks every UI instance Apply on the destination, with no "Apply anyway". Today that case fails at the source. Ticket 6 and ticket 8 must ship together.
+- **"Ticket 6 before ticket 5" holds only on one instance.** Source and destination run different versions. A source with ticket 5 writes branches with personal or deleted dependencies. A destination without ticket 6 applies them silently. C applies the version-skew rule to moves (§6.5), not to this pair.
+- **Phase 4 on an older destination.** One move written by a newer source makes every instance Apply on an older destination `blocked` (any `moved` conflict blocks the whole instance Apply, F51). C calls this safe ("No data is lost"), but it is a total stop on the destination until the source reverts the move or the destination upgrades.
+
+### C-5 (major) "Satisfied" for a sub-workflow is not "callable"; the caller-policy claim is wrong when the called workflow is not carried
+
+C leaves caller policy out because "the policy is content of the called workflow and travels with it" (02 §3.1, §2.4). That holds only when the called workflow is in the Apply. A requirement-only workflow (the case C's gate is about) keeps the destination's own `settings.callerPolicy`. When it has none, the instance default applies, and that default is an instance setting (`N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION`, `@n8n/config/src/configs/workflows.config.ts:19-21`). The checker compares owner projects (`subworkflow-policy-checker.ts:69-90`). So W in P that calls S in Q can pass C's gate (S exists by id) and fail at runtime on the destination, while it ran on the source. This contradicts "Never let a broken reference reach the destination in silence". The gate must also evaluate the caller policy for a cross-project reference, or C must state that it does not.
+
+### C-6 (minor) Wrong facts that carry into the design
+
+- **F14 (wrong).** C says the instance Promote failure shows "a count and raw ids" (01 §6 W4; ticket 5 "The error: a count and raw ids"). The public API drops the description, so the toast shows the count only. Ticket 5's problem statement is wrong.
+- **F26 (partly wrong).** C says the Apply check "reads the entity files, not the manifest" and rejects the manifest as owner-hint carrier because "the Apply check does not read it" (02 §3.7). The import plan that the check wraps reads `manifest.requirements`, and every `credential-unresolved` issue starts there. The sidecar choice still stands on the other reason (the selective push rewrites the manifest, F18), but the stated reason is false.
+- **F34 (partly wrong).** C says API and CLI users "cannot resolve `access-required` through the public API" and uses it to reject a UI-only grant (§5.8). `PATCH isGlobal` and `PUT /:id/transfer` both clear it, with side effects. The conclusion (server-side grant) still holds.
+- **F38 (partly wrong).** Rule R2 says "Workflow requirements exist in the manifest but nothing uses them". They feed publish order, reconciliation retention, Agent bindings and the selective-push manifest merge. This matters for C-1: the retention use is exactly the scoping that lets S be deleted.
+- **F09 resolves C's open question.** The tar reader and the parser ignore unknown file names, so the sidecar is safe for old readers. But `workflow-metadata.json` is mandatory for the parser; the sidecar must stay optional.
+
+### C-7 (minor) Phase 4 moves and phase 1d have gaps against C's own rules
+
+- **Connection boundary.** Phase 4 detects a move by id across the projects of the package and transfers it. On a project-scope environment the package holds one project, so a workflow that the destination holds in A and the package holds in B is a "move" from a project that another connection governs. C states that cross-connection moves cannot be one change (§6.4) but adds no guard in tickets 12 and 14. Without one, A's next Apply sees the workflow back under A: a move in each direction.
+- **R6 versus §3.5.** R6 says a move is valid only when both homes are in the scope, and C defines the scope of a project Apply as the selection inside one project. §3.5 and ticket 14 let a project Apply of B write in A.
+- **Data tables of a moved workflow.** A missing table is created in the consumer project, and a same-id table in another project blocks creation (`data-table-importer.ts:167-174, 341-349`). A moved workflow that still points at A's table gives a `data-table-conflict` on the move Apply. Phase 4 does not mention it.
+- **Phase 1d, generic import.** It shares the created credential with the other consumer projects with no confirmation, no `credential:share` check and no licence rule. Phase 1b requires all three for promotion. It also proposes `findUsageScopes`, an existence check that ignores the user's read access, which reports credential ids the user cannot read. That conflicts with C's "do not leak" rule (§3.6).
+- **Instance-scoped credentials.** The task lists "global or instance-scoped". C covers only `isGlobal`. A credential with `usageScope: 'instance'` has no file in the package (`credential-access.repository.ts:99-124`) and so reaches C's new home selector as an ordinary missing credential. The user could create a project credential with the id of an instance credential. Workflows cannot use instance credentials (`credentials/instance-credentials.md`), so this is rare, but C does not say what happens.
+
+## Three strongest ideas to keep
+
+1. **Promote informs, Apply gates, with its own acceptance flag.** Instance Promote stops failing on a dependency (LIGO-1089 option 1). The destination gates a missing workflow dependency with a confirmation that is separate from `confirmDestructiveChanges`. The Apply gate ships before Promote opens. This matches F10, F12, F37 and F39. It needs the fixes in C-1, C-4 and C-5.
+2. **Remove the dead ends first, without a format change.** Report `unknown-owner` as a missing credential with a home choice, and resolve `access-required` with a server-side step that works the same for UI, API and CLI. This fixes existing branches without a new Promote, and it works when the package holds one project (per-project connections). It needs the fixes in C-2, C-3 and C-4.
+3. **Owner hint as an optional sidecar file, with no sharing lists in Git.** `credential.json` is strict (F05) and the selective push rebuilds the manifest and drops unknown fields (F18), so a sidecar next to the credential file is the carrier that old readers ignore and the overlay keeps. Leaving sharing lists out of Git keeps a merge request from changing access for untouched projects.

@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart TD
+    X["A called workflow will not be on&lt;br/&gt;the destination after this Apply"] --&gt; S["Apply stops before any write"]
+    S --&gt; A1["In the same project, on the branch:&lt;br/&gt;add it to the selection"]
+    S --&gt; A2["In another project, on the branch:&lt;br/&gt;apply that project first"]
+    S --&gt; A3["Apply anyway:&lt;br/&gt;its own confirmation"]
+    A3 --&gt; R["The reference arrives broken.&lt;br/&gt;The blocker returns on the next Apply."]
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>

@@ -1,0 +1,6 @@
+flowchart TD
+    X["A called workflow will not be on<br/>the destination after this Apply"] --> S["Apply stops before any write"]
+    S --> A1["In the same project, on the branch:<br/>add it to the selection"]
+    S --> A2["In another project, on the branch:<br/>apply that project first"]
+    S --> A3["Apply anyway:<br/>its own confirmation"]
+    A3 --> R["The reference arrives broken.<br/>The blocker returns on the next Apply."]

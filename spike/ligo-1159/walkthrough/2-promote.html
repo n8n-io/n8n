@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart TD
+    A["Dependency outside the selection"] --&gt; T{Type}
+    T -- credential --&gt; N["Note with the owner project.&lt;br/&gt;No warning."]
+    T -- workflow --&gt; B{"Will the branch&lt;br/&gt;hold it?"}
+    B -- yes --&gt; OK["No warning"]
+    B -- no --&gt; W["Warning with the next step"]
+    W --- W1["Same project:&lt;br/&gt;select it too"]
+    W --- W2["Other team project:&lt;br/&gt;promote it from there"]
+    W --- W3["Personal project:&lt;br/&gt;move it to a team project"]
+    W --- W4["Does not exist:&lt;br/&gt;broken reference"]
+    N --&gt; P(["Promote succeeds"])
+    OK --&gt; P
+    W1 --&gt; P
+    W2 --&gt; P
+    W3 --&gt; P
+    W4 --&gt; P
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>

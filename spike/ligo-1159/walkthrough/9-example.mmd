@@ -1,0 +1,10 @@
+flowchart LR
+    subgraph S["Carried: project Billing"]
+        W["Workflow<br/>'Invoice sync'"]
+    end
+    subgraph R["Not carried: needed on the destination"]
+        C["Credential that<br/>project Finance owns"]
+        SW["Sub-workflow in<br/>project Shared"]
+    end
+    W -- uses --> C
+    W -- calls --> SW

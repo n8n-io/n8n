@@ -1,0 +1,8 @@
+flowchart LR
+    P["<b>Promote</b><br/>Always succeeds.<br/>Warns about what the<br/>branch will not hold."] --> B[("Branch")]
+    B --> A{"<b>Apply</b><br/>Is every dependency<br/>usable on the<br/>destination?"}
+    A -- yes --> OK["Applies.<br/>No extra step."]
+    A -- no --> S["Stops before any write.<br/>Offers an action<br/>for each gap."]
+    S --> A1["Create the<br/>credential one time"]
+    S --> A2["Give a project access<br/>to the credential"]
+    S --> A3["Apply the other project first,<br/>or apply anyway"]

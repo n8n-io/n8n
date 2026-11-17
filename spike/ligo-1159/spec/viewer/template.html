@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIGO-1159 · Specification review</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1b2330; --muted:#5b6879; --faint:#8a95a5; --line:#dde2e9;
+  --pass:#17794a; --pass-bg:#e4f4ea; --warn:#9a5b00; --warn-bg:#fff1cf; --block:#bf3329; --block-bg:#fde7e4;
+  --info:#2a5fc4; --info-bg:#e6eefc; --dec:#7a2d8f; --dec-bg:#f7f0fa;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:112px}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+a{color:var(--info);text-decoration:none} a:hover{text-decoration:underline}
+.mono{font-family:var(--mono);font-size:12px}
+header.top{background:#141b26;color:#fff;padding:16px 24px 14px}
+header.top h1{margin:0;font-size:19px;font-weight:650}
+header.top .sub{color:#aab4c3;font-size:12.5px;margin-top:2px}
+header.top .sub a{color:#9cc0ff}
+.bar{position:sticky;top:0;z-index:30;background:#fffffff5;border-bottom:1px solid var(--line);backdrop-filter:blur(6px);padding:9px 24px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.bar .grp{display:flex;align-items:center;gap:5px}
+.bar .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:650}
+.seg{display:inline-flex;border:1px solid #c9d1dc;border-radius:7px;overflow:hidden;background:#fff}
+.seg button{border:0;background:none;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted);border-right:1px solid #e3e7ed}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#141b26;color:#fff}
+.btn{border:1px solid #c9d1dc;background:#fff;border-radius:7px;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn:hover{background:#f0f3f7}
+input.search{border:1px solid #c9d1dc;border-radius:7px;padding:5px 10px;width:230px;font-size:13px}
+select.sel{border:1px solid #c9d1dc;border-radius:7px;padding:4px 6px;font-size:12.5px;background:#fff}
+.progress{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.meter{width:120px;height:7px;border-radius:4px;background:#e3e7ed;overflow:hidden;display:flex}
+.meter i{display:block;height:100%} .meter .ok{background:#2fa56a} .meter .q{background:#e2a11b} .meter .x{background:#d8473c}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;padding:18px 24px 60px;max-width:1500px;margin:0 auto;align-items:start}
+nav.side{position:sticky;top:108px;max-height:calc(100vh - 124px);overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px}
+nav.side h4{margin:10px 6px 3px;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+nav.side h4:first-child{margin-top:4px}
+nav.side details{border-radius:7px}
+nav.side summary{list-style:none;display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:7px;cursor:pointer;font-size:12.8px;font-weight:600}
+nav.side summary::-webkit-details-marker{display:none}
+nav.side summary:hover{background:#f0f3f7}
+nav.side summary .cnt{margin-left:auto;font-size:11px;color:var(--faint);font-weight:500;white-space:nowrap}
+nav.side summary::before{content:"▸";color:var(--faint);font-size:10px;width:9px}
+nav.side details[open] summary::before{content:"▾"}
+nav.side .rl{display:block;padding:3px 7px 3px 24px;font-size:12px;color:var(--muted);border-radius:6px;line-height:1.35}
+nav.side .rl:hover{background:#f0f3f7;text-decoration:none;color:var(--ink)}
+nav.side .hidden{display:none}
+.intro{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin-bottom:16px}
+.intro h2{margin:0 0 6px;font-size:15px}
+.intro p{margin:0 0 8px;color:#344054;max-width:900px}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 4px}
+.levels div{border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:12.5px;color:var(--muted)}
+.levels b{display:block;color:var(--ink);font-size:13px}
+.decs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:650;border:1px solid transparent;white-space:nowrap}
+.chip.dec{background:#fff;border-color:#d8b4e2;color:var(--dec);cursor:pointer}
+.chip.dec:hover,.chip.dec.on{background:var(--dec);color:#fff;border-color:var(--dec)}
+.chip.out{background:#eef1f5;color:var(--muted)}
+.chip.cases{background:var(--info-bg);color:var(--info)}
+.decbanner{background:var(--dec-bg);border:1px solid #e2c6ea;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:none}
+.decbanner.on{display:block}
+.decbanner b{color:var(--dec)}
+.matchnote{font-size:12.5px;color:var(--muted);margin:0 0 10px;display:none}
+.matchnote.on{display:block}
+.cast{display:flex;flex-wrap:wrap;gap:5px 6px;margin-top:8px}
+section.feature{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.fhead{padding:16px 20px 12px;border-bottom:1px solid var(--line);background:linear-gradient(#fbfcfd,#fff)}
+.fhead .file{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.fhead h2{margin:2px 0 6px;font-size:19px;letter-spacing:-.01em}
+.fhead .desc p{margin:0 0 6px;color:#344054;max-width:860px;font-size:14px}
+.fhead .src{font-size:11.5px;color:var(--faint);margin-top:6px}
+.fhead .note{font-size:12.5px;color:var(--dec);background:var(--dec-bg);border-radius:7px;padding:6px 10px;margin-top:8px;max-width:860px}
+.bg{margin:12px 20px 0;border:1px dashed #c3ccd8;border-radius:8px;padding:8px 12px;background:#fafbfc}
+.bg .t{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:650;margin-bottom:3px}
+details.rule{border-top:1px solid var(--line)}
+details.rule:first-of-type{border-top:0}
+.fbody > details.rule:first-child{border-top:0}
+details.rule > summary{list-style:none;display:flex;align-items:flex-start;gap:10px;padding:12px 20px;cursor:pointer}
+details.rule > summary::-webkit-details-marker{display:none}
+details.rule > summary:hover{background:#fafbfc}
+.rtag{flex:none;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#fff;background:#3d5a80;border-radius:4px;padding:2px 6px;margin-top:2px}
+.rname{font-size:15px;font-weight:650;line-height:1.35}
+.rmeta{margin-left:auto;flex:none;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--faint);padding-top:2px}
+.rdesc{padding:0 20px 8px 66px;color:#344054;max-width:900px;font-size:13.5px}
+.rdesc p{margin:0 0 6px}
+.rbody{padding:0 20px 12px 66px}
+details.sc{border:1px solid var(--line);border-radius:8px;margin-bottom:7px;background:#fff}
+details.sc > summary{list-style:none;display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-weight:600;font-size:13.5px}
+details.sc > summary::-webkit-details-marker{display:none}
+details.sc > summary:hover{background:#fafbfc;border-radius:8px}
+details.sc[open] > summary{border-bottom:1px solid #edf0f4}
+.odot{flex:none;width:9px;height:9px;border-radius:50%;background:#c7ced8}
+.odot.block{background:#d8473c}.odot.warn{background:#e2a11b}.odot.pass{background:#2fa56a}.odot.varies{background:linear-gradient(90deg,#d8473c 50%,#2fa56a 50%)}
+.sname{min-width:0}
+.sright{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none}
+.rev{display:inline-flex;border:1px solid #d5dbe3;border-radius:6px;overflow:hidden}
+.rev button{border:0;background:#fff;width:24px;height:22px;font-size:12px;font-weight:700;cursor:pointer;color:#a3adba;border-right:1px solid #e3e7ed;padding:0}
+.rev button:last-child{border-right:0}
+.rev button:hover{background:#f0f3f7;color:var(--ink)}
+.rev button.on[data-s=ok]{background:#2fa56a;color:#fff}.rev button.on[data-s=q]{background:#e2a11b;color:#fff}.rev button.on[data-s=x]{background:#d8473c;color:#fff}
+.rev button.note.has{color:var(--info)}
+.stale{font-size:10.5px;color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:1px 5px;font-weight:650}
+.steps{padding:8px 12px 10px;display:grid;grid-template-columns:54px minmax(0,1fr);row-gap:3px;column-gap:8px;font-size:13.5px}
+.kw{font-weight:700;text-align:right;font-size:12.5px;padding-top:1px}
+.kw.ctx{color:#64748b}.kw.act{color:var(--info)}.kw.out{color:var(--pass)}
+.kw.sub{font-weight:500;opacity:.75}
+.st.act{font-weight:600}
+.gap{grid-column:1/-1;height:4px}
+.ent{background:#eef1f5;border-radius:4px;padding:0 5px;font-weight:600;white-space:nowrap;font-size:13px}
+.ent.project{background:#e6eefc;color:#1f4b9c}.ent.credential{background:#fbefd5;color:#7a4e00}.ent.workflow{background:#e9eef4;color:#2c4563}
+.ent.table,.ent.variable,.ent.tag,.ent.folder{background:#e2f3f1;color:#1f605d}
+q.msg{quotes:"“" "”";font-style:italic;color:#3b2a00;background:#fff6dd;border-radius:4px;padding:0 4px}
+.param{font-family:var(--mono);font-size:12px;background:var(--info-bg);color:var(--info);border-radius:4px;padding:0 4px}
+table.ex{border-collapse:collapse;margin:2px 12px 12px 74px;font-size:12.5px}
+table.ex th{background:var(--info-bg);color:var(--info);text-align:left;padding:4px 10px;border:1px solid #cddcf6;font-family:var(--mono);font-size:11.5px}
+table.ex td{padding:4px 10px;border:1px solid #e3e7ed}
+table.ex td.block{color:var(--block);font-weight:650}table.ex td.pass{color:var(--pass);font-weight:650}table.ex td.warning{color:var(--warn);font-weight:650}
+table.dt{border-collapse:collapse;margin:3px 0;font-size:12.5px} table.dt td{padding:2px 9px;border:1px solid #e3e7ed}
+.notebox{padding:0 12px 10px 74px;display:none}
+.notebox.on{display:block}
+.rule > .notebox{padding:0 20px 10px 66px}
+.notebox textarea{width:100%;min-height:54px;border:1px solid #c9d1dc;border-radius:7px;padding:7px 9px;font-size:13px;resize:vertical;background:#fffef7}
+.xlink{font-size:11.5px;font-weight:600;white-space:nowrap}
+.hide{display:none!important}
+dialog{border:1px solid var(--line);border-radius:12px;padding:0;width:min(820px,92vw);box-shadow:0 20px 60px #0f172a40}
+dialog::backdrop{background:#0f172a66}
+dialog .dh{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+dialog .dh h3{margin:0;font-size:15px} dialog .dh .btn{margin-left:auto}
+dialog textarea{display:block;width:100%;height:56vh;border:0;padding:14px 18px;font-family:var(--mono);font-size:12.5px;resize:none;outline:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:8px;align-items:center}
+.legend .odot{display:inline-block;margin-right:5px;vertical-align:middle}
+@media (max-width:1000px){.layout{grid-template-columns:1fr}nav.side{position:static;max-height:none}.levels{grid-template-columns:1fr}}
+@media print{.bar,nav.side,.rev,.notebox,.xlink{display:none!important}.layout{display:block;padding:0}section.feature{break-inside:auto;border:0}body{background:#fff}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Cross-project promotion: specification</h1>
+  <div class="sub">LIGO-1159 · <span id="stats"></span> · generated <span id="gen"></span> from <span class="mono">spec/*.feature</span> · <a id="explorerlink" href="#">scenario explorer ▸</a></div>
+</header>
+<div class="bar">
+  <div class="grp"><span class="lbl">Level</span><div class="seg" id="zoom"><button data-z="rules">Rules</button><button data-z="examples">Examples</button><button data-z="steps" class="on">Steps</button></div></div>
+  <input class="search" id="search" type="search" placeholder="Search rules, scenarios and steps">
+  <div class="grp"><span class="lbl">Outcome</span><select class="sel" id="fout"><option value="">any</option><option value="block">stops</option><option value="warn">warns</option><option value="pass">proceeds</option><option value="varies">varies</option></select></div>
+  <div class="grp"><span class="lbl">Review</span><select class="sel" id="frev"><option value="">any</option><option value="none">not reviewed</option><option value="ok">agreed</option><option value="q">question</option><option value="x">change</option><option value="stale">changed since review</option></select></div>
+  <button class="btn" id="clear" style="display:none">Clear filters</button>
+  <div class="progress"><span id="ptext"></span><div class="meter" id="meter"></div><button class="btn" id="export">Export notes</button><button class="btn" id="reset" title="Remove all review marks and notes">Reset</button></div>
+</div>
+<div class="layout">
+  <nav class="side" id="side"></nav>
+  <main>
+    <div class="intro">
+      <h2>How to read this page</h2>
+      <p>This page shows the specification, not test results. It describes the system as it must be at the end. It has no phases and no tickets. Use the review buttons on each rule and scenario: <b>✓</b> agreed, <b>?</b> question, <b>✗</b> change, <b>✎</b> note. The marks stay in this browser. "Export notes" gives them as text.</p>
+      <div class="levels">
+        <div><b>Feature = the invariant</b>What must always be true, in one or two sentences.</div>
+        <div><b>Rule = one decision</b>Read at the "Rules" level to review only the decisions.</div>
+        <div><b>Scenario = one example</b>A concrete case that makes the rule checkable.</div>
+      </div>
+      <div class="legend"><span><i class="odot block"></i>the operation stops</span><span><i class="odot warn"></i>it warns and continues</span><span><i class="odot pass"></i>it proceeds</span><span><i class="odot varies"></i>depends on the example row</span><span>The dot comes from the wording of the outcome steps.</span></div>
+      <div class="decs" id="decs"></div>
+      <div class="cast" id="cast"></div>
+    </div>
+    <div class="decbanner" id="decbanner"></div>
+    <p class="matchnote" id="matchnote"></p>
+    <div id="features"></div>
+  </main>
+</div>
+<dialog id="dlg"><div class="dh"><h3>Review notes</h3><span id="dlginfo" style="font-size:12px;color:var(--muted)"></span><button class="btn" id="copy">Copy</button><button class="btn" id="close" style="margin-left:0">Close</button></div><textarea id="dlgtext" readonly></textarea></dialog>
+
+<script>
+'use strict';
+window.addEventListener('error', function (e) { document.title = 'ERR:' + e.message + ' @' + e.lineno; });
+const DATA = /*__DATA__*/null;
+const STORE = 'ligo-1159-spec-review-v1';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const attr = (s) => esc(s).replace(/"/g, '&quot;');
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); }
+
+/* ---------- Gherkin parser (the subset that the spec uses) ---------- */
+function parseFeature(file, group, text) {
+  const f = { file, group, comments: [], tags: [], name: '', desc: [], background: null, rules: [], scenarios: [] };
+  const KW = /^(Feature|Rule|Background|Scenario Outline|Scenario Template|Scenario|Example|Examples|Scenarios):\s*(.*)$/;
+  const STEP = /^(Given|When|Then|And|But|\*)\s+(.*)$/;
+  let container = f, cur = null, tags = [], ex = null, last = null, desc = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { if (desc && desc.length) desc.push(''); continue; }
+    if (line.startsWith('#')) { if (!f.name) f.comments.push(line.replace(/^#\s?/, '')); continue; }
+    if (line.startsWith('@')) { tags.push(...line.split(/\s+/)); continue; }
+    const k = KW.exec(line);
+    if (k) {
+      const kw = k[1], name = k[2]; desc = null; last = null; ex = null;
+      if (kw === 'Feature') { f.name = name; f.tags = tags; tags = []; desc = f.desc; }
+      else if (kw === 'Rule') { const r = { name, desc: [], background: null, scenarios: [], tags }; tags = []; f.rules.push(r); container = r; cur = null; desc = r.desc; }
+      else if (kw === 'Background') { cur = { steps: [] }; container.background = cur; }
+      else if (kw === 'Examples' || kw === 'Scenarios') { ex = { name, header: null, rows: [] }; cur.examples.push(ex); tags = []; }
+      else { cur = { name, outline: /Outline|Template/.test(kw), tags, desc: [], steps: [], examples: [] }; tags = []; container.scenarios.push(cur); desc = cur.desc; }
+      continue;
+    }
+    if (line.startsWith('|')) {
+      const cells = line.slice(1, line.lastIndexOf('|')).split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'));
+      if (ex) { if (!ex.header) ex.header = cells; else ex.rows.push(cells); } else if (last) (last.table = last.table || []).push(cells);
+      continue;
+    }
+    const s = STEP.exec(line);
+    if (s && cur && !ex) { desc = null; last = { kw: s[1], text: s[2] }; cur.steps.push(last); continue; }
+    if (desc) desc.push(line);
+  }
+  if (f.scenarios.length) f.rules.unshift({ name: '(no rule)', desc: [], background: null, scenarios: f.scenarios, tags: [] });
+  return f;
+}
+const paras = (lines) => lines.join('\n').split(/\n\s*\n/).map((p) => p.replace(/\n/g, ' ').trim()).filter(Boolean);
+
+/* ---------- model ---------- */
+const FEATURES = DATA.features.map((f) => parseFeature(f.file, f.group, f.text));
+const TYPES = {};
+(function collectCast() {
+  const words = { project: 'project', projects: 'project', credential: 'credential', credentials: 'credential', workflow: 'workflow', workflows: 'workflow', 'sub-workflow': 'workflow', folder: 'folder', variable: 'variable', 'data table': 'table', tag: 'tag' };
+  const re = /\b(projects?|credentials?|workflows?|sub-workflow|folder|variable|data table|tag)\s+((?:"[^"]*"(?:,\s*|\s+and\s+)?)+)/g;
+  const scan = (t) => { for (const m of t.matchAll(re)) for (const q of m[2].matchAll(/"([^"]*)"/g)) if (!TYPES[q[1]] && !q[1].startsWith('<')) TYPES[q[1]] = words[m[1]]; };
+  FEATURES.forEach((f) => { const all = (c) => { if (c.background) c.background.steps.forEach((s) => scan(s.text)); c.scenarios.forEach((sc) => sc.steps.forEach((s) => scan(s.text))); }; all(f); f.rules.forEach(all); });
+})();
+function outcomeOf(sc) {
+  let prim = 'ctx'; const outs = [];
+  sc.steps.forEach((s) => { if (s.kw === 'Given') prim = 'ctx'; else if (s.kw === 'When') prim = 'act'; else if (s.kw === 'Then') prim = 'out'; if (prim === 'out') outs.push(s.text); });
+  const t = outs.join(' ').toLowerCase().replace(/\b(no|without a) (warning|note|message)\b/g, '');
+  if (/<[^>]+>/.test(outs.join(' ')) && /result|shows:/.test(t)) return 'varies';
+  if (/\bstops\b|cannot be promoted|does not start the promote|result is "blocked"|stays a block/.test(t)) return 'block';
+  if (/\bwarning\b|\bnote\b/.test(t)) return 'warn';
+  return 'pass';
+}
+const ITEMS = []; // every rule and scenario, with its key
+FEATURES.forEach((f) => {
+  f.id = slug(f.file.replace(/\.feature$/, ''));
+  f.rules.forEach((r, ri) => {
+    r.id = f.id + '--' + (slug(r.name).slice(0, 60) || 'r' + ri); r.key = f.file + '::rule::' + r.name; r.feature = f;
+    r.hash = hash(r.name + '|' + r.desc.join(' '));
+    ITEMS.push({ kind: 'rule', key: r.key, ref: r });
+    r.scenarios.forEach((sc) => {
+      sc.rule = r; sc.feature = f; sc.key = f.file + '::' + r.name + '::' + sc.name; sc.linkKey = f.file + '::' + sc.name;
+      sc.cases = sc.outline ? sc.examples.reduce((n, e) => n + e.rows.length, 0) : 1;
+      sc.outcome = outcomeOf(sc);
+      sc.decisions = sc.tags.map((t) => /^@open-decision-(\d+)$/.exec(t)).filter(Boolean).map((m) => m[1]);
+      sc.hash = hash(sc.name + '|' + sc.steps.map((s) => s.kw + ' ' + s.text + (s.table ? JSON.stringify(s.table) : '')).join('|') + '|' + JSON.stringify(sc.examples));
+      sc.search = (r.name + ' ' + sc.name + ' ' + sc.steps.map((s) => s.text).join(' ') + ' ' + JSON.stringify(sc.examples) + ' ' + sc.tags.join(' ')).toLowerCase();
+      ITEMS.push({ kind: 'scenario', key: sc.key, ref: sc });
+    });
+  });
+});
+const SCENARIOS = ITEMS.filter((i) => i.kind === 'scenario').map((i) => i.ref);
+
+/* ---------- review state ---------- */
+let review = {};
+try { review = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch (e) { review = {}; }
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(review)); } catch (e) { /* private mode */ } };
+const stateOf = (item) => review[item.key] || {};
+const isStale = (item) => { const s = stateOf(item); return !!(s.status && s.hash && s.hash !== item.hash); };
+
+/* ---------- rendering ---------- */
+function rich(text) {
+  let h = esc(text);
+  h = h.replace(/"([^"]*)"/g, (m, q) => (q.length > 32 || /[.?!]$/.test(q) ? `<q class=msg>${q}</q>` : `<span class='ent ${TYPES[q] || ''}'>${q}</span>`));
+  h = h.replace(/&lt;([^&]+?)&gt;/g, "<span class='param'>&lt;$1&gt;</span>");
+  return h;
+}
+function stepsHTML(steps) {
+  let prim = 'ctx', h = '', prev = null;
+  steps.forEach((s) => {
+    const primary = s.kw === 'Given' || s.kw === 'When' || s.kw === 'Then';
+    if (s.kw === 'Given') prim = 'ctx'; else if (s.kw === 'When') prim = 'act'; else if (s.kw === 'Then') prim = 'out';
+    if (primary && prev && prev !== prim) h += '<div class="gap"></div>';
+    prev = prim;
+    h += `<div class="kw ${prim} ${primary ? '' : 'sub'}">${esc(s.kw)}</div><div class="st ${prim}">${rich(s.text)}`;
+    if (s.table) h += '<table class="dt">' + s.table.map((r) => '<tr>' + r.map((c) => `<td>${esc(c)}</td>`).join('') + '</tr>').join('') + '</table>';
+    h += '</div>';
+  });
+  return `<div class="steps">${h}</div>`;
+}
+function revHTML(item) {
+  return `<span class="rev" data-key="${attr(item.key)}"><button data-s="ok" title="Agreed">✓</button><button data-s="q" title="Question">?</button><button data-s="x" title="Needs a change">✗</button><button class="note" data-s="note" title="Note">✎</button></span>`;
+}
+function scenarioHTML(sc) {
+  const links = DATA.links[sc.linkKey] || [];
+  let h = `<details class="sc" open data-key="${attr(sc.key)}" id="${attr(sc.rule.id + '--' + slug(sc.name).slice(0, 50))}"><summary><i class="odot ${sc.outcome}" title="${sc.outcome}"></i><span class="sname">${esc(sc.name)}</span>`;
+  if (sc.outline) h += `<span class="chip cases">${sc.cases} cases</span>`;
+  sc.decisions.forEach((d) => { h += `<button class="chip dec" data-dec="${d}" title="${attr((DATA.decisions[d] || {}).question || '')}">open decision ${d}</button>`; });
+  h += `<span class="sright"><span class="stale hide">changed since review</span>`;
+  if (links.length) h += `<a class="xlink" href="${attr(DATA.explorer)}#s=${attr(links[0].id)}&step=1" target="_blank" title="${attr(links[0].title)}">see it ▸</a>`;
+  h += revHTML(sc) + '</span></summary>';
+  if (sc.desc.length) h += `<div style="padding:8px 12px 0 74px;color:#344054">${paras(sc.desc).map((p) => `<p style="margin:0 0 4px">${esc(p)}</p>`).join('')}</div>`;
+  h += stepsHTML(sc.steps);
+  sc.examples.forEach((e) => {
+    h += '<table class="ex"><tr>' + e.header.map((c) => `<th>${esc(c)}</th>`).join('') + '</tr>' + e.rows.map((r) => '<tr>' + r.map((c) => `<td class="${/^(block|pass|warning)$/.test(c) ? c : ''}">${esc(c)}</td>`).join('') + '</tr>').join('') + '</table>';
+  });
+  h += `<div class="notebox"><textarea placeholder="Note for this scenario"></textarea></div></details>`;
+  return h;
+}
+function ruleHTML(r) {
+  const cases = r.scenarios.reduce((n, s) => n + s.cases, 0);
+  let h = `<details class="rule" open data-key="${attr(r.key)}" id="${attr(r.id)}"><summary><span class="rtag">Rule</span><span class="rname">${esc(r.name)}</span><span class="rmeta"><span class="stale hide">changed since review</span><span>${r.scenarios.length} scenario${r.scenarios.length > 1 ? 's' : ''}${cases > r.scenarios.length ? ' · ' + cases + ' cases' : ''}</span>${revHTML(r)}</span></summary>`;
+  if (r.desc.length) h += `<div class="rdesc">${paras(r.desc).map((p) => `<p>${esc(p)}</p>`).join('')}</div>`;
+  h += `<div class="notebox"><textarea placeholder="Note for this rule"></textarea></div><div class="rbody">`;
+  if (r.background) h += `<div class="bg" style="margin:0 0 8px"><div class="t">Context of every scenario of this rule</div>${stepsHTML(r.background.steps)}</div>`;
+  h += r.scenarios.map(scenarioHTML).join('') + '</div></details>';
+  return h;
+}
+function featureHTML(f) {
+  const src = f.comments.filter((c) => /^Source:|^sections|^and |^for the|^with /.test(c) || /solution\.md/.test(c));
+  const notes = f.comments.filter((c) => !src.includes(c) && c.trim());
+  let h = `<section class="feature" id="${f.id}"><div class="fhead"><div class="file">${esc(f.file)}</div><h2>${esc(f.name)}</h2><div class="desc">${paras(f.desc).map((p) => `<p>${esc(p)}</p>`).join('')}</div>`;
+  if (notes.length) h += `<div class="note">${esc(notes.join(' '))}</div>`;
+  if (src.length) h += `<div class="src">${esc(src.join(' '))}</div>`;
+  h += '</div>';
+  if (f.background) h += `<div class="bg"><div class="t">Context of every scenario of this feature</div>${stepsHTML(f.background.steps)}</div>`;
+  h += `<div class="fbody" style="margin-top:${f.background ? 10 : 0}px">` + f.rules.map(ruleHTML).join('') + '</div></section>';
+  return h;
+}
+function renderAll() {
+  $('features').innerHTML = FEATURES.map(featureHTML).join('');
+  let side = '', g = '';
+  FEATURES.forEach((f) => {
+    if (f.group !== g) { g = f.group; side += `<h4 data-g="${attr(g)}">${esc(g)}</h4>`; }
+    side += `<details data-f="${f.id}"><summary><span>${esc(f.name)}</span><span class="cnt" data-cnt="${f.id}"></span></summary>` + f.rules.map((r) => `<a class="rl" href="#${attr(r.id)}" data-r="${attr(r.key)}">${esc(r.name)}</a>`).join('') + '</details>';
+  });
+  $('side').innerHTML = side;
+  const cases = SCENARIOS.reduce((n, s) => n + s.cases, 0), rules = FEATURES.reduce((n, f) => n + f.rules.length, 0);
+  $('stats').textContent = `${FEATURES.length} features · ${rules} rules · ${SCENARIOS.length} scenarios · ${cases} cases`;
+  $('gen').textContent = DATA.generated.slice(0, 16).replace('T', ' ');
+  $('explorerlink').href = DATA.explorer;
+  const used = {}; SCENARIOS.forEach((s) => s.decisions.forEach((d) => { used[d] = (used[d] || 0) + 1; }));
+  $('decs').innerHTML = '<span class="chip out">Open decisions</span>' + Object.keys(DATA.decisions).map((d) => `<button class="chip dec" data-dec="${d}" title="${attr(DATA.decisions[d].question)}">${d} · ${used[d] || 0}</button>`).join('') + '<span style="font-size:11.5px;color:var(--muted)">number · scenarios that depend on it. A scenario shows the recommended answer.</span>';
+  const byType = {}; Object.entries(TYPES).forEach(([n, t]) => { (byType[t] = byType[t] || []).push(n); });
+  $('cast').innerHTML = '<span class="chip out">Cast</span>' + Object.entries(byType).map(([t, names]) => names.sort().map((n) => `<span class="ent ${t}" title="${t}">${esc(n)}</span>`).join('')).join('');
+}
+
+/* ---------- review UI ---------- */
+const byKey = {}; ITEMS.forEach((i) => { byKey[i.key] = i.ref; });
+function paint() {
+  document.querySelectorAll('.rev').forEach((el) => {
+    const item = byKey[el.dataset.key], s = stateOf(item), stale = isStale(item);
+    el.querySelectorAll('button[data-s]').forEach((b) => { if (b.dataset.s !== 'note') b.classList.toggle('on', s.status === b.dataset.s); else b.classList.toggle('has', !!s.note); });
+    const box = el.closest('details'); const stEl = box.querySelector(':scope > summary .stale'); if (stEl) stEl.classList.toggle('hide', !stale);
+    const nb = box.querySelector(':scope > .notebox'); const ta = nb.querySelector('textarea');
+    if (document.activeElement !== ta) ta.value = s.note || '';
+    if (s.note) nb.classList.add('on');
+  });
+  const c = { ok: 0, q: 0, x: 0 }; SCENARIOS.forEach((s) => { const st = stateOf(s).status; if (st) c[st]++; });
+  const done = c.ok + c.q + c.x, n = SCENARIOS.length;
+  $('ptext').textContent = `${done} of ${n} scenarios reviewed` + (c.q || c.x ? ` · ${c.q} question${c.q === 1 ? '' : 's'} · ${c.x} change${c.x === 1 ? '' : 's'}` : '');
+  $('meter').innerHTML = ['ok', 'q', 'x'].map((k) => `<i class="${k}" style="width:${(c[k] / n) * 100}%"></i>`).join('');
+  FEATURES.forEach((f) => { const all = f.rules.flatMap((r) => r.scenarios), d = all.filter((s) => stateOf(s).status).length; const el = document.querySelector(`[data-cnt="${f.id}"]`); if (el) el.textContent = `${d}/${all.length}`; });
+}
+document.addEventListener('click', (e) => {
+  const rb = e.target.closest('.rev button');
+  if (rb) {
+    e.preventDefault(); e.stopPropagation();
+    const key = rb.closest('.rev').dataset.key, item = byKey[key], s = review[key] || (review[key] = {});
+    if (rb.dataset.s === 'note') { const box = rb.closest('details'); box.open = true; const nb = box.querySelector(':scope > .notebox'); nb.classList.toggle('on', !(nb.classList.contains('on') && !s.note)); if (nb.classList.contains('on')) nb.querySelector('textarea').focus(); return; }
+    if (s.status === rb.dataset.s) delete s.status; else { s.status = rb.dataset.s; s.hash = item.hash; if (s.status !== 'ok') { const box = rb.closest('details'); box.open = true; const nb = box.querySelector(':scope > .notebox'); nb.classList.add('on'); nb.querySelector('textarea').focus(); } }
+    if (!s.status && !s.note) delete review[key];
+    save(); paint(); if (filters.rev) applyFilters(); return;
+  }
+  const dc = e.target.closest('[data-dec]');
+  if (dc) { e.preventDefault(); e.stopPropagation(); filters.dec = filters.dec === dc.dataset.dec ? '' : dc.dataset.dec; applyFilters(); if (filters.dec) $('decbanner').scrollIntoView({ block: 'center' }); return; }
+  if (e.target.closest('.xlink')) e.stopPropagation();
+});
+document.addEventListener('input', (e) => {
+  const ta = e.target.closest('.notebox textarea'); if (!ta) return;
+  const key = ta.closest('details').dataset.key, s = review[key] || (review[key] = {});
+  if (ta.value.trim()) s.note = ta.value; else delete s.note;
+  if (!s.status && !s.note) delete review[key];
+  save(); paint();
+});
+
+/* ---------- filters and levels ---------- */
+const filters = { q: '', out: '', rev: '', dec: '' };
+function matches(sc) {
+  if (filters.q && !filters.q.split(/\s+/).every((w) => sc.search.includes(w))) return false;
+  if (filters.out && sc.outcome !== filters.out) return false;
+  if (filters.dec && !sc.decisions.includes(filters.dec)) return false;
+  if (filters.rev) { const st = stateOf(sc).status; if (filters.rev === 'none' ? !!st : filters.rev === 'stale' ? !isStale(sc) : st !== filters.rev) return false; }
+  return true;
+}
+function applyFilters() {
+  const active = !!(filters.q || filters.out || filters.rev || filters.dec); let shown = 0;
+  FEATURES.forEach((f) => {
+    let fAny = false;
+    f.rules.forEach((r) => {
+      let rAny = false;
+      r.scenarios.forEach((sc) => { const ok = !active || matches(sc); if (ok) { rAny = true; shown++; } document.querySelector(`details.sc[data-key="${CSS.escape(sc.key)}"]`).classList.toggle('hide', !ok); });
+      document.getElementById(r.id).classList.toggle('hide', !rAny);
+      const link = document.querySelector(`.rl[data-r="${CSS.escape(r.key)}"]`); if (link) link.classList.toggle('hidden', !rAny);
+      if (rAny) fAny = true;
+    });
+    $(f.id).classList.toggle('hide', !fAny);
+    document.querySelector(`nav.side details[data-f="${f.id}"]`).classList.toggle('hidden', !fAny);
+  });
+  document.querySelectorAll('nav.side h4').forEach((h) => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H4') { if (!n.classList.contains('hidden')) any = true; n = n.nextElementSibling; } h.classList.toggle('hidden', !any); });
+  $('clear').style.display = active ? '' : 'none';
+  $('matchnote').classList.toggle('on', active); $('matchnote').textContent = active ? `${shown} of ${SCENARIOS.length} scenarios match the filters.` : '';
+  document.querySelectorAll('.chip.dec').forEach((c) => c.classList.toggle('on', c.dataset.dec === filters.dec));
+  const b = $('decbanner'), d = DATA.decisions[filters.dec];
+  b.classList.toggle('on', !!d);
+  if (d) b.innerHTML = `<b>Open decision ${esc(filters.dec)}.</b> ${esc(d.question)}<br>${d.recommendation ? '<b>Recommendation:</b> ' + esc(d.recommendation) : '<b>No recommendation yet.</b> The specification does not cover the outcome of this decision.'}`;
+  if (active && zoom === 'rules') setZoom('examples');
+}
+let zoom = 'steps';
+function setZoom(z) {
+  zoom = z;
+  document.querySelectorAll('#zoom button').forEach((b) => b.classList.toggle('on', b.dataset.z === z));
+  document.querySelectorAll('details.rule').forEach((d) => { d.open = z !== 'rules'; });
+  document.querySelectorAll('details.sc').forEach((d) => { d.open = z === 'steps'; });
+}
+$('zoom').onclick = (e) => { const b = e.target.closest('[data-z]'); if (b) setZoom(b.dataset.z); };
+$('search').oninput = (e) => { filters.q = e.target.value.trim().toLowerCase(); applyFilters(); };
+$('fout').onchange = (e) => { filters.out = e.target.value; applyFilters(); };
+$('frev').onchange = (e) => { filters.rev = e.target.value; applyFilters(); };
+$('clear').onclick = () => { filters.q = filters.out = filters.rev = filters.dec = ''; $('search').value = ''; $('fout').value = ''; $('frev').value = ''; applyFilters(); };
+$('side').addEventListener('click', (e) => { const a = e.target.closest('.rl'); if (!a) return; const d = document.getElementById(a.getAttribute('href').slice(1)); if (d) d.open = true; });
+$('side').addEventListener('toggle', (e) => { const d = e.target; if (d.open && d.dataset.f) $(d.dataset.f).scrollIntoView(); }, true);
+
+/* ---------- export ---------- */
+const LABEL = { ok: 'agreed', q: 'question', x: 'change' };
+function exportNotes() {
+  const c = { ok: 0, q: 0, x: 0 }; SCENARIOS.forEach((s) => { const st = stateOf(s).status; if (st) c[st]++; });
+  let out = `# Specification review notes (LIGO-1159)\n\n${c.ok + c.q + c.x} of ${SCENARIOS.length} scenarios reviewed: ${c.ok} agreed, ${c.q} question(s), ${c.x} change(s).\n`;
+  let count = 0;
+  FEATURES.forEach((f) => {
+    let fo = '';
+    f.rules.forEach((r) => {
+      let ro = ''; const rs = stateOf(r);
+      const line = (item, s, label) => { const st = s.status ? `[${LABEL[s.status]}${isStale(item) ? ', changed since review' : ''}] ` : '[note] '; return `- ${st}${label}\n` + (s.note ? s.note.trim().split('\n').map((l) => '  > ' + l).join('\n') + '\n' : ''); };
+      if ((rs.status && rs.status !== 'ok') || rs.note) { ro += line(r, rs, 'The rule itself'); count++; }
+      r.scenarios.forEach((sc) => { const s = stateOf(sc); if ((s.status && s.status !== 'ok') || s.note) { ro += line(sc, s, 'Scenario: ' + sc.name); count++; } });
+      if (ro) fo += `\n### Rule: ${r.name}\n\n${ro}`;
+    });
+    if (fo) out += `\n## ${f.file}\n${fo}`;
+  });
+  if (!count) out += '\nNo questions, changes or notes.\n';
+  $('dlgtext').value = out; $('dlginfo').textContent = `${count} item${count === 1 ? '' : 's'} with a question, a change or a note`;
+  $('dlg').showModal();
+}
+$('export').onclick = exportNotes;
+$('close').onclick = () => $('dlg').close();
+$('copy').onclick = async () => { const t = $('dlgtext'); try { await navigator.clipboard.writeText(t.value); } catch (e) { t.select(); document.execCommand('copy'); } $('copy').textContent = 'Copied'; setTimeout(() => { $('copy').textContent = 'Copy'; }, 1400); };
+$('reset').onclick = () => { if (!Object.keys(review).length || confirm('Remove all review marks and notes from this browser?')) { review = {}; save(); document.querySelectorAll('.notebox').forEach((n) => n.classList.remove('on')); paint(); applyFilters(); } };
+
+/* ---------- boot ---------- */
+renderAll(); paint();
+if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) { if (el.tagName === 'DETAILS') el.open = true; el.scrollIntoView(); } }
+if (/selftest/.test(location.search)) {
+  const names = {}; FEATURES.forEach((f) => { names[f.file] = f.rules.flatMap((r) => r.scenarios.map((s) => s.name)); });
+  const ids = [...document.querySelectorAll('[id]')].map((e) => e.id), dupIds = ids.filter((x, i) => ids.indexOf(x) !== i);
+  const keys = ITEMS.map((i) => i.key), dupKeys = keys.filter((x, i) => keys.indexOf(x) !== i);
+  const pre = document.createElement('pre'); pre.id = 'selftest';
+  pre.textContent = JSON.stringify({ features: FEATURES.length, rules: FEATURES.reduce((n, f) => n + f.rules.length, 0), scenarios: SCENARIOS.length, cases: SCENARIOS.reduce((n, s) => n + s.cases, 0), dupIds, dupKeys, outcomes: SCENARIOS.reduce((o, s) => { o[s.outcome] = (o[s.outcome] || 0) + 1; return o; }, {}), cast: TYPES, linked: SCENARIOS.filter((s) => DATA.links[s.linkKey]).length, deadLinks: Object.keys(DATA.links).filter((k) => !SCENARIOS.some((s) => s.linkKey === k)), names });
+  document.body.appendChild(pre);
+  if (!document.title.startsWith('ERR')) document.title = dupIds.length || dupKeys.length ? 'SELFTEST:FAIL' : 'SELFTEST:OK';
+}
+</script>
+</body>
+</html>

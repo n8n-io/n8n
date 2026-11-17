@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph S["Content: what the operation carries"]
+        W["Workflows and folders<br/>of project P"]
+        O["Resources that P owns"]
+    end
+    subgraph R["Requirements: referenced, not carried"]
+        C["Credential owned<br/>by project Q"]
+        SW["Sub-workflow or error<br/>workflow in project R"]
+        V["Global variable"]
+    end
+    W -- uses --> C
+    W -- calls --> SW
+    W -- reads --> V
+    R --> D{{"The destination must<br/>satisfy each one"}}

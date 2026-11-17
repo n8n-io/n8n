@@ -1,0 +1,7 @@
+flowchart TD
+    M["Workflow or folder moved<br/>on the source"] --> Q{"Moved to?"}
+    Q -- "a personal project" --> R1["Refused, as today"]
+    Q -- "another team project" --> H{"Package holds<br/>both projects?"}
+    H -- yes --> T["One transfer.<br/>The id stays."]
+    H -- no --> C["'moved' conflict stays"]
+    H -- "no: the source deleted<br/>the old project" --> E["Instance Apply only:<br/>transfer after the user confirms"]

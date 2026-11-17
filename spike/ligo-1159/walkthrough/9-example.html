@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart LR
+    subgraph S["Carried: project Billing"]
+        W["Workflow&lt;br/&gt;'Invoice sync'"]
+    end
+    subgraph R["Not carried: needed on the destination"]
+        C["Credential that&lt;br/&gt;project Finance owns"]
+        SW["Sub-workflow in&lt;br/&gt;project Shared"]
+    end
+    W -- uses --&gt; C
+    W -- calls --&gt; SW
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>

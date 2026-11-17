@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cross-project dependencies in n8n</title>
+<style>
+	:root {
+		--bg: #f5f6fa;
+		--panel: #ffffff;
+		--ink: #0f172a;
+		--muted: #64748b;
+		--line: #e2e8f0;
+		--sub: #3b82f6;
+		--error: #f59e0b;
+		--cred: #10b981;
+		--implicit: #a855f7;
+		--blocked: #ef4444;
+		--transitive: #64748b;
+		--wf: #6366f1;
+		--table: #0891b2;
+		--var: #94a3b8;
+		--radius: 12px;
+	}
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+		background: var(--bg);
+		color: var(--ink);
+		font-size: 14px;
+	}
+	header { padding: 20px 24px 8px; }
+	header h1 { margin: 0 0 4px; font-size: 22px; }
+	header p { margin: 0; color: var(--muted); max-width: 900px; line-height: 1.45; }
+
+	.tour {
+		margin: 12px 24px 0;
+		background: var(--ink);
+		color: #fff;
+		border-radius: var(--radius);
+		padding: 12px 16px;
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		gap: 16px;
+		align-items: center;
+	}
+	.tour .nav { display: flex; gap: 6px; align-items: center; }
+	.tour button {
+		background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 8px;
+		padding: 6px 10px; cursor: pointer; font: inherit;
+	}
+	.tour button:hover { background: #334155; }
+	.tour button.on { background: #6366f1; border-color: #6366f1; }
+	.tour .count { color: #94a3b8; font-variant-numeric: tabular-nums; min-width: 54px; text-align: center; }
+	.tour .title { font-weight: 600; margin-bottom: 2px; }
+	.tour .text { color: #cbd5e1; line-height: 1.4; }
+	.tour .dots { display: flex; gap: 4px; flex-wrap: wrap; max-width: 260px; justify-content: flex-end; }
+	.tour .dot { width: 9px; height: 9px; border-radius: 50%; background: #334155; cursor: pointer; }
+	.tour .dot.on { background: #a5b4fc; }
+	.tour .dot.done { background: #64748b; }
+
+	.layout {
+		display: grid;
+		grid-template-columns: 280px minmax(0, 1fr) 360px;
+		gap: 16px;
+		padding: 16px 24px;
+		align-items: start;
+	}
+	@media (max-width: 1300px) {
+		.layout { grid-template-columns: 1fr; }
+	}
+	.card {
+		background: var(--panel);
+		border: 1px solid var(--line);
+		border-radius: var(--radius);
+		padding: 14px;
+	}
+	.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+
+	.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+	.tabs button {
+		font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 999px;
+		padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+	}
+	.tabs button .sw { width: 10px; height: 10px; border-radius: 50%; }
+	.tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+	.controls label.field { display: block; margin: 10px 0 4px; font-weight: 600; font-size: 12px; color: #334155; }
+	.controls select {
+		width: 100%; font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff;
+	}
+	.controls .checks label { display: flex; gap: 6px; align-items: center; font-size: 13px; margin: 3px 0; }
+	.controls .hint { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: 4px; }
+	.controls .who {
+		margin-top: 14px; padding: 10px; border-radius: 8px; background: #f8fafc; border: 1px dashed #cbd5e1;
+		font-size: 12.5px; line-height: 1.45;
+	}
+	.controls .row { display: flex; gap: 8px; margin-top: 14px; }
+	.controls .row button {
+		flex: 1; font: inherit; padding: 7px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;
+	}
+	.controls .row button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+	.canvas-card { padding: 10px; }
+	svg#map { width: 100%; height: auto; display: block; user-select: none; }
+
+	.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 6px 2px; font-size: 12.5px; }
+	.legend .item { display: flex; align-items: center; gap: 6px; cursor: default; padding: 2px 6px; border-radius: 6px; }
+	.legend .item:hover { background: #f1f5f9; }
+	.legend .ln { width: 26px; height: 0; border-top: 3px solid; }
+	.legend .ln.dash { border-top-style: dashed; }
+
+	/* SVG */
+	.project-box { stroke-width: 1.5; transition: stroke .3s, stroke-width .3s, filter .3s; }
+	.project.team .project-box { fill: #f5f7ff; stroke: #c7d2fe; }
+	.project.personal .project-box { fill: #fffaf3; stroke: #fed7aa; }
+	.project.hit-green .project-box { stroke: var(--cred); stroke-width: 3.5; filter: drop-shadow(0 0 8px rgba(16,185,129,.45)); }
+	.project.hit-purple .project-box { stroke: var(--implicit); stroke-width: 3.5; filter: drop-shadow(0 0 8px rgba(168,85,247,.45)); }
+	.project.hit-red .project-box { stroke: var(--blocked); stroke-width: 3; }
+	.project-title { font-weight: 700; font-size: 14px; fill: var(--ink); }
+	.project-meta { font-size: 11px; fill: var(--muted); }
+	.pill-bg { rx: 9; }
+	.pill-text { font-size: 10px; font-weight: 700; letter-spacing: .05em; }
+
+	.chip { transition: opacity .35s; }
+	.chip rect.body { fill: #fff; stroke: #cbd5e1; stroke-width: 1.2; transition: stroke .3s, stroke-width .3s; }
+	.chip .label { font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+	.chip .sub { font-size: 9.5px; fill: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+	.chip.dim { opacity: .22; }
+	.chip.active rect.body { stroke: var(--ink); stroke-width: 2; }
+	.chip.ghost rect.body { fill: rgba(255,255,255,.6); stroke-dasharray: 5 4; stroke: #94a3b8; }
+	.chip.ghost { animation: fadein .5s ease both; }
+	.chip.shake { animation: shake .45s ease; }
+	.chip.ok rect.body { stroke: var(--cred); stroke-width: 2.5; }
+	.chip.no rect.body { stroke: var(--blocked); stroke-width: 2.5; }
+	@keyframes shake {
+		0%,100% { transform: translateX(0); }
+		20% { transform: translateX(-5px); }
+		40% { transform: translateX(5px); }
+		60% { transform: translateX(-3px); }
+		80% { transform: translateX(3px); }
+	}
+	@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+	.edge { fill: none; stroke-width: 2.6; stroke-linecap: round; }
+	.edge.halo { stroke: #fff; stroke-width: 7; opacity: .9; }
+	.edge.marching { stroke-dasharray: 7 6; animation: march 0.9s linear infinite; }
+	.edge.drawn { animation: none; }
+	@keyframes march { to { stroke-dashoffset: -13; } }
+	.edge-hit { fill: none; stroke: transparent; stroke-width: 16; cursor: pointer; }
+	.map-edge { transition: opacity .25s; }
+	.map-edge.faded { opacity: .08; }
+	.edge-label rect { fill: #fff; stroke-width: 1.2; }
+	.edge-label text { font-size: 10.5px; font-weight: 600; }
+	.burst { animation: burst .6s ease-out both; }
+	@keyframes burst { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+	.pulse-ring { fill: none; stroke-width: 3; animation: ring 1.1s ease-out both; }
+	@keyframes ring { from { opacity: .9; stroke-width: 6; } to { opacity: 0; stroke-width: 1; } }
+	.xmark { font-weight: 800; font-size: 18px; fill: var(--blocked); }
+	.badge text { font-size: 11px; font-weight: 700; fill: #fff; }
+
+	/* Trace */
+	.trace ol { list-style: none; padding: 0; margin: 0; }
+	.trace .hop-title {
+		font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+		margin: 12px 0 6px; display: flex; align-items: center; gap: 6px;
+	}
+	.trace .hop-title:first-child { margin-top: 0; }
+	.trace .hop-title .sw { width: 10px; height: 10px; border-radius: 50%; }
+	.trace li {
+		display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid #f1f5f9;
+		animation: slidein .35s ease both;
+	}
+	@keyframes slidein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+	.trace .ic {
+		width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff;
+	}
+	.trace .pass .ic { background: var(--cred); }
+	.trace .fail .ic { background: var(--blocked); }
+	.trace .skip .ic { background: #cbd5e1; }
+	.trace .info .ic { background: #94a3b8; }
+	.trace .purple .ic { background: var(--implicit); }
+	.trace .t { font-weight: 600; }
+	.trace .d { color: #334155; line-height: 1.42; margin-top: 2px; font-size: 13px; }
+	.trace .r { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); margin-top: 3px; }
+	.trace code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #f1f5f9; padding: 0 4px; border-radius: 4px; }
+	.verdict {
+		margin-top: 12px; border-radius: 10px; padding: 12px; animation: pop .4s ease both;
+	}
+	@keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+	.verdict.ok { background: #ecfdf5; border: 1px solid #a7f3d0; }
+	.verdict.purple { background: #faf5ff; border: 1px solid #e9d5ff; }
+	.verdict.no { background: #fef2f2; border: 1px solid #fecaca; }
+	.verdict .vt { font-weight: 700; font-size: 15px; }
+	.verdict .vd { margin-top: 4px; line-height: 1.42; }
+	.verdict .rec { margin-top: 8px; font-size: 12.5px; color: #334155; }
+	.verdict .rec b { color: var(--ink); }
+	.empty { color: var(--muted); line-height: 1.5; }
+	.empty .ml { margin: 4px 0; }
+
+	/* Summary */
+	.summary { padding: 0 24px 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+	@media (max-width: 1100px) { .summary { grid-template-columns: 1fr; } }
+	.summary .card h3 { margin: 0 0 6px; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+	.summary .card p, .summary .card li { line-height: 1.45; color: #334155; }
+	.summary .card ul { padding-left: 18px; margin: 6px 0 0; }
+	.matrix { margin: 0 24px 40px; }
+	.matrix table { width: 100%; border-collapse: collapse; background: #fff; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+	.matrix th, .matrix td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.4; }
+	.matrix th { background: #f8fafc; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+	.matrix tr:last-child td { border-bottom: none; }
+	.tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+	<h1>What can a workflow depend on in another project?</h1>
+	<p>
+		The rules below mirror the checks in <code>subworkflow-policy-checker.ts</code>,
+		<code>workflow-execution.service.ts</code> (error workflows),
+		<code>credentials-permission-checker.ts</code>, the data table proxy and
+		<code>resolve-variables.ts</code>. Agents, apps and external secrets are out of scope.
+		Follow the tour, or pick a mode and change the inputs. The animation replays on every change.
+	</p>
+</header>
+
+<div class="tour" id="tour"></div>
+
+<div class="layout">
+	<div class="card controls" id="controls"></div>
+
+	<div class="card canvas-card">
+		<div class="tabs" id="tabs"></div>
+		<svg id="map" viewBox="-30 0 1030 640" aria-label="Projects and dependencies">
+			<defs>
+				<filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+					<feGaussianBlur stdDeviation="3" result="b" />
+					<feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+				</filter>
+			</defs>
+			<g id="layer-projects"></g>
+			<g id="layer-ghosts"></g>
+			<g id="layer-chips"></g>
+			<g id="layer-edges"></g>
+			<g id="layer-fx"></g>
+		</svg>
+		<div class="legend" id="legend"></div>
+	</div>
+
+	<div class="card trace" id="trace">
+		<h2>Decision trace</h2>
+		<div id="trace-body"></div>
+	</div>
+</div>
+
+<div class="summary">
+	<div class="card">
+		<h3><span class="tag" style="background:#dbeafe;color:#1d4ed8">Callee decides</span></h3>
+		<p><b>Sub-workflows and error workflows.</b> The called workflow's caller policy decides. Only <em>home</em> projects are compared, and sharing is ignored.</p>
+		<ul>
+			<li>Default <code>workflowsFromSameOwner</code> blocks every cross-project call.</li>
+			<li>Personal projects follow the same rule in every direction.</li>
+			<li>The dependency is a visible ID in the caller (node parameter or <code>settings.errorWorkflow</code>). <code>callerIds</code> adds a reverse reference.</li>
+			<li>To set an error workflow, the author must be able to read it. It must also be published, with an enabled Error Trigger.</li>
+		</ul>
+	</div>
+	<div class="card">
+		<h3><span class="tag" style="background:#d1fae5;color:#047857">Caller decides</span><span class="tag" style="background:#f3e8ff;color:#7e22ce">+ who runs it</span></h3>
+		<p><b>Credentials.</b> n8n checks the routes in this order:</p>
+		<ul>
+			<li>The personal project of an Owner, Admin or a custom role with instance-wide <code>credential:use</code> can use every credential.</li>
+			<li>Project route: the home project owns the credential or has it shared, or the credential is global. A personal workflow shared with another personal project also reaches that project’s credentials at run time.</li>
+			<li>Acting-user route: the publisher's (or session user's) own access. Instance-wide <code>credential:use</code> does not count in a team project.</li>
+		</ul>
+	</div>
+	<div class="card">
+		<h3><span class="tag" style="background:#fee2e2;color:#b91c1c">Never crosses</span></h3>
+		<p><b>Data tables and variables</b> stay in the workflow's home project.</p>
+		<ul>
+			<li>Data table nodes look up tables in the home project only. Workflow sharing and team membership do not help.</li>
+			<li><code>$vars</code> holds global variables plus the home project's variables. A project variable overrides a global one with the same key. A missing key is <code>undefined</code>, and no error is raised.</li>
+		</ul>
+	</div>
+</div>
+
+<div class="matrix">
+	<table>
+		<thead>
+			<tr><th>From a workflow in project A to…</th><th>Who decides</th><th>Where the dependency is recorded</th><th>Personal projects special?</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Sub-workflow in B</td><td>B's caller policy (home projects compared)</td><td>Caller: Execute Workflow <code>workflowId</code>. Callee: <code>callerPolicy</code>, <code>callerIds</code></td><td>No</td></tr>
+			<tr><td>Error workflow in B</td><td>B's caller policy at run time. To set the link, the author also needs read access to B's workflow</td><td>Caller: <code>settings.errorWorkflow</code></td><td>No</td></tr>
+			<tr><td>Credentials of the sub-workflow (transitive)</td><td>B's own projects, then the parent run's acting user</td><td>Nowhere in A</td><td>No</td></tr>
+			<tr><td>Credential owned by B, project route</td><td>Credential shared with A, or <code>isGlobal</code></td><td><code>shared_credentials</code>, <code>credentials.isGlobal</code></td><td>No</td></tr>
+			<tr><td>Credential of another personal project, through a workflow share</td><td>The workflow is shared with that personal project. Workflow sharing is personal → personal only</td><td><code>shared_workflow</code>. The publish check does not count this route</td><td>Yes: only personal projects can receive a shared workflow</td></tr>
+			<tr><td>Credential owned by B, acting-user route</td><td>The publisher's or session user's own access</td><td><span class="tag" style="background:#f3e8ff;color:#7e22ce">Not recorded on the workflow side</span></td><td>Yes: personal credentials of the publisher</td></tr>
+			<tr><td>Any credential, personal project of an Owner, Admin or a custom role with instance-wide <code>credential:use</code></td><td>The project owner's instance role</td><td><span class="tag" style="background:#f3e8ff;color:#7e22ce">Not recorded</span></td><td>Yes</td></tr>
+			<tr><td>Data table or variable in B</td><td>Not possible</td><td>—</td><td>—</td></tr>
+		</tbody>
+	</table>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// World model
+// ---------------------------------------------------------------------------
+const CW = 135, CH = 38;
+
+const USERS = {
+	alice: { name: 'Alice', role: 'Member', personal: 'pAlice', teams: ['teamA'], globalCredUse: false },
+	bob: { name: 'Bob', role: 'Member', personal: 'pBob', teams: ['teamB'], globalCredUse: false },
+	olivia: { name: 'Olivia', role: 'Instance Owner', personal: 'pOlivia', teams: [], globalCredUse: true },
+};
+
+const P = {
+	teamA: { name: 'Team A · Sales', short: 'Team A', type: 'team', box: [20, 20, 460, 260], meta: 'Members: Alice (editor)', draw: true },
+	teamB: { name: 'Team B · Platform', short: 'Team B', type: 'team', box: [520, 20, 460, 260], meta: 'Members: Bob (editor)', draw: true },
+	pAlice: { name: "Alice's personal project", short: 'Alice (personal)', type: 'personal', owner: 'alice', box: [20, 360, 460, 170], meta: 'Alice · Member, in Team A', draw: true },
+	pOlivia: { name: "Olivia's personal project", short: 'Olivia (personal)', type: 'personal', owner: 'olivia', box: [520, 360, 460, 170], meta: 'Olivia · Instance Owner', draw: true },
+	pBob: { name: "Bob's personal project", short: 'Bob (personal)', type: 'personal', owner: 'bob', draw: false },
+};
+const DRAWN = Object.keys(P).filter((k) => P[k].draw);
+
+const E = {
+	wA1: { kind: 'wf', label: 'Lead sync', sub: 'workflow', project: 'teamA', x: 40, y: 95, uses: 'cA' },
+	wA2: { kind: 'wf', label: 'Format lead', sub: 'workflow', project: 'teamA', x: 40, y: 150, uses: 'cA' },
+	cA: { kind: 'cred', label: 'HubSpot', sub: 'credential', project: 'teamA', x: 185, y: 95 },
+	dA: { kind: 'table', label: 'Leads', sub: 'data table', project: 'teamA', x: 330, y: 150 },
+	vA: { kind: 'var', label: 'REGION = eu', sub: 'variable', project: 'teamA', x: 330, y: 95, key: 'REGION', value: 'eu' },
+
+	wB1: { kind: 'wf', label: 'Send email', sub: 'sub-workflow', project: 'teamB', x: 540, y: 95, uses: 'cB' },
+	wB2: { kind: 'wf', label: 'Error handler', sub: 'error workflow', project: 'teamB', x: 540, y: 150, uses: 'cB' },
+	cB: { kind: 'cred', label: 'SMTP', sub: 'credential', project: 'teamB', x: 685, y: 95 },
+	cG: { kind: 'cred', label: 'Postgres', sub: 'credential · global', project: 'teamB', x: 685, y: 150, global: true },
+	dB: { kind: 'table', label: 'Audit log', sub: 'data table', project: 'teamB', x: 830, y: 95 },
+	vB: { kind: 'var', label: 'REGION = us', sub: 'variable', project: 'teamB', x: 830, y: 150, key: 'REGION', value: 'us' },
+
+	wP1: { kind: 'wf', label: 'Alice helper', sub: 'workflow', project: 'pAlice', x: 40, y: 410, uses: 'cP' },
+	cP: { kind: 'cred', label: 'Alice Slack', sub: 'credential', project: 'pAlice', x: 185, y: 410 },
+
+	wO1: { kind: 'wf', label: 'Olivia script', sub: 'workflow', project: 'pOlivia', x: 540, y: 410, uses: 'cO' },
+	cO: { kind: 'cred', label: 'Olivia OpenAI', sub: 'credential', project: 'pOlivia', x: 685, y: 410 },
+
+	gV: { kind: 'var', label: 'API_URL', sub: 'global variable', project: null, x: 440, y: 572, key: 'API_URL', value: 'https://api.acme.test' },
+};
+const ids = (kind) => Object.keys(E).filter((k) => E[k].kind === kind);
+
+// Free slots where a "shared into this project" ghost chip is drawn.
+const GHOST_SLOTS = {
+	teamA: { wf: [40, 205], cred: [185, 150] },
+	teamB: { wf: [540, 205], cred: [685, 205] },
+	pAlice: { wf: [40, 465], cred: [185, 465] },
+	pOlivia: { wf: [540, 465], cred: [685, 465] },
+};
+const G = {}; // ghost id -> {x, y, label, ...}
+
+const KIND = {
+	sub: { color: 'var(--sub)', hex: '#3b82f6', label: 'Sub-workflow call' },
+	error: { color: 'var(--error)', hex: '#f59e0b', label: 'Error workflow' },
+	cred: { color: 'var(--cred)', hex: '#10b981', label: 'Credential (sharing / global)' },
+	implicit: { color: 'var(--implicit)', hex: '#a855f7', label: 'Credential via user / role (not recorded)' },
+	transitive: { color: 'var(--transitive)', hex: '#64748b', label: 'Transitive: sub-workflow’s own credential' },
+	blocked: { color: 'var(--blocked)', hex: '#ef4444', label: 'Never crosses (data table, variable)', dash: true },
+};
+const CHIP_COLOR = { wf: '#6366f1', cred: '#10b981', table: '#0891b2', var: '#94a3b8' };
+
+const MODES = [
+	{ id: 'map', label: 'Map', color: '#0f172a' },
+	{ id: 'sub', label: 'Sub-workflow', color: KIND.sub.hex },
+	{ id: 'error', label: 'Error workflow', color: KIND.error.hex },
+	{ id: 'cred', label: 'Credential', color: KIND.cred.hex },
+	{ id: 'table', label: 'Data table', color: KIND.blocked.hex },
+	{ id: 'var', label: 'Variable', color: KIND.blocked.hex },
+];
+
+const POLICIES = {
+	any: 'Any workflow (any)',
+	workflowsFromSameOwner: 'Same project only — default (workflowsFromSameOwner)',
+	workflowsFromAList: 'Listed workflows (workflowsFromAList)',
+	none: 'No workflow (none)',
+};
+
+const DEFAULT = {
+	mode: 'map', wf: 'wA1', callee: 'wB1', policy: 'workflowsFromSameOwner', listed: false, follow: false,
+	shares: [], cred: 'cB', actor: 'alice', credShares: [], table: 'dB', variable: 'vB',
+};
+let state = { ...DEFAULT };
+let speed = 1;
+
+// ---------------------------------------------------------------------------
+// Tour
+// ---------------------------------------------------------------------------
+const SCENES = [
+	{ title: 'The whole picture', text: 'Four projects. Each line is a kind of reference that a workflow can hold into another project. Purple lines are routes that nothing in the project’s sharing data records. Red lines never cross a project boundary. Hover the legend to isolate one kind. Click a line to replay it.', state: { mode: 'map' } },
+	{ title: 'Sub-workflow inside one project', text: 'The default caller policy compares home projects only. Same project, so the call runs.', state: { mode: 'sub', wf: 'wA1', callee: 'wA2' } },
+	{ title: 'Sub-workflow across projects', text: 'The callee decides, and the default policy says no.', state: { mode: 'sub', wf: 'wA1', callee: 'wB1' } },
+	{ title: 'Sharing the caller does not help', text: 'Only personal projects can receive a shared workflow. Alice shares Alice helper with Olivia. The policy still reads home projects only, so a call to Olivia script stays blocked.', state: { mode: 'sub', wf: 'wP1', callee: 'wO1', shares: ['pOlivia'] } },
+	{ title: 'Callee opens up: “any”', text: 'Team B sets Send email to accept any caller. Now the call crosses the boundary.', state: { mode: 'sub', wf: 'wA1', callee: 'wB1', policy: 'any' } },
+	{ title: 'Callee lists its callers', text: 'With a caller list, Send email stores Lead sync’s ID. That is a second reference, from Team B back into Team A.', state: { mode: 'sub', wf: 'wA1', callee: 'wB1', policy: 'workflowsFromAList', listed: true } },
+	{ title: 'Team → personal', text: 'A personal project is not a special case. With “any”, a team workflow can call Alice’s personal workflow. With the default, it cannot.', state: { mode: 'sub', wf: 'wA1', callee: 'wP1', policy: 'any' } },
+	{ title: 'Transitive dependency', text: 'Inside the call, Send email uses its own credential. n8n checks it against Team B’s projects. If they do not carry it, n8n falls back to the parent run’s acting user. Lead sync now depends on Team B’s SMTP credential without a reference to it.', state: { mode: 'sub', wf: 'wA1', callee: 'wB1', policy: 'any', follow: true } },
+	{ title: 'Error workflow across projects', text: 'The same checker runs. When it blocks the call, n8n does not run the error workflow. It saves a failed execution on the error workflow instead.', state: { mode: 'error', wf: 'wA1', callee: 'wB2' } },
+	{ title: 'Error workflow allowed', text: 'With “any” on the error workflow, Team A failures go to Team B’s handler.', state: { mode: 'error', wf: 'wA1', callee: 'wB2', policy: 'any' } },
+	{ title: 'Credential in the home project', text: 'The project route accepts it at once. The acting user is never consulted.', state: { mode: 'cred', wf: 'wA1', cred: 'cA', actor: 'alice' } },
+	{ title: 'Credential from another team', text: 'SMTP belongs to Team B. Alice is not in Team B, so both routes reject it.', state: { mode: 'cred', wf: 'wA1', cred: 'cB', actor: 'alice' } },
+	{ title: 'Share the credential', text: 'Share SMTP with Team A. This is the classic cross-project credential, recorded in shared_credentials.', state: { mode: 'cred', wf: 'wA1', cred: 'cB', actor: 'alice', credShares: ['teamA'] } },
+	{ title: 'Share a personal workflow', text: 'A team workflow cannot be shared. A personal one can, with other personal projects only. Alice shares Alice helper with Olivia. At run time it now reaches Olivia’s personal credentials. The publish check does not count this route.', state: { mode: 'cred', wf: 'wP1', cred: 'cO', actor: 'alice', shares: ['pOlivia'] } },
+	{ title: 'Global credential', text: 'A credential marked global is usable from every project.', state: { mode: 'cred', wf: 'wA1', cred: 'cG', actor: 'alice' } },
+	{ title: 'Publisher’s personal credential', text: 'Nobody shared Alice Slack with Team A. Alice published the workflow, so the acting-user route accepts it.', state: { mode: 'cred', wf: 'wA1', cred: 'cP', actor: 'alice' } },
+	{ title: 'The publisher leaves', text: 'An admin deletes Alice’s account. Lead sync has no publisher record now, so n8n refuses its next triggered run. The dependency is on the publisher, not on the project.', state: { mode: 'cred', wf: 'wA1', cred: 'cP', actor: '' } },
+	{ title: 'Owner’s personal project', text: 'Olivia is the instance Owner. The same applies to an Admin or a custom role with instance-wide credential:use. Workflows in her personal project can use any credential, with no sharing at all.', state: { mode: 'cred', wf: 'wO1', cred: 'cB', actor: 'olivia' } },
+	{ title: 'Owner in a team project', text: 'Olivia publishes a Team A workflow. In a team project her instance-wide credential:use does not count.', state: { mode: 'cred', wf: 'wA1', cred: 'cB', actor: 'olivia' } },
+	{ title: 'Personal workflow, team credential', text: 'Alice’s personal workflow uses Team A’s credential through her Team A membership. This is the acting-user route again.', state: { mode: 'cred', wf: 'wP1', cred: 'cA', actor: 'alice' } },
+	{ title: 'Data tables never cross', text: 'The node looks up tables in the workflow’s home project only. This applies even to Alice, who is a member of Team A.', state: { mode: 'table', wf: 'wP1', table: 'dA' } },
+	{ title: 'Variables never cross', text: 'Team A reads its own REGION. Team B’s value is not visible, and no error is raised.', state: { mode: 'var', wf: 'wA1', variable: 'vB' } },
+];
+let tourIndex = 0;
+let autoplay = false;
+let autoplayTimer = null;
+
+// ---------------------------------------------------------------------------
+// Map mode edges
+// ---------------------------------------------------------------------------
+const MAP_EDGES = [
+	{ from: 'wA1', to: 'wB1', kind: 'sub', route: 'top', bend: 22, label: 'sub-workflow', state: { mode: 'sub', wf: 'wA1', callee: 'wB1' } },
+	{ from: 'wA1', to: 'cB', kind: 'cred', route: 'top', bend: 50, label: 'shared credential', state: { mode: 'cred', wf: 'wA1', cred: 'cB', credShares: ['teamA'] } },
+	{ from: 'wA2', to: 'wB2', kind: 'error', route: 'bottom', bend: 22, label: 'error workflow', state: { mode: 'error', wf: 'wA2', callee: 'wB2' } },
+	{ from: 'wA2', to: 'cG', kind: 'cred', route: 'bottom', bend: 48, label: 'global credential', state: { mode: 'cred', wf: 'wA2', cred: 'cG' } },
+	{ from: 'wA1', to: 'wP1', kind: 'sub', route: 'left', bend: 22, label: 'team → personal', state: { mode: 'sub', wf: 'wA1', callee: 'wP1', policy: 'any' } },
+	{ from: 'wA2', to: 'cP', kind: 'implicit', route: 'diag', label: 'publisher’s own', frac: 0.3, state: { mode: 'cred', wf: 'wA2', cred: 'cP', actor: 'alice' } },
+	{ from: 'wO1', to: 'cA', kind: 'implicit', route: 'diag', label: 'Owner: any credential', frac: 0.5, state: { mode: 'cred', wf: 'wO1', cred: 'cA', actor: 'olivia' } },
+	{ from: 'wB1', to: 'cB', kind: 'transitive', route: 'bottom', bend: 6, label: null, state: { mode: 'sub', wf: 'wA1', callee: 'wB1', policy: 'any', follow: true } },
+	{ from: 'wP1', to: 'dA', kind: 'blocked', route: 'diag', label: 'data table', frac: 0.62, state: { mode: 'table', wf: 'wP1', table: 'dA' } },
+	{ from: 'wO1', to: 'vB', kind: 'blocked', route: 'diag', label: 'variable', frac: 0.55, state: { mode: 'var', wf: 'wO1', variable: 'vB' } },
+];
+
+// ---------------------------------------------------------------------------
+// SVG helpers
+// ---------------------------------------------------------------------------
+const NS = 'http://www.w3.org/2000/svg';
+const $ = (id) => document.getElementById(id);
+function el(tag, attrs = {}, parent) {
+	const n = document.createElementNS(NS, tag);
+	for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+	if (parent) parent.appendChild(n);
+	return n;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms / speed));
+const pos = (id) => E[id] ?? G[id];
+const projName = (id) => (id ? P[id].name : 'the instance');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function renderStatic() {
+	const lp = $('layer-projects');
+	lp.innerHTML = '';
+	for (const id of DRAWN) {
+		const p = P[id];
+		const [x, y, w, h] = p.box;
+		const g = el('g', { class: `project ${p.type}`, id: `proj-${id}` }, lp);
+		el('rect', { class: 'project-box', x, y, width: w, height: h, rx: 14 }, g);
+		const t = el('text', { class: 'project-title', x: x + 16, y: y + 24 }, g);
+		t.textContent = p.name;
+		const pillW = p.type === 'team' ? 44 : 70;
+		const pill = el('g', {}, g);
+		el('rect', { x: x + w - pillW - 12, y: y + 11, width: pillW, height: 18, rx: 9, fill: p.type === 'team' ? '#e0e7ff' : '#ffedd5' }, pill);
+		const pt = el('text', { class: 'pill-text', x: x + w - pillW / 2 - 12, y: y + 24, 'text-anchor': 'middle', fill: p.type === 'team' ? '#4338ca' : '#c2410c' }, pill);
+		pt.textContent = p.type.toUpperCase();
+		const m = el('text', { class: 'project-meta', x: x + 16, y: y + 40 }, g);
+		m.textContent = p.meta;
+	}
+	// Instance strip
+	const ig = el('g', { class: 'project instance' }, lp);
+	el('rect', { x: 20, y: 558, width: 960, height: 64, rx: 14, fill: '#f8fafc', stroke: '#cbd5e1', 'stroke-dasharray': '6 5' }, ig);
+	const it = el('text', { class: 'project-title', x: 36, y: 584 }, ig);
+	it.textContent = 'Instance-wide';
+	const im = el('text', { class: 'project-meta', x: 36, y: 602 }, ig);
+	im.textContent = 'Global variables. No project.';
+	const ob = el('text', { class: 'project-meta', x: 840, y: 432 }, lp);
+	ob.textContent = 'credential:use';
+	const ob2 = el('text', { class: 'project-meta', x: 840, y: 447 }, lp);
+	ob2.textContent = 'on every credential';
+	const ob0 = el('text', { class: 'project-meta', x: 840, y: 417, 'font-weight': 700 }, lp);
+	ob0.textContent = 'Instance role:';
+
+	const lc = $('layer-chips');
+	lc.innerHTML = '';
+	for (const [id, e] of Object.entries(E)) drawChip(lc, id, e);
+}
+
+function drawChip(parent, id, e, ghost = false) {
+	const g = el('g', { class: `chip${ghost ? ' ghost' : ''}`, id: `chip-${id}`, style: 'transform-box: fill-box; transform-origin: center' }, parent);
+	el('rect', { class: 'body', x: e.x, y: e.y, width: CW, height: CH, rx: 8 }, g);
+	el('rect', { x: e.x, y: e.y, width: 5, height: CH, rx: 2, fill: CHIP_COLOR[e.kind] }, g);
+	const l = el('text', { class: 'label', x: e.x + 13, y: e.y + 16 }, g);
+	l.textContent = e.label;
+	const s = el('text', { class: 'sub', x: e.x + 13, y: e.y + 30 }, g);
+	s.textContent = e.sub;
+	if (e.global) {
+		const gl = el('text', { x: e.x + CW - 18, y: e.y + 17, 'font-size': 13 }, g);
+		gl.textContent = '🌐';
+	}
+	return g;
+}
+
+// Routes an edge between two chips.
+function segPath(aId, bId, route, bend) {
+	const A = pos(aId), B = pos(bId);
+	const acx = A.x + CW / 2, acy = A.y + CH / 2, bcx = B.x + CW / 2, bcy = B.y + CH / 2;
+	const dx = bcx - acx, dy = bcy - acy;
+	if (!route) {
+		if (Math.abs(dy) < 20) route = 'top';
+		else if (Math.abs(dx) < 20) route = Math.abs(dy) > CH + 30 ? (acx < 500 ? 'left' : 'right') : 'straight';
+		else route = 'diag';
+	}
+	const h = bend ?? Math.min(60, 18 + Math.hypot(dx, dy) * 0.06);
+	let s, t;
+	switch (route) {
+		case 'top':
+			s = { x: acx, y: A.y }; t = { x: bcx, y: B.y };
+			return `M${s.x},${s.y} Q${(s.x + t.x) / 2},${Math.min(s.y, t.y) - 2 * h} ${t.x},${t.y}`;
+		case 'bottom':
+			s = { x: acx, y: A.y + CH }; t = { x: bcx, y: B.y + CH };
+			return `M${s.x},${s.y} Q${(s.x + t.x) / 2},${Math.max(s.y, t.y) + 2 * h} ${t.x},${t.y}`;
+		case 'left':
+			s = { x: A.x, y: acy }; t = { x: B.x, y: bcy };
+			return `M${s.x},${s.y} Q${Math.min(s.x, t.x) - 2 * h},${(s.y + t.y) / 2} ${t.x},${t.y}`;
+		case 'right':
+			s = { x: A.x + CW, y: acy }; t = { x: B.x + CW, y: bcy };
+			return `M${s.x},${s.y} Q${Math.max(s.x, t.x) + 2 * h},${(s.y + t.y) / 2} ${t.x},${t.y}`;
+		default: {
+			if (Math.abs(dy) > Math.abs(dx) * 0.6) {
+				s = { x: acx, y: dy > 0 ? A.y + CH : A.y };
+				t = { x: bcx, y: dy > 0 ? B.y : B.y + CH };
+				const my = (s.y + t.y) / 2;
+				return `M${s.x},${s.y} C${s.x},${my} ${t.x},${my} ${t.x},${t.y}`;
+			}
+			s = { x: dx > 0 ? A.x + CW : A.x, y: acy };
+			t = { x: dx > 0 ? B.x : B.x + CW, y: bcy };
+			const mx = (s.x + t.x) / 2;
+			return `M${s.x},${s.y} C${mx},${s.y} ${mx},${t.y} ${t.x},${t.y}`;
+		}
+	}
+}
+
+function drawLabel(parent, path, frac, text, color) {
+	const L = path.getTotalLength();
+	const p = path.getPointAtLength(L * frac);
+	const g = el('g', { class: 'edge-label' }, parent);
+	const r = el('rect', { rx: 9, stroke: color }, g);
+	const t = el('text', { x: p.x, y: p.y + 3.5, 'text-anchor': 'middle', fill: color }, g);
+	t.textContent = text;
+	const bb = t.getBBox();
+	r.setAttribute('x', bb.x - 7);
+	r.setAttribute('y', bb.y - 3);
+	r.setAttribute('width', bb.width + 14);
+	r.setAttribute('height', bb.height + 6);
+	return g;
+}
+
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+// Moves a glowing comet along the path between two fractions of its length.
+function travel(path, color, from, to, dur, alive) {
+	const L = path.getTotalLength();
+	const g = el('g', { filter: 'url(#glow)' }, $('layer-fx'));
+	const dots = [0, 1, 2, 3, 4].map((i) =>
+		el('circle', { r: 6 - i, fill: color, opacity: 1 - i * 0.18 }, g),
+	);
+	return new Promise((resolve) => {
+		const start = performance.now();
+		const frame = (now) => {
+			if (!alive()) { g.remove(); return resolve(); }
+			const t = Math.min(1, (now - start) / (dur / speed));
+			const head = L * (from + (to - from) * ease(t));
+			dots.forEach((d, i) => {
+				const p = path.getPointAtLength(Math.max(0, head - i * 7));
+				d.setAttribute('cx', p.x);
+				d.setAttribute('cy', p.y);
+			});
+			if (t < 1) requestAnimationFrame(frame);
+			else { g.remove(); resolve(); }
+		};
+		requestAnimationFrame(frame);
+	});
+}
+
+function burst(path, frac) {
+	const p = path.getPointAtLength(path.getTotalLength() * frac);
+	const fx = $('layer-fx');
+	el('circle', { class: 'burst', cx: p.x, cy: p.y, r: 14, fill: 'rgba(239,68,68,.35)', style: 'transform-box: fill-box; transform-origin: center' }, fx);
+	const g = el('g', {}, fx);
+	el('circle', { cx: p.x, cy: p.y, r: 11, fill: '#fff', stroke: '#ef4444', 'stroke-width': 2 }, g);
+	const x = el('text', { class: 'xmark', x: p.x, y: p.y + 6, 'text-anchor': 'middle' }, g);
+	x.textContent = '✕';
+}
+
+function ring(id, color) {
+	const e = pos(id);
+	el('rect', { class: 'pulse-ring', x: e.x - 4, y: e.y - 4, width: CW + 8, height: CH + 8, rx: 11, stroke: color }, $('layer-fx'));
+}
+
+function chipEl(id) { return document.getElementById(`chip-${id}`); }
+function flash(id, cls) {
+	const c = chipEl(id);
+	if (!c) return;
+	c.classList.remove('shake');
+	void c.getBBox();
+	c.classList.add(cls);
+	if (cls === 'no') c.classList.add('shake');
+}
+
+function badge(id, text, color) {
+	const e = pos(id);
+	const g = el('g', { class: 'badge' }, $('layer-fx'));
+	const r = el('rect', { rx: 8, fill: color }, g);
+	const t = el('text', { x: e.x + CW - 4, y: e.y - 6, 'text-anchor': 'end' }, g);
+	t.textContent = text;
+	const bb = t.getBBox();
+	r.setAttribute('x', bb.x - 6);
+	r.setAttribute('y', bb.y - 2);
+	r.setAttribute('width', bb.width + 12);
+	r.setAttribute('height', bb.height + 4);
+}
+
+// ---------------------------------------------------------------------------
+// Rules (mirroring the backend checks)
+// ---------------------------------------------------------------------------
+const step = (status, title, detail, ref) => ({ status, title, detail, ref });
+
+function evalCall(s, isError) {
+	const caller = E[s.wf], callee = E[s.callee];
+	const steps = [];
+	steps.push(isError
+		? step('info', `${caller.label} names ${callee.label} as its error workflow`, `The reference is <code>settings.errorWorkflow</code> on ${caller.label}. No user acts in this run.`, 'workflow-execution.service.ts · executeErrorWorkflow')
+		: step('info', `${caller.label} calls ${callee.label} by ID`, 'The Execute Workflow node stores the sub-workflow ID as a parameter.', 'subworkflow-policy-checker.ts · check'));
+	if (isError) {
+		steps.push(step('info', 'Setting the link needs read access',
+			`When a user sets or changes <code>settings.errorWorkflow</code>, n8n checks four things. The user can read ${callee.label}. ${callee.label} has a published version. That version has an enabled Error Trigger. Its caller policy lets ${caller.label} call it. If one fails, the save fails with a 400. Creating a workflow and package import skip this check.`,
+			'error-workflow-validation.service.ts · findProblem'));
+	}
+	const p = s.policy;
+	steps.push(step('info', `Read ${callee.label}'s caller policy`,
+		p === 'workflowsFromSameOwner'
+			? 'Not set, so the instance default applies: <code>workflowsFromSameOwner</code> (<code>N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION</code>). “Owner” means home project.'
+			: `<code>callerPolicy = ${p}</code>`,
+		'findPolicy'));
+	let ok;
+	if (p === 'any') {
+		ok = true;
+		steps.push(step('pass', 'Policy is “any”', 'Any workflow on the instance may call it, from any project.'));
+	} else if (p === 'none') {
+		ok = false;
+		steps.push(step('fail', 'Policy is “none”', 'No workflow may call it. This also blocks callers in the same project.'));
+	} else if (p === 'workflowsFromAList') {
+		ok = s.listed;
+		steps.push(ok
+			? step('pass', `${caller.label} is in callerIds`, `${callee.label} stores ${caller.label}'s ID in <code>settings.callerIds</code>. That reference points from ${projName(callee.project)} back into ${projName(caller.project)}.`, 'isListed')
+			: step('fail', `${caller.label} is not in callerIds`, 'The list is the only way in. This policy does not compare home projects, so the call is blocked even from the same project.', 'isListed'));
+	} else {
+		ok = caller.project === callee.project;
+		const sharedNote = s.shares.length
+			? ` ${caller.label} is also shared with ${s.shares.map((x) => P[x].short).join(', ')}, but sharing is ignored. Only the home project counts.`
+			: '';
+		steps.push(step(ok ? 'pass' : 'fail', 'Compare home projects',
+			`Caller: ${projName(caller.project)}. Callee: ${projName(callee.project)}.${sharedNote}`, 'findDenial · getWorkflowProjectCached'));
+	}
+	if (!ok) {
+		steps.push(isError
+			? step('info', 'Error workflow does not run', `n8n saves a failed execution on ${callee.label}. It says another workflow tried to use it for errors. The message stays generic because no user is involved.`, 'executeErrorWorkflow · failedRunFactory')
+			: step('info', 'Parent run fails', 'The Execute Workflow node fails with <code>SubworkflowPolicyDenialError</code>.', 'SubworkflowPolicyDenialError'));
+	} else if (isError) {
+		steps.push(step('info', 'Error Trigger starts', `${callee.label} receives the failed run's data on its Error Trigger node.`));
+	}
+	if (!isError) {
+		steps.push(step('info', 'Publishing the caller needs a published sub-workflow',
+			`To publish ${caller.label}, every sub-workflow it references must exist and be published. This check does not look at access or caller policy.`,
+			'workflow-validation.service.ts · validateSubWorkflowReferences'));
+	}
+	const kind = isError ? 'error' : 'sub';
+	const hops = [{ title: isError ? 'Error workflow' : 'Sub-workflow call', kind, path: [s.wf, s.callee], ok, steps, label: isError ? 'error workflow' : 'sub-workflow' }];
+
+	let verdict = {
+		ok,
+		tone: ok ? 'ok' : 'no',
+		title: ok ? (caller.project === callee.project ? 'Allowed (same project)' : 'Allowed across projects') : 'Blocked by the callee',
+		text: ok
+			? `${callee.label}'s policy lets ${caller.label} in.`
+			: `${callee.label}'s policy rejects ${caller.label}. Only someone who can edit ${callee.label} in ${projName(callee.project)} can change that.`,
+		rec: isError
+			? '<b>Recorded in:</b> caller <code>settings.errorWorkflow</code>; callee <code>settings.callerPolicy</code> / <code>callerIds</code>.'
+			: '<b>Recorded in:</b> caller node parameter <code>workflowId</code>; callee <code>settings.callerPolicy</code> / <code>callerIds</code>.',
+	};
+
+	if (ok && !isError && s.follow) {
+		const credId = callee.uses;
+		const inner = evalCred({ ...s, wf: s.callee, cred: credId, shares: [], credShares: [] });
+		inner.hop.steps.unshift(step('info', `${callee.label} runs as its own workflow`,
+			`Its credentials are checked against its own projects (${projName(callee.project)}), not against ${caller.label}'s. ${E[caller.uses].label} from ${P[caller.project].short} is not available to it. If ${P[callee.project].short} does not carry a credential, n8n falls back to the parent run's acting user.`,
+			'workflow-execute-additional-data.ts · check(subworkflow.id, nodes, additionalData.userId)'));
+		inner.hop.title = 'Transitive: sub-workflow credential';
+		inner.hop.kind = inner.hop.ok ? 'transitive' : inner.hop.kind;
+		inner.hop.label = 'own credential';
+		hops.push(inner.hop);
+		verdict = {
+			ok: inner.hop.ok,
+			tone: inner.hop.ok ? 'ok' : 'no',
+			title: inner.hop.ok ? 'Allowed, with a hidden dependency' : 'Blocked inside the sub-workflow',
+			text: `${caller.label} now depends on ${E[credId].label} in ${projName(E[credId].project)}, through ${callee.label}. ${caller.label} has no reference to it.`,
+			rec: '<b>Recorded in:</b> nowhere in the caller. Only the sub-workflow references the credential.',
+		};
+	}
+	return { hops, verdict };
+}
+
+function evalCred(s) {
+	const wf = E[s.wf], cred = E[s.cred], home = P[wf.project];
+	const wfProjects = [wf.project, ...s.shares.filter((p) => p !== wf.project)];
+	const credProjects = [cred.project, ...s.credShares.filter((p) => p !== cred.project)];
+	const steps = [];
+	const glow = [];
+	steps.push(step('info', `${wf.label} references ${cred.label} by ID`, 'The node stores the credential ID. n8n checks it before the run starts.', 'credentials-permission-checker.ts · check'));
+
+	const mk = (ok, route, path, verdict) => ({
+		hop: { title: 'Credential check', kind: ok ? (route === 'user' || route === 'bypass' ? 'implicit' : 'cred') : 'blocked', path, ok, steps, glow, label: 'credential' },
+		verdict,
+	});
+	const direct = [s.wf, s.cred];
+
+	// Route 0: personal project of a user with instance-wide credential:use.
+	if (home.type === 'personal' && USERS[home.owner].globalCredUse) {
+		steps.push(step('purple', 'Home project owner has instance-wide credential:use',
+			`${home.name} belongs to ${USERS[home.owner].name} (${USERS[home.owner].role}), who has instance-wide <code>credential:use</code>. Owners, Admins and custom roles with the credential “Use” or “Manage” option all have it. n8n skips every credential check. The picker offers only personal credentials, but an imported or edited workflow still runs.`,
+			'findInaccessible · hasGlobalScope(owner)'));
+		glow.push([wf.project, 'purple']);
+		return mk(true, 'bypass', direct, {
+			ok: true, tone: 'purple', title: 'Allowed: owner bypass',
+			text: `Any credential works here. Move ${wf.label} to another project and it can fail.`,
+			rec: '<b>Recorded in:</b> nowhere. It depends on the instance role of the project’s owner.',
+		});
+	}
+	steps.push(step('skip', 'Home project owner has instance-wide credential:use?',
+		home.type === 'team' ? `${home.name} is a team project.` : `${USERS[home.owner].name} has no instance-wide credential:use.`));
+
+	// Route 1: project route.
+	const hit = wfProjects.find((p) => credProjects.includes(p));
+	if (hit) {
+		const ownsIt = cred.project === hit;
+		let detail, path;
+		if (hit === wf.project) {
+			detail = ownsIt
+				? `${cred.label} belongs to ${P[hit].name}, the workflow's home project.`
+				: `${cred.label} is shared with ${P[hit].name}, the workflow's home project.`;
+			path = ownsIt ? direct : [s.wf, `gcred-${hit}`, s.cred];
+		} else {
+			detail = `${wf.label} is also shared with ${P[hit].name}, and that project ${ownsIt ? 'owns' : 'has access to'} ${cred.label}. Sharing a workflow with another personal project widens the credentials it can use at run time.`;
+			path = ownsIt ? [s.wf, `gwf-${hit}`, s.cred] : [s.wf, `gwf-${hit}`, `gcred-${hit}`, s.cred];
+		}
+		steps.push(step('pass', 'Project route: a project of the workflow has it', detail, 'findInaccessible · getFilteredAccessibleCredentials'));
+		if (hit !== wf.project && P[hit].type === 'personal') {
+			steps.push(step('fail', 'The publish check does not see this route', 'The publish check counts only team projects. For this credential it asks the publisher’s own access instead, so it flags the credential unless the publisher can use it.', 'workflow-validation.service.ts · validatePublisherCredentialAccess'));
+		}
+		glow.push([hit, 'green']);
+		const rec = hit === wf.project && ownsIt
+			? '<b>Recorded in:</b> same project. Not a cross-project dependency.'
+			: hit === wf.project
+				? '<b>Recorded in:</b> <code>shared_credentials</code> (credential → home project).'
+				: '<b>Recorded in:</b> <code>shared_workflow</code> (workflow → other project)' + (ownsIt ? '.' : ' and <code>shared_credentials</code>.');
+		const viaPersonalShare = hit !== wf.project && P[hit].type === 'personal';
+		return mk(true, 'project', path, {
+			ok: true,
+			tone: viaPersonalShare ? 'purple' : 'ok',
+			title: viaPersonalShare ? 'Allowed at run time, blocked at publish' : 'Allowed: project route',
+			text: viaPersonalShare
+				? `${detail} A manual run works. Publishing fails with “Cannot publish workflow: You do not have access to credential "${cred.label}". Ask its owner to share it with you.” unless the publisher can use it.`
+				: detail,
+			rec,
+		});
+	}
+	if (cred.global) {
+		steps.push(step('pass', 'Global credential', `${cred.label} is marked global, so every project may use it.`, 'findGlobalProjectCredentialIds'));
+		return mk(true, 'global', direct, {
+			ok: true, tone: 'ok', title: 'Allowed: global credential',
+			text: `${cred.label} belongs to ${projName(cred.project)} but is usable from every project.`,
+			rec: '<b>Recorded in:</b> <code>credentials.isGlobal</code>.',
+		});
+	}
+	steps.push(step('fail', 'Project route rejects it',
+		`No project of the workflow (${wfProjects.map((p) => P[p].short).join(', ')}) owns ${cred.label} or has it shared, and it is not global.`,
+		'rejectedByProject'));
+
+	// Route 2: acting user.
+	if (!s.actor) {
+		steps.push(step('fail', 'No acting user',
+			'A triggered run acts as its publisher. This workflow has no publisher record, so n8n refuses the run. Republishing restores it.',
+			'findInaccessible · !actingUserId'));
+		return mk(false, null, direct, {
+			ok: false, tone: 'no', title: 'Blocked: no one to act as',
+			text: 'Republish the workflow, or share the credential with one of its projects.', rec: '',
+		});
+	}
+	const u = USERS[s.actor];
+	const isTeam = home.type === 'team';
+	steps.push(step('info', `Acting user: ${u.name} (${u.role})`, 'Manual run: the session user. Triggered run: the user who published the workflow.'));
+	if (!isTeam && u.globalCredUse) {
+		steps.push(step('purple', 'Acting-user route: instance-wide credential:use',
+			`${u.name} may use any credential, and the home project is not a team project.`, 'findUnusableCredentialsForUser'));
+		return mk(true, 'user', direct, {
+			ok: true, tone: 'purple', title: 'Allowed: acting-user route',
+			text: `It works because ${u.name} runs it.`, rec: '<b>Recorded in:</b> nowhere on the workflow side.',
+		});
+	}
+	const uProjects = [u.personal, ...u.teams];
+	const uhit = credProjects.find((p) => uProjects.includes(p));
+	if (uhit) {
+		const via = uhit === u.personal ? `${u.name}'s personal project` : `${u.name}'s membership of ${P[uhit].name}`;
+		steps.push(step('purple', 'Acting-user route accepts it',
+			`${u.name} can use ${cred.label} through ${via}. Nothing in the workflow's projects records this. With another publisher, the run can fail.`,
+			'findUnusableCredentialsForUser'));
+		if (P[uhit].draw) glow.push([uhit, 'purple']);
+		return mk(true, 'user', direct, {
+			ok: true, tone: 'purple', title: 'Allowed: acting-user route',
+			text: `${wf.label} depends on ${cred.label} in ${projName(cred.project)} only because ${u.name} published it (or runs it).`,
+			rec: '<b>Recorded in:</b> nowhere on the workflow side. It depends on who published the workflow.',
+		});
+	}
+	steps.push(step('fail', 'Acting-user route rejects it',
+		isTeam && u.globalCredUse
+			? `${u.name} has instance-wide <code>credential:use</code>, but it does not count in a team project. Someone must share ${cred.label} with ${home.name}.`
+			: `${u.name} has no access to ${cred.label}.`,
+		isTeam ? 'ignoreGlobalUseScope: homeProject.type === "team"' : 'findUnusableCredentialsForUser'));
+	return mk(false, null, direct, {
+		ok: false, tone: 'no', title: 'Blocked',
+		text: `Node fails with “does not have access to the credential”. Share ${cred.label} with ${home.name}, or share the workflow into a project that has it.`,
+		rec: '',
+	});
+}
+
+function evalTable(s) {
+	const wf = E[s.wf], t = E[s.table];
+	const ok = t.project === wf.project;
+	const steps = [
+		step('info', 'The node resolves a project', `It looks up tables in ${wf.label}'s home project, ${projName(wf.project)}. Workflow sharing and the user's team memberships do not change this.`, 'data-table-proxy.service.ts · getProjectId'),
+		step(ok ? 'pass' : 'fail', 'Look up the table', `<code>validateDataTableExists(${t.label}, ${P[wf.project].short})</code> ${ok ? 'finds it' : 'does not find it'}.`, 'validateDataTableExists'),
+	];
+	if (s.shares.length) steps.splice(1, 0, step('skip', 'Workflow sharing', `${wf.label} is also shared with ${s.shares.map((x) => P[x].short).join(', ')}. The lookup ignores this.`));
+	return {
+		hops: [{ title: 'Data table', kind: 'blocked', path: [s.wf, s.table], ok, steps, label: 'data table' }],
+		verdict: ok
+			? { ok, tone: 'ok', title: 'Allowed (same project)', text: 'This is not a cross-project dependency.', rec: '' }
+			: { ok, tone: 'no', title: 'Never crosses', text: 'A workflow can only read and write tables of its home project.', rec: '' },
+	};
+}
+
+function evalVar(s) {
+	const wf = E[s.wf], v = E[s.variable];
+	const resolved = {};
+	for (const id of ids('var')) if (E[id].project === null) resolved[E[id].key] = E[id].value;
+	for (const id of ids('var')) if (E[id].project && E[id].project === wf.project) resolved[E[id].key] = E[id].value;
+	const visible = v.project === null || v.project === wf.project;
+	const shown = '{ ' + Object.entries(resolved).map(([k, val]) => `${k}: '${val}'`).join(', ') + ' }';
+	const steps = [
+		step('info', 'Build $vars for the run', 'First the global variables, then the home project’s variables. A project variable overrides a global one with the same key.', 'resolve-variables.ts · resolveVariables'),
+		step('info', `$vars for ${wf.label}`, `<code>${esc(shown)}</code>`),
+	];
+	const got = resolved[v.key];
+	steps.push(visible
+		? step('pass', `${v.label} is visible`, `<code>$vars.${v.key}</code> reads <code>'${got}'</code>.`)
+		: step('fail', `${v.label} is not visible`, `It belongs to ${projName(v.project)}. <code>$vars.${v.key}</code> reads ${got !== undefined ? `<code>'${got}'</code> from ${P[wf.project]?.short ?? 'global'} instead` : '<code>undefined</code>'}. No error is raised.`));
+	return {
+		hops: [{ title: 'Variable', kind: 'blocked', path: [s.wf, s.variable], ok: visible, steps, label: '$vars' }],
+		verdict: visible
+			? { ok: true, tone: 'ok', title: v.project === null ? 'Allowed (global)' : 'Allowed (same project)', text: 'Global variables are shared by every project but are not a cross-project reference.', rec: '' }
+			: { ok: false, tone: 'no', title: 'Never crosses — silently', text: 'The expression gets another value or nothing. The run does not fail, which makes this dependency easy to miss.', rec: '' },
+	};
+}
+
+function evaluate(s) {
+	switch (s.mode) {
+		case 'sub': return evalCall(s, false);
+		case 'error': return evalCall(s, true);
+		case 'cred': { const r = evalCred(s); return { hops: [r.hop], verdict: r.verdict }; }
+		case 'table': return evalTable(s);
+		case 'var': return evalVar(s);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Run / animate
+// ---------------------------------------------------------------------------
+let runId = 0;
+
+function resetCanvas() {
+	$('layer-edges').innerHTML = '';
+	$('layer-fx').innerHTML = '';
+	$('layer-ghosts').innerHTML = '';
+	for (const k of Object.keys(G)) delete G[k];
+	document.querySelectorAll('.chip').forEach((c) => c.classList.remove('dim', 'active', 'ok', 'no', 'shake'));
+	document.querySelectorAll('.project').forEach((p) => p.classList.remove('hit-green', 'hit-purple', 'hit-red'));
+}
+
+function drawGhosts() {
+	const lg = $('layer-ghosts');
+	const wf = E[state.wf];
+	if (state.mode !== 'map') {
+		for (const p of state.shares) {
+			if (p === wf.project || !GHOST_SLOTS[p]) continue;
+			const [x, y] = GHOST_SLOTS[p].wf;
+			G[`gwf-${p}`] = { kind: 'wf', label: `↪ ${wf.label}`, sub: 'shared workflow', x, y };
+			drawChip(lg, `gwf-${p}`, G[`gwf-${p}`], true);
+		}
+	}
+	if (state.mode === 'cred') {
+		const cred = E[state.cred];
+		for (const p of state.credShares) {
+			if (p === cred.project || !GHOST_SLOTS[p]) continue;
+			const [x, y] = GHOST_SLOTS[p].cred;
+			G[`gcred-${p}`] = { kind: 'cred', label: `↪ ${cred.label}`, sub: 'shared credential', x, y };
+			drawChip(lg, `gcred-${p}`, G[`gcred-${p}`], true);
+		}
+	}
+}
+
+function hopPath(hop) {
+	let d = '';
+	for (let i = 0; i < hop.path.length - 1; i++) d += segPath(hop.path[i], hop.path[i + 1]) + ' ';
+	return d.trim();
+}
+
+async function run() {
+	const id = ++runId;
+	const alive = () => id === runId;
+	clearTimeout(autoplayTimer);
+	resetCanvas();
+	renderControls();
+	renderTabs();
+	renderTour();
+	if (state.mode === 'map') {
+		drawMap(alive);
+		renderTraceMap();
+		scheduleAutoplay(alive, 7000);
+		return;
+	}
+	drawGhosts();
+	const res = evaluate(state);
+	const involved = new Set(res.hops.flatMap((h) => h.path));
+	document.querySelectorAll('#layer-chips .chip').forEach((c) => {
+		const cid = c.id.slice(5);
+		if (!involved.has(cid)) c.classList.add('dim');
+	});
+	chipEl(res.hops[0].path[0])?.classList.add('active');
+
+	const body = $('trace-body');
+	body.innerHTML = '';
+	for (const hop of res.hops) {
+		if (!alive()) return;
+		const color = KIND[hop.kind].hex;
+		const failColor = '#ef4444';
+		const d = hopPath(hop);
+		const le = $('layer-edges');
+		const halo = el('path', { class: 'edge halo', d }, le);
+		const path = el('path', { class: 'edge marching', d, stroke: hop.ok ? color : failColor }, le);
+		if (!hop.ok) path.setAttribute('stroke-opacity', '.75');
+
+		const head = document.createElement('div');
+		head.className = 'hop-title';
+		head.innerHTML = `<span class="sw" style="background:${hop.ok ? color : failColor}"></span>${esc(hop.title)}`;
+		body.appendChild(head);
+		const ol = document.createElement('ol');
+		body.appendChild(ol);
+
+		const stopAt = 0.8;
+		const stepsP = (async () => {
+			for (const st of hop.steps) {
+				if (!alive()) return;
+				ol.appendChild(renderStep(st));
+				await sleep(650);
+			}
+		})();
+		const travelP = travel(path, hop.ok ? color : failColor, 0, stopAt, 600 + hop.steps.length * 650, alive);
+		await Promise.all([stepsP, travelP]);
+		if (!alive()) return;
+
+		if (hop.ok) {
+			await travel(path, color, stopAt, 1, 380, alive);
+			if (!alive()) return;
+			path.classList.remove('marching');
+			const last = hop.path[hop.path.length - 1];
+			flash(last, 'ok');
+			ring(last, color);
+			drawLabel(le, path, 0.5, hop.label, color);
+			for (const [pid, tone] of hop.glow ?? []) document.getElementById(`proj-${pid}`)?.classList.add(`hit-${tone}`);
+			if (hop.kind === 'implicit' && state.mode === 'cred' && state.actor) badge(state.wf, `👤 ${USERS[state.actor].name}`, '#a855f7');
+		} else {
+			path.classList.remove('marching');
+			path.setAttribute('stroke-dasharray', '6 6');
+			burst(path, stopAt);
+			flash(hop.path[hop.path.length - 1], 'no');
+			const targetProject = pos(hop.path[hop.path.length - 1]).project;
+			if (targetProject) document.getElementById(`proj-${targetProject}`)?.classList.add('hit-red');
+			break;
+		}
+		await sleep(350);
+	}
+	if (!alive()) return;
+	body.appendChild(renderVerdict(res.verdict));
+	scheduleAutoplay(alive, 4500);
+}
+
+function renderStep(st) {
+	const li = document.createElement('li');
+	li.className = st.status;
+	const icon = { pass: '✓', fail: '✕', skip: '–', info: 'i', purple: '✓' }[st.status];
+	li.innerHTML = `<div class="ic">${icon}</div><div><div class="t">${esc(st.title)}</div>${st.detail ? `<div class="d">${st.detail}</div>` : ''}${st.ref ? `<div class="r">${esc(st.ref)}</div>` : ''}</div>`;
+	return li;
+}
+
+function renderVerdict(v) {
+	const d = document.createElement('div');
+	d.className = `verdict ${v.tone}`;
+	d.innerHTML = `<div class="vt">${v.tone === 'no' ? '✕' : '✓'} ${esc(v.title)}</div><div class="vd">${esc(v.text)}</div>${v.rec ? `<div class="rec">${v.rec}</div>` : ''}`;
+	return d;
+}
+
+function renderTraceMap() {
+	$('trace-body').innerHTML = `<div class="empty">
+		<p><b>Map mode.</b> Each line shows one kind of cross-project reference. Particles show the direction of use.</p>
+		<p>Hover a legend entry to isolate a kind. <b>Click a line</b> to run its check step by step.</p>
+		<p>Colors:</p>
+		<div class="maplegend">
+			<p class="ml"><b style="color:#3b82f6">Blue</b> / <b style="color:#f59e0b">amber</b>: the callee's policy decides.</p>
+			<p class="ml"><b style="color:#10b981">Green</b>: sharing or global flag decides. Recorded in the database.</p>
+			<p class="ml"><b style="color:#a855f7">Purple</b>: a user or role decides. Not recorded on the workflow side.</p>
+			<p class="ml"><b style="color:#64748b">Slate</b>: transitive. The sub-workflow's own credential.</p>
+			<p class="ml"><b style="color:#ef4444">Red</b>: never crosses.</p>
+		</div></div>`;
+}
+
+function drawMap(alive) {
+	const le = $('layer-edges');
+	const loops = [];
+	for (const [i, me] of MAP_EDGES.entries()) {
+		const k = KIND[me.kind];
+		const g = el('g', { class: `map-edge kind-${me.kind}` }, le);
+		const d = segPath(me.from, me.to, me.route, me.bend);
+		el('path', { class: 'edge halo', d }, g);
+		const p = el('path', { class: 'edge marching', d, stroke: k.hex }, g);
+		if (me.kind === 'blocked') p.setAttribute('stroke-opacity', '.6');
+		if (me.label) drawLabel(g, p, me.frac ?? 0.5, me.label, k.hex);
+		if (me.kind === 'blocked') {
+			const pt = p.getPointAtLength(p.getTotalLength() * 0.8);
+			el('circle', { cx: pt.x, cy: pt.y, r: 10, fill: '#fff', stroke: '#ef4444', 'stroke-width': 2 }, g);
+			const x = el('text', { class: 'xmark', x: pt.x, y: pt.y + 5.5, 'text-anchor': 'middle', 'font-size': 15 }, g);
+			x.textContent = '✕';
+		}
+		const hit = el('path', { class: 'edge-hit', d }, g);
+		hit.addEventListener('click', () => {
+			tourIndex = null;
+			stopAutoplay();
+			state = { ...DEFAULT, ...me.state };
+			run();
+		});
+		const title = el('title', {}, hit);
+		title.textContent = `${k.label}: ${E[me.from].label} → ${E[me.to].label} (click to replay)`;
+		const dot = el('circle', { r: 4.5, fill: k.hex, filter: 'url(#glow)' }, g);
+		loops.push({ p, dot, L: p.getTotalLength(), offset: i * 0.13, max: me.kind === 'blocked' ? 0.8 : 1 });
+	}
+	const frame = (now) => {
+		if (!alive()) return;
+		for (const l of loops) {
+			const t = ((now / (2600 / speed)) + l.offset) % 1;
+			const pt = l.p.getPointAtLength(l.L * l.max * t);
+			l.dot.setAttribute('cx', pt.x);
+			l.dot.setAttribute('cy', pt.y);
+			l.dot.setAttribute('opacity', l.max < 1 && t > 0.85 ? (1 - t) / 0.15 : 1);
+		}
+		requestAnimationFrame(frame);
+	};
+	requestAnimationFrame(frame);
+}
+
+// ---------------------------------------------------------------------------
+// UI: tabs, legend, controls, tour
+// ---------------------------------------------------------------------------
+function renderTabs() {
+	$('tabs').innerHTML = MODES.map((m) => `<button data-mode="${m.id}" class="${state.mode === m.id ? 'on' : ''}"><span class="sw" style="background:${m.color}"></span>${m.label}</button>`).join('');
+}
+$('tabs').addEventListener('click', (e) => {
+	const b = e.target.closest('button');
+	if (!b) return;
+	tourIndex = null;
+	stopAutoplay();
+	state = { ...state, mode: b.dataset.mode };
+	normalize();
+	run();
+});
+
+function renderLegend() {
+	$('legend').innerHTML = Object.entries(KIND).map(([k, v]) =>
+		`<div class="item" data-kind="${k}"><span class="ln ${v.dash ? 'dash' : ''}" style="border-color:${v.hex}"></span>${v.label}</div>`).join('');
+	$('legend').querySelectorAll('.item').forEach((it) => {
+		it.addEventListener('mouseenter', () => {
+			document.querySelectorAll('.map-edge').forEach((g) => g.classList.toggle('faded', !g.classList.contains(`kind-${it.dataset.kind}`)));
+		});
+		it.addEventListener('mouseleave', () => document.querySelectorAll('.map-edge').forEach((g) => g.classList.remove('faded')));
+	});
+}
+
+const opt = (v, label, sel) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${esc(label)}</option>`;
+const wfLabel = (id) => `${E[id].label} — ${P[E[id].project].short}`;
+
+function checks(group, exclude, selected, allow = () => true) {
+	return `<div class="checks">${DRAWN.filter((p) => p !== exclude && allow(p)).map((p) =>
+		`<label><input type="checkbox" data-group="${group}" value="${p}" ${selected.includes(p) ? 'checked' : ''}/> ${esc(P[p].short)}</label>`).join('')}</div>`;
+}
+
+function normalize() {
+	if (state.callee === state.wf) state.callee = ids('wf').find((w) => w !== state.wf);
+	// Workflow sharing is personal → personal only.
+	state.shares = P[E[state.wf].project].type === 'team'
+		? []
+		: state.shares.filter((p) => p !== E[state.wf].project && P[p].type === 'personal');
+	state.credShares = state.credShares.filter((p) => p !== E[state.cred].project);
+}
+
+function renderControls() {
+	const m = state.mode;
+	let h = '<h2>Inputs</h2>';
+	if (m === 'map') {
+		h += `<div class="who"><b>Pick a mode</b> above the map to play with one kind of dependency. You can also click any line on the map.</div>
+		<div class="who"><b>The cast</b><br>
+		Alice: Member, editor in Team A.<br>
+		Bob: Member, editor in Team B.<br>
+		Olivia: instance Owner, in no team.</div>`;
+	} else {
+		const isCall = m === 'sub' || m === 'error';
+		h += `<label class="field">${isCall ? 'Caller workflow' : 'Workflow'}</label>
+			<select data-key="wf">${ids('wf').map((w) => opt(w, wfLabel(w), state.wf)).join('')}</select>`;
+		if (isCall) {
+			h += `<label class="field">${m === 'error' ? 'Error workflow' : 'Sub-workflow'}</label>
+				<select data-key="callee">${ids('wf').filter((w) => w !== state.wf).map((w) => opt(w, wfLabel(w), state.callee)).join('')}</select>
+				<label class="field">Its caller policy</label>
+				<select data-key="policy">${Object.entries(POLICIES).map(([k, v]) => opt(k, v, state.policy)).join('')}</select>`;
+			if (state.policy === 'workflowsFromAList') {
+				h += `<div class="checks"><label><input type="checkbox" data-key="listed" ${state.listed ? 'checked' : ''}/> Caller ID is in <code>callerIds</code></label></div>`;
+			}
+			if (m === 'sub') {
+				h += `<div class="checks" style="margin-top:8px"><label><input type="checkbox" data-key="follow" ${state.follow ? 'checked' : ''}/> Follow into the sub-workflow's credential</label></div>`;
+			}
+		}
+		if (m === 'cred') {
+			h += `<label class="field">Credential</label>
+				<select data-key="cred">${ids('cred').map((c) => opt(c, `${E[c].label} — ${P[E[c].project].short}${E[c].global ? ' (global)' : ''}`, state.cred)).join('')}</select>
+				<label class="field">Acting user</label>
+				<select data-key="actor">${opt('alice', 'Alice (Member, Team A)', state.actor)}${opt('bob', 'Bob (Member, Team B)', state.actor)}${opt('olivia', 'Olivia (instance Owner)', state.actor)}${opt('', 'Nobody (no publisher recorded)', state.actor)}</select>
+				<div class="hint">Manual run: the session user. Triggered run: the publisher.</div>
+				<label class="field">Credential also shared with</label>${checks('credShares', E[state.cred].project, state.credShares)}`;
+		}
+		if (m === 'table') {
+			h += `<label class="field">Data table</label><select data-key="table">${ids('table').map((t) => opt(t, `${E[t].label} — ${P[E[t].project].short}`, state.table)).join('')}</select>`;
+		}
+		if (m === 'var') {
+			h += `<label class="field">Variable</label><select data-key="variable">${ids('var').map((v) => opt(v, `${E[v].label} — ${E[v].project ? P[E[v].project].short : 'global'}`, state.variable)).join('')}</select>`;
+		}
+		h += `<label class="field">Workflow also shared with</label>${P[E[state.wf].project].type === 'team'
+			? '<div class="hint">A team project workflow cannot be shared. Its project members have access.</div>'
+			: checks('shares', E[state.wf].project, state.shares, (p) => P[p].type === 'personal') + '<div class="hint">Only personal projects can receive a shared workflow.</div>'}`;
+		const who = {
+			sub: '<b>Who decides:</b> the sub-workflow, through its caller policy. Home projects only.',
+			error: '<b>Who decides:</b> the error workflow, through its caller policy. Same checker as sub-workflows, with no user.',
+			cred: '<b>Who decides:</b> the caller’s projects, the global flag, then the acting user. The first route that accepts wins.',
+			table: '<b>Who decides:</b> nobody. Lookup is fixed to the home project.',
+			var: '<b>Who decides:</b> nobody. <code>$vars</code> = global + home project.',
+		}[m];
+		h += `<div class="who">${who}</div>`;
+	}
+	h += `<div class="row"><button class="primary" id="replay">↻ Replay</button><button id="reset">Reset</button></div>
+		<label class="field">Speed</label>
+		<select id="speed">${opt('0.5', 'Slow', String(speed))}${opt('1', 'Normal', String(speed))}${opt('2', 'Fast', String(speed))}</select>`;
+	$('controls').innerHTML = h;
+}
+
+$('controls').addEventListener('change', (e) => {
+	const t = e.target;
+	if (t.id === 'speed') { speed = Number(t.value); return; }
+	if (t.dataset.group) {
+		const set = new Set(state[t.dataset.group]);
+		t.checked ? set.add(t.value) : set.delete(t.value);
+		state[t.dataset.group] = [...set];
+	} else if (t.dataset.key) {
+		state[t.dataset.key] = t.type === 'checkbox' ? t.checked : t.value;
+	} else return;
+	tourIndex = null;
+	stopAutoplay();
+	normalize();
+	run();
+});
+$('controls').addEventListener('click', (e) => {
+	if (e.target.id === 'replay') run();
+	if (e.target.id === 'reset') { state = { ...DEFAULT, mode: state.mode }; tourIndex = null; stopAutoplay(); run(); }
+});
+
+function renderTour() {
+	const sc = tourIndex === null ? null : SCENES[tourIndex];
+	$('tour').innerHTML = `
+		<div class="nav">
+			<button id="t-prev" title="Previous">‹</button>
+			<span class="count">${tourIndex === null ? '—' : `${tourIndex + 1} / ${SCENES.length}`}</span>
+			<button id="t-next" title="Next">›</button>
+			<button id="t-play" class="${autoplay ? 'on' : ''}">${autoplay ? '❚❚ Pause' : '▶ Auto-play'}</button>
+		</div>
+		<div>
+			<div class="title">${sc ? esc(sc.title) : 'Free exploration'}</div>
+			<div class="text">${sc ? esc(sc.text) : 'Your own inputs. Press › or pick a dot to go back to the guided tour.'}</div>
+		</div>
+		<div class="dots">${SCENES.map((_, i) => `<span class="dot ${i === tourIndex ? 'on' : tourIndex !== null && i < tourIndex ? 'done' : ''}" data-i="${i}" title="${esc(SCENES[i].title)}"></span>`).join('')}</div>`;
+}
+$('tour').addEventListener('click', (e) => {
+	const t = e.target;
+	if (t.id === 't-prev') goTo((tourIndex ?? 0) - 1);
+	else if (t.id === 't-next') goTo(tourIndex === null ? 0 : tourIndex + 1);
+	else if (t.id === 't-play') { autoplay = !autoplay; if (autoplay && tourIndex === null) goTo(0); else run(); }
+	else if (t.classList.contains('dot')) goTo(Number(t.dataset.i));
+});
+
+function goTo(i) {
+	if (i < 0) i = SCENES.length - 1;
+	if (i >= SCENES.length) { i = 0; }
+	tourIndex = i;
+	state = { ...DEFAULT, ...SCENES[i].state };
+	normalize();
+	run();
+}
+function stopAutoplay() { autoplay = false; clearTimeout(autoplayTimer); }
+function scheduleAutoplay(alive, delay) {
+	if (!autoplay || tourIndex === null) return;
+	autoplayTimer = setTimeout(() => { if (alive() && autoplay) goTo(tourIndex + 1); }, delay / speed);
+}
+document.addEventListener('keydown', (e) => {
+	if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+	if (e.key === 'ArrowRight') goTo(tourIndex === null ? 0 : tourIndex + 1);
+	if (e.key === 'ArrowLeft') goTo((tourIndex ?? 0) - 1);
+});
+
+// ---------------------------------------------------------------------------
+renderStatic();
+renderLegend();
+goTo(0);
+</script>
+</body>
+</html>

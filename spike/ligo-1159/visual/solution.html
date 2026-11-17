@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIGO-1159 · Cross-project promotion · Dependencies first</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1b2330; --muted:#5b6879; --faint:#8a95a5; --line:#dde2e9;
+  --pass:#17794a; --pass-bg:#e4f4ea; --warn:#9a5b00; --warn-bg:#fff1cf; --block:#bf3329; --block-bg:#fde7e4;
+  --info:#2a5fc4; --info-bg:#e6eefc; --grant:#6a3fc0; --grant-bg:#efe8fb; --risk:#8b1d5c; --risk-bg:#fbe6f1;
+  --src:#f2f5fb; --br:#fbf6ec; --dst:#eff8f3; --wf:#3d5a80; --cred:#8a5a00; --table:#2f7a78;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+a{color:var(--info);text-decoration:none} a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono);font-size:12px}
+.wrap{max-width:1400px;margin:0 auto;padding:0 24px}
+header.top{background:#141b26;color:#fff;padding:26px 0 22px}
+header.top h1{margin:0 0 4px;font-size:22px;font-weight:650;letter-spacing:-.01em}
+header.top .sub{color:#aab4c3;font-size:13px}
+header.top blockquote{margin:16px 0 0;padding:14px 18px;border-left:4px solid #f2b84b;background:#1e2836;border-radius:0 8px 8px 0;font-size:16px;line-height:1.55;max-width:980px}
+header.top blockquote b{color:#f2c96b;font-weight:600}
+nav.toc{position:sticky;top:0;z-index:40;background:#fffffff2;border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+nav.toc .wrap{display:flex;gap:4px;align-items:center;height:42px}
+nav.toc a{color:var(--muted);padding:6px 10px;border-radius:6px;font-weight:550;font-size:13px}
+nav.toc a:hover{background:#eef1f5;color:var(--ink);text-decoration:none}
+section{padding:30px 0 6px}
+h2{font-size:18px;margin:0 0 4px;letter-spacing:-.01em}
+h2 + p.lead{margin:0 0 16px;color:var(--muted);max-width:900px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:650;white-space:nowrap;border:1px solid transparent}
+.pill.pass{background:var(--pass-bg);color:var(--pass)} .pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.block{background:var(--block-bg);color:var(--block)} .pill.info{background:var(--info-bg);color:var(--info)}
+.pill.grant{background:var(--grant-bg);color:var(--grant)} .pill.risk{background:var(--risk-bg);color:var(--risk)}
+.pill.plain{background:#eef1f5;color:var(--muted)}
+.pill.decpill{background:#fff;border-color:#d8b4e2;color:#7a2d8f;cursor:pointer;font-family:inherit;line-height:1.5;margin:0}
+.pill.decpill:hover{background:#faf0fd}
+
+/* principles */
+.principles{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.principles .card{grid-column:span 2;padding:14px 16px;display:flex;flex-direction:column}
+.principles .card.half{grid-column:span 3;border-top:3px solid #141b26}
+.principles .card.half p{font-size:14px;color:var(--ink)}
+.principles .dir{margin-left:8px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.principles .seeit{margin-top:auto;align-self:flex-start;border:0;background:none;padding:8px 0 0;font:inherit;font-size:12px;font-weight:650;color:var(--info);cursor:pointer}
+.principles .seeit:hover{text-decoration:underline}
+.principles h3{margin:0 0 6px;font-size:14px}
+.principles p{margin:0;color:var(--muted);font-size:13px}
+.terms{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+.terms div{font-size:12.5px;color:var(--muted)} .terms b{color:var(--ink)}
+
+/* explorer */
+.explorer{display:grid;grid-template-columns:262px minmax(0,1fr);gap:14px;align-items:start}
+.side{padding:10px;position:sticky;top:54px;max-height:calc(100vh - 66px);overflow:auto}
+.side h4{margin:12px 6px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.side h4:first-child{margin-top:4px}
+.sbtn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;padding:6px 8px;border-radius:7px;font:inherit;font-size:12.8px;color:var(--ink);cursor:pointer;line-height:1.3}
+.sbtn:hover{background:#f0f3f7}
+.sbtn.on{background:#141b26;color:#fff}
+.sbtn .dots{margin-left:auto;display:flex;gap:2px;flex:none}
+.dot{width:6px;height:6px;border-radius:50%;background:#c7ced8}
+.dot.pass{background:#2fa56a}.dot.warn{background:#e2a11b}.dot.block{background:#d8473c}.dot.info{background:#7ea2e6}.dot.risk{background:#b03a80}
+.main{min-width:0}
+.sc-head{padding:14px 18px 12px;border-bottom:1px solid var(--line)}
+.sc-head h3{margin:0 0 3px;font-size:17px}
+.sc-head p{margin:0;color:var(--muted);max-width:860px}
+.sc-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center}
+.sc-meta .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+.stagewrap{overflow-x:auto;padding:6px 14px 8px}
+.stage{position:relative;min-width:780px}
+.stage.no-anim *, .stage.no-anim{transition:none!important;animation:none!important}
+.lane{position:absolute;top:0;border-radius:9px;border:1px solid var(--line)}
+.lane.src{background:var(--src)} .lane.br{background:var(--br)} .lane.dst{background:var(--dst)}
+.lane.off{opacity:.38;filter:grayscale(.7)}
+.lane .lh{position:absolute;left:0;right:0;top:0;height:50px;padding:8px 12px;border-bottom:1px dashed #cfd6df}
+.lane .lh b{display:block;font-size:13px} .lane .lh span{font-size:11.5px;color:var(--muted)}
+.lane .offnote{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;color:var(--muted)}
+.rowlabel{position:absolute;left:0;width:96px;font-size:12px;font-weight:650;line-height:1.25;display:flex;flex-direction:column;justify-content:center;padding-right:6px}
+.rowlabel small{font-weight:500;color:var(--faint);font-size:10.5px}
+.rowline{position:absolute;height:1px;background:#d5dbe3}
+.hatch{position:absolute;border-radius:6px;background:repeating-linear-gradient(135deg,#0000 0 7px,#8a95a52e 7px 8px);display:flex;align-items:flex-start;justify-content:flex-end;padding:2px 7px;font-size:10px;color:var(--muted);font-style:italic;pointer-events:none;transition:opacity .35s}
+.chip{position:absolute;left:0;top:0;height:42px;transition:transform .6s cubic-bezier(.22,.8,.24,1),opacity .35s;will-change:transform;z-index:3}
+.chip.fly{z-index:9}
+.chip.gone{opacity:0;transition:opacity .3s}
+.chip-in{height:100%;border-radius:8px;background:#fff;border:1.5px solid #c3ccd8;box-shadow:0 1px 2px #0f172a14;padding:4px 9px 4px 11px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:visible}
+.chip-in::before{content:"";position:absolute;left:-1.5px;top:-1.5px;bottom:-1.5px;width:5px;border-radius:8px 0 0 8px;background:var(--wf)}
+.chip[data-t=cred] .chip-in::before{background:var(--cred)} .chip[data-t=table] .chip-in::before{background:var(--table)}
+.chip .nm{font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.chip .sb{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.chip.fly .chip-in{box-shadow:0 8px 20px #0f172a33}
+.chip.ph .chip-in{background:#ffffffa8;border-style:dashed;box-shadow:none}
+.chip.ph .chip-in::before{display:none}
+.chip.ph .nm{font-weight:550;color:var(--muted);font-style:italic}
+.chip.ph.red .chip-in{border-color:var(--block)} .chip.ph.red .sb{color:var(--block);font-weight:600}
+.chip.ph.amber .chip-in{border-color:#c98a12} .chip.ph.amber .sb{color:var(--warn);font-weight:600}
+.chip.f-blocked .chip-in{border-color:var(--block);border-style:dashed;background:var(--block-bg)}
+.chip.f-blocked .sb{color:var(--block);font-weight:650}
+.chip.f-held .chip-in{border-style:dashed;background:#f3f5f8;opacity:.8}
+.chip.f-warn .chip-in{border-color:#c98a12;background:#fffaf0} .chip.f-warn .sb{color:var(--warn);font-weight:650}
+.chip.f-del .chip-in{border-color:var(--block);background:var(--block-bg)} .chip.f-del .nm{text-decoration:line-through} .chip.f-del .sb{color:var(--block);font-weight:650}
+.chip.f-policy .sb{color:var(--block);font-weight:650}
+.chip.m-block .chip-in{outline:3px solid #bf332955} .chip.m-warn .chip-in{outline:3px solid #e2a11b66} .chip.m-pass .chip-in{outline:3px solid #2fa56a55}
+.chip .badge{position:absolute;right:-7px;top:-8px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;box-shadow:0 0 0 2px #fff}
+.chip .badge.block{background:var(--block)} .chip .badge.warn{background:#d38f10} .chip .badge.pass{background:#2fa56a}
+.chip .share{position:absolute;right:6px;bottom:-9px;background:var(--grant);color:#fff;font-size:9.5px;font-weight:700;border-radius:999px;padding:1px 7px;box-shadow:0 0 0 2px #fff;white-space:nowrap}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+@keyframes pop{0%{transform:scale(.55);opacity:0}70%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+@keyframes land{0%{box-shadow:0 0 0 0 #2fa56a88}100%{box-shadow:0 0 0 12px #2fa56a00}}
+.chip-in.shake{animation:shake .45s ease-out}
+.chip-in.pop{animation:pop .45s ease-out}
+.chip-in.land{animation:land .7s ease-out}
+svg.arrows{position:absolute;left:0;top:0;pointer-events:none;z-index:2;transition:opacity .3s}
+svg.arrows path{fill:none;stroke-width:1.6}
+svg.arrows path.ok{stroke:#5f6f86} svg.arrows path.red{stroke:var(--block);stroke-dasharray:5 4} svg.arrows path.amber{stroke:#c98a12;stroke-dasharray:5 4}
+svg.arrows path.focus{stroke-width:3}
+svg.arrows text{font-size:10px;fill:#5f6f86;paint-order:stroke;stroke:#ffffffd9;stroke-width:3px;font-weight:600}
+.opbar{position:absolute;top:0;height:34px;display:flex;align-items:center;transition:left .4s,width .4s,opacity .25s}
+.opbar .shaft{flex:1;min-width:0;height:26px;line-height:26px;text-align:center;border-radius:13px 0 0 13px;display:block;font-size:12px;font-weight:650;color:#fff;padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#526176}
+.opbar .head{width:0;height:0;border-top:17px solid transparent;border-bottom:17px solid transparent;border-left:20px solid #526176}
+.opbar.pass .shaft{background:#1f8a56} .opbar.pass .head{border-left-color:#1f8a56}
+.opbar.warn .shaft{background:#c07d08} .opbar.warn .head{border-left-color:#c07d08}
+.opbar.block .shaft{background:var(--block)} .opbar.block .head{border-left-color:var(--block)}
+.opbar.risk .shaft{background:var(--risk)} .opbar.risk .head{border-left-color:var(--risk)}
+.opbar.local .shaft{border-radius:13px;background:#2a5fc4} .opbar.local .head{display:none}
+.opbar.none{opacity:0}
+.controls{display:flex;align-items:center;gap:8px;padding:10px 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fafbfc}
+.btn{border:1px solid #c9d1dc;background:#fff;border-radius:7px;padding:5px 11px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn:hover{background:#f0f3f7} .btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:#141b26;color:#fff;border-color:#141b26}
+.steps{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+.stepbtn{border:1px solid #c9d1dc;background:#fff;border-radius:999px;padding:3px 10px 3px 4px;font:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--muted)}
+.stepbtn i{font-style:normal;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#e6eaf0;font-size:10.5px;font-weight:700;color:var(--ink)}
+.stepbtn.on{border-color:#141b26;color:var(--ink);font-weight:650;box-shadow:0 0 0 2px #141b2622}
+.stepbtn.pass i{background:#2fa56a;color:#fff}.stepbtn.warn i{background:#e2a11b;color:#fff}.stepbtn.block i{background:#d8473c;color:#fff}.stepbtn.info i{background:#7ea2e6;color:#fff}.stepbtn.risk i{background:#b03a80;color:#fff}
+.kbd{font-size:11px;color:var(--faint)}
+.below{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:0}
+.narr{padding:16px 18px;border-right:1px solid var(--line)}
+.narr h4{margin:6px 0 6px;font-size:15px}
+.narr p{margin:0 0 10px;color:#344054}
+.msg{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border-radius:8px;margin:0 0 7px;font-size:13px;border:1px solid transparent}
+.msg .ic{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;margin-top:1px}
+.msg.block{background:var(--block-bg);border-color:#f3c3be} .msg.block .ic{background:var(--block)}
+.msg.warn{background:var(--warn-bg);border-color:#f0d28c} .msg.warn .ic{background:#d38f10}
+.msg.note{background:#f1f4f8;border-color:#dde2e9} .msg.note .ic{background:#7d8a9c}
+.msg.action{background:var(--info-bg);border-color:#c3d4f5} .msg.action .ic{background:var(--info)}
+.msg .on{display:block;font-size:11px;color:var(--muted);font-weight:650;text-transform:uppercase;letter-spacing:.04em}
+.msg q{quotes:"“" "”"}
+.checks{margin-top:12px}
+.checks .lbl,.narr .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.check{display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;margin-bottom:5px;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}
+.check:hover{background:#f6f8fa} .check.on{border-color:#141b26;box-shadow:0 0 0 2px #141b2618}
+.check .arrow{color:var(--faint)} .check .pill{margin-left:auto}
+.treepane{padding:16px 18px}
+.treepane .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.tree{display:grid;grid-template-columns:200px minmax(0,1fr);column-gap:0;align-items:center}
+.t-node{border:1.5px solid #c3ccd8;border-radius:8px;padding:6px 9px;font-size:12px;line-height:1.3;background:#fff;transition:all .3s}
+.t-node.k-q{background:#f6f8fb;border-radius:14px;font-weight:600}
+.t-node.k-start{background:#141b26;color:#fff;border-color:#141b26}
+.t-node.k-pass{border-color:#8fd0ae;background:var(--pass-bg);color:var(--pass);font-weight:600}
+.t-node.k-warn{border-color:#ecc46a;background:var(--warn-bg);color:var(--warn);font-weight:600}
+.t-node.k-block{border-color:#eea69f;background:var(--block-bg);color:var(--block);font-weight:600}
+.t-node.k-grant{border-color:#c9b3ee;background:var(--grant-bg);color:var(--grant);font-weight:600}
+.t-node.k-action{border-color:#a9c2f0;background:var(--info-bg);color:var(--info);font-weight:600}
+.t-node small{display:block;font-weight:500;opacity:.85;margin-top:2px}
+.t-down{height:24px;display:flex;justify-content:center;position:relative}
+.t-down::before{content:"";width:2px;height:100%;background:#c3ccd8;transition:background .3s}
+.t-down span{position:absolute;left:calc(50% + 7px);top:3px;font-size:10.5px;color:var(--muted);font-weight:650}
+.t-side{display:flex;align-items:flex-start;min-width:0}
+.t-edge{flex:none;width:46px;height:30px;position:relative}
+.t-edge::before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:#c3ccd8;transition:background .3s}
+.t-edge::after{content:"";position:absolute;right:-1px;top:calc(50% - 4px);border:4.5px solid transparent;border-left-color:#c3ccd8;border-right-width:0;transition:border-color .3s}
+.t-edge span{position:absolute;left:0;right:6px;top:-2px;text-align:center;font-size:10.5px;color:var(--muted);font-weight:650}
+.t-col{min-width:0;flex:1}
+.t-frow{display:flex;align-items:flex-start;margin-top:5px;padding-left:14px}
+.t-frow .t-edge{width:38px}
+.tree.has-path .t-node:not(.on){opacity:.32}
+.tree.has-path .t-down:not(.on),.tree.has-path .t-edge:not(.on){opacity:.3}
+.t-node.on{box-shadow:0 0 0 3px #141b2630;transform:scale(1.02)}
+.t-down.on::before,.t-edge.on::before{background:#141b26}
+.t-edge.on::after{border-left-color:#141b26}
+.t-down.on span,.t-edge.on span{color:var(--ink)}
+.spec{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px;margin-top:6px}
+details.specd{font-size:12px;order:9;margin-left:4px}
+details.specd[open]{flex-basis:100%;margin-left:0}
+details.specd summary{cursor:pointer;color:var(--info);font-weight:600;display:inline-block;list-style:none}
+details.specd summary::after{content:" ▸"} details.specd[open] summary::after{content:" ▾"}
+details.specd summary::-webkit-details-marker{display:none}
+.spec span b{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:14px;padding:10px 18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;vertical-align:middle;margin-right:5px}
+.lg-chip{width:22px;height:13px;border-radius:3px;border:1.5px solid #c3ccd8;background:#fff;border-left:4px solid var(--wf)}
+.lg-chip.c{border-left-color:var(--cred)} .lg-chip.ph{border:1.5px dashed var(--block);background:none}
+.lg-line{width:24px;height:0;border-top:2px solid #5f6f86} .lg-line.d{border-top:2px dashed var(--block)}
+.lg-share{background:var(--grant);color:#fff;border-radius:999px;font-size:9px;padding:0 6px;font-weight:700;font-style:normal}
+
+/* the whole flow */
+.ov-line{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));row-gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+.ov-phase{grid-row:1;margin:0 5px;padding-bottom:4px;border-bottom:3px solid #c3ccd8;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-phase.build{border-color:#9db3d6}.ov-phase.promote{border-color:#d9b060}.ov-phase.apply{border-color:#6fb48f}
+.ov-stop{grid-row:2;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;padding:2px;font:inherit;min-width:0}
+.ov-stop::before{content:"";position:absolute;top:15px;left:-50%;width:100%;height:2px;background:#dde2e9;z-index:0}
+.ov-stop.done::before{background:#141b26}
+.ov-stop[data-ov="0"]::before{display:none}
+.ov-stop i{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:12px;background:#fff;border:2px solid #c3ccd8;color:var(--muted);transition:all .25s}
+.ov-stop.pass i{border-color:#2fa56a;color:#17794a}.ov-stop.block i{border-color:#d8473c;color:#bf3329}.ov-stop.info i{border-color:#7ea2e6;color:#2a5fc4}
+.ov-stop.done.pass i{background:#2fa56a;color:#fff}.ov-stop.done.block i{background:#d8473c;color:#fff}.ov-stop.done.info i{background:#7ea2e6;color:#fff}
+.ov-stop.on i{box-shadow:0 0 0 4px #141b2626;transform:scale(1.12)}
+.ov-stop span{font-size:11.5px;line-height:1.25;text-align:center;color:var(--muted);font-weight:600}
+.ov-stop.on span{color:var(--ink)}
+.ov-stop small{font-size:10px;color:var(--info);font-weight:600}
+.ov-stop em{font-style:normal;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#0b6e8a;color:#fff;border-radius:999px;padding:1px 7px}
+.pill.newcap{background:#0b6e8a;color:#fff}
+.ov-stop:hover span{color:var(--ink)}
+.ov-aside{padding:16px 18px}
+.ov-aside .lbl,.ov-groups .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.ov-aside .none{margin:0;color:var(--muted);font-size:13px}
+.today{background:#f4f1ea;border:1px solid #e3dccb;border-radius:8px;padding:9px 11px;font-size:13px;color:#4a4334;margin-bottom:14px}
+.today .lbl{color:#8a7a55;margin-bottom:3px}
+.vbtn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;margin-bottom:5px;font:inherit;font-size:12.8px;color:var(--ink);cursor:pointer;line-height:1.3}
+.vbtn:hover{background:#f0f3f7;border-color:#c3ccd8}
+.vbtn::after{content:"▸";color:var(--info);font-size:11px}
+.vbtn .dots{margin-left:auto;display:flex;gap:2px;flex:none}
+.msg.ok{background:var(--pass-bg);border-color:#a9d9bf} .msg.ok .ic{background:#2fa56a}
+.stage .lane{transition:box-shadow .5s}
+.stage.parity .lane{box-shadow:0 0 0 2px #2fa56a, 0 0 0 6px #2fa56a26}
+.ov-outside{margin-top:14px}
+.ov-outside-t{font-size:13px;font-weight:650;margin-bottom:8px}
+.ov-groups{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:1100px){.ov-groups{grid-template-columns:1fr}}
+
+/* tables */
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);padding:9px 12px;border-bottom:1px solid var(--line);background:#fafbfc}
+table.t td{padding:9px 12px;border-bottom:1px solid #edf0f4;vertical-align:top}
+table.t tr:last-child td{border-bottom:0}
+table.t td:first-child{font-weight:600}
+table.t tr.go{cursor:pointer} table.t tr.go:hover td{background:#f6f8fb}
+table.t .see{font-size:11px;color:var(--info);font-weight:600;white-space:nowrap}
+.filters{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+.filters .btn.on{background:#141b26;color:#fff;border-color:#141b26}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.two .card{padding:14px 16px} .two h3{margin:0 0 6px;font-size:14px} .two ul{margin:0;padding-left:18px;color:#344054}
+.two li{margin-bottom:4px}
+.decs{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.dec{padding:14px 16px;scroll-margin-top:60px;transition:box-shadow .4s}
+.dec.flash{box-shadow:0 0 0 3px #b06bc5}
+.dec h3{margin:0 0 6px;font-size:14px;display:flex;gap:8px;align-items:baseline}
+.dec h3 .n{flex:none;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#7a2d8f;color:#fff;font-size:11px}
+.dec ul{margin:0 0 8px;padding-left:18px;color:#344054;font-size:13px}
+.dec .rec{font-size:13px;background:#f7f0fa;border-radius:7px;padding:7px 10px}
+.dec .rec b{color:#7a2d8f}
+.dec .links{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.dec .links button{border:0;background:#eef1f5;border-radius:6px;padding:3px 8px;font:inherit;font-size:11.5px;cursor:pointer;color:var(--info);font-weight:600}
+details.card{padding:0} details.card summary{padding:12px 16px;cursor:pointer;font-weight:650}
+details.card[open] summary{border-bottom:1px solid var(--line)}
+footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
+@media (max-width:1100px){.explorer{grid-template-columns:1fr}.side{position:static;max-height:none}.below{grid-template-columns:1fr}.narr{border-right:0;border-bottom:1px solid var(--line)}.principles,.terms{grid-template-columns:1fr 1fr}.principles .card,.principles .card.half{grid-column:auto}.decs,.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <h1>Cross-project promotion: dependencies first</h1>
+  <div class="sub">LIGO-1159 · chosen solution, revision of 2026-11-17 · detailed record: <span class="mono">review/final/solution.md</span></div>
+  <blockquote><b>A dependency goes before, or with, what uses it.</b></blockquote>
+</div></header>
+<nav class="toc"><div class="wrap">
+  <a href="#rule">The rule</a><a href="#overview">The whole flow</a><a href="#explorer">Scenario explorer</a><a href="#scope">Scope</a><a href="#compare">Chosen vs alternative</a><a href="#decisions">Open decisions</a><a href="#more">Rejected and unsettled</a>
+</div></nav>
+
+<div class="wrap">
+<section id="rule">
+  <h2>What the rule means</h2>
+  <p class="lead">A dependency is a sub-workflow, an error workflow or a credential that a workflow needs.</p>
+  <div class="principles" id="principles"></div>
+  <div class="terms">
+    <div><b>Scope</b>: the projects that an operation writes. Instance Promote and Apply: all team projects. Project or selective: a selection inside one team project.</div>
+    <div><b>Content</b>: workflows, folders, and the resources that a project in the scope owns.</div>
+    <div><b>Closed branch</b>: a branch that obeys the rule. Each dependency of its content is also content of the branch.</div>
+    <div><b>Cast used on this page</b>: Sales (P) owns the workflows, Platform (Q) owns the credential, Ops (R) owns the sub-workflow. Alice has a personal project.</div>
+  </div>
+</section>
+
+<section id="overview">
+  <h2>The whole flow in one run</h2>
+  <p class="lead">One change travels from the source to the destination: Sales ships a workflow that depends on two other projects. Play it once to see how Promote and Apply connect. At each step, the list on the right shows what else can happen at that point and opens the matching scenario in the explorer.</p>
+  <div class="card" id="ovcard">
+    <div class="ov-line" id="ovline"></div>
+    <div class="stagewrap"><div class="stage" id="ovstage"></div></div>
+    <div class="controls">
+      <button class="btn" id="ovprev">◀ Back</button>
+      <button class="btn primary" id="ovplay">▶ Play the whole flow</button>
+      <button class="btn" id="ovnext">Next ▶</button>
+      <span class="kbd" id="ovcount"></span>
+    </div>
+    <div class="below">
+      <div class="narr" id="ovnarr"></div>
+      <div class="ov-aside" id="ovaside"></div>
+    </div>
+  </div>
+  <div class="ov-outside">
+    <div class="ov-outside-t">Outside this run: the cases that need a different starting point</div>
+    <div class="ov-groups" id="ovoutside"></div>
+  </div>
+</section>
+
+<section id="explorer">
+  <h2>Scenario explorer</h2>
+  <p class="lead">Select a scenario and step through it. Items travel from the source to the branch on Promote, and from the branch to the destination on Apply. The decision path of each reference lights up on the right. Text in quotation marks is a message that the solution proposes. Other text is a summary. Keys: ← and → change the step.</p>
+  <div class="explorer">
+    <aside class="card side" id="side"></aside>
+    <div class="card main">
+      <div class="sc-head" id="schead"></div>
+      <div class="stagewrap"><div class="stage" id="stage"></div></div>
+      <div class="controls">
+        <button class="btn" id="prev">◀ Back</button>
+        <div class="steps" id="steps"></div>
+        <button class="btn" id="replay" title="Replay this step">↻ Replay</button>
+        <button class="btn" id="play">▶ Play</button>
+        <button class="btn primary" id="next">Next ▶</button>
+      </div>
+      <div class="below">
+        <div class="narr" id="narr"></div>
+        <div class="treepane" id="treepane"></div>
+      </div>
+      <div class="legend">
+        <span><i class="lg-chip"></i>workflow</span><span><i class="lg-chip c"></i>credential</span>
+        <span><i class="lg-chip ph"></i>missing here</span>
+        <span><i class="lg-line"></i>reference that resolves</span><span><i class="lg-line d"></i>reference that does not resolve</span>
+        <span><i class="lg-share">shared with</i>credential access of a project</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="scope">
+  <h2>Scope: each case and its decision</h2>
+  <p class="lead">Two relations cross a project at run time: credential use and workflow references. Moves are the third cross-project case. Click a row with a link to open its scenario.</p>
+  <div class="filters" id="filters"></div>
+  <div class="card" style="overflow:hidden"><table class="t" id="scopetable"></table></div>
+</section>
+
+<section id="compare">
+  <h2>Chosen model against the alternative</h2>
+  <p class="lead">The alternative is "Promote informs, Apply decides": Promote never fails on a dependency, and Apply resolves each gap on the destination with a home that the user selects, a grant, or "apply anyway".</p>
+  <div class="card" style="overflow:hidden;margin-bottom:14px"><table class="t" id="cmptable"></table></div>
+  <div class="two">
+    <div class="card"><h3>Why the alternative is not chosen</h3><ul>
+      <li>The destination differs from the source. A credential lands in a home that the user selected, and the source never sees it. A diff between source and destination then needs rules for each kind of difference.</li>
+      <li>A reference to a personal workflow can never be satisfied, so the Apply block returns on each Apply.</li>
+      <li>It needs a format addition (the owner hint) to make proposals that a closed branch gets from the path.</li></ul></div>
+    <div class="card"><h3>What the alternative does better</h3><ul>
+      <li>No Promote friction and no coordination between teams.</li>
+      <li>Repositories for each project need no extra rule: every external reference is a requirement.</li></ul>
+      <h3 style="margin-top:12px">Cost of the chosen model</h3><ul>
+      <li>A team waits for the owner team of a dependency.</li>
+      <li>Promotes that pass today start to stop. This is why the block is a warning for one release first.</li></ul></div>
+  </div>
+</section>
+
+<section id="decisions">
+  <h2>Open decisions for a human</h2>
+  <p class="lead">Each scenario that depends on one of these decisions carries its number. The scenarios show the recommended answer.</p>
+  <div class="decs" id="decs"></div>
+</section>
+
+<section id="more">
+  <h2>Rejected options and what is not settled</h2>
+  <p class="lead">For the review: what the solution says no to, and what it leaves open.</p>
+  <details class="card" open><summary>Rejected options (12)</summary><table class="t" id="rejtable"></table></details>
+  <div class="two" style="margin-top:14px">
+    <div class="card"><h3>Flag: repositories for each project (separate spike)</h3>
+      <p style="margin:0 0 6px;color:#344054">"Promote the dependency first" then means a Promote to another repository. Problems to solve:</p><ul>
+      <li>A credential of another project. A copy in each repository duplicates secrets.</li>
+      <li>A sub-workflow of another project lives in another repository.</li>
+      <li>Workflows that call each other across two repositories: neither can go first.</li>
+      <li>The check that a dependency was promoted reads another connection, or trusts a record.</li>
+      <li>Instance resources belong to no project.</li></ul>
+      <p style="margin:6px 0 0;color:#344054">Directions: self-contained projects, declared external dependencies ("sidecar"), or a mix. This model must not exclude any of them.</p></div>
+    <div class="card"><h3>What the code does not settle</h3><ul>
+      <li>A credential transfer on the source from Q to Q2. The package can then hold one credential id under two project folders. The reader behavior for a duplicate id is not verified.</li>
+      <li>A static reference in a disabled node. The check treats it as a reference. Not verified against the requirement exporter.</li>
+      <li>The cost of the branch inventory check on a large branch. Not measured.</li></ul>
+      <h3 style="margin-top:12px">Older destinations and rollout</h3><ul>
+      <li>No format change, so an older destination applies a closed branch as today. It has no Apply gate.</li>
+      <li>The Promote check warns for one release, then blocks (decision 5).</li>
+      <li>The Apply side of a move ships at least one release before the Promote side.</li></ul></div>
+  </div>
+</section>
+<footer>Specification: <span class="mono">.context/ligo-1159/spec/*.feature</span>. Each scenario of the explorer names the Gherkin scenarios that specify it.</footer>
+</div>
+
+<script>
+'use strict';
+window.addEventListener('error', function (e) { document.title = 'ERR:' + e.message + ' @' + e.lineno; });
+
+/* ---------- cast ---------- */
+const PROJECTS = {
+  P: { name: 'Sales', tag: 'P · team project' }, Q: { name: 'Platform', tag: 'Q · team project' }, R: { name: 'Ops', tag: 'R · team project' },
+  X: { name: 'Support', tag: 'team project' }, U: { name: "Alice's project", tag: 'personal', personal: true }, TOP: { name: 'Top level', tag: 'no owner', top: true },
+};
+const ITEMS = {
+  W: { t: 'wf', n: 'Sync orders' }, S: { t: 'wf', n: 'Notify on-call' }, C: { t: 'cred', n: 'CRM key' }, H: { t: 'wf', n: 'Format order' },
+  T: { t: 'cred', n: "Alice's token" }, K: { t: 'wf', n: 'Refresh CRM cache' }, D: { t: 'wf', n: 'Daily report' }, L: { t: 'wf', n: 'Legacy alert' },
+  Z: { t: 'wf', n: 'Deleted workflow' }, DT: { t: 'table', n: 'Shifts' },
+};
+const TYPE = { wf: 'workflow', cred: 'credential', table: 'data table' };
+const LANES = [
+  { id: 'src', title: 'Source instance', sub: 'where teams build' },
+  { id: 'br', title: 'Branch', sub: 'the package in Git' },
+  { id: 'dst', title: 'Destination instance', sub: 'where Apply writes' },
+];
+const FLAGSUB = { blocked: 'blocked · not written', held: 'not written', warn: 'written · reference broken', del: 'this Apply deletes it', policy: 'caller policy refuses Sales' };
+
+/* ---------- decision trees ---------- */
+const TREES = {
+  promote: { title: 'Promote check, for each static reference', rows: [
+    { id: 'R', k: 'start', text: 'Static reference from an item that this Promote writes' },
+    { id: 'E', k: 'q', text: 'Does the target work on the source?', down: 'yes', side: { label: 'no', id: 'W1', k: 'warn', text: 'Warning: broken on the source. Promote continues.' } },
+    { id: 'P', k: 'q', text: 'Target in a personal project?', down: 'no', side: { label: 'yes', id: 'B1', k: 'block', text: 'Block: move it to a team project' } },
+    { id: 'Q', k: 'q', text: 'On the branch after this Promote?', down: 'no', side: { label: 'yes', id: 'OK', k: 'pass', text: 'Pass. No step.' } },
+    { id: 'S', k: 'q', text: 'Same project?', down: 'no', side: { label: 'yes', id: 'B2', k: 'block', text: 'Block: select it too' } },
+    { id: 'B3', k: 'block', text: 'Block: promote it from project X first' },
+  ] },
+  apply: { title: 'Apply check, for each reference', rows: [
+    { id: 'R', k: 'start', text: 'Reference from a workflow that this Apply writes' },
+    { id: 'Q1', k: 'q', text: 'Written by this Apply?', down: 'no', side: { label: 'yes', id: 'C1', k: 'pass', text: 'Pass' } },
+    { id: 'Q2', k: 'q', text: 'On the destination by id, and not deleted by this Apply?', down: 'no', side: { label: 'yes', id: 'Q3', k: 'q', text: 'Usable by the consumer project?', fork: [
+      { label: 'yes', id: 'SP', k: 'pass', text: 'Pass. No step.' }, { label: 'no', id: 'N', k: 'grant', text: 'Grant that the user confirms' } ] } },
+    { id: 'Q4', k: 'q', text: 'On the branch?', down: 'yes', side: { label: 'no', id: 'WN', k: 'warn', text: 'Warning: not on the branch. Broken on the source, or an existing branch.' } },
+    { id: 'T', k: 'q', text: 'Type of the target?', down: 'workflow', side: { label: 'credential', id: 'B1', k: 'action', text: 'Create it one time in its owner project', note: 'then: usable by the consumer project?' } },
+    { id: 'B2', k: 'block', text: 'Block: apply project X first' },
+  ] },
+};
+const PP = { pass: 'R E P Q OK', same: 'R E P Q S B2', other: 'R E P Q S B3', personal: 'R E P B1', broken: 'R E W1' };
+const AP = { written: 'R Q1 C1', usable: 'R Q1 Q2 Q3 SP', grant: 'R Q1 Q2 Q3 N', notbranch: 'R Q1 Q2 Q4 WN', cred: 'R Q1 Q2 Q4 T B1', credgrant: 'R Q1 Q2 Q4 T B1 Q3 N', wf: 'R Q1 Q2 Q4 T B2', policy: 'R Q1 Q2 Q3' };
+
+/* ---------- scenarios ---------- */
+const F = { pd: 'promote-dependencies.feature', pc: 'promote-credentials.feature', cy: 'promote-cycles.feature', ip: 'instance-promote.feature', pdel: 'promote-deletions.feature',
+  ad: 'apply-dependencies.feature', ac: 'apply-credentials.feature', adel: 'apply-deletions.feature', eb: 'existing-branches.feature', mv: 'moves.feature', sc: 'scope.feature' };
+const PRO = (label) => ({ k: 'promote', label }), APP = (label) => ({ k: 'apply', label }), SRC = (label) => ({ k: 'src', label }), DST = (label) => ({ k: 'dst', label });
+
+const SCENARIOS = [
+/* ===== Promote ===== */
+{ id: 'p-other', group: 'Promote', title: 'A dependency of another team project is not on the branch', flow: '5.2', lanes: 'sb', rows: ['P', 'Q', 'R'],
+  intro: 'The central case. Sync orders in Sales uses a credential of Platform and calls a sub-workflow of Ops. Promote never adds the content of another project: each owner team promotes its own item.',
+  refs: [['W', 'C', 'uses'], ['W', 'S', 'calls']],
+  spec: [[F.pd, 'A sub-workflow of another team project is not on the branch'], [F.pd, 'A credential of another team project is not on the branch'], [F.pc, 'The owner team promotes a credential that only other projects use'], [F.pd, 'The Promote passes after each owner team promotes its dependency']],
+  steps: [
+    { t: 'Starting point', d: 'The source holds the workflow and both dependencies. The branch holds neither dependency.', src: 'W@P C@Q S@R', br: '' },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked',
+      d: 'The preview lists both dependencies under Sync orders with the state "Not on the branch". Sync orders cannot be promoted. Other selected items that pass can still be promoted. Each row links to the Promote page of the owner project, or says who can promote it.',
+      msgs: [['block', 'Notify on-call', 'Promote it from project Ops first.'], ['block', 'CRM key', 'Promote credential CRM key from project Platform first.']],
+      checks: [['W', 'S', 'promote', PP.other, 'block'], ['W', 'C', 'promote', PP.other, 'block']] },
+    { t: 'Ops promotes Notify on-call', op: PRO('Project Promote · Ops · Notify on-call'), v: 'pass', br: 'S@R', d: 'The sub-workflow has no dependency, so it passes.' },
+    { t: 'Platform promotes the credential', op: PRO('Project Promote · Platform · credential CRM key'), v: 'pass', br: 'C@Q S@R', isNew: true,
+      d: 'A project Promote can select the credentials that the project owns, also when no selected workflow uses them. The Promote writes the file under the Platform folder. A new Promote never writes a credential at the top level.' },
+    { t: 'Sales promotes Sync orders again', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q S@R', d: 'Both dependencies are on the branch. The check passes and no new step appears.',
+      checks: [['W', 'S', 'promote', PP.pass, 'pass'], ['W', 'C', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-common', group: 'Promote', title: 'Common case: each dependency is on the branch', flow: '5.1', lanes: 'sb', rows: ['P', 'Q', 'R'],
+  intro: 'When the owner teams already promoted their items, the Promote does not change for the user.',
+  refs: [['W', 'C', 'uses'], ['W', 'S', 'calls']], spec: [[F.pd, 'Each dependency is already on the branch']],
+  steps: [
+    { t: 'Starting point', d: 'The branch already holds the credential under Platform and the sub-workflow under Ops.', src: 'W@P C@Q S@R', br: 'C@Q S@R' },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q S@R', d: 'Each dependency is in the selection or on the branch. The preview shows no warning. No new step appears.',
+      checks: [['W', 'C', 'promote', PP.pass, 'pass'], ['W', 'S', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-same', group: 'Promote', title: 'A dependency of the same project is not selected', flow: '5.3', lanes: 'sb', rows: ['P'],
+  intro: 'Sync orders calls Format order. Both are in Sales. The user selected only Sync orders.',
+  refs: [['W', 'H', 'calls']], spec: [[F.pd, 'The preview offers to select the dependency'], [F.pd, 'The user adds the dependency and the Promote passes']],
+  steps: [
+    { t: 'Starting point', d: 'Neither workflow is on the branch.', src: 'W@P H@P', br: '' },
+    { t: 'The user selects only Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked', d: 'The preview shows the dependency with an action that adds it to the selection.',
+      msgs: [['block', 'Format order', 'Select it too'], ['action', '', 'Action in the preview: add Format order to the selection.']], checks: [['W', 'H', 'promote', PP.same, 'block']] },
+    { t: 'The user adds Format order', op: PRO('Project Promote · Sales · Sync orders + Format order'), v: 'pass', br: 'W@P H@P', d: 'The dependency is in the same Promote. The check passes.', checks: [['W', 'H', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-personal', group: 'Promote', title: 'A dependency is in a personal project', flow: '5.5', lanes: 'sb', rows: ['P', 'U'],
+  intro: 'A personal resource can never be on the branch. A reference to it stops the Promote. The fix is a move to a team project in the editor.',
+  refs: [['W', 'T', 'uses']], spec: [[F.pd, 'A workflow uses a credential of a personal project'], [F.pd, 'The Promote passes after the dependency moves to a team project']],
+  steps: [
+    { t: 'Starting point', d: "Sync orders uses a credential that is in Alice's personal project.", src: 'W@P T@U', br: '' },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked', d: 'Today this passes and the credential goes to the top level of the branch, with no owner. Now it stops.',
+      msgs: [['block', "Alice's token", 'This credential belongs to a personal project. Move it to a team project, then promote it from there.']], checks: [['W', 'T', 'promote', PP.personal, 'block']] },
+    { t: 'Alice moves the credential to Sales', op: SRC('Editor · move the credential to Sales'), v: 'info', src: 'W@P T@P', br: '', d: 'The editor transfer of a credential is the fix. The same holds for a personal sub-workflow or error workflow.' },
+    { t: 'Sales promotes both', op: PRO('Project Promote · Sales · Sync orders + credential'), v: 'pass', br: 'W@P T@P', d: 'The credential is now content of a team project. It goes to the branch under the Sales folder, in the same Promote.', checks: [['W', 'T', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-broken', group: 'Promote', title: 'Already broken on the source: a warning, not a block', flow: '1, decision 4', lanes: 'sb', rows: ['P', 'R'], homes: { Z: 'R' }, broken: ['Z'], decisions: [10],
+  intro: 'Two workflows of Sales each call a sub-workflow of Ops. Both targets are absent from the branch, but for different reasons. The first question of the check decides: does the target work on the source?',
+  refs: [['W', 'Z', 'calls'], ['D', 'S', 'calls']], spec: [[F.pd, 'A workflow calls a workflow that does not exist on the source'], [F.pd, 'A sub-workflow of another team project is not on the branch']],
+  steps: [
+    { t: 'Starting point', d: 'Sync orders calls a workflow that someone deleted: the call already fails on the source. Daily report calls Notify on-call, which exists and works on the source. The branch is empty.', src: 'W@P D@P S@R', br: '' },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'warn', br: 'W@P!warn',
+      d: 'The target does not work on the source, so the check stops at its first question. Promote copies the workflow as it is. Compare the two lanes: the same reference is broken in the same place. Nothing became worse.',
+      msgs: [['warn', 'Sync orders', 'This reference is broken.'], ['note', 'Why not a block', 'No Promote can put a deleted workflow on the branch, so a block would have no next step except "repair the source first". Promotion copies the source. It does not repair it.', 1]],
+      checks: [['W', 'Z', 'promote', PP.broken, 'warn']] },
+    { t: 'Sales promotes Daily report', op: PRO('Project Promote · Sales · Daily report'), v: 'block', br: 'W@P!warn D@P!blocked',
+      d: 'This target works on the source and is not on the branch. If the Promote wrote Daily report now, the call would work on the source and fail on the destination. That is the difference that the rule forbids, and it has a fix.',
+      msgs: [['block', 'Notify on-call', 'Promote it from project Ops first.'], ['note', 'The test', 'Would the destination be worse than the source? Broken on both sides: no, warning. Works on the source only: yes, block.', 1]],
+      checks: [['D', 'S', 'promote', PP.other, 'block']] },
+  ] },
+{ id: 'p-cycle', group: 'Promote', title: 'Workflows that call each other across two projects', flow: '5.4', lanes: 'sb', rows: ['P', 'R'], decisions: [2],
+  intro: 'A true cycle between items of two projects. Neither item can go first, so a project Promote cannot write it.',
+  refs: [['W', 'S', 'calls'], ['S', 'W', 'calls']], spec: [[F.cy, 'A project Promote cannot write a cycle between two projects'], [F.cy, 'An instance Promote writes a cycle between two projects']],
+  steps: [
+    { t: 'Starting point', d: 'Sync orders in Sales calls Notify on-call in Ops, and Notify on-call calls Sync orders.', src: 'W@P S@R', br: '' },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked', d: 'The check finds the cycle and names all its items. "Promote it from Ops first" would not help, because the Promote of Ops stops for the same reason.',
+      msgs: [['block', 'Cycle', 'Sync orders and Notify on-call call each other across projects Sales and Ops. Promote them together with an instance Promote.']], checks: [['W', 'S', 'promote', PP.other, 'block']] },
+    { t: 'An admin starts an instance Promote', op: PRO('Instance Promote · all team projects'), v: 'pass', br: 'W@P S@R', d: 'An instance Promote carries both projects together, so each reference is in the same Promote.',
+      checks: [['W', 'S', 'promote', PP.pass, 'pass'], ['S', 'W', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-order', group: 'Promote', title: 'Two projects depend on each other, the items do not', flow: '5.4', lanes: 'sb', rows: ['P', 'Q'],
+  intro: 'Most cycles between projects are not cycles between items. The check reads items, so these pass in the right order with no special step.',
+  refs: [['W', 'C', 'uses'], ['K', 'H', 'calls']], spec: [[F.cy, 'Two projects depend on each other through different items']],
+  steps: [
+    { t: 'Starting point', d: 'Sales uses a credential of Platform. Platform calls a sub-workflow of Sales.', src: 'W@P H@P K@Q C@Q', br: '' },
+    { t: 'Sales promotes Format order', op: PRO('Project Promote · Sales · Format order'), v: 'pass', br: 'H@P', d: 'Format order has no dependency. It goes first.' },
+    { t: 'Platform promotes its two items', op: PRO('Project Promote · Platform · Refresh CRM cache + credential'), v: 'pass', br: 'H@P K@Q C@Q', isNew: true, d: 'Refresh CRM cache calls Format order, which is on the branch now.', checks: [['K', 'H', 'promote', PP.pass, 'pass']] },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P H@P K@Q C@Q', d: 'The credential is on the branch under Platform. No message about a cycle appears at any point.', checks: [['W', 'C', 'promote', PP.pass, 'pass']] },
+  ] },
+{ id: 'p-delete', group: 'Promote', title: 'A deletion breaks a reference on the branch', flow: '5.6', lanes: 'sb', rows: ['P', 'R'],
+  intro: 'Ops deletes a sub-workflow that a Sales workflow on the branch still calls.',
+  refs: [['D', 'S', 'calls']], spec: [[F.pdel, 'The preview names the caller on the branch'], [F.pdel, 'The Promote continues']],
+  steps: [
+    { t: 'Starting point', d: 'Source and branch are in step. Daily report calls Notify on-call.', src: 'D@P S@R', br: 'D@P S@R' },
+    { t: 'Ops deletes Notify on-call on the source', op: SRC('Editor · delete Notify on-call'), v: 'info', src: 'D@P', d: 'The source now has a broken reference.' },
+    { t: 'Ops promotes the deletion', op: PRO('Project Promote · Ops · deletion of Notify on-call'), v: 'warn', br: 'D@P', d: 'Promote continues. The source already has the same broken reference, so the branch still matches the source.',
+      msgs: [['warn', 'Preview', 'Daily report in project Sales calls Notify on-call. After the Apply, Daily report has a broken reference.']] },
+  ] },
+{ id: 'p-instance', group: 'Promote', title: 'Instance Promote lists every problem before the write to the branch', flow: '5.7', lanes: 'sb', rows: ['P', 'Q', 'R', 'U'], homes: { Z: 'R' }, broken: ['Z'], decisions: [1, 10],
+  intro: 'An instance Promote carries all team projects, so a dependency between team projects is always in the same Promote. Only personal dependencies, broken references and moves remain.',
+  refs: [['W', 'T', 'uses'], ['K', 'C', 'uses'], ['D', 'Z', 'calls']],
+  spec: [[F.ip, 'The list names the caller, the dependency, the reason and the fix'], [F.ip, 'A team workflow uses a personal credential'], [F.ip, 'The instance Promote passes after the dependency moves to a team project'], [F.ip, 'A team workflow calls a deleted workflow']],
+  steps: [
+    { t: 'Starting point', d: 'Sync orders uses a personal credential. Daily report in Ops calls a deleted workflow. Refresh CRM cache uses a team credential.', src: 'W@P K@Q C@Q D@R T@U', br: '' },
+    { t: 'An admin starts an instance Promote', op: PRO('Instance Promote · all team projects'), v: 'block', br: 'W@P!blocked K@Q!held C@Q!held D@R!held',
+      d: 'The dialog shows the full list before the write to the branch: the caller, the dependency, the reason and the fix. One personal dependency stops the whole Promote. Today the message is only a count, and a deleted workflow also fails the Promote.',
+      msgs: [['block', "Sync orders → Alice's token", 'This credential belongs to a personal project. Move it to a team project, then promote it from there.'], ['warn', 'Daily report', 'This reference is broken.']],
+      checks: [['W', 'T', 'promote', PP.personal, 'block'], ['D', 'Z', 'promote', PP.broken, 'warn'], ['K', 'C', 'promote', PP.pass, 'pass']] },
+    { t: 'Alice moves the credential to Sales', op: SRC('Editor · move the credential to Sales'), v: 'info', src: 'W@P T@P K@Q C@Q D@R', br: '', d: 'The admin can also move it. Only admins run an instance Promote.' },
+    { t: 'The admin starts the instance Promote again', op: PRO('Instance Promote · all team projects'), v: 'warn', br: 'W@P T@P K@Q C@Q D@R!warn', d: 'The Promote continues. The reference to the deleted workflow is a warning.',
+      msgs: [['warn', 'Daily report', 'This reference is broken.']], checks: [['W', 'T', 'promote', PP.pass, 'pass'], ['D', 'Z', 'promote', PP.broken, 'warn']] },
+  ] },
+
+/* ===== Apply ===== */
+{ id: 'a-cred', group: 'Apply', title: 'A shared credential on a new destination', flow: '5.9', lanes: 'bd', rows: ['P', 'Q'], decisions: [3],
+  intro: 'CRM key belongs to Platform on the branch. Workflows of Sales and Platform use it. Apply creates it one time in its owner project, and Sales gets access through a grant that the user confirms.',
+  refs: [['W', 'C', 'uses'], ['K', 'C', 'uses']],
+  spec: [[F.ac, 'The Apply stops and names the owner project and the consumer project'], [F.ac, 'The user creates the credential in the owner project'], [F.ac, 'The user grants access and the Apply imports']],
+  steps: [
+    { t: 'Starting point', d: 'The destination has both projects and no credential. The user applies only Sales.', br: 'W@P K@Q C@Q', dst: '' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'Apply stops before any write. The branch path names the owner, so the user has no home to select.',
+      msgs: [['block', 'CRM key', 'Missing. Owner on the branch: Platform. Consumer: Sales.', 1], ['action', '', 'Add credential CRM key in Platform.']], checks: [['W', 'C', 'apply', AP.cred, 'block']] },
+    { t: 'The admin adds CRM key in Platform', op: DST('Admin adds CRM key in Platform'), v: 'info', dst: 'W@P!blocked C@Q', pop: ['C'],
+      d: 'The credential is created one time, in its owner project, with the id of the source. The dialog then lists the access that the applied workflows need. The dialog offers only the owner project. The server does not enforce the home.',
+      msgs: [['action', 'Access to grant', 'CRM key for project Sales.']], checks: [['W', 'C', 'apply', AP.credgrant, 'grant']] },
+    { t: 'The admin grants access and applies', op: APP('Continue · grant list: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P',
+      d: 'The server checks the right to share, shares CRM key with Sales, plans again and imports. The result lists the grant. Apply never removes a share. A later Apply of Platform updates the name and the expression values of CRM key from the branch.',
+      checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'a-common', group: 'Apply', title: 'Common case: each dependency is on the destination', flow: '5.8', lanes: 'bd', rows: ['P', 'Q', 'R'],
+  intro: 'When the dependencies are on the destination and usable, the Apply does not change for the user.',
+  refs: [['W', 'C', 'uses'], ['W', 'S', 'calls']], spec: [[F.ad, 'Each dependency is on the destination'], [F.ac, 'The consumer project can use the credential']],
+  steps: [
+    { t: 'Starting point', d: 'The destination holds the credential, shared with Sales, and the sub-workflow.', br: 'W@P C@Q S@R', dst: 'C@Q+P S@R' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'pass', dst: 'W@P C@Q+P S@R', d: 'Each dependency is in the Apply or on the destination, and usable. Apply imports. No new step.',
+      checks: [['W', 'C', 'apply', AP.usable, 'pass'], ['W', 'S', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'a-access', group: 'Apply', title: 'The credential exists and the project cannot use it', flow: '5.9 variant', lanes: 'bd', rows: ['P', 'Q'], decisions: [3],
+  intro: 'Today this blocks with "Ask an administrator" and no action. The person who reads it is the administrator.',
+  refs: [['W', 'C', 'uses']], spec: [[F.ac, 'The credential exists and the consumer project cannot use it'], [F.ac, 'One Continue grants access and applies'], [F.ac, 'The first Apply call grants nothing']],
+  steps: [
+    { t: 'Starting point', d: 'CRM key is on the destination in Platform. Sales has no access to it.', br: 'W@P C@Q', dst: 'C@Q' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked C@Q', d: 'The check lists each access that the Apply needs and says whether the caller may grant it. The first Apply call grants nothing.',
+      msgs: [['action', 'Access to grant', 'CRM key for project Sales.']], checks: [['W', 'C', 'apply', AP.grant, 'grant']] },
+    { t: 'The admin confirms the grant', op: APP('Continue · grant list: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P',
+      d: 'One Continue grants access and applies. The server grants only the listed items. Variants: the user may not share the credential, so no grant is offered and the row says who can. No sharing licence: the access item stays a block with that reason.',
+      checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'a-noproject', group: 'Apply', title: 'The owner project is not on the destination', flow: '5.9 variant', lanes: 'bd', rows: ['P', 'Q'],
+  intro: 'Platform is on the branch and not on the destination. Today the binding flow cannot create an owner project that is outside the selection.',
+  refs: [['W', 'C', 'uses']], spec: [[F.ac, 'The owner project is on the branch and not on the destination']],
+  steps: [
+    { t: 'Starting point', d: 'The destination has Sales only.', br: 'W@P C@Q', dst: '', noproj: { dst: ['Q'] } },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'The step offers two ways forward. Creating the project needs project:create and a free team project in the licence quota.',
+      msgs: [['action', 'CRM key', 'Create project Platform'], ['action', 'CRM key', 'Apply project Platform first']], checks: [['W', 'C', 'apply', AP.cred, 'block']] },
+    { t: 'The admin creates Platform and adds CRM key', op: DST('Admin creates Platform, adds CRM key'), v: 'info', dst: 'W@P!blocked C@Q', pop: ['C'], noproj: {}, d: 'The credential lands in the owner project that the branch names.',
+      msgs: [['action', 'Access to grant', 'CRM key for project Sales.']], checks: [['W', 'C', 'apply', AP.credgrant, 'grant']] },
+    { t: 'The admin grants access and applies', op: APP('Continue · grant list: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P', d: 'Apply shares the credential with Sales and imports.', checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'a-wfdep', group: 'Apply', title: 'A workflow dependency is on the branch, not on the destination', flow: '5.11', lanes: 'bd', rows: ['P', 'R'], decisions: [8],
+  intro: 'Apply in order. Today the workflow arrives with a broken reference and nothing reports it.',
+  refs: [['W', 'S', 'calls']], spec: [[F.ad, 'A sub-workflow of another project is not on the destination'], [F.ad, 'The Apply offers no way to continue with a missing dependency'], [F.ad, 'The Apply passes after the user applies the other project']],
+  steps: [
+    { t: 'Starting point', d: 'The branch is closed: it holds the workflow and its sub-workflow. The destination holds neither.', br: 'W@P S@R', dst: '' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales · Sync orders'), v: 'block', dst: 'W@P!blocked', d: 'Apply stops before any write. There is no "apply anyway": on a closed branch each block has a fix. An instance Apply never hits this case, because it writes the whole package.',
+      msgs: [['block', 'Sync orders', 'Sync orders calls Notify on-call in project Ops. Apply project Ops first.']], checks: [['W', 'S', 'apply', AP.wf, 'block']] },
+    { t: 'The admin applies Ops', op: APP('Project Apply · Ops · Notify on-call'), v: 'pass', dst: 'S@R', d: 'The dependency goes first.' },
+    { t: 'The admin applies Sales again', op: APP('Project Apply · Sales · Sync orders'), v: 'pass', dst: 'W@P S@R', d: 'The destination holds the target. Present means: it exists and is not archived.', checks: [['W', 'S', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'a-cycle', group: 'Apply', title: 'A cycle across two projects on Apply', flow: '5.11', lanes: 'bd', rows: ['P', 'R'], decisions: [2],
+  intro: 'The same cycle as on Promote. A project Apply cannot put one item first.',
+  refs: [['W', 'S', 'calls'], ['S', 'W', 'calls']], spec: [[F.ad, 'A project Apply cannot write a cycle between two projects'], [F.ad, 'An instance Apply writes a cycle between two projects']],
+  steps: [
+    { t: 'Starting point', d: 'An instance Promote wrote both workflows to the branch.', br: 'W@P S@R', dst: '' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'Apply stops before any write.', msgs: [['block', 'Cycle', 'Apply them together with an instance Apply.']], checks: [['W', 'S', 'apply', AP.wf, 'block']] },
+    { t: 'The admin starts an instance Apply', op: APP('Instance Apply · whole package'), v: 'pass', dst: 'W@P S@R', d: 'The same Apply writes both items.', checks: [['W', 'S', 'apply', AP.written, 'pass'], ['S', 'W', 'apply', AP.written, 'pass']] },
+  ] },
+{ id: 'a-notonbranch', group: 'Apply', title: 'A dependency is not on the branch', flow: '5.10', lanes: 'bd', rows: ['P', 'R'], homes: { Z: 'R' }, broken: ['Z'],
+  intro: 'The reference is broken on the source, or an earlier version wrote the branch. Apply cannot fix it, so it warns.',
+  refs: [['D', 'Z', 'calls']], spec: [[F.ad, 'A workflow calls a workflow that is broken on the source']],
+  steps: [
+    { t: 'Starting point', d: 'Daily report calls a workflow that the branch does not hold.', br: 'D@P', dst: '' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'warn', dst: 'D@P!warn', d: 'Apply continues. The workflow arrives with the broken reference, as today, but now the result says so.',
+      msgs: [['warn', 'Daily report', 'The reference to a workflow is not on the branch. Broken on the source, or an existing branch.', 1]], checks: [['D', 'Z', 'apply', AP.notbranch, 'warn']] },
+  ] },
+{ id: 'a-policy', group: 'Apply', title: 'The sub-workflow exists and does not allow the caller', flow: 'ticket 11', lanes: 'bd', rows: ['P', 'R'],
+  intro: 'A call across two projects can pass the presence check and fail at run time. The caller policy comes from the called workflow, or from an instance setting, and two instances can differ.',
+  refs: [['W', 'S', 'calls']], spec: [[F.ad, 'The caller policy on the destination refuses the caller']],
+  steps: [
+    { t: 'Starting point', d: 'Notify on-call is on the destination. Its caller policy refuses callers of other projects.', br: 'W@P S@R', dst: 'S@R!policy' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked S@R!policy', d: 'For a reference across two projects to a workflow that the Apply does not write, the check reads the caller policy on the destination. It reports a refusal like a missing dependency, with the reason.',
+      msgs: [['block', 'Sync orders', 'Notify on-call does not allow callers of project Sales.', 1]], checks: [['W', 'S', 'apply', AP.policy, 'block']] },
+  ] },
+{ id: 'a-callers', group: 'Apply', title: 'Apply deletes a workflow that the destination still calls', flow: 'ticket 12', lanes: 'bd', rows: ['R', 'X'],
+  intro: 'A caller that the Apply does not write keeps the id of the deleted workflow. Today nothing reports it.',
+  refs: [['L', 'S', 'calls']], spec: [[F.adel, 'A workflow on the destination calls a workflow that the Apply deletes'], [F.adel, 'The user accepts the broken callers']],
+  steps: [
+    { t: 'Starting point', d: 'Ops deleted Notify on-call and promoted the deletion. On the destination, Legacy alert in project Support still calls it. Support is not in the package.', br: '', dst: 'S@R L@X', noproj: { br: ['X'] } },
+    { t: 'The admin applies Ops', op: APP('Project Apply · Ops · deletion'), v: 'warn', dst: 'S@R!del L@X', d: 'Before any write, Apply lists each workflow on the destination that calls a workflow that this Apply deletes. The user accepts or cancels.',
+      msgs: [['warn', 'Callers', 'Legacy alert in project Support calls Notify on-call.', 1], ['action', '', 'Accept, or cancel.']] },
+    { t: 'The admin accepts', op: APP('Continue · accepted'), v: 'warn', dst: 'L@X!warn', d: 'Apply deletes the workflow. Legacy alert has a broken reference, and the user knows it.' },
+  ] },
+{ id: 'a-guard', group: 'Apply', title: 'Guard: a project that owns a used credential is not deleted', flow: '6.8', lanes: 'bd', rows: ['P', 'Q'], decisions: [4],
+  intro: 'An instance Apply lists a team project that the package lacks for deletion. A confirmed project deletion deletes its credentials, and today it does not check for consumers in other projects.',
+  refs: [['W', 'C', 'uses']], spec: [[F.adel, 'The package lacks a project whose credential a package workflow uses']],
+  steps: [
+    { t: 'Starting point', d: 'The package holds Sales and not Platform. On the destination, Platform owns the credential that Sync orders uses.', br: 'W@P', dst: 'W@P C@Q+P', noproj: { br: ['Q'] } },
+    { t: 'The admin starts an instance Apply', op: APP('Instance Apply · whole package'), v: 'warn', dst: 'W@P C@Q+P', marks: { 'dst:C': 'pass' }, d: 'The rule reads the destination only. The Apply keeps the project and returns a warning.',
+      msgs: [['warn', 'Project Platform', 'Not deleted: it owns CRM key, which Sync orders uses.', 1]] },
+  ] },
+{ id: 'a-table', group: 'Apply', title: 'A data table of another project', flow: 'ticket 13', lanes: 'bd', rows: ['P', 'R'],
+  intro: 'At run time a workflow uses only the tables of its own project. A reference to a table of another project is broken on the source, and stays broken.',
+  refs: [['W', 'DT', 'reads', true]], spec: [[F.sc, 'Apply does not copy the table to the consumer project'], [F.sc, 'The table in the owner project does not change']],
+  steps: [
+    { t: 'Starting point', d: 'Sync orders in Sales references the table Shifts of Ops.', br: 'W@P DT@R', dst: 'DT@R' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'warn', dst: 'W@P!warn DT@R', d: 'Apply plans no table for Sales, writes the workflow and returns a warning. Today it creates an empty copy of the table with the same id in Sales, or fails with an id conflict. Promote shows the same warning.',
+      msgs: [['warn', 'Sync orders', 'References data table Shifts of another project. The table is not copied.', 1]] },
+  ] },
+
+/* ===== Existing branches ===== */
+{ id: 'e-home', group: 'Existing branches', title: 'Apply: a credential at the top level', flow: '5.10', lanes: 'bd', rows: ['TOP', 'P', 'Q'],
+  intro: 'There is no migration. A branch that an earlier version wrote can hold a credential with no owner. This is the only place where the home selector stays.',
+  refs: [['W', 'C', 'uses']], spec: [[F.eb, 'The Apply dialog shows the home selector'], [F.eb, 'An existing API client reads the conflict that it knows']],
+  steps: [
+    { t: 'Starting point', d: 'An earlier version wrote the credential at the top level of the branch. No owner is named.', br: 'C@TOP W@P', dst: '' },
+    { t: 'The admin applies Sales', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked', d: 'Today this is the hard conflict unknown-owner and the dialog offers no action. The response keeps that conflict, so an existing client reads a block that it knows. The dialog adds a home selector.',
+      msgs: [['action', 'CRM key', 'Select a team project as the home. No project is selected in advance. The consumer projects are first. Projects that this Apply deletes are left out. Never a personal project.']], checks: [['W', 'C', 'apply', AP.cred, 'block']] },
+    { t: 'The admin selects Platform and adds the credential', op: DST('Admin selects the home: Platform'), v: 'info', dst: 'W@P!blocked C@Q', pop: ['C'], d: 'The step states the rights of the home project, and that an Apply of the home project updates the credential from the branch.',
+      msgs: [['action', 'Access to grant', 'CRM key for project Sales.']], checks: [['W', 'C', 'apply', AP.credgrant, 'grant']] },
+    { t: 'The admin grants access and applies', op: APP('Continue · grant list: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P', d: 'Apply shares the credential with Sales and imports.', checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
+  ] },
+{ id: 'e-promote', group: 'Existing branches', title: 'Promote: a workflow that uses a top-level credential', flow: '6.5', lanes: 'sb', rows: ['TOP', 'P', 'Q'], decisions: [5],
+  intro: 'A top-level credential does not count as on the branch. The check covers only the items of the Promote, so an existing violation does not stop an unrelated Promote.',
+  refs: [['W', 'C', 'uses']], spec: [[F.eb, 'A workflow that uses a top-level credential stops at its next Promote'], [F.eb, 'The Promote passes after the owner project promotes the credential'], [F.eb, 'An existing violation does not stop an unrelated Promote']],
+  steps: [
+    { t: 'Starting point', d: 'The branch holds Sync orders and its credential at the top level. The reference does not resolve under the new rule.', src: 'W@P C@Q', br: 'C@TOP W@P' },
+    { t: 'Sales promotes a change of Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'C@TOP W@P', marks: { 'br:W': 'block' }, sub: { 'br:W': 'new version not written' },
+      d: 'The workflow stops at its next Promote, until the owner project promotes the credential. The warning release gives teams time to do this.',
+      msgs: [['block', 'CRM key', 'Promote credential CRM key from project Platform first.']], checks: [['W', 'C', 'promote', PP.other, 'block']] },
+    { t: 'Platform promotes the credential', op: PRO('Project Promote · Platform · credential CRM key'), v: 'pass', br: 'W@P C@Q', isNew: true, d: 'The credential now has an owner on the branch. Its path changes from the top level to the Platform folder.' },
+    { t: 'Sales promotes Sync orders again', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q', marks: { 'br:W': 'pass' }, d: 'The check passes.', checks: [['W', 'C', 'promote', PP.pass, 'pass']] },
+  ] },
+
+/* ===== Moves ===== */
+{ id: 'm-move', group: 'Moves', title: 'A move between two team projects', flow: '5.12', lanes: 'sbd', rows: ['P', 'R'], decisions: [7],
+  intro: 'Today Promote refuses a move between projects and Apply reports a moved conflict. The target: one change that keeps the id.',
+  refs: [], spec: [[F.mv, 'The preview shows one moved row'], [F.mv, 'A project Promote writes both sides in one commit'], [F.mv, 'An instance Apply transfers the workflow and keeps the id'], [F.mv, 'The moved workflow loses its shares']],
+  steps: [
+    { t: 'Starting point', d: 'Source, branch and destination hold Sync orders in Sales.', src: 'W@P', br: 'W@P', dst: 'W@P' },
+    { t: 'A user moves Sync orders to Ops', op: SRC('Editor · move Sync orders to Ops'), v: 'info', src: 'W@R', d: 'The move happens on the source.' },
+    { t: 'Promote writes the move', op: PRO('Promote · from Sales or from Ops · moved row'), v: 'pass', br: 'W@R', d: 'The preview shows one moved row, "Moved from Sales to Ops", on the page of each project. The Promote writes both sides in one commit. An instance Promote also writes the move.' },
+    { t: 'Apply transfers the workflow', op: APP('Apply · moved row'), v: 'pass', dst: 'W@R',
+      d: 'Apply transfers the item only when the package holds both projects. The id, the history and the executions stay. Nothing is deleted in Sales because of the move. The publish state of the destination stays. The preview says that the Apply changes two projects, and that the workflow loses its shares. The credentials of the workflow are dependencies in Ops and follow the credential rules.' },
+  ] },
+{ id: 'm-deleted', group: 'Moves', title: 'A move out of a project that the source deleted', flow: '4.5', lanes: 'sbd', rows: ['P', 'R'],
+  intro: 'The source deleted project Sales and transferred its workflows to Ops. An instance Promote writes this move today. Today every instance Apply then stops until the user moves the item by hand.',
+  refs: [], spec: [[F.mv, 'A project Apply refuses the move'], [F.mv, 'An instance Apply shows the move and the old project'], [F.mv, 'The transfer runs before the project deletion']],
+  steps: [
+    { t: 'Starting point', d: 'The branch holds Sync orders under Ops and no Sales project. The destination still holds Sales.', src: 'W@R', br: 'W@R', dst: 'W@P', noproj: { src: ['P'], br: ['P'] } },
+    { t: 'The admin applies Ops', op: APP('Project Apply · Ops'), v: 'block', marks: { 'dst:W': 'block' }, d: 'A project Apply keeps the moved conflict when the destination holds the item in a project that the package does not hold. This also blocks a move across two connections.',
+      msgs: [['block', 'Sync orders', 'Moved. This Apply cannot move an item out of a project that the package does not hold.', 1]] },
+    { t: 'The admin previews an instance Apply', op: APP('Instance Apply · preview'), v: 'warn', marks: { 'dst:W': 'warn' }, d: 'The instance Apply shows the move and names the old project. The confirmation of destructive changes covers the transfer.',
+      msgs: [['warn', 'Moved row', 'Sync orders moves out of project Sales.', 1], ['warn', 'Project deletion', 'Project Sales is listed for deletion.', 1], ['action', '', 'Confirm the destructive changes.']] },
+    { t: 'The admin confirms', op: APP('Instance Apply · confirmed'), v: 'pass', dst: 'W@R', noproj: { src: ['P'], br: ['P'], dst: ['P'] }, d: 'The transfer runs before the project deletions, so the deletion of Sales does not delete Sync orders.' },
+  ] },
+{ id: 'm-personal', group: 'Moves', title: 'A move into a personal project', flow: '4.4', lanes: 'sb', rows: ['P', 'U'], decisions: [6],
+  intro: 'A personal project is never content. This also follows from the personal block of the model.',
+  refs: [], spec: [[F.mv, 'Promote refuses a move into a personal project']],
+  steps: [
+    { t: 'Starting point', d: 'Source and branch hold Daily report in Sales.', src: 'D@P', br: 'D@P' },
+    { t: 'A user moves Daily report to a personal project', op: SRC("Editor · move to Alice's project"), v: 'info', src: 'D@U', d: 'The move happens on the source.' },
+    { t: 'An admin starts an instance Promote', op: PRO('Instance Promote · all team projects'), v: 'block', marks: { 'br:D': 'block' }, d: 'The move stays refused. The branch does not change. A move out of a personal project is different: it gives a new workflow, and its dependencies follow the Promote check.',
+      msgs: [['block', 'Daily report', 'A move into a personal project is refused.', 1]] },
+  ] },
+
+/* ===== Open risk ===== */
+{ id: 'r-partial', group: 'Open risk', title: 'A credential-only Promote, then an instance Apply', flow: '6.2', lanes: 'sbd', rows: ['P', 'Q'], decisions: [4],
+  intro: 'Not a rule of the solution. This is the risk that decision 4 must settle before a project Promote can select credentials.',
+  refs: [['W', 'C', 'uses'], ['K', 'C', 'uses']], spec: [],
+  steps: [
+    { t: 'Starting point', d: 'Platform has a credential and a workflow. The destination already runs both. Sales wants to promote Sync orders.', src: 'W@P K@Q C@Q', br: '', dst: 'K@Q C@Q' },
+    { t: 'Platform promotes only the credential', op: PRO('Project Promote · Platform · credential CRM key'), v: 'pass', br: 'C@Q', isNew: true, d: 'This is the intended path: the owner team unblocks Sales. But Platform is now on the branch with no workflows.' },
+    { t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q', d: 'The check passes. The branch is closed.' },
+    { t: 'An admin starts an instance Apply', op: APP('Instance Apply · whole package'), v: 'risk', dst: 'W@P K@Q!del C@Q+P',
+      d: 'An instance Apply treats the package as authoritative. It hard-deletes Refresh CRM cache, because the branch holds Platform without it. There is no confirmation for a workflow deletion. A partial Promote of workflows has the same risk today. This model makes it more frequent.',
+      msgs: [['block', 'Unresolved', 'What does an instance Apply delete when the branch is a partial view? (LIGO-1268)', 1]] },
+  ] },
+];
+
+
+/* ---------- the whole flow: one run-through, with the variants at each beat ---------- */
+const JOURNEY = { id: 'journey', lanes: 'sbd', rows: ['P', 'Q', 'R'], refs: [['W', 'C', 'uses'], ['W', 'S', 'calls']],
+  phases: [['build', 'Build', 1], ['promote', 'Promote: source → branch', 4], ['apply', 'Apply: branch → destination', 4]],
+  steps: [
+    { short: 'Start', t: 'Sales builds Sync orders', v: 'info', src: 'W@P C@Q S@R', br: '', dst: '',
+      d: 'Sync orders in Sales uses the credential CRM key, which Platform owns, and calls Notify on-call, which Ops owns. No Platform workflow uses the credential: Platform holds it for other teams. The branch is empty. The destination has the three projects and none of these items.', variants: [] },
+    { short: 'Sales promotes', t: 'Sales promotes Sync orders', op: PRO('Project Promote · Sales · Sync orders'), v: 'block', br: 'W@P!blocked',
+      d: 'Promote checks each dependency of the item that it writes. Neither dependency is on the branch, and Promote never adds the content of another project. It stops and names the next step for each one.',
+      msgs: [['block', 'Notify on-call', 'Promote it from project Ops first.'], ['block', 'CRM key', 'Promote credential CRM key from project Platform first.']],
+      today: 'This Promote passes. The credential goes to the top level of the branch with no owner, and the sub-workflow becomes a reference that nothing checks.',
+      variants: ['p-other', 'p-same', 'p-personal', 'p-broken', 'p-cycle', 'p-instance'] },
+    { short: 'Ops promotes', t: 'Ops promotes Notify on-call', op: PRO('Project Promote · Ops · Notify on-call'), v: 'pass', br: 'S@R',
+      d: 'The owner team promotes its own item. It has no dependency, so it passes. The check reads items, not projects, so the order between two projects that depend on each other is rarely a problem.', variants: ['p-order'] },
+    { short: 'Platform promotes the credential', t: 'Platform promotes the credential on its own', op: PRO('Project Promote · Platform · credential CRM key'), v: 'pass', br: 'C@Q S@R', isNew: true,
+      d: 'The solution adds credentials to the selection of a project Promote. The owner team can then promote a credential that only other projects use. The Promote writes it under the Platform folder: the branch path is the owner, and the package needs no other record. A credential that a workflow of its owner uses needs no selection. It travels with that workflow.',
+      msgs: [['note', 'Depends on open decision 4', 'This Promote puts Platform on the branch with no workflows. What an instance Apply then deletes on the destination must be decided before this capability ships.', 1]],
+      today: 'A Promote can select only workflows and folders. A credential reaches the branch only with a workflow that uses it, so Platform has no way to put this credential under its own folder.',
+      variants: ['r-partial'] },
+    { short: 'Sales promotes again', t: 'Sales promotes Sync orders again', op: PRO('Project Promote · Sales · Sync orders'), v: 'pass', br: 'W@P C@Q S@R',
+      d: 'Both dependencies are on the branch, so the check passes. The branch is now closed: every reference that resolves on the source resolves on the branch.', variants: ['p-common'] },
+    { short: 'Apply Sales', t: 'The admin applies Sales on the destination', op: APP('Project Apply · Sales'), v: 'block', dst: 'W@P!blocked',
+      d: 'Apply writes a dependency before the workflows that use it. Two dependencies of Sync orders are on the branch and not on the destination. Apply stops before any write and gives a fix for each one. There is no "apply anyway".',
+      msgs: [['block', 'Notify on-call', 'Sync orders calls Notify on-call in project Ops. Apply project Ops first.'], ['block', 'CRM key', 'Missing. Owner on the branch: Platform. Consumer: Sales.', 1]],
+      today: 'Apply has no check for a missing sub-workflow. Sync orders arrives with a broken reference and nothing reports it.',
+      variants: ['a-wfdep', 'a-cycle', 'a-policy', 'a-notonbranch'] },
+    { short: 'Apply Ops', t: 'The admin applies Ops', op: APP('Project Apply · Ops'), v: 'pass', dst: 'S@R',
+      d: 'The sub-workflow goes first. An instance Apply writes the whole package in one operation, so it never needs this step.', variants: [] },
+    { short: 'Add credential', t: 'The admin adds CRM key in Platform', op: DST('Admin adds CRM key in Platform'), v: 'info', dst: 'C@Q S@R', pop: ['C'],
+      d: 'A person enters the secret values on the destination. The credential is created one time, in the owner project that the branch names, with the id of the source. The user has no home to select. A later Apply of Platform updates the name and the expression values of the credential from the branch, because Platform owns it.',
+      today: 'When the branch names no owner for the credential, Apply reports a hard conflict and the dialog offers no action.',
+      variants: ['a-cred', 'a-noproject', 'e-home'] },
+    { short: 'Grant and apply', t: 'The admin applies Sales and confirms the grant', op: APP('Project Apply · Sales · grant: CRM key → Sales'), v: 'pass', dst: 'W@P C@Q+P S@R', parity: true,
+      d: 'Sales needs access to a credential that Platform owns. Apply lists that access, the admin confirms it, and Apply shares the credential and imports the workflow. Apply never removes a share, and Git holds no sharing list.',
+      msgs: [['action', 'Access to grant', 'CRM key for project Sales.'], ['ok', 'Result', 'Source, branch and destination hold the same items, under the same owners, with the same references. The destination resolves every reference that resolves on the source.', 1]],
+      today: 'Apply blocks with "Ask an administrator" and offers no action. The administrator shares the credential by hand in the editor, then applies again.',
+      variants: ['a-access', 'a-common', 'a-table'] },
+  ] };
+const OUTSIDE = [
+  ['Later changes: deletions', ['p-delete', 'a-callers', 'a-guard']],
+  ['Later changes: moves', ['m-move', 'm-deleted', 'm-personal']],
+  ['Branches that an earlier version wrote', ['e-promote', 'e-home']],
+];
+
+/* ---------- static section data ---------- */
+const PRINCIPLES = [
+  ['On Promote', 'The dependency must be on the branch.', 'p-other', 'source → branch'],
+  ['On Apply', 'The dependency must be on the destination.', 'a-wfdep', 'branch → destination'],
+  ['Personal resource', 'A dependency on a personal resource is blocked. Move the resource to a team project first.', 'p-personal'],
+  ['Resource missing on the source', 'A dependency on a resource that does not exist on the source (for example, a deleted sub-workflow) is not blocked. Promote and Apply warn and continue, and the reference stays broken.', 'p-broken'],
+  ['Credential', 'A missing credential is created in its owner project. On Apply, it is shared with the projects that use it, after the user confirms.', 'a-cred'],
+];
+const SCOPE = [
+  ['Credential that another team project owns', 'support', 'Support. Dependency first.', 'Must be on the branch under its owner project. Otherwise: block, "Promote credential C from project Q first."', 'Usable by the consumer project: no step. Not usable: grant that the user confirms. Missing: the user creates it one time in the owner project, then confirms the grants.', 'a-cred'],
+  ['Personal credential that a team workflow uses', 'block', 'Block', 'Block: "This credential belongs to a personal project. Move it to a team project, then promote it from there."', 'Existing branches only: a top-level credential gets the home selector.', 'p-personal'],
+  ['Global credential', 'support', 'Support, as a credential of its owner team project', 'Same as a team credential. The global state does not travel.', 'Same as a team credential. The consumer projects get grants.', ''],
+  ['Credential with usage scope "instance"', 'exclude', 'Exclude. No change.', 'A workflow cannot use it at run time. The package holds a requirement row and no file.', 'Exists with that scope: incompatible-usage-scope block.', ''],
+  ['Static sub-workflow or error workflow, same project', 'support', 'Support. Dependency first.', 'Not selected and not on the branch: block, "Select it too", with an action that adds it.', 'Not on the destination and not in this Apply: block, "Select it too".', 'p-same'],
+  ['Static sub-workflow or error workflow, other team project', 'support', 'Support. Dependency first.', 'Not on the branch: block, "Promote it from project R first."', 'On the branch and not on the destination: block, "Apply project R first."', 'p-other'],
+  ['Static sub-workflow or error workflow, personal project', 'block', 'Block', 'Block: "Personal projects are not promoted. Move it to a team project."', 'Not reached on a new branch. Existing branch: warning.', 'p-personal'],
+  ['Reference to a workflow that does not exist on the source', 'warn', 'Warning. Already broken on the source.', 'Warning: "This reference is broken." Promote continues.', 'Not on the branch: warning. Apply continues.', 'p-broken'],
+  ['Workflows that call each other across two projects', 'support', 'Support through instance Promote (decision 2)', 'A project Promote cannot write both. Block, "Promote them together with an instance Promote."', 'Instance Apply writes both. A project Apply blocks, "Apply them together with an instance Apply."', 'p-cycle'],
+  ['Variable', 'nochange', 'Support. No change.', 'Project variable under the project folder. Global variable at the top level.', 'Must exist in the declared scope. The binding step creates it.', ''],
+  ['Data table of the own project', 'nochange', 'Support. No change.', 'Content.', 'Created or matched in the project.', ''],
+  ['Data table of another project', 'warn', 'Warning. Broken on the source, stays broken.', 'Warning. No block.', 'Apply never copies the table. Warning. No block.', 'a-table'],
+  ['Tag', 'nochange', 'Support. No change.', 'Instance level.', 'Created or renamed as today.', ''],
+  ['Workflow sharing', 'exclude', 'Exclude', 'Not in the package.', 'Destination shares stay.', ''],
+  ['Deletion of a workflow that other branch content calls', 'warn', 'Warning', 'Warning: "W1 in project P calls this workflow. After the Apply, W1 has a broken reference."', 'Apply lists the destination callers before any write. The user accepts or cancels.', 'p-delete'],
+  ['Move of a workflow or folder between team projects', 'support', 'Support (last to ship)', 'One moved change.', 'One transfer that keeps the id.', 'm-move'],
+  ['Move out of a project that the source deleted', 'support', 'Support on instance Apply', 'Instance Promote writes the move (current behavior).', 'After the user confirms, instance Apply transfers the item, before the project deletions.', 'm-deleted'],
+  ['Move into a personal project', 'block', 'Block', 'Current refusal.', 'Not reached.', 'm-personal'],
+  ['Move out of a personal project', 'nochange', 'No rule needed', 'A new workflow. Its dependencies follow this table.', 'Created as a new workflow.', ''],
+  ['Owner change of a credential on the source', 'exclude', 'Exclude. No effect on the destination.', 'The check finds the credential by id under any project folder.', 'An existing credential keeps its destination owner (decision 9).', ''],
+  ['Permission boundary', 'support', 'Report, do not act, do not leak', 'The check reads the branch by id. A resource that the user cannot read and that is not on the branch: block, with no name.', 'An action appears only when the user holds its permission.', ''],
+  ['Existing branch', 'support', 'Support. No migration.', 'The check covers only the items of the Promote. A top-level credential does not count as on the branch.', 'Top-level credential: home selector. Reference not on the branch: warning.', 'e-home'],
+  ['Older destination version', 'support', 'Support with limits', 'The source cannot see the destination version.', 'No format change, so nothing new to ignore. No Apply gate: a broken reference arrives as today. A move blocks.', ''],
+];
+const KINDS = { support: ['Support', 'pass'], block: ['Block', 'block'], warn: ['Warning', 'warn'], exclude: ['Exclude', 'plain'], nochange: ['No change', 'info'] };
+const COMPARE = [
+  ['Branch', 'Closed. Each working reference resolves on the branch.', 'Can hold references to content that is not on it.'],
+  ['Owner of a missing credential', 'The branch path.', 'A proposal: the path, a new owner hint file, or a home that the user selects.'],
+  ['Package format', 'No change.', 'One optional hint file.'],
+  ['Personal dependency', 'Blocks the Promote.', 'Passes the Promote. Apply needs a home or an acceptance.'],
+  ['Missing workflow dependency on Apply', 'Block with a fix. No acceptance.', 'Block with "apply anyway". The acceptance repeats on each Apply.'],
+  ['Promote friction', 'A team waits for the owner team of a dependency.', 'None.'],
+  ['Instance Promote', 'Fails only on personal dependencies, with a full list.', 'Never fails on a dependency.'],
+  ['Repositories for each project', 'Needs a rule for references across repositories.', 'Works as it is: every external reference is a requirement.'],
+];
+const DECISIONS = [
+  ['Does a personal dependency stop the whole instance Promote?', ['a: yes. The dialog lists each problem before the write to the branch, with the fix. One personal dependency stops every team.', 'b: no. The Promote leaves out the workflows with a personal dependency and lists them.'], 'Option a. Option b makes the branch differ from the source with no visible sign on the destination. Only admins run an instance Promote, and they can fix or move the dependency.', ['p-instance']],
+  ['How does a cycle across two projects reach the branch?', ['a: only through an instance Promote and an instance Apply.', 'b: a selective Promote and Apply that span several projects.'], 'Option a. Cycles between items of two projects are rare. Option b changes the scope of project Promote and Apply. Revisit with project-level rights (LIGO-1006).', ['p-cycle', 'a-cycle']],
+  ['Which consent does a credential grant on Apply need?', ['An item list on Continue. The server grants only the listed items.'], 'The item list on Continue.', ['a-cred', 'a-access']],
+  ['What does an instance Apply delete when the branch is a partial view? (LIGO-1268)', ['A separate decision, a coverage declaration, or deletion only on a branch that an instance Promote wrote last.', 'Fact: an instance Apply hard-deletes the workflows of a package project that the branch lacks, with no confirmation.'], 'No recommendation yet. This decision blocks the selection of credentials in a project Promote.', ['r-partial', 'a-guard']],
+  ['How does the Promote block roll out?', ['a: warning for one release, then block.', 'b: block at once.', 'c: a setting that the admin turns on.'], 'Option a. Promotes that pass today start to fail. Teams need one release to promote their dependencies.', ['e-promote']],
+  ['Does a move into a personal project keep blocking the instance Promote?', ['Yes or no.'], 'Yes. It also follows from the personal block of this model.', ['m-personal']],
+  ['What happens to the shares of a workflow when Apply moves it?', ['As in the editor move: the shares are removed.'], 'As in the editor move. The preview says so.', ['m-move']],
+  ['How does the Apply gate reach existing public API callers?', ['a: the gate is on for every caller on master.', 'b: on master the gate is opt-in for a public API caller, with the same list as warnings. It becomes the default on 3.x.', 'Fact: an Apply that returns "applied" today can return "blocked". The promotions public API carries a Beta note.'], 'Option a, if the team accepts a behavior change in the Beta API. Otherwise option b.', ['a-wfdep']],
+  ['Does Apply report an existing credential that has a different owner on the destination?', ['a: no. Apply checks use, not ownership (current behavior).', 'b: a note in the preview. No block.', 'c: an offer to transfer the credential to the owner on the branch.'], 'Option b. It shows the difference without a new block for a destination that works today.', []],
+  ['Does a reference that is broken on the source block the Promote?', ['a: no. Warning only. The branch matches the source.', 'b: yes. The user fixes the source workflow first.'], 'Option a. The destination cannot become worse than the source.', ['p-broken']],
+];
+const REJECTED = [
+  ['Add the content of another project to the operation automatically', 'A project Apply is limited to one project, so it cannot apply the included content. On a branch without that project, an instance Apply then deletes the other workflows of that project. The user promotes the dependency from its own project.'],
+  ['Promote writes the credential of another project under that project folder', 'The same as the row above, for credentials. It writes content of a project that the user did not promote. The owner team promotes it.'],
+  ['Format version 2, or a new owner hint file', 'A closed branch names the owner by path. An older selective Promote rewrites the manifest with version 1 and no error, so a version stop is not reliable.'],
+  ['Sharing lists in Git', 'A Promote of project P changes the use of a credential of Q, and does not rewrite the file of Q. The list goes out of date. A full Apply could then remove a share that the source has.'],
+  ['The Git owner is binding for a credential that exists on the destination', 'A destination that works today would get an owner conflict. Decision 9.'],
+  ['"Apply anyway" for a missing workflow dependency', 'On a closed branch each block has a fix. A stored or repeated acceptance adds a second confirmation and an API change for no case that remains.'],
+  ['Block on a reference that is broken on the source', 'The destination cannot become worse than the source. A block forces a fix of the source workflow for no gain in parity. Decision 10.'],
+  ['Apply shares a credential with no confirmation', 'Use does not prove that the source project had access. The public API Apply has no preview.'],
+  ['A home selector for every missing credential', 'The branch names the owner. The selector stays only for existing branches.'],
+  ['A backend lookup that reads more than the user can read', 'It is an elevation.'],
+  ['The workflow dependency gate in the generic import engine', 'The gate is a promotion rule.'],
+  ['The generic import shares a credential that exists', 'The generic import has no preview and no confirmation.'],
+];
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const VLABEL = { pass: 'Pass', warn: 'Warning', block: 'Block', info: 'Setup', risk: 'Open risk', grant: 'Grant' };
+const OUTLABEL = { pass: 'pass', warn: 'warning', block: 'block', grant: 'grant to confirm' };
+function parseLane(str) {
+  if (!str) return [];
+  return str.trim().split(/\s+/).map((tok) => {
+    const m = /^([A-Za-z0-9]+)@([A-Z]+)((?:\+[A-Z]+)*)((?:![a-z]+)*)$/.exec(tok);
+    if (!m) throw new Error('bad lane token ' + tok);
+    return { id: m[1], p: m[2], shares: m[3] ? m[3].slice(1).split('+') : [], flags: m[4] ? m[4].slice(1).split('!') : [] };
+  });
+}
+function prepare(sc) {
+  if (sc._ready) return sc;
+  let prev = { src: [], br: [], dst: [], noproj: {} };
+  sc.states = sc.steps.map((st) => {
+    const s = { src: st.src !== undefined ? parseLane(st.src) : prev.src, br: st.br !== undefined ? parseLane(st.br) : prev.br, dst: st.dst !== undefined ? parseLane(st.dst) : prev.dst, noproj: st.noproj !== undefined ? st.noproj : prev.noproj };
+    prev = s; return s;
+  });
+  const order = [];
+  const slots = {}; sc.rows.forEach((r) => { slots[r] = []; });
+  const add = (id, p) => { if (!slots[p]) throw new Error(sc.id + ': row ' + p + ' missing for ' + id); if (!slots[p].includes(id)) slots[p].push(id); if (!order.includes(id)) order.push(id); };
+  sc.states.forEach((s) => ['src', 'br', 'dst'].forEach((l) => s[l].forEach((e) => add(e.id, e.p))));
+  Object.entries(sc.homes || {}).forEach(([id, p]) => add(id, p));
+  sc.slots = slots; sc._ready = true; return sc;
+}
+function homeOf(sc, state, id, fromP) {
+  if (sc.homes && sc.homes[id]) return sc.homes[id];
+  for (const l of ['src', 'br', 'dst']) { const e = state[l].find((x) => x.id === id); if (e) return e.p; }
+  for (const s of sc.states) for (const l of ['src', 'br', 'dst']) { const e = s[l].find((x) => x.id === id); if (e) return e.p; }
+  return fromP;
+}
+
+/* ---------- stage ---------- */
+const G = 100, GAP = 22, OPH = 40, HEAD = 50, CH = 42, SG = 12, RP = 13;
+let cur = { sc: null, step: 0 }, playing = null, selCheck = 0;
+function geometry(stage, sc) {
+  const W = Math.max(780, stage.parentElement.clientWidth - 28);
+  const laneW = (W - G - GAP * 2) / 3, chipW = Math.min(196, laneW - 84);
+  const rows = []; let y = OPH + HEAD + 8;
+  sc.rows.forEach((r) => { const n = Math.max(1, sc.slots[r].length); const h = RP * 2 + n * CH + (n - 1) * SG; rows.push({ id: r, y, h }); y += h; });
+  return { W, laneW, chipW, rows, H: y + 10, laneX: (i) => G + i * (laneW + GAP) };
+}
+function pos(geo, sc, laneIdx, p, id) {
+  const row = geo.rows.find((r) => r.id === p); const slot = sc.slots[p].indexOf(id);
+  return { x: geo.laneX(laneIdx) + 14, y: row.y + RP + slot * (CH + SG) };
+}
+function makeStage(stage) {
+const nodes = new Map(); let timers = [];
+function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+function buildFrame(sc, geo) {
+  stage.querySelectorAll('.frame').forEach((n) => n.remove());
+  const frag = document.createDocumentFragment();
+  LANES.forEach((l, i) => {
+    const on = sc.lanes.includes(l.id[0] === 's' ? 's' : l.id[0]);
+    const d = document.createElement('div'); d.className = 'lane frame ' + l.id + (on ? '' : ' off');
+    d.style.cssText = `left:${geo.laneX(i)}px;top:${OPH}px;width:${geo.laneW}px;height:${geo.H - OPH}px`;
+    d.innerHTML = `<div class="lh"><b>${l.title}</b><span>${l.sub}</span></div>` + (on ? '' : '<div class="offnote">not part of this scenario</div>');
+    frag.appendChild(d);
+  });
+  geo.rows.forEach((r, i) => {
+    const pr = PROJECTS[r.id];
+    const lab = document.createElement('div'); lab.className = 'rowlabel frame'; lab.style.cssText = `top:${r.y}px;height:${r.h}px`;
+    lab.innerHTML = `${esc(pr.name)}<small>${esc(pr.tag)}</small>`; frag.appendChild(lab);
+    if (i > 0) { const ln = document.createElement('div'); ln.className = 'rowline frame'; ln.style.cssText = `left:0;top:${r.y}px;width:${geo.W}px`; frag.appendChild(ln); }
+  });
+  stage.insertBefore(frag, stage.firstChild);
+  stage.style.height = geo.H + 'px'; stage.style.width = geo.W + 'px';
+}
+function hatches(sc, geo, state) {
+  stage.querySelectorAll('.hatch').forEach((n) => n.remove());
+  LANES.forEach((l, i) => {
+    if (!sc.lanes.includes(l.id[0])) return;
+    geo.rows.forEach((r) => {
+      const pr = PROJECTS[r.id]; let text = '';
+      if ((state.noproj[l.id] || []).includes(r.id)) text = l.id === 'dst' ? 'project not on the destination' : l.id === 'br' ? 'project not on the branch' : 'project deleted';
+      else if (pr.personal && l.id === 'br') text = 'never on the branch';
+      else if (pr.personal && l.id === 'dst') text = 'never a home';
+      else if (pr.top && l.id !== 'br') text = 'no such place';
+      if (!text) return;
+      const h = document.createElement('div'); h.className = 'hatch';
+      h.style.cssText = `left:${geo.laneX(i) + 5}px;top:${r.y + 5}px;width:${geo.laneW - 10}px;height:${r.h - 10}px`; h.textContent = text; stage.appendChild(h);
+    });
+  });
+}
+function chipHTML(d) {
+  let h = `<div class="chip-in"><div class="nm">${esc(d.name)}</div><div class="sb">${esc(d.sub)}</div>`;
+  if (d.badge) h += `<span class="badge ${d.badge}">${d.badge === 'block' ? '✕' : d.badge === 'warn' ? '!' : '✓'}</span>`;
+  if (d.shares && d.shares.length) h += `<span class="share">shared with ${d.shares.map((s) => PROJECTS[s].name).join(', ')}</span>`;
+  return h + '</div>';
+}
+function desired(sc, geo, si) {
+  const state = sc.states[si], step = sc.steps[si], out = new Map(), arrows = [];
+  const broken = sc.broken || [];
+  LANES.forEach((l, li) => {
+    if (!sc.lanes.includes(l.id[0])) return;
+    const present = state[l.id];
+    present.forEach((e) => {
+      const it = ITEMS[e.id], key = l.id + ':' + e.id, flag = e.flags[0];
+      const mark = (step.marks || {})[key];
+      const p = pos(geo, sc, li, e.p, e.id);
+      out.set(key, { key, lane: l.id, li, id: e.id, x: p.x, y: p.y, t: it.t, name: it.n,
+        sub: (step.sub || {})[key] || (flag ? FLAGSUB[flag] : TYPE[it.t]), cls: (flag ? ' f-' + flag : '') + (mark ? ' m-' + mark : ''),
+        badge: flag === 'blocked' || flag === 'del' ? 'block' : flag === 'warn' ? 'warn' : mark || '', shares: e.shares, flag });
+    });
+    let ai = 0;
+    sc.refs.forEach(([a, b, label, alwaysBroken]) => {
+      const from = present.find((e) => e.id === a); if (!from) return;
+      const to = present.find((e) => e.id === b);
+      const soft = broken.includes(b) || alwaysBroken || from.flags.includes('warn') || (!from.flags.length && !(step.marks || {})[l.id + ':' + a] && l.id === 'src');
+      let cls = 'ok', toKey = l.id + ':' + b;
+      if (!to) {
+        const hp = homeOf(sc, state, b, from.p), p = pos(geo, sc, li, hp, b); toKey = l.id + ':ph:' + b; cls = soft ? 'amber' : 'red';
+        const lab = broken.includes(b) ? (l.id === 'src' ? 'does not exist' : l.id === 'br' ? 'broken on the source too' : 'not on the branch') : l.id === 'src' ? 'does not exist' : l.id === 'br' ? (PROJECTS[hp].personal ? 'can never be on the branch' : 'not on the branch') : 'not on the destination';
+        const ex = out.get(toKey);
+        if (!ex) out.set(toKey, { key: toKey, lane: l.id, li, id: b, x: p.x, y: p.y, t: ITEMS[b].t, name: ITEMS[b].n, sub: lab, cls: ' ph ' + cls, ph: true });
+        else if (cls === 'red') ex.cls = ' ph red';
+      } else if (alwaysBroken || (PROJECTS[to.p].top && l.id === 'br') || to.flags.includes('policy') || to.flags.includes('del')) cls = to.flags.includes('del') || alwaysBroken ? 'amber' : 'red';
+      else if (l.id === 'dst' && ITEMS[b].t === 'cred' && from.p !== to.p && !to.shares.includes(from.p)) cls = 'red';
+      arrows.push({ lane: l.id, from: l.id + ':' + a, to: toKey, label, cls, idx: ai++, ref: a + '>' + b });
+    });
+  });
+  return { out, arrows };
+}
+function drawArrows(geo, out, arrows) {
+  let svg = stage.querySelector('svg.arrows');
+  if (!svg) { svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'arrows'); stage.appendChild(svg); }
+  svg.setAttribute('width', geo.W); svg.setAttribute('height', geo.H);
+  const col = { ok: '#5f6f86', red: '#bf3329', amber: '#c98a12' };
+  let h = '<defs>' + Object.entries(col).map(([k, c]) => `<marker id="mk-${stage.id}-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}" stroke="none"/></marker>`).join('') + '</defs>';
+  arrows.forEach((a) => {
+    const f = out.get(a.from), t = out.get(a.to); if (!f || !t) return;
+    const sx = f.x + geo.chipW, sy = f.y + CH / 2 - 7, ex = t.x + geo.chipW + 4, ey = t.y + CH / 2 + 7;
+    const b = 30 + a.idx * 15 + Math.min(18, Math.abs(ey - sy) / 9);
+    h += `<path class="${a.cls}" data-ref="${a.ref}" d="M${sx},${sy} C${sx + b},${sy} ${ex + b},${ey} ${ex},${ey}" marker-end="url(#mk-${stage.id}-${a.cls})"/>`;
+    h += `<text x="${ex + 13}" y="${ey - 5}">${esc(a.label)}</text>`;
+  });
+  svg.innerHTML = h;
+  return svg;
+}
+function render(sc, si, animate) {
+  const geo = geometry(stage, sc), step = sc.steps[si];
+  clearTimers();
+  if (!animate) stage.classList.add('no-anim');
+  if (stage.dataset.sc !== sc.id || stage.dataset.w !== String(geo.W)) {
+    nodes.forEach((el) => el.remove()); nodes.clear(); buildFrame(sc, geo); stage.dataset.sc = sc.id; stage.dataset.w = String(geo.W);
+  }
+  hatches(sc, geo, sc.states[si]);
+  const { out, arrows } = desired(sc, geo, si);
+  const leftOf = { br: 'src', dst: 'br' };
+  // remove
+  nodes.forEach((el, key) => { if (!out.has(key)) { nodes.delete(key); if (animate) { el.classList.add('gone'); setTimeout(() => el.remove(), 320); } else el.remove(); } });
+  // add / update
+  out.forEach((d, key) => {
+    let el = nodes.get(key); const fresh = !el;
+    if (fresh) { el = document.createElement('div'); stage.appendChild(el); nodes.set(key, el); }
+    el.className = 'chip' + d.cls; el.dataset.t = d.t; el.style.width = geo.chipW + 'px'; el.innerHTML = chipHTML(d);
+    const inner = el.firstChild, final = `translate(${d.x}px,${d.y}px)`;
+    if (fresh && animate) {
+      const origin = !d.ph && !(step.pop || []).includes(d.id) && leftOf[d.lane] ? out.get(leftOf[d.lane] + ':' + d.id) : null;
+      if (origin) {
+        el.style.transition = 'none'; el.style.transform = `translate(${origin.x}px,${origin.y}px)`; el.classList.add('fly'); void el.offsetWidth; el.style.transition = '';
+        requestAnimationFrame(() => { el.style.transform = final; });
+        later(() => { el.classList.remove('fly'); inner.classList.add(d.flag === 'blocked' ? 'shake' : d.flag ? 'x' : 'land'); }, 640);
+      } else { el.style.transition = 'none'; el.style.transform = final; void el.offsetWidth; el.style.transition = ''; el.style.opacity = d.ph ? '0' : '1'; if (d.ph) later(() => { el.style.opacity = '1'; }, 520); else inner.classList.add('pop'); }
+    } else {
+      el.style.transform = final; el.style.opacity = '1';
+      if (animate && d.flag === 'blocked') later(() => inner.classList.add('shake'), 80);
+    }
+  });
+  // arrows
+  const svg = drawArrows(geo, out, arrows);
+  if (animate) { svg.style.transition = 'none'; svg.style.opacity = '0'; void svg.getBoundingClientRect(); svg.style.transition = ''; later(() => { svg.style.opacity = '1'; }, 620); } else svg.style.opacity = '1';
+  // op bar
+  let bar = stage.querySelector('.opbar');
+  if (!bar) { bar = document.createElement('div'); bar.className = 'opbar'; bar.innerHTML = '<div class="shaft"></div><div class="head"></div>'; stage.appendChild(bar); }
+  const op = step.op;
+  if (!op) bar.className = 'opbar none';
+  else {
+    const local = op.k === 'src' || op.k === 'dst'; let x, w;
+    if (op.k === 'promote') { x = geo.laneX(0) + 16; w = geo.laneW * 2 + GAP - 32; } else if (op.k === 'apply') { x = geo.laneX(1) + 16; w = geo.laneW * 2 + GAP - 32; }
+    else { x = geo.laneX(op.k === 'src' ? 0 : 2) + 8; w = geo.laneW - 16; }
+    bar.className = 'opbar ' + (local ? 'local' : step.v || ''); bar.style.left = x + 'px'; bar.style.width = w + 'px'; bar.firstChild.textContent = op.label; bar.firstChild.title = op.label;
+  }
+  stage.classList.toggle('parity', !!step.parity);
+  if (!animate) { void stage.offsetWidth; stage.classList.remove('no-anim'); }
+}
+return { el: stage, render };
+}
+const EXP = makeStage($('stage')), OVS = makeStage($('ovstage'));
+function renderStage(animate) { EXP.render(cur.sc, cur.step, animate); focusArrow(); }
+function focusArrow() {
+  const step = cur.sc.steps[cur.step], c = (step.checks || [])[selCheck];
+  EXP.el.querySelectorAll('svg.arrows path').forEach((p) => p.classList.toggle('focus', !!c && p.dataset.ref === c[0] + '>' + c[1]));
+}
+
+/* ---------- trees ---------- */
+function treeHTML(def) {
+  const node = (n) => `<div class="t-node k-${n.k}" data-n="${n.id}">${esc(n.text)}${n.note ? `<small>${esc(n.note)}</small>` : ''}</div>`;
+  let h = '<div class="tree">';
+  def.rows.forEach((r, i) => {
+    if (i > 0) { const p = def.rows[i - 1]; h += `<div class="t-down" data-a="${p.id}" data-b="${r.id}"><span>${esc(p.down || '')}</span></div><div></div>`; }
+    h += node(r);
+    if (r.side) {
+      const s = r.side; h += `<div class="t-side"><div class="t-edge" data-a="${r.id}" data-b="${s.id}"><span>${esc(s.label)}</span></div><div class="t-col">${node(s)}`;
+      if (s.fork) h += s.fork.map((f) => `<div class="t-frow"><div class="t-edge" data-a="${s.id}" data-b="${f.id}"><span>${esc(f.label)}</span></div>${node(f)}</div>`).join('');
+      h += '</div></div>';
+    } else h += '<div></div>';
+  });
+  return h + '</div>';
+}
+function setPath(el, path) {
+  const ids = path ? path.split(' ') : [], pairs = new Set(ids.slice(1).map((b, i) => ids[i] + '>' + b));
+  el.classList.toggle('has-path', ids.length > 0);
+  el.querySelectorAll('.t-node').forEach((n) => n.classList.toggle('on', ids.includes(n.dataset.n)));
+  el.querySelectorAll('.t-down,.t-edge').forEach((n) => n.classList.toggle('on', pairs.has(n.dataset.a + '>' + n.dataset.b)));
+}
+
+/* ---------- panels ---------- */
+function renderHead() {
+  const sc = cur.sc;
+  let h = `<h3>${esc(sc.title)}</h3><p>${esc(sc.intro)}</p><div class="sc-meta"><span class="pill plain">solution.md §${esc(sc.flow)}</span>`;
+  (sc.decisions || []).forEach((n) => { h += `<button class="pill decpill" data-dec="${n}">open decision ${n}</button>`; });
+  h += '</div>';
+  h = h.replace(/<\/div>$/, '');
+  if (sc.spec.length) h += `<details class="specd"><summary>Specified by ${sc.spec.length} Gherkin scenario${sc.spec.length > 1 ? 's' : ''}</summary><div class="spec">` + sc.spec.map(([f, n]) => `<span><span class="mono">${esc(f)}</span> › <b>${esc(n)}</b></span>`).join('') + '</div></details>';
+  else h += '<span class="pill risk">not specified in Gherkin: the outcome is not decided</span>';
+  h += '</div>';
+  $('schead').innerHTML = h;
+}
+function renderSteps() {
+  const sc = cur.sc;
+  $('steps').innerHTML = sc.steps.map((s, i) => `<button class="stepbtn ${s.v || ''} ${i === cur.step ? 'on' : ''}" data-step="${i}"><i>${i + 1}</i>${esc(s.t)}</button>`).join('');
+  $('prev').disabled = cur.step === 0; $('next').disabled = cur.step === sc.steps.length - 1;
+}
+function renderNarr() {
+  const sc = cur.sc, step = sc.steps[cur.step];
+  let h = `<span class="pill ${step.v || 'info'}">${VLABEL[step.v || 'info']}</span>${step.isNew ? ' <span class="pill newcap" title="Today a Promote can select only workflows and folders">New capability</span>' : ''}<h4>${cur.step + 1}. ${esc(step.t)}</h4><p>${esc(step.d)}</p>`;
+  (step.msgs || []).forEach(([k, on, text, summary]) => {
+    h += `<div class="msg ${k}"><span class="ic">${k === 'block' ? '✕' : k === 'warn' ? '!' : k === 'action' ? '→' : 'i'}</span><div>${on ? `<span class="on">${esc(on)}</span>` : ''}${k === 'action' || summary ? esc(text) : `<q>${esc(text)}</q>`}</div></div>`;
+  });
+  const checks = step.checks || [];
+  if (checks.length) {
+    h += '<div class="checks"><div class="lbl">Checked references · click to see the decision path</div>';
+    checks.forEach(([a, b, , , out], i) => { h += `<button class="check ${i === selCheck ? 'on' : ''}" data-check="${i}"><b>${esc(ITEMS[a].n)}</b><span class="arrow">→</span><b>${esc(ITEMS[b].n)}</b><span class="pill ${out}">${OUTLABEL[out]}</span></button>`; });
+    h += '</div>';
+  }
+  $('narr').innerHTML = h;
+}
+function renderTree() {
+  const sc = cur.sc, step = sc.steps[cur.step], checks = step.checks || [], c = checks[selCheck];
+  let which = c ? c[2] : step.op && step.op.k === 'apply' ? 'apply' : step.op && step.op.k === 'promote' ? 'promote' : sc.lanes === 'bd' ? 'apply' : 'promote';
+  const pane = $('treepane');
+  if (pane.dataset.tree !== which) { pane.innerHTML = `<div class="lbl">${esc(TREES[which].title)}</div>` + treeHTML(TREES[which]); pane.dataset.tree = which; }
+  const lbl = pane.querySelector('.lbl');
+  lbl.innerHTML = esc(TREES[which].title) + (c ? ` <span class="pill plain">${esc(ITEMS[c[0]].n)} → ${esc(ITEMS[c[1]].n)}</span>` : ' <span class="pill plain">no reference checked in this step</span>');
+  const tree = pane.querySelector('.tree'); setPath(tree, '');
+  if (c) setTimeout(() => setPath(tree, c[3]), 60);
+}
+function renderSide() {
+  let h = '', g = '';
+  SCENARIOS.forEach((s) => {
+    if (s.group !== g) { g = s.group; h += `<h4>${esc(g)}</h4>`; }
+    h += `<button class="sbtn ${cur.sc && s.id === cur.sc.id ? 'on' : ''}" data-sc="${s.id}"><span>${esc(s.title)}</span><span class="dots">${s.steps.filter((x) => x.v && x.v !== 'info').map((x) => `<i class="dot ${x.v}"></i>`).join('')}</span></button>`;
+  });
+  $('side').innerHTML = h;
+}
+function show(scId, stepIdx, animate, quiet) {
+  const sc = prepare(SCENARIOS.find((s) => s.id === scId) || SCENARIOS[0]);
+  const changed = !cur.sc || cur.sc.id !== sc.id;
+  cur = { sc, step: Math.max(0, Math.min(stepIdx || 0, sc.steps.length - 1)) }; selCheck = 0;
+  if (changed) { renderHead(); renderSide(); }
+  renderSteps(); renderStage(animate && !changed); renderNarr(); renderTree();
+  if (!quiet) history.replaceState(null, '', '#s=' + sc.id + '&step=' + (cur.step + 1));
+}
+function go(delta) { const n = cur.step + delta; if (n < 0 || n >= cur.sc.steps.length) return false; show(cur.sc.id, n, delta > 0); return true; }
+function stopPlay() { if (playing) { clearInterval(playing); playing = null; $('play').textContent = '▶ Play'; } }
+function openScenario(id) { stopPlay(); show(id, 0, false); $('explorer').scrollIntoView({ behavior: 'smooth' }); }
+
+
+/* ---------- the whole flow ---------- */
+let ov = { step: 0, playing: null };
+const dotsOf = (sc) => sc.steps.filter((x) => x.v && x.v !== 'info').map((x) => `<i class="dot ${x.v}"></i>`).join('');
+const variantBtn = (id) => { const sc = SCENARIOS.find((x) => x.id === id); return `<button class="vbtn" data-go="${id}"><span>${esc(sc.title)}</span><span class="dots">${dotsOf(sc)}</span></button>`; };
+function ovLine() {
+  let h = '', col = 1;
+  JOURNEY.phases.forEach(([k, label, span]) => { h += `<div class="ov-phase ${k}" style="grid-column:${col} / span ${span}">${esc(label)}</div>`; col += span; });
+  JOURNEY.steps.forEach((st, i) => { h += `<button class="ov-stop ${st.v} ${i === ov.step ? 'on' : ''} ${i <= ov.step ? 'done' : ''}" style="grid-column:${i + 1}" data-ov="${i}"><i>${i + 1}</i><span>${esc(st.short)}</span>${st.isNew ? '<em>new capability</em>' : ''}${st.variants.length ? `<small>${st.variants.length} variant${st.variants.length > 1 ? 's' : ''}</small>` : ''}</button>`; });
+  $('ovline').style.gridTemplateColumns = `repeat(${JOURNEY.steps.length}, minmax(0, 1fr))`;
+  $('ovline').innerHTML = h;
+}
+function ovShow(n, animate, quiet) {
+  prepare(JOURNEY);
+  ov.step = Math.max(0, Math.min(n, JOURNEY.steps.length - 1));
+  const st = JOURNEY.steps[ov.step];
+  ovLine(); OVS.render(JOURNEY, ov.step, animate);
+  let h = `<span class="pill ${st.v}">${VLABEL[st.v]}</span>${st.isNew ? ' <span class="pill newcap">New capability</span>' : ''}<h4>${ov.step + 1}. ${esc(st.t)}</h4><p>${esc(st.d)}</p>`;
+  (st.msgs || []).forEach(([k, on, text, summary]) => { h += `<div class="msg ${k}"><span class="ic">${k === 'block' ? '✕' : k === 'warn' ? '!' : k === 'action' ? '→' : k === 'ok' ? '✓' : 'i'}</span><div>${on ? `<span class="on">${esc(on)}</span>` : ''}${k === 'action' || summary ? esc(text) : `<q>${esc(text)}</q>`}</div></div>`; });
+  $('ovnarr').innerHTML = h;
+  let a = '';
+  if (st.today) a += `<div class="today"><div class="lbl">What happens today</div>${esc(st.today)}</div>`;
+  a += st.variants.length ? `<div class="lbl">What else can happen at this point</div>` + st.variants.map(variantBtn).join('') : `<div class="lbl">What else can happen at this point</div><p class="none">No variant. This step has one outcome.</p>`;
+  $('ovaside').innerHTML = a;
+  $('ovprev').disabled = ov.step === 0; $('ovnext').disabled = ov.step === JOURNEY.steps.length - 1;
+  $('ovcount').textContent = `Step ${ov.step + 1} of ${JOURNEY.steps.length}`;
+  if (!quiet) history.replaceState(null, '', '#flow=' + (ov.step + 1));
+}
+function ovStop() { if (ov.playing) { clearInterval(ov.playing); ov.playing = null; $('ovplay').textContent = '▶ Play the whole flow'; } }
+function ovGo(d) { const n = ov.step + d; if (n < 0 || n >= JOURNEY.steps.length) return false; ovShow(n, d > 0); return true; }
+function ovInit() {
+  $('ovoutside').innerHTML = OUTSIDE.map(([t, ids]) => `<div><div class="lbl">${esc(t)}</div>${ids.map(variantBtn).join('')}</div>`).join('');
+  $('ovline').onclick = (e) => { const b = e.target.closest('[data-ov]'); if (!b) return; ovStop(); const n = +b.dataset.ov; ovShow(n, n === ov.step + 1); };
+  $('ovprev').onclick = () => { ovStop(); ovGo(-1); };
+  $('ovnext').onclick = () => { ovStop(); ovGo(1); };
+  $('ovplay').onclick = () => {
+    if (ov.playing) return ovStop();
+    if (ov.step === JOURNEY.steps.length - 1) ovShow(0, false);
+    $('ovplay').textContent = '❚❚ Pause';
+    ov.playing = setInterval(() => { if (!ovGo(1) || ov.step === JOURNEY.steps.length - 1) ovStop(); }, 3600);
+  };
+  $('overview').addEventListener('click', (e) => { const b = e.target.closest('.vbtn'); if (b) { ovStop(); openScenario(b.dataset.go); } });
+}
+// The arrow keys drive the player that fills more of the window.
+function nearestPlayer() {
+  const vis = (el) => { const r = el.getBoundingClientRect(); return Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)); };
+  return vis($('ovcard')) > vis(document.querySelector('.explorer .main')) ? 'ov' : 'exp';
+}
+
+/* ---------- static sections ---------- */
+function renderStatic() {
+  $('principles').innerHTML = PRINCIPLES.map(([t, d, goId, dir]) => `<div class="card${dir ? ' half' : ''}"><h3>${esc(t)}${dir ? `<span class="dir">${esc(dir)}</span>` : ''}</h3><p>${esc(d)}</p><button class="seeit" data-go="${goId}">See it ▸</button></div>`).join('');
+  $('principles').onclick = (e) => { const b = e.target.closest('[data-go]'); if (b) openScenario(b.dataset.go); };
+  const filt = [['all', 'All']].concat(Object.entries(KINDS).map(([k, v]) => [k, v[0]]));
+  $('filters').innerHTML = filt.map(([k, l], i) => `<button class="btn ${i === 0 ? 'on' : ''}" data-f="${k}">${l}</button>`).join('');
+  const scope = (f) => '<tr><th style="width:21%">Case</th><th style="width:15%">Decision</th><th>On Promote</th><th>On Apply</th><th></th></tr>' + SCOPE.filter((r) => f === 'all' || r[1] === f).map(([c, k, dec, p, a, goId]) =>
+    `<tr class="${goId ? 'go' : ''}" data-go="${goId}"><td>${esc(c)}</td><td><span class="pill ${KINDS[k][1]}">${KINDS[k][0]}</span>${dec.replace(/\.$/, '') === KINDS[k][0] ? '' : `<div style="font-size:12px;color:var(--muted);margin-top:3px">${esc(dec)}</div>`}</td><td>${esc(p)}</td><td>${esc(a)}</td><td>${goId ? '<span class="see">scenario ▸</span>' : ''}</td></tr>`).join('');
+  $('scopetable').innerHTML = scope('all');
+  $('filters').onclick = (e) => { const b = e.target.closest('[data-f]'); if (!b) return; $('filters').querySelectorAll('.btn').forEach((x) => x.classList.toggle('on', x === b)); $('scopetable').innerHTML = scope(b.dataset.f); };
+  $('scopetable').onclick = (e) => { const r = e.target.closest('tr[data-go]'); if (r && r.dataset.go) openScenario(r.dataset.go); };
+  $('cmptable').innerHTML = '<tr><th style="width:24%"></th><th>Dependencies first (chosen)</th><th>Promote informs, Apply decides (alternative)</th></tr>' + COMPARE.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td><td style="color:var(--muted)">${esc(c)}</td></tr>`).join('');
+  $('decs').innerHTML = DECISIONS.map(([q, opts, rec, links], i) => `<div class="card dec" id="dec-${i + 1}"><h3><span class="n">${i + 1}</span><span>${esc(q)}</span></h3><ul>${opts.map((o) => `<li>${esc(o)}</li>`).join('')}</ul><div class="rec"><b>Recommendation:</b> ${esc(rec)}</div>${links.length ? '<div class="links">' + links.map((l) => `<button data-go="${l}">▸ ${esc(SCENARIOS.find((s) => s.id === l).title)}</button>`).join('') + '</div>' : ''}</div>`).join('');
+  $('decs').onclick = (e) => { const b = e.target.closest('[data-go]'); if (b) openScenario(b.dataset.go); };
+  $('rejtable').innerHTML = '<tr><th style="width:38%">Option</th><th>Reason</th></tr>' + REJECTED.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('');
+}
+
+/* ---------- events ---------- */
+$('side').onclick = (e) => { const b = e.target.closest('[data-sc]'); if (b) { stopPlay(); show(b.dataset.sc, 0, false); } };
+$('steps').onclick = (e) => { const b = e.target.closest('[data-step]'); if (b) { stopPlay(); const n = +b.dataset.step; show(cur.sc.id, n, n === cur.step + 1); } };
+$('prev').onclick = () => { stopPlay(); go(-1); };
+$('next').onclick = () => { stopPlay(); go(1); };
+$('replay').onclick = () => { stopPlay(); if (cur.step === 0) return; const n = cur.step; show(cur.sc.id, n - 1, false); setTimeout(() => show(cur.sc.id, n, true), 250); };
+$('play').onclick = () => {
+  if (playing) return stopPlay();
+  if (cur.step === cur.sc.steps.length - 1) show(cur.sc.id, 0, false);
+  $('play').textContent = '❚❚ Pause';
+  playing = setInterval(() => { if (!go(1)) stopPlay(); else if (cur.step === cur.sc.steps.length - 1) stopPlay(); }, 3200);
+};
+$('narr').onclick = (e) => { const b = e.target.closest('[data-check]'); if (!b) return; selCheck = +b.dataset.check; $('narr').querySelectorAll('.check').forEach((x, i) => x.classList.toggle('on', i === selCheck)); renderTree(); focusArrow(); };
+$('schead').onclick = (e) => { const b = e.target.closest('[data-dec]'); if (!b) return; const el = $('dec-' + b.dataset.dec); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1600); };
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input,textarea') || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+  const d = e.key === 'ArrowRight' ? 1 : -1;
+  if (nearestPlayer() === 'ov') { ovStop(); ovGo(d); } else { stopPlay(); go(d); }
+});
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { renderStage(false); OVS.render(JOURNEY, ov.step, false); }, 120); });
+
+/* ---------- boot ---------- */
+renderStatic(); ovInit();
+window.addEventListener('hashchange', () => {
+  const m = /s=([\w-]+)(?:&step=(\d+))?/.exec(location.hash), fl = /flow=(\d+)/.exec(location.hash);
+  if (m) { stopPlay(); show(m[1], m[2] ? +m[2] - 1 : 0, false, true); $('explorer').scrollIntoView(); }
+  else if (fl) { ovStop(); ovShow(+fl[1] - 1, false, true); $('overview').scrollIntoView(); }
+});
+(function boot() {
+  const m = /s=([\w-]+)(?:&step=(\d+))?/.exec(location.hash), fl = /flow=(\d+)/.exec(location.hash);
+  show(m ? m[1] : 'p-other', m && m[2] ? +m[2] - 1 : 0, false, true);
+  ovShow(fl ? +fl[1] - 1 : 0, false, true);
+  if (m) $('explorer').scrollIntoView(); else if (fl) $('overview').scrollIntoView();
+  if (/selftest/.test(location.search)) {
+    const problems = [], specs = [];
+    SCENARIOS.forEach((s) => {
+      try {
+        prepare(s);
+        s.spec.forEach(([f, n]) => specs.push([s.id, f, n]));
+        (s.decisions || []).forEach((d) => { if (!DECISIONS[d - 1]) problems.push(s.id + ': decision ' + d); });
+        s.refs.forEach(([a, b]) => { if (!ITEMS[a] || !ITEMS[b]) problems.push(s.id + ': ref ' + a + '>' + b); });
+        s.steps.forEach((st, i) => {
+          (st.checks || []).forEach(([a, b, tree, path]) => {
+            if (!s.refs.some((r) => r[0] === a && r[1] === b)) problems.push(s.id + '#' + i + ': check without ref ' + a + '>' + b);
+            const ids = []; TREES[tree].rows.forEach((r) => { ids.push(r.id); if (r.side) { ids.push(r.side.id); (r.side.fork || []).forEach((f) => ids.push(f.id)); } });
+            path.split(' ').forEach((p) => { if (!ids.includes(p)) problems.push(s.id + '#' + i + ': tree node ' + p); });
+          });
+          Object.keys(st.marks || {}).concat(Object.keys(st.sub || {})).forEach((k) => { const [l, id] = k.split(':'); if (!s.states[i][l].some((e) => e.id === id)) problems.push(s.id + '#' + i + ': mark on absent ' + k); });
+          show(s.id, i, false);
+        });
+      } catch (err) { problems.push(s.id + ': ' + err.message); }
+    });
+    SCOPE.forEach((r) => { if (r[5] && !SCENARIOS.some((s) => s.id === r[5])) problems.push('scope link ' + r[5]); });
+    PRINCIPLES.forEach((r) => { if (!SCENARIOS.some((s) => s.id === r[2])) problems.push('principle link ' + r[2]); });
+    try {
+      const linked = new Set(); JOURNEY.steps.forEach((st, i) => { st.variants.forEach((v) => linked.add(v)); ovShow(i, false, true); });
+      OUTSIDE.forEach(([, ids]) => ids.forEach((v) => linked.add(v)));
+      linked.forEach((v) => { if (!SCENARIOS.some((s) => s.id === v)) problems.push('flow link ' + v); });
+      SCENARIOS.forEach((s) => { if (!linked.has(s.id)) problems.push('scenario not reachable from the flow: ' + s.id); });
+      if (JOURNEY.phases.reduce((n, p) => n + p[2], 0) !== JOURNEY.steps.length) problems.push('flow phases do not cover the steps');
+      const last = JOURNEY.states[JOURNEY.states.length - 1], ids = (l) => last[l].map((e) => e.id + '@' + e.p).sort().join(' ');
+      if (ids('src') !== ids('br') || ids('br') !== ids('dst')) problems.push('flow does not end in parity');
+      ovShow(0, false, true);
+    } catch (err) { problems.push('flow: ' + err.message); }
+    const pre = document.createElement('pre'); pre.id = 'selftest'; pre.textContent = JSON.stringify({ scenarios: SCENARIOS.length, steps: SCENARIOS.reduce((n, s) => n + s.steps.length, 0), problems, specs });
+    document.body.appendChild(pre);
+    if (!document.title.startsWith('ERR')) document.title = problems.length ? 'SELFTEST:FAIL' : 'SELFTEST:OK';
+  }
+})();
+</script>
+</body>
+</html>

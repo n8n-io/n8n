@@ -1,0 +1,119 @@
+You are judging four independent answers to the same engineering spike. Grade them on evidence and reasoning quality, not length or style.
+
+## The task the authors were given
+
+Linear ticket LIGO-1159, "[Spike] Cross-project promotion: define the solution". Read it with the Linear MCP if it is available. Otherwise use this summary:
+
+- Problem: n8n promotion (Git-based, `packages/cli/src/modules/promotions.ee/` on top of `packages/cli/src/modules/n8n-packages/`) treats a project as a closed unit. Real instances have shared credentials, sub-workflows in other projects, project-owned variables, moves between projects, and dependencies on personal projects. Selective Promote and selective Apply already produce partial packages.
+- Questions the spike must answer: Scope (which cases to support, block, or leave out), Promote, Apply, Personal projects, Moves, Permissions, Package format, Consistency (one model across instance, project and selective Promote and Apply, per-project connections, and all resource types).
+- Constraints: no friction for the common case; Git stays the source of truth; existing branches keep working.
+- Deliverable: a solution document with user flows, technical approach, rejected options, and an ordered ticket plan.
+- Out of scope: implementation, promoting personal projects, and per-project repositories. The solution must remain compatible with future per-project repositories.
+
+## The submissions
+
+### Opus
+
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/topeka/.context/ligo-1159/README.md`
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/topeka/.context/ligo-1159/current-state.md`
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/topeka/.context/ligo-1159/solution.md`
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/topeka/.context/ligo-1159/ticket-plan.md`
+
+### Sol
+
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/minnetonka-v1/.context/ligo-1159-cross-project-promotion-spike.md`
+
+### Astra
+
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/nassau/.context/ligo-1159/solution.md`
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/nassau/.context/ligo-1159/evidence.md`
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/nassau/.context/ligo-1159/ticket-plan.md`
+
+### Fable
+
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/ngerulmud/.context/ligo-1159/01-current-state.md`
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/ngerulmud/.context/ligo-1159/02-solution.md`
+- `/Users/ireneeajeneza/conductor/workspaces/n8n/ngerulmud/.context/ligo-1159/03-ticket-plan.md`
+
+## Codebase for verification
+
+Repository:
+
+`/Users/ireneeajeneza/conductor/workspaces/n8n/minnetonka-v1`
+
+Verified revision:
+
+`ed626a767fa9015bf75007d915737eb436fc3f75`
+
+This revision matched `origin/master` when Sol performed the investigation.
+
+Do not modify the repository. Use read-only commands only. If a cited line number is slightly different because you use another checkout at the same revision, accept the claim when the behavior matches.
+
+The submissions under `.context/` are local investigation artifacts. They do not need to be tracked by Git.
+
+## How to judge
+
+1. Read all four submissions completely before you score any of them.
+
+2. Verify their claims. For each submission, select at least eight of its most load-bearing factual claims about current behavior. These can include file and line references, statements such as "Apply does X", or statements about data that the package format does not contain. Check each claim in the code and mark it:
+
+   - Confirmed
+   - Wrong
+   - Unverifiable
+
+   Give the most weight to claims on which the proposed solution depends. Penalize a wrong claim heavily when a key decision depends on it.
+
+3. Look for missing cases. Make your own short list of the cross-project cases present in the code:
+
+   - Credential ownership and project sharing
+   - Personal credentials
+   - Global or instance-scoped credentials
+   - Static sub-workflows
+   - Error workflows
+   - Variables
+   - Data tables
+   - Tags
+   - Workflow sharing
+   - Resource moves
+   - Permission boundaries
+   - Existing branches
+   - Older destination versions
+
+   Check whether each submission supports, blocks, or explicitly excludes each case. Check whether the submission identifies cases that are not truly cross-project at runtime.
+
+4. Score each criterion from 1 to 5. Give a one-line reason for each score.
+
+   a. Factual accuracy of the current-state analysis, based on the verified claims  
+   b. Coverage: every ticket question receives a concrete answer instead of "TBD"  
+   c. Coherence: one consistent model applies across variants and resource types without contradictory rules  
+   d. Feasibility: the proposal fits the architecture, preserves existing branches and older destinations, and orders delivery to avoid unsafe intermediate states  
+   e. Constraint fit: the proposal adds no common-case friction, keeps Git as the source of truth, prevents privilege escalation, and keeps personal data out of Git  
+   f. Rejected options: the submission evaluates real alternatives and rejects them for sound reasons  
+   g. Ticket plan: tickets are independently shippable, follow dependency order, map to existing Linear tickets where relevant, and state the problem and outcome rather than only implementation details  
+   h. Decisions flagged: the submission identifies contestable product or architecture decisions for a human decision  
+
+5. Name the three strongest ideas in each submission.
+
+6. Name the three most serious flaws in each submission. Focus on wrong facts, missing cases, contradictions, unsafe recommendations, or infeasible implementation assumptions.
+
+## Required final output
+
+Provide:
+
+1. A table with the score for every criterion for Opus, Sol, Astra, and Fable, including totals.
+2. A ranking with a three-to-five sentence justification.
+3. A "best of" list. Identify the specific findings or decisions from any submission that the final solution should adopt. Attribute each item to its submission.
+4. A list of every claim marked Wrong, with the code evidence that disproves it.
+5. A short verification appendix for each submission. Include its selected claims and their Confirmed, Wrong, or Unverifiable status.
+
+## Rules
+
+- Do not reward length, formatting, confidence, or the number of citations.
+- Prefer a short and correct answer over a long answer with material errors.
+- The submission names are model names. Ignore the names when scoring.
+- Judge only the submitted content.
+- If two submissions disagree about a fact, resolve it in the code.
+- Do not guess when the code does not settle a question.
+- Distinguish current behavior from a proposed future design.
+- Do not treat a deliberate product decision as a factual error. Judge whether the decision is explicit, coherent, safe, and supported by evidence.
+- If you run out of time, state exactly which claims or submissions you did not verify.

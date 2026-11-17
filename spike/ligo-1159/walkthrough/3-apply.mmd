@@ -1,0 +1,11 @@
+flowchart TD
+    R["Reference from a workflow<br/>that this Apply writes"] --> Q1{"Target is content<br/>of this Apply?"}
+    Q1 -- yes --> C1["Apply writes it"]
+    Q1 -- no --> Q2{"On the destination by id,<br/>and not deleted by this Apply?"}
+    Q2 -- yes --> Q3{"Usable by the<br/>consumer project?"}
+    Q2 -- no --> M["MISSING"]
+    Q3 -- yes --> S["SATISFIED<br/>No step"]
+    Q3 -- no --> N["NEEDS ACCESS"]
+    M -- "credential or variable" --> B1["Create it one time<br/>at its home"]
+    M -- workflow --> B2["Blocker: fix it<br/>or accept it"]
+    N --> B3["Grant that the user confirms,<br/>or a row that says who can grant"]

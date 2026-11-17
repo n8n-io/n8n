@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pending</title>
+<style>body{margin:0;background:#fff;font-family:-apple-system,Helvetica,Arial,sans-serif}#w{display:inline-block;padding:20px}</style></head>
+<body><div id="w"><pre class="mermaid">flowchart LR
+    P1["&lt;b&gt;Phase 1&lt;/b&gt;&lt;br/&gt;Shared credentials&lt;br/&gt;without dead ends"] --&gt; P2["&lt;b&gt;Phase 2&lt;/b&gt;&lt;br/&gt;Workflow dependencies&lt;br/&gt;visible and gated"]
+    P2 --&gt; P3["&lt;b&gt;Phase 3&lt;/b&gt;&lt;br/&gt;Owner hint&lt;br/&gt;in the package"]
+    P3 --&gt; P4["&lt;b&gt;Phase 4&lt;/b&gt;&lt;br/&gt;Moves between&lt;br/&gt;team projects"]
+</pre></div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:false,theme:'neutral',fontSize:15,flowchart:{useMaxWidth:false,htmlLabels:true},sequence:{useMaxWidth:false}});
+mermaid.run().then(()=>{const r=document.getElementById('w').getBoundingClientRect();document.title='SIZE:'+Math.ceil(r.width)+'x'+Math.ceil(r.height)}).catch(e=>{document.title='ERR:'+e.message});
+</script></body></html>
