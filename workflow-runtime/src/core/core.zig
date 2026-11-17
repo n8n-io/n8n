@@ -2136,6 +2136,12 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
                 const keep = try handleEffect(s, slot, &vm, req, scratch);
                 if (!keep) t.end();
                 if (s.slot_state[slot] == .free) return;
+                // The only fibre waits on this effect (a respond completes at
+                // once): one more `run` would only find the execution idle.
+                if (req.only_fibre and req.kind != .respond) {
+                    if (@import("builtin").mode == .debug) std.debug.assert(interp.run(&vm, 0, &fuel, s.cfg.limits) == .idle);
+                    return maybeEvictWaiting(s, slot, scratch);
+                }
             },
             .trace => |req| {
                 // The action payload lives in scratch until the batch ends.

@@ -35,6 +35,9 @@ pub const EffectReq = struct {
     step: u32,
     occurrence: u32,
     args: Value,
+    /// The execution has one fibre, and it now waits on this effect: `run`
+    /// has nothing to do until the effect has a result.
+    only_fibre: bool,
 };
 
 /// A ctx.trace call of an execution with tracing on. `name` is a string.
@@ -725,7 +728,7 @@ fn suspendOn(vm: *Vm, fi: u32, ins: Instr, R: []Value) Err!Flow {
     const f = fib(vm, fi);
     f.state = .parked_effect;
     f.wait_effect = seq;
-    return .{ .effect = .{ .fibre = fi, .seq = seq, .kind = @fromBackingInt(@intCast(ins.x)), .step = s, .occurrence = occurrence, .args = R[ins.c] } };
+    return .{ .effect = .{ .fibre = fi, .seq = seq, .kind = @fromBackingInt(@intCast(ins.x)), .step = s, .occurrence = occurrence, .args = R[ins.c], .only_fibre = e.nfibres == 1 } };
 }
 
 /// Complete a parked effect. An error is thrown at the await.
