@@ -43,25 +43,24 @@ function smallInstanceFieldsOf(value: object): Record<string, unknown> | undefin
 
 function readSmallInstanceFields(value: object): Record<string, unknown> | undefined {
 	const keys = Object.keys(value);
-	if (keys.length <= MAX_SMALL_INSTANCE_FIELDS && !('toJSON' in value)) {
-		const fields = keys.map((key) => ({
-			key,
-			descriptor: Object.getOwnPropertyDescriptor(value, key),
-		}));
-		const primitiveData = fields.every(
-			({ descriptor }) =>
-				descriptor !== undefined && 'value' in descriptor && isJsonPrimitive(descriptor.value),
-		);
-		const chars = fields.reduce(
-			(sum, { key, descriptor }) =>
-				sum + key.length + (typeof descriptor?.value === 'string' ? descriptor.value.length : 0),
-			0,
-		);
-		if (primitiveData && chars <= MAX_SMALL_INSTANCE_CHARS) {
-			return Object.fromEntries(fields.map(({ key, descriptor }) => [key, descriptor?.value]));
-		}
+	if (keys.length > MAX_SMALL_INSTANCE_FIELDS || 'toJSON' in value) {
+		return undefined;
 	}
-	return undefined;
+
+	const entries: Array<[string, unknown]> = [];
+	let chars = 0;
+	for (const key of keys) {
+		const descriptor = Object.getOwnPropertyDescriptor(value, key);
+		if (!descriptor || !('value' in descriptor) || !isJsonPrimitive(descriptor.value)) {
+			return undefined;
+		}
+		chars += key.length + (typeof descriptor.value === 'string' ? descriptor.value.length : 0);
+		if (chars > MAX_SMALL_INSTANCE_CHARS) {
+			return undefined;
+		}
+		entries.push([key, descriptor.value]);
+	}
+	return Object.fromEntries(entries);
 }
 
 function isObject(value: unknown): value is object {
