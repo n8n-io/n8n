@@ -1,6 +1,8 @@
 /**
- * Compiled library node: a hand port of `@n8n/n8n-nodes-langchain.openAi`
- * version 2.3, operation `text.response` ("Message a model", Responses API).
+ * Compiled library node: a hand port of `@n8n/n8n-nodes-langchain.openAi`.
+ * Versions 2 to 2.3: operation `text.response` ("Message a model", Responses API).
+ * Versions 1 to 1.8: operation `text.message` ("Message a model", Chat Completions API);
+ * the converter names the operation, because it is the default of these versions.
  *
  * Supported: text messages, the request options that map to fields of the
  * request body, text formats (text, JSON object, JSON schema), reasoning and
@@ -55,8 +57,11 @@ interface OpenAiParameters {
 	operation?: string;
 	modelId?: string | Locator;
 	responses?: { values?: Message[] };
+	messages?: { values?: Array<Record<string, unknown>> };
+	jsonOutput?: boolean;
+	hideTools?: string;
 	simplify?: boolean;
-	options?: OpenAiOptions;
+	options?: OpenAiOptions & Record<string, unknown>;
 }
 
 interface OutputItem {
@@ -86,6 +91,30 @@ function removeEmpty(source: Record<string, unknown>): Record<string, unknown> {
 		out[key] = value;
 	}
 	return out;
+}
+
+/** The messages of n8n's NodeApiError for the status of a failed request. */
+const STATUS_MESSAGES: Record<string, string> = {
+	'400': 'Bad request - please check your parameters',
+	'401': 'Authorization failed - please check your credentials',
+	'402': 'Payment required - perhaps check your payment details?',
+	'403': 'Forbidden - perhaps check your credentials?',
+	'404': 'The resource you are requesting could not be found',
+	'405': 'Method not allowed - please check you are using the right HTTP method',
+	'429': 'The service is receiving too many requests from you',
+	'500': 'The service was not able to process your request',
+	'502': 'Bad gateway - the service failed to handle your request',
+	'503':
+		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
+	'504': 'Gateway timed out - perhaps try again later?',
+};
+
+function statusMessage(status: number): string {
+	const known = STATUS_MESSAGES[String(status)];
+	if (known !== undefined) return known;
+	return status >= 500
+		? 'The service failed to process your request'
+		: 'Your request is invalid or could not be processed by the service';
 }
 
 export default defineNode<OpenAiParameters>({
@@ -118,19 +147,101 @@ export default defineNode<OpenAiParameters>({
 				'options.temperature',
 				'options.topP',
 				'options.truncation',
+				'options.maxToolsIterations',
+			],
+			'text.message': [
+				'modelId',
+				'messages',
+				'simplify',
+				'jsonOutput',
+				'hideTools',
+				'options',
+				'options.frequency_penalty',
+				'options.maxTokens',
+				'options.n',
+				'options.presence_penalty',
+				'options.temperature',
+				'options.topP',
+				'options.maxToolsIterations',
 			],
 		},
 	},
 	async run(ctx, parameters, items, credential) {
 		const resource = parameters.resource ?? 'text';
 		const operation = parameters.operation ?? 'response';
-		if (resource !== 'text' || operation !== 'response') {
+		if (resource !== 'text' || (operation !== 'response' && operation !== 'message')) {
 			throw new Error(`OpenAI: ${resource}.${operation} is not in the compiled library`);
 		}
 		const model =
 			typeof parameters.modelId === 'string'
 				? parameters.modelId
 				: (parameters.modelId?.value ?? '');
+		if (operation === 'message') {
+			// execute of v1/actions/text/message.operation.ts, without connected tools.
+			const out: Item[] = [];
+			for (const _item of items ?? [{}]) {
+				// n8n fills the defaults of the members of a message.
+				let messages = (parameters.messages?.values ?? [{}]).map((m) => ({
+					...m,
+					role: m.role ?? 'user',
+					content: m.content ?? '',
+				}));
+				if (!messages.some((m) => typeof m.content === 'string' && m.content.trim() !== '')) {
+					throw new Error('A non-empty prompt is required.');
+				}
+				const {
+					maxToolsIterations: _iterations,
+					maxTokens,
+					topP,
+					...rest
+				} = parameters.options ?? {};
+				const body: Record<string, unknown> = { model, messages, ...rest };
+				if (maxTokens !== undefined) body.max_completion_tokens = maxTokens;
+				if (topP !== undefined) body.top_p = topP;
+				const json = parameters.jsonOutput ?? false;
+				if (json) {
+					body.response_format = { type: 'json_object' };
+					messages = [
+						{ role: 'system', content: 'You are a helpful assistant designed to output JSON.' },
+						...messages,
+					];
+					body.messages = messages;
+				}
+				const response = await ctx.http<Record<string, unknown> | null>({
+					method: 'POST',
+					url: '{{$credentials.url}}/chat/completions',
+					headers: {},
+					qs: {},
+					body,
+					credential,
+				});
+				if (response.status >= 400) throw new Error(statusMessage(response.status));
+				const result = response.body;
+				if (!isObject(result)) continue;
+				if (result.error === null) result.error = undefined;
+				const choices: Array<Record<string, unknown>> = [];
+				if (Array.isArray(result.choices)) {
+					for (const entry of result.choices) if (isObject(entry)) choices.push(entry);
+				}
+				if (json) {
+					for (const choice of choices) {
+						const message = choice.message;
+						if (!isObject(message)) continue;
+						try {
+							message.content = JSON.parse(String(message.content));
+						} catch {
+							// The v1 node keeps the text when it is not JSON.
+						}
+					}
+				}
+				if (parameters.simplify ?? true) {
+					for (const choice of choices) out.push(choice);
+				} else {
+					out.push(result);
+				}
+			}
+			return out;
+		}
 		const messages = parameters.responses?.values ?? [{ type: 'text' }];
 		const options = parameters.options ?? {};
 		const out: Item[] = [];
@@ -225,7 +336,7 @@ export default defineNode<OpenAiParameters>({
 				body: removeEmpty(body),
 				credential,
 			});
-			if (response.status >= 400) throw new Error(`OpenAI: HTTP status ${response.status}`);
+			if (response.status >= 400) throw new Error(statusMessage(response.status));
 			const result = response.body;
 			if (result.error === null) result.error = undefined;
 			const output: OutputItem[] = [];
