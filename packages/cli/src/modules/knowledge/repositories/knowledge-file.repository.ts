@@ -2,7 +2,7 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { AgentFile } from '../entities/agent-file.entity';
+import { AgentFile } from '../entities';
 
 class KnowledgeFileTable extends BaseRepository<AgentFile> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

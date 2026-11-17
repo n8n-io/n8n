@@ -1,0 +1,65 @@
+import { WithTimestampsAndStringId, type Project } from '@n8n/db';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
+
+/**
+ * A knowledge collection: files and vector stores that agents search. A shared
+ * collection (`kind = 'shared'`) belongs to a project. A private collection
+ * (`kind = 'agent'`) belongs to one agent.
+ *
+ * The check `CHK_knowledge_collection_kind` sets which columns each kind fills.
+ * The service checks that a shared collection has a description of at most
+ * `VECTOR_STORE_USE_WHEN_MAX_LENGTH` characters: agents read it on every turn.
+ */
+@Entity({ name: 'knowledge_collection' })
+@Index(['slug'], { unique: true })
+@Index(['ownerProjectId', 'name'], { unique: true })
+@Index(['agentId'], { unique: true })
+export class KnowledgeCollection extends WithTimestampsAndStringId {
+	/** Unique in the owner project. Null for an agent collection. */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	name: string | null;
+
+	/** Tells the agent when to use the collection. */
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
+	/** Tool-safe identifier, unique on the instance. Set at creation and never changed. */
+	@Column({ type: 'varchar', length: 24 })
+	slug: string;
+
+	@Column({ type: 'varchar', length: 16 })
+	kind: 'shared' | 'agent';
+
+	/**
+	 * Home project of a shared collection. Null for an agent collection.
+	 *
+	 * This column is the source of truth for the owner project, and the project
+	 * delete cascade follows it. The owner row of `SharedKnowledgeCollection`
+	 * repeats it: code that writes one writes both in one transaction.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	ownerProjectId: string | null;
+
+	/**
+	 * Read-only link to the owner project; the ownership-transfer guard needs it.
+	 * To move a collection, change `ownerProjectId` with `update()`: if this
+	 * relation is loaded, `save()` keeps the old project.
+	 */
+	@ManyToOne('Project', { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'ownerProjectId' })
+	ownerProject?: Relation<Project> | null;
+
+	/**
+	 * Agent of a private collection. The database keeps the foreign key to
+	 * `agents` with its cascade; the entity declares no relation, so the
+	 * knowledge module does not depend on the agents module.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentId: string | null;
+
+	@Column({ type: 'boolean', default: false })
+	isGlobal: boolean;
+
+	@Column({ type: 'uuid', nullable: true })
+	createdById: string | null;
+}

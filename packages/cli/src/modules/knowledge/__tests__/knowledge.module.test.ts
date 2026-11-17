@@ -7,7 +7,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 
-import { AgentFile } from '../entities/agent-file.entity';
+import {
+	AgentFile,
+	AgentKnowledgeDependency,
+	KnowledgeCollection,
+	KnowledgeFile,
+	KnowledgeVectorStore,
+	SharedKnowledgeCollection,
+} from '../entities';
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import { KnowledgeConfig } from '../knowledge.config';
 import { KnowledgeModule } from '../knowledge.module';
@@ -50,8 +57,15 @@ describe('KnowledgeModule', () => {
 		expect(entry?.instanceTypes).toBeUndefined();
 	});
 
-	it('registers the knowledge file entity', async () => {
-		await expect(new KnowledgeModule().entities()).resolves.toEqual([AgentFile]);
+	it('registers the agent file entity and the collection entities', async () => {
+		await expect(new KnowledgeModule().entities()).resolves.toEqual([
+			AgentFile,
+			KnowledgeCollection,
+			SharedKnowledgeCollection,
+			KnowledgeFile,
+			KnowledgeVectorStore,
+			AgentKnowledgeDependency,
+		]);
 	});
 
 	it('registers the configured blob backends on the knowledge file store on init', async () => {
