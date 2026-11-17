@@ -750,6 +750,10 @@ export class HttpRequestV3 implements INodeType {
 					}
 
 					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+					const credentialType = nodeCredentialType ?? genericCredentialType;
+					const additionalOAuth2Options = credentialType
+						? getOAuth2AdditionalParameters(credentialType, true)
+						: undefined;
 
 					const requestPromise = this.helpers.requestWithAuthenticationPaginated
 						.call(
@@ -757,8 +761,8 @@ export class HttpRequestV3 implements INodeType {
 							requestOptions,
 							itemIndex,
 							paginationData,
-							nodeCredentialType ?? genericCredentialType,
-							undefined,
+							credentialType,
+							additionalOAuth2Options && { oauth2: additionalOAuth2Options },
 							sanitizedRequest,
 						)
 						.catch((error) => {
