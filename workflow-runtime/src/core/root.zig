@@ -22,6 +22,7 @@ pub const core = @import("core.zig");
 pub const exactnum = @import("exactnum.zig");
 pub const logfmt = @import("logfmt.zig");
 pub const cron = @import("cron.zig");
+pub const workload = @import("workload.zig");
 pub const tz = @import("tz.zig");
 pub const multipart = @import("multipart.zig");
 pub const regex = @import("regex.zig");
@@ -39,6 +40,7 @@ test {
     _ = @import("interp_test.zig");
     _ = @import("schedule_test.zig");
     _ = @import("workflow_test.zig");
+    _ = @import("workload_test.zig");
     _ = @import("multipart.zig");
     _ = @import("fuzz_test.zig");
     _ = @import("textcodec.zig");

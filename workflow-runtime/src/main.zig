@@ -23,6 +23,7 @@ const usage =
     \\  corpus <dir>                      run every corpus/<case> and compare with expected.json
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
     \\  serve --port P [--host IPv4] [--shards N] [--log-dir D] [--log-offload on|off] [--fallback SOCK] [--fallback-wait-ms MS] [--fallback-admit-wait-ms MS] [--fallback-steps-per-worker N] [--fallback-workflow-steps N] [--stats]
+    \\        [--classes A,B,C] [--class-shards A=N,B=N] [--class-slots A=N] [--class-host-steps A=N] [--class-serve A]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--sql-max-requests N] [--sql-max-conns N] [--sql-pool-conns N] [--sql-max-result-kb K]
@@ -358,6 +359,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
             };
         }
         if (std.mem.eql(u8, k, "--shards")) opts.shards = try std.fmt.parseInt(u32, v, 10);
+        if (std.mem.startsWith(u8, k, "--class")) classFlag(&opts, k, v);
         if (std.mem.eql(u8, k, "--log-dir")) opts.log_dir = v;
         if (std.mem.eql(u8, k, "--log-offload")) opts.log_offload = std.mem.eql(u8, v, "on");
         if (std.mem.eql(u8, k, "--fallback")) opts.fallback = v;
@@ -544,6 +546,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (!explicit.conns) opts.max_conns = @max(opts.max_conns, @min(in_flight + in_flight / 4, 1 << 20));
         std.debug.print("sizing for {d}/s at {d} ms: {d} in flight; --slots {d} --max-conns {d} --egress-max-requests {d} --egress-max-conns {d}\n", .{ target_rate, vendor_latency_ms, in_flight, opts.slots, opts.max_conns, opts.max_egress, opts.egress.max_conns });
     }
+    applyClasses(&opts);
     if (opts.admin_port != null) {
         if (opts.admin_secret.len < 16) {
             std.debug.print("--admin-port needs --admin-secret-env with a secret of 16 or more bytes\n", .{});
@@ -614,6 +617,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         const dt = @as(f64, @floatFromInt(now - last_t)) / 1e9;
         std.debug.print("req/s={d:.0} total={d} batches={d} log_bytes={d} writes={d} host_inflight={d} host_waiting={d} host_waited={d} host_refused={d} host_wait_ms={d}\n", .{ @as(f64, @floatFromInt(req - last)) / dt, req, batches, log_bytes, writes, host[0], host[1], host[2], host[3], host_wait_ms });
         std.debug.print("egress: active={d} waiting={d} conns={d} origin_conns_max={d} h2_streams={d} refused_retried={d} deadline={d} deadline_queued={d} no_socket={d} queue_full={d} h2_reclaimed={d}\n", .{ eg[0], eg[1], eg[2], eg[10], eg[3], eg[4], eg[5], eg[6], eg[7], eg[8], eg[9] });
+        if (opts.workload.count > 1) printClassStats(opts.workload, stats);
         last = req;
         last_t = now;
     }
@@ -624,6 +628,63 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
     // ci.sh reads these lines: a shard's memory must not grow after startup.
     for (arenas, 0..) |*a, s| {
         std.debug.print("shard {d} memory: {d} allocation(s), {d} bytes after startup; arena {d} -> {d} bytes\n", .{ s, a.late_allocs, a.late_bytes, a.ready_capacity, a.arena.queryCapacity() });
+    }
+}
+
+/// One `--stats` line for each workload class: the sums over the shards.
+fn printClassStats(table: @import("core").workload.Classes, stats: []const server.Stats) void {
+    std.debug.assert(table.count >= 1);
+    for (0..table.count) |c| {
+        var sum = [4]u64{ 0, 0, 0, 0 };
+        for (stats) |*st| {
+            sum[0] += st.class_in_flight[c].load(.monotonic);
+            sum[1] += st.class_started[c].load(.monotonic);
+            sum[2] += st.class_refused[c].load(.monotonic);
+            sum[3] += st.class_host_waiting[c].load(.monotonic);
+        }
+        const form = "class {s}: shards={d} in_flight={d} started={d} refused={d} host_waiting={d}\n";
+        std.debug.print(form, .{ table.name(@intCast(c)), table.shards[c], sum[0], sum[1], sum[2], sum[3] });
+    }
+}
+
+/// The workload class flags of `serve` (docs/workload-classes.md).
+/// `--classes` comes before the others, which name its classes.
+fn classFlag(opts: *server.Options, k: []const u8, v: []const u8) void {
+    const eq = std.mem.eql;
+    const t = &opts.workload;
+    const done = if (eq(u8, k, "--classes"))
+        t.setNames(v)
+    else if (eq(u8, k, "--class-shards"))
+        t.set(.shards, v)
+    else if (eq(u8, k, "--class-slots"))
+        t.set(.slots, v)
+    else if (eq(u8, k, "--class-host-steps"))
+        t.set(.host_steps, v)
+    else if (eq(u8, k, "--class-serve"))
+        t.serveOnly(v)
+    else
+        error.BadName;
+    done catch |e| {
+        const form = "{s} {s}: {s}. --classes takes at most 8 names of at most 16 letters, digits, - or _. " ++
+            "The other class flags take name=number pairs of those names, and come after --classes\n";
+        std.debug.print(form, .{ k, v, @errorName(e) });
+        std.process.exit(2);
+    };
+}
+
+/// With shard groups, the shard count is the sum of the groups, and class
+/// number `c` listens on `--port` + `c`.
+fn applyClasses(opts: *server.Options) void {
+    const t = &opts.workload;
+    t.check() catch {
+        std.debug.print("--class-shards: the default class needs a shard, and so does the class of --class-serve\n", .{});
+        std.process.exit(2);
+    };
+    if (t.only != null or !t.grouped()) return;
+    opts.shards = t.totalShards();
+    if (@as(u32, opts.port) + t.count > std.math.maxInt(u16)) {
+        std.debug.print("--class-shards: --port {d} leaves no port for each class\n", .{opts.port});
+        std.process.exit(2);
     }
 }
 
