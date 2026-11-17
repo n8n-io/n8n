@@ -135,6 +135,8 @@ export interface FrontendSettings {
 		};
 	};
 	instanceId: string;
+	/** Random ID of this install, for telemetry. Absent while the process has none. */
+	installId?: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
 		enabled: boolean;

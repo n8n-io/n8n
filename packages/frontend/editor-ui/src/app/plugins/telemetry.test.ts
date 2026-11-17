@@ -49,6 +49,27 @@ describe('telemetry', () => {
 			);
 		});
 
+		it('should send the install ID from the settings as an identify trait', () => {
+			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+
+			const userId = '1';
+			const instanceId = '1';
+
+			settingsStore.setSettings(
+				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+					deployment: { type: '' },
+					installId: 'test-install',
+				}),
+			);
+
+			telemetry.identify({ instanceId, userId });
+			expect(identifyFunction).toHaveBeenCalledWith(
+				`${instanceId}#${userId}`,
+				{ instance_id: instanceId, install_id: 'test-install' },
+				{ context: { ip: '0.0.0.0' } },
+			);
+		});
+
 		it('Rudderstack identify method should be called when proving userId and versionCli ', () => {
 			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
 
