@@ -164,7 +164,7 @@ describe('Luxon in expressions', () => {
 
 	it.each([
 		['$now.toFormat(fmt)', 'Luxon toFormat'],
-		["$now.toFormat('DDDD')", 'Luxon toFormat'],
+		["$now.toFormat('ZZZZ')", 'Luxon toFormat'],
 		['$now.setZone(zone)', 'Luxon zone'],
 		['$now', 'Luxon value'],
 		['String($now)', 'Luxon value'],

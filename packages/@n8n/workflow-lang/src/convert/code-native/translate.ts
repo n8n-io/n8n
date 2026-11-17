@@ -31,6 +31,7 @@ import { DEFAULT_TIMEZONE } from '../triggers.ts';
 import { LOCALE_NAMES, LOCALE_TABLE } from './locale-data.generated.ts';
 import { planBody, planCatch } from './catch-check.ts';
 import { derivedLocaleEntry } from './locale-derive.ts';
+import { formatSupported as luxonFormatSupported } from './luxon-expression.ts';
 import { checkRegex } from './regex-syntax.ts';
 
 export type CodeMode = 'all' | 'each';
@@ -1724,29 +1725,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		'milliseconds',
 	]);
 
-	/** The tokens of `luxFormat`. */
-	const LUX_TOKENS = new Set(
-		'yyyy yy y yyyyyy M MM MMM MMMM MMMMM L LL LLL LLLL LLLLL d dd H HH h hh m mm s ss S SSS a c ccc cccc ccccc E EEE EEEE EEEEE o ooo Z ZZ ZZZ z x X q qq'.split(
-			' ',
-		),
-	);
-
-	const formatSupported = (fmt: string): boolean => {
-		let k = 0;
-		while (k < fmt.length) {
-			const ch = fmt.charAt(k);
-			if (ch === "'") {
-				const end = fmt.indexOf("'", k + 1);
-				k = end < 0 ? fmt.length : end + 1;
-				continue;
-			}
-			let n = 1;
-			while (fmt.charAt(k + n) === ch) n++;
-			if (/[A-Za-z]/.test(ch) && !LUX_TOKENS.has(fmt.slice(k, k + n))) return false;
-			k += n;
-		}
-		return true;
-	};
+	/** A format whose tokens `luxFormat` has (`luxon-expression.ts`). */
+	const formatSupported = luxonFormatSupported;
 
 	/** A DateTime method on any receiver: true when it wrote the call. */
 	const luxMethod = (
