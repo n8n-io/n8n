@@ -246,7 +246,7 @@ function onKeydown(event: KeyboardEvent) {
 					:aria-label="descriptionLabel ?? title"
 				>
 					<slot name="description"
-						><N8nText step="sm">{{ description }}</N8nText></slot
+						><N8nText step="sm" :class="$style.descriptionText">{{ description }}</N8nText></slot
 					>
 				</div>
 				<N8nCodeBlock
@@ -410,6 +410,11 @@ function onKeydown(event: KeyboardEvent) {
 
 .description {
 	overflow-wrap: anywhere;
+}
+
+/* Descriptions are plain text, so keep their line breaks (for example one line per change). */
+.descriptionText {
+	white-space: pre-line;
 }
 
 .list {
