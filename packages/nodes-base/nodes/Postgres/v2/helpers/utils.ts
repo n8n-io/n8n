@@ -711,13 +711,14 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 
 type StartAfterColumnInfo = {
 	data_type: string;
+	is_text: boolean;
 	not_null: boolean;
 	is_unique: boolean;
 	has_child_tables: boolean;
 };
 
 /**
- * Reads what Start After needs about the column in one query, because the node checks it before each page.
+ * Reads what Start After needs about the column from the catalog in one query, because the node checks it before each page.
  * indnkeyatts leaves out INCLUDE columns. PostgreSQL 10 does not have it, so the query reads it through to_jsonb.
  * A select also gets the rows of child tables, but a unique index covers one table. A partitioned table is safe.
  */
@@ -731,6 +732,7 @@ async function getStartAfterColumnInfo(
 		`
 		SELECT
 			format_type(COALESCE(NULLIF(t.typbasetype, 0), a.atttypid), NULL) AS data_type,
+			t.typcategory = 'S' AS is_text,
 			a.attnotnull AS not_null,
 			EXISTS (
 				SELECT 1
@@ -751,6 +753,23 @@ async function getStartAfterColumnInfo(
 		`,
 		[schema, table, column],
 	);
+}
+
+/**
+ * `= ''` uses the unique index. octet_length leaves out values that are only equal to '',
+ * for example a blank char(n) value, which n8n gets back as spaces.
+ */
+async function hasEmptyText(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+): Promise<boolean> {
+	const { has_empty_text } = await db.one<{ has_empty_text: boolean }>(
+		"SELECT EXISTS (SELECT 1 FROM $1:name.$2:name WHERE $3:name = '' AND octet_length($3:name) = 0) AS has_empty_text",
+		[schema, table, column],
+	);
+	return has_empty_text;
 }
 
 const TIMESTAMP_TYPES = ['timestamp without time zone', 'timestamp with time zone'];
@@ -808,6 +827,14 @@ async function getStartAfterColumnProblem(
 		return {
 			message: `Column "${column}" can be null`,
 			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,
+		};
+	}
+	// After the unique index check, so the lookup can use the index
+	if (columnInfo.is_text && (await hasEmptyText(db, schema, table, column))) {
+		return {
+			message: `Column "${column}" has empty text in one row`,
+			description:
+				'An empty Value gets the first page. If a page ends on this row, the next page is the first page again, and the loop can repeat forever. With Sort DESC, the last page always ends on this row. Use another unique column, for example the primary key.',
 		};
 	}
 

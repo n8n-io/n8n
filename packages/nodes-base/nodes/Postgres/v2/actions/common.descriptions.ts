@@ -404,7 +404,7 @@ export const startAfterFixedCollection: INodeProperties = {
 					type: 'string',
 					default: '',
 					description:
-						"The value of the column in the last row of the page before. Leave empty to get the first page. If that row has empty text in the column, you get the first page again, so don't page by a column with empty text.",
+						'The value of the column in the last row of the page before. Leave empty to get the first page.',
 					hint: 'The node runs once for each input item. In a loop, give it only the last row of the page before, for example with a Limit node that keeps the last item, and use {{ $json.id }}.',
 				},
 			],

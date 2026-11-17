@@ -1256,18 +1256,23 @@ describe('Test PostgresV2, select operation', () => {
 });
 
 describe('Test PostgresV2, select operation with Start After', () => {
-	/** `oneOrNone` returns what the node reads about the Start After column, or null for a missing column */
-	const createColumnInfoDb = (columnInfo: IDataObject | null = {}) => {
+	/**
+	 * `oneOrNone` returns what the node reads about the Start After column, or null for a missing column.
+	 * `one` tells if a row has empty text in the column.
+	 */
+	const createColumnInfoDb = (columnInfo: IDataObject | null = {}, hasEmptyText = false) => {
 		const oneOrNone = vi.fn().mockResolvedValue(
 			columnInfo && {
 				data_type: 'integer',
+				is_text: false,
 				not_null: true,
 				is_unique: true,
 				has_child_tables: false,
 				...columnInfo,
 			},
 		);
-		return { db: { oneOrNone } as unknown as PgpDatabase, oneOrNone };
+		const one = vi.fn().mockResolvedValue({ has_empty_text: hasEmptyText });
+		return { db: { oneOrNone, one } as unknown as PgpDatabase, oneOrNone, one };
 	};
 
 	const selectParameters = (
@@ -1339,7 +1344,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		]);
 	});
 
-	// A unit test cannot run the column query. Each of these conditions stops a column whose pages can skip rows.
+	// A unit test cannot run the column query. Each of these conditions stops a column whose pages can skip or repeat rows.
 	it.each([
 		'(i.indisprimary OR i.indisunique)',
 		'i.indkey[0] = a.attnum',
@@ -1347,6 +1352,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		'i.indpred IS NULL',
 		"COALESCE((to_jsonb(i) ->> 'indnkeyatts')::int, i.indnatts) = 1",
 		"c.relkind <> 'p' AND EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = c.oid)",
+		"t.typcategory = 'S' AS is_text",
 		'a.attnotnull AS not_null',
 		'a.attnum > 0 AND NOT a.attisdropped',
 	])('should keep the condition %s in the column query', async (condition) => {
@@ -1634,7 +1640,12 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			{ data_type: 'date', is_unique: false },
 			'Column "created_on" has no unique index that Start After can use',
 		],
-		['nullable', 'email', { data_type: 'text', not_null: false }, 'Column "email" can be null'],
+		[
+			'nullable',
+			'email',
+			{ data_type: 'text', is_text: true, not_null: false },
+			'Column "email" can be null',
+		],
 		[
 			'a timestamp',
 			'happened_at',
@@ -1667,10 +1678,64 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		],
 		['missing', 'nope', null, 'Cannot find column "nope" in "public.orders"'],
 	])('should throw when the column is %s', async (_, column, columnInfo, message) => {
-		const { db } = createColumnInfoDb(columnInfo);
+		const { db, one } = createColumnInfoDb(columnInfo);
 
 		await expect(runSelect(selectParameters({ column, value: '5' }), db)).rejects.toThrow(message);
+		expect(one).not.toHaveBeenCalled();
 		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should throw when a row has empty text in the column', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'character varying', is_text: true }, true);
+
+		await expect(
+			runSelect(selectParameters({ column: 'slug', value: '' }), db),
+		).rejects.toMatchObject({
+			message: 'Column "slug" has empty text in one row',
+			description: expect.stringContaining('the next page is the first page again'),
+		});
+		expect(one).toHaveBeenCalledWith(
+			"SELECT EXISTS (SELECT 1 FROM $1:name.$2:name WHERE $3:name = '' AND octet_length($3:name) = 0) AS has_empty_text",
+			['public', 'orders', 'slug'],
+		);
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should page by a text column when no row has empty text', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'text', is_text: true });
+
+		await runSelect(selectParameters({ column: 'slug', value: 'about' }), db);
+
+		expect(one).toHaveBeenCalledTimes(1);
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'slug',
+			'about',
+			'slug',
+			100,
+		]);
+	});
+
+	it('should not look for empty text in a column that is not text', async () => {
+		const { db, one } = createColumnInfoDb({ data_type: 'integer' }, true);
+
+		await runSelect(selectParameters({ column: 'id', value: '5' }), db);
+
+		expect(one).not.toHaveBeenCalled();
+	});
+
+	// Without a unique index, the lookup reads the full table before each page
+	it('should look for empty text only after the unique index check', async () => {
+		const { db, one } = createColumnInfoDb(
+			{ data_type: 'text', is_text: true, is_unique: false },
+			true,
+		);
+
+		await expect(runSelect(selectParameters({ column: 'slug', value: '' }), db)).rejects.toThrow(
+			'Column "slug" has no unique index that Start After can use',
+		);
+		expect(one).not.toHaveBeenCalled();
 	});
 
 	it('should name the problem in the error description', async () => {
@@ -1696,7 +1761,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 	});
 
 	it('should read the column once per run for each schema, table and column', async () => {
-		const { db, oneOrNone } = createColumnInfoDb();
+		const { db, oneOrNone, one } = createColumnInfoDb({ data_type: 'text', is_text: true });
 		const itemColumns = [
 			['public', 'orders', 'id'],
 			['public', 'orders', 'id'],
@@ -1722,12 +1787,14 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			db,
 		);
 
-		expect(oneOrNone.mock.calls.map(([, values]) => values)).toEqual([
+		const readColumns = [
 			['public', 'orders', 'id'],
 			['public', 'orders', 'order_number'],
 			['public', 'customers', 'id'],
 			['archive', 'orders', 'id'],
-		]);
+		];
+		expect(oneOrNone.mock.calls.map(([, values]) => values)).toEqual(readColumns);
+		expect(one.mock.calls.map(([, values]) => values)).toEqual(readColumns);
 		expect(vi.mocked(runQueries).mock.calls[0][0]).toHaveLength(5);
 	});
 
