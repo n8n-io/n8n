@@ -4489,3 +4489,153 @@ test "a stored response gives its step a result through the event list" {
     try std.testing.expect(std.mem.indexOf(u8, bad.payload, "not an id of the file system store") != null);
     try std.testing.expect(!blobs.busy() and blobs.nextDone() == null);
 }
+
+// ---- the `sql` effect through the shard (pg.zig, spec 9.10) ---------------------
+
+const pg_fake = @import("pg_fake.zig");
+const kind_pg_fake: u8 = 15;
+
+/// `run(t) { return await Query(t) }`: a `sql` step whose arguments are the trigger.
+fn sqlModule(gpa: std.mem.Allocator) ![]u8 {
+    const Asm = core_lib.asm_.Asm;
+    var m: Asm = .{ .gpa = gpa, .meta = "{\"triggers\":[{\"kind\":\"webhook\",\"path\":\"w\"}]}" };
+    defer m.deinit();
+    const call = try m.step("Query", .sql);
+    m.beginFunc();
+    try m.emitBc(.loadi, 3, call);
+    try m.emit(.@"suspend", @backingInt(core_lib.module.EffectKind.sql), 4, 3, 0);
+    try m.emit(.ret, 0, 4, 0, 0);
+    try m.endFunc("run", 1, 5, 0);
+    return m.finish();
+}
+
+/// Run the loop of the shard for the `sql` client and the scripted server
+/// until the shard has `want` events for the core.
+fn pumpSql(r: *Runner, server: *pg_fake.Server, want: usize) !void {
+    var ready: [64]sys.Ready = @splat(.{ .token = 0, .readable = false, .writable = false, .eof = false });
+    for (0..2000) |_| {
+        if (r.events.items.len >= want) return;
+        const n = r.poller.wait(&ready, 5);
+        for (ready[0..n]) |ev| {
+            if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
+        }
+        r.sql.afterEvents(sys.nowMs());
+        r.drainSql();
+    }
+    return error.NoResult;
+}
+
+/// Start a run of module 0 with `args` as its trigger and give its `sql`
+/// step to the client, as `perform` does.
+fn startSqlRun(r: *Runner, args: []const u8) !u64 {
+    const tk = try r.sh.tick(sys.nowMs(), &.{.{ .kind = .start, .aux = 0, .payload = args }});
+    defer r.sh.endBatch();
+    for (tk.actions) |a| {
+        if (a.kind != .dispatch) continue;
+        try std.testing.expectEqual(core_lib.module.EffectKind.sql, a.effect_kind);
+        try r.dispatch(a);
+        return a.exec_id;
+    }
+    return error.NoDispatch;
+}
+
+/// Give the events of the shard to the core; the payload of the `finished`
+/// action of `exec`, copied.
+fn finishSqlRun(r: *Runner, gpa: std.mem.Allocator, exec: u64) ![]const u8 {
+    const tk = try r.sh.tick(sys.nowMs(), r.events.items);
+    defer r.sh.endBatch();
+    r.events.clearRetainingCapacity();
+    for (tk.actions) |a| {
+        if (a.kind == .finished and a.exec_id == exec) return gpa.dupe(u8, a.payload);
+    }
+    return error.NotFinished;
+}
+
+test "a sql step goes to the PostgreSQL client, and its result resumes the run" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const gpa = mod_arena.allocator();
+    const mods = [_][]const u8{try sqlModule(gpa)};
+    var t: TestRunner = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .modules = &mods };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    const server = try gpa.create(pg_fake.Server);
+    try server.init(gpa, &r.poller, kind_pg_fake);
+    defer server.deinit();
+    const rules = [_]pg_fake.Rule{
+        .{ .text = "select $1::int4 as x", .cols = &.{.{ .name = "x", .oid = 23 }}, .rows = &.{&.{"42"}}, .tag = "SELECT 1" },
+        .{ .text = "select boom", .run_fail = .{ .code = "22012", .message = "division by zero" } },
+    };
+    server.rules = &rules;
+    const doc = try std.fmt.allocPrint(gpa, "{{\"db\":{{\"data\":{{\"host\":\"127.0.0.1\",\"port\":{d},\"user\":\"alice\",\"password\":\"p\",\"database\":\"app\"}}}}}}", .{server.port});
+    const store = try gpa.create(creds.Store);
+    store.* = try creds.Store.parse(gpa, doc);
+    r.egress.cfg.credentials = store;
+
+    // The result of the call is the value of the step.
+    const one = try startSqlRun(r, "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select $1::int4 as x\",\"values\":[42]}]}");
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    try pumpSql(r, server, 1);
+    try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
+    try std.testing.expectEqual(one, r.events.items[0].exec_id);
+    try std.testing.expectEqualStrings("{\"results\":[{\"rows\":[{\"x\":42}],\"command\":\"SELECT\",\"rowCount\":1}]}", r.events.items[0].payload);
+    const done = try finishSqlRun(r, gpa, one);
+    try std.testing.expect(std.mem.indexOf(u8, done, "{\"x\":42}") != null);
+    try std.testing.expectEqual(@as(u32, 1), server.count("bind 42"));
+    // An error of the database is data of the result, not a failed step.
+    const two = try startSqlRun(r, "{\"credential\":\"db\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select boom\"}]}");
+    try pumpSql(r, server, 1);
+    try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
+    try std.testing.expect(std.mem.indexOf(u8, r.events.items[0].payload, "\"code\":\"22012\",\"message\":\"division by zero\"") != null);
+    _ = try finishSqlRun(r, gpa, two);
+    // A call that the client refuses when it starts is an effect error with its text.
+    const three = try startSqlRun(r, "{\"credential\":\"nope\",\"dialect\":\"postgres\",\"statements\":[{\"text\":\"select boom\"}]}");
+    try pumpSql(r, server, 1);
+    try std.testing.expectEqual(core.EventKind.effect_err, r.events.items[0].kind);
+    try std.testing.expectEqual(three, r.events.items[0].exec_id);
+    try std.testing.expectEqualStrings("sql: the credential slot of the call is not in the credentials", r.events.items[0].payload);
+    try std.testing.expect(!server.failed);
+    try std.testing.expectEqual(@as(u64, 1), r.sql.counters.connects);
+}
+
+test "sql results wait in the client while the event list has no room, and a call without a slot fails at once" {
+    var t: TestRunner = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator) };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    const slots = r.opts.sql.max_reqs;
+    // Calls with bad arguments end at once and hold their slots until the shard takes the results.
+    for (0..slots) |i| r.startSql(.{ .kind = .dispatch, .effect_kind = .sql, .exec_id = 9, .seq = std.math.cast(u32, i + 1).?, .module = 0, .step = 0, .attempt = 0, .payload = "{}" });
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    // No slot is free: the next call fails with the limit error, as an event.
+    r.startSql(.{ .kind = .dispatch, .effect_kind = .sql, .exec_id = 10, .seq = 1, .module = 0, .step = 0, .attempt = 0, .payload = "{}" });
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    try std.testing.expectEqual(core.EventKind.effect_err, r.events.items[0].kind);
+    try std.testing.expectEqual(@as(u64, 10), r.events.items[0].exec_id);
+    try std.testing.expect(std.mem.indexOf(u8, r.events.items[0].payload, "--sql-max-requests") != null);
+    r.events.clearRetainingCapacity();
+    // A full event list takes no result; the results come later, oldest first.
+    const free = r.events.capacity - r.resultReserve();
+    for (0..free) |_| r.events.appendAssumeCapacity(.{ .kind = .cancel, .exec_id = 1 });
+    r.drainSql();
+    try std.testing.expectEqual(free, r.events.items.len);
+    var next_seq: u32 = 1;
+    for (0..slots) |_| {
+        if (next_seq > slots) break;
+        r.events.clearRetainingCapacity();
+        r.drainSql();
+        try std.testing.expect(r.events.items.len > 0 and r.events.items.len + r.resultReserve() <= r.events.capacity);
+        for (r.events.items) |ev| {
+            try std.testing.expectEqual(core.EventKind.effect_err, ev.kind);
+            try std.testing.expectEqualStrings("sql: the dialect must be 'postgres'", ev.payload);
+            try std.testing.expectEqual(next_seq, ev.seq);
+            next_seq += 1;
+        }
+    }
+    try std.testing.expectEqual(slots + 1, next_seq);
+    // Every slot is free again.
+    try std.testing.expectEqual(@as(?pg.Done, null), r.sql.nextDone());
+    r.startSql(.{ .kind = .dispatch, .effect_kind = .sql, .exec_id = 11, .seq = 1, .module = 0, .step = 0, .attempt = 0, .payload = "{}" });
+    try std.testing.expectEqual(@as(u64, 1), r.sql.counters.refused);
+}

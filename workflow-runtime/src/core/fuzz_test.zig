@@ -704,6 +704,13 @@ fn fuzzPgwireValue(_: void, smith: *Smith) !void {
     pgwire.writeValue(&o, class, text, opt) catch return;
     if (o.len == 0 or o.len > 128) return error.PgwireValueLength;
     for (obuf[128..]) |b| if (b != 0xEE) return error.PgwireValueOverrun;
+    // An array is one JSON array; an interval, a point and a circle are one object.
+    const ends: [2]u8 = switch (class) {
+        .array_bool, .array_int, .array_float, .array_text, .array_json, .array_timestamp, .array_interval, .array_point => "[]".*,
+        .interval, .point, .circle => "{}".*,
+        .boolean, .int, .int8, .float, .numeric, .json, .bytea, .timestamp, .text, .unsupported => .{ obuf[0], obuf[o.len - 1] },
+    };
+    if (obuf[0] != ends[0] or obuf[o.len - 1] != ends[1]) return error.PgwireValueShape;
     // A text column is one JSON string: no raw quote or control byte inside.
     if (class != .text) return;
     for (obuf[1 .. o.len - 1], 1..) |b, i| {
@@ -713,7 +720,18 @@ fn fuzzPgwireValue(_: void, smith: *Smith) !void {
 
 test "fuzz pgwire column values" {
     try std.testing.fuzz({}, fuzzPgwireValue, .{
-        .corpus = &.{ seed("2024-01-02 03:04:05.123456+05:30"), seed("\\x00ff"), seed("{\"a\":[1,\"}\"]}"), seed("-9223372036854775808"), seed("a\"b\\c\n") },
+        .corpus = &.{
+            seed("2024-01-02 03:04:05.123456+05:30"),
+            seed("\\x00ff"),
+            seed("{\"a\":[1,\"}\"]}"),
+            seed("-9223372036854775808"),
+            seed("a\"b\\c\n"),
+            seed("{1,NULL,\"a b\",\"q\\\"uote\",{2,3}}"),
+            seed("[0:1]={{1.5,NaN},{t,f}}"),
+            seed("{\"2024-01-02 03:04:05+00\",infinity,\"(1,2)\",\"1 day 02:00:00\"}"),
+            seed("-1 years -2 mons +3 days -04:05:06.789"),
+            seed("<(1.5,-2e+20),Infinity>"),
+        },
     });
 }
 

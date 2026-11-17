@@ -85,3 +85,16 @@ export function nodeSourcesOf(
 		...(storesResponses ? { storesResponses: true } : {}),
 	};
 }
+
+/**
+ * The sources when n8n does not compile nodes from their code: no node has a file, and the
+ * nodes of `hostNodes` run in the fallback host.
+ */
+export function hostOnlySources(hostNodes: ReadonlySet<string>): NodeSources {
+	return {
+		entry: () => undefined,
+		readFile: () => undefined,
+		description: () => undefined,
+		runsInHost: (nodeName) => hostNodes.has(nodeName),
+	};
+}

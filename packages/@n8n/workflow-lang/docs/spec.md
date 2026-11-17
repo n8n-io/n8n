@@ -1768,7 +1768,11 @@ await ctx.sql({
 
   In the modes `single` and `transaction`, `results` ends with the first
   failure. A failure of `COMMIT` (a deferred constraint) is one more
-  failure entry after the entries of the statements. A text without a
+  failure entry after the entries of the statements. For a statement that
+  runs alone (each statement in the mode `independently`, and one
+  statement in the mode `single`), a failure at its commit is the failure
+  entry of the statement, so `results` has one entry for each statement
+  that ran. A text without a
   command gives `command: null`. A row is an object with a key for each
   column, in column order. `SqlError` has `message` and the fields of
   the error response of the server with the names of node-postgres
@@ -1798,8 +1802,15 @@ await ctx.sql({
   | `date` | the text of the server |
   | `timestamptz` | `new Date(text).toISOString()`; a text that is not a date (`infinity`) stays |
   | `timestamp` | as `timestamptz`, only with `--sql-timestamp-zone utc`: v1 reads the text in the zone of its process |
-  | SQL NULL | null |
-  | each other type | the text of the server |
+  | `interval` | the object of postgres-interval: `{ years, months, days, hours, minutes, seconds, milliseconds }` without the parts that are 0 (`{}` for an empty interval) |
+  | `point` | `{ "x": number, "y": number }`; NaN and the infinities are null |
+  | `circle` | `{ "x": number, "y": number, "radius": number }` |
+  | `bool[]`, `int2[]`, `int4[]`, `oid[]`, `float4[]`, `float8[]`, `json[]`, `jsonb[]`, `date[]`, `timestamptz[]`, `timestamp[]`, `interval[]`, `point[]` | an array with the JSON of the element type for each element; an inner array is an inner array; `timestamp[]` only with `--sql-timestamp-zone utc` |
+  | `int8[]` | an array of texts, with each `largeNumbers` value: v1 changes only a column of type `int8` |
+  | `numeric[]` | an array of numbers (`parseFloat`, NaN is null), with each `largeNumbers` value |
+  | `text[]`, `varchar[]`, `char[]`, `uuid[]`, `cidr[]`, `inet[]`, `macaddr[]`, `money[]`, `time[]`, `timetz[]`, `numrange[]` | an array of texts |
+  | SQL NULL, and a NULL element of an array | null |
+  | each other type, also each other array type | the text of the server |
 
 * **Limits that send the node to the fallback host.** v1 has none of these
   limits, so a call that reaches one fails with an effect error whose text
@@ -1811,14 +1822,16 @@ await ctx.sql({
   | Marker | Cause |
   |---|---|
   | `(limit: sql-max-result)` | the result is larger than `--sql-max-result-kb` |
-  | `(limit: sql-type)` | a column type without an exact native form: the array types that node-postgres parses, `interval`, `point`, `circle`, `date` with `dates: 'legacy'`, `timestamp` without `--sql-timestamp-zone utc`; or a value of such a kind |
+  | `(limit: sql-type)` | a column type without an exact native form: `bytea[]`; `date`, `date[]`, `timestamp[]` and `timestamptz[]` with `dates: 'legacy'`; `timestamp` and `timestamp[]` without `--sql-timestamp-zone utc`; or a value without one (a timestamp before the year 1000) |
   | `(limit: sql-statement)` | the text is not one command with bind values: more than one command, a parameter whose type the server cannot find where a literal has one (`42P18`), a parameter where the command takes none (`42P02`), a syntax error at a `$n` |
   | `(limit: sql-credential)` | the credential uses the SSH tunnel, or a CA or client certificate |
   | `(limit: sql-host)` | thrown by a library node, before it sends a statement, for an input that it cannot send with bind values |
 
   `wfrt` also gives `(limit: sql-type)` for a result with two columns of
-  one name or more than 512 columns, and when the DateStyle of the session
-  is not ISO; and `(limit: sql-statement)` for a parameter without a value,
+  one name or more than 512 columns, for a date or a timestamp when the
+  DateStyle of the session is not ISO, and for an interval when the
+  IntervalStyle of the session is not `postgres`; and
+  `(limit: sql-statement)` for a parameter without a value,
   for a call with more than 16 different statements, and for a call larger
   than `--sql-max-request-kb`.
 
@@ -1827,8 +1840,11 @@ await ctx.sql({
   therefore runs a statement that gives rows and does not start with
   `SELECT` between `BEGIN` and `COMMIT`, and does `ROLLBACK` before it
   gives the marker. A `SELECT` runs again in the host. One case has no
-  marker: in the mode `independently`, after a statement of the call is
-  committed, such a failure of a later statement is a plain limit error.
+  marker: in the mode `independently`, after a statement with an effect is
+  committed (a statement that ended without an error and is not a `SELECT`
+  that gives rows), such a failure of a later statement is a plain limit
+  error, and the statements after it do not run. A call whose statements
+  before the failure only read, or failed, still ends with the marker.
 
   Other effect errors have no marker: arguments that are not valid, a slot
   that is not there, no free call slot (`(limit)`), the total timeout (the
@@ -1848,11 +1864,14 @@ await ctx.sql({
   from the fixture by step name, as for the other effects. `{ "$error":
   "<text>" }` is an effect error.
 * **Converter.** `ConvertOptions.sql: true` says that the runtime runs
-  `sql` effects. The Postgres node (versions 2.5 and later, operations
-  `executeQuery`, `select` and `deleteTable`, a node that stops the workflow
-  on an error) is then the library node `src/nodes/postgres.ts`, with the
-  fallback-host form of the node after it for a call that ends with a
-  marker. Each other Postgres node runs in the fallback host.
+  `sql` effects. The Postgres node (versions 2.1 and later, operations
+  `executeQuery`, `select` and `deleteTable`, and from version 2.2 `insert`,
+  `update` and `upsert`, a node that stops the workflow on an error) is then
+  the library node `src/nodes/postgres.ts`, with the fallback-host form of
+  the node after it for a call that ends with a marker. Each other Postgres
+  node runs in the fallback host: a node with a continue setting (its error
+  items hold a copy of the node and a time), and a node with
+  `replaceEmptyStrings` and an expression.
 
 ## 10. Fallback host steps (AI clusters, binary data, Python)
 

@@ -21,7 +21,7 @@ import { CompiledEngineCredentials } from './compiled-engine-credentials';
 import { CompiledEngineProcesses } from './compiled-engine-processes';
 import type { CompiledArtifact, CredentialSlotBinding } from './compiled-engine.types';
 import type { PublicCredential } from './compiled-node-sources';
-import { nodeSourcesOf } from './compiled-node-sources';
+import { hostOnlySources, nodeSourcesOf } from './compiled-node-sources';
 import { CompiledSubWorkflowResolver } from './compiled-sub-workflow.resolver';
 import { loadWorkflowLang } from './workflow-lang';
 
@@ -54,7 +54,7 @@ const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
  * The form of a stored artifact. It is part of the cache key: an artifact of an older form
  * is not read. Form 2: the guard of a node with conditions on its credential names the node.
  */
-const ARTIFACT_FORM = 2;
+const ARTIFACT_FORM = 3;
 
 function isTriggerType(type: string) {
 	return /trigger$/i.test(type) || type === 'n8n-nodes-base.webhook';
@@ -329,16 +329,14 @@ export class CompiledWorkflowCompiler {
 
 		// With every node that can compile, compiled.
 		const full = await this.compileKeyed(baseKey, context, []);
-		if (!this.compileNodes || !full.ok) return full;
+		if (!full.ok) return full;
 		// A compiled node with conditions on its credential runs compiled only for the values of
 		// the conditions that were checked against the v1 node. For other values the node must
 		// not fail where v1 succeeds: it runs in the fallback host. The artifact above is the
 		// one to use again when the credential changes to checked values.
-		const flagNodes = await this.credentials.unprovenFlagNodes(
-			input.id,
-			full.slots,
-			full.derivations,
-		);
+		const flagNodes = this.compileNodes
+			? await this.credentials.unprovenFlagNodes(input.id, full.slots, full.derivations)
+			: [];
 		// A node that reached a limit of `wfrt` that v1 does not have runs in the host too.
 		const limitNodes = this.limitNodes.get(input.id);
 		const hostNodes = limitNodes ? [...new Set([...flagNodes, ...limitNodes])] : flagNodes;
@@ -408,6 +406,8 @@ export class CompiledWorkflowCompiler {
 				baseUrl: `${this.urlService.getInstanceBaseUrl()}/`,
 				id: this.instanceSettings.instanceId,
 			},
+			// `wfrt` runs the `sql` effect: a Postgres node that the library node has runs there.
+			sql: true,
 			// A node without a built-in version is compiled from its own code
 			// (N8N_COMPILED_ENGINE_COMPILE_NODES).
 			...(this.compileNodes
@@ -421,7 +421,11 @@ export class CompiledWorkflowCompiler {
 							new Set(hostNodes),
 						),
 					}
-				: {}),
+				: hostNodes.length > 0
+					? // A library node that reached a limit of `wfrt` stays in the host. No node
+						// compiles from its code: the sources give no file.
+						{ nodeSources: hostOnlySources(new Set(hostNodes)) }
+					: {}),
 		};
 		const converted = lang.convertWorkflow(workflowJson, options);
 		const diagnostics: CompiledEngineDiagnostic[] = converted.diagnostics.map((d) => ({

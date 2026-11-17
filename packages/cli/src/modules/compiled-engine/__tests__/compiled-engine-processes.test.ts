@@ -4,7 +4,11 @@ import type { BinaryDataConfig } from 'n8n-core';
 
 import type { GlobalConfig } from '@n8n/config';
 
-import { CompiledEngineProcesses, wfrtUserAgent } from '../compiled-engine-processes';
+import {
+	CompiledEngineProcesses,
+	sqlTimestampZone,
+	wfrtUserAgent,
+} from '../compiled-engine-processes';
 import { CompiledEngineConfig } from '../compiled-engine.config';
 
 type BinaryEnv = {
@@ -118,5 +122,15 @@ describe('the listen address of wfrt', () => {
 
 	it('starts wfrt on the address of the setting', () => {
 		expect(hostOf(argsWith('0.0.0.0'))).toBe('0.0.0.0');
+	});
+});
+
+describe('sqlTimestampZone', () => {
+	it('tells wfrt to read a timestamp without a zone as UTC only when n8n runs in UTC', () => {
+		expect(sqlTimestampZone('UTC')).toBe('utc');
+		expect(sqlTimestampZone('Etc/UTC')).toBe('utc');
+		expect(sqlTimestampZone('Europe/Berlin')).toBeUndefined();
+		// London is not UTC in summer.
+		expect(sqlTimestampZone('Europe/London')).toBeUndefined();
 	});
 });

@@ -38,15 +38,52 @@ stateDiagram-v2
 - **Validate, then run.** All statements of a call are parsed and described before one of them runs. The call
   ends with a marker, and runs in the fallback host, when: the server refuses to prepare a text that pg-promise
   can run (more than one command, a parameter without a type or without a value, a parameter where only a literal
-  can be), a result column has a type without a native form (arrays, interval, point, circle, a timestamp without
-  a zone unless `--sql-timestamp-zone utc`, a date with `dates: legacy`), two columns have one name, or the
-  DateStyle of the session is not ISO.
+  can be), a result column has a type without a native form (`bytea[]`, a timestamp without a zone or an array of
+  them unless `--sql-timestamp-zone utc`, a date or an array of dates or timestamps with `dates: legacy`), two
+  columns have one name, the DateStyle of the session is not ISO and a column has a date or a timestamp, or the
+  IntervalStyle of the session is not `postgres` and a column has an interval.
 - **Modes.** `single` with one statement and `independently` run each statement alone. `single` with more than
   one statement and `transaction` send `BEGIN`, all statements in one write, then `COMMIT` or `ROLLBACK`.
 - **A failure after the statement ran.** A result over `--sql-max-result-kb`, or a value without a native form (a
-  timestamp before the year 1000), shows only in the rows. A statement that gives rows and does not start with
-  `SELECT` therefore runs between `BEGIN` and `COMMIT`, so the client can roll it back and give the marker. A
-  `SELECT` runs again in the host.
+  timestamp before the year 1000, a text that is not in the form that the server writes), shows only in the rows.
+  A statement that gives rows and does not start with `SELECT` therefore runs between `BEGIN` and `COMMIT`, so the
+  client can roll it back and give the marker. A `SELECT` runs again in the host.
+- **When a marker is allowed.** The call keeps one fact: a statement that can have changed the database is
+  committed. A statement counts when it ended without an error and it is not a `SELECT` that gives rows
+  (`SELECT ... INTO` gives no rows, so it counts). While the fact is false, the host can run the whole call again,
+  so the call can end with a marker. In the modes `single` and `transaction` the fact is always false at a
+  failure, because the failure rolls the transaction back. In the mode `independently` each statement commits
+  alone, so the fact becomes true after the first statement with an effect. After that, a later statement at a
+  limit ends the call with a plain limit error (`(limit)`, no marker), and the statements after it do not run.
+- **One entry for each statement.** A deferred constraint fails when the statement commits, after its rows and its
+  tag. For a statement that runs alone (also in a transaction that the client put around it), the failure takes
+  the place of the entry, as in v1. For a transaction of the mode, the failure of `COMMIT` is one more entry.
+
+## Column types
+
+The client reads each value as text and writes the JSON that node-postgres (pg-types 2.2.0) and the v1 node
+(version 2.7 and later) give. Each form was compared with pg-promise against a server (`pg live` tests).
+
+| Type | JSON |
+|---|---|
+| `bool`, `int2`, `int4`, `oid`, `float4`, `float8`, `int8`, `numeric`, `json`, `jsonb`, `bytea`, `date`, `timestamptz`, `timestamp` | see spec section 9.10 |
+| `int2[]`, `int4[]`, `oid[]` | numbers |
+| `float4[]`, `float8[]`, `numeric[]` | numbers (`parseFloat`); NaN and the infinities are null. `largeNumbers` changes nothing: v1 changes only a column of type `numeric` |
+| `int8[]` | texts. `largeNumbers` changes nothing |
+| `bool[]` | booleans |
+| `text[]`, `varchar[]`, `char[]`, `uuid[]`, `cidr[]`, `inet[]`, `macaddr[]`, `money[]`, `time[]`, `timetz[]`, `numrange[]`, `regproc[]` | texts |
+| `json[]`, `jsonb[]` | the JSON values |
+| `date[]` | the texts of the server |
+| `timestamptz[]`, and `timestamp[]` with `--sql-timestamp-zone utc` | as `timestamptz` for each element |
+| `interval`, `interval[]` | the object of postgres-interval: `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `milliseconds`, without the parts that are 0. Only the `postgres` IntervalStyle |
+| `point`, `point[]` | `{ "x": x, "y": y }` |
+| `circle` | `{ "x": x, "y": y, "radius": r }` |
+| each other type, also each other array type (`circle[]`, `name[]`) | the text of the server |
+
+An array is a JSON array. `NULL` without quotes is null, an inner array is an inner JSON array, and bounds before
+the values (`[0:2]={7,8,9}`) are ignored, as postgres-array 2.0.0 does. The reader takes only the text that the
+server writes (no space outside quotes, a backslash only inside quotes, 6 dimensions at most); another text gives
+the marker `sql-type`.
 
 ## Limits
 
@@ -77,22 +114,59 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
 
 ## Known differences and what is not built
 
-- A call in `independently` mode that already committed a statement cannot run again in the host. A later result
-  over the limit then fails the step with a plain limit error.
+- A call in `independently` mode that committed a statement with an effect cannot run again in the host. A later
+  statement then fails the step with a plain limit error in three cases: its result makes the call larger than
+  `--sql-max-result-kb`; a value has no native form (a timestamp before the year 1000 or with an offset in
+  seconds, an interval after a `SET intervalstyle` of the same call); or the statement could not be prepared
+  before the call ran (its table is made by a statement of the call) and a column has a type without a native
+  form. The checks that can run before the first statement do run there (Parse, Describe, the styles of the
+  session), so only these cases stay. Rejected: one transaction with a savepoint for each statement. It lets the
+  client roll back everything, but `now()`, deferred constraints, locks and what other sessions see differ from
+  v1. Proposed, not built: a marker that says how many statements are done (with their results), so that the
+  library node gives only the other items to the host. It needs a change of the effect contract in
+  `packages/@n8n/workflow-lang`.
 - A `SELECT` that calls a function with side effects, and whose result is over the limit, runs again in the host.
+  In `independently` mode the same holds for each `SELECT` before the statement at the limit.
 - `single` with more than one statement uses `BEGIN`. The v1 node sends one multi-command text. A command that
   cannot run in a transaction block (`VACUUM`, `CREATE DATABASE`) fails with another message.
 - When the connection closes while a statement runs, the step fails. The v1 node gives an error of the query.
 - TLS verification errors have the text of OpenSSL, not of Node.js.
-- Not built: array, interval, point and circle columns; the escape format of `bytea`; SSH tunnels; CA and client
+- Not built: `bytea[]` columns (node-postgres gives the bytes of the hex text, not of the value); arrays of dates
+  and timestamps with `dates: legacy`; SSH tunnels; CA and client
   certificates; the simple query protocol for a text with more than one command; a retry on a connection that the
-  server closed while idle; a deterministic fake server for tests without a database.
+  server closed while idle.
+
+## Cost
+
+Measured on 2026-11-17 with a ReleaseSafe build (`zig build -Drelease=true`) on macOS (Apple silicon), one shard,
+`wfrt load --conns 64 --seconds 10`, PostgreSQL 17 in a container on the same machine. The machine ran other
+builds at the same time (load average near 80), so the rate is low; the CPU time of the process is the stable
+number. The workflow is a webhook, one `ctx.sql` call (`select $1::int4 + 1 as a, $2 as label` with two bind
+values) and `ctx.respond` with the result.
+
+| Workflow | Requests | CPU of `wfrt` for each request (user + system) |
+|---|---|---|
+| webhook, `sql`, respond (`--sql-pool-conns 16 --sql-max-requests 512`) | 64,278 and 63,936 in 10 s | 43.1 µs and 43.6 µs (16.5 µs user, 26.6 µs system) |
+| webhook, respond with the same body, no `sql` | 245,686 in 10 s | 15.6 µs (4.7 µs user, 10.9 µs system) |
+
+The `sql` call adds about 28 µs for each request: about 12 µs user and 16 µs system. No profile of
+the call was made.
 
 ## Tests
 
 - `src/core/pgwire.zig`, `src/shell/pg_call.zig`: unit tests of the codec, the bind types and the result JSON.
 - `src/core/fuzz_test.zig`: three fuzz targets (backend messages, column values, the SCRAM server-first message).
-- `src/shell/pg_test.zig`: tests against a real server. They are skipped without `WFRT_TEST_PG`:
+- `src/shell/pg_fake.zig`: a scripted PostgreSQL server for tests without a database. It runs on the poller and
+  in the thread of the test, with a clock that only the test moves. A rule gives the columns, the rows, the tag
+  or the error of one statement text, or says that the server gives no answer or closes. The server writes a log
+  line for each login, Parse, Bind (with the values), Execute, `BEGIN`, `COMMIT`, `ROLLBACK` and cancel request.
+- `src/shell/pg_test.zig`, the `pg fake` tests (fast tier): the trust, clear, MD5 and SCRAM logins and a wrong
+  password, prepare and reuse, the three modes, an error in a transaction, the markers and their rollback, the
+  pool queue, the call-slot limit, the connection limit of the shard, the idle close, the time limit with its
+  cancel request, and a connection that closes while a statement runs.
+- `src/shell/server.zig`: a run of a module with a `sql` step through the shard (`startSql`, `drainSql`) against
+  the scripted server, and results that wait while the event list has no room.
+- `src/shell/pg_test.zig`, the `pg live` tests: against a real server. They are skipped without `WFRT_TEST_PG`:
 
 ```bash
 docker run -d --name wfrt-pg -e POSTGRES_PASSWORD=secret -p 127.0.0.1:5544:5432 postgres:17

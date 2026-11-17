@@ -59,6 +59,30 @@ export function wfrtUserAgent(value: string): string | undefined {
 	return bytes.every((byte) => byte >= 0x20 && byte !== 0x7f) ? value : undefined;
 }
 
+/** The names of the time zone that is UTC all year, as `Intl` gives them. */
+const UTC_ZONES = new Set([
+	'UTC',
+	'Etc/UTC',
+	'GMT',
+	'Etc/GMT',
+	'UCT',
+	'Etc/UCT',
+	'Zulu',
+	'Etc/Zulu',
+]);
+
+/**
+ * The value of `--sql-timestamp-zone` of `wfrt` for the time zone of this process. The v1
+ * Postgres node reads a timestamp without a zone in the zone of its process. `wfrt` reads
+ * it only as UTC, so it gets `utc` only when this process runs in UTC. In another zone
+ * `wfrt` gives such a column to the fallback host.
+ */
+export function sqlTimestampZone(
+	timeZone: string = new Intl.DateTimeFormat().resolvedOptions().timeZone,
+): 'utc' | undefined {
+	return UTC_ZONES.has(timeZone) ? 'utc' : undefined;
+}
+
 interface ManagedProcess {
 	name: string;
 	child?: ChildProcess;
@@ -191,6 +215,8 @@ export class CompiledEngineProcesses {
 		// `N8N_GLOBAL_USER_AGENT_VALUE`), for a request that sets none.
 		const userAgent = wfrtUserAgent(getDefaultN8nOutboundUserAgent());
 		if (userAgent !== undefined) args.push('--egress-user-agent', userAgent);
+		const timestampZone = sqlTimestampZone();
+		if (timestampZone !== undefined) args.push('--sql-timestamp-zone', timestampZone);
 		if (this.socketPath) args.push('--fallback', this.socketPath);
 		return args;
 	}

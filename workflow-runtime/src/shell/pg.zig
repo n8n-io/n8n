@@ -104,7 +104,8 @@ const Req = struct {
     out_len: usize = 0,
     results: u32 = 0,
     ok: bool = false,
-    /// A statement of the call is committed: the call cannot run again.
+    /// A statement of the call that can have changed the database is
+    /// committed: the call cannot run again.
     committed: bool = false,
     cred: [cred_bytes]u8 = @splat(0),
     host_len: u16 = 0,
@@ -158,6 +159,7 @@ const Stmt = struct {
     unsupported: bool = false,
     has_date: bool = false,
     has_time: bool = false,
+    has_interval: bool = false,
     /// The bind values that the client declared for it.
     params: u16 = 0,
     /// The last call that used it.
@@ -192,6 +194,8 @@ const Conn = struct {
     key: u32 = 0,
     /// The DateStyle of the session is ISO.
     iso: bool = true,
+    /// The IntervalStyle of the session is `postgres`.
+    interval_pg: bool = true,
     idle_at_ms: i64 = 0,
     calls: u32 = 0,
     flight: Flight = .none,
@@ -210,9 +214,13 @@ const Conn = struct {
     commit_sent: bool = false,
     /// A statement of the transaction failed: the rest is dropped.
     failed: bool = false,
+    /// A statement of the segment gave an error: it changed nothing.
+    errored: bool = false,
     abort: Abort = .none,
     entry_at: usize = 0,
     entry_open: bool = false,
+    /// The statement that runs now has its entry (its rows and its tag) at `entry_at`.
+    entry_done: bool = false,
     rows: u32 = 0,
 };
 
@@ -1082,6 +1090,13 @@ pub const Client = struct {
         // The same for its value.
         const value = rd.cstr() catch return;
         if (std.mem.eql(u8, name, "DateStyle")) cn.iso = std.mem.startsWith(u8, value, "ISO");
+        if (std.mem.eql(u8, name, "IntervalStyle")) cn.interval_pg = std.mem.eql(u8, value, "postgres");
+    }
+
+    /// True when the text of a date or of an interval of this session is
+    /// not in the style that the client reads.
+    fn styleBlocks(cn: *const Conn, has_time: bool, has_interval: bool) bool {
+        return (has_time and !cn.iso) or (has_interval and !cn.interval_pg);
     }
 
     // ---- a call: prepare -------------------------------------------------------
@@ -1182,6 +1197,7 @@ pub const Client = struct {
                 e.unsupported = info.unsupported;
                 e.has_date = info.has_date;
                 e.has_time = info.has_time;
+                e.has_interval = info.has_interval;
                 e.has_rows = true;
                 cn.prep_ok = true;
             },
@@ -1220,7 +1236,7 @@ pub const Client = struct {
         if (cn.multi) return c.endCall(ci, .statement);
         for (r.slots[0..r.call.count]) |s| {
             const e = &cn.cache[s];
-            const no_form = e.unsupported or (r.call.legacy_dates and e.has_date) or (e.has_time and !cn.iso);
+            const no_form = e.unsupported or (r.call.legacy_dates and e.has_date) or styleBlocks(cn, e.has_time, e.has_interval);
             if (e.ok and no_form) return c.endCall(ci, .no_form);
         }
         c.startSegment(ci, 0);
@@ -1253,7 +1269,9 @@ pub const Client = struct {
         cn.cur = from;
         cn.begin_pending = cn.in_tx;
         cn.failed = false;
+        cn.errored = false;
         cn.entry_open = false;
+        cn.entry_done = false;
         c.sendPending(ci);
     }
 
@@ -1290,7 +1308,11 @@ pub const Client = struct {
         switch (m.tag) {
             '1' => cn.cache[c.reqs[cn.req].slots[cn.cur]].ok = true,
             'T' => if (!skip) c.onColumns(ci, m.body),
-            'n' => if (!skip) c.openEntry(ci),
+            'n' => {
+                // Known only now for a statement that was parsed where it runs.
+                cn.cache[c.reqs[cn.req].slots[cn.cur]].has_rows = false;
+                if (!skip) c.openEntry(ci);
+            },
             'D' => if (!skip) c.onRow(ci, m.body),
             'C' => if (!skip) c.onComplete(ci, m.body),
             'I' => if (!skip) c.onComplete(ci, "\x00"),
@@ -1298,6 +1320,7 @@ pub const Client = struct {
             'Z' => {
                 cn.cur += 1;
                 cn.entry_open = false;
+                cn.entry_done = false;
                 if (cn.cur == cn.seg_to) c.segmentDone(ci);
             },
             // BindComplete carries nothing.
@@ -1336,7 +1359,7 @@ pub const Client = struct {
             if (err == error.Malformed) return c.dropConn(ci, "sql: the database sent a message that is not valid", .{});
             return setAbort(cn, .no_form);
         };
-        if (info.unsupported or (info.has_time and !cn.iso)) return setAbort(cn, .no_form);
+        if (info.unsupported or styleBlocks(cn, info.has_time, info.has_interval)) return setAbort(cn, .no_form);
         c.openEntry(ci);
     }
 
@@ -1368,6 +1391,7 @@ pub const Client = struct {
         r.out_len = o.len;
         r.results += 1;
         cn.entry_open = false;
+        cn.entry_done = true;
     }
 
     fn writeTag(o: *pgwire.Out, tag: pgwire.Tag) error{NoSpace}!void {
@@ -1384,6 +1408,9 @@ pub const Client = struct {
     fn onStatementError(c: *Client, ci: u32, body: []const u8) void {
         const cn = &c.conns[ci];
         const r = &c.reqs[cn.req];
+        // An error after the tag is the failure of the commit of a statement
+        // that runs alone (a deferred constraint): the statement failed.
+        if (cn.entry_done) c.dropEntry(ci);
         if (cn.entry_open) r.out_len = cn.entry_at;
         cn.entry_open = false;
         var o = c.resultOut(r);
@@ -1394,6 +1421,17 @@ pub const Client = struct {
         r.out_len = o.len;
         r.results += 1;
         cn.failed = cn.in_tx;
+        cn.errored = true;
+    }
+
+    /// Take back the entry of the last statement: its failure takes the place.
+    fn dropEntry(c: *Client, ci: u32) void {
+        const cn = &c.conns[ci];
+        const r = &c.reqs[cn.req];
+        std.debug.assert(r.results > 0 and cn.entry_at <= r.out_len and !cn.entry_open);
+        r.out_len = cn.entry_at;
+        r.results -= 1;
+        cn.entry_done = false;
     }
 
     fn writeFailure(o: *pgwire.Out, body: []const u8, comma: bool) pg_call.Desc.Error!void {
@@ -1423,6 +1461,10 @@ pub const Client = struct {
         if (m.tag == 'E' and cn.commit_sent) {
             // COMMIT failed (a deferred constraint): the transaction is rolled back.
             cn.in_tx = true;
+            // A transaction that the client put around one statement is not a
+            // transaction of the mode: the statement failed, as when it runs alone.
+            const own = c.reqs[cn.req].call.mode != .transaction and cn.seg_to == cn.seg_from + 1;
+            if (own) c.dropEntry(ci);
             c.onStatementError(ci, m.body);
         }
         if (m.tag != 'Z' or c.conns[ci].state != .busy) return;
@@ -1435,9 +1477,21 @@ pub const Client = struct {
         const r = &c.reqs[cn.req];
         cn.flight = .none;
         if (cn.abort != .none) return c.endCall(ci, cn.abort);
-        if (cn.failed or cn.seg_to == r.call.count) return c.completeCall(ci);
-        r.committed = true;
+        if (cn.seg_to == r.call.count) return c.completeCall(ci);
+        // More statements follow only in the mode `independently`: the segment
+        // was one statement, and the next one runs also after a failure.
+        std.debug.assert(r.call.mode == .independently and cn.seg_to == cn.seg_from + 1);
+        r.committed = r.committed or hasEffect(cn, r);
         c.startSegment(ci, cn.seg_to);
+    }
+
+    /// True when the statement that ran alone can have changed the
+    /// database: it ended without an error, and it is not a SELECT that
+    /// gives rows. The host can run a call again while this is false for
+    /// each of its statements.
+    fn hasEffect(cn: *const Conn, r: *const Req) bool {
+        const e = &cn.cache[r.slots[cn.seg_from]];
+        return !cn.errored and !(e.select and e.has_rows);
     }
 
     fn completeCall(c: *Client, ci: u32) void {

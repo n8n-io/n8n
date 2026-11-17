@@ -711,6 +711,14 @@ pub const Out = struct {
         o.len += 1;
     }
 
+    /// One byte of a JSON string.
+    fn escaped(o: *Out, c: u8) error{NoSpace}!void {
+        const hex = "0123456789abcdef";
+        if (c >= 0x20 and c != '"' and c != '\\') return o.byte(c);
+        if (c >= 0x20) return o.put(&.{ '\\', c });
+        try o.put(&.{ '\\', 'u', '0', '0', hex[c >> 4], hex[c & 15] });
+    }
+
     /// `s` as a JSON string.
     pub fn string(o: *Out, s: []const u8) error{NoSpace}!void {
         const hex = "0123456789abcdef";
@@ -741,11 +749,34 @@ pub const Options = struct {
     utc: bool = false,
 };
 
-pub const Class = enum(u8) { boolean, int, int8, float, numeric, json, bytea, timestamp, text, unsupported };
+pub const Class = enum(u8) {
+    boolean,
+    int,
+    int8,
+    float,
+    numeric,
+    json,
+    bytea,
+    timestamp,
+    text,
+    interval,
+    point,
+    circle,
+    /// An array: the name says how each element becomes JSON.
+    array_bool,
+    array_int,
+    array_float,
+    array_text,
+    array_json,
+    array_timestamp,
+    array_interval,
+    array_point,
+    unsupported,
+};
 
 /// How the value of a column of type `oid` becomes JSON. `unsupported`:
-/// node-postgres gives a form that this client does not build (arrays,
-/// interval, point, circle, and dates as `Date` objects).
+/// node-postgres gives a form that this client does not build (`bytea[]`,
+/// dates as `Date` objects, a timestamp in the zone of the process).
 pub fn classOf(oid: u32, opt: Options) Class {
     return switch (oid) {
         16 => .boolean,
@@ -758,12 +789,50 @@ pub fn classOf(oid: u32, opt: Options) Class {
         1082 => if (opt.legacy_dates) .unsupported else .text,
         1184 => .timestamp,
         1114 => if (opt.utc) .timestamp else .unsupported,
-        600, 718, 1186 => .unsupported,
-        651, 1000, 1001, 1005, 1007, 1028, 1016, 1017, 1021, 1022, 1231, 1014, 1015, 1008, 1009 => .unsupported,
-        1040, 1041, 1115, 1182, 1185, 1187, 199, 3807, 3907, 2951, 791, 1183, 1270 => .unsupported,
-        // node-postgres has no parser for any other type: the value stays text.
+        1186 => .interval,
+        600 => .point,
+        718 => .circle,
+        // An array type, or a type that stays text.
+        else => arrayClassOf(oid, opt),
+    };
+}
+
+/// The class of an array type that node-postgres parses. Each other type
+/// has no parser there: the value stays text.
+fn arrayClassOf(oid: u32, opt: Options) Class {
+    return switch (oid) {
+        1000 => .array_bool,
+        1005, 1007, 1028 => .array_int,
+        // `numeric[]` is `parseFloat` of each element, with every `largeNumbers` value.
+        1021, 1022, 1231 => .array_float,
+        // `int8[]` stays text, with every `largeNumbers` value.
+        1016, 651, 1014, 1015, 1008, 1009, 1040, 1041, 3907, 2951, 791, 1183, 1270 => .array_text,
+        199, 3807 => .array_json,
+        1182 => if (opt.legacy_dates) .unsupported else .array_text,
+        1185 => if (opt.legacy_dates) .unsupported else .array_timestamp,
+        1115 => if (opt.utc and !opt.legacy_dates) .array_timestamp else .unsupported,
+        1187 => .array_interval,
+        1017 => .array_point,
+        // `bytea[]`: node-postgres reads the bytes of the hex text, not the value.
+        1001 => .unsupported,
+        // Not an array type that node-postgres knows.
         else => .text,
     };
+}
+
+/// True for a type whose form is another one with `dates: legacy`.
+pub fn isDateType(oid: u32) bool {
+    return oid == 1082 or oid == 1182 or oid == 1115 or oid == 1185;
+}
+
+/// True for a type whose text depends on the DateStyle of the session.
+pub fn isTimeType(oid: u32) bool {
+    return oid == 1114 or oid == 1184 or isDateType(oid);
+}
+
+/// True for a type whose text depends on the IntervalStyle of the session.
+pub fn isIntervalType(oid: u32) bool {
+    return oid == 1186 or oid == 1187;
 }
 
 pub const ValueError = error{
@@ -774,6 +843,7 @@ pub const ValueError = error{
 
 /// Write the JSON of one value in text format.
 pub fn writeValue(o: *Out, class: Class, text: []const u8, opt: Options) ValueError!void {
+    std.debug.assert(o.len <= o.buf.len);
     switch (class) {
         .boolean => try o.put(if (isTrue(text)) "true" else "false"),
         .int => try writeInt(o, text),
@@ -784,6 +854,17 @@ pub fn writeValue(o: *Out, class: Class, text: []const u8, opt: Options) ValueEr
         .bytea => try writeBytea(o, text),
         .timestamp => try writeTimestamp(o, text),
         .text => try o.string(text),
+        .interval => try writeInterval(o, text),
+        .point => try writePoint(o, text),
+        .circle => try writeCircle(o, text),
+        .array_bool => try writeArray(o, .boolean, text),
+        .array_int => try writeArray(o, .int, text),
+        .array_float => try writeArray(o, .float, text),
+        .array_text => try writeArray(o, .text, text),
+        .array_json => try writeArray(o, .json, text),
+        .array_timestamp => try writeArray(o, .timestamp, text),
+        .array_interval => try writeArray(o, .interval, text),
+        .array_point => try writeArray(o, .point, text),
         .unsupported => return error.Unsupported,
     }
 }
@@ -828,6 +909,12 @@ fn writeFloat(o: *Out, text: []const u8) ValueError!void {
 /// it; this check only makes sure that the text cannot end the document
 /// around it: strings end, and brackets pair up.
 fn writeJson(o: *Out, text: []const u8) ValueError!void {
+    if (!jsonShape(text)) return error.Unsupported;
+    try o.put(text);
+}
+
+/// True when strings end and brackets pair up in `text`, and it is one value.
+fn jsonShape(text: []const u8) bool {
     var depth: usize = 0;
     var in_string = false;
     var i: usize = 0;
@@ -840,20 +927,20 @@ fn writeJson(o: *Out, text: []const u8) ValueError!void {
         } else if (c == '{' or c == '[') {
             depth += 1;
         } else if (c == '}' or c == ']') {
-            if (depth == 0) return error.Unsupported;
+            if (depth == 0) return false;
             depth -= 1;
         } else if (c == ',' and depth == 0) {
-            return error.Unsupported;
+            return false;
         }
     }
     std.debug.assert(i >= text.len);
-    if (depth != 0 or in_string or std.mem.trim(u8, text, " \t\r\n").len == 0) return error.Unsupported;
-    try o.put(text);
+    return depth == 0 and !in_string and std.mem.trim(u8, text, " \t\r\n").len != 0;
 }
 
 /// A bytea in the hex format becomes the JSON of a Node.js `Buffer`.
 fn writeBytea(o: *Out, text: []const u8) ValueError!void {
-    if (!std.mem.startsWith(u8, text, "\\x") or text.len % 2 != 0) return error.Unsupported;
+    if (!std.mem.startsWith(u8, text, "\\x")) return writeByteaEscape(o, text);
+    if (text.len % 2 != 0) return error.Unsupported;
     try o.put("{\"type\":\"Buffer\",\"data\":[");
     var i: usize = 2;
     while (i < text.len) : (i += 2) {
@@ -863,6 +950,44 @@ fn writeBytea(o: *Out, text: []const u8) ValueError!void {
         try putDecimal(o, @as(u64, hi) * 16 + lo, 1);
     }
     try o.put("]}");
+}
+
+/// A bytea in the escape format (`bytea_output = escape`), as
+/// `postgres-bytea` 1.0.0 reads it: a printable ASCII byte is itself, `\\`
+/// is one backslash, and `\ooo` is the byte with that octal number. The
+/// server writes every other byte as an octal number.
+fn writeByteaEscape(o: *Out, text: []const u8) ValueError!void {
+    try o.put("{\"type\":\"Buffer\",\"data\":[");
+    var i: usize = 0;
+    // Each pass takes one byte or more of the text.
+    for (0..text.len) |_| {
+        if (i >= text.len) break;
+        const b = try escapedByte(text[i..]);
+        if (i > 0) try o.byte(',');
+        try putDecimal(o, b.value, 1);
+        i += b.size;
+    }
+    std.debug.assert(i == text.len);
+    try o.put("]}");
+}
+
+const EscapedByte = struct { value: u8, size: usize };
+
+/// The byte at the start of a bytea text in the escape format.
+fn escapedByte(s: []const u8) ValueError!EscapedByte {
+    std.debug.assert(s.len > 0);
+    if (s[0] != '\\') {
+        if (s[0] < 0x20 or s[0] > 0x7e) return error.Unsupported;
+        return .{ .value = s[0], .size = 1 };
+    }
+    if (s.len >= 2 and s[1] == '\\') return .{ .value = '\\', .size = 2 };
+    if (s.len < 4) return error.Unsupported;
+    var v: u32 = 0;
+    for (s[1..4]) |c| {
+        if (c < '0' or c > '7') return error.Unsupported;
+        v = v * 8 + (c - '0');
+    }
+    return .{ .value = std.math.cast(u8, v) orelse return error.Unsupported, .size = 4 };
 }
 
 /// `new Date(text).toISOString()` for the ISO output of the server
@@ -985,6 +1110,297 @@ fn civil(days: i64) Date {
     const month = if (mp < 10) mp + 3 else mp - 9;
     std.debug.assert(month >= 1 and month <= 12);
     return .{ .year = yoe + era * 400 + @intFromBool(month <= 2), .month = month, .day = doy - @divFloor(153 * mp + 2, 5) + 1 };
+}
+
+// ---- interval, point and circle -------------------------------------------------
+
+/// A reader of the text of one value.
+const Scan = struct {
+    s: []const u8,
+    i: usize = 0,
+
+    fn eat(p: *Scan, c: u8) bool {
+        if (p.i >= p.s.len or p.s[p.i] != c) return false;
+        p.i += 1;
+        return true;
+    }
+
+    /// -1 after a `-`, else 1 (also after a `+`).
+    fn sign(p: *Scan) f64 {
+        if (p.eat('-')) return -1;
+        // The plus sign says nothing more.
+        _ = p.eat('+');
+        return 1;
+    }
+
+    /// A run of `min` to `max` decimal digits, or null (the position stays).
+    fn digits(p: *Scan, min: usize, max: usize) ?[]const u8 {
+        const start = p.i;
+        while (p.i < p.s.len and std.ascii.isDigit(p.s[p.i])) p.i += 1;
+        const n = p.i - start;
+        if (n >= min and n <= max) return p.s[start..p.i];
+        p.i = start;
+        return null;
+    }
+};
+
+fn digitsValue(text: []const u8) ValueError!f64 {
+    const v = parseU64(text) orelse return error.Unsupported;
+    return @floatFromInt(v);
+}
+
+/// The JSON of the object that `postgres-interval` 1.2.0 makes of an
+/// interval: the parts that are not 0, in this order. The proven form is
+/// the `postgres` style of the server (`1 year 2 mons -3 days 04:05:06.789`),
+/// read as the pattern of that package reads it; another text has no
+/// native form.
+fn writeInterval(o: *Out, text: []const u8) ValueError!void {
+    var p: Scan = .{ .s = text };
+    var parts: [7]f64 = @splat(0);
+    const words = [_][]const u8{ "year", "mon", "day" };
+    for (words, parts[0..3]) |word, *part| part.* = try intervalUnit(&p, word);
+    if (p.i < text.len) try intervalTime(&p, parts[3..7]);
+    if (p.i != text.len or text.len == 0) return error.Unsupported;
+    std.debug.assert(p.i == text.len and text.len > 0);
+    const keys = [_][]const u8{ "years", "months", "days", "hours", "minutes", "seconds", "milliseconds" };
+    var buf: [numfmt.max_len]u8 = @splat(0);
+    var first = true;
+    try o.byte('{');
+    for (keys, parts) |key, v| {
+        if (v == 0) continue;
+        if (!first) try o.byte(',');
+        first = false;
+        try o.byte('"');
+        try o.put(key);
+        try o.put("\":");
+        try o.put(numfmt.format(&buf, v));
+    }
+    try o.byte('}');
+}
+
+/// The number of `<number> <word>` or `<number> <word>s` at the position
+/// (the pattern `([+-]?\d+)\s+years?`), or 0 when the text there is
+/// another part.
+fn intervalUnit(p: *Scan, word: []const u8) ValueError!f64 {
+    const start = p.i;
+    const sign = p.sign();
+    const number = p.digits(1, 10);
+    if (number == null or !p.eat(' ') or !std.mem.startsWith(u8, p.s[p.i..], word)) {
+        p.i = start;
+        return 0;
+    }
+    p.i += word.len;
+    // The plural form.
+    _ = p.eat('s');
+    // The server ends a part with the end of the text, or with one space and the next part.
+    if (p.i < p.s.len and (!p.eat(' ') or p.i == p.s.len)) return error.Unsupported;
+    return sign * try digitsValue(number orelse "");
+}
+
+/// `[+-]H:MM:SS[.ffffff]` up to the end of the text: hours, minutes,
+/// seconds and milliseconds. The sign is the sign of each of them.
+fn intervalTime(p: *Scan, out: []f64) ValueError!void {
+    std.debug.assert(out.len == 4);
+    const sign = p.sign();
+    const h = p.digits(1, 10) orelse return error.Unsupported;
+    if (!p.eat(':')) return error.Unsupported;
+    const m = p.digits(2, 2) orelse return error.Unsupported;
+    if (!p.eat(':')) return error.Unsupported;
+    const s = p.digits(2, 2) orelse return error.Unsupported;
+    // The fraction has 1 to 6 digits; the package reads it as microseconds.
+    var micro: [6]u8 = "000000".*;
+    if (p.eat('.')) {
+        const f = p.digits(1, 6) orelse return error.Unsupported;
+        @memcpy(micro[0..f.len], f);
+    }
+    const fields = [_][]const u8{ h, m, s };
+    for (fields, out[0..3]) |f, *v| v.* = sign * try digitsValue(f);
+    out[3] = sign * (try digitsValue(&micro) / 1000);
+}
+
+/// True for a decimal number as the server writes a float: digits, an
+/// optional fraction and an optional exponent.
+fn isDecimal(token: []const u8) bool {
+    var p: Scan = .{ .s = token };
+    // A sign changes nothing for the form.
+    _ = p.sign();
+    if (p.digits(1, 400) == null) return false;
+    if (p.eat('.') and p.digits(1, 400) == null) return false;
+    if (p.eat('e')) {
+        // The sign of the exponent.
+        _ = p.sign();
+        if (p.digits(1, 4) == null) return false;
+    }
+    return p.i == token.len;
+}
+
+/// A coordinate as `parseFloat` reads it: a decimal number, or `NaN` and
+/// the infinities, which are null in JSON.
+fn writeCoordinate(o: *Out, token: []const u8) ValueError!void {
+    const special = [_][]const u8{ "NaN", "Infinity", "-Infinity" };
+    for (special) |s| {
+        if (std.mem.eql(u8, token, s)) return o.put("null");
+    }
+    if (!isDecimal(token)) return error.Unsupported;
+    try writeFloat(o, token);
+}
+
+/// `{"x":..,"y":..` for the text `x,y`.
+fn writeXy(o: *Out, inner: []const u8) ValueError!void {
+    const comma = std.mem.indexOfScalar(u8, inner, ',') orelse return error.Unsupported;
+    try o.put("{\"x\":");
+    try writeCoordinate(o, inner[0..comma]);
+    try o.put(",\"y\":");
+    try writeCoordinate(o, inner[comma + 1 ..]);
+}
+
+/// A point `(x,y)` is `{"x":x,"y":y}`.
+fn writePoint(o: *Out, text: []const u8) ValueError!void {
+    if (text.len < 2 or text[0] != '(' or text[text.len - 1] != ')') return error.Unsupported;
+    try writeXy(o, text[1 .. text.len - 1]);
+    try o.byte('}');
+}
+
+/// A circle `<(x,y),r>` is `{"x":x,"y":y,"radius":r}`.
+fn writeCircle(o: *Out, text: []const u8) ValueError!void {
+    if (!std.mem.startsWith(u8, text, "<(") or text[text.len - 1] != '>') return error.Unsupported;
+    const close = std.mem.indexOf(u8, text, "),") orelse return error.Unsupported;
+    std.debug.assert(close >= 2 and close + 2 < text.len);
+    try writeXy(o, text[2..close]);
+    try o.put(",\"radius\":");
+    try writeCoordinate(o, text[close + 2 .. text.len - 1]);
+    try o.byte('}');
+}
+
+// ---- arrays ---------------------------------------------------------------------
+
+/// The most dimensions of an array of the server.
+const max_dims = 6;
+
+/// The JSON of an array in the text form of the server
+/// (`{1,NULL,"a b",{2}}`), as `postgres-array` 2.0.0 reads it: `NULL`
+/// without quotes is null, a backslash gives the byte after it, an inner
+/// array is an inner JSON array. `elem` says how an element becomes JSON.
+/// A text that the server does not write has no native form.
+fn writeArray(o: *Out, elem: Class, text: []const u8) ValueError!void {
+    var a: ArrayScan = .{ .s = text };
+    // The bounds of an array whose first index is not 1: `[0:2]={7,8,9}`.
+    if (text.len > 0 and text[0] == '[') a.i = (std.mem.indexOfScalar(u8, text, '=') orelse return error.Unsupported) + 1;
+    // Each pass takes one byte or more of the text.
+    for (0..text.len + 1) |_| {
+        if (a.i >= text.len) break;
+        try a.step(o, elem);
+        if (a.depth == 0) break;
+    }
+    if (a.depth != 0 or a.i != text.len or a.state != .after_item) return error.Unsupported;
+}
+
+const ArrayScan = struct {
+    s: []const u8,
+    i: usize = 0,
+    depth: usize = 0,
+    state: enum(u8) { open, after_item, after_comma } = .open,
+
+    fn step(a: *ArrayScan, o: *Out, elem: Class) ValueError!void {
+        const c = a.s[a.i];
+        if (a.depth == 0 and c != '{') return error.Unsupported;
+        switch (c) {
+            '}' => {
+                if (a.state == .after_comma) return error.Unsupported;
+                try o.byte(']');
+                a.depth -= 1;
+                a.state = .after_item;
+                a.i += 1;
+            },
+            ',' => {
+                if (a.state != .after_item) return error.Unsupported;
+                a.state = .after_comma;
+                a.i += 1;
+            },
+            // An inner array begins, or an element.
+            else => try a.item(o, elem, c),
+        }
+    }
+
+    fn item(a: *ArrayScan, o: *Out, elem: Class, c: u8) ValueError!void {
+        std.debug.assert(a.i < a.s.len and a.s[a.i] == c and c != ',' and c != '}');
+        if (a.state == .after_item) return error.Unsupported;
+        if (a.state == .after_comma) try o.byte(',');
+        if (c == '{') {
+            if (a.depth == max_dims) return error.Unsupported;
+            try o.byte('[');
+            a.depth += 1;
+            a.state = .open;
+            a.i += 1;
+            return;
+        }
+        a.state = .after_item;
+        if (c == '"') return a.quoted(o, elem);
+        const end = std.mem.indexOfAnyPos(u8, a.s, a.i, ",}") orelse return error.Unsupported;
+        const raw = a.s[a.i..end];
+        a.i = end;
+        // The server puts quotes around an element with one of these bytes.
+        if (std.mem.indexOfAny(u8, raw, "{\"\\ ") != null) return error.Unsupported;
+        if (std.mem.eql(u8, raw, "NULL")) return o.put("null");
+        try writeElement(o, elem, raw, false);
+    }
+
+    fn quoted(a: *ArrayScan, o: *Out, elem: Class) ValueError!void {
+        std.debug.assert(a.s[a.i] == '"');
+        var j = a.i + 1;
+        var escapes = false;
+        while (j < a.s.len and a.s[j] != '"') : (j += 1) {
+            if (a.s[j] != '\\') continue;
+            escapes = true;
+            j += 1;
+        }
+        if (j >= a.s.len) return error.Unsupported;
+        const raw = a.s[a.i + 1 .. j];
+        a.i = j + 1;
+        try writeElement(o, elem, raw, escapes);
+    }
+};
+
+/// One element of an array. `escapes`: `raw` has backslashes, each before
+/// the byte that it stands for.
+fn writeElement(o: *Out, elem: Class, raw: []const u8, escapes: bool) ValueError!void {
+    // The server writes a backslash only in a text or a json element.
+    if (escapes and elem != .text and elem != .json) return error.Unsupported;
+    switch (elem) {
+        .text => if (escapes) try elementString(o, raw) else try o.string(raw),
+        .json => try elementJson(o, raw),
+        .boolean => try o.put(if (isTrue(raw)) "true" else "false"),
+        .int => try writeInt(o, raw),
+        .float => try writeFloat(o, raw),
+        .timestamp => try writeTimestamp(o, raw),
+        .interval => try writeInterval(o, raw),
+        .point => try writePoint(o, raw),
+        // No array type has elements of these classes.
+        .int8, .numeric, .bytea, .circle, .unsupported => return error.Unsupported,
+        .array_bool, .array_int, .array_float, .array_text, .array_json, .array_timestamp, .array_interval, .array_point => return error.Unsupported,
+    }
+}
+
+fn elementString(o: *Out, raw: []const u8) error{NoSpace}!void {
+    try o.byte('"');
+    var i: usize = 0;
+    while (i < raw.len) : (i += 1) {
+        if (raw[i] == '\\' and i + 1 < raw.len) i += 1;
+        try o.escaped(raw[i]);
+    }
+    try o.byte('"');
+}
+
+/// A json element goes into the result as it is, without the backslashes
+/// of the array text, after the check of `jsonShape`.
+fn elementJson(o: *Out, raw: []const u8) ValueError!void {
+    const start = o.len;
+    var i: usize = 0;
+    while (i < raw.len) : (i += 1) {
+        if (raw[i] == '\\' and i + 1 < raw.len) i += 1;
+        try o.byte(raw[i]);
+    }
+    if (!jsonShape(o.buf[start..o.len])) return error.Unsupported;
 }
 
 /// True when the first word of a statement is `select` (after white
@@ -1151,9 +1567,15 @@ test "pgwire: column values become the JSON of node-postgres" {
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .json, "1},{\"x\":2", .{}));
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .json, "1,2", .{}));
     try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[0,255,16]}", try jsonOf(&jb, .bytea, "\\x00ff10", .{}));
-    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .bytea, "abc", .{}));
+    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .bytea, "\\x0", .{}));
+    // The escape format (`bytea_output = escape`), checked with postgres-bytea 1.0.0.
+    try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[0,255,92,65,32,126,127,128]}", try jsonOf(&jb, .bytea, "\\000\\377\\\\A ~\\177\\200", .{}));
+    try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[]}", try jsonOf(&jb, .bytea, "", .{}));
+    try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[97,98,99]}", try jsonOf(&jb, .bytea, "abc", .{}));
+    const bad_bytes = [_][]const u8{ "\\", "\\1", "\\12", "\\128", "\\400", "\\a", "a\x80", "a\nb" };
+    for (bad_bytes) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .bytea, text, .{}));
     try std.testing.expectEqualStrings("\"a\\\"b\\\\c\\u000a\"", try jsonOf(&jb, .text, "a\"b\\c\n", .{}));
-    try std.testing.expectEqual(Class.unsupported, classOf(1007, .{}));
+    try std.testing.expectEqual(Class.unsupported, classOf(1001, .{}));
     try std.testing.expectEqual(Class.unsupported, classOf(1114, .{}));
     try std.testing.expectEqual(Class.timestamp, classOf(1114, .{ .utc = true }));
     try std.testing.expectEqual(Class.unsupported, classOf(1082, .{ .legacy_dates = true }));
@@ -1174,6 +1596,91 @@ test "pgwire: timestamps as new Date(text).toISOString()" {
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "0044-03-15 12:00:00+00 BC", .{}));
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "1883-11-18 12:03:58-07:52:58", .{}));
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .timestamp, "12024-01-02 03:04:05+00", .{}));
+}
+
+test "pgwire: arrays become the JSON of postgres-array" {
+    var jb: [256]u8 = @splat(0);
+    // Each pair was checked with pg-promise and the type parsers of the v1 node (version 2.7).
+    try std.testing.expectEqualStrings("[1,null,-3]", try jsonOf(&jb, classOf(1007, .{}), "{1,NULL,-3}", .{}));
+    try std.testing.expectEqualStrings("[]", try jsonOf(&jb, .array_int, "{}", .{}));
+    try std.testing.expectEqualStrings("[[1,2],[3,4]]", try jsonOf(&jb, .array_int, "{{1,2},{3,4}}", .{}));
+    try std.testing.expectEqualStrings("[7,8,9]", try jsonOf(&jb, .array_int, "[0:2]={7,8,9}", .{}));
+    try std.testing.expectEqualStrings("[[[\"a\",\"b\"]],[[\"c\",null]]]", try jsonOf(&jb, .array_text, "{{{a,b}},{{c,NULL}}}", .{}));
+    try std.testing.expectEqualStrings("[true,false,null]", try jsonOf(&jb, classOf(1000, .{}), "{t,f,NULL}", .{}));
+    // int8[] stays text and numeric[] is parseFloat, also with `largeNumbers: numbers`.
+    try std.testing.expectEqualStrings("[\"9007199254740993\",null,\"-5\"]", try jsonOf(&jb, classOf(1016, .{ .numbers = true }), "{9007199254740993,NULL,-5}", .{ .numbers = true }));
+    try std.testing.expectEqualStrings("[1.5,null,null,12345678901234567000]", try jsonOf(&jb, classOf(1231, .{}), "{1.50,NULL,NaN,12345678901234567890.123}", .{}));
+    try std.testing.expectEqualStrings("[1.5,null,null,null]", try jsonOf(&jb, classOf(1022, .{}), "{1.5,NaN,Infinity,NULL}", .{}));
+    try std.testing.expectEqualStrings("[0,1e+300,1e-300]", try jsonOf(&jb, .array_float, "{-0,1e+300,1e-300}", .{}));
+    // Quotes, the text NULL, the empty text and backslashes.
+    try std.testing.expectEqualStrings(
+        \\["a",null,"NULL","null","","a b","q\"uote","back\\slash","{x}","a,b","line\u000abreak","é"]
+    , try jsonOf(&jb, classOf(1009, .{}), "{a,NULL,\"NULL\",\"null\",\"\",\"a b\",\"q\\\"uote\",\"back\\\\slash\",\"{x}\",\"a,b\",\"line\nbreak\",é}", .{}));
+    try std.testing.expectEqualStrings("[\"c81d4e2e-bcf2-11e6-869b-7df92533d2db\",null]", try jsonOf(&jb, classOf(2951, .{}), "{c81d4e2e-bcf2-11e6-869b-7df92533d2db,NULL}", .{}));
+    try std.testing.expectEqualStrings(
+        \\[{"k": [1, "a"]},null,null,1,"s",[1, {"a": "}"}]]
+    , try jsonOf(&jb, classOf(3807, .{}), "{\"{\\\"k\\\": [1, \\\"a\\\"]}\",NULL,\"null\",1,\"\\\"s\\\"\",\"[1, {\\\"a\\\": \\\"}\\\"}]\"}", .{}));
+    try std.testing.expectEqualStrings("[\"2024-01-02\",null,\"infinity\"]", try jsonOf(&jb, classOf(1182, .{}), "{2024-01-02,NULL,infinity}", .{}));
+    try std.testing.expectEqualStrings(
+        \\["2024-01-02T03:04:05.123Z",null,"infinity","2024-05-31T18:30:00.000Z"]
+    , try jsonOf(&jb, classOf(1185, .{}), "{\"2024-01-02 03:04:05.123456+00\",NULL,infinity,\"2024-06-01 00:00:00+05:30\"}", .{}));
+    try std.testing.expectEqualStrings("[\"2024-01-02T03:04:05.900Z\",null]", try jsonOf(&jb, classOf(1115, .{ .utc = true }), "{\"2024-01-02 03:04:05.9\",NULL}", .{}));
+    try std.testing.expectEqualStrings("[{\"days\":1,\"hours\":2},null,{}]", try jsonOf(&jb, classOf(1187, .{}), "{\"1 day 02:00:00\",NULL,00:00:00}", .{}));
+    try std.testing.expectEqualStrings("[{\"x\":1,\"y\":2},null]", try jsonOf(&jb, classOf(1017, .{}), "{\"(1,2)\",NULL}", .{}));
+    // The types without a native form, and the types that node-postgres leaves as text.
+    try std.testing.expectEqual(Class.unsupported, classOf(1115, .{}));
+    try std.testing.expectEqual(Class.unsupported, classOf(1182, .{ .legacy_dates = true }));
+    try std.testing.expectEqual(Class.unsupported, classOf(1185, .{ .legacy_dates = true }));
+    try std.testing.expectEqual(Class.text, classOf(719, .{}));
+    try std.testing.expectEqual(Class.text, classOf(1003, .{}));
+    // A text that the server does not write has no native form.
+    const bad = [_][]const u8{ "", "{", "}", "{1,}", "{,1}", "{1}x", "{1}{2}", "1,2", "{a b}", "{\"a}", "{a\\b}", "{{1}", "{1}}", "[0:1]{1,2}", "{{{{{{{1}}}}}}}", "{1 ,2}" };
+    for (bad) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .array_text, text, .{}));
+    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .array_int, "{\"1\\2\"}", .{}));
+    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .array_json, "{\"1},{\\\"x\\\":2\"}", .{}));
+    try std.testing.expectError(error.NoSpace, jsonOf(jb[0..4], .array_int, "{1,2,3}", .{}));
+}
+
+test "pgwire: interval, point and circle as node-postgres gives them" {
+    var jb: [256]u8 = @splat(0);
+    // Each pair was checked with pg-promise (postgres-interval 1.2.0, pg-types 2.2.0).
+    const intervals = [_][2][]const u8{
+        .{ "1 year 2 mons 3 days 04:05:06.789", "{\"years\":1,\"months\":2,\"days\":3,\"hours\":4,\"minutes\":5,\"seconds\":6,\"milliseconds\":789}" },
+        .{ "00:00:00", "{}" },
+        .{ "-1 years -2 mons +3 days -04:05:06", "{\"years\":-1,\"months\":-2,\"days\":3,\"hours\":-4,\"minutes\":-5,\"seconds\":-6}" },
+        .{ "1 day", "{\"days\":1}" },
+        .{ "-00:00:01.5", "{\"seconds\":-1,\"milliseconds\":-500}" },
+        .{ "100:00:00.000001", "{\"hours\":100,\"milliseconds\":0.001}" },
+        .{ "2 years", "{\"years\":2}" },
+        .{ "1 mon", "{\"months\":1}" },
+        .{ "00:00:00.123456", "{\"milliseconds\":123.456}" },
+        .{ "-3 days", "{\"days\":-3}" },
+        .{ "1 year 00:00:01", "{\"years\":1,\"seconds\":1}" },
+        .{ "-1 days +02:03:00", "{\"days\":-1,\"hours\":2,\"minutes\":3}" },
+        .{ "1 day -00:00:00.000001", "{\"days\":1,\"milliseconds\":-0.001}" },
+        .{ "178000000 years", "{\"years\":178000000}" },
+        .{ "-2147483647:59:59.999999", "{\"hours\":-2147483647,\"minutes\":-59,\"seconds\":-59,\"milliseconds\":-999.999}" },
+        .{ "1 mon -1 days", "{\"months\":1,\"days\":-1}" },
+        .{ "00:00:00.1", "{\"milliseconds\":100}" },
+        .{ "25:00:00", "{\"hours\":25}" },
+        .{ "1 year 1 day 00:00:00.5", "{\"years\":1,\"days\":1,\"milliseconds\":500}" },
+    };
+    for (intervals) |pair| try std.testing.expectEqualStrings(pair[1], try jsonOf(&jb, classOf(1186, .{}), pair[0], .{}));
+    // The other interval styles of the server, and texts that the server does not write.
+    const bad = [_][]const u8{ "", "P1Y2M3DT4H5M6.789S", "+1-2 +3 +4:05:06.789", "-1 0:00:00", "@ 1 year 2 mons", "0", "1 day ", "1  day", "1 dayx", "1 day 2 years", "04:05", "04:05:06.", "04:05:06.1234567", "1 year 04:05:06 x", "1 week" };
+    for (bad) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .interval, text, .{}));
+    try std.testing.expectEqualStrings("{\"hours\":4,\"minutes\":5,\"seconds\":6}", try jsonOf(&jb, .interval, "4:05:06", .{}));
+
+    try std.testing.expectEqualStrings("{\"x\":1.5,\"y\":-2}", try jsonOf(&jb, classOf(600, .{}), "(1.5,-2)", .{}));
+    try std.testing.expectEqualStrings("{\"x\":null,\"y\":null}", try jsonOf(&jb, .point, "(NaN,Infinity)", .{}));
+    try std.testing.expectEqualStrings("{\"x\":100000000000000000000,\"y\":1e-7}", try jsonOf(&jb, .point, "(1e+20,1e-07)", .{}));
+    try std.testing.expectEqualStrings("{\"x\":1,\"y\":2,\"radius\":3}", try jsonOf(&jb, classOf(718, .{}), "<(1,2),3>", .{}));
+    try std.testing.expectEqualStrings("{\"x\":1.5,\"y\":-2.5,\"radius\":0}", try jsonOf(&jb, .circle, "<(1.5,-2.5),0>", .{}));
+    try std.testing.expectEqualStrings("{\"x\":100000000000000000000,\"y\":-1e-7,\"radius\":null}", try jsonOf(&jb, .circle, "<(1e+20,-1e-07),Infinity>", .{}));
+    const bad_shapes = [_][]const u8{ "", "(", "()", "(1)", "(1,2", "1,2", "(1,2,3)", "(a,b)", "(1,.5)", "(1, 2)", "(0x1,2)" };
+    for (bad_shapes) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .point, text, .{}));
+    const bad_circles = [_][]const u8{ "", "<", "<(", "<(1,2),3", "<(1,2)3>", "<(1,2),>", "(1,2),3", "<(1),3>" };
+    for (bad_circles) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .circle, text, .{}));
 }
 
 test "pgwire: the first word of a statement" {
