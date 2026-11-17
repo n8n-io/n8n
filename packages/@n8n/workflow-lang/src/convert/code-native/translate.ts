@@ -1957,12 +1957,66 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 * constant with such a value, or a value of the input in code that changes no input (the
 	 * input is JSON, which has no Date).
 	 */
+	/**
+	 * True when each assignment to the variable \`symbol\` gives it a value that is no Date. A
+	 * compound assignment (\`+=\`, \`-=\`) gives a number or a text. An assignment in a pattern
+	 * (\`[a, b] = …\`) has a value of unknown kind.
+	 */
+	const assignedNoDate = (symbol: ts.Symbol | undefined, depth: number): boolean => {
+		if (symbol === undefined) return false;
+		let ok = true;
+		const same = (e: ts.Node): boolean =>
+			ts.isIdentifier(e) && checker.getSymbolAtLocation(e) === symbol;
+		const scan = (n: ts.Node): void => {
+			if (!ok) return;
+			if (
+				ts.isBinaryExpression(n) &&
+				n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				same(stripParens(n.left))
+			) {
+				ok = isNotDate(n.right, depth);
+			} else if (
+				(ts.isArrayLiteralExpression(n) || ts.isObjectLiteralExpression(n)) &&
+				ts.isBinaryExpression(n.parent) &&
+				n.parent.left === n &&
+				n.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+			) {
+				let named = false;
+				const find = (x: ts.Node): void => {
+					if (same(x)) named = true;
+					else ts.forEachChild(x, find);
+				};
+				find(n);
+				if (named) ok = false;
+			} else if ((ts.isForOfStatement(n) || ts.isForInStatement(n)) && same(n.initializer)) {
+				ok = false;
+			}
+			ts.forEachChild(n, scan);
+		};
+		scan(root);
+		return ok;
+	};
+
 	const isNotDate = (e: ts.Expression, depth: number): boolean => {
 		if (depth > 6) return false;
 		const x = stripParens(e);
 		if (isNumberValue(x) || ts.isStringLiteralLike(x) || ts.isTemplateExpression(x)) return true;
 		// \`a + b\` is a number or a text.
 		if (ts.isBinaryExpression(x) && x.operatorToken.kind === ts.SyntaxKind.PlusToken) return true;
+		// One of two values that are no Date: \`a || b\`, \`a && b\`, \`a ?? b\`, \`c ? a : b\`.
+		if (
+			ts.isBinaryExpression(x) &&
+			[
+				ts.SyntaxKind.BarBarToken,
+				ts.SyntaxKind.AmpersandAmpersandToken,
+				ts.SyntaxKind.QuestionQuestionToken,
+			].includes(x.operatorToken.kind)
+		) {
+			return isNotDate(x.left, depth + 1) && isNotDate(x.right, depth + 1);
+		}
+		if (ts.isConditionalExpression(x)) {
+			return isNotDate(x.whenTrue, depth + 1) && isNotDate(x.whenFalse, depth + 1);
+		}
 		if (ts.isCallExpression(x)) {
 			const callee = stripParens(x.expression);
 			if (ts.isPropertyAccessExpression(callee) && TEXT_METHODS.has(callee.name.text)) return true;
@@ -1971,6 +2025,21 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (ts.isIdentifier(x) && !isFree(x)) {
 			const declarations = checker.getSymbolAtLocation(x)?.declarations ?? [];
 			const d = declarations.length === 1 ? declarations[0] : undefined;
+			// A \`let\` or \`var\` variable that gets no Date: its start value and each value
+			// that the code gives it are no Date.
+			if (
+				d !== undefined &&
+				ts.isVariableDeclaration(d) &&
+				ts.isIdentifier(d.name) &&
+				ts.isVariableDeclarationList(d.parent) &&
+				(d.parent.flags & ts.NodeFlags.Const) === 0 &&
+				!ts.isForOfStatement(d.parent.parent) &&
+				!ts.isForInStatement(d.parent.parent) &&
+				(d.initializer === undefined || isNotDate(d.initializer, depth + 1)) &&
+				assignedNoDate(checker.getSymbolAtLocation(x), depth + 1)
+			) {
+				return true;
+			}
 			if (
 				d !== undefined &&
 				ts.isVariableDeclaration(d) &&

@@ -168,6 +168,50 @@ return [{ json: { out: ${JSON.stringify(NUMBERS)}.map((n) => f.format(n)), text:
 		).toBeUndefined();
 	});
 
+	it('formats a value that is no Date for certain in code that makes dates', () => {
+		const code = `const stamp = new Date(1700000000000).toISOString();
+let total = 0;
+var count;
+count = 3;
+for (const n of [1200.5, 30, 4]) total += n;
+total = total * 2;
+const rate = count > 2 ? 0.25 : 1;
+const fallback = Number('x') || 1234567;
+let label = 'a';
+label = label + 'b';
+return [{ json: { stamp, total: total.toLocaleString('en-US'), rate: rate.toLocaleString('de-DE'), fallback: fallback.toLocaleString('en-GB'), count: count.toLocaleString(), label: label.toLocaleString() } }];`;
+		expect(run(code)).toEqual([
+			{
+				stamp: '2023-11-14T22:13:20.000Z',
+				total: (2469).toLocaleString('en-US'),
+				rate: (0.25).toLocaleString('de-DE'),
+				fallback: (1234567).toLocaleString('en-GB'),
+				count: (3).toLocaleString(),
+				label: 'ab',
+			},
+		]);
+	});
+
+	it.each([
+		[
+			'a variable that gets a Date later',
+			'let v = 1; v = new Date(0); return [{ json: { t: v.toLocaleString() } }];',
+		],
+		[
+			'a variable from a pattern',
+			'let v = 1; [v] = [new Date(0)]; return [{ json: { t: v.toLocaleString() } }];',
+		],
+		[
+			'one of two values of unknown kind',
+			'const f = (x) => x; const v = f(1) || 2; const d = new Date(0); return [{ json: { t: v.toLocaleString(), d } }];',
+		],
+	])('keeps %s in the host', (_name, code) => {
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(t.ok ? [] : t.blockers.map((b) => b.feature)).toContain(
+			'Date: toLocaleString of a value of unknown kind',
+		);
+	});
+
 	it('keeps a call that the helpers cannot format in the host', () => {
 		const t = translateCode({
 			code: "return [{ json: { t: new Date(0).toLocaleString('en-US', { timeZoneName: 'short' }) } }];",
