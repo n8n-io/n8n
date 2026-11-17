@@ -24,6 +24,7 @@
   ],
   "dependencies": {
     "@n8n/errors": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*"

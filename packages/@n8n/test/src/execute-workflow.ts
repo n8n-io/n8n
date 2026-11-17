@@ -15,6 +15,8 @@ import { nodeTypes } from './engine/node-types';
 import { toWorkflowData } from './engine/workflow-data';
 import { WorkflowTestError } from './errors';
 import { guardNetwork } from './http/network-guard';
+import { withClockAndEnv } from './instance-state/clock-and-env';
+import { checkCredentialTypes } from './instance-state/credentials';
 import type {
 	ExecuteWorkflowOptions,
 	ExecutionContext,
@@ -70,11 +72,13 @@ function createExecutionContext(
 		workflow,
 		runs,
 		hooks: createHooks(EXECUTION_ID, workflowData, runs),
+		redactions: [],
 	};
 	return Object.assign(setup, { additionalData: createAdditionalData(setup) });
 }
 
 async function runEngine(context: ExecutionContext): Promise<IRun> {
+	checkCredentialTypes(context);
 	const { input = {} } = context.options;
 	const items = (Array.isArray(input) ? input : [input]).map((json) => ({ json: deepCopy(json) }));
 	const trigger = selectTrigger(context);
@@ -84,7 +88,10 @@ async function runEngine(context: ExecutionContext): Promise<IRun> {
 		},
 	});
 	const engine = new WorkflowExecute(context.additionalData, 'trigger', runExecutionData);
-	return await engine.processRunExecutionData(context.workflow);
+	return await withClockAndEnv(
+		context.options,
+		async () => await engine.processRunExecutionData(context.workflow),
+	);
 }
 
 function selectTrigger({ workflow, handle, options }: ExecutionContext): INode {

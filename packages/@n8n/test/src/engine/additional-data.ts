@@ -1,8 +1,8 @@
-import { ExternalSecretsProxy } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import type { ExecutionSetup } from '../execution-context';
 import { TestCredentialsHelper } from '../instance-state/credentials-helper';
+import { createExternalSecretsProxy, createVariables } from '../instance-state/expression-values';
 import { refuseCodeTask, refuseSubWorkflow } from '../runtime/refusals';
 import { createNodeHandler } from './node-handler';
 
@@ -14,8 +14,8 @@ export function createAdditionalData(context: ExecutionSetup): IWorkflowExecuteA
 		hooks: context.hooks,
 		credentialsHelper: new TestCredentialsHelper(context),
 		evalNodeMockHandler: createNodeHandler(context),
-		externalSecretsProxy: new ExternalSecretsProxy(),
-		variables: {},
+		externalSecretsProxy: createExternalSecretsProxy(context),
+		variables: createVariables(context),
 		currentNodeExecutionIndex: 0,
 		executeWorkflow: async (_workflowInfo, _additionalData, { node }) =>
 			refuseSubWorkflow(context, node),
