@@ -728,13 +728,16 @@ const HELPERS: Record<string, string> = {
 		}
 	}
 	let fields: any = files;
+	const made: any = files !== null && typeof files === 'object' && !Array.isArray(files) && Array.isArray(files.$formData) ? files.$formData : undefined;
 	if (typeof type === 'string' && type.includes('multipart/form-data')) {
+		if (made !== undefined) return made;
 		const body: any = options.body;
 		if (body !== undefined && body !== null && (typeof body !== 'object' || Array.isArray(body) || body.$bytes === true)) throw new Error('a multipart body from a value that is not an object has no compiled form');
 		fields = __assign(__assign({}, body ?? {}), files);
 	} else if (options.form !== undefined && options.body === undefined) {
 		return undefined;
 	}
+	if (made !== undefined) return made;
 	if (fields === null || typeof fields !== 'object' || Array.isArray(fields)) throw new Error('a multipart body from a value that is not an object has no compiled form');
 	const parts: any[] = [];
 	for (const [name, field] of Object.entries(fields)) {
@@ -742,6 +745,33 @@ const HELPERS: Record<string, string> = {
 		for (const given of values) parts.push(__formPart(name, given));
 	}
 	return parts;
+}`,
+	__formNew: `function __formNew(): any {
+	return { $formData: [] };
+}`,
+	__formAppend: `function __formAppend(form: any, name: any, value: any, options: any): void {
+	if (form === null || form === undefined || typeof form !== 'object' || !Array.isArray(form.$formData)) throw new Error('a field for a value that is not a form has no compiled form');
+	if (typeof name !== 'string') throw new Error('a form field with a name that is not text has no compiled form');
+	if (form.$formData.length >= 1024) throw new Error('a form of more than 1024 fields has no compiled form');
+	const given: any = options === undefined || options === null || options === false || options === 0 || options === '' ? {} : typeof options === 'string' ? { filename: options } : options;
+	if (typeof given !== 'object' || Array.isArray(given)) throw new Error('a form field with options that are not an object has no compiled form');
+	const sent: any = typeof value === 'number' || value === null || value === undefined ? String(value) : value;
+	const fileName: any = given.filename;
+	const contentType: any = given.contentType;
+	const named: boolean = fileName !== undefined && fileName !== null && fileName !== '' && fileName !== false && fileName !== 0;
+	const typed: boolean = contentType !== undefined && contentType !== null && contentType !== '' && contentType !== false && contentType !== 0;
+	if (typeof sent === 'string' && typed && !named) {
+		if (given.filepath !== undefined || given.header !== undefined) throw new Error('a form field with a file path or a header has no compiled form');
+		if (typeof contentType !== 'string') throw new Error('a form field with a content type that is not text has no compiled form');
+		form.$formData.push({ name, binary: { data: bufText(bufFrom(sent, 'utf8'), 'base64'), mimeType: contentType } });
+		return;
+	}
+	form.$formData.push(__formPart(name, { value: sent, options: given }));
+}`,
+	__mimeExtensionOf: `function __mimeExtensionOf(type: any): any {
+	if (type === undefined || type === null || type === '' || type === false || type === 0 || typeof type !== 'string') return false;
+	const found: string = __mimeExtension(type);
+	return found === '' ? false : found;
 }`,
 	__formPart: `function __formPart(name: string, given: any): any {
 	let value: any = given;
@@ -1697,7 +1727,7 @@ const GENERIC_ERRORS = new Set([
 const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 	lodash: { isEmpty: '__isEmpty', get: '__get', set: '__set', omit: '__omitKeys' },
 	uuid: { validate: '__uuidValid' },
-	'mime-types': { lookup: '__mimeLookup' },
+	'mime-types': { lookup: '__mimeLookup', extension: '__mimeExtensionOf' },
 	'n8n-workflow': {
 		jsonParse: '__jsonParse',
 		deepCopy: '__deepCopy',
@@ -1714,6 +1744,33 @@ const PARAMETER_ASSERTIONS: Record<string, string> = {
 	assertParamIsNumber: 'number',
 	assertParamIsBoolean: 'boolean',
 };
+function isFormDataClass(imported: { from: string; name: string } | undefined): boolean {
+	return imported?.from === 'form-data' && imported.name === 'default';
+}
+
+const FORM_METHODS = new Set([
+	'getHeaders',
+	'getBoundary',
+	'setBoundary',
+	'getBuffer',
+	'getLength',
+	'getLengthSync',
+	'hasKnownLength',
+	'submit',
+	'pipe',
+]);
+
+function mentionsFormMethod(n: ts.Node): boolean {
+	if (ts.isPropertyAccessExpression(n) && FORM_METHODS.has(n.name.text)) return true;
+	if (
+		ts.isElementAccessExpression(n) &&
+		ts.isStringLiteralLike(n.argumentExpression) &&
+		FORM_METHODS.has(n.argumentExpression.text)
+	)
+		return true;
+	return ts.forEachChild(n, (child) => mentionsFormMethod(child) || undefined) ?? false;
+}
+
 function isLuxon(imported: { from: string; name: string } | undefined): boolean {
 	return imported?.from === 'luxon' && imported.name === 'DateTime';
 }
@@ -1751,6 +1808,8 @@ const HELPER_USES: Record<string, string[]> = {
 	__outPaired: ['__outItem', '__assign', '__failedJson', '__pairOf'],
 	__outFailed: ['__outItem', '__assign', '__failedJson'],
 	__mimeLookup: ['__pathParts', '__extName', '__MIME'],
+	__mimeExtensionOf: ['__mimeExtension', '__MIME'],
+	__formAppend: ['__formPart'],
 	__prepareBinary: [
 		'__mimeLookup',
 		'__mimeExtension',
@@ -3120,6 +3179,27 @@ class Specialiser {
 		};
 		collectRegex(root);
 		const urlNames = urlVariables(root, localNames);
+		const isFormNew = (e: ts.Node): e is ts.NewExpression =>
+			ts.isNewExpression(e) &&
+			ts.isIdentifier(e.expression) &&
+			(e.arguments?.length ?? 0) === 0 &&
+			!localNames.has(e.expression.text) &&
+			isFormDataClass(unit.file.imports.get(e.expression.text));
+		const formNames = new Set<string>();
+		const collectForms = (n: ts.Node) => {
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				n.initializer &&
+				isFormNew(n.initializer) &&
+				localNames.get(n.name.text) === 1 &&
+				ts.isVariableDeclarationList(n.parent) &&
+				(n.parent.flags & ts.NodeFlags.Const) !== 0
+			)
+				formNames.add(n.name.text);
+			ts.forEachChild(n, collectForms);
+		};
+		collectForms(root);
 		let depth = 0;
 
 		const visit = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
@@ -3140,6 +3220,40 @@ class Specialiser {
 			const credentialCall = (e: ts.Expression) =>
 				isThisCall(e, 'getCredentials') ||
 				(ts.isAwaitExpression(e) && isThisCall(e.expression, 'getCredentials'));
+
+			if (isFormNew(node)) return this.helper('__formNew');
+			if (
+				ts.isExpressionStatement(node) &&
+				ts.isCallExpression(node.expression) &&
+				ts.isPropertyAccessExpression(node.expression.expression) &&
+				ts.isIdentifier(node.expression.expression.expression) &&
+				formNames.has(node.expression.expression.expression.text) &&
+				node.expression.expression.name.text === 'append' &&
+				(node.expression.arguments.length === 2 || node.expression.arguments.length === 3) &&
+				!node.expression.arguments.some((a) => ts.isSpreadElement(a))
+			) {
+				const [name, value, options] = args(node.expression);
+				return f.createExpressionStatement(
+					this.helper(
+						'__formAppend',
+						node.expression.expression.expression,
+						name,
+						value,
+						options ?? f.createIdentifier('undefined'),
+					),
+				);
+			}
+			if (
+				ts.isPropertyAccessExpression(node) &&
+				ts.isIdentifier(node.expression) &&
+				formNames.has(node.expression.text)
+			) {
+				this.error(
+					unit.name,
+					`'${node.name.text}' of a form of the package 'form-data' has no compiled form`,
+				);
+				return node;
+			}
 
 			if (
 				ts.isVariableDeclaration(node) &&
@@ -7857,6 +7971,11 @@ class Specialiser {
 	}
 
 	private print(): string {
+		if (this.helpers.has('__formNew') && this.output.some((o) => mentionsFormMethod(o.node)))
+			this.error(
+				'code',
+				"a form of the package 'form-data' has a compiled form only with `append` and as the `formData` of a request",
+			);
 		for (const entry of this.output) entry.node = this.serviceBytes(entry.node);
 		if (this.readsItemBytes && !this.output.some((o) => mentionsName(o.node, '__prepareBinary')))
 			this.helpers.delete('__prepareBinary');
@@ -8045,6 +8164,7 @@ class Specialiser {
 			for (const used of CODE_HELPERS[name].uses) add(used);
 		};
 		for (const name of t.helpers) add(name);
+		if (this.helpers.has('__formAppend')) for (const name of ['bufFrom', 'bufText']) add(name);
 		if (t.usesCollections) add('collPlain');
 
 		const plain = t.usesCollections

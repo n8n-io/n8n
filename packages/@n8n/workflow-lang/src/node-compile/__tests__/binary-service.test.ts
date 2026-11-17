@@ -12,8 +12,9 @@ const STORED_ID = 'filesystem-v2:workflows/w/executions/e/binary_data/f';
 const STORED = { ...FILE, data: 'filesystem-v2', id: STORED_ID, bytes: 11 };
 const OK = { status: 200, headers: {}, body: { ok: true } };
 
-function probe(body: string) {
-	const source = `export class Probe {
+function probe(body: string, head = '') {
+	const source = `${head}
+export class Probe {
 	async execute(this: any) {
 		const items = this.getInputData();
 		const returnData: any[] = [];
@@ -52,10 +53,10 @@ export default workflow({
 `;
 }
 
-async function run(body: string, items: unknown[], answers: unknown[]) {
-	const result = probe(body);
+async function run(body: string, items: unknown[], answers: unknown[], head = '') {
+	const result = probe(body, head);
 	expect(result.errors).toEqual([]);
-	expect(result.marksFileLimit).toBe(true);
+	expect(result.marksFileLimit).toBe(head === '');
 	const nodes = { 'nodes/compiled-node.ts': result.source ?? '' };
 	const compiled = compile(workflowSource(items), { nodes });
 	expect(compiled.diagnostics).toEqual([]);
@@ -209,5 +210,87 @@ describe('file bytes of an item through the binaryData service', () => {
 			const buffer = await this.helpers.binaryToBuffer(response.body);
 			returnData.push({ json: { text: buffer.toString('base64') } });`);
 		expect(result.errors.join('\n')).toContain('file bytes have a compiled form only');
+	});
+});
+
+const FORM_IMPORT = "import FormData from 'form-data';";
+
+const FORM = `const binaryData = this.helpers.assertBinaryData(i, 'data');
+			const form = new FormData();
+			form.append('payload_json', JSON.stringify({ content: 'hi', n: 1 }), { contentType: 'application/json' });
+			form.append('note', 'plain');
+			form.append('count', 3);
+			form.append('files[0]', await this.helpers.getBinaryDataBuffer(i, 'data'), { contentType: binaryData.mimeType, filename: binaryData.fileName });
+			const response = await this.helpers.request({ method: 'POST', uri: 'https://api.example.com/messages', headers: { 'content-type': 'multipart/form-data; charset=utf-8' }, formData: form, body: { ignored: true } });
+			returnData.push({ json: { response } });`;
+
+describe("a form of the package 'form-data' as the form data of a request", () => {
+	it('sends the fields in the order of the calls, with a stored file by its id', async () => {
+		const out = await run(FORM, [{ $binary: { data: STORED } }], [OK], FORM_IMPORT);
+		expect(out.status).toBe('ok');
+		expect(out.effects.map((e) => e.kind)).toEqual(['http']);
+		expect(out.effects[0]?.args).toMatchObject({
+			method: 'POST',
+			multipart: [
+				{
+					name: 'payload_json',
+					binary: {
+						data: Buffer.from('{"content":"hi","n":1}').toString('base64'),
+						mimeType: 'application/json',
+					},
+				},
+				{ name: 'note', value: 'plain' },
+				{ name: 'count', value: '3' },
+				{
+					name: 'files[0]',
+					binary: {
+						data: 'filesystem-v2',
+						id: STORED_ID,
+						mimeType: 'text/plain',
+						fileName: 'hello.txt',
+					},
+				},
+			],
+		});
+	});
+
+	it('sends an inline file as its base64 text', async () => {
+		const out = await run(FORM, [{ $binary: { data: FILE } }], [OK], FORM_IMPORT);
+		expect(out.status).toBe('ok');
+		expect(out.effects[0]?.args).toMatchObject({
+			multipart: [
+				{ name: 'payload_json' },
+				{ name: 'note' },
+				{ name: 'count' },
+				{
+					name: 'files[0]',
+					binary: { data: HELLO, mimeType: 'text/plain', fileName: 'hello.txt' },
+				},
+			],
+		});
+	});
+
+	it.each(['getHeaders', 'getBoundary', 'getLengthSync', 'getBuffer'])(
+		'does not compile the method %s of a form',
+		(method) => {
+			const result = probe(
+				`const form = new FormData();
+			form.append('a', 'b');
+			returnData.push({ json: { r: form.${method}() } });`,
+				FORM_IMPORT,
+			);
+			expect(result.errors.join('\n')).toContain("of a form of the package 'form-data'");
+		},
+	);
+
+	it('does not compile a method of a form in another function', () => {
+		const result = probe(
+			`const form = new FormData();
+			form.append('a', 'b');
+			const read = (given: any) => given.getBoundary();
+			returnData.push({ json: { r: read(form) } });`,
+			FORM_IMPORT,
+		);
+		expect(result.errors.join('\n')).toContain("a form of the package 'form-data'");
 	});
 });
