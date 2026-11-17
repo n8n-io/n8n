@@ -121,6 +121,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'aiPreference:update',
 			'aiPreference:delete',
 			'aiPreference:list',
+			'aiPreference:manage',
 			'skill:create', // Context (instance skills)
 			'skill:read',
 			'skill:update',

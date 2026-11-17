@@ -264,6 +264,10 @@ export interface FrontendSettings {
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
+	aiPreferences: {
+		enabled: boolean;
+		managedByEnv: boolean;
+	};
 	pruning?: {
 		isEnabled: boolean;
 		maxAge: number;

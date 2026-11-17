@@ -18,6 +18,7 @@ import {
 	type ArtifactInfo,
 	type TimelineBlock,
 } from '../agentTimeline.utils';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
@@ -115,6 +116,8 @@ const canActOnPreferenceCard = computed(
 		props.messageId !== undefined &&
 		props.messageId === thread.messages.at(-1)?.id,
 );
+
+const preferencesEnabled = computed(() => isContextPreferencesEnabled());
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
@@ -360,7 +363,7 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 
 					<!-- A preference the assistant saved: edit or undo it from the latest turn -->
 					<PreferenceCard
-						v-else-if="block.type === 'preference'"
+						v-else-if="block.type === 'preference' && preferencesEnabled"
 						:tool-call="block.toolCall"
 						:run-id="props.runId ?? ''"
 						:read-only="!canActOnPreferenceCard"

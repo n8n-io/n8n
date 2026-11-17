@@ -9,13 +9,17 @@ import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
+	N8nEnterpriseReadinessBadge,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
+	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -34,7 +38,13 @@ import { useContextStore } from '../context.store';
 import type { AiPreferenceScope } from '@n8n/api-types';
 
 import type { Preference } from '../context.types';
-import { keepSortOnClear, preferenceScope, toPreferenceSortOption } from '../context.utils';
+import {
+	canManageContextPreferences,
+	isContextPreferencesEnabled,
+	keepSortOnClear,
+	preferenceScope,
+	toPreferenceSortOption,
+} from '../context.utils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -42,6 +52,7 @@ const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();
 const contextStore = useContextStore();
+const settingsStore = useSettingsStore();
 const preferencesEmptyStateExperiment = usePreferencesEmptyStateExperiment();
 const emptyStateVariant = preferencesEmptyStateExperiment.variant;
 const { showError, showMessage } = useToast();
@@ -57,6 +68,14 @@ const search = ref('');
 const appliedSearch = ref('');
 const loadFailed = ref(false);
 let latestLoad = 0;
+
+const canManagePreferences = canManageContextPreferences();
+const preferencesEnabled = computed(() => isContextPreferencesEnabled());
+const preferencesSwitchOn = computed(() => settingsStore.settings.aiPreferences?.enabled === true);
+const preferencesManagedByEnv = computed(
+	() => settingsStore.settings.aiPreferences?.managedByEnv === true,
+);
+const isSavingSwitch = ref(false);
 
 const dialogTarget = ref<Preference | 'new' | null>(null);
 const openedExample = ref<PreferenceExample>();
@@ -234,12 +253,25 @@ async function onDeleteSelected() {
 	});
 }
 
+async function onPreferencesEnabledChange(enabled: boolean) {
+	isSavingSwitch.value = true;
+	try {
+		await contextStore.setPreferencesEnabled(enabled);
+		if (preferencesEnabled.value) await load();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.preferences.enable.error'));
+	} finally {
+		isSavingSwitch.value = false;
+	}
+}
+
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.preferences.title'));
+	if (!preferencesEnabled.value) return;
 	// Once for the visit, not once for each page: paging is not a second visit. A failed load
 	// reports nothing, so a zero here is an empty list and never a broken one. A search that
 	// replaces the first load also reports nothing, because the store then holds its filtered rows.
@@ -265,78 +297,109 @@ onMounted(async () => {
 			:title="i18n.baseText('settings.context.preferences.title')"
 			:description="i18n.baseText('settings.context.preferences.description')"
 			:show-docs-link="false"
-		/>
+		>
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="preferences-enterprise-readiness-badge"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
 
-		<PreferencesEmptyStateAssistant v-if="showAssistantEmptyState" @write-own="openCreateModal" />
-		<PreferencesEmptyStateExamples
-			v-else-if="showExamplesEmptyState"
-			@use-example="openExampleModal"
-			@write-own="openCreateModal"
-		/>
-		<template v-else>
-			<div :class="$style.toolbar">
-				<N8nInput
-					v-model="search"
-					:class="$style.search"
-					:placeholder="i18n.baseText('settings.context.preferences.search.placeholder')"
-					clearable
-					data-test-id="preferences-search"
-					@update:model-value="onSearchDebounced"
+		<N8nSettingsRowGroup v-if="canManagePreferences" :class="$style.switch">
+			<N8nSettingsEnableRow
+				:title="i18n.baseText('settings.context.preferences.title')"
+				:description="
+					preferencesManagedByEnv
+						? i18n.baseText('settings.context.preferences.enable.managedByEnv')
+						: i18n.baseText('settings.context.preferences.enable.description')
+				"
+				:enabled="preferencesSwitchOn"
+				:disabled="isSavingSwitch || preferencesManagedByEnv"
+				switch-test-id="preferences-enable-toggle"
+				@update:enabled="onPreferencesEnabledChange"
+			/>
+		</N8nSettingsRowGroup>
+
+		<N8nText
+			v-if="!preferencesEnabled && preferencesSwitchOn"
+			color="text-light"
+			data-test-id="preferences-needs-consumer"
+		>
+			{{ i18n.baseText('settings.context.preferences.enable.needsConsumer') }}
+		</N8nText>
+		<template v-if="preferencesEnabled">
+			<PreferencesEmptyStateAssistant v-if="showAssistantEmptyState" @write-own="openCreateModal" />
+			<PreferencesEmptyStateExamples
+				v-else-if="showExamplesEmptyState"
+				@use-example="openExampleModal"
+				@write-own="openCreateModal"
+			/>
+			<template v-else>
+				<div :class="$style.toolbar">
+					<N8nInput
+						v-model="search"
+						:class="$style.search"
+						:placeholder="i18n.baseText('settings.context.preferences.search.placeholder')"
+						clearable
+						data-test-id="preferences-search"
+						@update:model-value="onSearchDebounced"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<span :class="$style.spacer" />
+					<N8nText v-if="selectedCount > 0" color="text-light" size="small">
+						{{
+							i18n.baseText('settings.context.preferences.selected', {
+								interpolate: { count: selectedCount },
+								adjustToNumber: selectedCount,
+							})
+						}}
+					</N8nText>
+					<N8nButton
+						v-if="selectedCount > 0"
+						variant="outline"
+						:label="i18n.baseText('settings.context.preferences.actions.deleteSelected')"
+						data-test-id="preferences-delete-selected-button"
+						@click="onDeleteSelected"
+					/>
+					<N8nButton
+						:label="i18n.baseText('settings.context.preferences.actions.create')"
+						data-test-id="preferences-create-button"
+						@click="openCreateModal"
+					/>
+				</div>
+
+				<PreferencesTable
+					v-model:table-options="tableOptions"
+					v-model:selection="selection"
+					:preferences="contextStore.preferences"
+					:items-length="contextStore.count"
+					:loading="contextStore.loading"
+					:show-empty="showEmptyState"
+					@edit="openEditModal"
+					@delete="onDelete"
+					@update:options="onOptionsUpdate"
 				>
-					<template #prefix>
-						<N8nIcon icon="search" />
+					<template #empty>
+						<div :class="$style.empty" data-test-id="preferences-empty-state">
+							<N8nHeading tag="h2" size="medium" bold>
+								{{ i18n.baseText('settings.context.preferences.empty.title') }}
+							</N8nHeading>
+							<N8nText color="text-light">
+								{{ i18n.baseText('settings.context.preferences.empty.description') }}
+							</N8nText>
+							<N8nButton
+								:label="i18n.baseText('settings.context.preferences.actions.create')"
+								data-test-id="preferences-empty-create-button"
+								@click="openCreateModal"
+							/>
+						</div>
 					</template>
-				</N8nInput>
-				<span :class="$style.spacer" />
-				<N8nText v-if="selectedCount > 0" color="text-light" size="small">
-					{{
-						i18n.baseText('settings.context.preferences.selected', {
-							interpolate: { count: selectedCount },
-							adjustToNumber: selectedCount,
-						})
-					}}
-				</N8nText>
-				<N8nButton
-					v-if="selectedCount > 0"
-					variant="outline"
-					:label="i18n.baseText('settings.context.preferences.actions.deleteSelected')"
-					data-test-id="preferences-delete-selected-button"
-					@click="onDeleteSelected"
-				/>
-				<N8nButton
-					:label="i18n.baseText('settings.context.preferences.actions.create')"
-					data-test-id="preferences-create-button"
-					@click="openCreateModal"
-				/>
-			</div>
-
-			<PreferencesTable
-				v-model:table-options="tableOptions"
-				v-model:selection="selection"
-				:preferences="contextStore.preferences"
-				:items-length="contextStore.count"
-				:loading="contextStore.loading"
-				:show-empty="showEmptyState"
-				@edit="openEditModal"
-				@delete="onDelete"
-				@update:options="onOptionsUpdate"
-			>
-				<template #empty>
-					<div :class="$style.empty" data-test-id="preferences-empty-state">
-						<N8nHeading tag="h2" size="medium" bold>
-							{{ i18n.baseText('settings.context.preferences.empty.title') }}
-						</N8nHeading>
-						<N8nText color="text-light">
-							{{ i18n.baseText('settings.context.preferences.empty.description') }}
-						</N8nText>
-						<N8nButton
-							:label="i18n.baseText('settings.context.preferences.actions.create')"
-							data-test-id="preferences-empty-create-button"
-							@click="openCreateModal"
-						/>
-					</div>
-				</template>
-			</PreferencesTable>
+				</PreferencesTable>
+			</template>
 		</template>
 
 		<PreferenceModal
@@ -358,6 +421,10 @@ onMounted(async () => {
 	header {
 		margin-inline: 0 auto;
 	}
+}
+
+.switch {
+	width: 100%;
 }
 
 .toolbar {
