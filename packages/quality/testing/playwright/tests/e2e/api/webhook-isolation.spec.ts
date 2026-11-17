@@ -5,7 +5,7 @@ test.use({ capability: { env: { TEST_ISOLATION: 'webhook-isolation' } } });
 test.describe(
 	'Webhook Origin Isolation',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test.beforeAll(async ({ api }) => {

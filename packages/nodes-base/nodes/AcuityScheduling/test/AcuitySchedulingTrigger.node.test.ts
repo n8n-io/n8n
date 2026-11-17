@@ -1,4 +1,5 @@
 import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { AcuitySchedulingTrigger } from '../AcuitySchedulingTrigger.node';
 import { verifySignature } from '../AcuitySchedulingTriggerHelpers';
@@ -91,7 +92,11 @@ describe('AcuitySchedulingTrigger', () => {
 
 			const result = await trigger.webhook.call(ctx);
 
-			expect(mockedAcuitySchedulingApiRequest).toHaveBeenCalledWith('GET', '/appointments/123', {});
+			expect(mockedAcuitySchedulingApiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/appointments/123`,
+				{},
+			);
 			expect(result).toEqual({ workflowData: [[{ id: 123, name: 'Resolved' }]] });
 		});
 	});

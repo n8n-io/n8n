@@ -16,6 +16,7 @@ import { NotFoundError, UnauthenticatedError, UnexpectedError } from '@n8n/error
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
 import type { Request, Response, RequestHandler } from 'express';
+import escapeRegExp from 'lodash/escapeRegExp';
 import assert from 'node:assert';
 
 import { AuthService } from '@/auth/auth.service';
@@ -76,6 +77,13 @@ export class ControllerRegistry {
 				}
 				const middlewares = this.buildMiddlewares(routerConfig, controllerMiddlewares);
 				router.use(routerConfig.path, ...middlewares, routerConfig.router);
+
+				// A static router serves every path under its mount, so the bot
+				// filter must let bots through on all of them.
+				if (routerConfig.allowBots) {
+					const base = (prefix + routerConfig.path).replace(/\/+/g, '/').replace(/\/$/, '');
+					AbstractServer.botAllowedPaths.push(`${escapeRegExp(base)}(/.*)?`);
+				}
 			}
 		}
 

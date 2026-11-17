@@ -2,7 +2,10 @@ operationId: deleteProject
 tags:
   - Projects
 summary: Delete a project
-description: Delete a project from your instance.
+description: |-
+  Delete a project from your instance.
+
+  Requires the `project:delete` API key scope.
 x-required-scope: project:delete
 parameters:
   - schema:

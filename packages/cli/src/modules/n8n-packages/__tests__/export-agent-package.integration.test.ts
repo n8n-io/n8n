@@ -28,7 +28,9 @@ import {
 	readSkillTables,
 	toSkillContent,
 } from '@/modules/skills/testing';
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
+import { saveCredential } from '@test-integration/db/credentials';
 import { createOwner } from '@test-integration/db/users';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';
@@ -38,6 +40,8 @@ import { DirectoryPackageReader } from '../io/directory/directory-package-reader
 import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
+import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
+import { N8nPackagesService } from '../n8n-packages.service';
 import { PackageImportConfig } from '../n8n-packages.config';
 import { ExportVersionPolicy } from '../n8n-packages.types';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
@@ -47,7 +51,12 @@ import { SkillExporter } from '../entities/skill/skill.exporter';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 
-const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
+const parser = new N8nPackageParser(
+	mock<Logger>(),
+	mock<NodeTypes>(),
+	mock<WorkflowSerializer>(),
+	mock<CredentialTypes>(),
+);
 const limits = new PackageImportConfig();
 const sources: Array<{ agent: Agent; draft: SerializedAgent; published: SerializedAgent }> = [];
 let project: Project;
@@ -78,7 +87,7 @@ async function readSourceRecords() {
 }
 
 beforeAll(async () => {
-	await testModules.loadModules(['skills', 'agents']);
+	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
 	registerSkillUsage();
 	agentRepository = Container.get(AgentRepository);
@@ -253,11 +262,12 @@ it.each([
 		expect(parsed).toHaveLength(2);
 		for (const [index, source] of sources.entries()) {
 			const { id, ...content } = source[selected];
-			const integrations = [{ type: 'slack', credentialId: 'current-slack' }];
+			const integrations = [{ type: 'slack', credentialId: '' }];
 			if (selected === 'published') integrations.push({ type: 'n8n_chat', credentialId: '' });
 			expect(parsed[index]).toEqual({
 				...content,
 				sourceAgentId: id,
+				isArchived: false,
 				config: { ...content.config, integrations },
 				metadata: {
 					versionId: selected === 'draft' ? source.agent.versionId : source.agent.activeVersionId,
@@ -308,4 +318,76 @@ it('rejects a stale draft through the definition service', async () => {
 	await expect(exporter.prepare({ ...agent, revision: agent.revision - 1 })).rejects.toThrow(
 		ConflictError,
 	);
+});
+
+it('exports channels without credential IDs and requires no channel-only credential', async () => {
+	const model = await saveCredential(
+		{ name: 'Model', type: 'openAiApi', data: { apiKey: 'key' } },
+		{ project, role: 'credential:owner' },
+	);
+	const slack = await saveCredential(
+		{ name: 'Slack', type: 'slackApi', data: { accessToken: 'token' } },
+		{ project, role: 'credential:owner' },
+	);
+	const config = AgentJsonConfigSchema.parse({
+		name: 'Channels',
+		model: 'openai/gpt-4o',
+		credential: model.id,
+		instructions: '',
+	});
+	const agent = await agentRepository.save({
+		id: 'channels_agent',
+		name: 'Channels',
+		projectId: project.id,
+		schema: fromAgentDocument(config).config,
+		integrations: [{ type: 'slack', credentialId: slack.id }],
+		versionId: 'channels_draft',
+	});
+	const writer = new CapturingWriter();
+
+	const { manifest } = await Container.get(N8nPackagesService).exportPackageToWriter(
+		{ user: owner, agentIds: [agent.id] },
+		writer,
+	);
+
+	expect(manifest.requirements?.credentials?.map(({ id }) => id)).toEqual([model.id]);
+	expect(manifest.credentials?.map(({ id }) => id)).toEqual([model.id]);
+	expect(writer.files.filter(({ path }) => path.endsWith('/credential.json'))).toHaveLength(1);
+	const content = serializedAgentSchema.parse(
+		JSON.parse(writer.files.find(({ path }) => path.endsWith('/agent.json'))!.content),
+	);
+	expect(content.config?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+	await agentRepository.delete(agent.id);
+});
+it('skips an archived Agent in a project export unless the request includes archived entities', async () => {
+	const archived = await agentRepository.save({
+		id: 'archived_agent',
+		name: 'Archived',
+		projectId: project.id,
+		schema: null,
+		versionId: 'archived_draft',
+		isArchived: true,
+	});
+	const service = Container.get(N8nPackagesService);
+	const exportedIds = async (request: { projectIds?: string[]; agentIds?: string[] }) => {
+		const { manifest } = await service.exportPackageToWriter(
+			{ user: owner, ...request },
+			new CapturingWriter(),
+		);
+		return manifest.agents?.map(({ id }) => id) ?? [];
+	};
+
+	expect(await exportedIds({ projectIds: [project.id] })).not.toContain(archived.id);
+	expect(await exportedIds({ agentIds: [archived.id] })).toEqual([archived.id]);
+
+	const writer = new CapturingWriter();
+	const { manifest } = await service.exportPackageToWriter(
+		{ user: owner, projectIds: [project.id], includeArchived: true },
+		writer,
+	);
+	const entry = manifest.agents?.find(({ id }) => id === archived.id);
+	expect(
+		JSON.parse(writer.files.find(({ path }) => path === `${entry?.target}/agent.json`)!.content),
+	).toMatchObject({ isArchived: true });
+	await agentRepository.delete(archived.id);
 });

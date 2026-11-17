@@ -3,10 +3,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
-import {
-	isContextPreferencesEnabled,
-	isContextSkillsEnabled,
-} from '@/features/settings/context/context.utils';
+import { isContextSkillsEnabled } from '@/features/settings/context/context.utils';
 import type { CommandGroup, CommandBarItem } from '../types';
 
 const ITEM_ID = {
@@ -14,7 +11,7 @@ const ITEM_ID = {
 	PREFERENCES: 'context-preferences',
 } as const;
 
-/** Navigation to the Context settings pages. Each entry follows the flag of its route. */
+/** Navigation to the Context settings pages. The Skills entry follows the skills module. */
 export function useContextCommands(): CommandGroup {
 	const i18n = useI18n();
 	const router = useRouter();
@@ -41,22 +38,20 @@ export function useContextCommands(): CommandGroup {
 			});
 		}
 
-		if (isContextPreferencesEnabled()) {
-			const title = i18n.baseText('commandBar.context.preferences');
-			items.push({
-				id: ITEM_ID.PREFERENCES,
-				title,
-				section,
-				handler: () => {
-					void router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
-				},
-				icon: {
-					component: N8nIcon,
-					props: { icon: 'sliders-horizontal' },
-				},
-				keywords: [title.toLowerCase(), contextKeyword],
-			});
-		}
+		const preferencesTitle = i18n.baseText('commandBar.context.preferences');
+		items.push({
+			id: ITEM_ID.PREFERENCES,
+			title: preferencesTitle,
+			section,
+			handler: () => {
+				void router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
+			},
+			icon: {
+				component: N8nIcon,
+				props: { icon: 'sliders-horizontal' },
+			},
+			keywords: [preferencesTitle.toLowerCase(), contextKeyword],
+		});
 
 		return items;
 	});

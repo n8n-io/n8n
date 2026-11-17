@@ -6,7 +6,7 @@ import {
 	UrlService,
 } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import {
 	AuthenticationPipeline,
 	JwkSchema,
@@ -28,7 +28,7 @@ import { McpServerApiKeyService } from '@/modules/mcp/mcp-api-key.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
@@ -51,7 +51,7 @@ const MCP_ISSUER = 'https://idp-a.example';
 const PUBLIC_API_ISSUER = 'https://idp-b.example';
 const CLIENT_ID = 'external-client';
 
-let member: User;
+let member: Person;
 let mcpResource: string;
 let metadataUrl: string;
 let privateKey: CryptoKey;
@@ -131,12 +131,15 @@ const probe = async (token?: string) => {
 
 /** Every line the authentication edge wrote, from the pipeline, the admission or the middleware. */
 const authLines = (logger: Logger) =>
-	[...vi.mocked(logger.info).mock.calls, ...vi.mocked(logger.warn).mock.calls].filter(([message]) =>
-		message.startsWith('Inbound authentication'),
-	);
+	[
+		...vi.mocked(logger.debug).mock.calls,
+		...vi.mocked(logger.info).mock.calls,
+		...vi.mocked(logger.warn).mock.calls,
+	].filter(([message]) => message.startsWith('Inbound authentication'));
 
 const spyOnLogger = () => {
 	const logger = Container.get(Logger);
+	vi.spyOn(logger, 'debug');
 	vi.spyOn(logger, 'info');
 	vi.spyOn(logger, 'warn');
 	return logger;
@@ -152,7 +155,8 @@ beforeAll(async () => {
 	apiKey = (await Container.get(McpServerApiKeyService).createMcpServerApiKey(member)).apiKey;
 	await Container.get(McpSettingsService).setEnabled(true);
 	// The token rows of the local server need a registered client.
-	await Container.get(OAuthClientRepository).save({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.save({
 		id: CLIENT_ID,
 		name: 'MCP pipeline tests',
 		redirectUris: ['https://example.com/callback'],
@@ -242,6 +246,9 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 			expect.anything(),
 			expect.anything(),
 			{ caller: { authType: 'oauth', clientId: CLIENT_ID }, grantedScopes: ['workflow:read'] },
+			{
+				security: expect.objectContaining({ subject: expect.objectContaining({ id: member.id }) }),
+			},
 		);
 	});
 
@@ -313,6 +320,7 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 		];
 
 		for (const token of tokens) {
+			vi.mocked(logger.debug).mockClear();
 			vi.mocked(logger.info).mockClear();
 			vi.mocked(logger.warn).mockClear();
 			await probe(token);

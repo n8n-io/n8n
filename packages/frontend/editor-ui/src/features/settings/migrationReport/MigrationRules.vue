@@ -28,7 +28,7 @@ import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { BREAKING_CHANGES_DOCUMENTATION_URL } from './constants';
+import { BREAKING_CHANGES_DOCUMENTATION_URL, TARGET_VERSION_DISPLAY } from './constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useToast } from '@n8n/composables/useToast';
 import { saveAs } from 'file-saver';
@@ -49,9 +49,6 @@ const canManageReport = hasPermission(['rbac'], { rbac: { scope: 'workflow:updat
 const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 	? { version: MIGRATION_REPORT_TARGET_VERSION }
 	: undefined;
-
-const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
-const targetVersionDisplay = `${targetVersionMajor}.0.0`;
 
 type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
@@ -220,7 +217,7 @@ const sortedInstanceResults = computed(() => {
 					interpolate: {
 						compatibleCount: compatibleWorkflowsCount.toLocaleString(),
 						totalCount: (state?.totalWorkflows ?? 0).toLocaleString(),
-						version: targetVersionDisplay,
+						version: TARGET_VERSION_DISPLAY,
 					},
 				})
 			"
@@ -334,7 +331,7 @@ const sortedInstanceResults = computed(() => {
 						}}</template>
 						<template #description>{{
 							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description', {
-								interpolate: { version: targetVersionDisplay },
+								interpolate: { version: TARGET_VERSION_DISPLAY },
 							})
 						}}</template>
 					</EmptyTab>
@@ -424,7 +421,7 @@ const sortedInstanceResults = computed(() => {
 						}}</template>
 						<template #description>{{
 							i18n.baseText('settings.migrationReport.emptyInstanceIssues.description', {
-								interpolate: { version: targetVersionDisplay },
+								interpolate: { version: TARGET_VERSION_DISPLAY },
 							})
 						}}</template>
 					</EmptyTab>

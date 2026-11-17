@@ -90,11 +90,6 @@ export interface StepDetail {
 	updatedAt: string;
 }
 
-/** Body of `POST /workflow-executions/:id/resume-target`. The control plane forwards the token unread. */
-export interface ResumeTargetRequest {
-	token: string;
-}
-
 /**
  * Body of `POST /resume-requests/locate`, phase one of every kind of resume
  * request. `id` is the id in the resume URL or in the approval callback. The

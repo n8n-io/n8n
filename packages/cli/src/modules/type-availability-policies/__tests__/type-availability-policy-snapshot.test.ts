@@ -4,7 +4,7 @@ import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from '../constants';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';

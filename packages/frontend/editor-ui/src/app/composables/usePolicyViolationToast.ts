@@ -2,7 +2,10 @@ import { h } from 'vue';
 import type { PolicyViolation } from '@n8n/api-types';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { PolicyViolationList } from '@n8n/frontend-module-type-availability-policies';
+import {
+	PolicyViolationList,
+	type PolicyViolationListItem,
+} from '@n8n/frontend-module-type-availability-policies';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import {
 	CREDENTIAL_TYPE_SUBJECT,
@@ -29,21 +32,20 @@ const NODE_MATCHER: Record<string, ((subject: string) => (node: INodeUi) => bool
 		[CREDENTIAL_TYPE_SUBJECT]: (subject) => (node) => hasNodeCredentialFilled(node, subject),
 	};
 
+export function isWorkflowDocumentOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
+	return (
+		!useUIStore().isReadOnlyView &&
+		createWorkflowDocumentId(useWorkflowsStore().workflowId) === documentId
+	);
+}
+
 export function usePolicyViolationToast() {
 	const toast = useToast();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const uiStore = useUIStore();
 	const { labelOf } = usePolicyViolationLabels();
 
-	function isOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
-		return (
-			!uiStore.isReadOnlyView && createWorkflowDocumentId(workflowsStore.workflowId) === documentId
-		);
-	}
-
 	function nodeIdsFor(
-		{ subject, subjectType }: PolicyViolation,
+		{ subject, subjectType }: PolicyViolationListItem,
 		documentId: WorkflowDocumentId,
 	): string[] {
 		const matcher = subjectType ? NODE_MATCHER[subjectType] : undefined;
@@ -69,9 +71,10 @@ export function usePolicyViolationToast() {
 				message: h(PolicyViolationList, {
 					violations,
 					labelOf,
-					isJumpable: (violation: PolicyViolation) =>
-						isOpenOnCanvas(documentId) && nodeIdsFor(violation, documentId).length > 0,
-					onJump: (violation: PolicyViolation) => {
+					isJumpable: (violation: PolicyViolationListItem) =>
+						isWorkflowDocumentOpenOnCanvas(documentId) &&
+						nodeIdsFor(violation, documentId).length > 0,
+					onJump: (violation: PolicyViolationListItem) => {
 						const ids = nodeIdsFor(violation, documentId);
 						if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
 					},

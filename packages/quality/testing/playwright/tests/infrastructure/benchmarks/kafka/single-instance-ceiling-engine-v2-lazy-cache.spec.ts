@@ -21,7 +21,7 @@ test.describe(
 	{
 		tag: '@bench:kafka',
 		annotation: [
-			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'owner', description: 'Core Execution' },
 			{
 				type: 'question',
 				description: 'single-instance-throughput-ceiling-engine-v2-vm-lazy-cache',

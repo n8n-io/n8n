@@ -24,6 +24,10 @@ servers:
         default: https://example.com
 tags:
   # Child tags (alphabetically sorted)
+  - name: Agent
+    x-displayName: Agents
+    x-parent: BuildAndRun
+    description: Operations about agents
   - name: Audit
     x-displayName: Audit
     x-parent: InstanceOperations
@@ -83,7 +87,7 @@ tags:
   - name: Promotions
     x-displayName: Promotions
     x-parent: InstanceOperations
-    description: Operations about promotion providers, environments, and package operations
+    description: Beta — breaking changes may still occur without major version bump.
   - name: Role
     x-displayName: Roles
     x-parent: AccessAndOrganization

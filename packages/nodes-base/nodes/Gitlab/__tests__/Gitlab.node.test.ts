@@ -19,7 +19,7 @@ vi.mock('../GenericFunctions', async () => ({
  * Gitlab.file.create.test.ts so behaviour stays consistent across the
  * GitLab test suite.
  */
-function createMockExecuteFunction(params: Record<string, any>) {
+function createMockExecuteFunction(params: Record<string, any>, typeVersion = 1) {
 	const merged: Record<string, any> = {
 		authentication: 'accessToken',
 		owner: 'test-owner',
@@ -36,7 +36,7 @@ function createMockExecuteFunction(params: Record<string, any>) {
 			id: 'test-node-id',
 			name: 'Gitlab',
 			type: 'n8n-nodes-base.gitlab',
-			typeVersion: 1,
+			typeVersion,
 			position: [0, 0],
 			parameters: {},
 		}),
@@ -86,7 +86,7 @@ describe('Gitlab Node - Cross-cutting / Auth', () => {
 
 			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/projects/test-owner%2Ftest-repo/issues/1',
+				expect.objectContaining({ value: '/projects/test-owner%2Ftest-repo/issues/1' }),
 				{},
 				{},
 			);
@@ -107,11 +107,114 @@ describe('Gitlab Node - Cross-cutting / Auth', () => {
 
 			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/projects/my-group%2Fsubgroup%2Ftest-repo/issues/1',
+				expect.objectContaining({ value: '/projects/my-group%2Fsubgroup%2Ftest-repo/issues/1' }),
 				{},
 				{},
 			);
 		});
+	});
+
+	describe('Encoded Path Values', () => {
+		const encodedOwner = {
+			owner: 'my-group%2Fsubgroup',
+			resource: 'issue',
+			operation: 'get',
+			issueNumber: 1,
+		};
+		const encodedRelease = {
+			resource: 'release',
+			operation: 'get',
+			projectId: 'acme%2Fbilling-service',
+			tag_name: 'release%2F1.0',
+		};
+		const encodedTwice = {
+			resource: 'release',
+			operation: 'get',
+			projectId: 'acme%252Fbilling',
+			tag_name: 'v1',
+		};
+		const invalidEncoding = {
+			resource: 'release',
+			operation: 'get',
+			projectId: '50%',
+			tag_name: 'v1',
+		};
+		const filePath = {
+			resource: 'file',
+			operation: 'get',
+			filePath: 'c++/a.md',
+			additionalParameters: {},
+		};
+
+		it.each([
+			[1, 'an encoded owner', encodedOwner, '/projects/my-group%2Fsubgroup%2Ftest-repo/issues/1'],
+			[
+				1,
+				'an encoded project ID and tag name',
+				encodedRelease,
+				'/projects/acme%2Fbilling-service/releases/release%2F1.0',
+			],
+			[
+				1,
+				'a project ID that is encoded twice',
+				encodedTwice,
+				'/projects/acme%252Fbilling/releases/v1',
+			],
+			[
+				1,
+				'a project ID that is not valid percent-encoding',
+				invalidEncoding,
+				'/projects/50%25/releases/v1',
+			],
+			[
+				1,
+				'a file path with plus signs',
+				filePath,
+				'/projects/test-owner%2Ftest-repo/repository/files/c%2B%2B%2Fa.md',
+			],
+			[
+				1.1,
+				'an encoded owner',
+				encodedOwner,
+				'/projects/my-group%252Fsubgroup%2Ftest-repo/issues/1',
+			],
+			[
+				1.1,
+				'an encoded project ID and tag name',
+				encodedRelease,
+				'/projects/acme%252Fbilling-service/releases/release%252F1.0',
+			],
+			[
+				1.1,
+				'a project ID that is encoded twice',
+				encodedTwice,
+				'/projects/acme%25252Fbilling/releases/v1',
+			],
+			[
+				1.1,
+				'a project ID that is not valid percent-encoding',
+				invalidEncoding,
+				'/projects/50%25/releases/v1',
+			],
+			[
+				1.1,
+				'a file path with plus signs',
+				filePath,
+				'/projects/test-owner%2Ftest-repo/repository/files/c%2B%2B%2Fa.md',
+			],
+		])(
+			'should build the endpoint in version %s for %s',
+			async (typeVersion, _, params, expectedEndpoint) => {
+				const mock = createMockExecuteFunction(params, typeVersion);
+				(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({});
+
+				await gitlab.execute.call(mock);
+
+				expect(String((GenericFunctions.gitlabApiRequest as Mock).mock.calls[0][1])).toBe(
+					expectedEndpoint,
+				);
+			},
+		);
 	});
 
 	describe('Unknown Resource', () => {
@@ -237,7 +340,7 @@ describe('Gitlab Node - Cross-cutting / Auth', () => {
 
 			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/users/test-owner/projects',
+				expect.objectContaining({ value: '/users/test-owner/projects' }),
 				{},
 				{},
 			);

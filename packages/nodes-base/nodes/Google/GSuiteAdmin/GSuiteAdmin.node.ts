@@ -7,7 +7,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	requestPath,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 
 import { deviceFields, deviceOperations } from './DeviceDescription';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
@@ -76,7 +81,7 @@ export class GSuiteAdmin implements INodeType {
 					this,
 					'domains',
 					'GET',
-					'/directory/v1/customer/my_customer/domains',
+					requestPath`/directory/v1/customer/my_customer/domains`,
 				)) as Array<{
 					domainName: string;
 				}>;
@@ -95,7 +100,7 @@ export class GSuiteAdmin implements INodeType {
 					this,
 					'schemas',
 					'GET',
-					'/directory/v1/customer/my_customer/schemas',
+					requestPath`/directory/v1/customer/my_customer/schemas`,
 				)) as Array<{
 					displayName: string;
 					schemaName: string;
@@ -110,7 +115,7 @@ export class GSuiteAdmin implements INodeType {
 				const orgUnits = (await googleApiRequest.call(
 					this,
 					'GET',
-					'/directory/v1/customer/my_customer/orgunits',
+					requestPath`/directory/v1/customer/my_customer/orgunits`,
 					{},
 					{ orgUnitPath: '/', type: 'all' },
 				)) as {
@@ -167,8 +172,9 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}?projection=${output}`,
+							requestPath`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}`,
 							{},
+							{ projection: output },
 						);
 					}
 
@@ -220,7 +226,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/directory/v1/customer/${qs.customer}/devices/chromeos/`,
+							requestPath`/directory/v1/customer/${qs.customer}/devices/chromeos/`,
 							{},
 							qs,
 						);
@@ -243,7 +249,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}`,
+							requestPath`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}`,
 							qs,
 						);
 					}
@@ -258,7 +264,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}/action`,
+							requestPath`/directory/v1/customer/my_customer/devices/chromeos/${deviceId}/action`,
 							qs,
 						);
 					}
@@ -276,7 +282,12 @@ export class GSuiteAdmin implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await googleApiRequest.call(this, 'POST', '/directory/v1/groups', body);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							requestPath`/directory/v1/groups`,
+							body,
+						);
 					}
 
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/delete
@@ -285,7 +296,12 @@ export class GSuiteAdmin implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						await googleApiRequest.call(this, 'DELETE', `/directory/v1/groups/${groupId}`, {});
+						await googleApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/directory/v1/groups/${groupId}`,
+							{},
+						);
 
 						responseData = { success: true };
 					}
@@ -299,7 +315,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/directory/v1/groups/${groupId}`,
+							requestPath`/directory/v1/groups/${groupId}`,
 							{},
 						);
 					}
@@ -367,7 +383,7 @@ export class GSuiteAdmin implements INodeType {
 								this,
 								'groups',
 								'GET',
-								'/directory/v1/groups',
+								requestPath`/directory/v1/groups`,
 								{},
 								qs,
 							);
@@ -376,7 +392,7 @@ export class GSuiteAdmin implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								'/directory/v1/groups',
+								requestPath`/directory/v1/groups`,
 								{},
 								qs,
 							);
@@ -399,7 +415,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							`/directory/v1/groups/${groupId}`,
+							requestPath`/directory/v1/groups/${groupId}`,
 							body,
 						);
 					}
@@ -420,7 +436,7 @@ export class GSuiteAdmin implements INodeType {
 							const userDetails = (await googleApiRequest.call(
 								this,
 								'GET',
-								`/directory/v1/users/${userId}`,
+								requestPath`/directory/v1/users/${userId}`,
 							)) as {
 								primaryEmail: string;
 							};
@@ -445,7 +461,7 @@ export class GSuiteAdmin implements INodeType {
 						await googleApiRequest.call(
 							this,
 							'POST',
-							`/directory/v1/groups/${groupId}/members`,
+							requestPath`/directory/v1/groups/${groupId}/members`,
 							body,
 						);
 
@@ -550,7 +566,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							'/directory/v1/users',
+							requestPath`/directory/v1/users`,
 							body,
 							qs,
 						);
@@ -565,7 +581,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'DELETE',
-							`/directory/v1/users/${userId}`,
+							requestPath`/directory/v1/users/${userId}`,
 							{},
 						);
 
@@ -598,7 +614,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/directory/v1/users/${userId}`,
+							requestPath`/directory/v1/users/${userId}`,
 							{},
 							qs,
 						);
@@ -683,7 +699,7 @@ export class GSuiteAdmin implements INodeType {
 								this,
 								'users',
 								'GET',
-								'/directory/v1/users',
+								requestPath`/directory/v1/users`,
 								{},
 								qs,
 							);
@@ -692,7 +708,7 @@ export class GSuiteAdmin implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								'/directory/v1/users',
+								requestPath`/directory/v1/users`,
 								{},
 								qs,
 							);
@@ -726,7 +742,7 @@ export class GSuiteAdmin implements INodeType {
 						await googleApiRequest.call(
 							this,
 							'DELETE',
-							`/directory/v1/groups/${groupId}/members/${userId}`,
+							requestPath`/directory/v1/groups/${groupId}/members/${userId}`,
 						);
 
 						responseData = { removed: true };
@@ -846,7 +862,7 @@ export class GSuiteAdmin implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							`/directory/v1/users/${userId}`,
+							requestPath`/directory/v1/users/${userId}`,
 							body,
 							qs,
 						);

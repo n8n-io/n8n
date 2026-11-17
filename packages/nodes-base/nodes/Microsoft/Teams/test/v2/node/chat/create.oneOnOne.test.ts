@@ -15,7 +15,7 @@ describe('Test MicrosoftTeamsV2, chat => create a one-on-one chat', () => {
 		.reply(200, { id: CALLER, userPrincipalName: 'me@contoso.com', userType: 'Member' });
 
 	nock('https://graph.microsoft.com')
-		.get('/v1.0/users/jane%40contoso.com')
+		.get('/v1.0/users/jane@contoso.com')
 		.query({ $select: 'id,displayName,userPrincipalName' })
 		.reply(200, { id: JANE, displayName: 'Jane Smith', userPrincipalName: 'jane@contoso.com' });
 

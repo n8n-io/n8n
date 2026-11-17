@@ -18,6 +18,7 @@ import {
 	RootLevelController,
 	createBodyKeyedRateLimiter,
 	createUserKeyedRateLimiter,
+	type StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express, { json } from 'express';
@@ -26,6 +27,7 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { AbstractServer } from '@/abstract-server';
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import { ForbiddenError } from '@n8n/errors';
@@ -499,6 +501,27 @@ describe('ControllerRegistry', () => {
 		it('should mount default controller at root path', async () => {
 			const { body } = await request(app).get('/ping').expect(200);
 			expect(body.data).toEqual({ ok: true });
+		});
+	});
+
+	describe('Static routers', () => {
+		@RootLevelController('/bots.v2')
+		// @ts-expect-error tsc complains about unused class
+		class StaticRouterController {
+			static routers: StaticRouterMetadata[] = [
+				{ path: '/', router: express.Router(), skipAuth: true, allowBots: true },
+			];
+		}
+
+		it('should let bots through on every path under a static router with allowBots', () => {
+			const patterns = AbstractServer.botAllowedPaths.map((pattern) => new RegExp(`^${pattern}$`));
+			const allowed = (path: string) => patterns.some((pattern) => pattern.test(path));
+
+			expect(allowed('/bots.v2')).toBe(true);
+			expect(allowed('/bots.v2/Groups')).toBe(true);
+			expect(allowed('/bots.v2/Groups/1')).toBe(true);
+			expect(allowed('/botsXv2/Groups')).toBe(false);
+			expect(allowed('/bots.v2x')).toBe(false);
 		});
 	});
 });
