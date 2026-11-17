@@ -1,0 +1,32 @@
+packages/@n8n/instance-ai/evaluations/data/discovery/mcp-reads-linked-page-while-editing-workflow.json
+  s_77b664c5c8f320::t_121232b014b8fd 1-101,103
+  s_77b664c5c8f320::t_b41cbc3a919590 102
+packages/@n8n/instance-ai/evaluations/__tests__/data-discovery.test.ts
+  s_77b664c5c8f320::t_8254378dee62ff 112-126
+packages/@n8n/instance-ai/evaluations/data/discovery/index.ts
+  s_77b664c5c8f320::t_0c3ed83cdf9b01 8-13,76-85,103-104,124-133
+  s_77b664c5c8f320::t_92494dd30500d7 102
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_77b664c5c8f320::t_61b40971a3ca30 177-194
+  s_77b664c5c8f320::t_ad69e23a052c11 236
+packages/@n8n/instance-ai/evaluations/discovery/types.ts
+  s_77b664c5c8f320::t_a4b48ee342fd7b 108-116
+  s_77b664c5c8f320::t_92494dd30500d7 87-88
+  s_77b664c5c8f320::t_d1bacb2cfe9d8d 89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de471425f0cae193870c43a818b2d7f262a493ea",
+  "prompts": {},
+  "sessions": {
+    "s_77b664c5c8f320": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f924aa7-a562-4cc9-a863-b2e3888af406",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
