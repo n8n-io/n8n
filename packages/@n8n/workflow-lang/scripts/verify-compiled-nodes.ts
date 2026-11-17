@@ -14,8 +14,6 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { NodeDescription } from '../src/convert/node-parameters.ts';
-import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
 import type { ContinueForm, ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
@@ -34,6 +32,14 @@ import {
 import { COST } from '../src/node-compile/cost.generated.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
+import type { Json, WalkNode, WalkProperty as Property } from '../src/node-compile/walk.ts';
+import {
+	credentialOf,
+	fakeCredentialData,
+	operationsOf,
+	requiredParameters,
+	resolveParameters,
+} from '../src/node-compile/walk.ts';
 import {
 	CONTINUE_MODES,
 	CALL_FOR_EACH_ITEM,
@@ -56,19 +62,7 @@ import {
 	recorderAvailable,
 } from '../src/nodes/__tests__/v1-recorder.ts';
 
-type Json = Record<string, unknown>;
-interface Property {
-	name: string;
-	type: string;
-	default?: unknown;
-	options?: Array<{ name?: string; value?: unknown; type?: string; default?: unknown }>;
-	displayOptions?: { show?: Record<string, unknown[]> };
-}
-interface LoadedNode {
-	description: NodeDescription & {
-		version: number | number[];
-		credentials?: Array<{ name: string; displayOptions?: { show?: Record<string, unknown[]> } }>;
-	};
+interface LoadedNode extends WalkNode {
 	nodeVersions?: Record<string, LoadedNode>;
 	constructor: { name: string };
 }
@@ -227,16 +221,6 @@ function weightOf(type: string, parameters: Json): number {
 	);
 }
 
-function credentialOf(node: LoadedNode, resolved: Json): string | undefined {
-	const all = node.description.credentials ?? [];
-	const shown = all.find((c) =>
-		Object.entries(c.displayOptions?.show ?? {}).every(
-			([name, allowed]) => name.startsWith('@') || allowed.includes(resolved[name]),
-		),
-	);
-	return (shown ?? all[0])?.name;
-}
-
 const SIGNING_KEY_FILE = join(here, '../node_modules/.cache/v1-recordings/test-signing-key.pem');
 let signingKey: string | undefined;
 function testSigningKey(): string {
@@ -284,45 +268,10 @@ function otherAuthentications(node: LoadedNode, version: number, start: Json): J
 	return out;
 }
 
-function fakeCredential(type: string): Json {
-	const data: Json = {};
-	const info = registry.get(type);
-	const session = info?.preAuthentication === true ? info.expirable : undefined;
-	for (const [key, value] of Object.entries(info?.defaults ?? {})) {
-		const address = /url|host|domain|server|endpoint/i.test(key);
-		const filled = address ? 'https://api.example.test' : `fake-${key}`;
-		data[key] = value === '' && key !== session ? filled : value;
-	}
-	if (type === 'googleApi') data.privateKey = testSigningKey();
-	if (/oauth2/i.test(type)) {
-		data.oauthTokenData = {
-			access_token: 'fake-token',
-			instance_url: 'https://instance.example.test',
-			api_domain: 'https://api.example.test',
-			...(type === 'quickBooksOAuth2Api' ? { callbackQueryString: { realmId: 'fake-realm' } } : {}),
-		};
-	}
-	return data;
-}
-
-function resolve(node: LoadedNode, version: number, parameters: Json): Json {
-	const d = node.description;
-	return getNodeParameters(d.properties, parameters, true, false, version, d) ?? {};
-}
-
-function required(node: LoadedNode, version: number, start: Json): Json {
-	const properties = node.description.properties as unknown as Property[];
-	const out: Json = { ...start };
-	for (const [name, value] of Object.entries(resolve(node, version, start))) {
-		const type = properties.find((p) => p.name === name)?.type;
-		if (name in out) continue;
-		if (type === 'string' && value === '') out[name] = 'v1';
-		else if (type === 'json' && value === '') out[name] = '{}';
-		else if (type === 'number' && value === undefined) out[name] = 1;
-		else if (type === 'resourceLocator') out[name] = { __rl: true, mode: 'id', value: 'id1' };
-	}
-	return out;
-}
+const fakeCredential = (type: string): Json => fakeCredentialData(registry, type, testSigningKey);
+const resolve = resolveParameters;
+const required = requiredParameters;
+const operations = operationsOf;
 
 function withOptions(node: LoadedNode, version: number, start: Json): Json {
 	const properties = node.description.properties as unknown as Property[];
@@ -425,31 +374,6 @@ function widerExpressionForms(
 		}
 	}
 	return forms;
-}
-
-function operations(node: LoadedNode): Json[] {
-	const properties = node.description.properties as unknown as Property[];
-	const values = (p: Property) =>
-		(p.options ?? []).map((o) => o.value).filter((v) => typeof v === 'string');
-	const resources = properties.filter((p) => p.name === 'resource').flatMap(values);
-	const out: Json[] = [];
-	for (const resource of resources.length > 0 ? resources : [undefined]) {
-		const shown = properties.filter(
-			(p) =>
-				p.name === 'operation' &&
-				(resource === undefined ||
-					!p.displayOptions?.show?.resource ||
-					p.displayOptions.show.resource.includes(resource)),
-		);
-		const names = [...new Set(shown.flatMap(values))];
-		for (const operation of names.length > 0 ? names : [undefined]) {
-			out.push({
-				...(resource === undefined ? {} : { resource }),
-				...(operation === undefined ? {} : { operation }),
-			});
-		}
-	}
-	return out;
 }
 
 const checking = { cache: CACHE };
