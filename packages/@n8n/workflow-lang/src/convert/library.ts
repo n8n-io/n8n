@@ -705,16 +705,10 @@ function lowerHttpLibrary(c: NodeContext): void {
 						'method',
 					);
 				}
-				if (typeof p.rawContentType !== 'string' || p.rawContentType === '') {
-					throw new NodeFailure(
-						'http-body',
-						'A raw body without a content type is not supported.',
-						'rawContentType',
-					);
-				}
 				add('body', c.compiled(p.body ?? '', 'body'));
 				// v1 sets the header `content-type` of a raw body after the other headers.
-				const type = c.compiled(p.rawContentType, 'rawContentType');
+				// Without a content type v1 sends the header with an empty value.
+				const type = c.compiled(p.rawContentType ?? '', 'rawContentType');
 				usage.item ||= type.usage.item;
 				usage.index ||= type.usage.index;
 				contentTypeHeader = ['content-type', flatCode(type.code)];
@@ -789,12 +783,17 @@ function lowerHttpLibrary(c: NodeContext): void {
 		}
 		// v1 follows redirects from version 4, or when the option says so. The library node
 		// follows them always (at most 21), so each other setting runs in the host.
+		// An option without its own values has the defaults of the node: follow from version 4,
+		// at most 21 redirects.
 		const redirect = options.redirect;
 		const redirectOptions =
-			isRecord(redirect) && isRecord(redirect.redirect) ? redirect.redirect : {};
-		const follows = redirect === undefined ? v >= 4 : redirectOptions.followRedirects === true;
-		const maxRedirects = redirectOptions.maxRedirects;
-		if (!follows || (maxRedirects !== undefined && maxRedirects !== 0 && maxRedirects !== 21)) {
+			isRecord(redirect) && isRecord(redirect.redirect) ? redirect.redirect : undefined;
+		const follows =
+			redirect === undefined
+				? v >= 4
+				: redirectOptions !== undefined && (redirectOptions.followRedirects ?? v >= 4) === true;
+		const maxRedirects = redirectOptions?.maxRedirects;
+		if (!follows || (maxRedirects !== undefined && maxRedirects !== 21)) {
 			throw new NodeFailure(
 				'http',
 				'A request that does not follow redirects, or that has its own limit of redirects, is not supported.',

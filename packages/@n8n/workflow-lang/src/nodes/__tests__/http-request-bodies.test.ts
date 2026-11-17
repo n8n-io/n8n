@@ -113,6 +113,18 @@ const CASES: Case[] = [
 		}),
 	},
 	{
+		name: 'a raw body without a content type',
+		version: 4.2,
+		parameters: {
+			method: 'POST',
+			sendBody: true,
+			contentType: 'raw',
+			body: 'plain text',
+			sendHeaders: true,
+			headerParameters: { parameters: [row('Content-Type', 'text/csv'), row('X-Test', 'y')] },
+		},
+	},
+	{
 		name: 'a raw JSON body',
 		version: 4.2,
 		parameters: raw('application/json', '{"a": 1,  "b": [true, null]}'),
@@ -126,8 +138,8 @@ const HOST: Case[] = [
 		parameters: { options: { redirect: { redirect: { followRedirects: false } } } },
 	},
 	{
-		name: 'an empty redirect option',
-		version: 4.2,
+		name: 'version 3 with an empty redirect option',
+		version: 3,
 		parameters: { options: { redirect: { redirect: {} } } },
 	},
 	{ name: 'version 3 without the redirect option', version: 3, parameters: {} },
@@ -156,7 +168,6 @@ const HOST: Case[] = [
 		version: 4.2,
 		parameters: { ...form([]), specifyBody: 'string', body: 'a=1' },
 	},
-	{ name: 'a raw body without a content type', version: 4.2, parameters: raw('', 'x') },
 	{
 		name: 'a raw body with GET',
 		version: 4.2,
@@ -285,6 +296,22 @@ describe('HTTP Request form bodies and raw bodies and v1', () => {
 		},
 		30_000,
 	);
+
+	it.each([
+		{ label: 'an empty redirect option from version 4', version: 4.2, redirect: {} },
+		{ label: 'the default limit of redirects', version: 4.2, redirect: { maxRedirects: 21 } },
+		{ label: 'version 3 that follows redirects', version: 3, redirect: { followRedirects: true } },
+	])('follows redirects as v1: $label', (c) => {
+		const converted = convertWorkflow(
+			workflow({
+				name: c.label,
+				version: c.version,
+				parameters: { options: { redirect: { redirect: c.redirect } } },
+			}),
+		);
+		expect(converted.ok).toBe(true);
+		expect(converted.fallbackNodes).toEqual([]);
+	});
 
 	it.each(HOST.map((c) => ({ ...c, label: c.name })))('runs in the host: $label', (c) => {
 		const converted = convertWorkflow(workflow(c));
