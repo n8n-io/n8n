@@ -29,10 +29,9 @@ import {
 	lowerAiNode,
 	lowerHostNode,
 } from './host-node.ts';
-import { hideParameters } from './node-parameters.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
-import { getNodeParameters, nodeDescription } from './node-parameters.ts';
+import { getNodeParameters, hideParameters, nodeDescription } from './node-parameters.ts';
 import type { StepCall } from './steps.ts';
 import {
 	emitStep,
