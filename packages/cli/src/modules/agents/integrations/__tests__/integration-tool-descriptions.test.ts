@@ -7,9 +7,11 @@ import { getIntegrationToolConnectionDescriptors } from '../integration-tool-fac
 
 describe('buildActionToolDescription', () => {
 	it('includes card examples and destination guidance in channel actions', () => {
-		const [descriptor] = getIntegrationToolConnectionDescriptors([
-			{ type: 'slack', credentialId: 'cred-1' },
-		]);
+		const [descriptor] = getIntegrationToolConnectionDescriptors(
+			[{ type: 'slack', credentialId: 'cred-1' }],
+			'agent-1',
+			() => ({ supportedComponents: ['section', 'button', 'select', 'radio_select'] }),
+		);
 		const description = buildActionToolDescription(descriptor);
 		expect(description).toContain('Call respond only with message.card');
 		expect(description).toContain('Generic card examples:');
@@ -18,6 +20,26 @@ describe('buildActionToolDescription', () => {
 		);
 		expect(description).not.toContain('render_ui');
 	});
+
+	it.each([undefined, []])(
+		'omits card guidance for Linear with components=%s',
+		(supportedComponents) => {
+			const [descriptor] = getIntegrationToolConnectionDescriptors(
+				[{ type: 'linear', credentialId: 'cred-1' }],
+				'agent-1',
+				() => ({ supportedComponents }),
+			);
+			const description = buildActionToolDescription(descriptor);
+			expect(description).toContain('Do not send rich cards.');
+			expect(description).toContain(
+				'your final reply text is posted to that conversation automatically',
+			);
+			expect(description).not.toContain('message.card');
+			expect(description).not.toContain('Generic card examples:');
+			expect(description).not.toContain('For button components');
+			expect(description).not.toContain('For radio-style choices');
+		},
+	);
 });
 
 describe('buildChannelToolInstruction', () => {
