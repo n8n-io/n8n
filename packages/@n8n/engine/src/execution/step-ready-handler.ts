@@ -143,6 +143,9 @@ export class StepReadyHandler {
 			run = { kind: 'error', error: toStepError(error) };
 		}
 
+		// A sub-execution that cannot start is not the node's failure, so no try
+		// of the node fixes it. The awaited case fails the step the same way.
+		let subExecutionStartFailed = false;
 		if (run.kind === 'subExecution') {
 			const { subExecution } = run;
 			if (subExecution.awaited) {
@@ -150,13 +153,15 @@ export class StepReadyHandler {
 				return;
 			}
 			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
-			run =
-				started.kind === 'error'
-					? { kind: 'error', error: toStepError(started.error) }
-					: { kind: 'outputs', outputs: subExecution.outputs };
+			if (started.kind === 'error') {
+				run = { kind: 'error', error: toStepError(started.error) };
+				subExecutionStartFailed = true;
+			} else {
+				run = { kind: 'outputs', outputs: subExecution.outputs };
+			}
 		}
 
-		if (run.kind === 'error') {
+		if (run.kind === 'error' && !subExecutionStartFailed) {
 			const nextTry = nextTryOf(node, step, dispatch, run.error);
 			if (nextTry) {
 				// A failed try is neither a settlement nor a wait to the outside: the
@@ -594,6 +599,14 @@ function validateWaitDeclaration(stepId: string, wait: ExecutorWaitDeclaration):
 	if (!hasResumeCondition(wait)) {
 		throw new UnexpectedError(
 			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume binding`,
+		);
+	}
+
+	// The retry wait is the engine's own. An executor that declares one would
+	// have its node run again at the deadline instead of emitting its outputs.
+	if (wait.retry !== undefined) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a retry wait, which only the engine may declare`,
 		);
 	}
 

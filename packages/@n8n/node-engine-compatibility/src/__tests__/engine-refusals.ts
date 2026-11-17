@@ -105,6 +105,12 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'SPLIT_IN_BATCHES_NODE_SETTING' },
 	},
 	{
+		name: 'a Split In Batches node has Retry On Fail on',
+		workflow: fromTrigger('Loop', [{ ...splitInBatches('Loop'), retryOnFail: true }]),
+		engineError: 'Split In Batches node with Retry On Fail',
+		check: { code: 'SPLIT_IN_BATCHES_NODE_SETTING' },
+	},
+	{
 		name: 'a Split In Batches node has a batch size below 1',
 		workflow: batchNode({ batchSize: 0 }),
 		engineError: 'must be a whole number of at least 1',

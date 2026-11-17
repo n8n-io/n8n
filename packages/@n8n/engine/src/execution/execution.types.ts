@@ -141,13 +141,13 @@ export type SeededSteps = Record<string, StepSlots[]>;
  *
  * The executor produces the first two variants (`ExecutorWaitDeclaration`). A
  * deadline can end the wait. A resume request can end it. A declaration can
- * name both, and then the first of the two ends it. A deadline comes paired
- * with the slots it emits, because the step is never re-run. The engine writes
- * the other two variants itself: one when it suspends a step on a
- * sub-execution, and one between two tries of a step that failed.
+ * name both, and then the first of the two ends it. Such a deadline comes
+ * paired with the slots it emits, because the step is not run again. The
+ * engine writes the last two variants itself: one when it suspends a step on
+ * a sub-execution, and one between two tries of a step that failed, whose
+ * deadline runs the node again (`RetryWaitDeclaration`).
  */
 export type WaitDeclaration =
-	| RetryWaitDeclaration
 	| {
 			/** Deadline, ISO-8601. */
 			resumeAt: string;
@@ -174,7 +174,8 @@ export type WaitDeclaration =
 			outputsAtDeadline?: never;
 			resumeBinding?: never;
 			retry?: never;
-	  };
+	  }
+	| RetryWaitDeclaration;
 
 /**
  * The wait between two tries of a step whose node has a retry policy. The
@@ -243,10 +244,11 @@ export type SubExecutionOutcome =
 
 /**
  * What ended a step's wait, recorded on the row when it resumed. A deadline
- * carries nothing: the declaration already holds the outputs to emit. A request
- * carries the outputs the node's resume path produced where the request
- * arrived, and the engine emits them unread. Neither runs node code; a sub-execution
- * resume does, see `SubExecutionResumeCause`.
+ * carries nothing: the declaration already holds the outputs to emit, or, for
+ * a retry wait, says to run the node again. A request carries the outputs the
+ * node's resume path produced where the request arrived, and the engine emits
+ * them unread. Only the deadline of a retry wait and a sub-execution resume
+ * run node code, see `RetryWaitDeclaration` and `SubExecutionResumeCause`.
  */
 export type ResumeCause =
 	| { kind: 'deadline' }

@@ -1121,6 +1121,60 @@ describe('StepReadyHandler retries', () => {
 		});
 	});
 
+	it('fails the step when the executor itself declares a retry wait', async () => {
+		const stepStore = makeStepStore();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor({
+				wait: {
+					resumeAt: '2099-01-01T00:00:00.000Z',
+					retry: { attempt: 1, lastError: { name: 'Error', message: 'faked' } },
+				},
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: expect.stringContaining('retry wait') as string }),
+		);
+	});
+
+	it('does not retry a detached sub-execution that cannot start', async () => {
+		const stepStore = makeStepStore();
+		const subExecutionStarter: SubExecutionStarter = {
+			start: vi.fn().mockRejectedValue(new Error('admittance rejected')),
+		};
+		const detached = {
+			executionId: 'exec-sub',
+			workflowId: 'wf-sub',
+			graph: { nodes: [], edges: [] },
+			workflow: {},
+			triggerOutputs: [],
+			awaited: false as const,
+			outputs: [[]],
+		};
+		const handler = makeHandler(
+			makeExecutionStore({ graph: retryGraph }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ subExecution: detached }) },
+			makeLifecycleEventPublisher(),
+			undefined,
+			undefined,
+			subExecutionStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: 'admittance rejected' }),
+		);
+	});
+
 	it('fails the step on its last try', async () => {
 		const stepStore = makeStepStore({
 			waitDeclaration: {

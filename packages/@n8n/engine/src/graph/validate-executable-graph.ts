@@ -14,6 +14,12 @@ export const MAX_SLOT_INDEX = 100;
  * Throws `GraphValidationError` for graphs that can never run, and
  * `UnimplementedError` for shapes the engine doesn't support yet.
  */
+/**
+ * One day. A sanity bound, far below where a deadline stops being a valid
+ * date; a host that needs a longer wait between tries raises it here.
+ */
+export const MAX_WAIT_BETWEEN_TRIES_MS = 24 * 60 * 60 * 1000;
+
 export function validateExecutableGraph(graph: WorkflowGraph): void {
 	const triggers = graph.nodes.filter((node) => node.type === 'trigger');
 	if (triggers.length === 0) {
@@ -59,14 +65,23 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 	for (const node of graph.nodes) {
 		const { retry } = node;
 		if (retry === undefined) continue;
+		if (node.type !== 'v1-node') {
+			throw new GraphValidationError(
+				`Node ${name(node.id)} is a ${node.type} step with a retry policy; only a v1-node step retries`,
+			);
+		}
 		if (!Number.isInteger(retry.maxTries) || retry.maxTries < 1) {
 			throw new GraphValidationError(
 				`Node ${name(node.id)} retries with maxTries ${retry.maxTries}; maxTries is a whole number of at least 1`,
 			);
 		}
-		if (!Number.isFinite(retry.waitBetweenTriesMs) || retry.waitBetweenTriesMs < 0) {
+		if (
+			!Number.isFinite(retry.waitBetweenTriesMs) ||
+			retry.waitBetweenTriesMs < 0 ||
+			retry.waitBetweenTriesMs > MAX_WAIT_BETWEEN_TRIES_MS
+		) {
 			throw new GraphValidationError(
-				`Node ${name(node.id)} retries with waitBetweenTriesMs ${retry.waitBetweenTriesMs}; the wait is a number of milliseconds of at least 0`,
+				`Node ${name(node.id)} retries with waitBetweenTriesMs ${retry.waitBetweenTriesMs}; the wait is a number of milliseconds from 0 to ${MAX_WAIT_BETWEEN_TRIES_MS}`,
 			);
 		}
 	}

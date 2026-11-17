@@ -33,6 +33,14 @@ const UNSUPPORTED_EXECUTION_SETTINGS: Array<[keyof Pick<INode, 'executeOnce'>, s
 	['executeOnce', 'Execute Once'],
 ];
 
+/** Node settings a `v1-node` step applies but a `batch` step does not, with the label the editor shows for each. */
+const BATCH_NODE_UNSUPPORTED_SETTINGS: Array<
+	[keyof Pick<INode, 'alwaysOutputData' | 'retryOnFail'>, string]
+> = [
+	['alwaysOutputData', 'Always Output Data'],
+	['retryOnFail', 'Retry On Fail'],
+];
+
 /** The bounds v1 applies to the retry settings of a node (`getRetryParams` in `workflow-execute.ts`). */
 const RETRY_DEFAULTS = { maxTries: 3, waitBetweenTriesMs: 1000 };
 const RETRY_BOUNDS = { maxTries: [2, 5], waitBetweenTriesMs: [0, 5000] } as const;
@@ -176,10 +184,11 @@ export class V1WorkflowConverter {
 		if (node.type === MERGE_TYPE) this.assertSupportedMergeMode(node);
 
 		if (node.type === SPLIT_IN_BATCHES_TYPE) {
-			// The engine runs a batch node itself, and does not apply this setting.
-			if (node.alwaysOutputData === true) {
+			// The engine runs a batch node itself, and applies neither setting.
+			const unsupported = BATCH_NODE_UNSUPPORTED_SETTINGS.find(([key]) => node[key] === true);
+			if (unsupported) {
 				throw new UnsupportedWorkflowError(
-					`Node "${node.name}" is a Split In Batches node with Always Output Data, which is not supported yet.`,
+					`Node "${node.name}" is a Split In Batches node with ${unsupported[1]}, which is not supported yet.`,
 				);
 			}
 			return { id: node.id, name: node.name, type: 'batch', config: toBatchConfig(node) };

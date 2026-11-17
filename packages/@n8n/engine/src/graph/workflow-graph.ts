@@ -50,7 +50,10 @@ export interface GraphNode {
 	type: StepType;
 	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
-	/** Absent for a node that runs once, whatever the outcome. */
+	/**
+	 * Absent for a node that runs once, whatever the outcome. Only a `v1-node`
+	 * step honours it; `validateExecutableGraph` refuses it on any other type.
+	 */
 	retry?: RetryPolicy;
 }
 
