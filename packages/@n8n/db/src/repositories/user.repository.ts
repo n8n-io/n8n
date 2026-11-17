@@ -5,6 +5,7 @@ import type { EntityManager, FindOptionsWhere, Repository, SelectQueryBuilder } 
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, AuthIdentity, Project, User, type UserKind } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
@@ -260,6 +261,14 @@ export class UserRepository extends BaseRepository<User> {
 	 *
 	 * Returns null if the workflow does not exist or is owned by a team project.
 	 */
+	async findInstanceOwnerId(ctx: OperationContext) {
+		const instanceOwner = await this.managerFor(ctx).findOne(User, {
+			select: { id: true },
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+		});
+		return instanceOwner?.id ?? null;
+	}
+
 	async findPersonalOwnerForWorkflow(workflowId: string): Promise<User | null> {
 		return await this.findOne({
 			where: {

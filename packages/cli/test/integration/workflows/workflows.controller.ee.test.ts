@@ -2672,7 +2672,7 @@ describe('PUT /:workflowId/transfer', () => {
 		const sourceProject = await createTeamProject('source project', admin);
 		const destinationProject = await createTeamProject('destination project', member);
 		const workflow = await createWorkflow({}, sourceProject);
-		await workflowRepository.update(workflow.id, { ownerUserId: admin.id });
+		await workflowRepository.update(workflow.id, { ownerUserId: anotherMember.id });
 
 		await testServer
 			.authAgentFor(owner)
@@ -2681,7 +2681,7 @@ describe('PUT /:workflowId/transfer', () => {
 			.expect(200);
 
 		const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
-		expect(stored.ownerUserId).toBe(member.id);
+		expect(stored.ownerUserId).toBe(owner.id);
 	});
 
 	test('owner transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {

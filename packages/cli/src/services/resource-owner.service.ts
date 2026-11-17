@@ -1,7 +1,7 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { OperationContext, User } from '@n8n/db';
-import { ProjectRelationRepository, WorkflowRepository } from '@n8n/db';
+import { ProjectRelationRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope, PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -37,6 +37,7 @@ export class ResourceOwnerService {
 	constructor(
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly userRepository: UserRepository,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 	) {}
@@ -133,6 +134,11 @@ export class ResourceOwnerService {
 			const homeProjectIds = new Set(owned.map(({ projectId }) => projectId));
 
 			for (const projectId of homeProjectIds) {
+				const staysValidOwner =
+					leaving.reason !== 'user-deleted' &&
+					(await this.findValidOwnerIds([leaving.userId], projectId, ctx)).has(leaving.userId);
+				if (staysValidOwner) continue;
+
 				await this.replaceOwner(
 					{
 						type,
@@ -163,13 +169,16 @@ export class ResourceOwnerService {
 		ctx: OperationContext,
 		leavingUserId?: string,
 	) {
-		const personalProjectOwnerId = await this.projectRelationRepository.findOldestPersonIdWithRole(
-			projectId,
-			PROJECT_OWNER_ROLE_SLUG,
-			ctx,
-			leavingUserId,
-		);
-		if (personalProjectOwnerId) return personalProjectOwnerId;
+		const findPersonIdsWithRole = async (roleSlug: string) =>
+			await this.projectRelationRepository.findPersonIdsWithRole(
+				projectId,
+				roleSlug,
+				ctx,
+				leavingUserId,
+			);
+
+		const personalProjectOwnerIds = await findPersonIdsWithRole(PROJECT_OWNER_ROLE_SLUG);
+		if (personalProjectOwnerIds.length === 1) return personalProjectOwnerIds[0];
 
 		if (
 			actor &&
@@ -179,12 +188,23 @@ export class ResourceOwnerService {
 			return actor.id;
 		}
 
-		return await this.projectRelationRepository.findOldestPersonIdWithRole(
-			projectId,
-			PROJECT_ADMIN_ROLE_SLUG,
-			ctx,
-			leavingUserId,
-		);
+		const projectAdminIds = await findPersonIdsWithRole(PROJECT_ADMIN_ROLE_SLUG);
+		if (projectAdminIds.length === 1) return projectAdminIds[0];
+		if (projectAdminIds.length > 1) return null;
+
+		return await this.findInstanceOwnerIfValidOwner(projectId, ctx, leavingUserId);
+	}
+
+	private async findInstanceOwnerIfValidOwner(
+		projectId: string,
+		ctx: OperationContext,
+		leavingUserId?: string,
+	) {
+		const instanceOwnerId = await this.userRepository.findInstanceOwnerId(ctx);
+		if (instanceOwnerId === null || instanceOwnerId === leavingUserId) return null;
+
+		const validOwnerIds = await this.findValidOwnerIds([instanceOwnerId], projectId, ctx);
+		return validOwnerIds.has(instanceOwnerId) ? instanceOwnerId : null;
 	}
 
 	private async canTakeOwnership(

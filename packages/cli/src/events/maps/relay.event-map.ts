@@ -101,7 +101,13 @@ export type ProjectSummary = {
 	name: string;
 };
 
-export type OwnerChangeReason = 'manual' | 'move' | 'member-removed' | 'user-deleted' | 'import';
+export type OwnerChangeReason =
+	| 'manual'
+	| 'move'
+	| 'member-removed'
+	| 'role-changed'
+	| 'user-deleted'
+	| 'import';
 
 type OwnerChangedEvent = {
 	/** The user who caused the change. `null` when no user caused it. */

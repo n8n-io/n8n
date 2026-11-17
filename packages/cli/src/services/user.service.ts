@@ -29,6 +29,7 @@ import {
 import { Container, Service } from '@n8n/di';
 import {
 	getGlobalScopes,
+	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 	isBuiltInRole,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
@@ -499,10 +500,27 @@ export class UserService {
 					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 				);
 			}
+
+			await this.reassignResourcesOfFormerImplicitMember(user, newRole.newRoleName, ctx);
 		});
 
 		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
 		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);
+	}
+
+	private async reassignResourcesOfFormerImplicitMember(
+		user: User,
+		newRoleSlug: string,
+		ctx: OperationContext,
+	) {
+		const isImplicitMember = (roleSlug: string) =>
+			IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS.includes(roleSlug);
+		if (!isImplicitMember(user.role.slug) || isImplicitMember(newRoleSlug)) return;
+
+		await this.resourceOwnerService.reassignOwnedBy(
+			{ userId: user.id, actor: undefined, reason: 'role-changed' },
+			ctx,
+		);
 	}
 
 	/**

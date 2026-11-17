@@ -11,7 +11,15 @@ import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'BackfillOwnerUserIdOnWorkflowsAndAgents1794915015737';
 
-type UserName = 'alice' | 'bob' | 'carol' | 'dave' | 'outsider' | 'service';
+type UserName =
+	| 'alice'
+	| 'bob'
+	| 'carol'
+	| 'dave'
+	| 'outsider'
+	| 'instanceAdmin'
+	| 'instanceOwner'
+	| 'service';
 type Publication = [user: UserName | null, event: 'activated' | 'deactivated'];
 type Resource = { projectId: string | null; publications: Publication[] };
 
@@ -21,7 +29,14 @@ const userIds: Record<UserName, string> = {
 	carol: randomUUID(),
 	dave: randomUUID(),
 	outsider: randomUUID(),
+	instanceAdmin: randomUUID(),
+	instanceOwner: randomUUID(),
 	service: randomUUID(),
+};
+
+const globalRoles: Record<string, string> = {
+	instanceAdmin: 'global:admin',
+	instanceOwner: 'global:owner',
 };
 
 const relations: Array<[projectId: string, user: UserName, role: string, createdDay: number]> = [
@@ -31,11 +46,9 @@ const relations: Array<[projectId: string, user: UserName, role: string, created
 	['team', 'carol', 'project:admin', 2],
 	['team', 'bob', 'project:admin', 3],
 	['team', 'dave', 'project:editor', 4],
-	['team-tied', 'bob', 'project:admin', 1],
-	['team-tied', 'alice', 'project:admin', 1],
+	['team-sole-admin', 'service', 'project:admin', 1],
+	['team-sole-admin', 'alice', 'project:admin', 1],
 ];
-
-const tiedAdmin: UserName = userIds.alice < userIds.bob ? 'alice' : 'bob';
 
 const cases: Array<[rule: string, resource: Resource, owner: UserName | null]> = [
 	[
@@ -73,7 +86,12 @@ const cases: Array<[rule: string, resource: Resource, owner: UserName | null]> =
 		'dave',
 	],
 	[
-		'the oldest person admin when no publisher is a valid member',
+		'an instance admin who published and is not a member',
+		{ projectId: 'team', publications: [['instanceAdmin', 'activated']] },
+		'instanceAdmin',
+	],
+	[
+		'nobody when two people are project admins and no publisher is a valid member',
 		{
 			projectId: 'team',
 			publications: [
@@ -82,17 +100,17 @@ const cases: Array<[rule: string, resource: Resource, owner: UserName | null]> =
 				['bob', 'deactivated'],
 			],
 		},
-		'carol',
-	],
-	[
-		'the admin with the lowest user id when admins joined at the same time',
-		{ projectId: 'team-tied', publications: [] },
-		tiedAdmin,
-	],
-	[
-		'nobody when the only publisher is not a member',
-		{ projectId: 'team-empty', publications: [['outsider', 'activated']] },
 		null,
+	],
+	[
+		'the project admin when one person is project admin',
+		{ projectId: 'team-sole-admin', publications: [] },
+		'alice',
+	],
+	[
+		'the instance owner when a team project has no admin and no valid publisher',
+		{ projectId: 'team-empty', publications: [['outsider', 'activated']] },
+		'instanceOwner',
 	],
 ];
 
@@ -177,15 +195,25 @@ describe('BackfillOwnerUserIdOnWorkflowsAndAgents migration', () => {
 		dataSource = Container.get(DataSource);
 		await withContext(async ({ queryRunner }) => await queryRunner.clearDatabase());
 		await initDbUpToMigration(MIGRATION_NAME);
+		await withContext(
+			async ({ escape, runQuery }) => await runQuery(`DELETE FROM ${escape.tableName('user')}`),
+		);
 
 		for (const [name, id] of Object.entries(userIds)) {
 			await insert('user', {
 				id,
 				kind: name === 'service' ? 'service' : 'person',
 				disabled: name === 'dave',
+				roleSlug: globalRoles[name] ?? 'global:member',
 			});
 		}
-		for (const id of ['personal-alice', 'personal-service', 'team', 'team-tied', 'team-empty']) {
+		for (const id of [
+			'personal-alice',
+			'personal-service',
+			'team',
+			'team-sole-admin',
+			'team-empty',
+		]) {
 			await insert('project', {
 				id,
 				name: id,

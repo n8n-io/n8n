@@ -74,6 +74,18 @@ describe('Resource owner on lifecycle changes', () => {
 		expect(await ownerOf(workflow)).toBe(otherAdmin.id);
 	});
 
+	it('keeps an instance admin as owner when a project relation sync drops the relation', async () => {
+		const instanceAdmin = await createAdmin();
+		await linkUserToProject(instanceAdmin, project, 'project:editor');
+		const owned = await createOwnedWorkflow(instanceAdmin.id, project);
+
+		await projectService.syncProjectRelations(project.id, [
+			{ userId: projectAdmin.id, role: 'project:admin' },
+		]);
+
+		expect(await ownerOf(owned)).toBe(instanceAdmin.id);
+	});
+
 	it('replaces the owner when a project relation sync drops a member', async () => {
 		await projectService.syncProjectRelations(project.id, [
 			{ userId: projectAdmin.id, role: 'project:admin' },
@@ -102,18 +114,40 @@ describe('Resource owner on lifecycle changes', () => {
 		expect(await ownerOf(workflow)).toBe(projectAdmin.id);
 	});
 
+	it('replaces a demoted instance admin as owner only in projects without a relation', async () => {
+		const instanceAdmin = await createAdmin();
+		await linkUserToProject(instanceAdmin, project, 'project:editor');
+		const kept = await createOwnedWorkflow(instanceAdmin.id, project);
+		const otherProject = await createTeamProject(undefined, projectAdmin);
+		const replaced = await createOwnedWorkflow(instanceAdmin.id, otherProject);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		await userService.changeUserRole(instanceAdmin, { newRoleName: 'global:member' });
+
+		expect(await ownerOf(kept)).toBe(instanceAdmin.id);
+		expect(await ownerOf(replaced)).toBe(projectAdmin.id);
+		expect(emit).toHaveBeenCalledWith('workflow-owner-changed', {
+			user: null,
+			workflowId: replaced.id,
+			projectId: otherProject.id,
+			previousOwnerUserId: instanceAdmin.id,
+			newOwnerUserId: projectAdmin.id,
+			reason: 'role-changed',
+		});
+	});
+
 	it('replaces the owner in team projects when a user is deleted without a transfer', async () => {
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		await userService.deleteUser(instanceOwner, leavingUser.id);
 
-		expect(await ownerOf(workflow)).toBe(projectAdmin.id);
+		expect(await ownerOf(workflow)).toBe(instanceOwner.id);
 		expect(emit).toHaveBeenCalledWith('workflow-owner-changed', {
 			user: instanceOwner,
 			workflowId: workflow.id,
 			projectId: project.id,
 			previousOwnerUserId: leavingUser.id,
-			newOwnerUserId: projectAdmin.id,
+			newOwnerUserId: instanceOwner.id,
 			reason: 'user-deleted',
 		});
 	});
@@ -129,7 +163,7 @@ describe('Resource owner on lifecycle changes', () => {
 		await userService.deleteUser(instanceOwner, leavingUser.id, transferProject.id);
 
 		expect(await ownerOf(personalWorkflow)).toBe(transferee.id);
-		expect(await ownerOf(workflow)).toBe(projectAdmin.id);
+		expect(await ownerOf(workflow)).toBe(instanceOwner.id);
 	});
 
 	it('replaces an owner who is not a member of the project that takes over a deleted project', async () => {
@@ -139,6 +173,6 @@ describe('Resource owner on lifecycle changes', () => {
 			migrateToProject: targetProject.id,
 		});
 
-		expect(await ownerOf(workflow)).toBe(projectAdmin.id);
+		expect(await ownerOf(workflow)).toBe(instanceOwner.id);
 	});
 });
