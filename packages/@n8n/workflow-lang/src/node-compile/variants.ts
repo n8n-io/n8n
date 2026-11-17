@@ -18,7 +18,7 @@ export interface Variant {
 
 const MAX_CHOICES = 12;
 const MAX_GROUP_CASES = 16;
-const MAX_VARIANT_CASES = 60;
+const MAX_VARIANT_CASES = 100;
 const DATES = ['2024-01-10T10:00:00.000Z', '2024-02-11T11:00:00.000Z', '2024-03-12T12:00:00.000Z'];
 
 const fieldNameOf = (name: string) => name.replace(/\W/g, '_');
@@ -137,10 +137,11 @@ export function parameterVariants(
 		variants.push(variant);
 	};
 	for (const [name, value] of Object.entries(resolveParameters(node, version, parameters))) {
-		if (name in fixed || name in parameters || FIXED_CHOICES.has(name) || listed.includes(name))
-			continue;
+		if (name in fixed || FIXED_CHOICES.has(name)) continue;
 		const property = shownProperty(node, version, parameters, name);
 		if (!property) continue;
+		const members = property.type === 'collection' || property.type === 'fixedCollection';
+		if (!members && (name in parameters || listed.includes(name))) continue;
 		if (property.type === 'collection') {
 			for (const member of property.options ?? []) {
 				if (!member.name) continue;

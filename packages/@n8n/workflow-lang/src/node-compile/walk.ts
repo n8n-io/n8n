@@ -105,6 +105,7 @@ export function fakeCredentialData(
 	if (/oauth2/i.test(type)) {
 		data.oauthTokenData = {
 			access_token: 'fake-token',
+			token_type: 'Bearer',
 			instance_url: 'https://instance.example.test',
 			api_domain: 'https://api.example.test',
 			...(type === 'quickBooksOAuth2Api' ? { callbackQueryString: { realmId: 'fake-realm' } } : {}),

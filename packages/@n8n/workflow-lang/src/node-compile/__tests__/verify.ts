@@ -84,15 +84,25 @@ export function credentialsOf(
 	};
 }
 
+const MAX_GIVEN = 256;
+const given = new Map<string, Record<string, unknown>>();
+
 export function credentialAsGiven(
 	type: string,
 	data: Record<string, unknown>,
 ): Record<string, unknown> {
+	const key = JSON.stringify([type, data]);
+	const known = given.get(key);
+	if (known) return known;
+	let resolved: Record<string, unknown>;
 	try {
-		return resolveCredentialData(type, data);
+		resolved = resolveCredentialData(type, data);
 	} catch {
-		return data;
+		resolved = data;
 	}
+	if (given.size >= MAX_GIVEN) given.clear();
+	given.set(key, resolved);
+	return resolved;
 }
 
 const escaped = (text: string) =>

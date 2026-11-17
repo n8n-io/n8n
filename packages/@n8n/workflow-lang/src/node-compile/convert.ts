@@ -44,38 +44,86 @@ export function verifiedKey(
 	return `${type}@${version}:${text(parameters.resource)}.${text(parameters.operation)}`;
 }
 
+export const AUTHENTICATION_PREFIX = '@auth=';
+
+export function authenticationCondition(authentication: string, condition: string): string {
+	return `${AUTHENTICATION_PREFIX}${authentication}:${condition}`;
+}
+
+export function verifiedNames(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	resolved: Record<string, unknown>,
+): string[] | undefined {
+	const all = (sources.verified ?? VERIFIED)[verifiedKey(type, version, resolved)];
+	if (all === undefined) return undefined;
+	const start =
+		typeof resolved.authentication === 'string'
+			? authenticationCondition(resolved.authentication, '')
+			: undefined;
+	const own: string[] = [];
+	const shared: string[] = [];
+	for (const name of all) {
+		if (start !== undefined && name.startsWith(start)) own.push(name.slice(start.length));
+		else if (!name.startsWith(AUTHENTICATION_PREFIX)) shared.push(name);
+	}
+	return own.length > 0 ? own : shared;
+}
+
+export const UNVERIFIED_OPERATION = '(operation)';
+export const UNVERIFIED_FLAGS = '@credentialFlags';
+
+export function unverifiedConditions(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): string[] {
+	const names = verifiedNames(sources, type, version, compiled.resolved);
+	if (names === undefined) return [UNVERIFIED_OPERATION];
+	const properties = sources.description(type, version)?.properties ?? [];
+	const isCollection = (name: string) =>
+		properties.some(
+			(p) => p.name === name && (p.type === 'collection' || p.type === 'fixedCollection'),
+		);
+	const missing: string[] = [];
+	const need = (condition: string) => {
+		if (!names.includes(condition)) missing.push(condition);
+	};
+	const check = (
+		name: string,
+		conditionOf: (path: string) => string,
+		only: (member: unknown) => boolean,
+	) => {
+		const value = compiled.resolved[name];
+		const members =
+			isCollection(name) && isRecord(value)
+				? Object.keys(value).filter((key) => only(value[key]))
+				: [];
+		if (members.length === 0) need(conditionOf(name));
+		for (const key of members) need(conditionOf(`${name}.${key}`));
+	};
+	for (const name of compiled.changed)
+		check(
+			name,
+			(path) => path,
+			() => true,
+		);
+	for (const name of itemParameterNames(compiled))
+		check(name, (path) => itemParameterCondition(path, compiled.errorMode), hasExpression);
+	if (compiled.flags.length > 0 && verifiedFlagKeys(sources, type, version, compiled).length === 0)
+		missing.push(UNVERIFIED_FLAGS);
+	return missing;
+}
+
 export function isVerified(
 	sources: NodeSources,
 	type: string,
 	version: number,
 	compiled: CompiledNode,
 ): boolean {
-	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
-	if (names === undefined) return false;
-	const membersOf = (name: string, only: (member: unknown) => boolean) => {
-		const value = compiled.resolved[name];
-		return isRecord(value) ? Object.keys(value).filter((key) => only(value[key])) : [];
-	};
-	const agrees = (name: string) => {
-		if (names.includes(name)) return true;
-		const members = membersOf(name, () => true);
-		return members.length > 0 && members.every((key) => names.includes(`${name}.${key}`));
-	};
-	const agreesForItems = (name: string) => {
-		if (names.includes(itemParameterCondition(name, compiled.errorMode))) return true;
-		const members = membersOf(name, hasExpression);
-		return (
-			members.length > 0 &&
-			members.every((key) =>
-				names.includes(itemParameterCondition(`${name}.${key}`, compiled.errorMode)),
-			)
-		);
-	};
-	if (!compiled.changed.every(agrees)) return false;
-	if (!itemParameterNames(compiled).every(agreesForItems)) return false;
-	return (
-		compiled.flags.length === 0 || verifiedFlagKeys(sources, type, version, compiled).length > 0
-	);
+	return unverifiedConditions(sources, type, version, compiled).length === 0;
 }
 
 export function verifiedFlagKeys(
@@ -84,7 +132,7 @@ export function verifiedFlagKeys(
 	version: number,
 	compiled: CompiledNode,
 ): string[] {
-	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	const names = verifiedNames(sources, type, version, compiled.resolved);
 	const wanted = compiled.flags
 		.map((flag) => flag.name)
 		.sort()
@@ -149,7 +197,7 @@ export function deferredVerified(
 	compiled: CompiledNode,
 ): boolean {
 	if (compiled.deferred.length === 0) return true;
-	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	const names = verifiedNames(sources, type, version, compiled.resolved);
 	return names?.includes(itemErrorCondition(compiled.errorMode)) === true;
 }
 
@@ -165,7 +213,7 @@ export function callsOnce(
 	mode: ErrorMode,
 ): boolean {
 	if (mode === 'stopWorkflow') return true;
-	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, resolved)];
+	const names = verifiedNames(sources, type, version, resolved);
 	return names?.includes(oneCallCondition(mode)) === true;
 }
 
@@ -175,7 +223,7 @@ export function pairsAsV1(
 	version: number,
 	resolved: Record<string, unknown>,
 ): boolean {
-	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, resolved)];
+	const names = verifiedNames(sources, type, version, resolved);
 	return names?.includes(PAIRED_ITEMS) === true;
 }
 
@@ -195,7 +243,7 @@ export function agreesForEachItem(
 	version: number,
 	compiled: CompiledNode,
 ): boolean {
-	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	const names = verifiedNames(sources, type, version, compiled.resolved);
 	return names?.includes(CALL_FOR_EACH_ITEM) === true;
 }
 
@@ -205,7 +253,7 @@ export function errorItemsByPosition(
 	version: number,
 	compiled: CompiledNode,
 ): boolean {
-	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	const names = verifiedNames(sources, type, version, compiled.resolved);
 	return names?.includes(ERROR_ITEMS_BY_POSITION) === true;
 }
 

@@ -1,7 +1,8 @@
 /**
  * Counts how the nodes of real workflows run when the node compiler is on: compiled, or in
  * the fallback host, and why. For each node that compiles and fails the check of the verified
- * list, it names the conditions that the list entry of its operation does not have.
+ * list, it counts the conditions that the list entry of its operation does not have (the
+ * converter names them in its note).
  *
  * The input is a folder of sets: `<sets>/chunk-*\/bundles/<id>/{workflow.json,credentials.json}`.
  * The output has counts only, by node type, operation, parameter name and error class. It never
@@ -77,9 +78,7 @@ const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const INSTANCE = { baseUrl: 'http://127.0.0.1:5678/', id: 'c0de'.repeat(16) };
 const NOT_CHECKED = 'The node source compiles, and this operation or one of its parameters';
 const NO_COMPILE = 'The node source does not compile:';
-/** Conditions that choose the form of the call. They are not part of the check of an instance. */
-const FORM_CONDITIONS = ['@oneCall=', '@pairedItems', '@items=each', '@errorItems', '@eachError'];
-
+const CONDITIONS = 'Conditions without a check: ';
 const isJson = (value: unknown): value is Json =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 const bump = (counts: Counts, key: string) => {
@@ -105,62 +104,6 @@ const valueOf = (flag: string) => (argv.includes(flag) ? argv[argv.indexOf(flag)
 const verifiedFile = valueOf('--verified');
 const list: Record<string, string[]> =
 	verifiedFile === undefined ? VERIFIED : JSON.parse(readFileSync(verifiedFile, 'utf8'));
-
-interface Session {
-	key: string;
-	listed: boolean;
-	missing: string[];
-}
-/** The state of the second conversion, which finds every condition that an entry does not have. */
-interface Probe {
-	node: string;
-	last?: Session;
-	sessions: Map<string, Session>;
-}
-
-/**
- * A verified list that answers yes to each condition of an instance and records the ones that
- * the real list does not have. The converter stops at the first missing one, so the real list
- * gives one name only.
- */
-function probeList(probe: Probe): Record<string, string[]> {
-	return new Proxy<Record<string, string[]>>(
-		{},
-		{
-			get(_target, key) {
-				if (typeof key !== 'string') return undefined;
-				const real = list[key];
-				const session: Session = { key, listed: real !== undefined, missing: [] };
-				const open = () => {
-					probe.sessions.set(probe.node, session);
-					probe.last = session;
-				};
-				class Names extends Array<string> {
-					static get [Symbol.species]() {
-						return Array;
-					}
-
-					includes(name: string): boolean {
-						const has = real?.includes(name) === true;
-						if (FORM_CONDITIONS.some((start) => name.startsWith(start))) return has;
-						if (probe.last !== session) open();
-						if (!has) session.missing.push(name);
-						return true;
-					}
-
-					filter(keep: (name: string, at: number, all: string[]) => unknown): string[] {
-						const found = (real ?? []).filter(keep);
-						if (found.length === 0 && probe.last?.key === key)
-							probe.last.missing.push('@credentialFlags');
-						return found;
-					}
-				}
-				if (!session.listed) open();
-				return new Names();
-			},
-		},
-	);
-}
 
 function analyse(chunk: string, perChunk: number): Tally {
 	const load = createRequire(join(base, 'package.json'));
@@ -210,11 +153,7 @@ function analyse(chunk: string, perChunk: number): Tally {
 			return undefined;
 		}
 	};
-	const sourcesFor = (
-		credentials: Credential[],
-		host: Set<string>,
-		probe?: Probe,
-	): NodeSources => ({
+	const sourcesFor = (credentials: Credential[], host: Set<string>): NodeSources => ({
 		entry: (type, version) => {
 			const node = nodeOf(type, version);
 			return node ? classFile.get(node.constructor.name) : undefined;
@@ -226,7 +165,7 @@ function analyse(chunk: string, perChunk: number): Tally {
 		},
 		description: (type, version) => nodeOf(type, version)?.description,
 		aliases: { '@utils/': `${base}/utils/` },
-		verified: probe ? probeList(probe) : list,
+		verified: list,
 		evaluate: evaluateInSandbox,
 		publicCredential: (type, id) => {
 			const c = credentialOf(credentials, type, id);
@@ -239,10 +178,7 @@ function analyse(chunk: string, perChunk: number): Tally {
 				return undefined;
 			}
 		},
-		runsInHost: (name) => {
-			if (probe) probe.node = name;
-			return host.has(name);
-		},
+		runsInHost: (name) => host.has(name),
 		credentialEntry: (type) => {
 			const entry = knownCredentials[type];
 			return entry ? join(base, entry.sourcePath) : undefined;
@@ -345,7 +281,6 @@ function analyse(chunk: string, perChunk: number): Tally {
 		const inHost = new Set(run.result.fallbackNodes);
 		for (const [name, note] of notes)
 			if (note === '' && !inHost.has(name) && byName.has(name)) tally.compiledNodes++;
-		const unchecked = new Set<string>();
 		for (const name of inHost) {
 			const node = byName.get(name);
 			if (!node) continue;
@@ -360,7 +295,18 @@ function analyse(chunk: string, perChunk: number): Tally {
 				bump(tally.noAttempt, `${node.type} | ${otherCodes.get(name) ?? '(no diagnostic)'}`);
 			} else if (note.startsWith(NOT_CHECKED)) {
 				reason = 'verifier coverage';
-				unchecked.add(name);
+				const at = note.indexOf(CONDITIONS);
+				const missing =
+					at < 0
+						? []
+						: note
+								.slice(at + CONDITIONS.length)
+								.split(', ')
+								.sort();
+				const parameters = node.parameters ?? {};
+				const key = `${node.type}@${node.typeVersion}:${plain(parameters.resource)}.${plain(parameters.operation)}`;
+				for (const condition of missing) bump(tally.missing, `${key} | ${condition}`);
+				bump(tally.missingSets, `${key} | ${missing.join(' + ')}`);
 			} else if (note.startsWith(NO_COMPILE)) {
 				reason = 'compile failure';
 				const first = classOf(note.slice(NO_COMPILE.length).split('; ')[0].trim());
@@ -368,31 +314,6 @@ function analyse(chunk: string, perChunk: number): Tally {
 			} else reason = classOf(note);
 			bump(tally.hostReason, reason);
 			bump(tally.hostReasonByType, `${reason} | ${node.type}`);
-		}
-		if (unchecked.size === 0) continue;
-		const probe: Probe = { node: '', sessions: new Map() };
-		try {
-			convertWorkflow(workflow, {
-				instance: INSTANCE,
-				nodeSources: sourcesFor(credentials, run.host, probe),
-			});
-		} catch {
-			continue;
-		}
-		for (const name of unchecked) {
-			const session = probe.sessions.get(name);
-			if (!session) {
-				bump(tally.missing, '(not found by the second conversion)');
-				continue;
-			}
-			const [resource, operation] = session.key.slice(session.key.indexOf(':') + 1).split('.');
-			const key = `${session.key.slice(0, session.key.indexOf(':'))}:${plain(resource)}.${plain(operation)}`;
-			if (!session.listed) bump(tally.missing, `${key} | (the operation is not in the list)`);
-			else {
-				const missing = [...new Set(session.missing)].sort();
-				for (const condition of missing) bump(tally.missing, `${key} | ${condition}`);
-				bump(tally.missingSets, `${key} | ${missing.join(' + ') || '(none found)'}`);
-			}
 		}
 	}
 	return tally;

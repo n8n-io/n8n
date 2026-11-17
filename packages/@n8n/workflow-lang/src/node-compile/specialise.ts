@@ -921,7 +921,13 @@ const HELPERS: Record<string, string> = {
 	__applyList: `function __applyList(value: any): any {
 	if (Array.isArray(value)) return value;
 	if (value === null || value === undefined) return [];
-	throw new Error('a function call with a list of arguments that is not an array has no compiled form');
+	if (typeof value !== 'object') throw new Error('a function call with a list of arguments that is not an object has no compiled form');
+	const length: any = value.length;
+	if (length === undefined || length === null) return [];
+	if (typeof length !== 'number' || length > 65536) throw new Error('a function call with a list of arguments of this length has no compiled form');
+	const out: any[] = [];
+	for (let k = 0; k < length; k++) out.push(value[k]);
+	return out;
 }`,
 	__assign: `function __assign(target: any, source: any): any {
 	if (source !== null && source !== undefined) {

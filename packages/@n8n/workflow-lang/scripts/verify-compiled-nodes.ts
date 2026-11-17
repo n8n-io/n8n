@@ -47,14 +47,13 @@ import {
 	CONTINUE_MODES,
 	CALL_FOR_EACH_ITEM,
 	ERROR_ITEMS_BY_POSITION,
-	ITEM_PARAMETER_PREFIX,
 	ITEM_ERROR,
-	ONE_CALL_PREFIX,
 	PAIRED_ITEMS,
 	itemErrorCondition,
 	errorModeCondition,
 	itemParameterCondition,
 	oneCallCondition,
+	authenticationCondition,
 	verifiedKey,
 } from '../src/node-compile/convert.ts';
 import type { EquivalenceCase, NodeSettings } from '../src/nodes/__tests__/equivalence.ts';
@@ -393,7 +392,6 @@ const pairedReasons: Record<string, number> = {};
 const failureReasons: Record<string, number> = {};
 const widerReasons: Record<string, number> = {};
 const aloneReasons: Record<string, number> = {};
-const aloneNames = new Map<string, string[]>();
 const expressions: Record<string, number> = {};
 const expressionReasons: Record<string, number> = {};
 const alone: Record<string, number> = {};
@@ -542,6 +540,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 		? Object.keys(top.nodeVersions).map(Number)
 		: [top.description.version].flat();
 	for (const version of versions) {
+		for (const { name: credential } of nodeOf(type, version)?.description.credentials ?? [])
+			credentialAsGiven(credential, fakeCredential(credential));
+	}
+	for (const version of versions) {
 		const node = nodeOf(type, version);
 		if (!node || sources.entry(type, version) === undefined) continue;
 		for (const usual of operations(node)) {
@@ -562,8 +564,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					: {};
 				const compiled = compileForCheck(sources, instance, fields);
 				if (other && 'errors' in compiled) continue;
-				const light = other && !('errors' in compiled) && compiled.mints.length === 0;
-				if (other && !light) mintedTried++;
+				if (other && !('errors' in compiled) && compiled.mints.length > 0) mintedTried++;
 				if ('errors' in compiled) {
 					const blockers = new Map<string, string>();
 					for (const error of compiled.errors.slice(0, ALL_BLOCKERS ? MAX_BLOCKERS : 1)) {
@@ -606,7 +607,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						(await differenceFromV1(make('ok', parameters, ok), sources, registry, checking)) ??
 						(await differenceFromV1(make('error', parameters, bad), sources, registry, checking));
 					if (difference !== undefined) {
-						if (!light) why(`v1: ${difference}`, weight);
+						if (!other) why(`v1: ${difference}`, weight);
 						else if (examples.length < 400)
 							examples.push(
 								`${verifiedKey(type, version, compiled.resolved)} with another authentication: ${difference.slice(0, 200)}`,
@@ -619,25 +620,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					const three = make('three items', parameters, ok, several(3));
 					const withThree = await differenceFromV1(three, sources, registry, checking);
 					if (withThree !== undefined) {
-						if (!light) why(`v1: three items: ${withThree}`, weight);
-						continue;
-					}
-					if (light) {
-						const usualKey = verifiedKey(type, version, compiled.resolved);
-						const usualNames = verified[usualKey];
-						if (usualNames === undefined) continue;
-						const flagKey =
-							compiled.flags.length > 0
-								? flagKeyOf(make('ok', parameters, ok), compiled.flags, registry)
-								: undefined;
-						verified[usualKey] = [
-							...new Set([
-								...usualNames,
-								...compiled.changed,
-								...(flagKey === undefined ? [] : [flagKey]),
-							]),
-						].sort();
-						add(expressions, { 'other authentication': 1 });
+						if (!other) why(`v1: three items: ${withThree}`, weight);
 						continue;
 					}
 					const eachItem = await differenceFromV1(three, sources, registry, {
@@ -699,7 +682,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					) {
 						names = wider.changed;
 					}
-					const settled = names === compiled.changed ? parameters : more;
+					const widerAgrees = names !== compiled.changed;
+					const settled = parameters;
 					const agreesWith = async (label: string, p: Json): Promise<string[] | string> => {
 						const c = compileForCheck(sources, { type, version, parameters: p }, fields);
 						if ('errors' in c) return `does not compile: ${c.errors[0]}`;
@@ -761,16 +745,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					const combined =
 						agreed.length < 2 ||
 						typeof (await agreesWith('alone, together', together)) !== 'string';
-					const usualNames = names;
 					if (combined) names = [...new Set([...names, ...added])];
-					const ownKey = verifiedKey(type, version, compiled.resolved);
-					if (!other)
-						aloneNames.set(
-							ownKey,
-							names.filter((name) => !usualNames.includes(name)),
-						);
-					const onlyUsual = (name: string) =>
-						other && !names.includes(name) && aloneNames.get(ownKey)?.includes(name) === true;
 					const variantForms = combined ? agreed.filter((variant) => variant.form) : [];
 					if (!other) {
 						add(expressions, {
@@ -780,15 +755,6 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						});
 					}
 					const key = verifiedKey(type, version, compiled.resolved);
-					const before = other ? verified[key] : undefined;
-					if (
-						before?.some(
-							(name) => !name.startsWith('@') && !names.includes(name) && !onlyUsual(name),
-						)
-					) {
-						why('v1: the other authentication agrees with v1 for fewer parameters', weight);
-						continue;
-					}
 					const flagKeys: string[] = [];
 					if (compiled.flags.length > 0) {
 						const usual = make('ok', parameters, ok);
@@ -939,7 +905,6 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						}
 					}
 					const provenEach: string[] = [];
-					const widerAgrees = settled === more;
 					const forms = expressionForms(widerAgrees ? more : parameters, start);
 					const widerForms = widerExpressionForms(
 						node,
@@ -1166,18 +1131,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						}
 					}
 					if (failingForm && !other) expressions.failing = (expressions.failing ?? 0) + 1;
-					const sameForm = (mode: ErrorMode) =>
-						before === undefined ||
-						(before.includes(oneCallCondition(mode)) === proven.includes(oneCallCondition(mode)) &&
-							(mode !== 'continueErrorOutput' ||
-								before.includes(ERROR_ITEMS_BY_POSITION) ===
-									proven.includes(ERROR_ITEMS_BY_POSITION)));
-					const keptModes = CONTINUE_MODES.filter(
-						(mode) =>
-							sameForm(mode) &&
-							errorModeCondition(mode).every(
-								(m) => proven.includes(m) && (before === undefined || before.includes(m)),
-							),
+					const keptModes = CONTINUE_MODES.filter((mode) =>
+						errorModeCondition(mode).every((m) => proven.includes(m)),
 					);
 					const ofKeptMode = (condition: string) =>
 						keptModes.some(
@@ -1191,33 +1146,30 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						...provenEach.map((name) => itemParameterCondition(name)),
 						...provenUnder.filter(ofKeptMode),
 						...provenErrors.filter((name) => name === ITEM_ERROR || ofKeptMode(name)),
-					].filter((condition) => before === undefined || before.includes(condition));
-					const isMode = (name: string) =>
-						name.startsWith(ITEM_PARAMETER_PREFIX) ||
-						name.startsWith(ONE_CALL_PREFIX) ||
-						name === PAIRED_ITEMS ||
-						name.startsWith(ITEM_ERROR) ||
-						name.startsWith('@onError=') ||
-						name === ERROR_ITEMS_BY_POSITION ||
-						name === CALL_FOR_EACH_ITEM;
+					];
 					const modes = proven.filter(ofKeptMode);
+					const conditions = [
+						...names,
+						...flagKeys,
+						...modes,
+						...eachConditions,
+						...(pairedReason === undefined ? [PAIRED_ITEMS] : []),
+						...(eachItem === undefined ? [CALL_FOR_EACH_ITEM] : []),
+					];
+					const authentication = String(parameters.authentication);
 					verified[key] = [
-						...new Set([
-							...(before ?? []).filter((name) => !isMode(name) && !onlyUsual(name)),
-							...names,
-							...flagKeys,
-							...modes,
-							...eachConditions,
-							...(pairedReason === undefined &&
-							(before === undefined || before.includes(PAIRED_ITEMS))
-								? [PAIRED_ITEMS]
-								: []),
-							...(eachItem === undefined &&
-							(before === undefined || before.includes(CALL_FOR_EACH_ITEM))
-								? [CALL_FOR_EACH_ITEM]
-								: []),
-						]),
+						...new Set(
+							other
+								? [
+										...(verified[key] ?? []),
+										...conditions.map((condition) =>
+											authenticationCondition(authentication, condition),
+										),
+									]
+								: conditions,
+						),
 					].sort();
+					if (other) add(expressions, { 'other authentication': 1 });
 					if (MEASURE_COST && !other) {
 						const cost = costOfCase(make('ok', parameters, ok), sources, registry);
 						if (cost) costs[key] = cost;

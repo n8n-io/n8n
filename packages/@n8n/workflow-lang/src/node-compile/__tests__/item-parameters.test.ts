@@ -7,6 +7,7 @@ import {
 	compileNodeInstance,
 	deferredVerified,
 	isVerified,
+	unverifiedConditions,
 	itemParameterNames,
 	valueAtPath,
 } from '../convert.ts';
@@ -427,24 +428,45 @@ describe('the check of a parameter with an expression against v1', () => {
 		expect(isVerified(sources(['id']), TYPE, 1, compiledWith({ id: 'fixed' }))).toBe(true);
 	});
 
-	it('takes the members of a collection that agree with v1 one by one', () => {
+	it('takes a collection only for the members that agree with v1 one by one', () => {
 		const withMembers = {
 			...compiledWith({ id: 'fixed' }),
 			changed: ['options'],
 			resolved: { options: { first: 'a', second: '={{ $json.b }}' } },
 		};
+		const collection = { displayName: 'Options', name: 'options', type: 'collection', default: {} };
+		const listed = (conditions: string[]): NodeSources => ({
+			...sources(conditions),
+			description: () => ({ name: 'acme', properties: [...description.properties, collection] }),
+		});
 		const members = ['options.first', 'options.second'];
-		expect(isVerified(sources(['options']), TYPE, 1, withMembers)).toBe(true);
-		expect(isVerified(sources(['options.first']), TYPE, 1, withMembers)).toBe(false);
-		expect(isVerified(sources(members), TYPE, 1, withMembers)).toBe(true);
-		expect(isVerified(sources([]), TYPE, 1, { ...withMembers, resolved: { options: {} } })).toBe(
-			false,
-		);
+		expect(isVerified(listed(['options']), TYPE, 1, withMembers)).toBe(false);
+		expect(isVerified(listed(['options.first']), TYPE, 1, withMembers)).toBe(false);
+		expect(isVerified(listed(members), TYPE, 1, withMembers)).toBe(true);
+		expect(unverifiedConditions(listed(['options.first']), TYPE, 1, withMembers)).toEqual([
+			'options.second',
+		]);
 		const byItem = { ...withMembers, itemParameters: ['options.second'] };
-		expect(isVerified(sources(members), TYPE, 1, byItem)).toBe(false);
-		expect(isVerified(sources([...members, '@each=options.first']), TYPE, 1, byItem)).toBe(false);
-		expect(isVerified(sources([...members, '@each=options.second']), TYPE, 1, byItem)).toBe(true);
-		expect(isVerified(sources(['options', '@each=options']), TYPE, 1, byItem)).toBe(true);
+		expect(isVerified(listed(members), TYPE, 1, byItem)).toBe(false);
+		expect(isVerified(listed([...members, '@each=options.first']), TYPE, 1, byItem)).toBe(false);
+		expect(isVerified(listed([...members, '@each=options.second']), TYPE, 1, byItem)).toBe(true);
+		expect(isVerified(listed([...members, '@each=options']), TYPE, 1, byItem)).toBe(false);
+	});
+
+	it('takes another authentication only for the conditions that agree with v1 under it', () => {
+		const other = {
+			...compiledWith({ id: 'fixed' }),
+			changed: ['authentication', 'id'],
+			resolved: { authentication: 'oAuth2', id: 'fixed' },
+		};
+		expect(isVerified(sources(['authentication', 'id']), TYPE, 1, other)).toBe(true);
+		expect(isVerified(sources(['id', '@auth=oAuth2:authentication']), TYPE, 1, other)).toBe(false);
+		expect(
+			isVerified(sources(['@auth=oAuth2:authentication', '@auth=oAuth2:id']), TYPE, 1, other),
+		).toBe(true);
+		expect(
+			isVerified(sources(['id', '@auth=other:authentication', '@auth=other:id']), TYPE, 1, other),
+		).toBe(false);
 	});
 
 	it('needs the condition of the parameter for the error setting of the instance', () => {
