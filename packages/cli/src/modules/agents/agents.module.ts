@@ -15,6 +15,10 @@ export class AgentsModule implements ModuleInterface {
 		const { registerSkillUsage } = await import('./register-skill-usage.js');
 		registerSkillUsage();
 
+		// Tell core which agent acts as a service account, so a user deletion keeps it.
+		const { registerServiceAccountUsage } = await import('./register-service-account-usage.js');
+		registerServiceAccountUsage();
+
 		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
 		const { registerKnowledgeSandboxProvider } = await import(
 			'./register-knowledge-sandbox-provider.js'

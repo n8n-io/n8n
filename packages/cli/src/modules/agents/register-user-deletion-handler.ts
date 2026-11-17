@@ -25,7 +25,7 @@ export function registerUserDeletionHandler() {
 			await Container.get(AgentUserDeletionRepository).completeDeletion(userId, ctx);
 			await Container.get(AgentProjectDeletionRepository).completeDeletion(personalProjectId, ctx);
 		},
-		deleteAllForUser: async (userId) => {
+		deleteAllForUser: async (userId, deletion) => {
 			await Container.get(AgentUserDeletionRepository).beginDeletion(userId);
 			const systemAgents = Container.get(SystemAgentExecutionService);
 			await systemAgents.stopThreadsOfUser(userId);
@@ -40,7 +40,7 @@ export function registerUserDeletionHandler() {
 			);
 			const project =
 				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
-			await Container.get(AgentProjectCleanupService).cleanupProject(project.id);
+			await Container.get(AgentProjectCleanupService).cleanupProject(project.id, deletion);
 		},
 	});
 }

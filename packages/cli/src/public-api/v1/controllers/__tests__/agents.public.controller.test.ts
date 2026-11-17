@@ -436,7 +436,7 @@ describe('AgentsPublicController deleteAgent', () => {
 
 		const result = await controller.deleteAgent(req, res, 'agent-1');
 
-		expect(agentsService.delete).toHaveBeenCalledWith('agent-1');
+		expect(agentsService.delete).toHaveBeenCalledWith('agent-1', req.user, undefined, {}, req.ctx);
 		expect(result).toEqual({
 			id: 'agent-1',
 			name: 'My Agent',
