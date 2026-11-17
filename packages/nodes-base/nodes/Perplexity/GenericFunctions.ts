@@ -1,12 +1,16 @@
 import type {
+	IDataObject,
 	IExecuteSingleFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeListSearchResult,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { processJsonInput } from '@utils/utilities';
 
 export async function sendErrorPostReceive(
 	this: IExecuteSingleFunctions,
@@ -72,6 +76,88 @@ export const searchErrorPostReceive = createErrorHandler(
 export const embeddingsErrorPostReceive = createErrorHandler(
 	'Refer to the Embeddings API documentation at https://docs.perplexity.ai/api-reference/embeddings-post for valid parameters.',
 );
+
+export const decisionsErrorPostReceive = createErrorHandler(
+	'Refer to the Decisions API documentation at https://docs.perplexity.ai/api-reference/decisions-post for valid parameters.',
+);
+
+interface DecisionQuestionFields {
+	name: string;
+	type: 'choice' | 'locate' | 'noul' | 'score';
+	instructions: string;
+	criteria: string | object;
+}
+
+const reservedKeys = new Set(['__proto__', 'constructor', 'prototype']);
+
+const hasReservedKey = (value: unknown): boolean => {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+	return Object.entries(value).some(
+		([key, nested]) => reservedKeys.has(key) || hasReservedKey(nested),
+	);
+};
+
+export async function decisionsPreSend(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = requestOptions.body as IDataObject;
+
+	if (this.getNodeParameter('stateType') === 'json') {
+		body.state = processJsonInput(this.getNodeParameter('stateJson'), 'State') as IDataObject;
+	}
+
+	if (hasReservedKey(body.state)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'State keys cannot be named __proto__, constructor or prototype',
+			{
+				description:
+					'The request would be sent without this key. Rename the key, or set State Type to Text.',
+			},
+		);
+	}
+
+	if (this.getNodeParameter('defineQuestions') === 'json') {
+		body.questions = processJsonInput(
+			this.getNodeParameter('questionsJson'),
+			'Questions',
+		) as IDataObject;
+	} else {
+		const fields = this.getNodeParameter('questions.values', []) as DecisionQuestionFields[];
+		const questions = new Map<string, IDataObject>();
+
+		for (const { name, type, instructions, criteria } of fields) {
+			if (questions.has(name)) {
+				throw new NodeOperationError(this.getNode(), 'Question names must be unique', {
+					description: 'The API returns one answer per question name. Rename the duplicate.',
+				});
+			}
+
+			const question: IDataObject = { type };
+			if (instructions) question.instructions = instructions;
+			if (type === 'choice' || type === 'score') {
+				question.criteria = processJsonInput(criteria, 'Criteria') as IDataObject;
+			}
+			questions.set(name, question);
+		}
+
+		body.questions = Object.fromEntries(questions);
+	}
+
+	if (hasReservedKey(body.questions)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Question names and criteria keys cannot be __proto__, constructor or prototype',
+			{
+				description:
+					'The request would be sent without this key. Rename the question or the option.',
+			},
+		);
+	}
+
+	return requestOptions;
+}
 
 export async function getAgentModels(
 	this: ILoadOptionsFunctions,

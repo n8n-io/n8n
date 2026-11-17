@@ -1,7 +1,7 @@
 import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { agent, embeddings, search } from '../descriptions';
+import { agent, decisions, embeddings, search } from '../descriptions';
 import { getAgentModels } from '../GenericFunctions';
 
 export class PerplexityV3 implements INodeType {
@@ -41,6 +41,12 @@ export class PerplexityV3 implements INodeType {
 								'Create responses using the Agent API with third-party models, presets, tools, and structured outputs',
 						},
 						{
+							name: 'Decision',
+							value: 'decision',
+							description:
+								'Answer questions about content with probabilities instead of text, using a decision model',
+						},
+						{
 							name: 'Embedding',
 							value: 'embedding',
 							description: 'Generate vector embeddings for text',
@@ -54,6 +60,7 @@ export class PerplexityV3 implements INodeType {
 					default: 'agent',
 				},
 				...agent.description,
+				...decisions.description,
 				...embeddings.description,
 				...search.description,
 			],
