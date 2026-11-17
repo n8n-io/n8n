@@ -10,6 +10,7 @@ const std = @import("std");
 const value = @import("value.zig");
 const ops = @import("ops.zig");
 const fast = @import("simd_json.zig");
+const access = @import("mem.zig");
 const Builder = @import("arena.zig").Builder;
 const Value = value.Value;
 const Vm = ops.Vm;
@@ -20,7 +21,12 @@ pub const DecodeError = fast.DecodeError;
 /// Append JSON.stringify(v) to `b`. Returns false when the result is
 /// `undefined` (v is undefined or a function).
 pub fn encode(vm: *Vm, b: *Builder, v: Value, indent: []const u8) Err!bool {
-    return fast.encode(vm, b, v, indent);
+    if (!access.enabled) return fast.encode(vm, b, v, indent);
+    const start = b.len;
+    const wrote = try fast.encode(vm, b, v, indent);
+    if (access.enabled) access.wrSlice(vm.r.probe, .json_out, .json_encode, b.bytes()[start..]);
+    if (access.enabled) access.scan(vm.r.probe, .json_emit, b.len - start);
+    return wrote;
 }
 
 pub fn writeString(b: *Builder, s: []const u8) Err!void {
@@ -29,6 +35,8 @@ pub fn writeString(b: *Builder, s: []const u8) Err!void {
 
 /// Parse `src` into a region value. A syntax error returns error.Syntax.
 pub fn decode(vm: *Vm, src: []const u8) DecodeError!Value {
+    if (access.enabled) access.rdSlice(vm.r.probe, .json_in, .json_decode, src);
+    if (access.enabled) access.scan(vm.r.probe, .json_scan, src.len);
     return fast.decode(vm, src);
 }
 

@@ -303,6 +303,9 @@ pub fn bench(gpa: std.mem.Allocator, module_bytes: []const u8, fixture_text: []c
 pub const BenchSizes = struct {
     scratch_bytes: usize = 32 << 20,
     max_static_data: u32 = (core.Config{}).max_static_data,
+    /// The recorder of the performance model (`wfrt perf-model`). With it,
+    /// the interpreter runs each instruction itself, so the recorder sees it.
+    probe: core_lib.mem.Probe = core_lib.mem.none,
 };
 
 /// `bench` with every allocation from `a`, which is never freed: an arena,
@@ -326,6 +329,8 @@ pub fn benchIn(a: std.mem.Allocator, module_bytes: []const u8, fixture_text: []c
         .immediate_retries = true,
         .exact_seed = fx.seed,
         .schedules = false,
+        .probe = sizes.probe,
+        .limits = .{ .aot = !core_lib.mem.enabled },
     };
     var st = try core.State.init(a, cfg);
     const scratch_buf = try a.alloc(u8, sizes.scratch_bytes);
@@ -357,8 +362,10 @@ pub fn benchIn(a: std.mem.Allocator, module_bytes: []const u8, fixture_text: []c
         try events.append(a, .{ .kind = .start, .aux = 0, .seq = 0, .payload = fx.trigger });
         var done = false;
         var batches: u32 = 0;
+        // Each execution starts at the time of the fixture; a wait moves the clock.
+        var now = fx.now;
         while (!done and batches < 100_000) : (batches += 1) {
-            _ = try core.step(&st, fx.now, events.items, &scratch);
+            const o = try core.step(&st, now, events.items, &scratch);
             events.clearRetainingCapacity();
             next.clearRetainingCapacity();
             for (st.emitted()) |act| if (act.kind == .snapshot) try snapshots.put(act.exec_id, try a.dupe(u8, act.payload));
@@ -390,7 +397,9 @@ pub fn benchIn(a: std.mem.Allocator, module_bytes: []const u8, fixture_text: []c
                 _ = snapshots.remove(ev.exec_id);
             };
             for (next.items) |ev| if (ev.kind != .restore) try events.append(a, ev);
+            if (!done and events.items.len == 0 and !o.has_ready) now = @max(now, o.next_timer_ms orelse break);
         }
+        if (core_lib.mem.enabled) if (sizes.probe) |rec| rec.endExec();
     }
     return ok;
 }

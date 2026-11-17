@@ -10,6 +10,7 @@ const lib = @import("lib.zig");
 const numfmt = @import("numfmt.zig");
 const module = @import("module.zig");
 const aot = @import("aot.zig");
+const mem = @import("mem.zig");
 const Value = value.Value;
 const Vm = ops.Vm;
 const Err = ops.Err;
@@ -121,12 +122,16 @@ fn fibreSlots(r: *const heap.Region) []Fibre {
 
 fn fib(vm: *Vm, fi: u32) *Fibre {
     std.debug.assert(fi < vm.r.exec().nfibres);
-    return &fibreSlots(vm.r)[fi];
+    const f = &fibreSlots(vm.r)[fi];
+    if (mem.enabled) mem.rdHeader(vm.r.probe, .fibre_table, .interp_frame, f, @sizeOf(Fibre));
+    return f;
 }
 
 fn topFrame(vm: *Vm, f: *const Fibre) *Frame {
     std.debug.assert(f.nframes > 0);
-    return &vm.r.framesOf(f)[f.nframes - 1];
+    const fr = &vm.r.framesOf(f)[f.nframes - 1];
+    if (mem.enabled) mem.rdHeader(vm.r.probe, .frames, .interp_frame, fr, @sizeOf(Frame));
+    return fr;
 }
 
 fn window(vm: *Vm, f: *const Fibre, fr: *const Frame) []Value {
@@ -199,6 +204,8 @@ fn runFibre(vm: *Vm, fi: u32, now_ms: f64, fuel: *u64, limits: Limits) FibreOut 
         fuel.* -= done;
         e.fuel_used += done;
         if (done == budget and pending == null) continue;
+        // The fast loop stopped at an instruction that the slow path runs again.
+        if (pending == null) mem.bail(vm.r.probe);
         const flow = (pending orelse step(vm, fi, vm.m.funcCode(fr.func)[fr.pc], now_ms, limits)) catch |err| switch (err) {
             error.RegionFull => return .{ .outcome = .region_full },
             error.ArenaFull => return .{ .outcome = .{ .limit = .memory } },
@@ -241,6 +248,7 @@ fn fastRun(vm: *Vm, fr: *Frame, f: *const Fibre, budget: u64) u64 {
     while (n < budget) : (n += 1) {
         const ins = code[pc];
         const op: Op = @fromBackingInt(@intCast(ins.op));
+        if (mem.enabled) mem.instr(vm.r.probe, vm.m, ins, &code[pc], R.ptr);
         switch (op) {
             .nop => {},
             .mov => R[ins.a] = R[ins.b],
@@ -293,7 +301,7 @@ fn fastRun(vm: *Vm, fr: *Frame, f: *const Fibre, budget: u64) u64 {
                 const o = R[ins.b];
                 if (value.kindOf(o) != .object) return n;
                 const off = value.payload(o);
-                R[ins.a] = if (vm.objFindValue(off, value.constString(ins.c))) |i| vm.r.objEntries(off)[i * 2 + 1] else value.undef;
+                R[ins.a] = if (vm.objFindValue(off, value.constString(ins.c))) |i| mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]) else value.undef;
             },
             // Allocations: a full region leaves nothing changed, and `step`
             // runs the instruction again and reports it.
@@ -329,7 +337,7 @@ fn chargeNative(vm: *Vm, region_before: u32, inputs: []const Value) void {
     var work: u64 = vm.r.used -| region_before;
     for (inputs) |v| work += switch (value.kindOf(v)) {
         .string => vm.utf16Len(v),
-        .array => vm.r.arrItems(value.payload(v)).len,
+        .array => vm.r.arrItemsRaw(value.payload(v)).len,
         else => 0,
     };
     vm.charge(work / 64);
@@ -342,7 +350,9 @@ pub const Flow = union(enum) { next, jumped, called, fibre_done, parked, effect:
 pub fn step(vm: *Vm, fi: u32, ins: Instr, now_ms: f64, limits: Limits) Err!Flow {
     const f = fib(vm, fi);
     const fr = topFrame(vm, f);
-    return stepIn(vm, fi, fr, window(vm, f, fr), null, ins, now_ms, limits);
+    const R = window(vm, f, fr);
+    if (mem.enabled) mem.instr(vm.r.probe, vm.m, ins, &vm.m.funcCode(fr.func)[fr.pc], R.ptr);
+    return stepIn(vm, fi, fr, R, null, ins, now_ms, limits);
 }
 
 /// The body of `step`, for frame `fr` of fibre `fi` with register window
@@ -381,7 +391,7 @@ pub inline fn stepIn(vm: *Vm, fi: u32, fr: *Frame, R: []Value, comptime known: ?
         .getprop => R[ins.a] = if (value.kindOf(R[ins.b]) == .object) blk: {
             const off = value.payload(R[ins.b]);
             const i = vm.objFindValue(off, value.constString(ins.c)) orelse break :blk value.undef;
-            break :blk vm.r.objEntries(off)[i * 2 + 1];
+            break :blk mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]);
         } else try vm.getProp(R[ins.b], vm.m.str(ins.c)),
         .setprop => try setProp(vm, R[ins.a], ins.b, R[ins.c]),
         .getelem => R[ins.a] = try vm.getElem(R[ins.b], R[ins.c]),
@@ -625,6 +635,9 @@ fn call(vm: *Vm, fi: u32, ins: Instr, limits: Limits) Err!Flow {
     // clearing.
     if (@import("builtin").mode == .debug) for (win) |v| std.debug.assert(v == value.undef);
     const nargs = @min(ins.x, fe.nparams);
+    if (mem.enabled) mem.wrSlice(vm.r.probe, .registers, .interp_reg, win[0..nargs]);
+    if (mem.enabled) mem.wr(vm.r.probe, .frames, .interp_frame, &vm.r.framesOf(f2).ptr[f2.nframes], @sizeOf(Frame));
+    if (mem.enabled) mem.wr(vm.r.probe, .fibre_table, .interp_frame, f2, @sizeOf(Fibre));
     @memcpy(win[0..nargs], regs[caller.base + ins.c ..][0..nargs]);
     f2.regs_top = base + fe.nregs;
     vm.r.framesOf(f2).ptr[f2.nframes] = .{ .func = func, .pc = 0, .base = base, .ret_reg = ins.a, .closure = callee };
@@ -634,6 +647,9 @@ fn call(vm: *Vm, fi: u32, ins: Instr, limits: Limits) Err!Flow {
 
 fn popFrame(vm: *Vm, f: *Fibre) void {
     const fr = topFrame(vm, f);
+    if (mem.enabled) mem.wrSlice(vm.r.probe, .registers, .vals_fill, vm.r.regsOf(f)[fr.base..f.regs_top]);
+    if (mem.enabled) mem.scan(vm.r.probe, .value_fill, f.regs_top - fr.base);
+    if (mem.enabled) mem.wr(vm.r.probe, .fibre_table, .interp_frame, f, @sizeOf(Fibre));
     @memset(vm.r.regsOf(f)[fr.base..f.regs_top], value.undef);
     f.regs_top = fr.base;
     // Compaction scans popped frames too; drop the closure they keep.
@@ -654,6 +670,7 @@ fn ret(vm: *Vm, fi: u32, v: Value) Flow {
     const call_ins = vm.m.funcCode(caller.func)[caller.pc];
     std.debug.assert(call_ins.op == @backingInt(Op.call));
     f.regs_top = caller.base + vm.m.funcs[caller.func].nregs;
+    if (mem.enabled) mem.wr(vm.r.probe, .registers, .interp_reg, &window(vm, f, caller)[call_ins.a], 8);
     window(vm, f, caller)[call_ins.a] = v;
     caller.pc += 1;
     return .jumped;

@@ -5,6 +5,7 @@ const std = @import("std");
 const value = @import("value.zig");
 const heap = @import("heap.zig");
 const numfmt = @import("numfmt.zig");
+const mem = @import("mem.zig");
 const Arena = @import("arena.zig").Arena;
 const Builder = @import("arena.zig").Builder;
 const Module = @import("module.zig").Module;
@@ -74,14 +75,24 @@ pub const Vm = struct {
     /// The byte length of a string value, without its bytes.
     pub fn strLen(vm: *const Vm, v: Value) usize {
         const p = value.payload(v);
-        if (p >= value.const_handle_base) return vm.m.str(p - value.const_handle_base).len;
+        if (p >= value.const_handle_base) {
+            if (mem.enabled) mem.rd(vm.r.probe, .const_strings, .interp_const, vm.m.str_offsets.ptr + (p - value.const_handle_base), 8);
+            return vm.m.str(p - value.const_handle_base).len;
+        }
         return vm.r.at(heap.Str, p).len;
     }
 
     pub fn str(vm: *const Vm, v: Value) []const u8 {
         std.debug.assert(value.kindOf(v) == .string);
         const p = value.payload(v);
-        if (p >= value.const_handle_base) return vm.m.str(p - value.const_handle_base);
+        if (p >= value.const_handle_base) {
+            const bytes = vm.m.str(p - value.const_handle_base);
+            if (mem.enabled) {
+                if (mem.enabled) mem.rd(vm.r.probe, .const_strings, .interp_const, vm.m.str_offsets.ptr + (p - value.const_handle_base), 8);
+                if (mem.enabled) mem.rdSlice(vm.r.probe, .const_strings, .const_str, bytes);
+            }
+            return bytes;
+        }
         return vm.r.strBytes(p);
     }
 
@@ -91,6 +102,7 @@ pub const Vm = struct {
         // A module constant has no header: count once, then keep the count
         // for the next `.length` of the same constant (a loop condition).
         if (vm.len_cache.p == p) return vm.len_cache.units;
+        if (mem.enabled) mem.scan(vm.r.probe, .utf16_len, vm.strLen(v));
         const units = heap.utf16Len(vm.str(v));
         vm.len_cache = .{ .p = p, .units = units };
         return units;
@@ -226,9 +238,16 @@ pub const Vm = struct {
         if (ka != value.kindOf(b)) return false;
         return switch (ka) {
             .number => value.asNum(a) == value.asNum(b),
-            .string => a == b or (vm.strLen(a) == vm.strLen(b) and std.mem.eql(u8, vm.str(a), vm.str(b))),
+            .string => a == b or (vm.strLen(a) == vm.strLen(b) and vm.bytesEql(a, b)),
             else => a == b,
         };
+    }
+
+    /// True when two strings of one length have the same bytes.
+    fn bytesEql(vm: *const Vm, a: Value, b: Value) bool {
+        const x = vm.str(a);
+        if (mem.enabled) mem.scan(vm.r.probe, .str_eql, x.len);
+        return std.mem.eql(u8, x, vm.str(b));
     }
 
     /// SameValueZero, used by `includes`.
@@ -308,9 +327,10 @@ pub const Vm = struct {
     // ---- objects ----------------------------------------------------------
 
     pub fn objFind(vm: *const Vm, off: u32, key: []const u8) ?u32 {
-        const es = vm.r.objEntries(off);
+        const es = vm.r.objEntriesRaw(off);
         var i: u32 = 0;
         while (i < es.len) : (i += 2) {
+            if (mem.enabled) mem.probeKey(vm.r.probe, &es[i]);
             if (std.mem.eql(u8, vm.str(es[i]), key)) return i / 2;
         }
         return null;
@@ -319,13 +339,15 @@ pub const Vm = struct {
     /// `objFind` for a key value: the same value (a module constant set and
     /// read by the program) matches without a look at the bytes.
     pub fn objFindValue(vm: *const Vm, off: u32, key: Value) ?u32 {
-        const es = vm.r.objEntries(off);
+        const es = vm.r.objEntriesRaw(off);
         const bytes = vm.str(key);
         var i: u32 = 0;
         while (i < es.len) : (i += 2) {
+            if (mem.enabled) mem.probeKey(vm.r.probe, &es[i]);
             if (es[i] == key) return i / 2;
             // The length is in the header: most keys differ there.
             if (vm.strLen(es[i]) != bytes.len) continue;
+            if (mem.enabled) mem.scan(vm.r.probe, .key_bytes, bytes.len);
             if (std.mem.eql(u8, vm.str(es[i]), bytes)) return i / 2;
         }
         return null;
@@ -333,19 +355,21 @@ pub const Vm = struct {
 
     pub fn objGet(vm: *const Vm, off: u32, key: []const u8) Value {
         const i = vm.objFind(off, key) orelse return value.undef;
-        return vm.r.objEntries(off)[i * 2 + 1];
+        return mem.load(vm.r.probe, .obj_entries, .vals_at, &vm.r.objEntriesRaw(off)[i * 2 + 1]);
     }
 
     /// Set a property. `key` must be a string value.
     pub fn objSet(vm: *Vm, off: u32, key: Value, v: Value) Err!void {
         std.debug.assert(value.kindOf(key) == .string);
         if (vm.objFindValue(off, key)) |i| {
-            vm.r.objEntries(off)[i * 2 + 1] = v;
+            mem.store(vm.r.probe, .obj_entries, .obj_set, &vm.r.objEntriesRaw(off)[i * 2 + 1], v);
             return;
         }
         try vm.r.objReserve(off, 1);
         const o = vm.r.at(heap.Obj, off);
         const es = vm.r.valsAt(o.entries, o.cap * 2);
+        if (mem.enabled) mem.wrSlice(vm.r.probe, .obj_entries, .obj_set, es[o.count * 2 ..][0..2]);
+        if (mem.enabled) mem.wr(vm.r.probe, .obj_header, .obj_set, o, @sizeOf(heap.Obj));
         es[o.count * 2] = key;
         es[o.count * 2 + 1] = v;
         o.count += 1;
@@ -435,9 +459,9 @@ pub const Vm = struct {
     }
 
     pub fn arrGet(vm: *const Vm, arr: Value, idx: u32) Value {
-        const items = vm.r.arrItems(value.payload(arr));
+        const items = vm.r.arrItemsRaw(value.payload(arr));
         if (idx >= items.len) return value.undef;
-        return items[idx];
+        return mem.load(vm.r.probe, .arr_items, .vals_at, &items[idx]);
     }
 
     pub fn charAt(vm: *Vm, s: Value, idx: u32) Err!Value {

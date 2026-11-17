@@ -10,6 +10,7 @@ const simd_json = @import("simd_json.zig");
 const exec_index = @import("exec_index.zig");
 const interp = @import("interp.zig");
 const module = @import("module.zig");
+const mem = @import("mem.zig");
 const cron = @import("cron.zig");
 const tz = @import("tz.zig");
 const multipart = @import("multipart.zig");
@@ -60,6 +61,9 @@ pub const Config = struct {
     /// Waits at or above this length evict the execution to a snapshot.
     evict_wait_ms: i64 = 1000,
     limits: interp.Limits = .{},
+    /// The recorder of the performance model (`mem.zig`), which each region
+    /// of an execution carries. It has no size in the normal build.
+    probe: mem.Probe = mem.none,
     /// Trace mode, for manual runs and tests: one trace action per effect.
     trace_effects: bool = false,
     /// Tests only: every execution's PRNG starts from this seed.
@@ -1728,7 +1732,7 @@ fn takeRegion(s: *State, class: u8) ?struct { idx: u32, region: heap.Region } {
     }
     const size = s.cfg.region_sizes[class];
     const buf: []align(8) u8 = @alignCast(s.pools[class][@as(usize, idx) * size ..][0..size]);
-    return .{ .idx = idx, .region = heap.Region.init(buf) };
+    return .{ .idx = idx, .region = .{ .buf = buf, .used = 0, .probe = s.cfg.probe } };
 }
 
 /// Give a region back. `used`: the bytes it held. Safe builds fill them
