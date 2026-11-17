@@ -37,7 +37,4 @@ export class CreateAiPreferencePublicDto extends Z.class(AiPreferenceRequestDto.
 	strict: true,
 }) {}
 
-export class UpdateAiPreferencePublicDto extends Z.class(
-	{ ...AiPreferenceRequestDto.schema.shape, scope: aiPreferenceScopeSchema.optional() },
-	{ strict: true },
-) {}
+export class UpdateAiPreferencePublicDto extends CreateAiPreferencePublicDto {}

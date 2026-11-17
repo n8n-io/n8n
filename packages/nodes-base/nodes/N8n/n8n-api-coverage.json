@@ -23,7 +23,7 @@
 		"GET /ai-preferences": {
 			"status": "gap"
 		},
-		"PATCH /ai-preferences/{preferenceId}": {
+		"PUT /ai-preferences/{preferenceId}": {
 			"status": "gap"
 		},
 		"POST /ai-preferences": {

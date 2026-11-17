@@ -266,12 +266,6 @@ export class AiPreferenceService {
 		id: string,
 		request: AiPreferenceUpdateRequest,
 	): Promise<AiPreferenceDto> {
-		const namesTarget = [request.projectId, request.userId].some(
-			(targetId) => targetId !== undefined && targetId !== null,
-		);
-		if (request.scope === undefined && namesTarget) {
-			throw new BadRequestError('A projectId or userId needs a scope');
-		}
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
 		const resolved: AiPreferenceRequestDto =

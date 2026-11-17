@@ -87,7 +87,9 @@ describe('Public API /ai-preferences', () => {
 			const callEveryRoute = async () => [
 				await agent.get('/ai-preferences'),
 				await agent.post('/ai-preferences').send({ content: 'new', scope: 'user' }),
-				await agent.patch(`/ai-preferences/${row.id}`).send({ content: 'edited' }),
+				await agent
+					.put(`/ai-preferences/${row.id}`)
+					.send({ content: 'edited', scope: 'user', userId: owner.id }),
 				await agent.delete(`/ai-preferences/${row.id}`),
 			];
 
@@ -468,14 +470,14 @@ describe('Public API /ai-preferences', () => {
 		});
 	});
 
-	describe('PATCH /ai-preferences/:preferenceId', () => {
-		test('replaces the text and keeps the scope when the body names none', async () => {
+	describe('PUT /ai-preferences/:preferenceId', () => {
+		test('replaces the text of a preference in place', async () => {
 			const row = await seed({ content: 'old', projectId: editorProject.id });
 
 			const response = await testServer
 				.publicApiAgentFor(member)
-				.patch(`/ai-preferences/${row.id}`)
-				.send({ content: 'new' });
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'new', scope: 'project', projectId: editorProject.id });
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toMatchObject({
@@ -491,7 +493,7 @@ describe('Public API /ai-preferences', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(member)
-				.patch(`/ai-preferences/${row.id}`)
+				.put(`/ai-preferences/${row.id}`)
 				.send({ content: 'move me', scope: 'project', projectId: editorProject.id });
 
 			expect(response.statusCode).toBe(200);
@@ -502,24 +504,30 @@ describe('Public API /ai-preferences', () => {
 			});
 		});
 
-		test('refuses a projectId or userId without a scope', async () => {
+		test('refuses a body without a scope', async () => {
 			const row = await seed({ content: 'stay', projectId: editorProject.id });
 
-			for (const body of [
-				{ content: 'stay', projectId: viewerProject.id },
-				{ content: 'stay', userId: member.id },
-				{ content: 'stay', projectId: '', userId: member.id },
-				{ content: 'stay', projectId: '' },
-			]) {
-				const response = await testServer
-					.publicApiAgentFor(member)
-					.patch(`/ai-preferences/${row.id}`)
-					.send(body);
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'changed', projectId: editorProject.id });
 
-				expect(response.statusCode).toBe(400);
-				expect(response.body.message).toBe('A projectId or userId needs a scope');
-			}
-			expect((await repository().findOneByOrFail({ id: row.id })).projectId).toBe(editorProject.id);
+			expect(response.statusCode).toBe(400);
+			expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('stay');
+		});
+
+		test('accepts the body that a list row carries, without the server fields', async () => {
+			const row = await seed({ content: 'round trip', userId: member.id });
+			const listed = await testServer.publicApiAgentFor(member).get('/ai-preferences');
+			const { content, scope, userId, projectId } = listed.body.data[0];
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: `${content} again`, scope, userId, projectId });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toMatchObject({ content: 'round trip again', scope: 'user' });
 		});
 
 		test("lets an admin edit another user's preference", async () => {
@@ -527,7 +535,7 @@ describe('Public API /ai-preferences', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(admin)
-				.patch(`/ai-preferences/${row.id}`)
+				.put(`/ai-preferences/${row.id}`)
 				.send({ content: 'new', scope: 'user', userId: member.id });
 
 			expect(response.statusCode).toBe(200);
@@ -539,8 +547,8 @@ describe('Public API /ai-preferences', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(member)
-				.patch(`/ai-preferences/${row.id}`)
-				.send({ content: 'changed' });
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'changed', scope: 'project', projectId: viewerProject.id });
 
 			expect(response.statusCode).toBe(403);
 			expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('read only');
@@ -551,8 +559,8 @@ describe('Public API /ai-preferences', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(member)
-				.patch(`/ai-preferences/${row.id}`)
-				.send({ content: 'changed' });
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'changed', scope: 'user', userId: outsider.id });
 
 			expect(response.statusCode).toBe(404);
 		});
@@ -560,8 +568,8 @@ describe('Public API /ai-preferences', () => {
 		test('answers 404 for a row that does not exist', async () => {
 			const response = await testServer
 				.publicApiAgentFor(member)
-				.patch(`/ai-preferences/${randomId()}`)
-				.send({ content: 'changed' });
+				.put(`/ai-preferences/${randomId()}`)
+				.send({ content: 'changed', scope: 'user', userId: member.id });
 
 			expect(response.statusCode).toBe(404);
 		});
@@ -569,8 +577,8 @@ describe('Public API /ai-preferences', () => {
 		test('refuses an id that is not a UUID', async () => {
 			const response = await testServer
 				.publicApiAgentFor(member)
-				.patch('/ai-preferences/not-a-uuid')
-				.send({ content: 'changed' });
+				.put('/ai-preferences/not-a-uuid')
+				.send({ content: 'changed', scope: 'user', userId: member.id });
 
 			expect(response.statusCode).toBe(400);
 		});
@@ -581,8 +589,8 @@ describe('Public API /ai-preferences', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(member)
-				.patch(`/ai-preferences/${row.id}`)
-				.send({ content: 'taken' });
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'taken', scope: 'user', userId: member.id });
 
 			expect(response.statusCode).toBe(409);
 		});
@@ -593,8 +601,8 @@ describe('Public API /ai-preferences', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(caller)
-				.patch(`/ai-preferences/${row.id}`)
-				.send({ content: 'changed' });
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'changed', scope: 'user', userId: caller.id });
 
 			expect(response.statusCode).toBe(403);
 		});

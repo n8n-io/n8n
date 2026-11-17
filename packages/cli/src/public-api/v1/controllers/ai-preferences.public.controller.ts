@@ -22,9 +22,9 @@ import {
 	Get,
 	Middleware,
 	Param,
-	Patch,
 	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
@@ -118,14 +118,14 @@ export class AiPreferencesPublicController {
 		return toAiPreferencePublicDto(await this.aiPreferenceService.create(req.user, body, 'api'));
 	}
 
-	@Patch('/:preferenceId')
+	@Put('/:preferenceId')
 	@ApiKeyScope('aiPreference:update')
 	@ApiSummary('Update an AI preference')
 	@ApiDescription(
-		'Replace the text of an AI preference. Send scope to move the preference to another scope: ' +
-			'a move needs the delete permission on the old scope and the create permission on the new one. ' +
-			'Without scope, the preference stays where it is. ' +
-			'A user preference names its user in userId, and a project preference names its project in projectId.',
+		'Replace an AI preference with the full body: content, scope, and the userId or projectId of the scope. ' +
+			'A user preference names its user in userId, and a project preference names its project in projectId. ' +
+			'A new scope moves the preference: a move needs the delete permission on the old scope ' +
+			'and the create permission on the new one.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, AiPreferencePublicDto)
