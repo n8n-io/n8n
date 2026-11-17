@@ -33,6 +33,19 @@ describe('workflow_execution table (integration)', () => {
 		if (container) await container.stop();
 	});
 
+	async function waitUntilQueryBlocksOnLock(queryFragment: string): Promise<void> {
+		for (let attempt = 0; attempt < 500; attempt++) {
+			const [{ blocked }] = await dataSource.query<Array<{ blocked: number }>>(
+				`SELECT count(*)::int AS blocked FROM pg_stat_activity
+				 WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid() AND query LIKE $1`,
+				[`%${queryFragment}%`],
+			);
+			if (blocked > 0) return;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		throw new Error(`No query containing "${queryFragment}" blocked on a lock`);
+	}
+
 	it('persists and retrieves a workflow_execution row', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 
@@ -488,12 +501,9 @@ describe('workflow_execution table (integration)', () => {
 				{ id: parent.executionId, status: 'running' },
 				{ status: 'cancelled', finishedAt: new Date() },
 			);
-			let settled = false;
 			const insert = store.createExecution({ ...newRecord(generateId()), parent });
-			insert.catch(() => {}).finally(() => (settled = true));
-
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			expect(settled).toBe(false);
+			insert.catch(() => {});
+			await waitUntilQueryBlocksOnLock('FOR SHARE');
 
 			await ending.commitTransaction();
 			await expect(insert).rejects.toThrow(ParentExecutionEndedError);
