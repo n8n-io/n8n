@@ -21,6 +21,8 @@ export interface ICredentialsResponse
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	/** Whether MCP clients can use this credential through n8n. */
+	availableInMCP?: boolean;
 	usageScope?: 'project' | 'instance';
 	/**
 	 * How this credential reaches the workflow being edited: `project` when the
@@ -59,6 +61,8 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, Credent
 	scopes?: Scope[];
 	id: string;
 	isResolvable?: boolean;
+	/** Whether MCP clients can use this credential through n8n. */
+	availableInMCP?: boolean;
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
 	/**

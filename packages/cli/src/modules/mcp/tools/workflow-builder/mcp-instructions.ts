@@ -65,6 +65,13 @@ export type McpInstructionsOptions = {
 	 */
 	migrationReportTargetVersion?: string;
 	credentialDescriptionsEnabled?: boolean;
+
+	/**
+	 * Whether the credential broker tools are registered for this caller. If true, one
+	 * sentence points the client at them, so it uses a stored connection before it asks
+	 * the user for an API key.
+	 */
+	isCredentialUseEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -74,6 +81,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isInstanceContextEnabled = false,
 		isUserPreferencesEnabled = false,
 		migrationReportTargetVersion,
+		isCredentialUseEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -96,6 +104,11 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		: '';
 
 	// Kept short and early for the same reason: it must survive the 2048-character cut.
+	// Kept short and early for the same reason: it must survive the 2048-character cut.
+	const CREDENTIAL_USE_HINT = isCredentialUseEnabled
+		? 'To read from or act on an external service for the user (for example Slack or Linear), call list_connections first: n8n can make the call with a credential the user already stored, and never returns the secret.'
+		: '';
+
 	const MIGRATION_REPORT_HINT = migrationReportTargetVersion
 		? `When the user asks about upgrading to n8n ${migrationReportTargetVersion}, breaking changes, or the migration report, call ${MCP_GET_MIGRATION_REPORT_TOOL_NAME} first.`
 		: '';
@@ -166,6 +179,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 		USER_PREFERENCES_HINT,
 		INSTANCE_CONTEXT_HINT,
 		MIGRATION_REPORT_HINT,
+		CREDENTIAL_USE_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',

@@ -23,6 +23,8 @@ type CredentialPackageKeyHandling = {
 	resolvableAllowFallback: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';
+	// Each instance decides which credentials MCP clients may use.
+	availableInMCP: 'exclude';
 	pendingAuthorizationExpiresAt: 'exclude';
 };
 

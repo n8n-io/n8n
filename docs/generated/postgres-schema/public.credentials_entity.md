@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| availableInMCP | boolean | false | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
 | description | text |  | true |  |  | User-supplied note on what the credential is for and where it belongs. Set and read through the credentials API |
@@ -24,6 +25,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_credentials_entity_usageScope | CHECK | CHECK ((("usageScope")::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
+| credentials_entity_availableInMCP_not_null | n | NOT NULL "availableInMCP" |
 | credentials_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | credentials_entity_data_not_null | n | NOT NULL data |
 | credentials_entity_id_not_null1 | n | NOT NULL id |
@@ -65,6 +67,7 @@ erDiagram
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
 
 "public.credentials_entity" {
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   text data
   text description

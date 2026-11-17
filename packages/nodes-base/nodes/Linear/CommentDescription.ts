@@ -17,6 +17,7 @@ export const commentOperations: INodeProperties[] = [
 				value: 'addComment',
 				description: 'Add a comment to an issue',
 				action: 'Add a comment to an issue',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 		],
 		default: 'addComment',

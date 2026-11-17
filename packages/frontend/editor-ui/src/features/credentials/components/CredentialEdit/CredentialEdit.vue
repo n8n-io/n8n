@@ -23,6 +23,7 @@ import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
+import CredentialMcpAccessToggle from './CredentialMcpAccessToggle.vue';
 import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
@@ -1861,6 +1862,13 @@ const { width } = useElementSize(credNameRef);
 									@claimed="closeDialog"
 									@use-gateway-credits="useGatewayCredits"
 									@update:is-resolvable="onResolvableChange"
+								/>
+								<CredentialMcpAccessToggle
+									v-if="currentCredential && credentialId && !modalOptions?.destination"
+									:credential-id="credentialId"
+									:credential-type-name="currentCredential.type"
+									:available-in-mcp="currentCredential.availableInMCP === true"
+									:can-update="!!credentialPermissions.update"
 								/>
 							</div>
 							<div v-else-if="showSharingContent" :class="$style.mainContent">

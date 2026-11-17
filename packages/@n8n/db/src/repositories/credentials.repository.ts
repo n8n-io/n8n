@@ -432,6 +432,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			'isGlobal',
 			'isResolvable',
 			'resolverId',
+			'availableInMCP',
 		];
 
 		if (!listQueryOptions) {
@@ -614,6 +615,12 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/** Sets whether MCP clients may use the given credentials. */
+	async setAvailableInMCP(credentialIds: string[], availableInMCP: boolean): Promise<void> {
+		if (credentialIds.length === 0) return;
+		await this.update({ id: In(credentialIds) }, { availableInMCP });
+	}
+
 	/**
 	 * Find credentials by name and type, scoped to a specific project.
 	 * Used by replaceInvalidCredentials to prevent cross-project credential resolution.
@@ -751,6 +758,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			'isGlobal',
 			'isResolvable',
 			'resolverId',
+			'availableInMCP',
 		];
 
 		if (options.select) {

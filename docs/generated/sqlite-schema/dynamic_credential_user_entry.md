@@ -60,6 +60,7 @@ erDiagram
   varchar userId PK
 }
 "credentials_entity" {
+  BOOLEAN availableInMCP
   datetime_3_ createdAt
   TEXT data
   TEXT description

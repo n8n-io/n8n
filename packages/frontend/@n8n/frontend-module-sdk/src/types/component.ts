@@ -27,6 +27,8 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * itself and renders nothing when insights are not available to the user.
  * `resources-list-layout` is the shared resource list page (search, sort, pagination, empty
  * state). It takes the props and slots of the shell's `ResourcesListLayout`.
+ * `credential-icon` is the icon of a credential type. It takes `credentialTypeName` and an
+ * optional `size`. The icon data lives in the shell's credential and node type stores.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'
@@ -36,7 +38,8 @@ export type ModuleComponentSlot =
 	| 'promotion-changes'
 	| 'project-header'
 	| 'insights-summary'
-	| 'resources-list-layout';
+	| 'resources-list-layout'
+	| 'credential-icon';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".

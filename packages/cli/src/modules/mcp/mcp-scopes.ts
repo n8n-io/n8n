@@ -2,6 +2,10 @@ import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
 import {
+	CREDENTIAL_BROKER_DISCOVERY_TOOLS,
+	CREDENTIAL_BROKER_USE_TOOLS,
+} from './credential-broker/credential-broker.tools';
+import {
 	MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
 	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -100,8 +104,22 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
-	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
+	'credential:read': [
+		'list_credentials',
+		'list_n8n_gateway_services',
+		'explore_node_resources',
+		...CREDENTIAL_BROKER_DISCOVERY_TOOLS,
+	],
 	'credential:update': ['update_credential_description'],
+	// n8n acts on a service with a stored credential, so this has its own scope.
+	// The discovery tools and the node lookup tools ride along, so a grant with
+	// only this scope can find a connection and learn the parameters of its nodes.
+	'credential:use': [
+		...CREDENTIAL_BROKER_USE_TOOLS,
+		...CREDENTIAL_BROKER_DISCOVERY_TOOLS,
+		'search_nodes',
+		'get_node_types',
+	],
 	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [

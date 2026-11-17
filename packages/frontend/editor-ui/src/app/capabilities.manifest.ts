@@ -16,6 +16,8 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
@@ -159,6 +161,29 @@ const tagNames = {
 	nameOf: (id: string) => useTagsStore().tagsById[id]?.name,
 };
 
+const credentialTypeNames = {
+	load: async () => {
+		await Promise.all([
+			useCredentialsStore().fetchCredentialTypes(false),
+			useNodeTypesStore().loadNodeTypesIfNotLoaded(),
+		]);
+	},
+	displayNameOf: (typeName: string) =>
+		useCredentialsStore().getCredentialTypeByName(typeName)?.displayName,
+};
+
+const syncCredentialMcpAccess = (credentialIds: string[], availableInMCP: boolean) => {
+	const credentialsStore = useCredentialsStore();
+
+	for (const credentialId of credentialIds) {
+		// A credential that is not loaded gets the value from the server on its next fetch.
+		const existing = credentialsStore.getCredentialById(credentialId);
+		if (existing) {
+			credentialsStore.upsertCredential({ ...existing, availableInMCP });
+		}
+	}
+};
+
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
 	capabilityRegistry.provide(capabilities.projectPermissions, projectPermissions);
@@ -169,6 +194,8 @@ export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.resourceEditors, resourceEditors);
 	capabilityRegistry.provide(capabilities.environmentsSettings, environmentsSettings);
 	capabilityRegistry.provide(capabilities.tagNames, tagNames);
+	capabilityRegistry.provide(capabilities.credentialTypeNames, credentialTypeNames);
+	capabilityRegistry.provide(capabilities.credentialMcpAccessSync, syncCredentialMcpAccess);
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, useAppAssistantHandoff);
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);

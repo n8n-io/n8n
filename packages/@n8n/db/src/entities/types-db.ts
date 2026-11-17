@@ -110,6 +110,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	isResolvable?: boolean;
 	isManaged?: boolean;
 	usageScope?: CredentialUsageScope;
+	availableInMCP?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {

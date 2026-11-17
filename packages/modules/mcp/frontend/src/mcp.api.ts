@@ -5,14 +5,20 @@ import type {
 	DeleteOAuthClientResponseDto,
 	McpClientConnectedPeriod,
 	McpClientTypeFilter,
+	McpCredentialUseMode,
 } from '@n8n/api-types';
-import type { McpAgent, McpWorkflow } from './mcp.types';
+import type { McpAgent, McpCredential, McpWorkflow } from './mcp.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
 export type McpSettingsResponse = {
 	mcpAccessEnabled: boolean;
 	autoExposeNewWorkflows: boolean;
+	credentialUseMode?: McpCredentialUseMode;
+};
+
+export type ToggleCredentialsMcpAccessResponse = {
+	updatedIds: string[];
 };
 
 export type ToggleWorkflowsMcpAccessTarget =
@@ -44,7 +50,11 @@ export type ToggleAgentsMcpAccessResponse = {
 
 export async function updateMcpSettings(
 	context: IRestApiContext,
-	settings: { mcpAccessEnabled?: boolean; autoExposeNewWorkflows?: boolean },
+	settings: {
+		mcpAccessEnabled?: boolean;
+		autoExposeNewWorkflows?: boolean;
+		credentialUseMode?: McpCredentialUseMode;
+	},
 ): Promise<McpSettingsResponse> {
 	return await makeRestApiRequest(context, 'PATCH', '/mcp/settings', settings);
 }
@@ -203,4 +213,29 @@ export async function fetchMcpAgents(
 	}
 
 	return await getFullApiResponse<McpAgent[]>(context, 'GET', '/mcp/agents', params);
+}
+
+/** Credentials the user can see whose type can be made available in MCP. */
+export async function fetchMcpCredentials(
+	context: IRestApiContext,
+): Promise<{ count: number; data: McpCredential[] }> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/credentials');
+}
+
+/** Names of the credential types that can be made available in MCP. */
+export async function fetchMcpEligibleCredentialTypes(
+	context: IRestApiContext,
+): Promise<{ types: string[] }> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/credentials/eligible-types');
+}
+
+export async function toggleCredentialsMcpAccessApi(
+	context: IRestApiContext,
+	credentialIds: string[],
+	availableInMCP: boolean,
+): Promise<ToggleCredentialsMcpAccessResponse> {
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/credentials/toggle-access', {
+		credentialIds,
+		availableInMCP,
+	});
 }

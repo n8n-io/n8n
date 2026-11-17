@@ -246,6 +246,19 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
+				<N8nTooltip v-if="data.availableInMCP" placement="top">
+					<template #content>
+						{{ locale.baseText('credentials.item.availableInMCP.tooltip') }}
+					</template>
+					<N8nBadge
+						class="ml-3xs"
+						variant="outline"
+						leading-icon="mcp"
+						data-test-id="credential-card-mcp-badge"
+					>
+						{{ locale.baseText('credentials.item.availableInMCP') }}
+					</N8nBadge>
+				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="[$style.cardDescription, { [$style.hasDescription]: data.description }]">

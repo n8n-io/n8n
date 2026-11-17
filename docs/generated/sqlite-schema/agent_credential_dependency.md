@@ -71,6 +71,7 @@ erDiagram
   varchar_36_ versionId
 }
 "credentials_entity" {
+  BOOLEAN availableInMCP
   datetime_3_ createdAt
   TEXT data
   TEXT description

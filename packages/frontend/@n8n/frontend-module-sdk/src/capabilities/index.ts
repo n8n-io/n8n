@@ -1,5 +1,7 @@
 export { createAppAssistantHandoff } from './createAppAssistantHandoff';
 export { createSelfHealingChatHandoff } from './createSelfHealingChatHandoff';
+export { credentialMcpAccessSync } from './credentialMcpAccessSync';
+export { credentialTypeNames } from './credentialTypeNames';
 export { environmentsSettings } from './environmentsSettings';
 export { mcpExposeAllOffer } from './mcpExposeAllOffer';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)

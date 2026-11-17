@@ -109,6 +109,7 @@ const allCredentials = computed<Resource[]>(() =>
 		needsSetup: needsSetup(credential),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		availableInMCP: credential.availableInMCP,
 		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 	})),

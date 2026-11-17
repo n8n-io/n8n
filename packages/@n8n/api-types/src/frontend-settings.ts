@@ -1,3 +1,4 @@
+import type { McpCredentialUseMode } from './schemas/mcp.schema';
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 import type {
@@ -353,6 +354,8 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+		/** What MCP clients may do with the credentials that are available in MCP. */
+		credentialUseMode?: McpCredentialUseMode;
 	};
 
 	/**

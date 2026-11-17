@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS, type INodeProperties } from 'n8n-workflow';
 
 export const issueOperations: INodeProperties[] = [
 	{
@@ -17,36 +17,42 @@ export const issueOperations: INodeProperties[] = [
 				value: 'addLink',
 				description: 'Add a link to an issue',
 				action: 'Add a link to an issue',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an issue',
 				action: 'Create an issue',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an issue',
 				action: 'Delete an issue',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an issue',
 				action: 'Get an issue',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get many issues',
 				action: 'Get many issues',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an issue',
 				action: 'Update an issue',
+				annotations: { effect: 'write', destructive: false, idempotent: true },
 			},
 		],
 		default: 'create',

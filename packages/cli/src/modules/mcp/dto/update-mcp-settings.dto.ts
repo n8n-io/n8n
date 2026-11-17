@@ -1,17 +1,18 @@
-import { Z } from '@n8n/api-types';
+import { MCP_CREDENTIAL_USE_MODES, Z } from '@n8n/api-types';
 import { z } from 'zod';
 
 const updateMcpSettingsShape = {
 	mcpAccessEnabled: z.boolean().optional(),
 	autoExposeNewWorkflows: z.boolean().optional(),
+	credentialUseMode: z.enum(MCP_CREDENTIAL_USE_MODES).optional(),
 };
 
 const updateMcpSettingsSchema = z
 	.object(updateMcpSettingsShape)
-	.refine(
-		(value) => value.mcpAccessEnabled !== undefined || value.autoExposeNewWorkflows !== undefined,
-		{ message: 'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows' },
-	);
+	.refine((value) => Object.values(value).some((field) => field !== undefined), {
+		message:
+			'Provide at least one of mcpAccessEnabled, autoExposeNewWorkflows or credentialUseMode',
+	});
 
 export class UpdateMcpSettingsDto extends Z.class(updateMcpSettingsShape) {
 	constructor(data: z.infer<typeof updateMcpSettingsSchema>) {

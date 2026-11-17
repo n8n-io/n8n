@@ -77,6 +77,13 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	usageScope: CredentialUsageScope;
 
 	/**
+	 * Whether MCP clients may use this credential through the Instance MCP server.
+	 * n8n makes the call. The client never receives the secret.
+	 */
+	@Column({ default: false })
+	availableInMCP: boolean;
+
+	/**
 	 * Set on a credential created for an OAuth authorization the user has not
 	 * completed. The row must exist so the callback has something to write to, but
 	 * list queries skip it until a token clears this. Rows past the deadline are

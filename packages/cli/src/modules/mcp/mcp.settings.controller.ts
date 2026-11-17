@@ -56,6 +56,10 @@ export class McpSettingsController {
 			await this.mcpSettingsService.setAutoExposeNewWorkflows(dto.autoExposeNewWorkflows);
 		}
 
+		if (dto.credentialUseMode !== undefined) {
+			await this.mcpSettingsService.setCredentialUseMode(dto.credentialUseMode);
+		}
+
 		await this.refreshMcpModuleSettings();
 		try {
 			await this.publisher.publishCommand({ command: 'reload-mcp-settings' });
@@ -67,12 +71,13 @@ export class McpSettingsController {
 
 		// Always return both values (read back from the source of truth) so the
 		// client can sync local state without a follow-up module-settings fetch.
-		const [mcpAccessEnabled, autoExposeNewWorkflows] = await Promise.all([
+		const [mcpAccessEnabled, autoExposeNewWorkflows, credentialUseMode] = await Promise.all([
 			this.mcpSettingsService.getEnabled(),
 			this.mcpSettingsService.getAutoExposeNewWorkflows(),
+			this.mcpSettingsService.getCredentialUseMode(),
 		]);
 
-		return { mcpAccessEnabled, autoExposeNewWorkflows };
+		return { mcpAccessEnabled, autoExposeNewWorkflows, credentialUseMode };
 	}
 
 	@GlobalScope('mcpApiKey:create')

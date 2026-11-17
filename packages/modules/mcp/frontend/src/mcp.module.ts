@@ -4,6 +4,7 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import {
 	MCP_AGENTS_VIEW,
 	MCP_CLIENTS_VIEW,
+	MCP_CREDENTIALS_VIEW,
 	MCP_SETTINGS_VIEW,
 	MCP_WORKFLOWS_VIEW,
 } from './mcp.constants';
@@ -11,6 +12,7 @@ import {
 const SettingsMCPView = async () => await import('./SettingsMCPView.vue');
 const SettingsMCPWorkflowsView = async () => await import('./SettingsMCPWorkflowsView.vue');
 const SettingsMCPAgentsView = async () => await import('./SettingsMCPAgentsView.vue');
+const SettingsMCPCredentialsView = async () => await import('./SettingsMCPCredentialsView.vue');
 const SettingsMCPClientsView = async () => await import('./SettingsMCPClientsView.vue');
 
 export const MCPModule = defineFrontendModule({
@@ -47,6 +49,18 @@ export const MCPModule = defineFrontendModule({
 			path: 'mcp/agents',
 			name: MCP_AGENTS_VIEW,
 			component: SettingsMCPAgentsView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		{
+			path: 'mcp/credentials',
+			name: MCP_CREDENTIALS_VIEW,
+			component: SettingsMCPCredentialsView,
 			meta: {
 				layout: 'settings',
 				middleware: ['authenticated', 'custom'],

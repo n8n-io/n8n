@@ -14,6 +14,9 @@ import {
 	fetchMcpEligibleWorkflows,
 	fetchMcpExposedWorkflows,
 	fetchMcpAgents,
+	fetchMcpCredentials,
+	fetchMcpEligibleCredentialTypes,
+	toggleCredentialsMcpAccessApi,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
 	type McpSettingsResponse,
@@ -21,19 +24,25 @@ import {
 	type ToggleWorkflowsMcpAccessTarget,
 	type ToggleAgentsMcpAccessResponse,
 	type ToggleAgentsMcpAccessTarget,
+	type ToggleCredentialsMcpAccessResponse,
 } from './mcp.api';
-import type { McpAgent, McpWorkflow } from './mcp.types';
+import type { McpAgent, McpCredential, McpWorkflow } from './mcp.types';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EMPTY_OAUTH_CLIENT_FILTERS, type OAuthClientFilters } from './clients.utils';
+import { MCP_CREDENTIAL_USE_MODE_DEFAULT, MCP_CREDENTIAL_USE_MODES } from '@n8n/api-types';
 import type {
 	ApiKey,
+	McpCredentialUseMode,
 	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	OAuthClientResponseDto,
 	DeleteOAuthClientResponseDto,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
+
+const isCredentialUseMode = (value: unknown): value is McpCredentialUseMode =>
+	MCP_CREDENTIAL_USE_MODES.some((mode) => mode === value);
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const rootStore = useRootStore();
@@ -66,12 +75,31 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
+	/** The mode that the last settings update returned. It wins over the module settings. */
+	const updatedCredentialUseMode = ref<McpCredentialUseMode | null>(null);
+	/** One shared request, so each credential dialog does not fetch the list again. */
+	let eligibleCredentialTypesRequest: Promise<Set<string>> | null = null;
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
 	const autoExposeNewWorkflows = computed(
 		() => !!settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows,
 	);
+
+	/** What MCP clients can do with the credentials that are available in MCP. */
+	const credentialUseMode = computed<McpCredentialUseMode>(() => {
+		if (updatedCredentialUseMode.value) return updatedCredentialUseMode.value;
+		// The shared module settings type does not declare this field yet, so the value is narrowed here.
+		const moduleSettings: object | undefined = settingsStore.moduleSettings.mcp;
+		if (
+			moduleSettings &&
+			'credentialUseMode' in moduleSettings &&
+			isCredentialUseMode(moduleSettings.credentialUseMode)
+		) {
+			return moduleSettings.credentialUseMode;
+		}
+		return MCP_CREDENTIAL_USE_MODE_DEFAULT;
+	});
 
 	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
 	// reflected; the editor-base fallback covers settings not yet loaded.
@@ -145,6 +173,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			mcpAccessEnabled: response.mcpAccessEnabled,
 			autoExposeNewWorkflows: response.autoExposeNewWorkflows,
 		};
+		if (isCredentialUseMode(response.credentialUseMode)) {
+			updatedCredentialUseMode.value = response.credentialUseMode;
+		}
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
@@ -161,6 +192,51 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		});
 		applyMcpSettingsResponse(response);
 		return response.autoExposeNewWorkflows;
+	}
+
+	async function updateCredentialUseMode(
+		mode: McpCredentialUseMode,
+	): Promise<McpCredentialUseMode> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			credentialUseMode: mode,
+		});
+		applyMcpSettingsResponse(response);
+		return credentialUseMode.value;
+	}
+
+	/** All credentials the user can see whose type can be made available in MCP. */
+	async function fetchMcpCredentialsList(): Promise<McpCredential[]> {
+		const { data } = await fetchMcpCredentials(rootStore.restApiContext);
+		return data;
+	}
+
+	/** Names of the credential types that can be made available in MCP. Fetched one time. */
+	async function fetchEligibleCredentialTypes(): Promise<Set<string>> {
+		eligibleCredentialTypesRequest ??= fetchMcpEligibleCredentialTypes(rootStore.restApiContext)
+			.then(({ types }) => new Set(types))
+			.catch((error: unknown) => {
+				// Let the next caller try again.
+				eligibleCredentialTypesRequest = null;
+				throw error;
+			});
+		return await eligibleCredentialTypesRequest;
+	}
+
+	/** Toggles MCP availability for credentials, and syncs the shell's credentials store. */
+	async function toggleCredentialsMcpAccess(
+		credentialIds: string[],
+		availableInMCP: boolean,
+	): Promise<ToggleCredentialsMcpAccessResponse> {
+		const response = await toggleCredentialsMcpAccessApi(
+			rootStore.restApiContext,
+			credentialIds,
+			availableInMCP,
+		);
+		capabilityRegistry.tryUse(capabilities.credentialMcpAccessSync)?.(
+			response.updatedIds,
+			availableInMCP,
+		);
+		return response;
 	}
 
 	// Toggle MCP access for a single workflow
@@ -444,6 +520,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
 		autoExposeNewWorkflows,
+		credentialUseMode,
+		updateCredentialUseMode,
+		fetchMcpCredentials: fetchMcpCredentialsList,
+		fetchEligibleCredentialTypes,
+		toggleCredentialsMcpAccess,
 		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		fetchWorkflowsAvailableForMCPPage,

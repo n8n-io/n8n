@@ -78,6 +78,11 @@ import {
 } from './mcp.constants';
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
+	LIST_CONNECTIONS_TOOL_NAME,
+	registerCredentialBrokerTools,
+} from './credential-broker/credential-broker.tools';
+import { McpCredentialBrokerService } from './credential-broker/mcp-credential-broker.service';
+import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
@@ -295,6 +300,7 @@ export class McpService {
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly preferencesNoteService: McpPreferencesNoteService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly credentialBrokerService: McpCredentialBrokerService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -552,6 +558,7 @@ export class McpService {
 		const migrationReportInstructionsEnabled =
 			migrationReportReadable &&
 			(allowedToolNames?.has(MCP_GET_MIGRATION_REPORT_TOOL_NAME) ?? true);
+		const credentialUseMode = await this.credentialBrokerService.getMode();
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -571,6 +578,9 @@ export class McpService {
 						? (MIGRATION_REPORT_TARGET_VERSION ?? undefined)
 						: undefined,
 					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
+					isCredentialUseEnabled:
+						credentialUseMode !== 'blocked' &&
+						(allowedToolNames?.has(LIST_CONNECTIONS_TOOL_NAME) ?? true),
 				}),
 			},
 		);
@@ -735,6 +745,13 @@ export class McpService {
 		}
 
 		registerIfAllowed(listN8nGatewayServicesTool);
+
+		registerCredentialBrokerTools(
+			registerIfAllowed,
+			user,
+			this.credentialBrokerService,
+			credentialUseMode,
+		);
 
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);

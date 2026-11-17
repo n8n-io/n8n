@@ -184,6 +184,28 @@ export class McpConnectionDiscoveryService {
 		}
 	}
 
+	/**
+	 * Opens an authenticated client for a registry server with a stored
+	 * credential, runs `fn`, and closes the client. Throws when the server or
+	 * the credential cannot be used.
+	 */
+	async withClient<T>(
+		user: User,
+		request: { slug: string; credentialId: string },
+		fn: (client: McpClient, serverName: string) => Promise<T>,
+		connectionTimeoutMs = discoveryTimeoutMs,
+	): Promise<T> {
+		const prepared = await this.prepareRegistrySource(user, request);
+		const client = new McpClient([{ ...prepared.clientConfig, connectionTimeoutMs }]);
+		try {
+			return await fn(client, prepared.clientConfig.name);
+		} finally {
+			await client.close().catch((error: unknown) => {
+				this.logger.warn('Failed to close MCP client', { errorType: ensureError(error).name });
+			});
+		}
+	}
+
 	private async prepareRegistrySource(
 		user: User,
 		source: McpRegistryDiscoveryRequest,

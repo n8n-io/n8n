@@ -15,6 +15,7 @@ export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller.js');
 		await import('./mcp.settings.controller.js');
+		await import('./mcp.credentials.controller.js');
 
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right
@@ -40,7 +41,14 @@ export class McpModule implements ModuleInterface {
 		// Canonical resource URL, so the UI shows the URL clients must actually
 		// use when a dedicated MCP base URL is configured.
 		const serverUrl = Container.get(McpProtectedResource).getResourceUrl();
-		return { mcpAccessEnabled, mcpManagedByEnv, serverUrl, autoExposeNewWorkflows };
+		const credentialUseMode = await mcpSettingsService.getCredentialUseMode();
+		return {
+			mcpAccessEnabled,
+			mcpManagedByEnv,
+			serverUrl,
+			autoExposeNewWorkflows,
+			credentialUseMode,
+		};
 	}
 
 	@OnShutdown()

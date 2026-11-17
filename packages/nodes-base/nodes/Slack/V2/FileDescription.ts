@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS, type INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -16,18 +16,21 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				action: 'Get a file',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get & filters team files',
 				action: 'Get many files',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Create or upload an existing file',
 				action: 'Upload a file',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 		],
 		default: 'upload',

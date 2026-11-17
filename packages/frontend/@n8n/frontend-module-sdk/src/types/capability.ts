@@ -179,6 +179,17 @@ export interface TagNames {
 	nameOf(id: string): string | undefined;
 }
 
+/** The credential types of this instance. */
+export interface CredentialTypeNames {
+	/** Loads the credential types once, with the node types that their icons refer to. */
+	load(): Promise<void>;
+	/** Reads reactive state. `undefined` when the type is unknown or not loaded. */
+	displayNameOf(typeName: string): string | undefined;
+}
+
+/** Writes a credential's MCP availability back into the shell's credentials store. */
+export type CredentialMcpAccessSync = (ids: string[], availableInMCP: boolean) => void;
+
 export interface AppAssistantHandoff {
 	/** Whether the Assistant is ready to open an App thread. */
 	available: ComputedRef<boolean>;

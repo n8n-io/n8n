@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
-import type { OAuthClientResponseDto } from '@n8n/api-types';
+import { MCP_CREDENTIAL_USE_MODES } from '@n8n/api-types';
+import type { McpCredentialUseMode, OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
@@ -12,6 +13,7 @@ import {
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nNotice,
+	N8nSelect2,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -19,7 +21,9 @@ import {
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
 	N8nSwitch,
+	N8nTooltip,
 } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
@@ -35,6 +39,7 @@ import { useOAuthClientRevoke } from './composables/useOAuthClientRevoke';
 import {
 	MCP_AGENTS_VIEW,
 	MCP_CLIENTS_VIEW,
+	MCP_CREDENTIALS_VIEW,
 	MCP_DOCS_PAGE_URL,
 	MCP_WORKFLOWS_VIEW,
 	UNKNOWN_COUNT_VALUE,
@@ -124,6 +129,117 @@ const agentsExposedValue = computed(() =>
 			}),
 );
 
+const exposedCredentialsCount = ref<number | null>(null);
+
+const credentialsExposedValue = computed(() =>
+	exposedCredentialsCount.value === null
+		? UNKNOWN_COUNT_VALUE
+		: i18n.baseText('settings.mcp.credentialsExposed.count', {
+				adjustToNumber: exposedCredentialsCount.value,
+				interpolate: { count: String(exposedCredentialsCount.value) },
+			}),
+);
+
+const credentialUseModeLabels: Record<McpCredentialUseMode, string> = {
+	blocked: i18n.baseText('settings.mcp.credentialUse.mode.blocked'),
+	read: i18n.baseText('settings.mcp.credentialUse.mode.read'),
+	readWrite: i18n.baseText('settings.mcp.credentialUse.mode.readWrite'),
+};
+
+const credentialUseModeDescriptions: Record<McpCredentialUseMode, string> = {
+	blocked: i18n.baseText('settings.mcp.credentialUse.mode.blocked.description'),
+	read: i18n.baseText('settings.mcp.credentialUse.mode.read.description'),
+	readWrite: i18n.baseText('settings.mcp.credentialUse.mode.readWrite.description'),
+};
+
+const credentialUseModeOptions: Array<SelectOptionBase<McpCredentialUseMode>> =
+	MCP_CREDENTIAL_USE_MODES.map((value) => ({ value, label: credentialUseModeLabels[value] }));
+
+// The select shows this value, so a cancelled or failed change goes back to the saved mode.
+const selectedCredentialUseMode = ref<McpCredentialUseMode>(mcpStore.credentialUseMode);
+const credentialUseModeSaving = ref(false);
+const showReadWriteDialog = ref(false);
+
+watch(
+	() => mcpStore.credentialUseMode,
+	(mode) => {
+		selectedCredentialUseMode.value = mode;
+	},
+);
+
+const canChangeCredentialUseMode = computed(
+	() => canToggleMCP.value && !credentialUseModeSaving.value,
+);
+
+const credentialUseModeDisabledTooltip = computed(() => {
+	if (mcpStore.mcpManagedByEnv) return i18n.baseText('settings.mcp.managedByEnv.tooltip');
+	if (!canManageMcpInstance.value) {
+		return i18n.baseText('settings.mcp.toggle.disabled.tooltip');
+	}
+	return '';
+});
+
+const credentialsExposedDescription = computed(() =>
+	mcpStore.credentialUseMode === 'blocked'
+		? i18n.baseText('settings.mcp.credentialsExposed.description.blocked')
+		: i18n.baseText('settings.mcp.credentialsExposed.description'),
+);
+
+const isCredentialUseMode = (value: SelectValue | undefined): value is McpCredentialUseMode =>
+	MCP_CREDENTIAL_USE_MODES.some((mode) => mode === value);
+
+const saveCredentialUseMode = async (mode: McpCredentialUseMode) => {
+	credentialUseModeSaving.value = true;
+	selectedCredentialUseMode.value = mode;
+	try {
+		const updated = await mcpStore.updateCredentialUseMode(mode);
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.mcp.credentialUse.success.title'),
+			message: credentialUseModeDescriptions[updated],
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.credentialUse.error.title'));
+	} finally {
+		selectedCredentialUseMode.value = mcpStore.credentialUseMode;
+		credentialUseModeSaving.value = false;
+	}
+};
+
+const onCredentialUseModeUpdate = (value: SelectValue | undefined) => {
+	if (!isCredentialUseMode(value) || value === mcpStore.credentialUseMode) return;
+	if (value === 'readWrite') {
+		// Clients can then change data in connected services, so the admin confirms first.
+		selectedCredentialUseMode.value = value;
+		showReadWriteDialog.value = true;
+		return;
+	}
+	void saveCredentialUseMode(value);
+};
+
+const onReadWriteDialogOpenUpdate = (open: boolean) => {
+	showReadWriteDialog.value = open;
+	if (!open && !credentialUseModeSaving.value) {
+		selectedCredentialUseMode.value = mcpStore.credentialUseMode;
+	}
+};
+
+const onConfirmReadWrite = async () => {
+	showReadWriteDialog.value = false;
+	await saveCredentialUseMode('readWrite');
+};
+
+const fetchExposedCredentialsCount = async () => {
+	try {
+		const credentials = await mcpStore.fetchMcpCredentials();
+		exposedCredentialsCount.value = credentials.filter(
+			(credential) => credential.availableInMCP,
+		).length;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.credentials.list.error.fetching'));
+	}
+};
+
 const callbackUrlsValue = computed(() =>
 	mcpStore.allowedRedirectUris.length === 0
 		? i18n.baseText('settings.mcp.callbackUrls.value.all')
@@ -160,6 +276,7 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 			await Promise.all([
 				fetchExposedWorkflowsCount(),
 				fetchExposedAgentsCount(),
+				fetchExposedCredentialsCount(),
 				fetchConnectedClientsPreview(),
 			]);
 		}
@@ -246,6 +363,10 @@ const openAgentsView = () => {
 	void router.push({ name: MCP_AGENTS_VIEW });
 };
 
+const openCredentialsView = () => {
+	void router.push({ name: MCP_CREDENTIALS_VIEW });
+};
+
 const loadRedirectUris = async () => {
 	try {
 		await mcpStore.fetchAllowedRedirectUris();
@@ -278,6 +399,7 @@ onMounted(async () => {
 	const fetches: Array<Promise<unknown>> = [
 		fetchExposedWorkflowsCount(),
 		fetchExposedAgentsCount(),
+		fetchExposedCredentialsCount(),
 		fetchConnectedClientsPreview(),
 	];
 	if (canManageMcpInstance.value) {
@@ -413,6 +535,44 @@ onBeforeUnmount(() => {
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.credentialUse.title')"
+						:description="credentialUseModeDescriptions[selectedCredentialUseMode]"
+						data-test-id="mcp-credential-use-row"
+					>
+						<template #action>
+							<N8nTooltip
+								:content="credentialUseModeDisabledTooltip"
+								:disabled="!credentialUseModeDisabledTooltip"
+								placement="top"
+							>
+								<span>
+									<N8nSelect2
+										:model-value="selectedCredentialUseMode"
+										:items="credentialUseModeOptions"
+										size="medium"
+										:disabled="!canChangeCredentialUseMode"
+										:aria-label="i18n.baseText('settings.mcp.credentialUse.title')"
+										data-test-id="mcp-credential-use-mode-select"
+										@update:model-value="onCredentialUseModeUpdate"
+									/>
+								</span>
+							</N8nTooltip>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.credentialsExposed.title')"
+						:description="credentialsExposedDescription"
+						clickable
+						data-test-id="mcp-credentials-exposed-row"
+						@click="openCredentialsView"
+					>
+						<template #action>
+							<N8nSettingsRowConfigure :value="credentialsExposedValue" />
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
 				<N8nSettingsRowGroup v-if="canManageMcpInstance">
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.callbackUrls.title')"
@@ -484,6 +644,31 @@ onBeforeUnmount(() => {
 					:label="i18n.baseText('settings.mcp.status.disableDialog.confirm')"
 					data-test-id="mcp-disable-dialog-confirm"
 					@click="onConfirmDisable"
+				/>
+			</N8nDialogFooter>
+		</N8nDialog>
+
+		<N8nDialog
+			:open="showReadWriteDialog"
+			size="small"
+			:header="i18n.baseText('settings.mcp.credentialUse.readWriteDialog.title')"
+			data-test-id="mcp-credential-use-read-write-dialog"
+			@update:open="onReadWriteDialogOpenUpdate"
+		>
+			<N8nDialogBody>
+				<N8nDialogDescription>
+					{{ i18n.baseText('settings.mcp.credentialUse.readWriteDialog.description') }}
+				</N8nDialogDescription>
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<N8nDialogClose as-child>
+					<N8nButton variant="outline" :label="i18n.baseText('generic.cancel')" />
+				</N8nDialogClose>
+				<N8nButton
+					variant="solid"
+					:label="i18n.baseText('settings.mcp.credentialUse.readWriteDialog.confirm')"
+					data-test-id="mcp-credential-use-read-write-dialog-confirm"
+					@click="onConfirmReadWrite"
 				/>
 			</N8nDialogFooter>
 		</N8nDialog>

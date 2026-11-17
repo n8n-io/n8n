@@ -29,6 +29,7 @@ export const MCP_INSTANCE_SCOPES = [
 	...MCP_SKILL_SCOPES,
 	'credential:read',
 	'credential:update',
+	'credential:use',
 	'dataTable:read',
 	'dataTable:write',
 	'project:read',
@@ -42,6 +43,18 @@ export const MCP_INSTANCE_SCOPES = [
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];
+
+/**
+ * What MCP clients may do with the credentials that users make available in MCP.
+ * - `blocked`: clients cannot use credentials.
+ * - `read`: clients can run operations that only read data.
+ * - `readWrite`: clients can run all operations.
+ */
+export const MCP_CREDENTIAL_USE_MODES = ['blocked', 'read', 'readWrite'] as const;
+
+export type McpCredentialUseMode = (typeof MCP_CREDENTIAL_USE_MODES)[number];
+
+export const MCP_CREDENTIAL_USE_MODE_DEFAULT: McpCredentialUseMode = 'blocked';
 
 export type McpClientType = 'cli' | 'ide' | 'editor' | 'assistant';
 

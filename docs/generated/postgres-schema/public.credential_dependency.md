@@ -46,6 +46,7 @@ erDiagram
   integer id
 }
 "public.credentials_entity" {
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   text data
   text description

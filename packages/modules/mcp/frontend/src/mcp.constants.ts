@@ -36,6 +36,7 @@ export const MCP_SETTINGS_VIEW = 'McpSettings';
 export const MCP_WORKFLOWS_VIEW = 'McpSettingsWorkflows';
 export const MCP_AGENTS_VIEW = 'McpSettingsAgents';
 export const MCP_CLIENTS_VIEW = 'McpSettingsClients';
+export const MCP_CREDENTIALS_VIEW = 'McpSettingsCredentials';
 export const MCP_STORE = 'mcp';
 
 export const LOADING_INDICATOR_TIMEOUT = 200;

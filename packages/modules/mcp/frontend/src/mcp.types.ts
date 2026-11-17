@@ -18,3 +18,18 @@ export type McpAgent = {
 	projectId: string;
 	project?: Pick<ProjectSharingData, 'id' | 'name' | 'type'> | null;
 };
+
+/** A credential that can be made available in MCP, as `GET /mcp/credentials` returns it. */
+export type McpCredential = {
+	id: string;
+	name: string;
+	type: string;
+	availableInMCP: boolean;
+	/** Whether the current user can change the MCP availability of this credential. */
+	canUpdate: boolean;
+	homeProject: Pick<ProjectSharingData, 'id' | 'name' | 'type'> | null;
+	/** How many n8n nodes can run with this credential. */
+	nodeCount: number;
+	/** Greater than zero when the credential connects to an MCP server. */
+	mcpServerCount: number;
+};

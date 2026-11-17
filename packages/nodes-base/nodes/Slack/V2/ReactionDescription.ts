@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS, type INodeProperties } from 'n8n-workflow';
 import { slackChannelModes } from './utils';
 
 export const reactionOperations: INodeProperties[] = [
@@ -18,18 +18,21 @@ export const reactionOperations: INodeProperties[] = [
 				value: 'add',
 				description: 'Adds a reaction to a message',
 				action: 'Add a reaction',
+				annotations: { effect: 'write', destructive: false, idempotent: true },
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the reactions of a message',
 				action: 'Get a reaction',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a reaction of a message',
 				action: 'Remove a reaction',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 		],
 		default: 'add',

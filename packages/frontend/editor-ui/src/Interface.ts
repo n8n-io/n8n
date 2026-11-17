@@ -364,6 +364,7 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	availableInMCP?: boolean;
 	connectedByMe?: boolean;
 	connectedAccountIdentifier?: string;
 };

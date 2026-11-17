@@ -1,3 +1,8 @@
+import {
+	MCP_CREDENTIAL_USE_MODE_DEFAULT,
+	MCP_CREDENTIAL_USE_MODES,
+	type McpCredentialUseMode,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -27,6 +32,10 @@ import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-avai
 const KEY = 'mcp.access.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
 const AUTO_EXPOSE_NEW_WORKFLOWS_KEY = 'mcp.autoExposeNewWorkflows';
+const CREDENTIAL_USE_MODE_KEY = 'mcp.credentialUse.mode';
+
+const isCredentialUseMode = (value: unknown): value is McpCredentialUseMode =>
+	MCP_CREDENTIAL_USE_MODES.some((mode) => mode === value);
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -129,6 +138,28 @@ export class McpSettingsService {
 		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
 
 		return enabled;
+	}
+
+	/** What MCP clients may do with credentials that are available in MCP. */
+	async getCredentialUseMode(): Promise<McpCredentialUseMode> {
+		const cached = await this.cacheService.get<string>(CREDENTIAL_USE_MODE_KEY);
+		if (isCredentialUseMode(cached)) return cached;
+
+		const row = await this.settingsRepository.findByKey(CREDENTIAL_USE_MODE_KEY);
+		const mode = isCredentialUseMode(row?.value) ? row.value : MCP_CREDENTIAL_USE_MODE_DEFAULT;
+
+		await this.cacheService.set(CREDENTIAL_USE_MODE_KEY, mode);
+
+		return mode;
+	}
+
+	async setCredentialUseMode(mode: McpCredentialUseMode): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: CREDENTIAL_USE_MODE_KEY, value: mode, loadOnStartup: true },
+			['key'],
+		);
+
+		await this.cacheService.set(CREDENTIAL_USE_MODE_KEY, mode);
 	}
 
 	async setAutoExposeNewWorkflows(enabled: boolean): Promise<void> {
