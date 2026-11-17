@@ -179,12 +179,15 @@ export class McpClient {
 		for (let i = 0; i < results.length; i++) {
 			const result = results[i];
 			if (result.status === 'rejected') {
+				const message =
+					result.reason instanceof Error ? result.reason.message : String(result.reason);
+				let error = await withMcpHttpStatus(result.reason, message);
+				if (error === message && result.reason instanceof Error) {
+					error = await withMcpHttpStatus(result.reason.cause, message);
+				}
 				errors.push({
 					server: this.configs[i].name,
-					error: await withMcpHttpStatus(
-						result.reason,
-						result.reason instanceof Error ? result.reason.message : String(result.reason),
-					),
+					error,
 				});
 			} else {
 				servers.push(result.value);
