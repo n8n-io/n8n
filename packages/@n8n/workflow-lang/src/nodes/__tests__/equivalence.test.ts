@@ -20,7 +20,7 @@ import { DEFAULT_NODE_PACKAGES, loadCredentialTypes, registryOf } from '../../cr
 import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
-import { openAiVendorParameters } from '../../convert/ai-cluster.ts';
+import { VENDOR_NODES } from '../../convert/ai-cluster.ts';
 import { AI_ENGINE_CASES } from './ai-cases.ts';
 import { EQUIVALENCE_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
@@ -34,12 +34,13 @@ const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credent
 
 /** The parameters of the library call, as the converter writes them. */
 function libraryParameters(c: EquivalenceCase): Record<string, unknown> {
-	if (c.type === '@n8n/n8n-nodes-langchain.openAi') {
+	const vendor = VENDOR_NODES[c.type];
+	if (vendor) {
 		// As `lowerLibrary` writes them: the node runs once and gets the parameters of each item.
-		const adapted = openAiVendorParameters(c.parameters, c.typeVersion);
+		const adapted = vendor.adapt(c.parameters, c.typeVersion);
 		return {
-			resource: adapted.resource ?? 'text',
-			operation: adapted.operation ?? 'response',
+			resource: adapted.resource ?? vendor.resource,
+			operation: adapted.operation ?? vendor.operation,
 			batch: (c.items ?? [{}]).map(() => adapted),
 		};
 	}

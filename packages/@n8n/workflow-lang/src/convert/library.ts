@@ -21,7 +21,7 @@ import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import type { TranslatedValue, Usage } from './expression.ts';
 import { constantText, emptyUsage, INDEX, ITEM, jsonLiteral } from './expression.ts';
-import { nativeCluster, openAiVendorParameters } from './ai-cluster.ts';
+import { nativeCluster, VENDOR_NODES } from './ai-cluster.ts';
 import {
 	clusterMembers,
 	isClusterRoot,
@@ -73,16 +73,19 @@ function driveQuery(p: Record<string, unknown>): Record<string, unknown> {
  * Parameter adapters from v1 parameters to the parameters of a library node.
  * The second argument is the node version.
  */
-const ADAPTERS: Record<
-	string,
-	(
-		p: Record<string, unknown>,
-		version: number,
-		node?: { onError?: string },
-	) => Record<string, unknown>
-> = {
-	'@n8n/n8n-nodes-langchain.openAi': (p, version, node) =>
-		openAiVendorParameters(p, version, node?.onError),
+type Adapter = (
+	p: Record<string, unknown>,
+	version: number,
+	node?: { onError?: string },
+) => Record<string, unknown>;
+
+const ADAPTERS: Record<string, Adapter> = {
+	...Object.fromEntries(
+		Object.entries(VENDOR_NODES).map(([type, vendor]): [string, Adapter] => [
+			type,
+			(p, version, node) => vendor.adapt(p, version, node?.onError),
+		]),
+	),
 	// v1 reads `queryString` with `String(value)`: an expression that gives no value searches
 	// for "undefined". The library node cannot tell that from a missing parameter, so the
 	// converter writes the default of a missing one.
@@ -294,6 +297,7 @@ const LOCATOR_TYPES = new Set([
 	'n8n-nodes-base.dataTable',
 	'n8n-nodes-base.microsoftTeams',
 	'@n8n/n8n-nodes-langchain.openAi',
+	'@n8n/n8n-nodes-langchain.anthropic',
 ]);
 
 /** The oldest version of a node type that its library node runs; older ones run in the host. */
@@ -322,9 +326,9 @@ export const MIN_VERSIONS: Record<string, number> = {
  */
 const BATCH_OPERATIONS: Record<string, (key: string, p: Record<string, unknown>) => boolean> = {
 	'n8n-nodes-base.supabase': (key) => key === 'row.create',
-	// The router of the v1 node handles each item and "continue on fail" itself, and n8n
+	// The router of a vendor node handles each item and "continue on fail" itself, and n8n
 	// runs the whole node again for "retry on fail".
-	'@n8n/n8n-nodes-langchain.openAi': () => true,
+	...Object.fromEntries(Object.keys(VENDOR_NODES).map((type) => [type, () => true])),
 	// Versions 2 to 2.2 read the database once, then create each page.
 	'n8n-nodes-base.notion': (key, p) => key === 'databasePage.create' && p.apiV2 === true,
 	'n8n-nodes-base.dataTable': (key, p) => key === 'row.insert' && dataTableBulk(p),
@@ -621,11 +625,11 @@ export function lowerLibrary(c: NodeContext): void {
 			usage: emptyUsage(),
 			failures: [],
 		};
-		// The OpenAI node makes the error item of each item that fails itself, as the v1 router.
+		// A vendor node makes the error item of each item that fails itself, as the v1 router.
 		const continues =
 			(c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow')) !==
 			'stopWorkflow';
-		if (type === `${LANGCHAIN_PREFIX}openAi` && continues && batch.code.kind === 'object') {
+		if (type in VENDOR_NODES && continues && batch.code.kind === 'object') {
 			batch.code.entries.push(['continueOnFail', raw('true')]);
 		}
 		// A Postgres call that has no exact form with bind values, or that reaches a limit of

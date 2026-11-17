@@ -311,7 +311,186 @@ export const AI_CASES: EquivalenceCase[] = [
 	]),
 ];
 
+/** An answer of the Anthropic Messages API. */
+const claude = (content: unknown[], stop = 'end_turn') => ({
+	body: {
+		id: 'msg_1',
+		type: 'message',
+		role: 'assistant',
+		model: 'claude-x',
+		content,
+		stop_reason: stop,
+		usage: { input_tokens: 5, output_tokens: 2 },
+	},
+});
+const claudeText = (text: string) => ({ type: 'text', text });
+const anthropic = { type: 'anthropicApi', data: { apiKey: 'sk-ant-fake' } };
+
+function anthropicMessage(
+	name: string,
+	responses: EquivalenceCase['responses'],
+	parameters: Record<string, unknown> = {},
+	extra: Partial<EquivalenceCase> = {},
+): EquivalenceCase {
+	return {
+		name: `anthropic text.message ${name}`,
+		type: `${LC}anthropic`,
+		typeVersion: 1,
+		parameters: {
+			modelId: { __rl: true, mode: 'list', value: 'claude-sonnet-4-5' },
+			messages: { values: [{ content: 'Hello' }] },
+			...parameters,
+		},
+		credential: anthropic,
+		responses,
+		...extra,
+	};
+}
+
+export const ANTHROPIC_CASES: EquivalenceCase[] = [
+	anthropicMessage('defaults', [claude([claudeText('Hi')])]),
+	anthropicMessage(
+		'options',
+		[claude([claudeText('Hi '), { type: 'thinking', thinking: 'hm' }, claudeText('there')])],
+		{
+			resource: 'text',
+			operation: 'message',
+			modelId: { __rl: true, mode: 'id', value: 'claude-opus-4' },
+			messages: {
+				values: [
+					{ content: 'Hello', role: 'user' },
+					{ content: '  ', role: 'user' },
+					{ content: 'Hi', role: 'assistant' },
+					{ content: 'Again' },
+				],
+			},
+			addAttachments: false,
+			options: {
+				includeMergedResponse: true,
+				system: 'Be brief',
+				promptCaching: '1h',
+				maxTokens: 300,
+				temperature: 0.2,
+				topP: 0.8,
+				topK: 4,
+				maxToolsIterations: 2,
+				codeExecution: false,
+				webSearch: false,
+				maxUses: 3,
+			},
+		},
+		{
+			credential: {
+				type: 'anthropicApi',
+				data: {
+					apiKey: 'sk-ant-fake',
+					url: 'https://proxy.example.com',
+					header: true,
+					headerName: 'X-Custom',
+					headerValue: 'v1',
+				},
+			},
+		},
+	),
+	anthropicMessage('status 401, then answer', [failed(401), claude([claudeText('Hi')])]),
+	anthropicMessage('raw output', [claude([claudeText('Hi')])], {
+		simplify: false,
+		options: { includeMergedResponse: true, promptCaching: 'disabled' },
+	}),
+	anthropicMessage('paused turns', [
+		claude([claudeText('one')], 'pause_turn'),
+		claude([claudeText('two')], 'pause_turn'),
+		claude([claudeText('three')], 'pause_turn'),
+		claude([claudeText('four')], 'pause_turn'),
+		claude([claudeText('never')]),
+	]),
+	anthropicMessage(
+		'tool use without tools',
+		[
+			claude(
+				[claudeText('I call'), { type: 'tool_use', id: 'tu_1', name: 'x', input: {} }],
+				'tool_use',
+			),
+			claude([claudeText('no tool calls')], 'tool_use'),
+			claude([claudeText('done')]),
+		],
+		{ options: { maxToolsIterations: 5 } },
+	),
+	anthropicMessage(
+		'tool use at the iteration limit',
+		[claude([{ type: 'tool_use', id: 'tu_1', name: 'x', input: {} }], 'tool_use')],
+		{ options: { maxToolsIterations: 1 } },
+	),
+	anthropicMessage(
+		'empty prompt',
+		[claude([claudeText('never')])],
+		{
+			messages: { values: [{ content: ' ' }] },
+		},
+		{ expectedError: 'A non-empty prompt is required.' },
+	),
+	...[400, 401, 404, 418, 429, 500, 503, 599].map((status) =>
+		anthropicMessage(
+			`status ${status}`,
+			[failed(status)],
+			{},
+			{
+				expectedError: STATUS_ERRORS[status],
+			},
+		),
+	),
+];
+
+const twoPrompts = {
+	parameters: {
+		modelId: { __rl: true, mode: 'list', value: 'claude-sonnet-4-5' },
+		messages: { values: [{ content: '={{ $json.q }}' }] },
+	},
+	items: [{ q: 'one' }, { q: 'two' }],
+};
+
 export const AI_ENGINE_CASES: EquivalenceCase[] = [
+	// Anthropic vendor node under the error settings of n8n's engine
+	anthropicMessage(
+		'stop',
+		[claude([claudeText('a')]), failed(400)],
+		{},
+		{
+			...twoPrompts,
+			settings: {},
+			expectedError: STATUS_ERRORS[400],
+		},
+	),
+	anthropicMessage(
+		'continue',
+		[failed(400), claude([claudeText('b')])],
+		{},
+		{
+			...twoPrompts,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	anthropicMessage(
+		'error output',
+		[claude([claudeText('a')]), failed(503)],
+		{},
+		{
+			...twoPrompts,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+	anthropicMessage(
+		'retry continue',
+		[failed(500), claude([claudeText('a')]), claude([claudeText('b')]), claude([claudeText('c')])],
+		{},
+		{ ...twoPrompts, settings: { ...retry, onError: 'continueRegularOutput' } },
+	),
+	anthropicMessage(
+		'retry then answer',
+		[claude([claudeText('a')]), failed(500), claude([claudeText('b')]), claude([claudeText('c')])],
+		{},
+		{ ...twoPrompts, settings: retry },
+	),
 	// OpenAI vendor node under the error settings of n8n's engine
 	message('stop', [completion('a'), failed(400)], {}, { expectedError: STATUS_ERRORS[400] }),
 	message('continue', [failed(400), completion('b')], { onError: 'continueRegularOutput' }),

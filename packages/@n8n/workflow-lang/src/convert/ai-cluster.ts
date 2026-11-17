@@ -264,3 +264,31 @@ export function openAiVendorParameters(
 	}
 	return out;
 }
+
+/** The parameters of the Anthropic vendor node: only version 1 exists. */
+function anthropicVendorParameters(
+	p: Record<string, unknown>,
+	version: number,
+): Record<string, unknown> {
+	return version === 1 ? p : { ...p, anthropicHost: true };
+}
+
+type VendorAdapter = (
+	p: Record<string, unknown>,
+	version: number,
+	onError?: string,
+) => Record<string, unknown>;
+
+/**
+ * The vendor nodes with a library form. The v1 node has a router that handles each item and
+ * "continue on fail" itself, so the library node runs once for all items: it gets the
+ * parameters of each item in `batch`, and `continueOnFail` under a "continue" setting.
+ * `resource` and `operation` are the defaults of the library node.
+ */
+export const VENDOR_NODES: Record<
+	string,
+	{ adapt: VendorAdapter; resource: string; operation: string }
+> = {
+	[`${LC}openAi`]: { adapt: openAiVendorParameters, resource: 'text', operation: 'response' },
+	[`${LC}anthropic`]: { adapt: anthropicVendorParameters, resource: 'text', operation: 'message' },
+};

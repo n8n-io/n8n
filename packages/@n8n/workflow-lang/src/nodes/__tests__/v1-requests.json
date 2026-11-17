@@ -7918,6 +7918,1260 @@
 		"accepts": ["application/json"],
 		"error": "The service failed to process your request"
 	},
+	"anthropic text.message defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-custom": "v1",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"content": "Hi",
+							"role": "assistant"
+						},
+						{
+							"content": "Again",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 300,
+					"system": "Be brief",
+					"temperature": 0.2,
+					"top_p": 0.8,
+					"top_k": 4,
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi "
+					},
+					{
+						"type": "thinking",
+						"thinking": "hm"
+					},
+					{
+						"type": "text",
+						"text": "there"
+					}
+				],
+				"merged_response": "Hi there"
+			}
+		]
+	},
+	"anthropic text.message status 401, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message raw output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "msg_1",
+				"type": "message",
+				"role": "assistant",
+				"model": "claude-x",
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi"
+					}
+				],
+				"stop_reason": "end_turn",
+				"usage": {
+					"input_tokens": 5,
+					"output_tokens": 2
+				},
+				"merged_response": "Hi"
+			}
+		]
+	},
+	"anthropic text.message paused turns": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "two"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "two"
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "three"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "four"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message tool use without tools": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "I call"
+								},
+								{
+									"type": "tool_use",
+									"id": "tu_1",
+									"name": "x",
+									"input": {}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "tool_result",
+									"tool_use_id": "tu_1",
+									"content": ""
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "I call"
+								},
+								{
+									"type": "tool_use",
+									"id": "tu_1",
+									"name": "x",
+									"input": {}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "tool_result",
+									"tool_use_id": "tu_1",
+									"content": ""
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "no tool calls"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "done"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message tool use at the iteration limit": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "tool_use",
+									"id": "tu_1",
+									"name": "x",
+									"input": {}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "tool_result",
+									"tool_use_id": "tu_1",
+									"content": ""
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "tu_1",
+						"name": "x",
+						"input": {}
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message empty prompt": {
+		"requests": [],
+		"accepts": [],
+		"error": "A non-empty prompt is required."
+	},
+	"anthropic text.message status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Bad request - please check your parameters"
+	},
+	"anthropic text.message status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"anthropic text.message status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The resource you are requesting could not be found"
+	},
+	"anthropic text.message status 418": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"anthropic text.message status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service is receiving too many requests from you"
+	},
+	"anthropic text.message status 500": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service was not able to process your request"
+	},
+	"anthropic text.message status 503": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+	},
+	"anthropic text.message status 599": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service failed to process your request"
+	},
+	"anthropic text.message stop": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"anthropic text.message continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "b"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"anthropic text.message error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "a"
+						}
+					]
+				}
+			],
+			[
+				{
+					"q": "two",
+					"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			],
+			[
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"anthropic text.message retry continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "b"
+						}
+					]
+				},
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "c"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"anthropic text.message retry then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "b"
+						}
+					]
+				},
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "c"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
 	"openAi text.message stop": {
 		"requests": [
 			{
