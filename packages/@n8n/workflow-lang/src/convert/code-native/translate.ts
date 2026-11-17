@@ -186,6 +186,14 @@ export interface Translation {
 	 * of the first run with the `binaryData` service between the runs (`lowerCodeNative`).
 	 */
 	preparesBinary: boolean;
+	/**
+	 * The code has a form that is exact only for common inputs: on another input, a helper
+	 * throws an error with the mark of `RUNS_IN_HOST` (`handOver` in `helpers.ts`), and the
+	 * fallback host runs the node in the same run (`lowerCodeNative`). Such code has no effect
+	 * before that point: no request and no static data. A catch block of the code gives the
+	 * error with the mark to its caller.
+	 */
+	handsOver: boolean;
 }
 
 export type TranslateResult =
@@ -356,6 +364,47 @@ export const HOST_GLOBALS: Record<string, string> = {
 	TextEncoder: 'TextEncoder',
 	TextDecoder: 'TextDecoder',
 };
+
+/**
+ * Names that the sandbox of v1's task runner does not have. v1 runs the code of a Code node
+ * in a context of its own (`node:vm`), with the globals of JavaScript and a few of Node.js
+ * (`getNativeVariables` of the task runner: `Buffer`, the timers, `btoa`, `atob`, the text
+ * coders, `FormData`). Each other global of Node.js or of a browser is not there: a read
+ * throws `ReferenceError: <name> is not defined`, and `typeof <name>` is `undefined`. The
+ * native code does the same (`codeNotDefined`). `code-native-sandbox.test.ts` proves each
+ * name against the task runner.
+ */
+export const SANDBOX_MISSING: ReadonlySet<string> = new Set([
+	'URL',
+	'URLSearchParams',
+	'fetch',
+	'process',
+	'crypto',
+	'structuredClone',
+	'performance',
+	'queueMicrotask',
+	'AbortController',
+	'AbortSignal',
+	'Headers',
+	'Request',
+	'Response',
+	'Blob',
+	'File',
+	'WebSocket',
+	'XMLHttpRequest',
+	'Event',
+	'EventTarget',
+	'navigator',
+	'window',
+	'document',
+	'self',
+	'localStorage',
+	'alert',
+	'exports',
+	'__dirname',
+	'__filename',
+	'$helpers',
+]);
 
 /** Global functions that the subset does not have: a helper (`helpers.ts`) replaces each call. */
 const FUNCTION_HELPERS: Record<string, string> = {
@@ -1006,6 +1055,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		edits.push({ start: at, end: at, text: code, order });
 
 	const helpers = new Set<string>();
+	/** `Translation.handsOver`, and the feature of the first form that set it. */
+	let handsOver: string | null = null;
+	const handOver = (feature: string): void => {
+		handsOver ??= feature;
+	};
 	const nodes: string[] = [];
 	let usesFirstJson = false;
 	let nondeterministic = false;
@@ -1672,6 +1726,300 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const mutationTargets: ts.Expression[] = [];
 	const noteMutation = (target: ts.Expression) => mutationTargets.push(target);
 
+	// ---- variables that the code can read before their declaration -------------
+
+	/**
+	 * JavaScript throws a ReferenceError for a read of a `let` or a `const` before its
+	 * declaration ran. The subset reads undefined there. The compiler refuses a read that is
+	 * before the declaration in the same function. Two other forms keep the node in the host:
+	 * - a variable of a clause of a `switch` that another clause uses (the clauses share a
+	 *   scope, and the other clause can run without the declaration);
+	 * - a function that reads a variable that the code declares after the function, when the
+	 *   code can run the function before that declaration: the function is an argument of a
+	 *   call, or the code names it at a place before the declaration that can run then (a
+	 *   place outside each function, or in a function that can run then by the same rule).
+	 * A function that the code keeps in an object or a list before the declaration is not
+	 * checked: the code can call it at each later place.
+	 */
+	if (!input.nodeCode && !input.expression && /\b(?:let|const)\b/.test(input.code)) {
+		const usesOf = new Map<ts.Symbol, ts.Identifier[]>();
+		const scoped: ts.VariableDeclaration[] = [];
+		const collect = (x: ts.Node): void => {
+			if (ts.isIdentifier(x) && !isNameOf(x)) {
+				const sym = ts.isShorthandPropertyAssignment(x.parent)
+					? checker.getShorthandAssignmentValueSymbol(x.parent)
+					: checker.getSymbolAtLocation(x);
+				if (sym !== undefined) {
+					const list = usesOf.get(sym) ?? [];
+					list.push(x);
+					usesOf.set(sym, list);
+				}
+			}
+			if (
+				ts.isVariableDeclaration(x) &&
+				ts.isVariableDeclarationList(x.parent) &&
+				(x.parent.flags & ts.NodeFlags.BlockScoped) !== 0 &&
+				ts.isVariableStatement(x.parent.parent)
+			) {
+				scoped.push(x);
+			}
+			ts.forEachChild(x, collect);
+		};
+		collect(root);
+		const early = (): void =>
+			block(
+				'a variable before its declaration',
+				'The code can read a `let` or a `const` before its declaration ran, where JavaScript throws an error.',
+			);
+		for (const d of scoped) {
+			const statement = d.parent.parent;
+			const clause = ts.isCaseOrDefaultClause(statement.parent) ? statement.parent : undefined;
+			const names: ts.Identifier[] = [];
+			const bound = (n: ts.BindingName): void => {
+				if (ts.isIdentifier(n)) names.push(n);
+				else for (const el of n.elements) if (ts.isBindingElement(el)) bound(el.name);
+			};
+			bound(d.name);
+			for (const id of names) {
+				const sym = checker.getSymbolAtLocation(id);
+				if (sym === undefined) continue;
+				const before = d.getStart(sf);
+				const checked = new Set<ts.Node>();
+				/**
+				 * True when the code at `place` can run before the declaration: `place` is before
+				 * it, outside each function of the scope of the variable, or in a function that
+				 * can run then. The outermost function around the place is the one that the scope
+				 * of the variable makes.
+				 */
+				const runsEarly = (place: ts.Node): boolean => {
+					if (place.getStart(sf) >= before) return false;
+					let fn: ts.Node | undefined;
+					for (let a: ts.Node = place; a !== statement.parent && a !== root; a = a.parent) {
+						if (isFunctionNode(a)) fn = a;
+					}
+					if (fn === undefined) return true;
+					if (checked.has(fn)) return false;
+					checked.add(fn);
+					const holder = fn.parent;
+					const fnName = ts.isFunctionDeclaration(fn)
+						? fn.name
+						: ts.isVariableDeclaration(holder) &&
+								holder.initializer === fn &&
+								ts.isIdentifier(holder.name)
+							? holder.name
+							: undefined;
+					if (fnName === undefined) {
+						// A function without a name that is the argument of a call runs in that call.
+						return (
+							(ts.isCallExpression(holder) || ts.isNewExpression(holder)) &&
+							holder.expression !== fn &&
+							runsEarly(holder)
+						);
+					}
+					const fnSym = checker.getSymbolAtLocation(fnName);
+					const named = fnSym === undefined ? [] : (usesOf.get(fnSym) ?? []);
+					return named.some((r) => r !== fnName && runsEarly(r));
+				};
+				for (const use of usesOf.get(sym) ?? []) {
+					if (use === id) continue;
+					if (
+						clause !== undefined &&
+						(use.getStart(sf) < clause.getStart(sf) || use.getEnd() > clause.getEnd())
+					) {
+						early();
+						continue;
+					}
+					// A use before the declaration and outside each function: the compiler refuses it.
+					let inFunction = false;
+					for (let a: ts.Node = use; a !== statement.parent && a !== root; a = a.parent) {
+						if (isFunctionNode(a)) inFunction = true;
+					}
+					checked.clear();
+					if (inFunction && runsEarly(use)) early();
+				}
+			}
+		}
+	}
+
+	// ---- names that the sandbox of v1 does not have ----------------------------
+
+	/**
+	 * The places where the code reads a name of `SANDBOX_MISSING`, with their native code
+	 * and the place of the name (for the line of the error).
+	 *
+	 * A place is the whole expression that the read is the start of: the members, the calls
+	 * and the `new` after the name, and an assignment to such a member. JavaScript resolves
+	 * the name before it reads an argument or the right side, so nothing else of the
+	 * expression runs: the native code is only the throw. `typeof <name>` does not throw.
+	 *
+	 * Code that sets such a name makes a global of the sandbox: then the name has no such form.
+	 *
+	 * A `const` or a `let` with such a place as its start value never gets a value, and the
+	 * code after its declaration does not run. So each use of the variable is the same throw
+	 * (the use cannot run, and it can have a form that the subset does not have). This needs
+	 * that no use can run before the declaration: each use is after it, and not in a function
+	 * declaration, which the code can call from a place before.
+	 */
+	const missingRoots = new Map<
+		ts.Node,
+		{ code: string; at: number; line: 'name' | 'call' | 'none' }
+	>();
+	if (
+		input.kind === 'code' &&
+		!input.nodeCode &&
+		!input.expression &&
+		[...SANDBOX_MISSING].some((name) => input.code.includes(name))
+	) {
+		/** True when the name is a target of an assignment, also in a pattern or a loop head. */
+		const isWritten = (id: ts.Identifier): boolean => {
+			let x: ts.Node = id;
+			let p = x.parent;
+			while (
+				ts.isParenthesizedExpression(p) ||
+				ts.isArrayLiteralExpression(p) ||
+				ts.isObjectLiteralExpression(p) ||
+				ts.isSpreadElement(p) ||
+				ts.isSpreadAssignment(p) ||
+				ts.isShorthandPropertyAssignment(p) ||
+				(ts.isPropertyAssignment(p) && p.initializer === x)
+			) {
+				x = p;
+				p = p.parent;
+			}
+			return (
+				isAssignmentTarget(x) ||
+				((ts.isForOfStatement(p) || ts.isForInStatement(p)) && p.initializer === x)
+			);
+		};
+		/** The symbol that a use of a name reads, also for a shorthand member. */
+		const symbolOf = (id: ts.Identifier): ts.Symbol | undefined =>
+			ts.isShorthandPropertyAssignment(id.parent)
+				? checker.getShorthandAssignmentValueSymbol(id.parent)
+				: checker.getSymbolAtLocation(id);
+		const isUse = (id: ts.Identifier): boolean =>
+			ts.isShorthandPropertyAssignment(id.parent) ||
+			(!isNameOf(id) &&
+				!(
+					(ts.isVariableDeclaration(id.parent) || ts.isBindingElement(id.parent)) &&
+					id.parent.name === id
+				));
+		// The uses of each name, in the order of the code.
+		const uses: ts.Identifier[] = [];
+		const usesOf = new Map<ts.Symbol, ts.Identifier[]>();
+		const written = new Set<string>();
+		const collect = (x: ts.Node): void => {
+			if (ts.isIdentifier(x) && isUse(x)) {
+				uses.push(x);
+				const sym = symbolOf(x);
+				if (sym !== undefined && (sym.declarations ?? []).length > 0) {
+					const list = usesOf.get(sym) ?? [];
+					list.push(x);
+					usesOf.set(sym, list);
+				} else if (SANDBOX_MISSING.has(x.text) && isWritten(x)) written.add(x.text);
+			}
+			ts.forEachChild(x, collect);
+		};
+		collect(root);
+		/** Variables that never get a value, and the name whose read stops their declaration. */
+		const dead = new Map<ts.Symbol, string>();
+		/** Marks the variables of the declaration that `place` is the start value of. */
+		const declares = (place: ts.Node, name: string): void => {
+			let x = place;
+			let p = x.parent;
+			while (ts.isParenthesizedExpression(p) || ts.isAwaitExpression(p)) {
+				x = p;
+				p = p.parent;
+			}
+			if (
+				!ts.isVariableDeclaration(p) ||
+				p.initializer !== x ||
+				!ts.isVariableDeclarationList(p.parent) ||
+				(p.parent.flags & ts.NodeFlags.BlockScoped) === 0 ||
+				!ts.isVariableStatement(p.parent.parent) ||
+				// The clauses of a switch share a scope: a later clause can run without this one.
+				ts.isCaseOrDefaultClause(p.parent.parent.parent)
+			) {
+				return;
+			}
+			const after = p.getEnd();
+			const scope = p.parent.parent.parent;
+			const names: ts.Identifier[] = [];
+			const bound = (n: ts.BindingName): void => {
+				if (ts.isIdentifier(n)) names.push(n);
+				else for (const el of n.elements) if (ts.isBindingElement(el)) bound(el.name);
+			};
+			bound(p.name);
+			for (const id of names) {
+				const sym = checker.getSymbolAtLocation(id);
+				if (sym === undefined || (sym.declarations ?? []).length !== 1) continue;
+				const late = (usesOf.get(sym) ?? []).every((use) => {
+					if (use.getStart(sf) < after || isWritten(use)) return false;
+					// A function declaration of the scope can run before the declaration.
+					for (let a: ts.Node = use; a !== scope && a !== root; a = a.parent) {
+						if (ts.isFunctionDeclaration(a)) return false;
+					}
+					return true;
+				});
+				if (late) dead.set(sym, name);
+			}
+		};
+		for (const id of uses) {
+			const sym = symbolOf(id);
+			const free = sym === undefined || (sym.declarations ?? []).length === 0;
+			const name = free
+				? SANDBOX_MISSING.has(id.text) && !written.has(id.text)
+					? id.text
+					: undefined
+				: sym === undefined
+					? undefined
+					: dead.get(sym);
+			if (name === undefined) continue;
+			const code = `codeNotDefined(${JSON.stringify(name)})`;
+			const at = id.getStart(sf);
+			if (ts.isShorthandPropertyAssignment(id.parent)) {
+				missingRoots.set(id.parent, { code: `${id.text}: ${code}`, at, line: 'none' });
+				continue;
+			}
+			let x: ts.Node = id;
+			let p = x.parent;
+			while (ts.isParenthesizedExpression(p)) {
+				x = p;
+				p = p.parent;
+			}
+			if (ts.isTypeOfExpression(p) && free) {
+				// The type of `typeof undefined` is text, and its value is "undefined".
+				missingRoots.set(p, { code: 'typeof undefined', at, line: 'none' });
+				continue;
+			}
+			// V8 gives the error of a name that the code calls (`fetch(…)`) the place that it
+			// recorded last, not the place of the name: the line is certain only in a statement
+			// of one line. Each other read has the place of the name. A use of a variable that
+			// never gets a value does not run.
+			const called =
+				(ts.isCallExpression(p) && p.expression === x) ||
+				(ts.isTaggedTemplateExpression(p) && p.tag === x);
+			const line = !free ? 'none' : called ? 'call' : 'name';
+			x = id;
+			p = x.parent;
+			while (
+				ts.isParenthesizedExpression(p) ||
+				((ts.isPropertyAccessExpression(p) ||
+					ts.isElementAccessExpression(p) ||
+					ts.isCallExpression(p) ||
+					ts.isNewExpression(p)) &&
+					p.expression === x) ||
+				(ts.isTaggedTemplateExpression(p) && p.tag === x)
+			) {
+				x = p;
+				p = p.parent;
+			}
+			// A write to a member, `++`, `--` and `delete` read the name first.
+			if (isAssignmentTarget(x) || ts.isDeleteExpression(p)) x = p;
+			missingRoots.set(x, { code, at, line });
+			declares(x, name);
+		}
+	}
+
 	// ---- Set and Map -----------------------------------------------------------
 
 	const isCollectionNew = (x: ts.Node): x is ts.NewExpression =>
@@ -1761,6 +2109,16 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		!/use strict/.test(input.code);
 	/** `async` and `await` stay as they are: the code makes requests. */
 	const keepsAsync = input.nodeCode !== undefined || usesHttp;
+	/**
+	 * The fallback host can run the node again from its start: the code has no effect that a
+	 * second run would repeat (no request, no static data). Then a form can be exact only for
+	 * common inputs, and hand the node over for the other ones (\`Translation.handsOver\`).
+	 */
+	const canHandOver =
+		!input.nodeCode &&
+		!input.expression &&
+		!/\.\s*httpRequest\b/.test(input.code) &&
+		!/getWorkflowStaticData/.test(input.code);
 
 	/**
 	 * Other names of the request helper. Code often keeps \`this\`, \`this.helpers\` or
@@ -3524,9 +3882,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				if (!regexish(a0)) {
 					// As JavaScript: a pattern that is not a regular expression makes one
 					// (\`new RegExp(pattern)\`, with the flag \`g\` for \`matchAll\`).
-					helpers.add('regexFrom');
+					// The engine checks the pattern when the code makes it. Code that can hand over
+					// gives a pattern that the engine does not have to the fallback host.
+					const from = canHandOver ? 'regexFromHost' : 'regexFrom';
+					if (canHandOver) handOver('regular expression');
+					helpers.add(from);
 					const o = seq;
-					open(a0.getStart(sf), 'regexFrom(');
+					open(a0.getStart(sf), `${from}(`);
 					closing(a0.getEnd(), a0.getEnd(), name === 'matchAll' ? ", 'g')" : ', undefined)', o);
 				}
 				return true;
@@ -4211,6 +4573,17 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 
 	const visit = (n: ts.Node): void => {
+		const missing = missingRoots.get(n);
+		if (missing !== undefined) {
+			// The read of a name that the sandbox of v1 does not have: the rest does not run.
+			if (missing.code.includes('codeNotDefined')) helpers.add('codeNotDefined');
+			if (input.traced && ts.isExpression(n)) {
+				lineSeq.set(n, seq);
+				seq += 2;
+			}
+			replaceNode(n, missing.code);
+			return;
+		}
 		if (ts.isCallExpression(n) && (promiseCall(n) || staticCall(n))) return;
 		if (cryptoDeclarations.has(n) && !cryptoMisuse) {
 			replaceNode(n, '');
@@ -4262,7 +4635,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			seq += 2;
 		}
 		if (ts.isTryStatement(n) && n.catchClause && readsError(n.catchClause)) {
-			const plan = planCatch(n, checker, { dateVars, awaited, requests: usesHttp, ownErrors });
+			const plan = planCatch(n, checker, {
+				dateVars,
+				awaited,
+				requests: usesHttp,
+				ownErrors,
+				notDefined: (x) => missingRoots.has(x),
+			});
 			if (typeof plan === 'string') {
 				// Node code: the node compiler checks the error text against v1 (the verified list).
 				if (!input.nodeCode)
@@ -5031,9 +5410,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				regexValue(n, text(pattern), text(flags));
 			} else if (pattern !== undefined && (n.arguments?.length ?? 0) <= 2) {
 				// The pattern is checked when it runs: the engine throws for a form it does not have.
-				helpers.add('regexNew');
+				const made = canHandOver ? 'regexNewHost' : 'regexNew';
+				if (canHandOver) handOver('regular expression');
+				helpers.add(made);
 				const o = seq;
-				replace(n.getStart(sf), pattern.getStart(sf), 'regexNew(');
+				replace(n.getStart(sf), pattern.getStart(sf), `${made}(`);
 				const last = flags ?? pattern;
 				closing(last.getEnd(), n.getEnd(), flags ? ')' : ', undefined)', o);
 				visit(pattern);
@@ -5430,6 +5811,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const lineChecks = new Map<ts.Node, { method: string; text: string }>();
 	/** The value of \`seq\` when the walk came to a node that the traced form wraps. */
 	const lineSeq = new Map<ts.Node, number>();
+	/** Expressions that set their line before they run (\`missingRoots\`). */
+	const lineBefore = new Map<ts.Node, number>();
 	const traceLines = (body: ts.Block): void => {
 		helpers.add('codeAt');
 		const lineOf = (pos: number): number => sf.getLineAndCharacterOfPosition(pos).line;
@@ -5463,6 +5846,20 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const closers = new Map<number, number>();
 		/** The expressions of a statement of more than one line: the lines of its own places. */
 		const expression = (x: ts.Node, lines: boolean): void => {
+			const missing = missingRoots.get(x);
+			if (missing !== undefined) {
+				// The error of a name that is not defined has the line of the name. The rest of the
+				// expression does not run, so it has no lines.
+				if (lines && missing.line === 'name' && ts.isExpression(x)) {
+					lineBefore.set(x, lineOf(missing.at));
+				} else if (lines && missing.line === 'call') {
+					block(
+						'line of an error',
+						'A call of a name that is not defined, in a statement of more than one line, has no certain line.',
+					);
+				}
+				return;
+			}
 			if (isFunctionNode(x)) {
 				func(x);
 				return;
@@ -5666,6 +6063,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		for (const [a, line] of before) {
 			around(a, lineSeq.get(a) ?? 0, -0.5, `(${SET}(${line}) ? `, ' : undefined)');
 		}
+		for (const [a, line] of lineBefore) {
+			const seq0 = lineSeq.get(a);
+			if (seq0 !== undefined && !before.has(a)) {
+				around(a, seq0, -0.5, `(${SET}(${line}) ? `, ' : undefined)');
+			}
+		}
 		for (const [n, line] of lineErrors) {
 			const seq0 = lineSeq.get(n);
 			if (seq0 !== undefined && free(n)) around(n, seq0, 0.75, 'codeAt(', `, ${line})`);
@@ -5697,6 +6100,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			dateVars,
 			awaited,
 			requests: usesHttp,
+			notDefined: (x) => missingRoots.has(x),
 		});
 		errorTextGap = reason;
 		if (input.traced) {
@@ -5766,6 +6170,38 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 
 	if (input.traced) traceWraps();
 
+	if (handsOver !== null) {
+		// The error with the mark of `RUNS_IN_HOST` is not an error of the code: each catch
+		// block of the code throws it again, so the node gets it.
+		const rethrow = (x: ts.Node): void => {
+			if (ts.isCatchClause(x)) {
+				const d = x.variableDeclaration;
+				const at = x.block.getStart(sf) + 1;
+				if (d === undefined) {
+					open(x.getStart(sf) + 'catch'.length, ` (${P}h)`);
+					open(at, ` if (fileLimitInHost(${P}h)) throw ${P}h;`);
+				} else if (ts.isIdentifier(d.name)) {
+					open(at, ` if (fileLimitInHost(${d.name.text})) throw ${d.name.text};`);
+				} else {
+					block(
+						handsOver ?? '',
+						'A catch block with a pattern cannot give the error of a hand-over to its caller.',
+					);
+				}
+			}
+			ts.forEachChild(x, rethrow);
+		};
+		rethrow(root);
+		helpers.add('fileLimitInHost');
+		// The host runs the whole node again, so the code has no effect before the hand-over.
+		if (!canHandOver) {
+			block(
+				handsOver,
+				'This form can hand the node over to the fallback host at run time, which code with requests or static data cannot do.',
+			);
+		}
+	}
+
 	edits.sort((a, b) => a.start - b.start || a.order - b.order);
 	let out = '';
 	let at = 0;
@@ -5828,6 +6264,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		mutates,
 		...(readsBinary ? { binaryNames } : {}),
 		preparesBinary,
+		handsOver: handsOver !== null,
 		usesHttp,
 		repeatable: !usesHttp && !nondeterministicRandom && !/getWorkflowStaticData/.test(input.code),
 		errorTextGap,

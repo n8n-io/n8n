@@ -8,6 +8,9 @@
  */
 
 import { BUFFER_HELPERS } from './buffer-helpers.ts';
+
+/** `RUNS_IN_HOST` of the converter (`../helpers.ts`, which imports this file). */
+const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
 import { LOCALE_HELPERS } from './locale-helpers.ts';
 import { LUXON_HELPERS } from './luxon-helpers.ts';
 
@@ -200,6 +203,16 @@ function codeEachItems(results: Json[]): Json[] {
 		out.push(Object.keys(binary).length > 0 ? { ...json, $binary: binary } : json);
 	}
 	return out;
+}`,
+	},
+	codeNotDefined: {
+		uses: [],
+		source: `/**
+ * The read of a name that the sandbox of v1's task runner does not have (\`SANDBOX_MISSING\`):
+ * V8's ReferenceError. The subset has no ReferenceError class.
+ */
+function codeNotDefined(name: string): Json {
+	throw { name: 'ReferenceError', message: name + ' is not defined' };
 }`,
 	},
 	codeAt: {
@@ -752,6 +765,30 @@ function regexNew(pattern: Json, flags: Json): Json {
 	const f = flags === undefined ? (isRegex(pattern) ? pattern.flags : '') : String(flags);
 	RegExp.exec(source, f, '', 0);
 	return regexOf(source, f, regexNames(source));
+}`,
+	},
+	regexNewHost: {
+		uses: ['regexNew'],
+		source: `/**
+ * \`new RegExp(pattern, flags)\` with a computed pattern, in code that can hand the node over
+ * to the fallback host (\`Translation.handsOver\`). The engine of the runtime has a subset of
+ * the patterns of JavaScript, and it does not tell a pattern outside the subset from text
+ * that is not a pattern. For both, the fallback host runs the node: JavaScript runs the
+ * pattern there, or gives its own error for the text.
+ */
+function regexNewHost(pattern: Json, flags: Json): Json {
+	try {
+		return regexNew(pattern, flags);
+	} catch (error) {
+		throw new Error('The code makes a regular expression that the engine does not have ${RUNS_IN_HOST}');
+	}
+}`,
+	},
+	regexFromHost: {
+		uses: ['regexNewHost', 'isRegex'],
+		source: `/** \`regexFrom\` in code that can hand the node over to the fallback host (\`regexNewHost\`). */
+function regexFromHost(pattern: Json, flags: Json): Json {
+	return isRegex(pattern) ? pattern : regexNewHost(pattern, flags);
 }`,
 	},
 	regexFrom: {

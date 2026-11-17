@@ -94,6 +94,8 @@ export type NativeAttempt =
 			preparesBinary?: boolean;
 			/** `Translation.binaryNames`: the code reads the bytes of binary data of its input. */
 			binaryNames?: string[] | 'all';
+			/** `Translation.handsOver`: the code can end with the mark of `RUNS_IN_HOST`. */
+			handsOver?: boolean;
 			/**
 			 * For code that makes requests: the declaration of its async function and the
 			 * expression of the result list. Undefined for other code.
@@ -215,6 +217,7 @@ export function attemptNative(
 		) => emitExpression(t, src.mode, input, lists, allLists, plainInput, traced, files, made),
 		...(t.preparesBinary ? { preparesBinary: true } : {}),
 		...(t.binaryNames !== undefined ? { binaryNames: t.binaryNames } : {}),
+		...(t.handsOver ? { handsOver: true } : {}),
 		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput, traced),
 		...(t.usesHttp
 			? {
@@ -282,7 +285,7 @@ export function previousRunsOnce(c: NodeContext): boolean | undefined {
  * such an item for an error of its code. After the last try, the node fails or gives its
  * result as without the setting.
  */
-function retried(c: NodeContext, expr: string, onError: string): void {
+function retried(c: NodeContext, expr: string, onError: string, handsOver: boolean): void {
 	const { w, input } = c;
 	const out = c.output(0);
 	const tries = Math.min(5, Math.max(2, c.node.maxTries || 3));
@@ -306,6 +309,8 @@ function retried(c: NodeContext, expr: string, onError: string): void {
 	w.block(`${out} = ${expr};`);
 	w.close('} catch (error) {');
 	w.depth++;
+	// The mark of `RUNS_IN_HOST` is not an error of the code: the host form runs the node.
+	if (handsOver) w.line('if (fileLimitInHost(error)) throw error;');
 	// The engine tries again after each error; the last one fails the node, as does a result
 	// that is not valid under each error setting.
 	w.line(
@@ -487,7 +492,6 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 	const plainInput = c.plainLists?.has(input) ?? false;
 	for (const h of attempt.helpers(plainInput)) c.helper(h);
 	for (const z of attempt.zones ?? []) c.useZone?.(z);
-	const out = c.output(0);
 	const allLists = (attempt.allNodes ?? []).map((name) => c.ranBefore(name) ?? '[]');
 	if (attempt.binaryNames !== undefined || attempt.preparesBinary === true) {
 		// The code reads the bytes of binary data of its input: the stored files are read before
@@ -564,41 +568,67 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 		);
 		return true;
 	}
-	let expr: string;
-	if (attempt.async) {
-		// The workflow awaits only a call of a local async function, so the code gets a name.
-		const form = { fn: c.local('Run'), step: c.node.name };
-		const parts = attempt.async(form, input, lists, allLists, plainInput);
-		w.block(parts.declaration);
-		expr = parts.expression;
-	} else {
-		expr = attempt.expression(input, lists, allLists, plainInput);
-	}
-	if (c.node.retryOnFail === true) {
-		retried(c, expr, onError);
+	// The form of the node without a hand-over, written to `to`.
+	const emitPlain = (to: NodeContext, handsOver: boolean): void => {
+		const { w } = to;
+		const out = to.output(0);
+		let expr: string;
+		if (attempt.async) {
+			// The workflow awaits only a call of a local async function, so the code gets a name.
+			const form = { fn: c.local('Run'), step: c.node.name };
+			const parts = attempt.async(form, input, lists, allLists, plainInput);
+			w.block(parts.declaration);
+			expr = parts.expression;
+		} else {
+			expr = attempt.expression(input, lists, allLists, plainInput);
+		}
+		if (c.node.retryOnFail === true) {
+			retried(to, expr, onError, handsOver);
+			return;
+		}
+		if (onError === 'stopWorkflow') {
+			// The result list comes from a JSON parse (`codeItems`), and no other code assigns it.
+			c.plainLists?.add(out);
+			w.block(`const ${out}: Json[] = ${input}.length > 0 ? ${expr} : [];`);
+			return;
+		}
+		// As v1's Code node in "all items" mode: one item with the error message.
+		const errors = onError === 'continueErrorOutput' ? to.output(1, 'Errors') : null;
+		if (errors) w.line(`const ${errors}: Json[] = [];`);
+		w.line(`let ${out}: Json[] = [];`);
+		w.open(`if (${input}.length > 0) {`);
+		w.open('try {');
+		w.block(`${out} = ${expr};`);
+		w.close('} catch (error) {');
+		w.depth++;
+		// A result that is not valid fails the node under each error setting, as in v1. The mark
+		// of `RUNS_IN_HOST` is not an error of the code: the host form runs the node.
+		w.line(
+			handsOver
+				? 'if (error.$invalid || fileLimitInHost(error)) throw error;'
+				: 'if (error.$invalid) throw error;',
+		);
+		// As v1: the error output gets the first input item with the message.
+		if (errors) w.line(`${errors}.push({ ...${input}[0], error: error.message });`);
+		else w.line(`${out} = [{ error: error.message }];`);
+		w.close();
+		w.close();
+	};
+	if (attempt.handsOver === true) {
+		// The code has a form that stops on a rare input (`Translation.handsOver`): then the
+		// fallback host runs the node in the same run. The code has no effect before that point.
+		const host = hostForm?.() ?? null;
+		if (host === null) {
+			c.info(
+				'code-host',
+				'The code runs in the fallback host: it has a form that can hand the node over to the fallback host at run time, and the node has no host form here.',
+				field,
+			);
+			return false;
+		}
+		emitWithHostForm(c, onError === 'continueErrorOutput', (to) => emitPlain(to, true), host);
 		return true;
 	}
-	if (onError === 'stopWorkflow') {
-		// The result list comes from a JSON parse (`codeItems`), and no other code assigns it.
-		c.plainLists?.add(out);
-		w.block(`const ${out}: Json[] = ${input}.length > 0 ? ${expr} : [];`);
-		return true;
-	}
-	// As v1's Code node in "all items" mode: one item with the error message.
-	const errors = onError === 'continueErrorOutput' ? c.output(1, 'Errors') : null;
-	if (errors) w.line(`const ${errors}: Json[] = [];`);
-	w.line(`let ${out}: Json[] = [];`);
-	w.open(`if (${input}.length > 0) {`);
-	w.open('try {');
-	w.block(`${out} = ${expr};`);
-	w.close('} catch (error) {');
-	w.depth++;
-	// A result that is not valid fails the node under each error setting, as in v1.
-	w.line('if (error.$invalid) throw error;');
-	// As v1: the error output gets the first input item with the message.
-	if (errors) w.line(`${errors}.push({ ...${input}[0], error: error.message });`);
-	else w.line(`${out} = [{ error: error.message }];`);
-	w.close();
-	w.close();
+	emitPlain(c, false);
 	return true;
 }
