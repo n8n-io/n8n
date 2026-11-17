@@ -51,8 +51,10 @@ A run that changes nothing is a valid result.
    `last_reviewed`:
    `git log origin/master --since=<last_reviewed> --no-merges --format='%h %ad %s' --date=short -- <folders>`.
 5. Steps 3 and 4 can miss code that a page describes. So, once for all pages,
-   read the subject of every backend commit since the oldest `last_reviewed`:
-   `git log origin/master --since=<oldest last_reviewed> --no-merges --format='%h %ad %s' --date=short -- packages ':!packages/frontend' ':!packages/testing'`.
+   read the subject of every commit outside the frontend since the oldest
+   `last_reviewed`. Include the root files, because the pages name root
+   `pnpm` scripts:
+   `git log origin/master --since=<oldest last_reviewed> --no-merges --format='%h %ad %s' --date=short -- . ':!packages/frontend' ':!packages/testing' ':!docs/backend'`.
    Mark each commit that can change a statement on a page, for example a
    move, a removal, a replacement, or a new default. Note the pages that it
    can change.
