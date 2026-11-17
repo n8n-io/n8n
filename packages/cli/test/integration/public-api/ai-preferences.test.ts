@@ -1,4 +1,5 @@
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -8,6 +9,8 @@ import {
 import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import {
 	createAdminWithApiKey,
@@ -27,6 +30,7 @@ let viewerProject: Project;
 let foreignProject: Project;
 
 beforeAll(async () => {
+	Container.get(ModuleRegistry).settings.set('mcp', { mcpAccessEnabled: true });
 	owner = await createOwnerWithApiKey();
 	admin = await createAdminWithApiKey();
 	member = await createMemberWithApiKey();
@@ -70,6 +74,37 @@ function contentsOf(response: { body: { data: Array<{ content: string }> } }) {
 const randomId = () => crypto.randomUUID();
 
 describe('Public API /ai-preferences', () => {
+	describe('when an admin turns preferences off', () => {
+		const settings = () => Container.get(AiPreferenceSettingsService);
+
+		afterEach(async () => {
+			await settings().setEnabled(true);
+		});
+
+		test('answers 404 on every route, and works again once preferences are on', async () => {
+			const row = await seed({ content: 'mine', userId: owner.id });
+			const agent = testServer.publicApiAgentFor(owner);
+			const callEveryRoute = async () => [
+				await agent.get('/ai-preferences'),
+				await agent.post('/ai-preferences').send({ content: 'new', scope: 'user' }),
+				await agent.patch(`/ai-preferences/${row.id}`).send({ content: 'edited' }),
+				await agent.delete(`/ai-preferences/${row.id}`),
+			];
+
+			await settings().setEnabled(false);
+			const whileOff = await callEveryRoute();
+
+			expect(whileOff.map((response) => response.statusCode)).toEqual([404, 404, 404, 404]);
+			expect(whileOff[0].body).toEqual({ message: 'Not Found' });
+			expect(await repository().findOneByOrFail({ id: row.id })).toMatchObject({ content: 'mine' });
+
+			await settings().setEnabled(true);
+			const whileOn = await callEveryRoute();
+
+			expect(whileOn.map((response) => response.statusCode)).toEqual([200, 201, 200, 204]);
+		});
+	});
+
 	test('refuses a request without an API key', async () => {
 		const response = await testServer.publicApiAgentWithoutApiKey().get('/ai-preferences');
 

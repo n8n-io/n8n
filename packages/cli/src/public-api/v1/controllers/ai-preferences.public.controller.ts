@@ -20,18 +20,20 @@ import {
 	Body,
 	Delete,
 	Get,
+	Middleware,
 	Param,
 	Patch,
 	Post,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
-import type { Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 const tags = ['AiPreference'];
 
@@ -50,7 +52,19 @@ function toAiPreferencePublicDto(preference: AiPreferenceDto): AiPreferencePubli
 
 @PublicApiController('/ai-preferences')
 export class AiPreferencesPublicController {
-	constructor(private readonly aiPreferenceService: AiPreferenceService) {}
+	constructor(
+		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
+	) {}
+
+	@Middleware()
+	requirePreferencesEnabled(_req: Request, res: Response, next: NextFunction) {
+		if (!this.aiPreferenceSettingsService.isEnabled) {
+			res.status(404).json({ message: 'Not Found' });
+			return;
+		}
+		next();
+	}
 
 	@Get('/')
 	@ApiKeyScope('aiPreference:list')
