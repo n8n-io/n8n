@@ -105,6 +105,34 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | binary stream | 1 | 1 | 7 | youTube |
 | text encoding | 1 | 2 | 4 | moveBinaryData |
 
+### Route (c): the list for the runtime cards
+
+For each primitive: the node types and the operations with no way that it unlocks, their real uses, the workflows of the coverage run in which one of these node types went to the fallback host (a sum by node type), and the smallest exact surface that the nodes need. A library node on top of the primitive comes after it.
+
+| Primitive | Nodes | Operations | Uses | Falls back in | Surface that the nodes need |
+|---|---|---|---|---|---|
+| spreadsheet | `convertToFile`, `extractFromFile`, `googleSheets`, `spreadsheetFile` | 72 | 703 | 21755 | Read (Extract from File, Spreadsheet File): CSV (delimiter, BOM, encoding, start line, row limit, relaxed quotes, header row or not), XLSX, XLS, ODS, HTML tables and RTF tables through SheetJS: sheet name, cell range, header row, raw values or formatted text, empty cells. Write (Convert to File, Spreadsheet File): CSV, XLSX, XLS, ODS, HTML, RTF with a header row, a sheet name, compression, a file name. The exact part is the cell-to-JSON conversion of SheetJS (dates, numbers, formatted text): the runtime needs it byte for byte, so the first step is a reader and a writer for CSV and XLSX, the two formats of nearly all uses. |
+| Postgres | `crateDb`, `postgres`, `questDb`, `timescaleDb` | 73 | 1112 | 11252 | Another card builds the client. Queries with parameters (`$1`), several statements, a transaction for each run or for each item, large numbers as text or as numbers, TLS modes, an SSH tunnel. Insert, update, upsert and select are SQL text that the node builds. |
+| SMTP | `emailSend` | 3 | 408 | 4148 | One message for each item: connect (plain, implicit TLS or STARTTLS, with or without certificate check), `EHLO` with the client host name of the credential, `AUTH PLAIN` or `LOGIN`, `MAIL FROM`, `RCPT TO`, `DATA`. The MIME message comes from the same composer that the Gmail node needs (route b): text, HTML, both, attachments from binary data, `Reply-To`, CC, BCC. The output is the answer of the server (`accepted`, `rejected`, `response`, `messageId`, `envelope`). |
+| MySQL | `mySql` | 39 | 72 | 1858 | The wire protocol of MySQL 5.7 and 8: handshake with `mysql_native_password` and `caching_sha2_password`, TLS, text queries with `?` parameters as the client escapes them (`mysql2` `format`), several statements in one query, a transaction, `decimalNumbers`, dates as text, a connect timeout, an SSH tunnel. Results: rows, and the result header of a write (`affectedRows`, `insertId`, `changedRows`). |
+| hash, HMAC and signature | `awsS3`, `crypto`, `s3`, `unleashedSoftware`, `wise` | 28 | 35 | 1228 | `crypto` of Node: digests (MD5, SHA-1, SHA-2, SHA-3, RIPEMD-160, Whirlpool), HMAC with the same list, RSA and ECDSA signatures with a PEM key, random bytes and UUIDs, output as hex or base64, input as text or binary data. Keys are secrets: a signature with a credential key belongs to the credential layer. |
+| Microsoft SQL (TDS) | `microsoftSql` | 12 | 44 | 1224 | TDS 7.4 over TLS with SQL login: a batch of SQL text, parameters by name, the row sets and the row counts of a batch. Options of the credential: `encrypt`, `trustServerCertificate`, the TDS version, the timeouts. The node chunks an insert at 1,000 rows itself. |
+| Snowflake driver | `snowflake` | 6 | 26 | 1118 | The node needs one statement with binds and the rows as objects. The SQL API of Snowflake is HTTP (`/api/v2/statements`) with key-pair or OAuth tokens: a library node over `ctx.http` can replace the driver when its results are proven equal (number and date forms). |
+| FTP/SFTP | `ftp` | 10 | 65 | 1083 | FTP (passive mode, with or without TLS) and SFTP (SSH with a password or a private key): list a directory (also all directories below it), download to binary data, upload from binary data or from text, delete a file or a directory (also with its content), rename with the creation of missing directories. The list output has the fields of each client (`name`, `type`, `size`, `modifyTime`, rights, owner, `path`). |
+| file type | `databricks`, `discord` | 2 | 12 | 682 | The file type from the first bytes of binary data (`file-type`), for the MIME type of an upload. |
+| compression | `compression` | 2 | 24 | 551 | ZIP (store and deflate) and gzip of binary data, as `fflate` writes them: compress several binary properties into one archive with a file name, decompress an archive into one binary property for each file (with the MIME type by extension). |
+| Redis | `redis` | 10 | 57 | 373 | RESP2 over TCP or TLS with `AUTH` (user and password) and `SELECT`: `DEL`, `GET`, `SET` (with `EX`, `PX` and `KEEPTTL`), `HGETALL`, `HSET`, `LRANGE`, `SMEMBERS`, `TYPE`, `INCR`, `EXPIRE`, `INFO`, `KEYS`, `LLEN`, `LPOP`, `RPOP`, `LPUSH`, `RPUSH`, `SADD`, `PUBLISH`. The reply types: text, integer, list, nil, error. |
+| image editing | `editImage` | 26 | 12 | 368 | The Edit Image node runs the GraphicsMagick program of the host (`gm`): blur, border, composite, create, crop, draw, text, resize, rotate, shear, transparent, information. Exact pixels need the same program, so it stays in the host until the owner accepts another raster engine. |
+| MongoDB | `mongoDb` | 66 | 0 | 303 | The wire protocol (OP_MSG) with SCRAM-SHA-1 and SCRAM-SHA-256, TLS and `mongodb+srv` DNS: `find` (filter, projection, sort, skip, limit), `aggregate`, `insertMany`, `updateOne` and `updateMany` with upsert, `findOneAndReplace`, `findOneAndUpdate`, `deleteMany`, and the four search-index commands. Extended JSON for ObjectId, dates and numbers, as the node parses and prints them. |
+| binary stream | `youTube` | 1 | 7 | 238 | An upload of binary data in parts with a known length (resumable upload): the runtime sends a stored file in ranges. |
+| SSH | `ssh` | 3 | 0 | 124 | An SSH session with a password or a private key (with passphrase): run one command in a directory and give `code`, `signal`, `stdout`, `stderr`; SFTP upload and download of one file. The command runs on the remote host, not on the host of n8n, so this is a protocol client, not route (d). |
+| text encoding | `moveBinaryData` | 2 | 4 | 61 | `iconv-lite`: decode binary data to text and encode text to binary data in the encodings of the node list (UTF-8, UTF-16, Latin-1, Windows code pages, Shift_JIS, GBK and more), with or without a BOM. Also base64 and JSON forms of binary data. |
+| Oracle driver | `oracleDatabase` | 12 | 0 | 15 | Oracle Net (thin mode): statements with binds by name and by position, bind types, `executeMany`, auto commit, fetch as objects, LOB values as text. The largest client of the list for the least use. |
+| MQTT | `mqtt` | 1 | 0 | 4 | MQTT 3.1.1 and 5 over TCP, TLS or WebSocket with user, password, client id and clean session: `CONNECT`, one `PUBLISH` for each item with QoS 0, 1 or 2 and the retain flag, then the acknowledgement of the QoS. |
+| AMQP 1.0 | `amqp` | 1 | 0 | 1 | AMQP 1.0 with SASL plain or anonymous over TCP or TLS: open a sender link to a sink, send one message for each item (body as text or as an object, application properties), wait for the settlement. |
+| LDAP | `ldap` | 6 | 0 | 1 | LDAP v3 over TCP, TLS or STARTTLS with a simple bind: `search` (base, scope, filter text, attributes, size limit, paging), `compare`, `add`, `modify` (add, replace, delete), `modifyDN`, `delete`. Binary attributes come back as base64. |
+| Kafka | `kafka` | 1 | 0 | 0 | A producer: metadata, `Produce` with acks, a timeout, compression (gzip), headers and keys; SASL (plain, SCRAM-256, SCRAM-512) and TLS. Optional: the Confluent schema registry (HTTP) to encode the value as Avro. |
+
 ### Route (b): excluded features
 
 | Feature | Node types | Operations | Uses | Nodes |
@@ -133,6 +161,20 @@ Triggers: n8n itself listens, polls or receives the webhook, and starts the work
 | Access | Node types | Operations | Uses | Nodes |
 |---|---|---|---|---|
 | (the node type itself) | 6 | 38 | 6 | executeCommand, git, readBinaryFile, readBinaryFiles, readWriteFile, writeBinaryFile |
+
+### Route (d): the workflows that have these nodes
+
+Of 147671 workflows in the coverage run, 30 have a node of route (d). Of the 77424 workflows that the run marks as fully covered, 10 have one. Of the 17591 certified bundles, the count for each node type is in the column "Workflows". These workflows cannot compile with no fallback-host node while the rule holds that a compiled module has no access to the system.
+
+| Node | Certified bundles | Coverage run | Coverage run, fully covered |
+|---|---|---|---|
+| `executeCommand` | 0 | 0 | 0 |
+| `git` | 0 | 1 | 0 |
+| `localFileTrigger` | 0 | 0 | 0 |
+| `readBinaryFile` | 0 | 1 | 0 |
+| `readBinaryFiles` | 0 | 0 | 0 |
+| `readWriteFile` | 4 | 26 | 10 |
+| `writeBinaryFile` | 0 | 3 | 0 |
 
 ### Route (a): compiler blockers (first blocker of the operation)
 
