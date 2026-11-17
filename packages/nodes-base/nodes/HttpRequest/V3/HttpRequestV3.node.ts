@@ -800,7 +800,7 @@ export class HttpRequestV3 implements INodeType {
 						requestPromises.push(request);
 					}
 				} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
-					const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
+					const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType, true);
 
 					// service-specific cred: OAuth1, OAuth2, plain
 
