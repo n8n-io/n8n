@@ -2,7 +2,7 @@
  * Date & Time version 2 as code (`date-time.ts`), against v1: "Get Current Date", and the
  * operations on a date that an expression gives as a Luxon DateTime. Each case runs the
  * workflow in n8n's engine and the converted workflow on the reference runner. A date that
- * is text keeps the node out of this lowering.
+ * is text or a number has its own cases (`date-time-text.test.ts`).
  */
 import { runReference } from '../../reference/runner.ts';
 import { convertWorkflow } from '../index.ts';
@@ -189,12 +189,6 @@ describe('Date & Time as code', () => {
 	});
 
 	it.each([
-		[
-			'a date that is text',
-			{ operation: 'formatDate', date: '={{ $json.date }}', format: 'yyyy-MM-dd' },
-			{},
-		],
-		['a fixed date', { operation: 'addToDate', magnitude: '2024-03-09', duration: 1 }, {}],
 		[
 			'a format from an expression',
 			{

@@ -2011,13 +2011,20 @@ function lowerHttpLibrary(c: NodeContext): void {
 		}
 		paging = readPaging(c, options);
 		// v1 makes a file from a page with a binary content type. The library node has no such
-		// file: the fallback host runs the v1 node then, which can send a GET again.
+		// file: the fallback host runs the v1 node then, with the answers of the pages that the
+		// library node received. The host can send a GET again. It gives each other request its
+		// answer in the order of the list, so the library node sends such pages for one input
+		// item only (`pageInputs`): v1 sends the pages of several items at the same time.
 		const detectsPage =
 			response.responseFormat === undefined || response.responseFormat === 'autodetect';
+		if (paging && detectsPage && v >= 3 && c.node.onError !== 'continueErrorOutput') {
+			detectsFile = true;
+			if (method !== 'GET') entries.push(['pageInputs', raw(`${c.input}.length`)]);
+		}
 		if (paging && detectsPage && !detectsFile) {
 			throw new NodeFailure(
 				'http-pagination',
-				'Pagination with the response format "autodetect" is supported only for a fixed GET request: v1 makes a file from a page with a binary content type.',
+				'Pagination with the response format "autodetect" is not supported here: v1 makes a file from a page with a binary content type.',
 				'options.pagination',
 			);
 		}

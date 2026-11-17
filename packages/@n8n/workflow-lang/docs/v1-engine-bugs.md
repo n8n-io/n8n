@@ -14,6 +14,7 @@ Add an entry when you find a new bug. Do not put customer data here: describe th
 | 3 | Reference instance | One workflow can stop the whole instance from answering | High | Not affected |
 | 4 | Credentials | OpenAI sends an empty `OpenAI-Organization` header | Low | Leaves the empty header out |
 | 5 | HTTP Request | The error message holds the raw response body | Low (a pitfall) | Copies v1 |
+| 6 | Date & Time | The date reader guesses the time zone and the unit of a date | Medium (a wrong time, no error) | Copies v1 |
 
 ## 1. Recorded Future sends no API key
 
@@ -66,10 +67,28 @@ Add an entry when you find a new bug. Do not put customer data here: describe th
 - **Why it matters:** it is v1's documented output shape, but a pitfall for users.
 - **Compiled engine:** copies v1 (behaviour case `29-http-error-message-42`).
 
+## 6. The date reader of Date & Time guesses the time zone and the unit of a date
+
+- **Where:** `packages/nodes-base/nodes/DateTime/V2/GenericFunctions.ts`, `parseDate` (version 2 of the node).
+- **What v1 does:**
+  - "Format a Date" without the option "Use Workflow Timezone" takes the two characters after the first `+` of the
+    text as hours east of UTC (`Etc/GMT-<hours>`). It ignores the minutes: `…T07:05:00+05:30` is formatted at
+    `+05:00`, so the time is 30 minutes off. It ignores an offset with `-`: `…-05:00` is formatted in UTC. A `+` in
+    another place of the text gives a zone too, and a zone that does not exist gives the text `Invalid DateTime`.
+  - A number, or text that is a number, with less than 12 characters is a time in seconds, also when it is a time
+    in milliseconds before March 1973, a year (`2024` is 2,024 seconds after 1970), or empty text (1970).
+  - A date that is not there (`undefined`) is the current time for each operation other than "Format a Date".
+  - Text without an offset is local time of the n8n process (moment.js), not the time zone of the workflow.
+- **Why it matters:** the node gives a wrong time and no error.
+- **Compiled engine:** copies v1 (`src/convert/date-time-helpers.ts`, test `date-time-text.test.ts`). A date that
+  is not there, and text without an offset on an n8n process whose local time is not UTC, run in the fallback host.
+
 ## Known differences that are not v1 bugs
 
 - **Dates between nodes.** A v1 node can give a live `Date` (for example a Postgres timestamp column), and the next
   node in the same execution gets the `Date`. The compiled engine passes items as JSON, so the next node gets the
   `Date.toJSON` text. Targeted patches cover the cases the replay found: a Set `number` field reads that exact
   text form as the date's time (`src/convert/helpers.ts`, `asNumber`). Other uses (for example `.getTime()` in a
-  Code node on a value from a database node) still differ.
+  Code node on a value from a database node) still differ. One more case is known: the Date & Time node reads a
+  live `Date` as a number (bug 6), so v1 takes a `Date` before March 1973 as a time in seconds. The compiled node
+  gets the text of the date and gives the date itself.

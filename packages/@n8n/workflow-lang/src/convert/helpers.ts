@@ -10,6 +10,7 @@
 
 import { str } from './code.ts';
 import { CODE_HELPERS } from './code-native/helpers.ts';
+import { dateTimeHelpers } from './date-time-helpers.ts';
 import { EXTENSION_HELPER_SOURCES } from './extension-helpers.ts';
 
 interface HelperSource {
@@ -28,6 +29,8 @@ const HELPERS: Record<string, HelperSource> = {
 	...CODE_HELPERS,
 	// Helpers of n8n's expression extensions (`extension-helpers.ts`).
 	...EXTENSION_HELPER_SOURCES,
+	// Helpers of the Date & Time node for a date that is text (`date-time-helpers.ts`).
+	...dateTimeHelpers(RUNS_IN_HOST),
 	pathOf: {
 		uses: [],
 		source: `/** Splits a lodash-style path such as \`a.b[0].c\` into keys. */

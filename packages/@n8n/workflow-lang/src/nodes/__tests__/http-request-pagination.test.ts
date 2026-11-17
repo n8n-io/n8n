@@ -24,8 +24,10 @@ interface Case {
 	options?: Record<string, unknown>;
 	onError?: string;
 	version?: number;
-	/** The page that the server sends for a request, by its path and query. */
-	serve(path: string, query: URLSearchParams, base: string): Page;
+	/** More parameters of the node: the method and the body. */
+	parameters?: Record<string, unknown>;
+	/** The page that the server sends for a request, by its path, query and body. */
+	serve(path: string, query: URLSearchParams, base: string, body: string): Page;
 }
 
 const pageNumber = (q: URLSearchParams) => Number(q.get('page') ?? '0');
@@ -159,12 +161,80 @@ const CASES: Case[] = [
 		},
 		serve: (_p, q) => ({ status: 200, body: { page: pageNumber(q), last: pageNumber(q) >= 2 } }),
 	},
+	{
+		name: 'POST pages with a JSON body and a page in the query',
+		parameters: {
+			method: 'POST',
+			sendBody: true,
+			specifyBody: 'json',
+			jsonBody: '{"size": 2, "filter": {"open": true}}',
+		},
+		pagination: {
+			parameters: { parameters: [{ name: 'page', value: '={{ $pageCount + 1 }}' }] },
+		},
+		serve: (_p, q) => ({
+			status: 200,
+			body: pageNumber(q) <= 2 ? [{ id: pageNumber(q) }] : [],
+		}),
+	},
+	{
+		name: 'POST pages with a cursor in the body',
+		parameters: {
+			method: 'POST',
+			sendBody: true,
+			bodyParameters: { parameters: [{ name: 'size', value: '2' }] },
+		},
+		pagination: {
+			parameters: {
+				parameters: [{ type: 'body', name: 'cursor', value: '={{ $response.body.next }}' }],
+			},
+			paginationCompleteWhen: 'other',
+			completeExpression: '={{ !$response.body.next }}',
+		},
+		serve: (_p, _q, _base, body) => {
+			const cursor = (JSON.parse(body || '{}') as { cursor?: string }).cursor ?? '';
+			const next = { '': 'c1', c1: 'c2', c2: null }[cursor] ?? null;
+			return { status: 200, body: { data: [{ cursor }], next } };
+		},
+	},
+	{
+		name: 'PUT pages that stop on a status code',
+		parameters: { method: 'PUT' },
+		pagination: {
+			parameters: { parameters: [{ name: 'page', value: '={{ $pageCount }}' }] },
+			paginationCompleteWhen: 'receiveSpecificStatusCodes',
+			statusCodesWhenComplete: '404',
+		},
+		serve: (_p, q) =>
+			pageNumber(q) < 2
+				? { status: 200, body: { page: pageNumber(q) } }
+				: { status: 404, body: { message: 'no more' } },
+	},
+	{
+		name: 'POST pages with a failed page',
+		parameters: { method: 'POST' },
+		pagination: {
+			parameters: { parameters: [{ name: 'page', value: '={{ $pageCount }}' }] },
+			paginationCompleteWhen: 'other',
+			completeExpression: '={{ $response.body.done === true }}',
+		},
+		serve: (_p, q) =>
+			pageNumber(q) < 1
+				? { status: 200, body: { done: false } }
+				: { status: 500, body: { message: 'broken' } },
+	},
 ];
 
 let server: Server;
 let current: Case = CASES[0];
 let base = '';
-let log: Array<{ path: string; query: Record<string, string>; page: Page }> = [];
+let log: Array<{
+	method: string;
+	path: string;
+	query: Record<string, string>;
+	body: string;
+	page: Page;
+}> = [];
 
 function parse(url: string): { path: string; query: URLSearchParams } {
 	const u = new URL(url, 'http://local');
@@ -174,11 +244,21 @@ function parse(url: string): { path: string; query: URLSearchParams } {
 beforeAll(async () => {
 	server = createServer((request: IncomingMessage, response) => {
 		const { path, query } = parse(request.url ?? '/');
-		const page = current.serve(path, query, base);
-		log.push({ path, query: Object.fromEntries(query), page });
-		response.statusCode = page.status;
-		response.setHeader('content-type', 'application/json');
-		response.end(JSON.stringify(page.body));
+		let body = '';
+		request.on('data', (chunk: Buffer) => (body += chunk.toString()));
+		request.on('end', () => {
+			const page = current.serve(path, query, base, body);
+			log.push({
+				method: request.method ?? '',
+				path,
+				query: Object.fromEntries(query),
+				body,
+				page,
+			});
+			response.statusCode = page.status;
+			response.setHeader('content-type', 'application/json');
+			response.end(JSON.stringify(page.body));
+		});
 	});
 	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 	base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -206,6 +286,7 @@ function workflow(c: Case) {
 				position: [200, 0],
 				parameters: {
 					url: `${base}/x`,
+					...c.parameters,
 					options: { ...c.options, pagination: { pagination: c.pagination } },
 				},
 				...(c.onError ? { onError: c.onError } : {}),
@@ -235,7 +316,7 @@ describe('HTTP Request pagination with the response format autodetect', () => {
 			name: 'pages',
 			pagination: pages,
 			options,
-			serve: () => CASES[0].serve('', new URLSearchParams(), ''),
+			serve: () => CASES[0].serve('', new URLSearchParams(), '', ''),
 		});
 		if (method !== undefined) Object.assign(flow.nodes[1].parameters, { method });
 		return flow;
@@ -248,9 +329,107 @@ describe('HTTP Request pagination with the response format autodetect', () => {
 		expect(converted.source).toContain('replay:');
 	});
 
-	it('keeps a node with another method in the fallback host', () => {
-		const converted = convertWorkflow(withMethod('POST'), { trace: 'all' });
-		expect(converted.fallbackNodes).toEqual(['H']);
+	it.each(['POST', 'PUT', '={{ $json.method }}'])(
+		'gives a node with the method %s the fallback-host form, and the number of its input items',
+		(method) => {
+			const converted = convertWorkflow(withMethod(method), { trace: 'all' });
+			expect(converted.fallbackNodes).toEqual([]);
+			expect(converted.source).toContain('fileLimitInHost(error)');
+			expect(converted.source).toContain('replay:');
+			expect(converted.source).toContain('pageInputs: ');
+		},
+	);
+
+	it('keeps a node with an error output in the fallback host', () => {
+		const flow = withMethod('POST');
+		Object.assign(flow.nodes[1], { onError: 'continueErrorOutput' });
+		expect(convertWorkflow(flow, { trace: 'all' }).fallbackNodes).toEqual(['H']);
+	});
+
+	const json = (body: unknown) => ({
+		status: 200,
+		headers: { 'content-type': 'application/json' },
+		body,
+	});
+	const FILE = { status: 200, headers: { 'content-type': 'image/png' }, body: 'bytes' };
+
+	/** Runs the converted node with the answers `pages`. It gives the steps of the host form. */
+	async function handOver(method: string, pages: unknown[], items: unknown = {}) {
+		const converted = convertWorkflow(withMethod(method), { trace: 'all' });
+		const hosted: Array<{ replay?: unknown[] }> = [];
+		const out = await runReference(
+			converted.source,
+			{ trigger: { body: items }, now: 0, seed: 1, effects: { H: pages }, trace: true },
+			{
+				answer: async (effect) => {
+					if (effect.kind !== 'node' || effect.step !== 'H (fallback host)') return undefined;
+					hosted.push(effect.args as { replay?: unknown[] });
+					return [{ fromHost: true }];
+				},
+			},
+		);
+		const sent = out.effects.filter((e) => e.step === 'H' && e.kind === 'http');
+		return { out, hosted, sent };
+	}
+
+	it('gives the host the answers of the POST requests in their order, for a page that is a file', async () => {
+		const { out, hosted, sent } = await handOver('POST', [json([{ id: 1 }]), FILE]);
+		expect(out.status).toBe('ok');
+		expect(sent).toHaveLength(2);
+		expect(hosted).toHaveLength(1);
+		const replay = hosted[0].replay as Array<Record<string, unknown>>;
+		expect(replay.map((entry) => [entry.method, entry.url, entry.qs])).toEqual([
+			['POST', `${base}/x`, { page: 1 }],
+			['POST', `${base}/x`, { page: 2 }],
+		]);
+		expect((replay[0].response as { body: unknown }).body).toEqual([{ id: 1 }]);
+		expect((out.trace ?? []).find((t) => t.step === 'H')?.items).toEqual([{ fromHost: true }]);
+	});
+
+	it('sends no request for several input items of a POST node: the host runs the node', async () => {
+		const { out, hosted, sent } = await handOver('POST', [], [{ a: 1 }, { a: 2 }]);
+		expect(out.status).toBe('ok');
+		expect(sent).toEqual([]);
+		expect(hosted).toHaveLength(1);
+		expect(hosted[0].replay ?? []).toEqual([]);
+	});
+
+	it('sends the pages of several input items of a GET node', async () => {
+		const { out, hosted, sent } = await handOver(
+			'GET',
+			[json([{ id: 1 }]), json([]), json([{ id: 2 }]), json([])],
+			[{ a: 1 }, { a: 2 }],
+		);
+		expect(out.status).toBe('ok');
+		expect(sent).toHaveLength(4);
+		expect(hosted).toEqual([]);
+	});
+
+	it('fails a POST node at a limit of the runtime: the host cannot send the request again', async () => {
+		const limit = { $error: 'http: the body is larger than 64 MB (limit: binary-max-file)' };
+		const { out, hosted } = await handOver('POST', [json([{ id: 1 }]), limit]);
+		expect(out.status).toBe('error');
+		expect(hosted).toEqual([]);
+		expect((out.result as { message?: string }).message).toContain('(limit: binary-max-file)');
+	});
+
+	it('fails a POST node with a file after more pages than the list of answers holds', async () => {
+		const pages = Array.from({ length: 257 }, (_, k) => json([{ id: k }]));
+		const { out, hosted, sent } = await handOver('POST', [...pages, FILE]);
+		expect(sent).toHaveLength(258);
+		expect(out.status).toBe('error');
+		expect(hosted).toEqual([]);
+		expect((out.result as { message?: string }).message).toContain(
+			'The fallback host cannot run the node without a second copy of these requests (limit: replay)',
+		);
+	});
+
+	it('sends the pages of a GET node again in the host after more pages than the list holds', async () => {
+		const pages = Array.from({ length: 257 }, (_, k) => json([{ id: k }]));
+		const { out, hosted } = await handOver('GET', [...pages, FILE]);
+		expect(out.status).toBe('ok');
+		expect(hosted).toHaveLength(1);
+		expect(hosted[0].replay ?? []).toEqual([]);
 	});
 
 	it('gives a node with a fixed response format no fallback-host form', () => {
@@ -291,15 +470,26 @@ describe('HTTP Request pagination and v1', () => {
 		const requests = out.effects
 			.filter((e) => e.step === 'H' && e.kind === 'http')
 			.map((e) => {
-				const args = e.args as { url: string; qs?: Record<string, unknown> };
+				const args = e.args as {
+					method?: string;
+					url: string;
+					qs?: Record<string, unknown>;
+					body?: unknown;
+				};
 				const { path, query } = parse(args.url);
 				const all: Record<string, string> = Object.fromEntries(query);
 				for (const [k, v] of Object.entries(args.qs ?? {})) {
 					if (v !== undefined && v !== null) all[k] = typeof v === 'string' ? v : JSON.stringify(v);
 				}
-				return { path, query: all };
+				return { method: args.method ?? 'GET', path, query: all, body: args.body };
 			});
-		expect(requests).toEqual(served.map((s) => ({ path: s.path, query: s.query })));
+		expect(requests.map(({ method, path, query }) => ({ method, path, query }))).toEqual(
+			served.map((s) => ({ method: s.method, path: s.path, query: s.query })),
+		);
+		// The body of each request, when the node sends one.
+		if (c.parameters?.sendBody === true) {
+			expect(requests.map((r) => r.body)).toEqual(served.map((s) => JSON.parse(s.body)));
+		}
 		if (v1.error) {
 			expect(out.status).toBe('error');
 			const message = (out.result as { message?: string }).message ?? '';
