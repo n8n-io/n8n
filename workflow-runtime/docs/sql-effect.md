@@ -238,3 +238,21 @@ WFRT_TEST_PG=127.0.0.1:5544 WFRT_TEST_PG_PASSWORD=secret ./zig-out/bin/shell-tes
 `WFRT_TEST_PG_AUTH=1` also tests the MD5 and clear password logins (roles `wfrt_md5` and `wfrt_clear` with the
 passwords `md5-secret` and `clear-secret`, and `md5` and `password` lines for them in `pg_hba.conf`).
 `WFRT_TEST_PG_TLS=1` tests TLS (the server has `ssl = on` with a self-signed certificate).
+
+### Replay of the calls of the library node
+
+`bench/pg-replay/replay.mts` sends the recorded `sql` calls of the Postgres library node
+(`packages/@n8n/workflow-lang/src/nodes/__tests__/postgres-recordings.json`) to `wfrt` and a real database, and
+compares each result with the recorded result of the TypeScript reference client. Each case starts from the
+tables of the equivalence test, in the database `wfrt_replay`. `workflow.ts` in the same directory is the workflow
+that forwards a posted call to `ctx.sql`.
+
+```bash
+zig build && node bench/pg-replay/replay.mts
+```
+
+Result on 2026-11-17 (206 cases, 266 calls: select, insert, update, upsert, delete, execute query): 258 results
+are equal, and the tables after each such case are equal. 4 calls end with the same marker and another message.
+4 calls differ. In 3 of them the reference client gives a marker for an `int4[]` or an `interval` column, which
+`wfrt` reads. In 1 the result has two columns of one name: the reference client gives the row of JavaScript, and
+`wfrt` gives the marker `sql-type`.
