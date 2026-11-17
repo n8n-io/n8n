@@ -277,7 +277,7 @@ export class WorkflowPackageImporter {
 		}
 
 		try {
-			await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+			await this.folderService.findFolderInProjectOrFail(folderId, projectId, 'workflow');
 		} catch (cause) {
 			throw new UserError(`Folder not found in target project: ${folderId}`, { cause });
 		}

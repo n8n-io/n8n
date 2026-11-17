@@ -3844,6 +3844,7 @@ describe('createWorkflowAdapter', () => {
 			expect(mockFolderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
 				'deep',
 				'team-project-id',
+				'workflow',
 			);
 		});
 

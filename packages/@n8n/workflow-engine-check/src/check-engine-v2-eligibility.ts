@@ -1,3 +1,5 @@
+import { findConverterReasons } from './converter-rules';
+import { findGraphReasons } from './graph-rules';
 import { findNodeTypeReasons } from './node-type-rule';
 import { rootWorkflow } from './reachable-nodes';
 import { findSettingsReasons } from './settings-rules';
@@ -19,6 +21,8 @@ export function checkEngineV2Eligibility(
 		...findSettingsReasons(rooted.settings ?? {}),
 		...findTriggerIdentityReasons(rooted.nodes),
 		...findNodeTypeReasons(rooted.nodes),
+		...findConverterReasons(rooted.nodes, rooted.connections),
+		...findGraphReasons(rooted.nodes, rooted.connections),
 	];
 	return { eligible: reasons.every((reason) => reason.severity !== 'blocking'), reasons };
 }

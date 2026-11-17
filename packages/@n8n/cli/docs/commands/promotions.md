@@ -353,8 +353,9 @@ Use `--json` to get the full preview:
 - `dependencies`: the resources that each workflow uses. `included: true` means
   that selecting the workflow sends the resource.
 - `blocker`: the open review that holds the changes, if there is one.
-- `check` and `revision`, for `apply` only: what blocks the Apply, and the value
-  to pass to `--expected-preview-revision`.
+- `check`, for `apply` only: what blocks the Apply.
+- `revision`: the value to pass to `--expected-preview-revision` of
+  `promote-selection` or `apply-selection`.
 
 ## `promotion-environment promote-selection`
 
@@ -367,6 +368,8 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -w wf-2
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
 n8n-cli promotion-environment promote-selection proj-abc --folder folder-1
 n8n-cli promotion-environment promote-selection proj-abc
+n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
+  --expected-preview-revision=<revision>
 ```
 
 | Flag | Description |
@@ -374,6 +377,12 @@ n8n-cli promotion-environment promote-selection proj-abc
 | `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. |
 | `--folder` | Folder ID to promote. Repeat the flag for more than one. |
 | `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
+| `--expected-preview-revision` | `revision` of the Promote preview that you reviewed, from `list-changes proj-abc promote --json`. |
+
+| Result | Exit code | What happened |
+|--------|-----------|---------------|
+| `promoted` | `0` | The selection was pushed. JSON output includes `counts` and `git`. |
+| `preview-changed` | `3` | Only with `--expected-preview-revision`: the project on this instance or its branch changed since you reviewed the preview. Nothing was pushed. Review the changes again. |
 
 The project's own details (name, icon, description, and telemetry tags) are
 always pushed. Without `-w` and `--folder`, the command promotes only the
