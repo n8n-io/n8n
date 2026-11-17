@@ -2421,6 +2421,7 @@
 	"mainSidebar.prompt.workflowUrl": "Workflow URL",
 	"mainSidebar.save": "@:_reusableBaseText.save",
 	"mainSidebar.settings": "Settings",
+	"mainSidebar.insights": "Insights",
 	"mainSidebar.instanceSettings": "Instance settings",
 	"mainSidebar.personalSettings": "Personal settings",
 	"mainSidebar.accountMenu.version": "v{version}",

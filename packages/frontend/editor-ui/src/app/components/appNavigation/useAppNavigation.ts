@@ -1,0 +1,402 @@
+import { computed } from 'vue';
+import { useRoute, type RouteLocationRaw } from 'vue-router';
+import type { IconName, IconOrEmoji, TabOptions } from '@n8n/design-system';
+import { isIconOrEmoji } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { INBOX_VIEW, isInboxRoute } from '@n8n/frontend-module-inbox';
+import { VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import type { Scope } from '@n8n/permissions';
+import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
+import {
+	INSTANCE_AI_THREADS_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_VIEW,
+} from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { AGENT_N8N_CHAT_VIEW, AGENTS_LIST_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { DATA_TABLE_VIEW, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { useRecentChats } from '@/features/agents/n8nChatPage/useRecentChats';
+import {
+	chatItemRoute,
+	chatItemTitle,
+	type RecentChatItem,
+} from '@/features/agents/n8nChatPage/mergeRecentChats';
+
+export type AppNavRailItem = {
+	id: string;
+	label: string;
+	icon: IconOrEmoji;
+	to: RouteLocationRaw;
+	/** `main` items sit above the divider, `project` items below it. */
+	group: 'main' | 'project';
+	testId: string;
+};
+
+export type AppNavLink = {
+	id: string;
+	label: string;
+	icon: IconName;
+	to: RouteLocationRaw;
+	active: boolean;
+	preview?: boolean;
+	/** Set on recent chats, so the panel can show the chat's own icon. */
+	chat?: RecentChatItem;
+};
+
+export type AppNavSection = {
+	id: string;
+	title?: string;
+	viewAll?: { label: string; to: RouteLocationRaw };
+	links: AppNavLink[];
+};
+
+type NavProject = { id: string; type?: string; scopes?: Scope[] };
+
+export const ASSISTANT_ITEM_ID = 'assistant';
+export const OVERVIEW_ITEM_ID = 'overview';
+export const INBOX_ITEM_ID = 'inbox';
+export const PROJECT_ITEM_PREFIX = 'project:';
+
+const ASSISTANT_ROUTES = new Set<string>([
+	INSTANCE_AI_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREADS_VIEW,
+	AGENT_N8N_CHAT_VIEW,
+]);
+
+/** List pages without a project id belong to Overview, even if a project is still loaded. */
+const OVERVIEW_ROUTES = new Set<string>([
+	VIEWS.HOMEPAGE,
+	VIEWS.WORKFLOWS,
+	VIEWS.FOLDERS,
+	VIEWS.CREDENTIALS,
+	VIEWS.EXECUTIONS,
+	VIEWS.HOME_VARIABLES,
+	AGENTS_LIST_VIEW,
+	DATA_TABLE_VIEW,
+]);
+
+/** Routes that show the same page as a tab, so the tab's link stays active on them. */
+const ROUTE_ALIASES: Record<string, string> = {
+	[VIEWS.HOMEPAGE]: VIEWS.WORKFLOWS,
+	[VIEWS.FOLDERS]: VIEWS.WORKFLOWS,
+	[VIEWS.PROJECTS_FOLDERS]: VIEWS.PROJECTS_WORKFLOWS,
+};
+
+const PAGE_ICONS: Record<string, IconName> = {
+	[VIEWS.WORKFLOWS]: 'workflow',
+	[VIEWS.PROJECTS_WORKFLOWS]: 'workflow',
+	[VIEWS.CREDENTIALS]: 'key-round',
+	[VIEWS.PROJECTS_CREDENTIALS]: 'key-round',
+	[VIEWS.EXECUTIONS]: 'history',
+	[VIEWS.PROJECTS_EXECUTIONS]: 'history',
+	[VIEWS.HOME_VARIABLES]: 'variable',
+	[VIEWS.PROJECTS_VARIABLES]: 'variable',
+	[VIEWS.PROJECT_SETTINGS]: 'settings',
+	[AGENTS_LIST_VIEW]: 'bot',
+	[PROJECT_AGENTS]: 'bot',
+	[DATA_TABLE_VIEW]: 'table',
+	[PROJECT_DATA_TABLES]: 'table',
+};
+const DEFAULT_PAGE_ICON: IconName = 'layers';
+
+export const projectItemId = (projectId: string) => `${PROJECT_ITEM_PREFIX}${projectId}`;
+
+/**
+ * The two-level navigation: the rail items, the rail item that owns the current route,
+ * and the sections of the panel for any rail item.
+ */
+export function useAppNavigation() {
+	const i18n = useI18n();
+	const route = useRoute();
+	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
+	const projectsStore = useProjectsStore();
+	const isAssistantAvailable = useInstanceAiAvailable();
+	const { recentChats } = useRecentChats();
+
+	const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
+
+	const teamProjects = computed(() =>
+		projectsStore.isTeamProjectFeatureEnabled
+			? projectsStore.myProjects
+					.filter((project) => project.type === ProjectTypes.Team)
+					.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+			: [],
+	);
+
+	const projectRoute = (projectId: string): RouteLocationRaw => ({
+		name: VIEWS.PROJECTS_WORKFLOWS,
+		params: { projectId },
+	});
+
+	const railItems = computed<AppNavRailItem[]>(() => {
+		const items: AppNavRailItem[] = [];
+		if (isAssistantAvailable.value) {
+			items.push({
+				id: ASSISTANT_ITEM_ID,
+				label: i18n.baseText('projects.menu.instanceAi'),
+				icon: { type: 'icon', value: 'n8n-assistant' },
+				to: { name: INSTANCE_AI_VIEW },
+				group: 'main',
+				testId: 'app-nav-assistant',
+			});
+		}
+		items.push({
+			id: OVERVIEW_ITEM_ID,
+			label: i18n.baseText('projects.menu.overview'),
+			icon: { type: 'icon', value: 'house' },
+			to: { name: VIEWS.HOMEPAGE },
+			group: 'main',
+			testId: 'app-nav-overview',
+		});
+		if (isInboxVisible.value) {
+			items.push({
+				id: INBOX_ITEM_ID,
+				label: i18n.baseText('inbox.title'),
+				icon: { type: 'icon', value: 'inbox' },
+				to: { name: INBOX_VIEW },
+				group: 'main',
+				testId: 'app-nav-inbox',
+			});
+		}
+
+		const personalId = projectsStore.personalProject?.id;
+		if (personalId) {
+			items.push({
+				id: projectItemId(personalId),
+				label: i18n.baseText('projects.menu.personal'),
+				icon: { type: 'icon', value: 'user' },
+				to: projectRoute(personalId),
+				group: 'project',
+				testId: 'app-nav-personal',
+			});
+		}
+		for (const project of teamProjects.value) {
+			items.push({
+				id: projectItemId(project.id),
+				label: project.name ?? '',
+				icon: isIconOrEmoji(project.icon) ? project.icon : DEFAULT_PROJECT_ICON,
+				to: projectRoute(project.id),
+				group: 'project',
+				testId: 'app-nav-project',
+			});
+		}
+		return items;
+	});
+
+	const routeName = computed(() => (typeof route.name === 'string' ? route.name : ''));
+	const routeProjectId = computed(() =>
+		typeof route.params?.projectId === 'string' ? route.params.projectId : undefined,
+	);
+
+	const activeItemId = computed<string>(() => {
+		const name = routeName.value;
+		if (ASSISTANT_ROUTES.has(name)) return ASSISTANT_ITEM_ID;
+		if (isInboxRoute(route)) return INBOX_ITEM_ID;
+
+		// A workflow or other page outside the lists belongs to the project it lives in.
+		const projectId =
+			routeProjectId.value ??
+			(OVERVIEW_ROUTES.has(name) ? undefined : projectsStore.currentProject?.id);
+		if (projectId) {
+			const id = projectItemId(projectId);
+			if (railItems.value.some((item) => item.id === id)) return id;
+		}
+		return OVERVIEW_ITEM_ID;
+	});
+
+	const isLinkActive = (value: string, projectId?: string) =>
+		(ROUTE_ALIASES[routeName.value] ?? routeName.value) === value &&
+		routeProjectId.value === projectId;
+
+	/** The tabs of the project header, as panel links. */
+	function pageLinks(pageType: 'overview' | 'project', project?: NavProject) {
+		const projectId = project?.id;
+		const pages: Array<TabOptions<string>> = projectId
+			? [
+					{
+						value: VIEWS.PROJECTS_WORKFLOWS,
+						label: i18n.baseText('mainSidebar.workflows'),
+						to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId } },
+					},
+					{
+						value: VIEWS.PROJECTS_CREDENTIALS,
+						label: i18n.baseText('mainSidebar.credentials'),
+						to: { name: VIEWS.PROJECTS_CREDENTIALS, params: { projectId } },
+					},
+					{
+						value: VIEWS.PROJECTS_EXECUTIONS,
+						label: i18n.baseText('mainSidebar.executions'),
+						to: { name: VIEWS.PROJECTS_EXECUTIONS, params: { projectId } },
+					},
+					{
+						value: VIEWS.PROJECTS_VARIABLES,
+						label: i18n.baseText('mainSidebar.variables'),
+						to: { name: VIEWS.PROJECTS_VARIABLES, params: { projectId } },
+					},
+				]
+			: [
+					{
+						value: VIEWS.WORKFLOWS,
+						label: i18n.baseText('mainSidebar.workflows'),
+						to: { name: VIEWS.WORKFLOWS },
+					},
+					{
+						value: VIEWS.CREDENTIALS,
+						label: i18n.baseText('mainSidebar.credentials'),
+						to: { name: VIEWS.CREDENTIALS },
+					},
+					{
+						value: VIEWS.EXECUTIONS,
+						label: i18n.baseText('mainSidebar.executions'),
+						to: { name: VIEWS.EXECUTIONS },
+					},
+					{
+						value: VIEWS.HOME_VARIABLES,
+						label: i18n.baseText('mainSidebar.variables'),
+						to: { name: VIEWS.HOME_VARIABLES },
+					},
+				];
+
+		// Same rules as the module tabs in the project header.
+		const moduleTabs = uiStore.moduleTabs[pageType];
+		const activeModuleTabs = Object.keys(moduleTabs)
+			.filter(
+				(module) =>
+					settingsStore.isModuleActive(module) &&
+					(module !== 'agents' || settingsStore.isAgentsEnabled),
+			)
+			.flatMap((module) => moduleTabs[module]);
+		for (const processed of processDynamicTabs(activeModuleTabs, projectId)) {
+			const { insertAfter, ...tab } = processed;
+			const anchorIndex = insertAfter ? pages.findIndex((page) => page.value === insertAfter) : -1;
+			if (anchorIndex !== -1) pages.splice(anchorIndex + 1, 0, tab);
+			else pages.push(tab);
+		}
+
+		if (project?.type === ProjectTypes.Team) {
+			const permissions = getResourcePermissions(project.scopes);
+			if (
+				permissions.project.update ||
+				permissions.project.manageMembers ||
+				permissions.externalSecretsProvider.read
+			) {
+				pages.push({
+					value: VIEWS.PROJECT_SETTINGS,
+					label: i18n.baseText('projects.settings'),
+					to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId } },
+				});
+			}
+		}
+
+		return pages.flatMap<AppNavLink>((page) =>
+			page.to && page.label
+				? [
+						{
+							id: page.value,
+							label: page.label,
+							icon: PAGE_ICONS[page.value] ?? DEFAULT_PAGE_ICON,
+							to: page.to,
+							active: isLinkActive(page.value, projectId),
+							preview: page.preview,
+						},
+					]
+				: [],
+		);
+	}
+
+	const openThreadId = computed(() => {
+		if (routeName.value === INSTANCE_AI_THREAD_VIEW) return route.params.threadId;
+		if (routeName.value === AGENT_N8N_CHAT_VIEW) return route.params.agentThreadId;
+		return undefined;
+	});
+
+	function assistantSections(): AppNavSection[] {
+		const sections: AppNavSection[] = [
+			{
+				id: 'assistant-actions',
+				links: [
+					{
+						id: 'new-chat',
+						label: i18n.baseText('instanceAi.thread.new'),
+						icon: 'square-pen',
+						to: { name: INSTANCE_AI_VIEW },
+						active: routeName.value === INSTANCE_AI_VIEW,
+					},
+				],
+			},
+		];
+		if (recentChats.value.length > 0) {
+			sections.push({
+				id: 'assistant-chats',
+				title: i18n.baseText('instanceAi.threads.chats'),
+				viewAll: {
+					label: i18n.baseText('instanceAi.threads.viewAll'),
+					to: { name: INSTANCE_AI_THREADS_VIEW },
+				},
+				links: recentChats.value.map((chat) => ({
+					id: `chat-${chat.kind}-${chat.thread.id}`,
+					label: chatItemTitle(chat, i18n),
+					icon: 'message-circle',
+					to: chatItemRoute(chat),
+					active: openThreadId.value === chat.thread.id,
+					chat,
+				})),
+			});
+		}
+		return sections;
+	}
+
+	function findProject(projectId: string): NavProject | undefined {
+		if (projectsStore.personalProject?.id === projectId) return projectsStore.personalProject;
+		return projectsStore.myProjects.find((project) => project.id === projectId);
+	}
+
+	/** The panel sections of one rail item. */
+	function sectionsFor(itemId: string | null | undefined): AppNavSection[] {
+		if (!itemId) return [];
+		if (itemId === ASSISTANT_ITEM_ID) return assistantSections();
+		if (itemId === OVERVIEW_ITEM_ID) {
+			return [{ id: 'overview-pages', links: pageLinks('overview') }];
+		}
+		if (itemId === INBOX_ITEM_ID) {
+			return [
+				{
+					id: 'inbox-pages',
+					links: [
+						{
+							id: 'inbox',
+							label: i18n.baseText('inbox.title'),
+							icon: 'inbox',
+							to: { name: INBOX_VIEW },
+							active: isInboxRoute(route),
+						},
+					],
+				},
+			];
+		}
+		if (itemId.startsWith(PROJECT_ITEM_PREFIX)) {
+			const project = findProject(itemId.slice(PROJECT_ITEM_PREFIX.length));
+			if (!project) return [];
+			return [{ id: `${itemId}-pages`, links: pageLinks('project', project) }];
+		}
+		return [];
+	}
+
+	const railItemById = (itemId: string | null | undefined) =>
+		railItems.value.find((item) => item.id === itemId);
+
+	return {
+		railItems,
+		activeItemId,
+		sectionsFor,
+		railItemById,
+	};
+}

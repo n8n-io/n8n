@@ -9,7 +9,9 @@ import {
 	N8nText,
 	N8nTooltip,
 	type DropdownMenuItemProps,
+	type IconName,
 } from '@n8n/design-system';
+import type { RouteLocationRaw } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useElementOverflow } from '@n8n/composables/useElementOverflow';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -26,6 +28,10 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useSettingsItems } from '@/app/composables/useSettingsItems';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
+import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
 
 /** A help row either opens a link or carries a caption, like the version on About. */
 type HelpEntry = DropdownMenuItemProps<string, { href?: string; caption?: string }>;
@@ -43,6 +49,9 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const templatesStore = useTemplatesStore();
+const resourceCenterStore = useResourceCenterStore();
+const { settingsItems } = useSettingsItems();
 
 const isOpen = ref(false);
 
@@ -150,6 +159,101 @@ const helpEntries = computed<HelpEntry[]>(() => [
 		},
 	},
 ]);
+
+const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
+
+// The user's own pages open from Personal settings; this row leads to the first page about
+// the instance. `/settings` itself is not used: it redirects to Personal settings when the
+// usage page is hidden.
+const instanceSettingsRoute = computed(
+	() => settingsItems.value.find((item) => item.section !== 'personal' && item.route)?.route,
+);
+
+type WorkspaceItem = {
+	id: 'resource-center' | 'templates' | 'insights' | 'settings';
+	label: string;
+	icon: IconName;
+	available: boolean;
+	route?: RouteLocationRaw;
+	href?: string;
+};
+
+// The rows that the old sidebar showed above the account row.
+const workspaceItems = computed<WorkspaceItem[]>(() =>
+	(
+		[
+			{
+				// Resource Center replaces Templates when the experiment is on.
+				id: 'resource-center',
+				icon: 'lightbulb',
+				label: i18n.baseText('experiments.resourceCenter.sidebar'),
+				available: isResourceCenterEnabled.value,
+				route: { name: VIEWS.RESOURCE_CENTER },
+			},
+			{
+				// In-app templates, when a custom templates host is set.
+				id: 'templates',
+				icon: 'grid-2x2',
+				label: i18n.baseText('generic.templates'),
+				available:
+					settingsStore.isTemplatesEnabled &&
+					templatesStore.hasCustomTemplatesHost &&
+					!isResourceCenterEnabled.value,
+				route: { name: VIEWS.TEMPLATES },
+			},
+			{
+				// The website templates otherwise.
+				id: 'templates',
+				icon: 'grid-2x2',
+				label: i18n.baseText('generic.templates'),
+				available:
+					settingsStore.isTemplatesEnabled &&
+					!templatesStore.hasCustomTemplatesHost &&
+					!isResourceCenterEnabled.value,
+				href: templatesStore.websiteTemplateRepositoryURL,
+			},
+			{
+				id: 'insights',
+				icon: 'chart-column-decreasing',
+				label: i18n.baseText('mainSidebar.insights'),
+				available:
+					settingsStore.isModuleActive('insights') &&
+					hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+				route: { name: VIEWS.INSIGHTS },
+			},
+			{
+				id: 'settings',
+				icon: 'wrench',
+				label: i18n.baseText('mainSidebar.instanceSettings'),
+				available: instanceSettingsRoute.value !== undefined,
+				route: instanceSettingsRoute.value?.to,
+			},
+		] satisfies WorkspaceItem[]
+	).filter((item) => item.available),
+);
+
+function onWorkspaceItem(item: WorkspaceItem) {
+	switch (item.id) {
+		case 'templates':
+			trackTemplatesClick(TemplateClickSource.sidebarButton);
+			break;
+		case 'insights':
+			telemetry.track('User clicked insights link from side menu');
+			break;
+		case 'settings':
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK, {
+				sidebar_collapsed: props.isCollapsed,
+			});
+			break;
+		default:
+			break;
+	}
+	if (item.href) {
+		window.open(item.href, '_blank', 'noopener');
+	} else if (item.route) {
+		void router.push(item.route);
+	}
+}
 
 type AccountMenuItem = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.PLATFORM.USER_CLICKED_ACCOUNT_MENU_ITEM
@@ -317,6 +421,20 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 							:icon="{ type: 'icon', value: 'circle-user-round' }"
 							@select="onPersonalSettings"
 						/>
+						<N8nDropdownMenuItem
+							v-for="(item, index) in workspaceItems"
+							:id="`workspace-${item.id}`"
+							:key="`${item.id}-${index}`"
+							:test-id="`main-sidebar-account-${item.id}`"
+							:divided="index === 0"
+							:label="item.label"
+							:icon="{ type: 'icon', value: item.icon }"
+							@select="onWorkspaceItem(item)"
+						>
+							<template v-if="item.href" #item-trailing="{ ui }">
+								<N8nIcon icon="external-link" size="small" :class="[ui.class, $style.external]" />
+							</template>
+						</N8nDropdownMenuItem>
 						<N8nDropdownMenuItem
 							v-if="hasWhatsNew"
 							id="whats-new"

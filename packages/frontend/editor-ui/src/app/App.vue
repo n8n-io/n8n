@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import BaseLayout from '@/app/layouts/BaseLayout.vue';
-import AppBanners from '@/app/components/app/AppBanners.vue';
 import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
@@ -140,9 +139,6 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 <template>
 	<LoadingView v-if="loading" />
 	<BaseLayout v-else id="n8n-app" :class="$style.app">
-		<template #banners>
-			<AppBanners />
-		</template>
 		<AppLayout @mounted="setLayoutRef">
 			<RouterView />
 		</AppLayout>

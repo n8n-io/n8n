@@ -16,10 +16,19 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 
 const routerPushMock = vi.hoisted(() => vi.fn());
 const trackMock = vi.hoisted(() => vi.fn());
 const goToDashboardMock = vi.hoisted(() => vi.fn());
+const settingsItemsMock = vi.hoisted(() => ({
+	value: [] as Array<{ id: string; section: string; route?: { to: { name: string } } }>,
+}));
+
+vi.mock('@/app/composables/useSettingsItems', () => ({
+	useSettingsItems: () => ({ settingsItems: settingsItemsMock }),
+}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPushMock, resolve: vi.fn(() => ({ meta: {} })) }),
@@ -421,6 +430,74 @@ describe('MainSidebarAccountMenu', () => {
 				'User clicked help resource',
 				expect.objectContaining({ type: 'docs' }),
 			);
+		});
+	});
+
+	describe('workspace rows', () => {
+		beforeEach(() => {
+			settingsItemsMock.value = [
+				{ id: 'personal', section: 'personal', route: { to: { name: VIEWS.PERSONAL_SETTINGS } } },
+				{ id: 'users', section: 'instance', route: { to: { name: VIEWS.USERS_SETTINGS } } },
+			];
+			settingsStore.isTemplatesEnabled = true;
+			settingsStore.isModuleActive = vi.fn(() => true);
+			mockedStore(useRBACStore).hasScope = vi.fn(() => true);
+			const templatesStore = mockedStore(useTemplatesStore);
+			templatesStore.hasCustomTemplatesHost = true;
+		});
+
+		it('lists Templates, Insights and Instance settings after Personal settings', async () => {
+			const { getByTestId } = renderComponent({ props: { isCollapsed: true } });
+			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			expect(rowsOf(menu)).toEqual(
+				expect.arrayContaining([
+					'main-sidebar-account-personal-settings',
+					'main-sidebar-account-templates',
+					'main-sidebar-account-insights',
+					'main-sidebar-account-settings',
+				]),
+			);
+			const rows = rowsOf(menu);
+			expect(rows.indexOf('main-sidebar-account-templates')).toBe(
+				rows.indexOf('main-sidebar-account-personal-settings') + 1,
+			);
+		});
+
+		it('opens the first instance settings page and tracks the click', async () => {
+			const { getByTestId } = renderComponent({ props: { isCollapsed: true } });
+			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			await userEvent.click(within(menu).getByTestId('main-sidebar-account-settings'));
+
+			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.USERS_SETTINGS });
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK,
+				{ sidebar_collapsed: true },
+			);
+		});
+
+		it('opens Insights and tracks the click', async () => {
+			const { getByTestId } = renderComponent();
+			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			await userEvent.click(within(menu).getByTestId('main-sidebar-account-insights'));
+
+			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.INSIGHTS });
+			expect(trackMock).toHaveBeenCalledWith('User clicked insights link from side menu');
+		});
+
+		it('hides the rows the user cannot reach', async () => {
+			settingsItemsMock.value = [];
+			settingsStore.isTemplatesEnabled = false;
+			mockedStore(useRBACStore).hasScope = vi.fn(() => false);
+			const { getByTestId } = renderComponent();
+			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			const rows = rowsOf(menu);
+			expect(rows).not.toContain('main-sidebar-account-templates');
+			expect(rows).not.toContain('main-sidebar-account-insights');
+			expect(rows).not.toContain('main-sidebar-account-settings');
 		});
 	});
 });

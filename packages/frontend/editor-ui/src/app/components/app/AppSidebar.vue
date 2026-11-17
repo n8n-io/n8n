@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import MainSidebar from '@/app/components/MainSidebar.vue';
+import AppNavigation from '@/app/components/appNavigation/AppNavigation.vue';
 </script>
 
 <template>
-	<MainSidebar />
+	<AppNavigation />
 </template>
