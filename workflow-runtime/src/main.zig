@@ -26,7 +26,7 @@ const usage =
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--sql-max-requests N] [--sql-max-conns N] [--sql-pool-conns N] [--sql-max-result-kb K]
-    \\        [--sql-max-request-kb K] [--sql-max-statements N] [--sql-timestamp-zone utc]
+    \\        [--sql-max-request-kb K] [--sql-max-statements N] [--sql-timestamp-zone utc] [--sql-mysql]
     \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
     \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-renewals N] [--renewal-kb K] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
@@ -308,6 +308,11 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         }
         if (std.mem.eql(u8, k, "--stats")) {
             opts.stats = true;
+            continue;
+        }
+        if (std.mem.eql(u8, k, "--sql-mysql")) {
+            // Calls with the dialect `mysql` go to the native MySQL client (`shell/my.zig`).
+            opts.sql_mysql = true;
             continue;
         }
         if (std.mem.eql(u8, k, "--gym-env")) {

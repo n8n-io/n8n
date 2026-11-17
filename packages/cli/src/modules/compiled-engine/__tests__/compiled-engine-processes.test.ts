@@ -88,9 +88,10 @@ describe('wfrtUserAgent', () => {
 });
 
 describe('the listen address of wfrt', () => {
-	const argsWith = (listenAddress: string) => {
+	const argsWith = (listenAddress: string, sqlMysql = false) => {
 		const config = mock<CompiledEngineConfig>({
 			listenAddress,
+			sqlMysql,
 			port: 5690,
 			adminPort: 5691,
 			targetRate: 0,
@@ -122,6 +123,12 @@ describe('the listen address of wfrt', () => {
 
 	it('starts wfrt on the address of the setting', () => {
 		expect(hostOf(argsWith('0.0.0.0'))).toBe('0.0.0.0');
+	});
+
+	it('starts wfrt with the MySQL client only with the setting', () => {
+		expect(new CompiledEngineConfig().sqlMysql).toBe(false);
+		expect(argsWith('127.0.0.1')).not.toContain('--sql-mysql');
+		expect(argsWith('127.0.0.1', true)).toContain('--sql-mysql');
 	});
 });
 

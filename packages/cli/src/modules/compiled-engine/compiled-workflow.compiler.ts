@@ -231,6 +231,9 @@ export class CompiledWorkflowCompiler {
 	/** `N8N_COMPILED_ENGINE_COMPILE_NODES`. */
 	private readonly compileNodes: boolean;
 
+	/** `N8N_COMPILED_ENGINE_SQL_MYSQL`. */
+	private readonly sqlMysql: boolean;
+
 	/** The files of the cache, bounded by `N8N_COMPILED_ENGINE_ARTIFACT_CACHE_MB`. */
 	private readonly artifacts: ArtifactCache;
 
@@ -246,6 +249,7 @@ export class CompiledWorkflowCompiler {
 		config: CompiledEngineConfig,
 	) {
 		this.compileNodes = config.compileNodes;
+		this.sqlMysql = config.sqlMysql;
 		this.logger = this.logger.scoped('compiled-engine');
 		this.artifacts = new ArtifactCache(
 			join(this.processes.dataDir, 'artifacts'),
@@ -323,6 +327,8 @@ export class CompiledWorkflowCompiler {
 			.update(JSON.stringify([this.compileNodes, ...publicCredentials.entries()]))
 			// A node that stores a response compiles only when `wfrt` has the file store.
 			.update(this.processes.storesResponses ? 'stores-responses' : '')
+			// A MySQL node is a call of the `sql` effect only when `wfrt` has the MySQL client.
+			.update(this.sqlMysql ? 'sql-mysql' : '')
 			.update(String(ARTIFACT_FORM))
 			.digest('hex');
 		const context = { lang, input, workflowJson, subWorkflows, publicCredentials };
@@ -408,6 +414,8 @@ export class CompiledWorkflowCompiler {
 			},
 			// `wfrt` runs the `sql` effect: a Postgres node that the library node has runs there.
 			sql: true,
+			// `wfrt` runs the dialect `mysql` only with `--sql-mysql` (N8N_COMPILED_ENGINE_SQL_MYSQL).
+			...(this.sqlMysql ? { mysql: true } : {}),
 			// A node without a built-in version is compiled from its own code
 			// (N8N_COMPILED_ENGINE_COMPILE_NODES).
 			...(this.compileNodes

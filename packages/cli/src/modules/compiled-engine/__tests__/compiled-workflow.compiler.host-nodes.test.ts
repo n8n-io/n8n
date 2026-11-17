@@ -36,6 +36,7 @@ const flag = { name: 'f00000001', code: '(c) => (c.apiKey.length < 64)', kind: '
 
 interface ConvertOptions {
 	sql?: boolean;
+	mysql?: boolean;
 	nodeSources?: {
 		runsInHost?: (nodeName: string) => boolean;
 		entry?: (type: string, version: number) => string | undefined;
@@ -117,7 +118,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1 }),
+			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1, sqlMysql: false }),
 		);
 	});
 
@@ -202,7 +203,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1 }),
+			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1, sqlMysql: false }),
 		);
 		restarted.restoreHostNodes(stored);
 		expect(restarted.hostNodes()).toEqual(stored);
@@ -236,7 +237,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: false, artifactCacheMb: 1 }),
+			mock<CompiledEngineConfig>({ compileNodes: false, artifactCacheMb: 1, sqlMysql: false }),
 		);
 
 		await compiler.compile(input);
@@ -251,6 +252,31 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 
 		const options: ConvertOptions = convertWorkflow.mock.calls[0][1];
 		expect(options.sql).toBe(true);
+		// The MySQL client of the runtime is off by default.
+		expect(options).not.toHaveProperty('mysql');
+	});
+
+	it('tells the converter that the runtime has the MySQL client only with the setting', async () => {
+		credentials.unprovenFlagNodes.mockResolvedValue([]);
+		const off = await compiler.compile(input);
+		const withSetting = new CompiledWorkflowCompiler(
+			processes,
+			subWorkflows,
+			logger,
+			nodeTypes,
+			urlService,
+			mock<InstanceSettings>({ instanceId: 'instance' }),
+			credentials,
+			mock<CredentialTypes>(),
+			mock<CompiledEngineConfig>({ compileNodes: true, artifactCacheMb: 1, sqlMysql: true }),
+		);
+
+		const on = await withSetting.compile(input);
+
+		const options: ConvertOptions = convertWorkflow.mock.calls[1][1];
+		expect(options.mysql).toBe(true);
+		// A module of the other setting is not used again.
+		expect(on.key).not.toBe(off.key);
 	});
 
 	it('moves a library node to the host after a limit when nodes are not compiled from their code', async () => {
@@ -263,7 +289,7 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 			mock<InstanceSettings>({ instanceId: 'instance' }),
 			credentials,
 			mock<CredentialTypes>(),
-			mock<CompiledEngineConfig>({ compileNodes: false, artifactCacheMb: 1 }),
+			mock<CompiledEngineConfig>({ compileNodes: false, artifactCacheMb: 1, sqlMysql: false }),
 		);
 		const first = await compiler.compile(input);
 		expect(first.module?.toString()).toBe('compiled');

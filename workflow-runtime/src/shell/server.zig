@@ -74,8 +74,9 @@ pub const Options = struct {
     /// The PostgreSQL client of the `sql` effect (`--sql-*` flags): calls,
     /// connections, and the sizes of a call and of a result (`pg.Config`).
     sql: pg.Config = .{},
-    /// Calls with the dialect `mysql` go to the native MySQL client (`my.zig`). Off until the
-    /// client is verified against a real server: such a call then runs in the fallback host.
+    /// Calls with the dialect `mysql` go to the native MySQL client (`my.zig`): `--sql-mysql`.
+    /// Off until the client is verified against a real server: such a call then runs in the
+    /// fallback host.
     sql_mysql: bool = false,
     /// Largest outbound response or request body.
     egress_max_body: u32 = 16 << 20,

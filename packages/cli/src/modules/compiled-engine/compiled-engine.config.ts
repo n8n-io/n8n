@@ -64,6 +64,15 @@ export class CompiledEngineConfig {
 	compileNodes: boolean = false;
 
 	/**
+	 * Whether the compiled engine runs the **Execute Query** operation of the
+	 * MySQL node in `wfrt`. When `false`, every MySQL node runs in the fallback
+	 * host. This applies only when n8n starts `wfrt`. If you start `wfrt`
+	 * yourself, also start it with `--sql-mysql`.
+	 */
+	@Env('N8N_COMPILED_ENGINE_SQL_MYSQL')
+	sqlMysql: boolean = false;
+
+	/**
 	 * Whether n8n starts `wfrt` and the fallback host as child processes and
 	 * restarts them when they stop. Set to `false` to connect to a `wfrt` that
 	 * you start yourself.

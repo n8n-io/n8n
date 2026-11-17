@@ -217,6 +217,61 @@ describe('CompiledEngineCredentials', () => {
 		});
 	});
 
+	describe('a MySQL credential', () => {
+		const database = { ...binding, slot: 'db', type: 'mySql' };
+		// The fields of the n8n credential type `mySql`.
+		const values = {
+			host: 'db.example.com',
+			database: 'shop',
+			user: 'app',
+			password: 'my-secret',
+			port: 3306,
+			connectTimeout: 10000,
+			ssl: false,
+			sshTunnel: false,
+		};
+
+		it('gives wfrt the connection values under the names that its sql client reads', async () => {
+			helper.getDecrypted.mockResolvedValue({ ...values });
+			const document = await credentials().buildDocument('wf1', [database]);
+			expect(document.db).toMatchObject({ type: 'mySql', data: values });
+			// The names that `loadCredential` of the MySQL client of `wfrt` reads.
+			for (const name of ['host', 'port', 'user', 'password', 'database', 'ssl', 'sshTunnel']) {
+				expect(document.db).toHaveProperty(['data', name]);
+			}
+			// The values are not for a request: the slot has no injection and no renewal.
+			expect(document.db).not.toHaveProperty('inject');
+			expect(document.db).not.toHaveProperty('renewal');
+		});
+
+		it('keeps the tunnel and certificate values, so wfrt gives the node to the fallback host', async () => {
+			const tunnel = {
+				...values,
+				ssl: true,
+				sshTunnel: true,
+				caCertificate: 'ca',
+				clientCertificate: 'c',
+				clientPrivateKey: 'k',
+			};
+			helper.getDecrypted.mockResolvedValue({ ...tunnel });
+			const document = await credentials().buildDocument('wf1', [database]);
+			expect(document.db).toMatchObject({ data: tunnel });
+		});
+
+		it('writes no value of the credential to the log', async () => {
+			helper.getDecrypted.mockResolvedValue({ ...values });
+			await credentials().buildDocument('wf1', [database]);
+			const logged = JSON.stringify([
+				logger.debug.mock.calls,
+				logger.info.mock.calls,
+				logger.warn.mock.calls,
+				logger.error.mock.calls,
+			]);
+			expect(logged).not.toContain('my-secret');
+			expect(logged).not.toContain('db.example.com');
+		});
+	});
+
 	describe('renewal', () => {
 		it('tells wfrt that an OAuth2 slot is renewed on 401', async () => {
 			const document = await credentials().buildDocument('wf1', [binding]);
