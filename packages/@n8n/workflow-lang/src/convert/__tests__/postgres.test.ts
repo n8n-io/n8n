@@ -149,17 +149,24 @@ describe('Postgres node', () => {
 		expect(JSON.stringify(run.result)).toContain('"tags":[1]');
 	});
 
-	it('runs the v1 node in the host, and sends nothing, for a text without an exact form', async () => {
-		const filter = { ...read, query: 'SELECT $1:name FROM people' };
+	it('sends the text of pg-promise as a simple statement for a query without an exact bind form', async () => {
+		const filter = { ...read, query: "SELECT $1:name FROM people WHERE note = 'age $2'" };
 		const out = convertWorkflow(workflow(filter), { sql: true });
 		const run = await runReference(out.source, {
-			trigger,
+			trigger: { ...trigger, body: { name: 'a"b', age: "3' OR 1=1" } },
 			now: 0,
 			seed: 1,
-			effects: { 'Query (fallback host)': [[{ name: 'Ann' }]] },
+			effects: {
+				Query: [{ results: [{ sets: [{ command: 'SELECT', rowCount: 0, rows: [] }] }] }],
+			},
 		});
 		expect(run.status).toBe('ok');
-		expect(run.effects.map((e) => [e.step, e.kind])).toEqual([['Query (fallback host)', 'node']]);
+		expect(run.effects.map((e) => [e.step, e.kind])).toEqual([['Query', 'sql']]);
+		expect(run.effects[0].args).toMatchObject({
+			statements: [
+				{ text: `SELECT "a""b" FROM people WHERE note = 'age '3'' OR 1=1''`, simple: true },
+			],
+		});
 	});
 
 	it('fails the node with the error of v1 for another error of the sql effect', async () => {

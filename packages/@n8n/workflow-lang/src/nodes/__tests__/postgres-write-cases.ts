@@ -162,14 +162,14 @@ export const POSTGRES_QUERY_TEXT_CASES: PostgresCase[] = [
 		"SELECT '{{ $json.a }}' AS a, {{ $json.b }} AS b",
 		[{ a: '{{ $json.b }}', b: 7 }],
 		{},
-		{ host: true },
+		{},
 	),
 	text(
 		'a part with the text before it as its replacement',
 		"SELECT 1 AS a, '{{ $json.b }}' AS b",
 		[{ b: '$`' }],
 		{},
-		{ host: true },
+		{},
 	),
 	text(
 		'a part with a calculation',
@@ -181,7 +181,7 @@ export const POSTGRES_QUERY_TEXT_CASES: PostgresCase[] = [
 		'SELECT 1 AS a{{ $json.more }}',
 		[{ more: '; SELECT 2 AS b' }],
 		{},
-		{ host: true },
+		{},
 	),
 	text('a part that is null', 'SELECT {{ $json.none }} AS a', [{ none: null }], {}, { host: true }),
 	text(
@@ -224,9 +224,9 @@ export const POSTGRES_QUERY_TEXT_CASES: PostgresCase[] = [
 		"SELECT E'a\\' $1 b' AS a",
 		[{}],
 		{ queryReplacement: 'x' },
-		{ host: true },
+		{},
 	),
-	text('an escape string without an end', "SELECT E'abc\\' AS a", [{}], {}, { host: true }),
+	text('an escape string without an end', "SELECT E'abc\\' AS a", [{}], {}, {}),
 	text('empty strings as null without an expression', "SELECT '' AS name", [{ name: '' }], {
 		replaceEmptyStrings: true,
 	}),
@@ -303,7 +303,6 @@ export const POSTGRES_WRITE_CASES: PostgresCase[] = [
 	),
 	insert('all columns of a table with array columns', 'things', auto(), {
 		items: [{ id: 3, label: 'a' }],
-		host: true,
 	}),
 	insert('no list for an array column that is not nullable', 'strict', auto(), {
 		items: [{ id: 1 }],
@@ -784,7 +783,7 @@ export const POSTGRES_VERSION_CASES: PostgresCase[] = [
 		'SELECT id FROM pgcase.people WHERE age IN ($1) ORDER BY id',
 		[{ ages: [34, 27] }],
 		{ queryReplacement: '={{ $json.ages }}, 1' },
-		older(2.4, { host: true }),
+		older(2.4, {}),
 	),
 	text(
 		'a part of the query text in version 2.2',

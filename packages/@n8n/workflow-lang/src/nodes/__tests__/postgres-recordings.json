@@ -501,11 +501,29 @@
 					"dates": "legacy"
 				},
 				"result": {
-					"$error": "sql: the column \"born\" has the type 1082 (limit: sql-type)"
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 3,
+							"rows": [
+								{
+									"id": 1,
+									"born": "1990-02-03T00:00:00.000Z"
+								},
+								{
+									"id": 2,
+									"born": null
+								},
+								{
+									"id": 3,
+									"born": "2001-12-31T00:00:00.000Z"
+								}
+							]
+						}
+					]
 				}
 			}
-		],
-		"host": true
+		]
 	},
 	"executeQuery, an array column": {
 		"v1": {
@@ -549,11 +567,29 @@
 					"dates": "legacy"
 				},
 				"result": {
-					"$error": "sql: the column \"tags\" has the type 1007 (limit: sql-type)"
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 3,
+							"rows": [
+								{
+									"id": 1,
+									"tags": [1, 2]
+								},
+								{
+									"id": 2,
+									"tags": null
+								},
+								{
+									"id": 3,
+									"tags": []
+								}
+							]
+						}
+					]
 				}
 			}
-		],
-		"host": true
+		]
 	},
 	"executeQuery, an interval column": {
 		"v1": {
@@ -588,11 +624,20 @@
 					"dates": "legacy"
 				},
 				"result": {
-					"$error": "sql: the column \"gap\" has the type 1186 (limit: sql-type)"
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"gap": {}
+								}
+							]
+						}
+					]
 				}
 			}
-		],
-		"host": true
+		]
 	},
 	"executeQuery, other types as text": {
 		"v1": {
@@ -685,20 +730,11 @@
 					"dates": "legacy"
 				},
 				"result": {
-					"results": [
-						{
-							"command": "SELECT",
-							"rowCount": 1,
-							"rows": [
-								{
-									"a": "2"
-								}
-							]
-						}
-					]
+					"$error": "sql: two columns have the name \"a\" (limit: sql-type)"
 				}
 			}
-		]
+		],
+		"host": true
 	},
 	"executeQuery, no rows of a select": {
 		"v1": {
@@ -2288,8 +2324,49 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a name filter of pg-promise": {
 		"v1": {
@@ -2314,8 +2391,46 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT \"name\" FROM pgcase.people ORDER BY id",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 3,
+									"rows": [
+										{
+											"name": "Ann"
+										},
+										{
+											"name": "Bob"
+										},
+										{
+											"name": "Cy \"The\" O'Neil"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a variable in a comment": {
 		"v1": {
@@ -2337,8 +2452,43 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT name FROM pgcase.people WHERE age > '30' -- more than '30'\nORDER BY id",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 2,
+									"rows": [
+										{
+											"name": "Ann"
+										},
+										{
+											"name": "Cy \"The\" O'Neil"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a variable in a quoted text with query parameters": {
 		"v1": {
@@ -2353,8 +2503,36 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 'costs '5'' AS a",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "syntax error at or near \"5\"",
+								"length": 90,
+								"severity": "ERROR",
+								"code": "42601",
+								"position": "16"
+							}
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a typed literal": {
 		"v1": {
@@ -2373,8 +2551,40 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT (date '2024-01-02')::text AS d",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"d": "2024-01-02"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a function that takes any type": {
 		"v1": {
@@ -2428,8 +2638,36 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 'a' AS a, $2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "there is no parameter $2",
+								"length": 94,
+								"severity": "ERROR",
+								"code": "42P02",
+								"position": "18"
+							}
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a list in a list of query parameters": {
 		"v1": {
@@ -2451,8 +2689,43 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT name FROM pgcase.people WHERE age = ANY(array[34,27])",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 2,
+									"rows": [
+										{
+											"name": "Ann"
+										},
+										{
+											"name": "Bob"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
 	},
 	"select, all rows of two columns": {
 		"v1": {
@@ -2721,11 +2994,70 @@
 					"dates": "text"
 				},
 				"result": {
-					"$error": "sql: the column \"tags\" has the type 1007 (limit: sql-type)"
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 3,
+							"rows": [
+								{
+									"id": 1,
+									"name": "Ann",
+									"age": 34,
+									"score": "12.50",
+									"big": "9007199254740993",
+									"active": true,
+									"meta": {
+										"a": [1, 2]
+									},
+									"born": "1990-02-03",
+									"seen": "2024-01-02T03:04:05.678Z",
+									"made": "2024-01-02T03:04:05.000Z",
+									"ratio": 0.1,
+									"tags": [1, 2],
+									"bin": {
+										"type": "Buffer",
+										"data": [1, 2, 255]
+									}
+								},
+								{
+									"id": 2,
+									"name": "Bob",
+									"age": 27,
+									"score": null,
+									"big": "5",
+									"active": false,
+									"meta": null,
+									"born": null,
+									"seen": null,
+									"made": null,
+									"ratio": null,
+									"tags": null,
+									"bin": null
+								},
+								{
+									"id": 3,
+									"name": "Cy \"The\" O'Neil",
+									"age": 61,
+									"score": "0.00",
+									"big": "-1",
+									"active": null,
+									"meta": "text",
+									"born": "2001-12-31",
+									"seen": "1999-12-31T21:59:59.000Z",
+									"made": "1999-12-31T23:59:59.500Z",
+									"ratio": 1e300,
+									"tags": [],
+									"bin": {
+										"type": "Buffer",
+										"data": []
+									}
+								}
+							]
+						}
+					]
 				}
 			}
-		],
-		"host": true
+		]
 	},
 	"select, all columns with a date in version 2.6": {
 		"v1": {
@@ -2810,11 +3142,70 @@
 					"dates": "legacy"
 				},
 				"result": {
-					"$error": "sql: the column \"born\" has the type 1082 (limit: sql-type)"
+					"results": [
+						{
+							"command": "SELECT",
+							"rowCount": 3,
+							"rows": [
+								{
+									"id": 1,
+									"name": "Ann",
+									"age": 34,
+									"score": "12.50",
+									"big": "9007199254740993",
+									"active": true,
+									"meta": {
+										"a": [1, 2]
+									},
+									"born": "1990-02-03T00:00:00.000Z",
+									"seen": "2024-01-02T03:04:05.678Z",
+									"made": "2024-01-02T03:04:05.000Z",
+									"ratio": 0.1,
+									"tags": [1, 2],
+									"bin": {
+										"type": "Buffer",
+										"data": [1, 2, 255]
+									}
+								},
+								{
+									"id": 2,
+									"name": "Bob",
+									"age": 27,
+									"score": null,
+									"big": "5",
+									"active": false,
+									"meta": null,
+									"born": null,
+									"seen": null,
+									"made": null,
+									"ratio": null,
+									"tags": null,
+									"bin": null
+								},
+								{
+									"id": 3,
+									"name": "Cy \"The\" O'Neil",
+									"age": 61,
+									"score": "0.00",
+									"big": "-1",
+									"active": null,
+									"meta": "text",
+									"born": "2001-12-31T00:00:00.000Z",
+									"seen": "1999-12-31T21:59:59.000Z",
+									"made": "1999-12-31T23:59:59.500Z",
+									"ratio": 1e300,
+									"tags": [],
+									"bin": {
+										"type": "Buffer",
+										"data": []
+									}
+								}
+							]
+						}
+					]
 				}
 			}
-		],
-		"host": true
+		]
 	},
 	"select, a condition with a text value": {
 		"v1": {
@@ -4367,8 +4758,36 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT '7' AS a, {{ $json.b }} AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "syntax error at or near \"{\"",
+								"length": 90,
+								"severity": "ERROR",
+								"code": "42601",
+								"position": "18"
+							}
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a part with the text before it as its replacement": {
 		"v1": {
@@ -4383,8 +4802,36 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a, 'SELECT 1 AS a, '' AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "unterminated quoted string at or near \"'SELECT 1 AS a, '' AS b\"",
+								"length": 126,
+								"severity": "ERROR",
+								"code": "42601",
+								"position": "16"
+							}
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a part with a calculation": {
 		"v1": {
@@ -4456,8 +4903,49 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT 1 AS a; SELECT 2 AS b",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"sets": [
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"a": 1
+										}
+									]
+								},
+								{
+									"command": "SELECT",
+									"rowCount": 1,
+									"rows": [
+										{
+											"b": 2
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a part that is null": {
 		"v1": {
@@ -4632,8 +5120,36 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT E'a\\' 'x' b' AS a",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "syntax error at or near \"x' b'\"",
+								"length": 94,
+								"severity": "ERROR",
+								"code": "42601",
+								"position": "15"
+							}
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, an escape string without an end": {
 		"v1": {
@@ -4648,8 +5164,36 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT E'abc\\' AS a",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "unterminated quoted string at or near \"E'abc\\' AS a\"",
+								"length": 114,
+								"severity": "ERROR",
+								"code": "42601",
+								"position": "8"
+							}
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, empty strings as null without an expression": {
 		"v1": {
@@ -6708,11 +7252,34 @@
 					"dates": "legacy"
 				},
 				"result": {
-					"$error": "sql: the column \"tags\" has the type 1009 (limit: sql-type)"
+					"results": [
+						{
+							"command": "INSERT",
+							"rowCount": 1,
+							"rows": [
+								{
+									"id": 3,
+									"label": "a",
+									"qty": null,
+									"price": null,
+									"ok": null,
+									"doc": null,
+									"raw": null,
+									"tags": null,
+									"nums": null,
+									"day": null,
+									"at": null,
+									"plain": null,
+									"lunch": null,
+									"feel": null,
+									"note": "none"
+								}
+							]
+						}
+					]
 				}
 			}
-		],
-		"host": true
+		]
 	},
 	"insert, no list for an array column that is not nullable": {
 		"v1": {
@@ -16188,8 +16755,37 @@
 			"1true",
 			"[]"
 		],
-		"calls": [],
-		"host": true
+		"calls": [
+			{
+				"args": {
+					"credential": "pg",
+					"dialect": "postgres",
+					"mode": "single",
+					"statements": [
+						{
+							"text": "SELECT id FROM pgcase.people WHERE age IN (array[34,27]) ORDER BY id",
+							"simple": true
+						}
+					],
+					"largeNumbers": "text",
+					"dates": "legacy"
+				},
+				"result": {
+					"results": [
+						{
+							"error": {
+								"message": "operator does not exist: integer = integer[]",
+								"length": 204,
+								"severity": "ERROR",
+								"code": "42883",
+								"hint": "No operator matches the given name and argument types. You might need to add explicit type casts.",
+								"position": "40"
+							}
+						}
+					]
+				}
+			}
+		]
 	},
 	"executeQuery, a part of the query text in version 2.2": {
 		"v1": {
@@ -22939,259 +23535,5 @@
 			}
 		],
 		"host": true
-	},
-	"continue, update, rows to update": {
-		"v1": {
-			"output": [
-				{
-					"id": 1,
-					"label": "uno"
-				},
-				{
-					"id": 2,
-					"label": "dos"
-				}
-			]
-		},
-		"state": [
-			"[{\"id\": 1, \"age\": 34, \"big\": 9007199254740993, \"bin\": \"\\\\x0102ff\", \"born\": \"1990-02-03\", \"made\": \"2024-01-02T03:04:05\", \"meta\": {\"a\": [1, 2]}, \"name\": \"Ann\", \"seen\": \"2024-01-02T03:04:05.678+00:00\", \"tags\": [1, 2], \"ratio\": 0.1, \"score\": 12.50, \"active\": true}, {\"id\": 2, \"age\": 27, \"big\": 5, \"bin\": null, \"born\": null, \"made\": null, \"meta\": null, \"name\": \"Bob\", \"seen\": null, \"tags\": null, \"ratio\": \"NaN\", \"score\": null, \"active\": false}, {\"id\": 3, \"age\": 61, \"big\": -1, \"bin\": \"\\\\x\", \"born\": \"2001-12-31\", \"made\": \"1999-12-31T23:59:59.5\", \"meta\": \"text\", \"name\": \"Cy \\\"The\\\" O'Neil\", \"seen\": \"1999-12-31T21:59:59+00:00\", \"tags\": [], \"ratio\": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, \"score\": 0.00, \"active\": null}]",
-			"[{\"id\": 1, \"body\": \"first\", \"person\": 1}]",
-			"3true",
-			"[{\"at\": null, \"id\": 1, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 1, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"uno\", \"lunch\": null, \"plain\": null, \"price\": null}, {\"at\": null, \"id\": 2, \"ok\": null, \"day\": null, \"doc\": null, \"qty\": 2, \"raw\": null, \"feel\": null, \"note\": \"none\", \"nums\": null, \"tags\": null, \"label\": \"dos\", \"lunch\": null, \"plain\": null, \"price\": null}]",
-			"[{\"at\": null, \"id\": 1, \"ok\": null, \"doc\": null, \"qty\": 1, \"label\": \"first\", \"price\": null, \"Odd \\\"Name\": \"none\"}]",
-			"1true",
-			"[]"
-		],
-		"calls": [
-			{
-				"args": {
-					"credential": "case",
-					"dialect": "postgres",
-					"mode": "single",
-					"statements": [
-						{
-							"text": "SELECT column_name, data_type, is_nullable, udt_name, column_default FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2",
-							"values": ["pgcase", "things"]
-						}
-					],
-					"largeNumbers": "text",
-					"dates": "legacy"
-				},
-				"result": {
-					"results": [
-						{
-							"command": "SELECT",
-							"rowCount": 15,
-							"rows": [
-								{
-									"column_name": "id",
-									"data_type": "integer",
-									"is_nullable": "NO",
-									"udt_name": "int4",
-									"column_default": null
-								},
-								{
-									"column_name": "label",
-									"data_type": "text",
-									"is_nullable": "NO",
-									"udt_name": "text",
-									"column_default": null
-								},
-								{
-									"column_name": "qty",
-									"data_type": "integer",
-									"is_nullable": "YES",
-									"udt_name": "int4",
-									"column_default": null
-								},
-								{
-									"column_name": "price",
-									"data_type": "numeric",
-									"is_nullable": "YES",
-									"udt_name": "numeric",
-									"column_default": null
-								},
-								{
-									"column_name": "ok",
-									"data_type": "boolean",
-									"is_nullable": "YES",
-									"udt_name": "bool",
-									"column_default": null
-								},
-								{
-									"column_name": "doc",
-									"data_type": "jsonb",
-									"is_nullable": "YES",
-									"udt_name": "jsonb",
-									"column_default": null
-								},
-								{
-									"column_name": "raw",
-									"data_type": "json",
-									"is_nullable": "YES",
-									"udt_name": "json",
-									"column_default": null
-								},
-								{
-									"column_name": "tags",
-									"data_type": "ARRAY",
-									"is_nullable": "YES",
-									"udt_name": "_text",
-									"column_default": null
-								},
-								{
-									"column_name": "nums",
-									"data_type": "ARRAY",
-									"is_nullable": "YES",
-									"udt_name": "_int4",
-									"column_default": null
-								},
-								{
-									"column_name": "day",
-									"data_type": "date",
-									"is_nullable": "YES",
-									"udt_name": "date",
-									"column_default": null
-								},
-								{
-									"column_name": "at",
-									"data_type": "timestamp with time zone",
-									"is_nullable": "YES",
-									"udt_name": "timestamptz",
-									"column_default": null
-								},
-								{
-									"column_name": "plain",
-									"data_type": "timestamp without time zone",
-									"is_nullable": "YES",
-									"udt_name": "timestamp",
-									"column_default": null
-								},
-								{
-									"column_name": "lunch",
-									"data_type": "time without time zone",
-									"is_nullable": "YES",
-									"udt_name": "time",
-									"column_default": null
-								},
-								{
-									"column_name": "feel",
-									"data_type": "USER-DEFINED",
-									"is_nullable": "YES",
-									"udt_name": "mood",
-									"column_default": null
-								},
-								{
-									"column_name": "note",
-									"data_type": "text",
-									"is_nullable": "YES",
-									"udt_name": "text",
-									"column_default": "'none'::text"
-								}
-							]
-						}
-					]
-				}
-			},
-			{
-				"args": {
-					"credential": "case",
-					"dialect": "postgres",
-					"mode": "single",
-					"statements": [
-						{
-							"text": "SELECT EXISTS(SELECT 1 FROM \"pgcase\".\"things\" WHERE \"id\"=$1)",
-							"values": [1]
-						}
-					],
-					"largeNumbers": "text",
-					"dates": "legacy"
-				},
-				"result": {
-					"results": [
-						{
-							"command": "SELECT",
-							"rowCount": 1,
-							"rows": [
-								{
-									"exists": true
-								}
-							]
-						}
-					]
-				}
-			},
-			{
-				"args": {
-					"credential": "case",
-					"dialect": "postgres",
-					"mode": "single",
-					"statements": [
-						{
-							"text": "SELECT EXISTS(SELECT 1 FROM \"pgcase\".\"things\" WHERE \"id\"=$1)",
-							"values": [2]
-						}
-					],
-					"largeNumbers": "text",
-					"dates": "legacy"
-				},
-				"result": {
-					"results": [
-						{
-							"command": "SELECT",
-							"rowCount": 1,
-							"rows": [
-								{
-									"exists": true
-								}
-							]
-						}
-					]
-				}
-			},
-			{
-				"args": {
-					"credential": "case",
-					"dialect": "postgres",
-					"mode": "single",
-					"statements": [
-						{
-							"text": "UPDATE \"pgcase\".\"things\" SET \"label\" = $1 WHERE \"id\" = $2 RETURNING \"id\",\"label\"",
-							"values": ["uno", 1]
-						},
-						{
-							"text": "UPDATE \"pgcase\".\"things\" SET \"label\" = $1 WHERE \"id\" = $2 RETURNING \"id\",\"label\"",
-							"values": ["dos", 2]
-						}
-					],
-					"largeNumbers": "text",
-					"dates": "legacy"
-				},
-				"result": {
-					"results": [
-						{
-							"command": "UPDATE",
-							"rowCount": 1,
-							"rows": [
-								{
-									"id": 1,
-									"label": "uno"
-								}
-							]
-						},
-						{
-							"command": "UPDATE",
-							"rowCount": 1,
-							"rows": [
-								{
-									"id": 2,
-									"label": "dos"
-								}
-							]
-						}
-					]
-				}
-			}
-		]
 	}
 }

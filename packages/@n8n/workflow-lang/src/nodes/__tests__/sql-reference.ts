@@ -41,11 +41,6 @@ const INT8 = 20;
 const NUMERIC = 1700;
 const BOOL = 16;
 
-/** Column types that have no exact native form in the first pass (spec 9.10). */
-const NOT_NATIVE = new Set([
-	600, 718, 1186, 651, 1000, 1001, 1005, 1007, 1028, 1016, 1017, 1021, 1022, 1231, 1014, 1015, 1008,
-	1009, 1040, 1041, 1115, 1182, 1185, 1187, 199, 3807, 3907, 2951, 791, 1183, 1270,
-]);
 const ERROR_FIELDS = [
 	'length',
 	'severity',
@@ -119,6 +114,16 @@ function isoText(text: string): string {
 	return isNaN(date.getTime()) ? text : date.toISOString();
 }
 
+/** The value that node-postgres gives for a column text without a reader of the v1 node. */
+function defaultValue(text: string, type: number): unknown {
+	return pg().types.getTypeParser(type, 'text')(text);
+}
+
+/** The elements of an array text with `transform` for each, as the v1 node reads an array of dates. */
+function elements(text: string, transform: (entry: string) => unknown): unknown {
+	return pg().types.arrayParser.create(text, transform).parse();
+}
+
 function columnValue(text: string | null, type: number, request: Record<string, unknown>): unknown {
 	if (text === null) return null;
 	const numbers = request.largeNumbers === 'numbers';
@@ -145,8 +150,18 @@ function columnValue(text: string | null, type: number, request: Record<string, 
 		case 1184:
 		case 1114:
 			return isoText(text);
+		case 1082:
+			// From version 2.7 the v1 node keeps the text of a date.
+			return request.dates === 'legacy' ? defaultValue(text, type) : text;
+		case 1182:
+			return request.dates === 'legacy' ? defaultValue(text, type) : elements(text, (e) => e);
+		case 1115:
+		case 1185:
+			return request.dates === 'legacy' ? defaultValue(text, type) : elements(text, isoText);
 		default:
-			return text;
+			// Each other type: the reader of node-postgres, as in the v1 node (arrays, interval,
+			// point, circle; text for the rest).
+			return defaultValue(text, type);
 	}
 }
 
@@ -204,9 +219,13 @@ function limitOf(
 	}
 	for (const field of described.fields ?? []) {
 		const type = field.dataTypeID;
-		const dated = type === 1082 && request.dates === 'legacy';
-		const zoned = type === 1114 && options.timestampZone !== 'utc';
-		if (NOT_NATIVE.has(type) || dated || zoned) {
+		// v1 reads these in the time zone of its process.
+		const local = options.timestampZone !== 'utc';
+		const dated = (type === 1082 || type === 1182) && request.dates === 'legacy' && local;
+		const zoned = (type === 1114 || type === 1115) && local;
+		const twice = (described.fields ?? []).filter((other) => other.name === field.name).length > 1;
+		if (twice) return limit(`two columns have the name "${field.name}"`, 'sql-type');
+		if (dated || zoned) {
 			return limit(`the column "${field.name}" has the type ${type}`, 'sql-type');
 		}
 	}
