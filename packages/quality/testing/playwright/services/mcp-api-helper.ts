@@ -1004,6 +1004,35 @@ export class McpApiHelper {
 	}
 
 	/**
+	 * Calls create_custom_page tool on the internal MCP service.
+	 */
+	async internalMcpCreateCustomPage(
+		apiKey: string,
+		args: { title: string; source: string; pageId?: string; icon?: string },
+	): Promise<{ pageId: string; title: string; created: boolean }> {
+		return await this.callInternalMcpTool(apiKey, 'create_custom_page', args);
+	}
+
+	/**
+	 * Calls list_ui_extensions tool on the internal MCP service.
+	 */
+	async internalMcpListUiExtensions(apiKey: string): Promise<{
+		items: Array<{ id: string; kind: 'view' | 'page'; title: string; icon?: string }>;
+	}> {
+		return await this.callInternalMcpTool(apiKey, 'list_ui_extensions', {});
+	}
+
+	/**
+	 * Calls delete_ui_extension tool on the internal MCP service.
+	 */
+	async internalMcpDeleteUiExtension(
+		apiKey: string,
+		id: string,
+	): Promise<{ id: string; kind: 'view' | 'page'; title: string }> {
+		return await this.callInternalMcpTool(apiKey, 'delete_ui_extension', { id });
+	}
+
+	/**
 	 * Calls get_workflow_details tool on the internal MCP service.
 	 */
 	async internalMcpGetWorkflowDetails(

@@ -153,7 +153,7 @@ export default {
 									<N8nBadge :variant="healthBadge(service.health)" data-test-id="services-overview-health">{{ t('uiExtensions.servicesOverview.health.' + service.health) }}</N8nBadge>
 								</div>
 								<span v-if="service.accounts.length > 0" :style="row" style="flex-wrap: wrap; gap: var(--spacing--4xs)" data-test-id="services-overview-accounts">
-									<N8nIcon icon="key-round" size="small" color="text-light" :title="t('uiExtensions.servicesOverview.accounts')" />
+									<N8nText size="xsmall" color="text-light">{{ t('uiExtensions.servicesOverview.accounts') }}</N8nText>
 									<N8nTag v-for="account in service.accounts" :key="account" :text="account" :clickable="false" data-test-id="services-overview-account" />
 								</span>
 								<div style="display: flex; flex-direction: column; gap: var(--spacing--5xs)">

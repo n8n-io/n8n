@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 import type { ApiHelpers } from '../../../services/api-helper';
+import { createSlackWorkflow } from './ui-extensions-helpers';
 
 /**
  * The side panel at the right edge of the editor. Its tabs are views: the
@@ -168,57 +169,7 @@ test.describe(
 		});
 
 		test('shows the data a service node read in its last run', async ({ n8n, api }) => {
-			const credential = await api.credentials.createCredential({
-				name: `Slack ${nanoid()}`,
-				type: 'slackApi',
-				data: { accessToken: 'xoxb-not-a-real-token' },
-			});
-			const name = `Side panel ${nanoid()}`;
-			// Pinned data means that the run never uses the credential or calls Slack.
-			const workflow = await api.workflows.createWorkflow({
-				name,
-				nodes: [
-					{
-						id: nanoid(),
-						name: 'Start here',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: nanoid(),
-						name: 'Post alert',
-						type: 'n8n-nodes-base.slack',
-						typeVersion: 2.3,
-						position: [200, 0],
-						parameters: {
-							resource: 'message',
-							operation: 'post',
-							select: 'channel',
-							channelId: {
-								__rl: true,
-								mode: 'list',
-								value: 'C123',
-								cachedResultName: '#qa-alerts',
-								cachedResultUrl: 'https://example.slack.com/archives/C123',
-							},
-							text: 'hello',
-						},
-						credentials: { slackApi: { id: credential.id, name: credential.name } },
-					},
-				],
-				connections: {
-					'Start here': { main: [[{ node: 'Post alert', type: 'main', index: 0 }]] },
-				},
-				pinData: {
-					'Post alert': [
-						{ json: { ts: '1', text: 'hello from qa' } },
-						{ json: { ts: '2', text: 'second message' } },
-					],
-				},
-			});
-			const workflowId = String(workflow.id);
+			const { id: workflowId, credential } = await createSlackWorkflow(api);
 
 			await n8n.navigate.toWorkflow(workflowId);
 			await n8n.sidePanel.open();
@@ -366,6 +317,39 @@ test.describe(
 			await n8n.page.reload();
 			await n8n.sidePanel.open();
 			await expect(n8n.sidePanel.getTab(title)).toBeVisible();
+		});
+
+		test('lines up the tab row with the main header and shows no panel title', async ({
+			n8n,
+			api,
+		}, testInfo) => {
+			const workflow = await createWorkflow(api);
+
+			await n8n.navigate.toWorkflow(workflow.id);
+			await expect(n8n.canvas.nodeByName('Start here')).toBeVisible();
+			await n8n.sidePanel.open();
+			await expect(n8n.sidePanel.getRegion()).toBeVisible();
+			await expect(n8n.sidePanel.getVisibleTitle()).toHaveCount(0);
+
+			const header = n8n.sidePanel.getMainHeader();
+			const headerBox = await header.boundingBox();
+			const rowBox = await n8n.sidePanel.getTabRow().boundingBox();
+			expect(headerBox).not.toBeNull();
+			expect(rowBox).not.toBeNull();
+			expect(
+				Math.abs(rowBox!.y + rowBox!.height - (headerBox!.y + headerBox!.height)),
+			).toBeLessThanOrEqual(1);
+			await n8n.page.screenshot({ path: testInfo.outputPath('side-panel-workflow-page.png') });
+
+			await n8n.navigate.toWorkflows();
+			await expect(n8n.sideBar.getSettings()).toBeVisible();
+			await n8n.sidePanel.open();
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(
+				'All workflows',
+			);
+			const listRowBox = await n8n.sidePanel.getTabRow().boundingBox();
+			expect(Math.abs(listRowBox!.height - 65)).toBeLessThanOrEqual(1);
+			await n8n.page.screenshot({ path: testInfo.outputPath('side-panel-workflows-list.png') });
 		});
 
 		test('ignores a command from a view to replace the open workflow', async ({ n8n, api }) => {
