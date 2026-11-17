@@ -14,17 +14,23 @@
 const std = @import("std");
 const core_lib = @import("core");
 const smtp = core_lib.smtp;
+const mail = core_lib.mail;
 const sys = @import("sys.zig");
 const tls = @import("tls.zig");
 const dns = @import("dns.zig");
 const creds = @import("creds.zig");
 const http = @import("http.zig");
 const smtp_call = @import("smtp_call.zig");
+const binary_store = @import("binary_store.zig");
 const sql_net = @import("sql_net.zig");
 
 const cred_bytes = 1024;
 const read_passes = 256;
 const marker_host = " (limit: smtp-host)";
+/// The files of one message.
+const max_files = 16;
+/// The text fields of a call, in the order of `mail.Fields`.
+const field_names = [_][]const u8{ "from", "to", "cc", "bcc", "replyTo", "subject", "text", "html" };
 /// The session of a slot that has no call.
 const no_call: smtp.Config = .{ .name = "", .secure = false, .ignore_tls = false, .auth = false, .user = "", .pass = "", .from = "" };
 
@@ -43,6 +49,9 @@ pub const Config = struct {
     ca_file: ?[:0]const u8 = null,
     dns_servers: ?[:0]const u8 = null,
     credentials: ?*const creds.Store = null,
+    /// The random bytes and the time of each message, for a test. Null takes
+    /// them from the system.
+    entropy: ?mail.Entropy = null,
 };
 
 const Counters = struct {
@@ -81,8 +90,14 @@ const Req = struct {
     wiped: bool = false,
     /// The copy of the arguments.
     args: []u8 = &.{},
-    /// The message and the addresses, decoded.
+    /// The fields of the message and the bytes of its files, decoded.
     text: []u8 = &.{},
+    /// The message that the builder made.
+    msg: []u8 = &.{},
+    /// The addresses of the envelope and the Message-ID.
+    env: []u8 = &.{},
+    from: []const u8 = "",
+    message_id: []const u8 = "",
     rcpts: []smtp.Rcpt = &.{},
     rbuf: []u8 = &.{},
     wbuf: []u8 = &.{},
@@ -120,6 +135,8 @@ pub const Client = struct {
     /// The EHLO name when the credential has none: the rule of nodemailer.
     name_buf: [260]u8 = @splat(0),
     name_len: usize = 0,
+    /// The work space of the message builder. A build ends before the next starts.
+    scratch: []u8 = &.{},
     more_pending: bool = false,
     now_ms: i64 = 0,
     last_scan_ms: i64 = 0,
@@ -140,6 +157,7 @@ pub const Client = struct {
             .done = try gpa.alloc(u32, cfg.max_reqs),
         };
         try c.resolver.init(poller, kind_dns, cfg.dns_servers);
+        c.scratch = try reserve(gpa, u8, mail.scratch_min);
         for (c.reqs) |*r| {
             const rbuf = try reserve(gpa, u8, 64 << 10);
             // MAIL FROM, every RCPT TO and DATA go in one write.
@@ -154,6 +172,8 @@ pub const Client = struct {
                 .notes = notes,
                 .args = try reserve(gpa, u8, cfg.max_request),
                 .text = try reserve(gpa, u8, cfg.max_request),
+                .msg = try reserve(gpa, u8, cfg.max_request),
+                .env = try reserve(gpa, u8, 64 + 300 * @as(usize, cfg.max_rcpts)),
                 .rcpts = try gpa.alloc(smtp.Rcpt, cfg.max_rcpts),
                 .out = try reserve(gpa, u8, 512 << 10),
             };
@@ -239,18 +259,12 @@ pub const Client = struct {
         r.port = set.port;
         r.secure = set.secure;
         r.insecure = call.insecure;
-        var text: creds.Out = .{ .buf = r.text };
-        const from = decode(&text, call.from) orelse return "smtp: 'from' of the call must be a string";
-        var it = http.Elements.init(call.to) orelse return "smtp: 'to' of the call must be an array of strings";
-        var n: usize = 0;
-        // One recipient more than the limit ends the loop.
-        for (0..r.rcpts.len + 1) |_| {
-            const raw = it.next() orelse break;
-            if (n == r.rcpts.len) return "smtp: the message has more recipients than the client takes" ++ marker_host;
-            r.rcpts[n] = .{ .addr = decode(&text, raw) orelse return "smtp: 'to' of the call must be an array of strings" };
-            n += 1;
-        }
-        const message = decode(&text, call.message) orelse return "smtp: 'message' of the call must be a string";
+        const built = switch (c.compose(r, r.args[0..args.len])) {
+            .message => |m| m,
+            .refused => |msg| return msg,
+        };
+        r.from = built.from;
+        r.message_id = built.message_id;
         const cfg: smtp.Config = .{
             .name = r.cred[set.host.len + set.user.len + set.pass.len ..][0..name.len],
             .secure = set.secure,
@@ -258,10 +272,43 @@ pub const Client = struct {
             .auth = set.auth,
             .user = user,
             .pass = pass,
-            .from = from,
+            .from = built.from,
         };
-        r.sess = smtp_call.Session.init(cfg, r.rcpts[0..n], message, r.rbuf, r.wbuf, r.reply, r.notes);
+        r.sess = smtp_call.Session.init(cfg, r.rcpts[0..built.rcpts], built.message, r.rbuf, r.wbuf, r.reply, r.notes);
         return null;
+    }
+
+    const Composed = union(enum) { message: mail.Built, refused: []const u8 };
+
+    /// Build the message from the fields of the call. A call that the
+    /// builder does not take goes to the host: no connection is open yet.
+    fn compose(c: *Client, r: *Req, raw: []const u8) Composed {
+        var text: creds.Out = .{ .buf = r.text };
+        var values: [field_names.len][]const u8 = @splat("");
+        for (field_names, &values) |name, *v| {
+            const member = std.mem.trim(u8, http.member(raw, name) orelse continue, " \t\r\n");
+            if (std.mem.eql(u8, member, "null")) continue;
+            v.* = decode(&text, member) orelse return .{ .refused = "smtp: a field of the call must be a string" };
+        }
+        var files: [max_files]mail.Attachment = @splat(.{ .filename = "", .content = "" });
+        const nfiles = readFiles(&text, raw, &files) catch |e| return .{ .refused = fileError(e) };
+        const fields: mail.Fields = .{
+            .from = values[0],
+            .to = values[1],
+            .cc = values[2],
+            .bcc = values[3],
+            .reply_to = values[4],
+            .subject = values[5],
+            .text = values[6],
+            .html = values[7],
+            .attachments = files[0..nfiles],
+        };
+        const work: mail.Work = .{ .out = r.msg, .scratch = c.scratch, .notes = r.env, .rcpts = r.rcpts };
+        const built = mail.build(fields, c.cfg.entropy orelse freshEntropy(c.now_ms), work) catch |e| return .{ .refused = switch (e) {
+            error.HostOnly => "smtp: the native client does not build this message" ++ marker_host,
+            error.NoSpace => "smtp: the message is larger than --smtp-max-message-kb" ++ marker_host,
+        } };
+        return .{ .message = built };
     }
 
     /// A readiness event of the connection of a call.
@@ -412,6 +459,9 @@ pub const Client = struct {
         const outcome = r.sess.writeOutcome(&o, env, msg) catch {
             return c.failText(ri, &.{"smtp: the result does not fit its buffer (limit)"});
         };
+        if (outcome == .result and r.sess.client.succeeded()) {
+            writeEnvelope(r, &o) catch return c.failText(ri, &.{"smtp: the result does not fit its buffer (limit)"});
+        }
         r.out_len = o.len;
         r.ok = outcome == .result;
         if (r.ok and r.sess.client.succeeded()) c.counters.sent += 1;
@@ -694,6 +744,89 @@ pub const Client = struct {
         }
     }
 };
+
+/// `envelope` and `messageId` of `info`, at the end of the result.
+fn writeEnvelope(r: *const Req, o: *smtp.Out) error{NoSpace}!void {
+    std.debug.assert(o.len > 0 and o.buf[o.len - 1] == '}');
+    o.len -= 1;
+    try o.put(",\"envelope\":{\"from\":");
+    if (r.from.len > 0) try o.string(r.from) else try o.put("false");
+    try o.put(",\"to\":[");
+    for (r.sess.client.rcpts, 0..) |rcpt, i| {
+        if (i > 0) try o.byte(',');
+        try o.string(rcpt.addr);
+    }
+    try o.put("]},\"messageId\":");
+    try o.string(r.message_id);
+    try o.byte('}');
+}
+
+/// The random bytes of a message, and its time.
+fn freshEntropy(now_ms: i64) mail.Entropy {
+    var bytes: [24]u8 = @splat(0);
+    sys.randomBytes(&bytes);
+    return .{ .boundary = bytes[0..8].*, .id = bytes[8..24].*, .now_ms = now_ms };
+}
+
+const FileError = error{ BadFile, TooMany, NoStore, Missing, TooLarge };
+
+fn fileError(e: FileError) []const u8 {
+    return switch (e) {
+        error.BadFile => "smtp: a file of the call needs 'filename', and 'data' in base64 or a stored 'id'",
+        error.TooMany => "smtp: the message has more files than the client takes" ++ marker_host,
+        error.NoStore => "smtp: the runtime cannot read the stored file of the call" ++ marker_host,
+        error.Missing => "smtp: a stored file of the call is missing" ++ marker_host,
+        error.TooLarge => "smtp: the files are larger than --smtp-max-message-kb" ++ marker_host,
+    };
+}
+
+/// The files of the call, read into `text`. The answer is their count.
+fn readFiles(text: *creds.Out, raw: []const u8, files: *[max_files]mail.Attachment) FileError!usize {
+    const list = std.mem.trim(u8, http.member(raw, "attachments") orelse return 0, " \t\r\n");
+    if (std.mem.eql(u8, list, "null")) return 0;
+    var it = http.Elements.init(list) orelse return error.BadFile;
+    var n: usize = 0;
+    // One file more than the limit ends the loop.
+    for (0..max_files + 1) |_| {
+        const item = it.next() orelse break;
+        if (n == max_files) return error.TooMany;
+        files[n] = try readFile(text, item);
+        n += 1;
+    }
+    return n;
+}
+
+fn stringOf(item: []const u8, name: []const u8) ?[]const u8 {
+    const raw = std.mem.trim(u8, http.member(item, name) orelse return null, " \t\r\n");
+    return if (std.mem.eql(u8, raw, "null")) null else raw;
+}
+
+/// One file of the call: `{filename, cid?, data, id?}`. `data` is base64,
+/// or the mode name of n8n's binary data store with the file in `id`.
+fn readFile(text: *creds.Out, item: []const u8) FileError!mail.Attachment {
+    const filename = decode(text, stringOf(item, "filename") orelse return error.BadFile) orelse return error.BadFile;
+    const cid = if (stringOf(item, "cid")) |raw| decode(text, raw) orelse return error.BadFile else "";
+    const data = http.plainString(stringOf(item, "data") orelse return error.BadFile) orelse return error.BadFile;
+    const space = text.buf[text.len..];
+    if (binary_store.isStoredMarker(data)) {
+        const id = http.plainString(stringOf(item, "id") orelse return error.BadFile) orelse return error.BadFile;
+        const storage = binary_store.storagePath() orelse return error.NoStore;
+        var fixed = std.heap.FixedBufferAllocator.init(space);
+        const stored = binary_store.read(fixed.allocator(), storage, id, space.len) catch |e| return switch (e) {
+            error.TooLarge, error.OutOfMemory => error.TooLarge,
+            error.NotFound => error.Missing,
+            error.NoStore, error.BadId, error.Io => error.NoStore,
+        };
+        text.len += stored.len;
+        return .{ .filename = filename, .cid = cid, .content = stored };
+    }
+    const dec = std.base64.standard.Decoder;
+    const n = dec.calcSizeForSlice(data) catch return error.BadFile;
+    if (n > space.len) return error.TooLarge;
+    dec.decode(space[0..n], data) catch return error.BadFile;
+    text.len += n;
+    return .{ .filename = filename, .cid = cid, .content = space[0..n] };
+}
 
 /// A raw JSON string of the call, decoded into `out`.
 fn decode(out: *creds.Out, raw: []const u8) ?[]const u8 {

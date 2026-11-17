@@ -85,8 +85,11 @@ const Harness = struct {
     }
 };
 
-const message = "Subject: hi\\r\\n\\r\\n.one\\nline two";
-const message_wire = "Subject: hi\r\n\r\n..one\r\nline two\r\n.\r\n";
+/// The fields of a call, and the message that the builder makes of them on the wire.
+const fields = "\"subject\":\"hi\",\"text\":\".one\\nline two\"";
+const wire_two_named = fake.textMessage("b@x.test, C <c@x.test>, b@x.test", "..one\r\nline two");
+const wire_one = fake.textMessage("b@x.test", "..one\r\nline two");
+const envelope_one = ",\"envelope\":{\"from\":\"a@x.test\",\"to\":[\"b@x.test\"]},\"messageId\":\"<02020202-0202-0202-0202-020202020202@x.test>\"}";
 
 fn masked(a: std.mem.Allocator, text: []const u8) ![]const u8 {
     // The two times of the result depend on the run.
@@ -96,22 +99,23 @@ fn masked(a: std.mem.Allocator, text: []const u8) ![]const u8 {
 }
 
 test "smtp fake: login, a rejected recipient among accepted ones, and the message on the wire" {
-    const h = try Harness.create(.{});
+    const h = try Harness.create(.{ .entropy = fake.entropy });
     defer h.destroy();
     h.server.script(&.{
         .{ .reply = "220 mx.test ESMTP\r\n" },
         .{ .expect = "EHLO client.test\r\n", .reply = "250-mx.test\r\n250-PIPELINING\r\n250 AUTH LOGIN PLAIN\r\n" },
         .{ .expect = "AUTH PLAIN AHVzZXIAc2VjcmV0\r\n", .reply = "235 ok\r\n" },
         .{ .expect = "MAIL FROM:<a@x.test>\r\nRCPT TO:<b@x.test>\r\nRCPT TO:<c@x.test>\r\nDATA\r\n", .reply = "250 ok\r\n550 5.1.1 no such user\r\n250 ok\r\n354 go\r\n" },
-        .{ .expect = message_wire, .reply = "250 2.0.0 queued\r\n" },
+        .{ .expect = wire_two_named, .reply = "250 2.0.0 queued\r\n" },
     }, false);
-    const a = try h.call("{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\",\"c@x.test\"],\"message\":\"" ++ message ++ "\"}");
+    const a = try h.call("{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":\"b@x.test, C <c@x.test>, b@x.test\",\"bcc\":\"c@x.test\"," ++ fields ++ "}");
     try std.testing.expect(a.ok);
     try std.testing.expectEqualStrings(
         "{\"accepted\":[\"c@x.test\"],\"rejected\":[\"b@x.test\"],\"ehlo\":[\"PIPELINING\",\"AUTH LOGIN PLAIN\"]," ++
             "\"rejectedErrors\":[{\"message\":\"Recipient command failed: 550 5.1.1 no such user\",\"code\":\"EENVELOPE\"," ++
             "\"response\":\"550 5.1.1 no such user\",\"responseCode\":550,\"command\":\"RCPT TO\",\"recipient\":\"b@x.test\"}]" ++
-            ",\"messageSize\":35,\"response\":\"250 2.0.0 queued\"}",
+            std.fmt.comptimePrint(",\"messageSize\":{d},\"response\":\"250 2.0.0 queued\"", .{wire_two_named.len}) ++
+            ",\"envelope\":{\"from\":\"a@x.test\",\"to\":[\"b@x.test\",\"c@x.test\"]},\"messageId\":\"<02020202-0202-0202-0202-020202020202@x.test>\"}",
         try masked(h.arena.allocator(), a.text),
     );
     try std.testing.expect(h.server.finished());
@@ -122,7 +126,7 @@ test "smtp fake: login, a rejected recipient among accepted ones, and the messag
 }
 
 test "smtp fake: errors of the server and of the socket have the form of nodemailer" {
-    const h = try Harness.create(.{});
+    const h = try Harness.create(.{ .entropy = fake.entropy });
     defer h.destroy();
     h.server.script(&.{
         .{ .reply = "220 mx.test\r\n" },
@@ -131,7 +135,7 @@ test "smtp fake: errors of the server and of the socket have the form of nodemai
         .{ .expect = "dXNlcg==\r\n", .reply = "334 UGFzc3dvcmQ6\r\n" },
         .{ .expect = "c2VjcmV0\r\n", .reply = "535 5.7.8 no\r\n" },
     }, false);
-    const args = "{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"x\"}";
+    const args = "{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":\"b@x.test\",\"text\":\"x\"}";
     const refused = try h.call(args);
     try std.testing.expect(refused.ok);
     try std.testing.expectEqualStrings(
@@ -149,19 +153,19 @@ test "smtp fake: errors of the server and of the socket have the form of nodemai
             "\"response\":\"554 5.7.1 go away\",\"responseCode\":554,\"command\":\"CONN\"}}",
         closed.text,
     );
-    const none = try h.call("{\"credential\":\"refused\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"x\"}");
+    const none = try h.call("{\"credential\":\"refused\",\"from\":\"a@x.test\",\"to\":\"b@x.test\",\"text\":\"x\"}");
     try std.testing.expect(none.ok);
     try std.testing.expectEqualStrings("{\"error\":{\"message\":\"connect ECONNREFUSED 127.0.0.1:1\",\"code\":\"ESOCKET\",\"command\":\"CONN\"}}", none.text);
 }
 
 test "smtp fake: a hand-over to the host comes before any mail command" {
-    const h = try Harness.create(.{});
+    const h = try Harness.create(.{ .entropy = fake.entropy });
     defer h.destroy();
     h.server.script(&.{
         .{ .reply = "220 mx.test\r\n" },
         .{ .expect = "EHLO client.test\r\n", .reply = "250-mx.test\r\n250 AUTH CRAM-MD5\r\n" },
     }, false);
-    const args = "{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"x\"}";
+    const args = "{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":\"b@x.test\",\"text\":\"x\"}";
     const cram = try h.call(args);
     try std.testing.expect(!cram.ok);
     try std.testing.expectEqualStrings("smtp: the native client cannot do this: a server that offers only CRAM-MD5 (limit: smtp-host)", cram.text);
@@ -176,18 +180,22 @@ test "smtp fake: a hand-over to the host comes before any mail command" {
     try std.testing.expectEqualStrings("EHLO client.test\r\n", h.server.seenText());
     // A call that is not well formed starts no connection.
     const before = h.server.connections;
-    const bad = try h.call("{\"credential\":\"plain\",\"from\":\"a@x.test\",\"message\":\"x\"}");
+    const bad = try h.call("{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"text\":\"x\"}");
     try std.testing.expect(!bad.ok);
-    try std.testing.expectEqualStrings("smtp: the call needs 'to'", bad.text);
+    try std.testing.expectEqualStrings("smtp: a field of the call must be a string", bad.text);
+    // An address form that the builder does not take goes to the host.
+    const group = try h.call("{\"credential\":\"plain\",\"from\":\"a@x.test\",\"to\":\"friends: b@x.test;\",\"text\":\"x\"}");
+    try std.testing.expect(!group.ok);
+    try std.testing.expectEqualStrings("smtp: the native client does not build this message (limit: smtp-host)", group.text);
     try std.testing.expectEqual(before, h.server.connections);
 }
 
 test "smtp fake: the time limit of the greeting, and the limit of the call slots" {
-    const h = try Harness.create(.{ .max_reqs = 1, .greeting_ms = 150 });
+    const h = try Harness.create(.{ .max_reqs = 1, .greeting_ms = 150, .entropy = fake.entropy });
     defer h.destroy();
     // The server takes the connection and says nothing.
     h.server.script(&.{}, false);
-    const args = "{\"credential\":\"open\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"x\"}";
+    const args = "{\"credential\":\"open\",\"from\":\"a@x.test\",\"to\":\"b@x.test\",\"text\":\"x\"}";
     try std.testing.expectEqual(@as(?[]const u8, null), h.client.start(7, 90, args, &h.store, sys.nowMs()));
     const second = h.client.start(7, 91, args, &h.store, sys.nowMs()) orelse "";
     try std.testing.expect(std.mem.endsWith(u8, second, "the step can run again (limit)"));
@@ -213,7 +221,7 @@ test "smtp fake: the time limit of the greeting, and the limit of the call slots
 }
 
 test "smtp fake: STARTTLS and TLS from the first byte, through the TLS path of the runtime" {
-    const h = try Harness.create(.{});
+    const h = try Harness.create(.{ .entropy = fake.entropy });
     defer h.destroy();
     // A build without TLS has no server side for this test.
     h.server.useTls("src/shell/testdata/tls-test-cert.pem", "src/shell/testdata/tls-test-key.pem") catch return error.SkipZigTest;
@@ -225,12 +233,12 @@ test "smtp fake: STARTTLS and TLS from the first byte, through the TLS path of t
         .{ .expect = "MAIL FROM:<a@x.test>\r\n", .reply = "250 ok\r\n" },
         .{ .expect = "RCPT TO:<b@x.test>\r\n", .reply = "250 ok\r\n" },
         .{ .expect = "DATA\r\n", .reply = "354 go\r\n" },
-        .{ .expect = message_wire, .reply = "250 queued\r\n" },
+        .{ .expect = wire_one, .reply = "250 queued\r\n" },
     }, false);
-    const args = "{\"credential\":\"open\",\"allowUnauthorizedCerts\":true,\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"" ++ message ++ "\"}";
+    const args = "{\"credential\":\"open\",\"allowUnauthorizedCerts\":true,\"from\":\"a@x.test\",\"to\":\"b@x.test\"," ++ fields ++ "}";
     const upgraded = try h.call(args);
     try std.testing.expect(upgraded.ok);
-    try std.testing.expect(std.mem.endsWith(u8, upgraded.text, "\"messageSize\":35,\"response\":\"250 queued\"}"));
+    try std.testing.expect(std.mem.endsWith(u8, upgraded.text, std.fmt.comptimePrint("\"messageSize\":{d},\"response\":\"250 queued\"", .{wire_one.len}) ++ envelope_one));
     try std.testing.expect(h.server.finished());
     h.server.script(&.{
         .{ .reply = "220 mx.test\r\n" },
@@ -238,16 +246,16 @@ test "smtp fake: STARTTLS and TLS from the first byte, through the TLS path of t
         .{ .expect = "MAIL FROM:<a@x.test>\r\n", .reply = "250 ok\r\n" },
         .{ .expect = "RCPT TO:<b@x.test>\r\n", .reply = "250 ok\r\n" },
         .{ .expect = "DATA\r\n", .reply = "354 go\r\n" },
-        .{ .expect = message_wire, .reply = "250 queued\r\n" },
+        .{ .expect = wire_one, .reply = "250 queued\r\n" },
     }, true);
-    const secure_args = "{\"credential\":\"secure\",\"allowUnauthorizedCerts\":true,\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"" ++ message ++ "\"}";
+    const secure_args = "{\"credential\":\"secure\",\"allowUnauthorizedCerts\":true,\"from\":\"a@x.test\",\"to\":\"b@x.test\"," ++ fields ++ "}";
     const direct = try h.call(secure_args);
     try std.testing.expect(direct.ok);
-    try std.testing.expect(std.mem.endsWith(u8, direct.text, "\"response\":\"250 queued\"}"));
+    try std.testing.expect(std.mem.endsWith(u8, direct.text, "\"response\":\"250 queued\"" ++ envelope_one));
     try std.testing.expect(h.server.finished());
     // The certificate of the test is not trusted: without the option the host takes the call.
     h.server.script(&.{.{ .reply = "220 mx.test\r\n" }}, true);
-    const untrusted = try h.call("{\"credential\":\"secure\",\"from\":\"a@x.test\",\"to\":[\"b@x.test\"],\"message\":\"x\"}");
+    const untrusted = try h.call("{\"credential\":\"secure\",\"from\":\"a@x.test\",\"to\":\"b@x.test\",\"text\":\"x\"}");
     try std.testing.expect(!untrusted.ok);
     try std.testing.expectEqualStrings("smtp: the native client cannot do this: a TLS handshake that failed (limit: smtp-host)", untrusted.text);
 }

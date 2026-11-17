@@ -5,6 +5,7 @@
 //! (STARTTLS), close the connection, or give no answer. The server keeps
 //! every byte that it reads, so a test can check what went on the wire.
 const std = @import("std");
+const mail = @import("core").mail;
 const sys = @import("sys.zig");
 const tls = @import("tls.zig");
 const sql_net = @import("sql_net.zig");
@@ -224,3 +225,15 @@ pub const Server = struct {
         s.failed = true;
     }
 };
+
+/// The random bytes and the time of the messages of a test.
+pub const entropy: mail.Entropy = .{ .boundary = @splat(1), .id = @splat(2), .now_ms = 0 };
+
+/// The bytes after DATA for a text message from `a@x.test` with the subject
+/// `hi` and `entropy`. `body` is the text as the client writes it.
+pub fn textMessage(comptime to: []const u8, comptime body: []const u8) []const u8 {
+    return "From: a@x.test\r\nTo: " ++ to ++ "\r\nSubject: hi\r\n" ++
+        "Message-ID: <02020202-0202-0202-0202-020202020202@x.test>\r\nContent-Transfer-Encoding: 7bit\r\n" ++
+        "Date: Thu, 01 Jan 1970 00:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n" ++
+        body ++ "\r\n.\r\n";
+}
