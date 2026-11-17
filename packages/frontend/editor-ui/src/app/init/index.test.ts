@@ -763,6 +763,17 @@ describe('Init', () => {
 			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
 		});
 
+		it('requests source control preferences when the node translation headers request fails', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const error = new Error('translation headers');
+			nodeTypesStore.getNodeTranslationHeaders.mockRejectedValueOnce(error);
+
+			await expect(initializeAuthenticatedFeatures(false)).rejects.toBe(error);
+
+			expect(sourceControlStore.getPreferences).toHaveBeenCalledTimes(1);
+		});
+
 		it('does not request source control preferences when source control is not enabled', async () => {
 			settingsStore.isCloudDeployment = false;
 			sourceControlStore.isEnterpriseSourceControlEnabled = false;
