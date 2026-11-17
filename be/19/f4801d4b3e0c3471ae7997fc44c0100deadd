@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_67791ba69a1c7a::t_3f0d6d71405870 2251-2257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "be19f4801d4b3e0c3471ae7997fc44c0100deadd",
+  "prompts": {},
+  "sessions": {
+    "s_67791ba69a1c7a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e53c-6d5a-77e2-82bf-5563ed9116bd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_a88340529c4722::t_b0a57ba7aca512 275,287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90c39edf0473a760e946f3c2d73061812ec132e2",
+  "prompts": {},
+  "sessions": {
+    "s_a88340529c4722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f32cad09-c2ae-42bb-971a-14c0acd9e1ec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
