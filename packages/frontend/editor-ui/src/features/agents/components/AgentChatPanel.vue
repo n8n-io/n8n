@@ -409,7 +409,10 @@ async function loadChatAttachmentFile(attachment: ChatMessageAttachment): Promis
 }
 
 async function startQueueEdit(item: AgentChatQueueItem) {
-	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
+	// A disabled composer could not send the message again, so it stays queued.
+	if (props.disabled || hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) {
+		return;
+	}
 	queueExpanded.value = true;
 	const target = {
 		projectId: props.projectId,
@@ -2047,7 +2050,7 @@ onBeforeUnmount(() => {
 							:displayed-items="queueDisplayItems"
 							:expanded="queueExpanded"
 							:is-reordering="isReorderingQueue"
-							:can-edit="!hasDraft && !isSubmissionBlocked"
+							:can-edit="!props.disabled && !hasDraft && !isSubmissionBlocked"
 							:steer-action="queueSteerAction"
 							:can-steer="canSteer"
 							:can-drag-queue-item="canDragQueueItem"

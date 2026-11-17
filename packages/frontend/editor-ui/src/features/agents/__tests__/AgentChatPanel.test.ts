@@ -1755,6 +1755,25 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('keeps queued messages queued while the host disables the composer', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const wrapper = mountPanel({ disabled: true });
+		const editButton = wrapper.get('[aria-label="generic.edit"]');
+		expect(editButton.attributes('disabled')).toBeDefined();
+		wrapper.findComponent({ name: 'ChatMessageQueue' }).vm.$emit('edit', '1');
+		await flushPromises();
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
+		wrapper.unmount();
+	});
+
 	it('forwards a steering action from the queue', async () => {
 		queuedMessagesMock.value = [
 			{

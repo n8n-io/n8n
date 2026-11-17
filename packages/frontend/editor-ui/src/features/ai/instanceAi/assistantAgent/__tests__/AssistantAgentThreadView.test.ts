@@ -1102,6 +1102,20 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
 		});
 
+		it('hides the offer while no credits are left, and offers it again once they come back', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+			const creditsStore = useAssistantCreditsStore();
+
+			creditsStore.creditsQuota = 100;
+			creditsStore.creditsClaimed = 100;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+
+			creditsStore.creditsQuota = 200;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+		});
+
 		it('clears the offer when a later run of the same workflow succeeds', async () => {
 			const { queryByTestId } = await renderWithFailedRun();
 

@@ -407,6 +407,8 @@ const activeFixWithAiOffer = computed(() => {
 	const run = failedRun.value;
 	if (!run || run.executionId === dismissedExecutionId.value) return null;
 	if (panel.value?.isBusy) return null;
+	// The send would be refused, so the offer comes back once credits do.
+	if (creditsStore.isOutOfCredits) return null;
 	return { ...run, workflowName: thread.producedArtifacts.get(run.workflowId)?.name };
 });
 
