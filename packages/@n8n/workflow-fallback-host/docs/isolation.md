@@ -84,9 +84,63 @@ minutes). It is acceptable when the service honours the key, or when the step
 had no effect before the block. It is not acceptable for a step that sent a
 request without the key and waited for the answer in that worker.
 
-Proposed rule (not built): a worker reports once when a step wrote to the
-network. After a guard stop, only steps without that report go again; the
-others fail as retryable. Until then the guard value is the trade.
+### Rule: a step that sent a request does not run twice (not built)
+
+The v1 engine runs a node again in one execution only with `retryOnFail`
+(`WorkflowExecute`, the loop over `maxTries`). It has no CPU guard: a node
+that blocks the process is not stopped. A Code node in a task runner ends
+after `N8N_RUNNERS_TASK_TIMEOUT` with `Task execution timed out after N
+seconds` (`task-runner-execution-timeout.error.ts`). A process that ends
+gives `Node crashed, possible out-of-memory issue` with the message
+`Execution stopped at this node` (`node-crashed.error.ts`). In both cases the
+node does not run again.
+
+The rule: after a guard stop, a step that sent a request fails with the crash
+error of v1 and is not sent again. A step that sent nothing goes again, as
+now.
+
+Mechanism, in the host only. The runtime protocol does not change.
+
+1. **The step knows.** Each step has an async context (`scope`,
+   `step-worker.ts`). Its `StepScope` gets `sent: boolean`. The worker sets
+   it at the first outbound write of the step. Hooks: `http.request` and
+   `https.request` (the place where `http-pool.ts` replaces the agent),
+   `globalThis.fetch`, and `net.Socket.prototype.connect` for the database
+   drivers. A `ctx.service` call counts too: n8n can have run it.
+2. **The worker reports once.** At the first write it sends
+   `{ control: 'sent', conn, id }` on the step socket, where `conn` and `id`
+   are the runtime connection and the frame id of the step. The write is
+   before the request leaves the process, so a block after it cannot hide
+   it. When that step ends, the worker sends `{ control: 'ended', conn, id }`.
+   A step without a write sends neither: no cost for it.
+3. **The pool keeps the set.** `PoolWorker.sent: Map<conn, Set<id>>`, at
+   most 4,096 ids for each worker. Beyond the limit the pool treats every
+   step of the worker as `sent`.
+4. **The guard stop.** In `closeConnectionsOf`, before `worker_lost` with
+   `again`, the pool writes on each connection one result frame for each id
+   in its set:
+   `{ id, ok: false, error: 'Node crashed, possible out-of-memory issue' }`,
+   without `retryable`. The runtime takes it as the result of the step, so
+   `sendAgain` (`server.zig`) does not find the step. The steps without a
+   report go again. For jobs of the pool (`worker.jobs`), `onExit` resolves a
+   job in the set with the same failure and dispatches the others.
+5. **A stop without the guard** (out of memory, a crash) gets the same
+   frames. Today the runtime sends several steps again alone
+   (`lostFallback`); a step that sent a request must not go again there
+   either.
+
+A `retryOnFail` setting of the node still applies: the core runs the step
+again, as v1 does for a node that failed.
+
+Open points. A hook on `connect` does not see a write on a kept connection of
+a driver pool: the driver pools of the node code must count each query, or
+the database nodes always count as `sent`. The crash text says "out of
+memory" for a block; it is the text of v1, and the reason of the host goes in
+the description. Tests: a step that sent a request and blocks gets one
+request at a local server and the crash error; a step that blocks before a
+request gets its result from the slow lane.
+
+Until this is built the guard value is the trade.
 
 Known limit: the marks reach the workers before the steps come again in
 practice, not by protocol. Else the step is lost twice and fails as before.

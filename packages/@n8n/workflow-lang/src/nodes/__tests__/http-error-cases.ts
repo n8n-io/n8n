@@ -82,12 +82,6 @@ export const HTTP_ERROR_CASES: EquivalenceCase[] = [
 			name: `microsoftOutlook failed request ${status}`,
 			responses: [{ status, body: status === 400 ? 'plain text' : graph }],
 			expectedError: status === 400 ? 'plain text' : message,
-			...(status === 400
-				? {
-						pendingParity:
-							'With the error of the real HTTP client (the body in `error`), v1 gives the text of the body for a 400. The library node gives the message of axios.',
-					}
-				: {}),
 		},
 	]),
 	{

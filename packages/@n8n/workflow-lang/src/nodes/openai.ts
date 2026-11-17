@@ -10,7 +10,13 @@
  * connected tools (a compiled workflow has no tool sub-nodes), prompt
  * templates and background mode.
  */
-import { defineNode, type HttpResponse, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	type FailedResponse,
+	type HttpResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface Locator {
 	__rl?: boolean;
@@ -97,22 +103,6 @@ function removeEmpty(source: Record<string, unknown>): Record<string, unknown> {
 	return out;
 }
 
-/** The messages of n8n's NodeApiError for the status of a failed request. */
-const STATUS_MESSAGES: Record<string, string> = {
-	'400': 'Bad request - please check your parameters',
-	'401': 'Authorization failed - please check your credentials',
-	'402': 'Payment required - perhaps check your payment details?',
-	'403': 'Forbidden - perhaps check your credentials?',
-	'404': 'The resource you are requesting could not be found',
-	'405': 'Method not allowed - please check you are using the right HTTP method',
-	'429': 'The service is receiving too many requests from you',
-	'500': 'The service was not able to process your request',
-	'502': 'Bad gateway - the service failed to handle your request',
-	'503':
-		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
-	'504': 'Gateway timed out - perhaps try again later?',
-};
-
 /** The messages of n8n's NodeApiError for a request without an answer, by the code of Node.js. */
 const NETWORK_MESSAGES: Array<[string, string]> = [
 	['ECONNREFUSED', 'The service refused the connection - perhaps it is offline'],
@@ -141,12 +131,24 @@ function networkError(error: unknown): Error {
 	return new Error(text);
 }
 
-function statusMessage(status: number): string {
-	const known = STATUS_MESSAGES[String(status)];
-	if (known !== undefined) return known;
-	return status >= 500
-		? 'The service failed to process your request'
-		: 'Your request is invalid or could not be processed by the service';
+/**
+ * The error of v1 for a failed request (`helpers.requestWithAuthentication`). The router of
+ * the v1 node replaces the message for two error codes of OpenAI.
+ */
+function requestFailure(response: FailedResponse): Error {
+	const inner = isObject(response.body) ? response.body.error : undefined;
+	const code = isObject(inner) ? inner.code : undefined;
+	if (code === 'insufficient_quota') {
+		return apiError(response, {
+			helper: 'legacy',
+			message:
+				'Insufficient quota detected. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/common-issues/#insufficient-quota" target="_blank">Learn more</a> about resolving this issue',
+		});
+	}
+	if (code === 'rate_limit_exceeded') {
+		return apiError(response, { helper: 'legacy', message: 'OpenAI: Rate limit reached' });
+	}
+	return apiError(response, { helper: 'legacy' });
 }
 
 export default defineNode<OpenAiParameters>({
@@ -278,7 +280,7 @@ export default defineNode<OpenAiParameters>({
 					} catch (error) {
 						throw networkError(error);
 					}
-					if (response.status >= 400) throw new Error(statusMessage(response.status));
+					if (response.status >= 400) throw requestFailure(response);
 					const result = response.body;
 					if (!isObject(result)) continue;
 					if (result.error === null) result.error = undefined;
@@ -408,7 +410,7 @@ export default defineNode<OpenAiParameters>({
 				} catch (error) {
 					throw networkError(error);
 				}
-				if (response.status >= 400) throw new Error(statusMessage(response.status));
+				if (response.status >= 400) throw requestFailure(response);
 				const result = response.body;
 				if (result.error === null) result.error = undefined;
 				const output: OutputItem[] = [];

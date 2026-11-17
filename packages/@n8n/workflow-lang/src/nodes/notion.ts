@@ -556,6 +556,9 @@ export default defineNode<NotionParameters>({
 		const dataSourceId = locatorValue(parameters.dataSourceId);
 		const simple = parameters.simple ?? true;
 		const out: Item[] = [];
+		// `helpers.httpRequestWithAuthentication` of n8n (version 3 of the node) sends a request
+		// again, once, after a 401 answer, for a credential that is not OAuth2.
+		const resend = (parameters.authentication ?? 'apiKey') !== 'oAuth2';
 		// Versions 2 to 2.2: the database API of Notion-Version 2021-08-16.
 		if (parameters.apiV2 === true || parameters.batch?.[0]?.apiV2 === true) {
 			const headers = { 'Notion-Version': '2021-08-16' };
@@ -700,7 +703,7 @@ export default defineNode<NotionParameters>({
 			const contentType = parameters.contentType ?? 'blockUi';
 			for (const _item of items ?? [{}]) {
 				// getTitleKey of the v1 node: the name of the title property of the data source.
-				const source = await ctx.http<Item>({
+				let source = await ctx.http<Item>({
 					acceptAs: 'legacy',
 					json: true,
 					method: 'GET',
@@ -710,6 +713,18 @@ export default defineNode<NotionParameters>({
 					body: undefined,
 					credential,
 				});
+				if (source.status === 401 && resend) {
+					source = await ctx.http<Item>({
+						acceptAs: 'legacy',
+						json: true,
+						method: 'GET',
+						url: `${API}/data_sources/${toPathSegment(dataSourceId)}`,
+						headers: { ...VERSION_HEADERS },
+						qs: {},
+						body: undefined,
+						credential,
+					});
+				}
 				if (source.status >= 400) throw apiError(source);
 				if (!isObject(source.body.properties)) {
 					throw new Error('Notion did not return data source properties');
@@ -751,7 +766,7 @@ export default defineNode<NotionParameters>({
 						? { type: 'external', external: { url: icon } }
 						: { type: 'emoji', emoji: icon };
 				}
-				const response = await ctx.http<Item>({
+				let response = await ctx.http<Item>({
 					acceptAs: 'legacy',
 					json: true,
 					method: 'POST',
@@ -761,6 +776,18 @@ export default defineNode<NotionParameters>({
 					body,
 					credential,
 				});
+				if (response.status === 401 && resend) {
+					response = await ctx.http<Item>({
+						acceptAs: 'legacy',
+						json: true,
+						method: 'POST',
+						url: `${API}/pages`,
+						headers: { ...VERSION_HEADERS },
+						qs: {},
+						body,
+						credential,
+					});
+				}
 				if (response.status >= 400) throw apiError(response);
 				for (const page of simple ? simplifyAll([response.body]) : [response.body]) out.push(page);
 			}
@@ -790,7 +817,7 @@ export default defineNode<NotionParameters>({
 				// notionApiRequestAllItemsV3 of the v1 node: pages until has_more is false.
 				const pages: Item[] = [];
 				for (;;) {
-					const response = await ctx.http<Item>({
+					let response = await ctx.http<Item>({
 						acceptAs: 'legacy',
 						json: true,
 						method: 'POST',
@@ -800,6 +827,18 @@ export default defineNode<NotionParameters>({
 						body: { ...body },
 						credential,
 					});
+					if (response.status === 401 && resend) {
+						response = await ctx.http<Item>({
+							acceptAs: 'legacy',
+							json: true,
+							method: 'POST',
+							url: `${API}/data_sources/${toPathSegment(dataSourceId)}/query`,
+							headers: { ...VERSION_HEADERS },
+							qs: {},
+							body: { ...body },
+							credential,
+						});
+					}
 					if (response.status >= 400) throw apiError(response);
 					body.start_cursor = response.body.next_cursor;
 					const results = response.body.results;

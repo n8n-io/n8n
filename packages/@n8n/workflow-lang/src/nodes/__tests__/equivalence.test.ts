@@ -23,7 +23,7 @@ import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import { VENDOR_NODES } from '../../convert/ai-cluster.ts';
 import { ENGINE_CASES, TOOL_PROBE_CASES } from './ai-cases.ts';
-import { EQUIVALENCE_CASES } from './equivalence-cases.ts';
+import { EQUIVALENCE_CASES, ERROR_ITEM_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import {
 	applyCredential,
@@ -43,21 +43,6 @@ const SHEETS_MINT = googleMint('sheetV2', [
 	'https://www.googleapis.com/auth/spreadsheets',
 	'https://www.googleapis.com/auth/drive.metadata',
 ]).name;
-/**
- * Node types (and one case) whose library node gives the message of v1, and not yet its
- * description and HTTP code: they do not build the error with `apiError` of the SDK. The
- * list only shrinks.
- */
-const DETAIL_PENDING = new Set([
-	'n8n-nodes-base.googleSheets',
-	'n8n-nodes-base.googleCalendar',
-	'n8n-nodes-base.microsoftOutlook',
-	'n8n-nodes-base.microsoftTeams',
-	'@n8n/n8n-nodes-langchain.openAi',
-	'@n8n/n8n-nodes-langchain.anthropic',
-	'@n8n/n8n-nodes-langchain.googleGemini',
-	'gmail draft.create with an address that has no at sign',
-]);
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
 
 /** The parameters of the library call, as the converter writes them. */
@@ -170,7 +155,8 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 	// The cases with sub-nodes or node settings of the AI nodes run through the converter
 	// (`ai-cluster.test.ts`).
 	const cases = EQUIVALENCE_CASES.filter(
-		(c) => !ENGINE_CASES.includes(c) && !TOOL_PROBE_CASES.includes(c),
+		(c) =>
+			!ENGINE_CASES.includes(c) && !TOOL_PROBE_CASES.includes(c) && !ERROR_ITEM_CASES.includes(c),
 	);
 	describe.each(cases.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
@@ -220,7 +206,7 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 				if (c.expectedError !== undefined) {
 					expect(isRecord(out.result) ? out.result.message : out.result).toBe(c.expectedError);
 					// The description and the HTTP code are those of v1 too.
-					if (!DETAIL_PENDING.has(c.type) && !DETAIL_PENDING.has(c.name)) {
+					if (recording.errorDetail !== undefined) {
 						expect(errorDetailOfResult(out.result)).toEqual(recording.errorDetail);
 					}
 				}

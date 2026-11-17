@@ -10,7 +10,7 @@
  * `timeMax`, v1 takes `$now` and `$now` plus a week in the workflow's time
  * zone; the node sends the same instants in UTC.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { apiError, defineNode, type Item } from '@n8n/workflow-lang';
 
 interface Locator {
 	mode?: string;
@@ -110,31 +110,6 @@ function hasOffset(date: string): boolean {
 	return time.includes('+') || time.includes('-');
 }
 
-/**
- * The message of the NodeApiError of n8n-workflow for an HTTP status (STATUS_CODE_MESSAGES):
- * the message of v1 for a failed request.
- */
-function statusMessage(status: number): string {
-	if (status === 400) return 'Bad request - please check your parameters';
-	if (status === 401) return 'Authorization failed - please check your credentials';
-	if (status === 402) return 'Payment required - perhaps check your payment details?';
-	if (status === 403) return 'Forbidden - perhaps check your credentials?';
-	if (status === 404) return 'The resource you are requesting could not be found';
-	if (status === 405) {
-		return 'Method not allowed - please check you are using the right HTTP method';
-	}
-	if (status === 429) return 'The service is receiving too many requests from you';
-	if (status === 500) return 'The service was not able to process your request';
-	if (status === 502) return 'Bad gateway - the service failed to handle your request';
-	if (status === 503) {
-		return 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)';
-	}
-	if (status === 504) return 'Gateway timed out - perhaps try again later?';
-	return status < 500
-		? 'Your request is invalid or could not be processed by the service'
-		: 'The service failed to process your request';
-}
-
 export default defineNode<CalendarParameters>({
 	type: 'n8n-nodes-base.googleCalendar',
 	version: 1.3,
@@ -196,7 +171,7 @@ export default defineNode<CalendarParameters>({
 					credential,
 				});
 				if (response.status >= 400) {
-					throw new Error(statusMessage(response.status));
+					throw apiError(response, { helper: 'legacy' });
 				}
 				done.push({ success: true });
 			}
@@ -246,7 +221,7 @@ export default defineNode<CalendarParameters>({
 					credential,
 				});
 				if (response.status >= 400) {
-					throw new Error(statusMessage(response.status));
+					throw apiError(response, { helper: 'legacy' });
 				}
 				return response.body;
 			};

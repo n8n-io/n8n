@@ -32903,7 +32903,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -32974,7 +32978,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, version 2.1": {
 		"requests": [
@@ -33072,7 +33080,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -33143,7 +33155,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, version 2.2": {
 		"requests": [
@@ -33241,7 +33257,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -33312,7 +33332,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, version 3": {
 		"requests": [
@@ -33410,7 +33434,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -33481,7 +33509,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, version 3.1": {
 		"requests": [
@@ -33579,7 +33611,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -33650,7 +33686,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, window of one exchange": {
 		"requests": [
@@ -33740,7 +33780,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -33811,7 +33855,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, responses": {
 		"requests": [
@@ -33924,7 +33972,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -33995,7 +34047,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, anthropic": {
 		"requests": [
@@ -34090,7 +34146,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -34161,7 +34221,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, gemini": {
 		"requests": [
@@ -34310,7 +34374,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -34381,7 +34449,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, key from the first item": {
 		"requests": [
@@ -34432,7 +34504,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -34485,7 +34560,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, version 1.1 of the memory": {
 		"requests": [
@@ -34536,7 +34614,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -34589,7 +34670,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, version 1 of the memory": {
 		"requests": [
@@ -34640,7 +34724,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -34693,7 +34780,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, empty key": {
 		"requests": [],
@@ -34780,7 +34870,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -34833,7 +34926,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, failed call is not kept": {
 		"requests": [
@@ -34915,7 +35011,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -34983,7 +35083,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, failed call is not kept, version 2.2": {
 		"requests": [
@@ -35073,7 +35177,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "first"
@@ -35141,7 +35249,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent memory, empty answer": {
 		"requests": [
@@ -35192,7 +35304,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -35242,7 +35357,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, empty answer, version 2.2": {
 		"requests": [
@@ -35301,7 +35419,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -35354,7 +35475,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, tool call without tools": {
 		"requests": [
@@ -35483,7 +35607,12 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "again one"
@@ -35551,7 +35680,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, tool call without tools, version 2.2": {
 		"requests": [
@@ -35652,7 +35784,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -35708,7 +35844,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, object as key": {
 		"requests": [],
@@ -35809,7 +35948,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Agent stopped due to max iterations."
@@ -35862,7 +36004,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, max iterations": {
 		"requests": [
@@ -35921,7 +36066,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -36006,7 +36154,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -36059,7 +36210,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, empty answer, gemini, version 2.2": {
 		"requests": [
@@ -36140,7 +36294,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -36193,7 +36350,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent memory, retry": {
 		"requests": [
@@ -36322,7 +36482,12 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "again one"
@@ -36390,7 +36555,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent tool probe http 2.2": {
 		"requests": [
@@ -36419,7 +36587,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -36473,7 +36643,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -36555,7 +36727,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tool probe http 3.1": {
 		"requests": [
@@ -36584,7 +36758,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -36638,7 +36814,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -36716,7 +36894,10 @@
 										"additional_kwargs": {},
 										"response_metadata": {}
 									},
-									"lc_namespace": ["langchain_core", "messages"],
+									"lc_namespace": [
+										"langchain_core",
+										"messages"
+									],
 									"content": [],
 									"additional_kwargs": {},
 									"response_metadata": {},
@@ -36788,7 +36969,10 @@
 											"additional_kwargs": {},
 											"response_metadata": {}
 										},
-										"lc_namespace": ["langchain_core", "messages"],
+										"lc_namespace": [
+											"langchain_core",
+											"messages"
+										],
 										"content": [],
 										"additional_kwargs": {},
 										"response_metadata": {},
@@ -36822,7 +37006,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"googleSheets sheet.clear rows and keep the first row": {
 		"requests": [
@@ -37041,6 +37227,1969 @@
 		],
 		"nodePaired": [
 			false
+		]
+	},
+	"notion databasePage.create: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"notion databasePage.create: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials",
+		"errorDetail": {
+			"description": "Request failed with status code 401",
+			"httpCode": "401"
+		}
+	},
+	"supabase row.get: failed request 401 with a JSON body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials: The value is not valid.",
+		"errorDetail": {
+			"description": "The value is not valid.",
+			"httpCode": "401"
+		}
+	},
+	"supabase row.get: failed request 401 with a text body": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"error": "Authorization failed - please check your credentials: Request failed with status code 401",
+		"errorDetail": {
+			"description": "Request failed with status code 401",
+			"httpCode": "401"
+		}
+	},
+	"telegram message.sendMessage no attribution: error item, continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "The value is not valid."
+				},
+				{
+					"ok": true,
+					"result": {
+						"message_id": 9
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"telegram message.sendMessage no attribution: error item, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"ok": true,
+					"result": {
+						"message_id": 9
+					}
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "The value is not valid."
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"telegram message.sendMessage no attribution: error item, continue, text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "The service is not there."
+				},
+				{
+					"ok": true,
+					"result": {
+						"message_id": 9
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"telegram message.sendMessage no attribution: error item, error output, text body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"ok": true,
+					"result": {
+						"message_id": 9
+					}
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "The service is not there."
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"gmail message.delete: error item, continue": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m10",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m10",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters (item 0)"
+				},
+				{
+					"success": true
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"gmail message.delete: error item, error output": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m10",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m10",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"qsFormat": "repeat"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"success": true
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters (item 0)"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"gmail draft.create with an address that has no at sign: error item, continue": {
+		"requests": [],
+		"wire": [],
+		"outputs": [
+			[
+				{
+					"error": "Invalid email address (item 0)"
+				},
+				{
+					"error": "Invalid email address (item 1)"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"gmail draft.create with an address that has no at sign: error item, error output": {
+		"requests": [],
+		"wire": [],
+		"outputs": [
+			[],
+			[
+				{
+					"a": 1,
+					"error": "Invalid email address (item 0)"
+				},
+				{
+					"a": 2,
+					"error": "Invalid email address (item 1)"
+				}
+			]
+		],
+		"paired": [
+			[],
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"supabase row.get: error item, continue": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters: The value is not valid."
+				},
+				{
+					"id": 42,
+					"name": "Ada"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"supabase row.get: error item, error output": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"id": 42,
+					"name": "Ada"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters: The value is not valid."
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"supabase row.create define below for all items: error item, continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {},
+				"headers": {
+					"prefer": "return=representation",
+					"content-profile": "crm",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				},
+				"body": [
+					{
+						"status": "new",
+						"score": 1
+					},
+					{
+						"status": "new",
+						"score": 1
+					}
+				]
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "The value is not valid."
+				}
+			]
+		],
+		"paired": [
+			[
+				[
+					{
+						"item": 0
+					},
+					{
+						"item": 1
+					}
+				]
+			]
+		],
+		"nodePaired": [
+			true
+		]
+	},
+	"supabase row.create define below for all items: error item, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {},
+				"headers": {
+					"prefer": "return=representation",
+					"content-profile": "crm",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				},
+				"body": [
+					{
+						"status": "new",
+						"score": 1
+					},
+					{
+						"status": "new",
+						"score": 1
+					}
+				]
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[],
+			[
+				{
+					"a": 1,
+					"error": "The value is not valid."
+				}
+			]
+		],
+		"paired": [
+			[],
+			[
+				[
+					{
+						"item": 0
+					},
+					{
+						"item": 1
+					}
+				]
+			]
+		],
+		"nodePaired": [
+			true
+		]
+	},
+	"supabase row.update define below: error item, continue": {
+		"requests": [],
+		"wire": [],
+		"outputs": [
+			[
+				{
+					"a": 1
+				},
+				{
+					"a": 2
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodeError": "At least one select condition must be defined",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
+	},
+	"supabase row.update define below: error item, error output": {
+		"requests": [],
+		"wire": [],
+		"outputs": [
+			[
+				{
+					"a": 1
+				},
+				{
+					"a": 2
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodeError": "At least one select condition must be defined",
+		"errorDetail": {
+			"description": null,
+			"httpCode": null
+		}
+	},
+	"googleDrive file.deleteFile for good: error item, continue": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"id": "1AbCfile",
+					"success": true
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			false,
+			true
+		]
+	},
+	"googleDrive file.deleteFile for good: error item, error output": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"id": "1AbCfile",
+					"success": true
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false,
+			true
+		]
+	},
+	"notion databasePage.create: error item, continue": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/pages",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"parent": {
+						"type": "data_source_id",
+						"data_source_id": "ab1545b247fb49fa92d6f4b49f4d8116"
+					},
+					"properties": {
+						"Name": {
+							"title": [
+								{
+									"text": {
+										"content": "Ship it"
+									}
+								}
+							]
+						},
+						"Due Count": {
+							"type": "number",
+							"number": 3
+						},
+						"Tags": {
+							"type": "multi_select",
+							"multi_select": [
+								{
+									"name": "a"
+								},
+								{
+									"name": "b"
+								}
+							]
+						},
+						"Status": {
+							"type": "status",
+							"status": {
+								"name": "Done"
+							}
+						},
+						"Notes": {
+							"rich_text": [
+								{
+									"text": {
+										"content": "hello"
+									}
+								}
+							]
+						},
+						"Done": {
+							"type": "checkbox",
+							"checkbox": true
+						}
+					},
+					"children": [],
+					"icon": {
+						"type": "emoji",
+						"emoji": "🚀"
+					}
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"id": "page-1",
+					"name": "Ship ",
+					"url": "https://www.notion.so/page-1",
+					"property_name": "",
+					"property_due_count": 3,
+					"property_tags": [
+						"a",
+						"b"
+					],
+					"property_owner": [
+						"ada@example.com",
+						{}
+					],
+					"property_status": "Done",
+					"property_url_field": null
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"notion databasePage.create: error item, error output": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/pages",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"parent": {
+						"type": "data_source_id",
+						"data_source_id": "ab1545b247fb49fa92d6f4b49f4d8116"
+					},
+					"properties": {
+						"Name": {
+							"title": [
+								{
+									"text": {
+										"content": "Ship it"
+									}
+								}
+							]
+						},
+						"Due Count": {
+							"type": "number",
+							"number": 3
+						},
+						"Tags": {
+							"type": "multi_select",
+							"multi_select": [
+								{
+									"name": "a"
+								},
+								{
+									"name": "b"
+								}
+							]
+						},
+						"Status": {
+							"type": "status",
+							"status": {
+								"name": "Done"
+							}
+						},
+						"Notes": {
+							"rich_text": [
+								{
+									"text": {
+										"content": "hello"
+									}
+								}
+							]
+						},
+						"Done": {
+							"type": "checkbox",
+							"checkbox": true
+						}
+					},
+					"children": [],
+					"icon": {
+						"type": "emoji",
+						"emoji": "🚀"
+					}
+				}
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"id": "page-1",
+					"name": "Ship ",
+					"url": "https://www.notion.so/page-1",
+					"property_name": "",
+					"property_due_count": 3,
+					"property_tags": [
+						"a",
+						"b"
+					],
+					"property_owner": [
+						"ada@example.com",
+						{}
+					],
+					"property_status": "Done",
+					"property_url_field": null
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"slack reaction.add: error item, continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/reactions.add",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C0123",
+					"name": "white_check_mark",
+					"timestamp": "1700000000.0001"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/reactions.add",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C0123",
+					"name": "white_check_mark",
+					"timestamp": "1700000000.0001"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json; charset=utf-8",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json; charset=utf-8",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "Slack error response: \"channel_not_found\""
+				},
+				{
+					"ok": true
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			false,
+			true
+		]
+	},
+	"slack reaction.add: error item, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/reactions.add",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C0123",
+					"name": "white_check_mark",
+					"timestamp": "1700000000.0001"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/reactions.add",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C0123",
+					"name": "white_check_mark",
+					"timestamp": "1700000000.0001"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json; charset=utf-8",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json; charset=utf-8",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"ok": true
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Slack error response: \"channel_not_found\""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false,
+			true
+		]
+	},
+	"googleSheets failed request 404: error item, continue": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
+	"googleSheets failed request 404: error item, error output": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1':clear",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"body": {
+					"spreadsheetId": "doc1",
+					"range": "Sheet1"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[],
+			[
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		],
+		"paired": [
+			[],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
+	"googleCalendar failed request 404: error item, continue": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"success": true
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"googleCalendar failed request 404: error item, error output": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events/ev_1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"success": true
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"microsoftOutlook failed request 404: error item, continue": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "The value is not valid."
+				},
+				{
+					"success": true
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"microsoftOutlook failed request 404: error item, error output": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "DELETE",
+				"url": "https://graph.microsoft.com/v1.0/me/messages/m1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"success": true
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "The value is not valid."
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"microsoftTeams task.get status 404: error item, continue": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"error": "The value is not valid."
+				},
+				{
+					"id": "task-2"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
+		]
+	},
+	"microsoftTeams task.get status 404: error item, error output": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://graph.microsoft.com/v1.0/planner/tasks/task-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-teams-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"wire": [
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			},
+			{
+				"accept": "application/json",
+				"contentType": "application/json",
+				"userAgent": "n8n"
+			}
+		],
+		"outputs": [
+			[
+				{
+					"id": "task-2"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "The value is not valid."
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			true
 		]
 	}
 }

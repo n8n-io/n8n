@@ -38,7 +38,14 @@
  * The attribution link has no instance id: a compiled workflow does not know
  * the n8n instance.
  */
-import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	operationError,
+	type FailedResponse,
+	type HttpResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface GmailOptions {
 	appendAttribution?: boolean;
@@ -214,14 +221,21 @@ function headerAddresses(list: Address[]): string {
 	return list.map((entry) => headerAddress(entry)).join(', ');
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** prepareEmailsInput of the v1 node, as a header value. */
-function addresses(input: string, index: number): string {
+function addresses(input: string, field: string, index: number): string {
 	const out: string[] = [];
 	for (const entry of String(input).split(',')) {
 		const email = entry.trim();
 		if (!email.includes('@')) {
 			// The loop of the v1 node adds the index of the item to each message.
-			throw new Error(`Invalid email address (item ${index})`);
+			throw operationError(
+				`Invalid email address (item ${index})`,
+				`The email address '${email}' in the '${field}' field isn't valid`,
+			);
 		}
 		out.push(email.includes('<') && email.includes('>') ? email : `<${email}>`);
 	}
@@ -1385,17 +1399,30 @@ export default defineNode<GmailParameters>({
 				itemSuffix: parameters.itemIndex ?? (position < 0 ? 0 : position),
 				operationError: true,
 			});
+		// A request that fails without an answer, or whose credential n8n does not renew (an
+		// OAuth2 token without a refresh token): the item loop of the v1 node adds ` (item N)`.
+		const stepFailure = (error: unknown): Error => {
+			const text =
+				isObject(error) && typeof error.message === 'string' ? error.message : String(error);
+			const index = parameters.itemIndex ?? (position < 0 ? 0 : position);
+			return operationError(`${text} (item ${index})`);
+		};
 		const get = async <T>(url: string, qs: Record<string, unknown>): Promise<T> => {
-			const response = await ctx.http<T>({
-				acceptAs: 'legacy',
-				json: true,
-				method: 'GET',
-				url,
-				headers,
-				qs,
-				body: undefined,
-				credential,
-			});
+			let response: HttpResponse<T>;
+			try {
+				response = await ctx.http<T>({
+					acceptAs: 'legacy',
+					json: true,
+					method: 'GET',
+					url,
+					headers,
+					qs,
+					body: undefined,
+					credential,
+				});
+			} catch (error) {
+				throw stepFailure(error);
+			}
 			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
@@ -1418,16 +1445,21 @@ export default defineNode<GmailParameters>({
 				position++;
 				const url = `${api}/messages/${String(parameters.messageId ?? '')}`;
 				if (operation === 'delete') {
-					const response = await ctx.http<unknown>({
-						acceptAs: 'legacy',
-						json: true,
-						method: 'DELETE',
-						url,
-						headers,
-						qs: {},
-						body: undefined,
-						credential,
-					});
+					let response: HttpResponse<unknown>;
+					try {
+						response = await ctx.http<unknown>({
+							acceptAs: 'legacy',
+							json: true,
+							method: 'DELETE',
+							url,
+							headers,
+							qs: {},
+							body: undefined,
+							credential,
+						});
+					} catch (error) {
+						throw stepFailure(error);
+					}
 					if (response.status >= 400) throw requestFailure(response);
 					out.push({ success: true });
 					continue;
@@ -1437,16 +1469,21 @@ export default defineNode<GmailParameters>({
 				if (operation === 'markAsUnread') body = { addLabelIds: ['UNREAD'] };
 				if (operation === 'addLabels') body = { addLabelIds: parameters.labelIds };
 				if (operation === 'removeLabels') body = { removeLabelIds: parameters.labelIds };
-				const response = await ctx.http<Item>({
-					acceptAs: 'legacy',
-					json: true,
-					method: 'POST',
-					url: `${url}/modify`,
-					headers,
-					qs: {},
-					body,
-					credential,
-				});
+				let response: HttpResponse<Item>;
+				try {
+					response = await ctx.http<Item>({
+						acceptAs: 'legacy',
+						json: true,
+						method: 'POST',
+						url: `${url}/modify`,
+						headers,
+						qs: {},
+						body,
+						credential,
+					});
+				} catch (error) {
+					throw stepFailure(error);
+				}
 				if (response.status >= 400) throw requestFailure(response);
 				out.push(response.body);
 			}
@@ -1512,16 +1549,21 @@ export default defineNode<GmailParameters>({
 		}
 		const options = parameters.options ?? {};
 		const post = async (url: string, qs: Record<string, unknown>, body: unknown): Promise<Item> => {
-			const response = await ctx.http<Item>({
-				acceptAs: 'legacy',
-				json: true,
-				method: 'POST',
-				url,
-				headers,
-				qs,
-				body,
-				credential,
-			});
+			let response: HttpResponse<Item>;
+			try {
+				response = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
+					method: 'POST',
+					url,
+					headers,
+					qs,
+					body,
+					credential,
+				});
+			} catch (error) {
+				throw stepFailure(error);
+			}
 			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
@@ -1538,8 +1580,8 @@ export default defineNode<GmailParameters>({
 						`Both "Reply to Sender Only" and "Reply to Recipient Only" cannot be enabled at the same time. Please select only one option. (item ${index})`,
 					);
 				}
-				const cc = options.ccList ? addresses(options.ccList, index) : '';
-				const bcc = options.bccList ? addresses(options.bccList, index) : '';
+				const cc = options.ccList ? addresses(options.ccList, 'CC', index) : '';
+				const bcc = options.bccList ? addresses(options.bccList, 'BCC', index) : '';
 				const original = await get<{
 					payload?: { headers?: MessageHeader[] };
 					threadId?: unknown;
@@ -1605,10 +1647,10 @@ export default defineNode<GmailParameters>({
 					options.threadId && typeof options.threadId === 'string' ? options.threadId : '';
 				const email: Email = {
 					from: options.fromAlias ? headerAddresses(parseAddresses(options.fromAlias)) : '',
-					to: options.sendTo ? addresses(options.sendTo, index) : '',
-					cc: options.ccList ? addresses(options.ccList, index) : '',
-					bcc: options.bccList ? addresses(options.bccList, index) : '',
-					replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+					to: options.sendTo ? addresses(options.sendTo, 'To', index) : '',
+					cc: options.ccList ? addresses(options.ccList, 'CC', index) : '',
+					bcc: options.bccList ? addresses(options.bccList, 'BCC', index) : '',
+					replyTo: options.replyTo ? addresses(options.replyTo, 'ReplyTo', index) : '',
 					inReplyTo: '',
 					subject: parameters.subject ?? '',
 					type,
@@ -1645,10 +1687,10 @@ export default defineNode<GmailParameters>({
 			}
 			const raw = encodeEmail({
 				from,
-				to: addresses(parameters.sendTo ?? '', index),
-				cc: options.ccList ? addresses(options.ccList, index) : '',
-				bcc: options.bccList ? addresses(options.bccList, index) : '',
-				replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+				to: addresses(parameters.sendTo ?? '', 'To', index),
+				cc: options.ccList ? addresses(options.ccList, 'CC', index) : '',
+				bcc: options.bccList ? addresses(options.bccList, 'BCC', index) : '',
+				replyTo: options.replyTo ? addresses(options.replyTo, 'ReplyTo', index) : '',
 				inReplyTo: '',
 				subject: parameters.subject ?? '',
 				type,

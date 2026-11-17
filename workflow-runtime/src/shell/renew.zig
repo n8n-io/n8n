@@ -491,6 +491,22 @@ test "a failed renewal fails every request that waits for it" {
     try std.testing.expectEqualStrings(failed_text, t.message(c));
 }
 
+test "a renewal that n8n refuses fails the step with the whole text of n8n" {
+    // The text of `ClientOAuth2Token.refresh` for a credential without a refresh token. The
+    // node adds its own suffix to it, as the v1 node does.
+    const text = "OAuth access token expired and no refresh token is available. Please reconnect the credentials.";
+    var t = try Table.init(std.testing.allocator, 2, 1024);
+    defer t.deinit();
+    const i = testAdd(&t, 1, 0, "wf").?;
+    try std.testing.expectEqual(Decision.renew, t.onResponse(i, 401));
+    try std.testing.expectEqual(Want.call, t.want(i));
+    t.answered(i, false, text);
+    try std.testing.expectEqual(State.failed, t.entries[i].state);
+    try std.testing.expectEqualStrings(text, t.message(i));
+    t.release(i);
+    try std.testing.expectEqual(@as(u32, 0), t.count);
+}
+
 test "a body that goes once gets the renewal and no resend" {
     var t = try Table.init(std.testing.allocator, 4, 1024);
     defer t.deinit();
