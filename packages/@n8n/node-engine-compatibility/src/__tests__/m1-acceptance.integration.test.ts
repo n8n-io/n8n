@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
 	branchyLoopWorkflow,
+	chainedLoopsV1Workflow,
 	chainedLoopsWorkflow,
 	converter,
 	loopWorkflow,
@@ -456,6 +457,47 @@ describe('M1 acceptance (integration)', () => {
 			null,
 		]);
 		expect(at('after', 0)?.status).toBe('completed');
+	});
+
+	// ┌───────┐    ┌─────┐  loop  ┌─────────┐
+	// │trigger├───►│     ├───────►│ BodyOne │
+	// └───────┘    │ One │        └────┬────┘
+	//              │     │◄────────────┘
+	//              └──┬──┘
+	//                 │ done
+	//              ┌──▼──┐  loop  ┌─────────┐
+	//              │     ├───────►│ BodyTwo │
+	//              │ Two │        └────┬────┘
+	//              │     │◄────────────┘
+	//              └──┬──┘
+	//                 │ done
+	//             ┌───▼───┐
+	//             │ After │
+	//             └───────┘
+	// BodyTwo reads the One item behind its own. One emitted it on its last pass,
+	// so a step inside loop Two needs that pass of One in its run data. Each body
+	// runs once, so every item keeps its position through both loops.
+	it('resolves a paired item into an earlier loop from the body of a later one', async () => {
+		const workflow = chainedLoopsV1Workflow(2);
+		workflow.nodes = workflow.nodes.map((node) =>
+			node.id === 'body-two'
+				? {
+						...node,
+						...setNode('body-two', 'BodyTwo', [
+							{ name: 'n', value: "={{ $('One').item.json.n }}", type: 'number' },
+						]),
+					}
+				: node,
+		);
+		const { execution, steps } = await runWorkflow(converter.convert(workflow), [
+			[{ json: { n: 1 } }, { json: { n: 2 } }],
+		]);
+
+		expect(execution.status).toBe('completed');
+		const [bodyTwoItems] = steps.find((step) => step.nodeId === 'body-two')?.outputs ?? [];
+		expect((bodyTwoItems as Array<{ json: { n: number } }>).map(({ json }) => json.n)).toEqual([
+			1, 2,
+		]);
 	});
 
 	// TODO(CAT-2874): slot-shaped IO and branching land as a PR series (#35672
