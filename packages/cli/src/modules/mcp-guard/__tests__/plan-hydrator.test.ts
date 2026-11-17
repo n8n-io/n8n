@@ -12,7 +12,7 @@ import {
 	provenIds,
 	removeUnprovenLiterals,
 } from '../plan-template';
-import { linearLookups, withUserEmails } from '../linear-lookups';
+import { linearLookups, notionLookups, withUserEmails } from '../linear-lookups';
 import {
 	PlanHydrator,
 	nestDottedKeys,
@@ -475,6 +475,28 @@ describe('PlanHydrator with lookups of the call args', () => {
 		await hydrator.hydrate('list_issues', { project: 'P' }, text('{"issues":[]}'));
 		expect(prompts[1]).toContain('from $reads[1]');
 		expect(prompts[1]).toContain('[1] ');
+	});
+});
+
+describe('notionLookups', () => {
+	it('fetches the data sources that a query names', () => {
+		expect(
+			notionLookups('notion-query-data-sources', {
+				data: { mode: 'rows', data_source_url: 'collection://a' },
+			}),
+		).toEqual([{ tool: 'notion-fetch', args: { id: 'collection://a' } }]);
+		expect(
+			notionLookups('notion-query-data-sources', {
+				data: {
+					mode: 'sql',
+					data_source_urls: ['collection://a', 'collection://b', 'collection://c'],
+				},
+			}),
+		).toHaveLength(2);
+	});
+
+	it('looks up nothing for another tool', () => {
+		expect(notionLookups('notion-fetch', { id: 'x' })).toEqual([]);
 	});
 });
 

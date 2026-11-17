@@ -1,7 +1,7 @@
 import type { GymAdmin } from './gym-admin';
 import { LinearHydrator } from './hydrator';
 import { LINEAR_INSTRUCTIONS, NOTION_INSTRUCTIONS } from './hydration-prompts';
-import { linearLookups, withUserEmails } from './linear-lookups';
+import { linearLookups, notionLookups, withUserEmails } from './linear-lookups';
 import { LINEAR_READ_TOOLS, LINEAR_WRITE_TOOLS } from './linear-tools';
 import type { McpCaller } from './mcp-upstream';
 import { NotionHydrator } from './notion-hydrator';
@@ -87,6 +87,7 @@ export const NOTION_PROFILE: GuardServiceProfile = {
 	credentialKind: 'mcp_oauth',
 	credentialField: 'access_token',
 	placeholderSeed: { world_version: 1, persona: { name: 'Guard', email: 'guard@unknown.invalid' } },
+	lookups: notionLookups,
 	instructions: NOTION_INSTRUCTIONS,
 	createHydrator: (deps) => new NotionHydrator(deps),
 };
