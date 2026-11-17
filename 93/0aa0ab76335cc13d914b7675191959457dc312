@@ -1,0 +1,37 @@
+packages/cli/src/modules/mcp/__tests__/list-ui-extensions.tool.test.ts
+  s_6956ec5be81713::t_82d6749474e88a 2,32
+packages/cli/src/modules/mcp/tools/delete-ui-extension.tool.ts
+  s_6956ec5be81713::t_82d6749474e88a 3,28
+packages/cli/src/modules/mcp/__tests__/create-side-panel-view.tool.test.ts
+  s_6956ec5be81713::t_82d6749474e88a 2,25
+packages/cli/src/modules/mcp/__tests__/delete-ui-extension.tool.test.ts
+  s_6956ec5be81713::t_82d6749474e88a 5,25
+packages/modules/ui-extensions/frontend/src/components/UiExtensionPagesNav.test.ts
+  s_6956ec5be81713::t_229ad3ce1f81f5 149,164,166
+packages/cli/src/modules/mcp/__tests__/create-custom-page.tool.test.ts
+  s_6956ec5be81713::t_82d6749474e88a 2,24
+packages/cli/src/modules/mcp/tools/list-ui-extensions.tool.ts
+  s_6956ec5be81713::t_82d6749474e88a 3,31
+packages/modules/ui-extensions/frontend/src/composables/useRemoveUiExtension.ts
+  s_6956ec5be81713::t_229ad3ce1f81f5 30-32,37,64
+packages/cli/src/modules/mcp/tools/create-custom-page.tool.ts
+  s_6956ec5be81713::t_82d6749474e88a 8,63
+packages/cli/src/modules/mcp/tools/create-side-panel-view.tool.ts
+  s_6956ec5be81713::t_82d6749474e88a 8,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "930aa0ab76335cc13d914b7675191959457dc312",
+  "prompts": {},
+  "sessions": {
+    "s_6956ec5be81713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91664345-a691-443f-b08d-05a7967643b2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
