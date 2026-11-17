@@ -224,6 +224,9 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 }`;
 const FILE_LIMIT = '(limit: binary-max-file)';
 const REPEATS = '__repeats';
+const SERVICE_MAX_BYTES = 262144;
+const SERVICE_MAX_BASE64 = 400000;
+const SERVICE_BYTES_HELPERS = ['__bytesBase64', '__storeBase64', '__storeBinary'];
 const REQUEST_SEND = '\tconst response = await ctx.http({';
 const REQUEST_SEND_GUARDED = `\tif ((options.method ?? 'GET') !== 'GET') ${REPEATS} = false;
 	let response;
@@ -293,6 +296,47 @@ const CONTEXT_HELPERS: Record<string, string> = {
 }`,
 	__storedMetadata: `async function __storedMetadata(id) {
 	return await ctx.service({ service: 'binaryData', op: 'metadata', args: { id } });
+}`,
+	__binaryService: `async function __binaryService(op, args) {
+	let answer;
+	try {
+		answer = await ctx.service({ service: 'binaryData', op, args });
+	} catch (error) {
+		throw new Error('file bytes that the binaryData service gave no answer for has no compiled form');
+	}
+	if (answer === null || answer === undefined || typeof answer !== 'object') throw new Error('file bytes that the binaryData service gave no answer for has no compiled form');
+	if (typeof answer.host === 'string') throw new Error('file bytes that n8n keeps in the host (' + answer.host + ') has no compiled form');
+	return answer;
+}`,
+	__bytesBase64: `async function __bytesBase64(bytes) {
+	if (bytes === null || bytes === undefined || typeof bytes !== 'object' || bytes.$bytes !== true || bytes.response === true) throw new Error('base64 text of a value that is not the file bytes of an item has no compiled form');
+	if (typeof bytes.length === 'number' && bytes.length > ${SERVICE_MAX_BYTES}) throw new Error('base64 text of a file of more than ${SERVICE_MAX_BYTES} bytes has no compiled form');
+	const args = { as: 'base64', limit: ${SERVICE_MAX_BYTES} };
+	if (bytes.id === undefined) args.data = bytes.data;
+	else args.id = bytes.id;
+	const answer = await __binaryService('read', args);
+	if (typeof answer.data !== 'string') throw new Error('base64 text that the binaryData service did not give has no compiled form');
+	return answer.data;
+}`,
+	__storeBase64: `async function __storeBase64(data, fileName, mimeType) {
+	if (typeof data !== 'string') throw new Error('binary data from a value that is not base64 text has no compiled form');
+	if (data.length > ${SERVICE_MAX_BASE64}) throw new Error('binary data from a file of more than ${SERVICE_MAX_BYTES} bytes has no compiled form');
+	if ((fileName !== undefined && typeof fileName !== 'string') || (mimeType !== undefined && typeof mimeType !== 'string')) throw new Error('binary data with a file name or a MIME type that is not text has no compiled form');
+	const args = { data, limit: ${SERVICE_MAX_BYTES} };
+	if (fileName !== undefined) args.fileName = fileName;
+	if (mimeType !== undefined) args.mimeType = mimeType;
+	const answer = await __binaryService('store', args);
+	const entry = answer.entry;
+	if (entry === null || entry === undefined || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.data !== 'string') throw new Error('binary data that the binaryData service did not give has no compiled form');
+	return entry;
+}`,
+	__storeBinary: `async function __storeBinary(bytes, fileName, mimeType) {
+	if (bytes === null || bytes === undefined || typeof bytes !== 'object' || bytes.$bytes !== true || bytes.response === true) throw new Error('binary data from a value that is not the file bytes of an item has no compiled form');
+	return await __storeBase64(bytes.id === undefined ? bytes.data : await __bytesBase64(bytes), fileName, mimeType);
+}`,
+	__hostForLimit: `function __hostForLimit(error) {
+	if (${REPEATS} && __isLimit(error) && !error.message.endsWith('${RUNS_IN_HOST}')) return new Error(error.message + ' ${RUNS_IN_HOST}');
+	return error;
 }`,
 	__sleep: `async function __sleep(ms) {
 	if (ms !== null && typeof ms === 'object') throw new Error('a pause for a value that is not a number or text has no compiled form');
@@ -1842,6 +1886,7 @@ const BINARY_HELPERS = [
 	'__fileBytes',
 	'__bytesFrom',
 	'__prepareBinary',
+	...SERVICE_BYTES_HELPERS,
 ];
 
 function mentionsBinary(n: ts.Node): boolean {
@@ -1851,6 +1896,11 @@ function mentionsBinary(n: ts.Node): boolean {
 	)
 		return true;
 	return ts.forEachChild(n, mentionsBinary) ?? false;
+}
+
+function mentionsName(n: ts.Node, name: string): boolean {
+	if (ts.isIdentifier(n) && n.text === name) return true;
+	return ts.forEachChild(n, (child) => mentionsName(child, name) || undefined) ?? false;
 }
 
 function mentionsEncoding(n: ts.Node): boolean {
@@ -7472,7 +7522,90 @@ class Specialiser {
 	private storesResponses = false;
 	private marksFileLimit = false;
 	private readsStoredMetadata = false;
+	private readsItemBytes = false;
 	private requestTokenOptions = false;
+
+	private serviceBytes(root: ts.Node): ts.Node {
+		const names = new Set<string>();
+		const inputs = new Set<string>();
+		const collect = (n: ts.Node) => {
+			const made =
+				ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer
+					? { name: n.name.text, value: n.initializer }
+					: ts.isBinaryExpression(n) &&
+							n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+							ts.isIdentifier(n.left)
+						? { name: n.left.text, value: n.right }
+						: undefined;
+			if (made && givesBytes(made.value)) names.add(made.name);
+			if (made && givesInputBytes(made.value)) inputs.add(made.name);
+			ts.forEachChild(n, collect);
+		};
+		collect(root);
+		const asyncs: boolean[] = [];
+		let found = false;
+		const awaited = (helper: string, values: ts.Expression[]): ts.Expression => {
+			if (asyncs.at(-1) !== true) this.error('code', BYTES_USE);
+			found = true;
+			this.helpers.add(helper);
+			return f.createParenthesizedExpression(f.createAwaitExpression(call(helper, ...values)));
+		};
+		const visit = (n: ts.Node): ts.Node => {
+			if (ts.isFunctionLike(n)) {
+				asyncs.push(
+					ts.canHaveModifiers(n) &&
+						(ts.getModifiers(n) ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword),
+				);
+				const out = ts.visitEachChild(n, visit, undefined);
+				asyncs.pop();
+				return out;
+			}
+			if (
+				ts.isCallExpression(n) &&
+				ts.isPropertyAccessExpression(n.expression) &&
+				n.expression.name.text === 'toString' &&
+				n.arguments.length === 1 &&
+				ts.isStringLiteral(n.arguments[0]) &&
+				bufferEncoding(n.arguments[0]) === 'base64'
+			) {
+				const held = uncast(n.expression.expression);
+				if (
+					(ts.isIdentifier(held) && names.has(held.text)) ||
+					(givesBytes(held) && !isBase64Buffer(held))
+				)
+					return awaited('__bytesBase64', [
+						ts.visitNode(n.expression.expression, visit) as ts.Expression,
+					]);
+			}
+			if (
+				ts.isCallExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				n.expression.text === '__prepareBinary' &&
+				n.arguments.length === 3
+			) {
+				const given = uncast(n.arguments[0]);
+				const rest = n.arguments.slice(1).map((a) => ts.visitNode(a, visit) as ts.Expression);
+				if (isBase64Buffer(given))
+					return awaited('__storeBase64', [
+						ts.visitNode(given.arguments[0], visit) as ts.Expression,
+						...rest,
+					]);
+				if (givesInputBytes(given) || (ts.isIdentifier(given) && inputs.has(given.text)))
+					return awaited('__storeBinary', [
+						ts.visitNode(n.arguments[0], visit) as ts.Expression,
+						...rest,
+					]);
+			}
+			return ts.visitEachChild(n, visit, undefined);
+		};
+		const out = ts.visitNode(root, visit);
+		if (!found) return root;
+		this.readsItemBytes = true;
+		for (const helper of ['__binaryService', '__hostForLimit']) this.helpers.add(helper);
+		if (this.helpers.has('__storeBinary'))
+			for (const helper of ['__storeBase64', '__bytesBase64']) this.helpers.add(helper);
+		return out;
+	}
 
 	private bufferText(root: ts.Node): ts.Node {
 		const visit = (n: ts.Node): ts.Node => {
@@ -7697,6 +7830,9 @@ class Specialiser {
 	}
 
 	private print(): string {
+		for (const entry of this.output) entry.node = this.serviceBytes(entry.node);
+		if (this.readsItemBytes && !this.output.some((o) => mentionsName(o.node, '__prepareBinary')))
+			this.helpers.delete('__prepareBinary');
 		for (const { node } of this.output) this.bytesUses(node);
 		for (const entry of this.output) entry.node = this.listSources(entry.node);
 		for (const entry of this.output) entry.node = this.zoneChoices(entry.node);
@@ -7707,7 +7843,7 @@ class Specialiser {
 			(HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT),
 		);
 		if (limitGuard) this.helpers.add('__isLimit');
-		const unitsWith = (guarded: boolean) => {
+		const unitsWith = (guarded: boolean, hosted = false) => {
 			const code: string[] = [];
 			let body = '';
 			for (const { name, node, sf } of this.output) {
@@ -7722,7 +7858,10 @@ class Specialiser {
 					if (unit?.withContext) this.error(name, 'a constant is called with the n8n context');
 					code.push(text(node));
 				} else if (name === 'execute') {
-					body = (node.body?.statements ?? []).map(text).join('\n');
+					const statements = (node.body?.statements ?? []).map(text).join('\n');
+					body = hosted
+						? `try {\n${statements}\n} catch (__stopped) {\n\tthrow __hostForLimit(__stopped);\n}`
+						: statements;
 				} else {
 					const lead = unit?.withContext
 						? CONTEXT_PARAMS.map((p) => f.createParameterDeclaration(undefined, undefined, p))
@@ -7827,10 +7966,11 @@ class Specialiser {
 			this.error('code', SESSION_TYPE);
 		let joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
 		this.marksFileLimit =
-			this.storesResponses && sendsRequests && namesOutsideRequest(joined, 'encoding');
+			this.readsItemBytes ||
+			(this.storesResponses && sendsRequests && namesOutsideRequest(joined, 'encoding'));
 		if (this.marksFileLimit) {
 			for (const helper of ['__isLimit', '__isFileLimit']) this.helpers.add(helper);
-			const guarded = unitsWith(true);
+			const guarded = unitsWith(true, this.readsItemBytes);
 			code = codeWith(guarded.code, true);
 			body = guarded.body;
 			joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
