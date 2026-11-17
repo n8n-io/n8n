@@ -531,6 +531,7 @@ export class McpAgentToolsService {
 		user: User,
 		allowedToolNames?: Set<string>,
 		ctx: OperationContext = {},
+		skillsEnabled = true,
 	): void {
 		const isCallAgentAvailable = allowedToolNames?.has(MCP_CALL_AGENT_TOOL_NAME) ?? true;
 		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
@@ -539,9 +540,9 @@ export class McpAgentToolsService {
 		};
 
 		registerIfAllowed(this.searchAgentsTool(user));
-		registerIfAllowed(this.getAgentTool(user));
+		registerIfAllowed(this.getAgentTool(user, skillsEnabled));
 		registerIfAllowed(this.createAgentTool(user));
-		registerIfAllowed(this.mutateAgentTool(user));
+		registerIfAllowed(this.mutateAgentTool(user, skillsEnabled));
 		registerIfAllowed(this.validateAgentTool(user, isCallAgentAvailable));
 		registerIfAllowed(this.callAgentTool(user));
 		registerIfAllowed(this.publishAgentTool(user));
@@ -619,7 +620,7 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private getAgentTool(user: User): ToolDefinition<typeof getAgentInput> {
+	private getAgentTool(user: User, skillsEnabled: boolean): ToolDefinition<typeof getAgentInput> {
 		return {
 			name: 'get_agent',
 			config: {
@@ -645,7 +646,11 @@ export class McpAgentToolsService {
 						const snapshot = versionId
 							? await this.getAgentVersionSnapshot(agent.projectId, agentId, versionId)
 							: await this.getAgentSnapshot(user, agent);
-						return { ok: true, ...snapshot };
+						return {
+							ok: true,
+							...snapshot,
+							...(skillsEnabled ? {} : { skills: {}, skillHashes: {}, outdatedSkillIds: [] }),
+						};
 					},
 				),
 		};
@@ -700,7 +705,10 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private mutateAgentTool(user: User): ToolDefinition<typeof mutateAgentInput> {
+	private mutateAgentTool(
+		user: User,
+		skillsEnabled: boolean,
+	): ToolDefinition<typeof mutateAgentInput> {
 		return {
 			name: 'mutate_agent',
 			config: {
@@ -721,6 +729,9 @@ export class McpAgentToolsService {
 					'mutate_agent',
 					{ agentId: input.agentId, type: input.operation.type },
 					async () => {
+						if (!skillsEnabled && input.operation.type.startsWith('skill.')) {
+							throw new UserError('An admin turned off skills for MCP clients on this instance.');
+						}
 						const agent = await this.resolveAgent(user, input.agentId);
 						const projectId = agent.projectId;
 						await this.assertScope(user, projectId, 'agent:update');

@@ -194,6 +194,8 @@ describe('PATCH /mcp/settings', () => {
 		// Clear the in-memory cache so subsequent reads hit the DB.
 		await Container.get(McpSettingsService).setEnabled(false);
 		await Container.get(SettingsRepository).delete({ key: settingsKey });
+		await Container.get(SettingsRepository).delete({ key: 'mcp.preferences.enabled' });
+		await Container.get(SettingsRepository).delete({ key: 'mcp.skills.enabled' });
 	});
 
 	test('owner can enable MCP access', async () => {
@@ -246,9 +248,6 @@ describe('PATCH /mcp/settings', () => {
 		const settingsRepository = Container.get(SettingsRepository);
 		expect((await settingsRepository.findByKey('mcp.preferences.enabled'))?.value).toBe('false');
 		expect((await settingsRepository.findByKey('mcp.skills.enabled'))?.value).toBe('false');
-
-		await settingsRepository.delete({ key: 'mcp.preferences.enabled' });
-		await settingsRepository.delete({ key: 'mcp.skills.enabled' });
 	});
 
 	test('member without mcp:manage scope is forbidden', async () => {

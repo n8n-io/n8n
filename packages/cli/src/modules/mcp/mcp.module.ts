@@ -34,10 +34,13 @@ export class McpModule implements ModuleInterface {
 		const { McpSettingsService } = await import('./mcp.settings.service.js');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
 		const mcpSettingsService = Container.get(McpSettingsService);
-		const mcpAccessEnabled = await mcpSettingsService.getEnabled();
-		const autoExposeNewWorkflows = await mcpSettingsService.getAutoExposeNewWorkflows();
-		const preferencesEnabled = await mcpSettingsService.getPreferencesEnabled();
-		const skillsEnabled = await mcpSettingsService.getSkillsEnabled();
+		const [mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled, skillsEnabled] =
+			await Promise.all([
+				mcpSettingsService.getEnabled(),
+				mcpSettingsService.getAutoExposeNewWorkflows(),
+				mcpSettingsService.getPreferencesEnabled(),
+				mcpSettingsService.getSkillsEnabled(),
+			]);
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
 		// Canonical resource URL, so the UI shows the URL clients must actually
 		// use when a dedicated MCP base URL is configured.

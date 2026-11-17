@@ -1,9 +1,11 @@
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { SkillsGate } from '@/modules/skills';
 
 import type { McpConfig } from './mcp.config';
 
@@ -32,8 +34,11 @@ export function isMcpPreferencesSwitchOn(moduleRegistry: ModuleRegistry): boolea
 	return moduleRegistry.settings.get('mcp')?.preferencesEnabled === true;
 }
 
-export function isMcpSkillsSwitchOn(moduleRegistry: ModuleRegistry): boolean {
-	return moduleRegistry.settings.get('mcp')?.skillsEnabled === true;
+export function areMcpSkillsAvailable(moduleRegistry: ModuleRegistry): boolean {
+	return (
+		Container.get(SkillsGate).isEnabled &&
+		moduleRegistry.settings.get('mcp')?.skillsEnabled === true
+	);
 }
 
 export function areAgentToolsAvailable(

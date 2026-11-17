@@ -96,7 +96,7 @@ Split services by capability, never by caller.
     | ------------- | ------------------------------- | ----------------------------------- |
     | Agents        | `agents.enabled`                | Settings > Agents (`PUT /agents/settings`) |
     | n8n Assistant | `instance-ai.enabled`           | n8n Assistant settings              |
-    | MCP           | `mcp.mcpAccessEnabled`          | Instance MCP access                 |
+    | MCP           | `mcp.mcpAccessEnabled` and `mcp.skillsEnabled` | Instance MCP access and its Skills switch |
 
   When all consumers are off, the skills routes and the Skill Sync routes answer 404, MCP and n8n Assistant show no skill tools, and the frontend hides the skills page (`isContextSkillsEnabled`, which uses the same rule). n8n keeps the skill data. Each consumer refreshes its module settings on every main when an admin changes it (`reload-agents-settings`, `reload-instance-ai-settings` and `reload-mcp-settings`).
   The delete and move guards do not read the agents toggle. While agents are off and skills stay on for n8n Assistant or MCP, a user still cannot delete or move a skill that an agent uses.

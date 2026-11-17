@@ -246,6 +246,18 @@ describe('McpAgentToolsService', () => {
 		return await tool.handler(input, { signal });
 	};
 
+	const registerWithSkillsOff = () => {
+		const skillsOffTools = new Map<string, RegisteredTool>();
+		const registerTool: RegisterToolFn = (tool) => {
+			skillsOffTools.set(tool.name, {
+				config: tool.config,
+				handler: tool.handler as unknown as RegisteredTool['handler'],
+			});
+		};
+		service.registerTools(registerTool, vi.fn(), user, undefined, {}, false);
+		return skillsOffTools;
+	};
+
 	const useRealCustomToolPersistence = (agent: ProjectAgent) => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
@@ -744,6 +756,21 @@ describe('McpAgentToolsService', () => {
 				error: expect.stringContaining('update_agent_integration'),
 			});
 			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ type: 'skill.upsert', skill: { name: 'Skill', body: 'do it' } },
+			{ type: 'skill.delete', skillId: 'skill-1' },
+		])('rejects $type while the MCP Skills switch is off', async (operation) => {
+			const skillsOffTools = registerWithSkillsOff();
+
+			const result = await skillsOffTools
+				.get('mutate_agent')!
+				.handler(mutateInput(operation), { signal: new AbortController().signal });
+
+			expect(result.isError).toBe(true);
+			expect(agentSkillsService.createAndAttachSkill).not.toHaveBeenCalled();
+			expect(agentSkillsService.deleteSkill).not.toHaveBeenCalled();
 		});
 
 		it('creates and attaches a skill when no skillId is given', async () => {
@@ -2429,6 +2456,27 @@ describe('McpAgentToolsService', () => {
 					{ id: 'task-2', name: 'Detached', enabled: false },
 				],
 				customTools: [{ id: 'my_tool', descriptor: { name: 'my_tool' } }],
+			});
+		});
+
+		it('leaves out the skills while the MCP Skills switch is off', async () => {
+			const skillsOffTools = registerWithSkillsOff();
+			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentSkillsService.listSkills.mockResolvedValue({ 'skill-1': { name: 'Skill' } } as never);
+			agentTaskService.list.mockResolvedValue([] as never);
+
+			const result = await skillsOffTools.get('get_agent')!.handler(
+				{ projectId: 'project-1', agentId: 'agent-1' },
+				{
+					signal: new AbortController().signal,
+				},
+			);
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				skills: {},
+				skillHashes: {},
+				outdatedSkillIds: [],
 			});
 		});
 

@@ -52,7 +52,6 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
-import { SkillsGate } from '@/modules/skills';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -84,10 +83,10 @@ import {
 import { getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
+	areMcpSkillsAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 	isMcpPreferencesSwitchOn,
-	isMcpSkillsSwitchOn,
 } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
@@ -552,6 +551,7 @@ export class McpService {
 		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
 		// other tool. No RBAC check: a user's own preferences need no scope.
 		const preferencesEnabled = isMcpPreferencesSwitchOn(this.moduleRegistry);
+		const skillsEnabled = areMcpSkillsAvailable(this.moduleRegistry);
 		const userPreferencesInstructionsEnabled =
 			preferencesEnabled && (allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		// The same rationale again: only a caller whose role and grant reach the report is
@@ -961,10 +961,11 @@ export class McpService {
 				user,
 				allowedToolNames,
 				ctx,
+				skillsEnabled,
 			);
 		}
 
-		if (Container.get(SkillsGate).isEnabled && isMcpSkillsSwitchOn(this.moduleRegistry)) {
+		if (skillsEnabled) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
 			await Container.get(McpSkillToolsService).registerTools(
 				registerIfAllowed,

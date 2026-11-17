@@ -18,12 +18,12 @@ export class SkillsGate {
 
 	get isEnabled(): boolean {
 		const { settings } = this.moduleRegistry;
+		const mcp = settings.get('mcp');
 		return (
 			this.skillUsage.isRegistered &&
 			(settings.get('agents')?.enabled === true ||
 				settings.get('instance-ai')?.enabled === true ||
-				(settings.get('mcp')?.mcpAccessEnabled === true &&
-					settings.get('mcp')?.skillsEnabled === true))
+				(mcp?.mcpAccessEnabled === true && mcp?.skillsEnabled === true))
 		);
 	}
 }

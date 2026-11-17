@@ -166,9 +166,7 @@ export class McpSettingsService {
 	}
 
 	private async setPreviewFeatureEnabled(key: string, enabled: boolean): Promise<void> {
-		await this.settingsRepository.upsert({ key, value: enabled.toString(), loadOnStartup: true }, [
-			'key',
-		]);
+		await this.settingsRepository.upsertByKey(key, enabled.toString(), true, {});
 	}
 
 	async bulkSetAvailableInMCP(

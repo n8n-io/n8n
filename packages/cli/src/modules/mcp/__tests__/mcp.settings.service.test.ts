@@ -20,6 +20,7 @@ describe('McpSettingsService', () => {
 	let service: McpSettingsService;
 	let findByKey: Mock<(...args: [string]) => Promise<Settings | null>>;
 	let upsert: Mock;
+	let upsertByKey: Mock;
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -35,7 +36,8 @@ describe('McpSettingsService', () => {
 		vi.clearAllMocks();
 		findByKey = vi.fn<(...args: [string]) => Promise<Settings | null>>();
 		upsert = vi.fn();
-		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
+		upsertByKey = vi.fn();
+		settingsRepository = { findByKey, upsert, upsertByKey } as unknown as SettingsRepository;
 		collaborationService.filterOpenWorkflowIds.mockImplementation(
 			async (workflowIds) => workflowIds,
 		);
@@ -93,7 +95,7 @@ describe('McpSettingsService', () => {
 		test('saves the value', async () => {
 			await set(false);
 
-			expect(upsert).toHaveBeenCalledWith({ key, value: 'false', loadOnStartup: true }, ['key']);
+			expect(upsertByKey).toHaveBeenCalledWith(key, 'false', true, {});
 		});
 	});
 

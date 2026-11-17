@@ -81,6 +81,7 @@ import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.co
 import {
 	canWriteInstanceSkillScope,
 	canWriteProjectSkillScope,
+	isMcpSkillsEnabled,
 	keepSortOnClear,
 	preferenceUserName,
 	toSortOption,
@@ -161,10 +162,7 @@ const agentFilterOptions = computed(() =>
 const creators = ref<SkillUserDto[]>([]);
 const loadFailed = ref(false);
 const mcpSkillsEnabled = computed(
-	() =>
-		posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG) &&
-		settingsStore.moduleSettings.mcp?.mcpAccessEnabled === true &&
-		settingsStore.moduleSettings.mcp?.skillsEnabled === true,
+	() => posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG) && isMcpSkillsEnabled(),
 );
 
 // The empty states describe the rows on screen, so they follow the query that loaded
