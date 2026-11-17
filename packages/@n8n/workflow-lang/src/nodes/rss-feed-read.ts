@@ -5,8 +5,9 @@
  * The feed is read with `ctx.http` and parsed with the native `XML.parse`;
  * the item fields, snippets and contents follow rss-parser's `buildRSS`,
  * `parseItemRss`, `parseItemAtom` and `decorateItunes`. `ignoreSSL` runs the
- * v1 node in the fallback host. Versions 1 and 1.1 (another Accept header,
- * and version 1 reads the feed once for all items) run in the host too.
+ * v1 node in the fallback host. `version` is the node version: version 1.1 sends the
+ * Accept header of rss-parser and is the same in all else. Version 1 reads the feed
+ * once for all items, and runs in the host.
  */
 import { defineNode, type Item } from '@n8n/workflow-lang';
 
@@ -18,10 +19,15 @@ interface RssOptions {
 interface RssParameters {
 	url?: string;
 	options?: RssOptions;
+	/** The node version, when it is below 1.2. */
+	version?: number;
 }
 
 type Xml = Record<string, unknown>;
 type Field = [string, string, boolean];
+
+/** The Accept header of the node before version 1.2 (`DEFAULT_HEADERS` of the v1 node). */
+const STRICT_ACCEPT = 'application/rss+xml';
 
 const RELAXED_ACCEPT =
 	'application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4';
@@ -242,7 +248,9 @@ export default defineNode<RssParameters>({
 	type: 'n8n-nodes-base.rssFeedRead',
 	version: 1.2,
 	supports: {
-		operations: { default: ['url', 'options', 'options.customFields', 'options.ignoreSSL=false'] },
+		operations: {
+			default: ['url', 'options', 'options.customFields', 'options.ignoreSSL=false', 'version'],
+		},
 	},
 	async run(ctx, parameters, items) {
 		const out: Item[] = [];
@@ -259,7 +267,10 @@ export default defineNode<RssParameters>({
 				response = await ctx.http<unknown>({
 					method: 'GET',
 					url,
-					headers: { 'User-Agent': 'rss-parser', Accept: RELAXED_ACCEPT },
+					headers: {
+						'User-Agent': 'rss-parser',
+						Accept: (parameters.version ?? 1.2) >= 1.2 ? RELAXED_ACCEPT : STRICT_ACCEPT,
+					},
 					qs: {},
 					body: undefined,
 				});

@@ -106,6 +106,8 @@ function pick(p: Record<string, unknown>, names: string[]): Record<string, unkno
 }
 
 export const ADAPTERS: Record<string, Adapter> = {
+	// The node version, for the Accept header of a version below 1.2.
+	'n8n-nodes-base.rssFeedRead': (p, version) => (version < 1.2 ? { ...p, version } : p),
 	// The defaults of the v1 node description, and the item index for the error texts of
 	// `assertBinaryData`. An operation without a library form keeps its parameters: the
 	// `supports` list refuses it.
@@ -637,8 +639,9 @@ export const MIN_VERSIONS: Record<string, number> = {
 	'n8n-nodes-base.mySql': 2,
 	// Version 2.1 gave the node its own readers for time columns.
 	'n8n-nodes-base.postgres': 2.1,
-	// 1.2 has the relaxed Accept header; version 1 reads the feed once for all items.
-	'n8n-nodes-base.rssFeedRead': 1.2,
+	// Version 1 reads the feed once for all items. Version 1.1 has another Accept header,
+	// which the library node sends for `version` (`ADAPTERS`).
+	'n8n-nodes-base.rssFeedRead': 1.1,
 };
 
 /**

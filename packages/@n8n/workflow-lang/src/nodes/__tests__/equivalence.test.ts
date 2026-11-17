@@ -33,9 +33,13 @@ import {
 } from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const recordings: Record<string, Recording> = JSON.parse(
-	readFileSync(join(here, 'v1-requests.json'), 'utf8'),
-);
+// `v1-requests.json` is at the largest size that the format check reads. A recording that is
+// made after that is in `v1-requests-added.json`: record the case with the script, then move
+// its entry there.
+const recordings: Record<string, Recording> = {
+	...JSON.parse(readFileSync(join(here, 'v1-requests.json'), 'utf8')),
+	...JSON.parse(readFileSync(join(here, 'v1-requests-added.json'), 'utf8')),
+};
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 /** The name of the token that the converter asks n8n for, for a Sheets node with a service account. */
 const SHEETS_MINT = googleMint('sheetV2', [
