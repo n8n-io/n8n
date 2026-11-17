@@ -3,7 +3,8 @@ import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import type { ExecutionSetup } from '../execution-context';
 import { TestCredentialsHelper } from '../instance-state/credentials-helper';
 import { createExternalSecretsProxy, createVariables } from '../instance-state/expression-values';
-import { refuseCodeTask, refuseSubWorkflow } from '../runtime/refusals';
+import { startRunnerTask } from '../runtime/code-runner';
+import { refuseSubWorkflow } from '../runtime/refusals';
 import { createNodeHandler } from './node-handler';
 
 const BASE_URL = 'http://localhost:5678';
@@ -19,8 +20,7 @@ export function createAdditionalData(context: ExecutionSetup): IWorkflowExecuteA
 		currentNodeExecutionIndex: 0,
 		executeWorkflow: async (_workflowInfo, _additionalData, { node }) =>
 			refuseSubWorkflow(context, node),
-		startRunnerTask: async (_additionalData, _jobType, _settings, _functions, _inputData, node) =>
-			refuseCodeTask(context, node),
+		startRunnerTask: async (...args) => await startRunnerTask(context, args),
 		getRunExecutionData: async () => undefined,
 		getRuntimeCredential: async () => undefined,
 		logAiEvent: () => {},

@@ -1,0 +1,47 @@
+{
+	"id": "webhook-last-node-1",
+	"name": "Quote price",
+	"nodes": [
+		{
+			"id": "d4000000-0002-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"webhookId": "d4000000-0002-4000-8000-0000000000aa",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "quote",
+				"responseMode": "lastNode",
+				"options": {
+					"responseCode": { "values": { "responseCode": "customCode", "customCode": 202 } },
+					"responseHeaders": { "entries": [{ "name": "Cache-Control", "value": "no-store" }] }
+				}
+			}
+		},
+		{
+			"id": "d4000000-0002-4000-8000-000000000002",
+			"name": "Quote",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "q1",
+							"name": "total",
+							"value": "={{ $json.body.quantity * 5 }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Quote", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

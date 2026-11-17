@@ -114,6 +114,7 @@ A request that no nock mock matches fails the execution. Clear the nock state af
 | Field | Meaning |
 | --- | --- |
 | `result.output` | JSON of the items from all runs of the end node, in run order. Throws if more than one end node ran. |
+| `result.response` | The webhook response: status, headers, and body. Only for webhook triggers. |
 | `result.staticData` | The workflow static data at the end of the execution. |
 | `result.customData` | The execution custom data that the workflow set. |
 | `result.node(node).runs` | One entry for each run of the node. Accepts a name or a reference. |
@@ -140,9 +141,10 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 | `SECRET_NOT_SUPPLIED` | The workflow reads a secret that the test did not supply. |
 | `HTTP_NOT_MOCKED` | A request matched no nock mock, and `allowHttp` does not permit the host. |
 | `SUB_WORKFLOW_SOURCE_NOT_SUPPORTED` | A node with no mock calls a sub-workflow. |
-| `CODE_NODE_NOT_MOCKED` | A Code node has no mock. |
+| `CODE_NODE_NOT_MOCKED` | A Python Code node has no mock. |
 | `WAIT_NOT_MOCKED` | A node waits for a webhook, a form, or a reply, and has no mock. |
 | `DATA_TABLE_NOT_MOCKED` | A Data Table node has no mock. |
+| `BINARY_NOT_SUPPORTED` | The webhook responds with binary data. |
 | `MOCK_INVALID_OUTPUT` | A mock returned a value that is not items or `{ outputs }`. |
 | `TRIGGER_NOT_FOUND` | The workflow has no active trigger, more than one trigger, or the `trigger` option names a node that is not a trigger. |
 | `NODE_NOT_FOUND` | `workflow.node(name)` received an unknown name, or `result.node(node)` received a reference from another workflow. |
@@ -153,6 +155,19 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 | `INVALID_WORKFLOW` | The workflow JSON has an unknown value. |
 | `INVALID_OPTION` | An option of `executeWorkflow` has an invalid value. |
 | `EXECUTION_IN_PROGRESS` | A second execution started before the first one finished. |
+
+## Code node
+
+The JavaScript Code node runs for real. The library starts the JavaScript runner of n8n in a worker thread when the first Code node runs, and keeps the worker for the later Code nodes of the test process. The code runs in the same `vm` sandbox as in production, with the same `require` rules. The runner hardens only the worker. The test process does not change. A request from the code through `this.helpers.httpRequest` goes through nock, and the Code node records it in `requests`. The code has no other HTTP client: `fetch`, `XMLHttpRequest`, and `WebSocket` are not defined, and a `require` of `http`, `https`, or `undici` fails. The Python Code node needs `mockNode`.
+
+These differences from production remain:
+
+- **The runner runs in a worker thread.** Production runs it in a separate process. The worker shares the memory and the CPU of the test process. The library copies each message through JSON, as the production socket does, so the code cannot change the state of the engine. The worker gets an empty environment, so the runner freezes the global prototypes as in production.
+- **Start time.** The first Code node of a test file waits for the worker to start. This takes approximately 0.5 to 1 second.
+- **A stopped worker.** If the worker stops during a Code node, the execution fails with `NODE_FAILED`. The next Code node starts a new worker.
+- **Task timeout.** The runner stops a stuck `await` after 300 seconds, as in production. A loop that blocks the worker after an `await` is not stopped. Production restarts the runner in this case. The test fails at the timeout of the test framework.
+- **Production defaults.** The runner does not read `NODE_FUNCTION_ALLOW_BUILTIN`, `NODE_FUNCTION_ALLOW_EXTERNAL`, or `N8N_RUNNERS_INSECURE_MODE`. A `require` of a module fails as in a production instance with the default settings.
+- **Variables.** `$vars` in the code returns `undefined` for a variable that the test did not supply, as in production. An expression fails with `VARIABLE_NOT_SUPPLIED`.
 
 ## Known limits
 
@@ -166,7 +181,6 @@ A failed execution rejects with a `WorkflowTestError`. The error has `code`, `wo
 - **AI nodes.** Mock the agent node. Its model, memory, and tool sub-nodes then do not run.
 - **Waits.** A Wait node with a time interval continues immediately. A wait for a webhook, a form, or a reply needs `mockNode`.
 - **Data tables** need `mockNode`.
-- **Code nodes** need `mockNode`.
 - **Sub-workflows.** A node that calls a sub-workflow needs `mockNode`.
 - **Binary data.** Mocks and results hold JSON only.
 - **Fixed runtime values.** `$execution.mode` is always `production`. `$execution.id` is `test-execution-1`.

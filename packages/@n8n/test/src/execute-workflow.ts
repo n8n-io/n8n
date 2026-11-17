@@ -24,6 +24,7 @@ import type {
 	NodeRunLog,
 } from './execution-context';
 import { WorkflowTestResult } from './result';
+import { captureWebhookResponse } from './runtime/webhook-response';
 import type { WorkflowHandle } from './workflow-set';
 
 const EXECUTION_ID = 'test-execution-1';
@@ -82,6 +83,7 @@ async function runEngine(context: ExecutionContext): Promise<IRun> {
 	const { input = {} } = context.options;
 	const items = (Array.isArray(input) ? input : [input]).map((json) => ({ json: deepCopy(json) }));
 	const trigger = selectTrigger(context);
+	captureWebhookResponse(context, trigger);
 	const runExecutionData = createRunExecutionData({
 		executionData: {
 			nodeExecutionStack: [{ node: trigger, data: { main: [items] }, source: null }],

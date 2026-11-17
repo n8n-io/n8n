@@ -3,6 +3,7 @@ import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 
 import { WorkflowTestError } from './errors';
 import type { CompletedNodeRun, ExecutionContext, NodeRunRecord } from './execution-context';
+import { toWebhookResponse } from './runtime/webhook-response';
 import type { NodeReference } from './workflow-set';
 
 export interface NodeRunError {
@@ -67,6 +68,10 @@ export class WorkflowTestResult {
 	) {
 		this.staticData = deepCopy(context.workflow.staticData);
 		this.customData = { ...run.data.resultData.metadata };
+	}
+
+	get response() {
+		return toWebhookResponse(this.context, this.run);
 	}
 
 	get output(): IDataObject[] {

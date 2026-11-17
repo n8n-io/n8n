@@ -12,6 +12,7 @@ export {
 	type MockResult,
 } from './mock-node';
 export type { NodeResult, NodeRun, NodeRunError, WorkflowTestResult } from './result';
+export type { WebhookResponse } from './runtime/webhook-response';
 export {
 	loadWorkflow,
 	loadWorkflows,

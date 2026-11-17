@@ -4599,9 +4599,15 @@ importers:
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../nodes-langchain
+      '@n8n/task-runner':
+        specifier: workspace:*
+        version: link:../task-runner
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -4624,6 +4630,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
