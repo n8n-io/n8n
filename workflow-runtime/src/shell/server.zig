@@ -16,6 +16,8 @@ const egress = @import("egress.zig");
 const pg = @import("pg.zig");
 const smtp = @import("smtp.zig");
 const my = @import("my.zig");
+const tds_client = @import("ms.zig");
+const ms_call = @import("ms_call.zig");
 const my_call = @import("my_call.zig");
 const creds = @import("creds.zig");
 const admin = @import("admin.zig");
@@ -107,6 +109,10 @@ pub const Options = struct {
     /// Off until the client is verified against a real server: such a call then runs in the
     /// fallback host.
     sql_mysql: bool = false,
+    /// Calls with the dialect `mssql` go to the native SQL Server client (`ms.zig`): `--sql-mssql`.
+    /// Off until the client is verified against a real server: such a call then runs in the
+    /// fallback host.
+    sql_mssql: bool = false,
     /// `--smtp-native`: `smtp` steps go to the native SMTP client (`smtp.zig`).
     smtp_native: bool = false,
     smtp: smtp.Config = .{},
@@ -383,6 +389,9 @@ const Kind = enum(u8) {
     /// A connection and a name lookup of the SMTP client (`smtp.zig`).
     smtp = 19,
     smtp_dns = 20,
+    /// A connection and a name lookup of the SQL Server client (`ms.zig`).
+    mssql = 21,
+    mssql_dns = 22,
     /// The log writer synced or made room (`logoff.zig`).
     log_wake = 18,
 };
@@ -593,6 +602,8 @@ pub const Runner = struct {
     sql: *pg.Client,
     /// The MySQL client of the `sql` effect (`dialect: mysql`). It has the limits of `opts.sql`.
     mysql: *my.Client,
+    /// The SQL Server client of the `sql` effect (`dialect: mssql`). It has the limits of `opts.sql`.
+    mssql: *tds_client.Client,
     /// The SMTP client of the `smtp` effect. Null without `--smtp-native`.
     mail: ?*smtp.Client = null,
     /// Effect errors raised while actions run outlive the batch arena:
@@ -856,6 +867,7 @@ pub const Runner = struct {
         scfg.dns_servers = opts.gym_dns;
         try r.sql.init(gpa, scfg, &r.poller, @backingInt(Kind.sql), @backingInt(Kind.sql_dns));
         try r.startMysql(gpa, scfg);
+        try r.startMssql(gpa, scfg);
         r.mail = null;
         if (opts.smtp_native) try r.startSmtp(gpa);
         // Virtual memory: pages are used only as large frames come and go.
@@ -1041,6 +1053,7 @@ pub const Runner = struct {
         r.egress.deinit();
         r.sql.deinit();
         r.mysql.deinit();
+        r.mssql.deinit();
         if (r.mail) |m| m.deinit();
         if (r.blobs) |b| b.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
@@ -1150,7 +1163,7 @@ pub const Runner = struct {
         var next_timer: ?i64 = r.start_out.next_timer_ms;
         while (!r.stop.load(.monotonic)) {
             var timeout: i32 = 50;
-            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork() or r.mysql.hasWork() or r.smtpHasWork()) timeout = 0;
+            if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork() or r.sql.hasWork() or r.mysql.hasWork() or r.mssql.hasWork() or r.smtpHasWork()) timeout = 0;
             // The stream has durable lines that one pass did not send.
             if (r.stream_more or r.renewalsPending()) timeout = 0;
             // A stored response has a result that found no room.
@@ -1180,6 +1193,7 @@ pub const Runner = struct {
             if (r.opts.stats and now - r.egress_stats_ms >= egress_stats_gap_ms) r.publishEgressStats(now);
             r.sql.afterEvents(now);
             r.mysql.afterEvents(now);
+            r.mssql.afterEvents(now);
             r.drainSql();
             r.pumpSmtp(now);
             r.drainEgressLost();
@@ -1249,6 +1263,8 @@ pub const Runner = struct {
             .sql_dns => r.sql.onDns(@intCast(idx), ev),
             .mysql => r.mysql.onConn(idx, gen, ev, sys.nowMs()),
             .mysql_dns => r.mysql.onDns(@intCast(idx), ev),
+            .mssql => r.mssql.onConn(idx, gen, ev, sys.nowMs()),
+            .mssql_dns => r.mssql.onDns(@intCast(idx), ev),
             .smtp => if (r.mail) |m| m.onConn(idx, gen, ev, sys.nowMs()),
             .smtp_dns => if (r.mail) |m| m.onDns(@intCast(idx), ev),
             .fallback => {
@@ -1849,6 +1865,28 @@ pub const Runner = struct {
         try r.mysql.init(gpa, mcfg, &r.poller, @backingInt(Kind.mysql), @backingInt(Kind.mysql_dns));
     }
 
+    /// The SQL Server client has the limits of the PostgreSQL client (the `--sql-*` flags).
+    /// Its time limits to connect and for a statement come from the credential.
+    fn startMssql(r: *Runner, gpa: std.mem.Allocator, scfg: pg.Config) !void {
+        r.mssql = try gpa.create(tds_client.Client);
+        const mcfg: tds_client.Config = .{
+            .max_reqs = scfg.max_reqs,
+            .max_conns = scfg.max_conns,
+            .pool_conns = scfg.pool_conns,
+            .max_pools = scfg.max_pools,
+            .max_result = scfg.max_result,
+            .max_request = scfg.max_request,
+            .max_statements = scfg.max_statements,
+            .idle_ms = scfg.idle_ms,
+            .total_ms = scfg.total_ms,
+            .insecure_tls = scfg.insecure_tls,
+            .ca_file = scfg.ca_file,
+            .dns_servers = scfg.dns_servers,
+            .credentials = scfg.credentials,
+        };
+        try r.mssql.init(gpa, mcfg, &r.poller, @backingInt(Kind.mssql), @backingInt(Kind.mssql_dns));
+    }
+
     // ---- SMTP (smtp.zig) -------------------------------------------------------------
 
     fn startSmtp(r: *Runner, gpa: std.mem.Allocator) !void {
@@ -1885,6 +1923,9 @@ pub const Runner = struct {
         const now = sys.nowMs();
         const mysql = my_call.isMysql(a.payload);
         if (mysql and !r.opts.sql_mysql) return r.effectError(a.exec_id, a.seq, "sql: the native MySQL client is not on in this build (limit: sql-host)");
+        const mssql = ms_call.isMssql(a.payload);
+        if (mssql and !r.opts.sql_mssql) return r.effectError(a.exec_id, a.seq, "sql: the native SQL Server client is not on in this build (limit: sql-host)");
+        if (mssql) return r.effectError(a.exec_id, a.seq, r.mssql.start(a.exec_id, a.seq, a.payload, store, now) orelse return);
         const answer = if (mysql) r.mysql.start(a.exec_id, a.seq, a.payload, store, now) else r.sql.start(a.exec_id, a.seq, a.payload, store, now);
         r.effectError(a.exec_id, a.seq, answer orelse return);
     }
@@ -1892,6 +1933,7 @@ pub const Runner = struct {
     fn drainSql(r: *Runner) void {
         r.drainSqlOf(r.sql);
         r.drainSqlOf(r.mysql);
+        r.drainSqlOf(r.mssql);
     }
 
     /// Hand the results of finished `sql` calls to the core, oldest first,
@@ -5468,6 +5510,63 @@ fn pumpMysql(r: *Runner, server: *my_fake.Server, want: usize) !void {
         r.drainSql();
     }
     return error.NoResult;
+}
+
+const ms_fake = @import("ms_fake.zig");
+
+test "a sql step with the dialect mssql goes to the host while the gate is off, and to the SQL Server client with it" {
+    var mod_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer mod_arena.deinit();
+    const gpa = mod_arena.allocator();
+    const mods = [_][]const u8{try sqlModule(gpa)};
+    var t: TestRunner = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .modules = &mods };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    const server = try gpa.create(ms_fake.Server);
+    try server.init(gpa, &r.poller, kind_pg_fake);
+    defer server.deinit();
+    // The reply "update" of the codec's vectors: a count of 3.
+    const reply = "\xff\x10\x00\xc1\x00\x03\x00\x00\x00\x00\x00\x00\x00\x79\x00\x00\x00\x00\xfe\x00\x00\xc1\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+    const rules = [_]ms_fake.Rule{.{ .sql = "update t set a = 1", .reply = reply }};
+    server.rules = &rules;
+    server.password = "p";
+    const doc = try std.fmt.allocPrint(gpa, "{{\"db\":{{\"data\":{{\"server\":\"127.0.0.1\",\"port\":{d},\"user\":\"sa\",\"password\":\"p\",\"tls\":false}}}}}}", .{server.port});
+    const store = try gpa.create(creds.Store);
+    store.* = try creds.Store.parse(gpa, doc);
+    r.egress.cfg.credentials = store;
+    const args = "{\"credential\":\"db\",\"dialect\":\"mssql\",\"statements\":[{\"text\":\"update t set a = 1\"}]}";
+
+    // Without `--sql-mssql` the call is a host limit, not a failure of the workflow.
+    const one = try startSqlRun(r, args);
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    try std.testing.expectEqual(core.EventKind.effect_err, r.events.items[0].kind);
+    try std.testing.expectEqual(one, r.events.items[0].exec_id);
+    try std.testing.expectEqualStrings("sql: the native SQL Server client is not on in this build (limit: sql-host)", r.events.items[0].payload);
+    try std.testing.expectEqual(@as(u64, 0), r.mssql.counters.started);
+    r.events.clearRetainingCapacity();
+
+    r.opts.sql_mssql = true;
+    const two = try startSqlRun(r, args);
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    var ready: [64]sys.Ready = @splat(.{ .token = 0, .readable = false, .writable = false, .eof = false });
+    for (0..2000) |_| {
+        if (r.events.items.len >= 1) break;
+        const n = r.poller.wait(&ready, 5);
+        for (ready[0..n]) |ev| {
+            if (ev.token >> 56 == kind_pg_fake) server.onReady(ev) else try r.onReady(ev);
+        }
+        r.mssql.afterEvents(sys.nowMs());
+        r.drainSql();
+    }
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    try std.testing.expectEqual(core.EventKind.effect_ok, r.events.items[0].kind);
+    try std.testing.expectEqualStrings("{\"results\":[{\"sets\":[],\"rowsAffected\":[3],\"errors\":[]}]}", r.events.items[0].payload);
+    _ = try finishSqlRun(r, gpa, two);
+    try std.testing.expect(!server.failed);
+    try std.testing.expectEqual(@as(u64, 1), r.mssql.counters.connects);
+    try std.testing.expectEqual(@as(u64, 0), r.sql.counters.started);
+    try std.testing.expectEqual(@as(u64, 0), r.mysql.counters.started);
 }
 
 const smtp_fake = @import("smtp_fake.zig");
