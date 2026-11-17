@@ -2,6 +2,7 @@
 import './source-map-filter';
 
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
+import type * as ApprovalJudgeMod from './approval-review/approval-judge';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SelfHealingAgentMod from './agent/self-healing-agent';
@@ -13,8 +14,6 @@ import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as StructuredFileParserMod from './parsers/structured-file-parser';
 import type * as ValidateAttachmentsMod from './parsers/validate-attachments';
-import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-permissions';
-import type * as PlannedTaskServiceMod from './planned-tasks/planned-task-service';
 import type * as PromptProfilesMod from './prompts/prompt-profiles';
 import type * as BackgroundTaskManagerMod from './runtime/background-task-manager';
 import type * as InstanceContextStateMod from './runtime/instance-context-state';
@@ -48,6 +47,8 @@ import type * as ChatModelValidationMod from './tools/workflows/chat-model-valid
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
+import type * as BuilderMetricEventMod from './tracing/builder-metric-event';
+import type * as BuilderToolsMod from './tools/orchestration/builder-tools';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
@@ -111,6 +112,12 @@ const loadTraceReplay = lazyModule(
 );
 const loadAgentSnapshotEvent = lazyModule(
 	() => require('./tracing/agent-snapshot-event') as typeof AgentSnapshotEventMod,
+);
+const loadBuilderMetricEvent = lazyModule(
+	() => require('./tracing/builder-metric-event') as typeof BuilderMetricEventMod,
+);
+const loadBuilderTools = lazyModule(
+	() => require('./tools/orchestration/builder-tools') as typeof BuilderToolsMod,
 );
 const loadAgentBuildMetrics = lazyModule(
 	() => require('./tools/orchestration/agent-build-metrics') as typeof AgentBuildMetricsMod,
@@ -251,17 +258,14 @@ const loadWorkflowLoop = lazyModule(() => require('./workflow-loop') as typeof W
 const loadWorkflowLoopRuntime = lazyModule(
 	() => require('./workflow-loop/runtime') as typeof WorkflowLoopRuntimeMod,
 );
-const loadPlannedTaskService = lazyModule(
-	() => require('./planned-tasks/planned-task-service') as typeof PlannedTaskServiceMod,
-);
-const loadPlannedTaskPermissions = lazyModule(
-	() => require('./planned-tasks/planned-task-permissions') as typeof PlannedTaskPermissionsMod,
-);
 const loadStructuredFileParser = lazyModule(
 	() => require('./parsers/structured-file-parser') as typeof StructuredFileParserMod,
 );
 const loadValidateAttachments = lazyModule(
 	() => require('./parsers/validate-attachments') as typeof ValidateAttachmentsMod,
+);
+const loadApprovalJudge = lazyModule(
+	() => require('./approval-review/approval-judge') as typeof ApprovalJudgeMod,
 );
 
 export { MAX_STEPS } from './constants/max-steps';
@@ -271,6 +275,7 @@ export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
@@ -278,33 +283,52 @@ export {
 	OutsideThreadProjectError,
 	formatRedactedError,
 } from './errors';
-export {
-	LEGACY_PLANNED_TASK_KINDS,
-	PLANNED_TASK_KINDS,
-	STORED_PLANNED_TASK_KINDS,
-} from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export {
+	createSampleFile,
+	resolveSampleFileMarkers,
+	SAMPLE_FILE_MIME_TYPES,
+} from './tools/workflows/sample-files';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	readAgentTargetsMetadata,
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
+	threadTargetsAgent,
+	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
-export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export type {
+	AgentBuilderTarget,
+	AgentTargetsMetadata,
+} from './tools/orchestration/agent-target-binding';
+export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
-} from './tools/orchestration/agent-preview-session-binding';
+} from './tools/orchestration/agent-test-session-binding';
 
 export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData = lazyFunction(
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export const judgeApproval: typeof ApprovalJudgeMod.judgeApproval = lazyFunction(
+	() => loadApprovalJudge().judgeApproval,
+);
+export const conversationForApprovalJudge: typeof ApprovalJudgeMod.conversationForApprovalJudge =
+	lazyFunction(() => loadApprovalJudge().conversationForApprovalJudge);
+export type { ApprovalJudgeMessage, ApprovalJudgeResult } from './approval-review/approval-judge';
+export type {
+	ApprovalReviewOutcome,
+	InstanceAiApprovalReviewer,
+} from './approval-review/approval-review';
+export type { PendingApproval } from './approval-review/pending-approval';
+export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
@@ -320,6 +344,14 @@ export type {
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
 
+export const snapshotAgent: typeof BuilderToolsMod.snapshotAgent = lazyFunction(
+	() => loadBuilderTools().snapshotAgent,
+);
+
+export const emitBuilderMetric: typeof BuilderMetricEventMod.emitBuilderMetric = lazyFunction(
+	() => loadBuilderMetricEvent().emitBuilderMetric,
+);
+
 export const carryAgentBuildRunState: typeof AgentBuildMetricsMod.carryAgentBuildRunState =
 	lazyFunction(() => loadAgentBuildMetrics().carryAgentBuildRunState);
 
@@ -329,6 +361,9 @@ export { threadProvenanceMetadata } from './tracing/thread-provenance';
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
+
+export const isLangSmithTracingEnabled: typeof LangsmithTracingMod.isLangSmithTracingEnabled =
+	lazyFunction(() => loadLangsmithTracing().isLangSmithTracingEnabled);
 
 export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);
@@ -425,21 +460,9 @@ export const createAgentContextTool: typeof AgentContextToolMod.createAgentConte
 	lazyFunction(() => loadAgentContextTool().createAgentContextTool);
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
 
-export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchema;
-export const formatPreviousAttempts: typeof StorageMod.formatPreviousAttempts = lazyFunction(
-	() => loadStorage().formatPreviousAttempts,
-);
-export type ThreadIterationLogStorage = StorageMod.ThreadIterationLogStorage;
-export const ThreadIterationLogStorage: typeof StorageMod.ThreadIterationLogStorage = lazyClass(
-	() => loadStorage().ThreadIterationLogStorage,
-);
 export type ThreadTaskStorage = StorageMod.ThreadTaskStorage;
 export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
-);
-export type PlannedTaskStorage = StorageMod.PlannedTaskStorage;
-export const PlannedTaskStorage: typeof StorageMod.PlannedTaskStorage = lazyClass(
-	() => loadStorage().PlannedTaskStorage,
 );
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
 export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
@@ -455,8 +478,6 @@ export const WorkflowLoopStorage: typeof StorageMod.WorkflowLoopStorage = lazyCl
 );
 export type {
 	AgentTreeSnapshot,
-	IterationEntry,
-	IterationLog,
 	PatchableThreadMemory,
 	ThreadPatch,
 	TerminalOutcome,
@@ -502,7 +523,6 @@ defineLazyExport(
 	'SUB_AGENT_RESOURCE_PREFIX',
 	() => loadAgentPersistence().SUB_AGENT_RESOURCE_PREFIX,
 );
-defineLazyExport('iterationEntrySchema', () => loadStorage().iterationEntrySchema);
 defineLazyExport(
 	'suspendedInstanceContextSchema',
 	() => loadInstanceContextState().suspendedInstanceContextSchema,
@@ -520,10 +540,6 @@ defineLazyExport(
 defineLazyExport('attemptRecordSchema', () => loadWorkflowLoop().attemptRecordSchema);
 defineLazyExport('workflowLoopStateSchema', () => loadWorkflowLoop().workflowLoopStateSchema);
 defineLazyExport('verificationResultSchema', () => loadWorkflowLoop().verificationResultSchema);
-defineLazyExport(
-	'PLANNED_TASK_PERMISSION_OVERRIDES',
-	() => loadPlannedTaskPermissions().PLANNED_TASK_PERMISSION_OVERRIDES,
-);
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export const buildAgentTreeFromEvents: typeof AgentTreeMod.buildAgentTreeFromEvents = lazyFunction(
 	() => loadAgentTree().buildAgentTreeFromEvents,
@@ -580,6 +596,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
 export declare const suspendedInstanceContextSchema: typeof InstanceContextStateMod.suspendedInstanceContextSchema;
+export type { HubSkillTelemetryState } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
 	formatWorkflowSetupStateNote,
@@ -594,12 +611,12 @@ export {
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,
-	ConfirmationData,
 	PendingConfirmation,
 	RunStateTimeoutDetails,
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export type { ConfirmationData } from './runtime/confirmation-payload';
 export type InstanceAiTerminalResponseGuard =
 	TerminalResponseGuardMod.InstanceAiTerminalResponseGuard;
 export const InstanceAiTerminalResponseGuard: typeof TerminalResponseGuardMod.InstanceAiTerminalResponseGuard =
@@ -666,12 +683,6 @@ export const deriveWorkflowVerificationObligationFromOutcome: typeof WorkflowLoo
 	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligationFromOutcome);
 export const isWorkflowVerificationObligationUnsettled: typeof WorkflowLoopMod.isWorkflowVerificationObligationUnsettled =
 	lazyFunction(() => loadWorkflowLoop().isWorkflowVerificationObligationUnsettled);
-export const resolveWorkflowBuildOwner: typeof WorkflowLoopMod.resolveWorkflowBuildOwner =
-	lazyFunction(() => loadWorkflowLoop().resolveWorkflowBuildOwner);
-export const plannedTaskIdFromWorkflowBuildOwner: typeof WorkflowLoopMod.plannedTaskIdFromWorkflowBuildOwner =
-	lazyFunction(() => loadWorkflowLoop().plannedTaskIdFromWorkflowBuildOwner);
-export const isPlannedWorkflowBuildOwner: typeof WorkflowLoopMod.isPlannedWorkflowBuildOwner =
-	lazyFunction(() => loadWorkflowLoop().isPlannedWorkflowBuildOwner);
 export declare const workflowBuildOutcomeSchema: typeof WorkflowLoopMod.workflowBuildOutcomeSchema;
 export declare const workflowVerificationEvidenceSchema: typeof WorkflowLoopMod.workflowVerificationEvidenceSchema;
 export declare const attemptRecordSchema: typeof WorkflowLoopMod.attemptRecordSchema;
@@ -680,13 +691,11 @@ export declare const verificationResultSchema: typeof WorkflowLoopMod.verificati
 export type {
 	WorkflowLoopState,
 	WorkflowLoopAction,
-	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
 	VerificationResult,
 	AttemptRecord,
 	WorkflowVerificationEvidence,
 	WorkflowVerificationObligation,
-	WorkflowVerificationObligationSource,
 } from './workflow-loop';
 export const compileWorkflowSource: typeof WorkflowSourceCompilerMod.compileWorkflowSource =
 	lazyFunction(() => loadWorkflowSourceCompiler().compileWorkflowSource);
@@ -730,10 +739,6 @@ export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
 	() => loadWorkflowLoopRuntime().WorkflowLoopRuntime,
 );
-export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
-export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
-	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
-export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
 	InstanceAiChangedArtifact,
 	InstanceAiContext,
@@ -745,6 +750,7 @@ export type {
 	ExecuteNodeResult,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
+	InstanceAiAppService,
 	InstanceAiDataTableService,
 	DataTableSummary,
 	DataTableColumnInfo,
@@ -768,20 +774,13 @@ export type {
 	LocalMcpServer,
 	McpServerConfig,
 	ModelConfig,
+	EndpointModelConfig,
 	VertexAnthropicModelConfig,
+	HelperModelUsageReport,
+	HelperUsageHook,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
-	PlannedTask,
-	PlannedTaskKind,
-	StoredPlannedTaskKind,
-	PlannedTaskStatus,
-	PlannedTaskRecord,
-	PlannedTaskGraph,
-	PlannedTaskGraphStatus,
-	PlannedWorkflowVerification,
-	PlannedTaskSchedulerAction,
-	PlannedTaskService,
 	OrchestrationContext,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
@@ -820,6 +819,8 @@ export type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
 	UnavailableLocatorValue,
 	FetchedPage,
 	WebSearchResult,
@@ -843,6 +844,8 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiStoredFile,
+	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
 } from './types';

@@ -52,7 +52,28 @@ on:
 permissions: {}
 
 jobs:
+  resolve-release-base:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Checkout release base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.base-branch }}
+          persist-credentials: false
+
+      - name: Resolve base commit
+        id: resolve
+        run: |
+          BASE_SHA="$(git rev-parse HEAD)"
+          echo "sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
   create-release-pr:
+    needs: [resolve-release-base, verify-single-instance-npm-full]
     runs-on: ubuntu-latest
 
     permissions:
@@ -96,12 +117,12 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
 
-      # Checkout base branch via separate step to prevent unsafe actions/checkout ref usage.
+      # Switch to the verified commit in a separate step to keep checkout ref handling safe.
       # poutine: untrusted_checkout_exec
-      - name: Switch to base branch
+      - name: Switch to base commit
         env:
-          BASE_BRANCH: ${{ inputs.base-branch }}
-        run: git checkout "$BASE_BRANCH"
+          BASE_SHA: ${{ needs.resolve-release-base.outputs.sha }}
+        run: git checkout --detach "$BASE_SHA"
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
@@ -129,9 +150,9 @@ jobs:
 
       - name: Push the base branch
         env:
-          BASE_BRANCH: ${{ inputs.base-branch }}
+          BASE_SHA: ${{ needs.resolve-release-base.outputs.sha }}
         run: |
-          git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
+          git push -f origin "$BASE_SHA:refs/heads/release/$NEXT_RELEASE"
 
       - name: Generate PR body
         id: generate-body
@@ -175,19 +196,22 @@ jobs:
     needs: [create-release-pr]
     if: |
       needs.create-release-pr.outputs.pull-request-number != ''
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     secrets: inherit
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
+      enable-automerge: true
 
-  # Packs every publishable package, so it only runs at release prep, in parallel with the PR.
+  # Verify every publishable package before creating the release PR.
   verify-single-instance-npm-full:
     name: Verify single-instance deps (npm-install, full)
+    needs: [resolve-release-base]
     uses: ./.github/workflows/test-single-instance-npm.yml
     permissions:
       contents: read
     with:
       scope: all
-      # Profile the release being prepared, not this workflow's triggering revision.
-      base-branch: ${{ inputs.base-branch }}
+      blocking: true
+      # Verify the same commit that release preparation will use.
+      base-branch: ${{ needs.resolve-release-base.outputs.sha }}
       timeout-minutes: 30

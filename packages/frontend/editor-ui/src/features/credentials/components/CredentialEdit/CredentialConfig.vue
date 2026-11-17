@@ -134,6 +134,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
 const { promotionText } = useGatewayCreditsPromotion({
+	nodeType: () => props.contextNode?.type,
 	credentialType: () => props.credentialType.name,
 });
 
@@ -570,7 +571,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					"
 					:details="authError"
 					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
-					button-loading-label="Retrying"
+					:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
 					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 					:button-loading="isRetesting"
 					@click="$emit('retest')"

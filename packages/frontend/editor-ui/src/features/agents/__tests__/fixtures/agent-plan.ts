@@ -1,3 +1,4 @@
+import type { AgentPlanSnapshotDto } from '@n8n/api-types';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import type { AgentPlanItemStatus, AgentPlanView } from '../../utils/agent-plan';
 
@@ -23,7 +24,7 @@ export function planView(overrides: Partial<AgentPlanView> = {}): AgentPlanView 
 					...planTask(10, 'in_progress'),
 					kind: 'group',
 					title: 'Research',
-					tasks: [planTask(2, 'done'), planTask(3)],
+					tasks: [planTask(2, 'done'), planTask(3, 'in_progress')],
 				},
 			],
 		},
@@ -42,5 +43,26 @@ export function planMessage(output: unknown, overrides: Partial<ToolCall> = {}):
 		toolCalls: [
 			{ tool: 'create_plan', toolCallId: `plan-call-${id}`, state: 'done', output, ...overrides },
 		],
+	};
+}
+
+export function planSnapshot(plan: AgentPlanView): AgentPlanSnapshotDto {
+	return {
+		...plan,
+		readiness: { ready: [], blocked: [] },
+		startedAt: plan.startedAt ?? null,
+		closedAt: plan.closedAt ?? null,
+		document: {
+			...plan.document,
+			items: plan.document.items.map((item) =>
+				item.kind === 'group'
+					? {
+							...item,
+							dependsOn: [],
+							tasks: item.tasks.map((task) => ({ ...task, dependsOn: [] })),
+						}
+					: { ...item, dependsOn: [] },
+			),
+		},
 	};
 }

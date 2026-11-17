@@ -10,6 +10,8 @@ import {
 	type StreamChunk,
 	type StreamResult,
 	type ToolApprovalContext,
+	type Agent as RuntimeAgent,
+	type Workspace,
 } from '@n8n/agents';
 import type {
 	ResolvedSubAgentSource,
@@ -22,8 +24,10 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -44,6 +48,7 @@ import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const aiConfigMock = mock<AiConfig>();
 const toolApprovalService = mock<AgentToolApprovalService>();
@@ -138,6 +143,8 @@ describe('SubAgentRunner', () => {
 	let credentialProvider: Mocked<CredentialProvider>;
 	let executionRepository: Mocked<AgentExecutionRepository>;
 	let usageRelay: Mocked<SystemAgentUsageRelay>;
+	let attachmentService: Mocked<AgentChatAttachmentService>;
+	let sandboxFiles: Mocked<AgentSandboxFilesService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -161,6 +168,9 @@ describe('SubAgentRunner', () => {
 		logger = mock<Logger>();
 		executionRepository = mock<AgentExecutionRepository>();
 		usageRelay = mock<SystemAgentUsageRelay>();
+		attachmentService = mock<AgentChatAttachmentService>();
+		attachmentService.returnToParent.mockResolvedValue([]);
+		sandboxFiles = mock<AgentSandboxFilesService>();
 		executionRepository.findLinksForChildOf.mockResolvedValue(null);
 		executionRepository.findFirstLinksInThread.mockResolvedValue(null);
 		runner = new SubAgentRunner(
@@ -173,6 +183,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
 				knowledgeUsageTracker,
+				mock<AgentSandboxFilesService>(),
 			),
 			checkpointStorage,
 			logger,
@@ -180,6 +191,8 @@ describe('SubAgentRunner', () => {
 			toolApprovalService,
 			executionRepository,
 			usageRelay,
+			attachmentService,
+			sandboxFiles,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -222,6 +235,119 @@ describe('SubAgentRunner', () => {
 			'child-run-1',
 			expect.objectContaining({ runType: 'production' }),
 		);
+	});
+
+	it('grants the passed files to the child before it runs and returns the files it made', async () => {
+		const made = { fileId: 'out-1', fileName: 'out.png', mimeType: 'image/png', sizeBytes: 3 };
+		attachmentService.grantToSubAgent.mockImplementation(async () => {
+			expect(childAgent.stream).not.toHaveBeenCalled();
+		});
+		attachmentService.returnToParent.mockResolvedValue([made]);
+
+		const result = await runner.run(
+			{ ...spawnRequest, fileIds: ['in-1'] },
+			{ parentAgentId, projectId, credentialProvider, runType: 'test' },
+		);
+
+		expect(attachmentService.grantToSubAgent).toHaveBeenCalledWith(['in-1'], {
+			projectId,
+			parentThreadId,
+			childThreadId: result.threadId,
+		});
+		expect(JSON.stringify(childAgent.stream.mock.calls[0][0])).toContain('FILES');
+		expect(attachmentService.returnToParent).toHaveBeenCalledWith({
+			projectId,
+			parentThreadId,
+			childThreadId: result.threadId,
+		});
+		expect(result.files).toEqual([made]);
+	});
+
+	it('stores the outputs of a child that used the workspace before it returns its files', async () => {
+		const workspace = mock<Workspace>();
+		(childAgent as unknown as Mocked<RuntimeAgent>).getWorkspace.mockReturnValue(workspace);
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'tool-call', toolCallId: 'c-1', toolName: 'workspace_write_file', input: {} },
+				{ type: 'tool-result', toolCallId: 'c-1', toolName: 'workspace_write_file', output: 'ok' },
+				...defaultStreamChunks,
+			]),
+		);
+
+		const result = await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'test',
+		});
+
+		expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(workspace, {
+			agentId: runtimeSource.source.sourceId,
+			projectId,
+			threadId: result.threadId,
+		});
+		expect(sandboxFiles.syncOutputs.mock.invocationCallOrder[0]).toBeLessThan(
+			attachmentService.returnToParent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('stores the outputs of a child that fails after it used the workspace', async () => {
+		const workspace = mock<Workspace>();
+		const chunks: StreamChunk[] = [
+			{ type: 'tool-call', toolCallId: 'c-1', toolName: 'workspace_write_file', input: {} },
+			{ type: 'tool-result', toolCallId: 'c-1', toolName: 'workspace_write_file', output: 'ok' },
+		];
+		(childAgent as unknown as Mocked<RuntimeAgent>).getWorkspace.mockReturnValue(workspace);
+		childAgent.stream.mockResolvedValue({
+			...makeStreamResult([]),
+			stream: new ReadableStream<StreamChunk>({
+				// Error on a later pull: an error in start() drops the queued chunks.
+				pull(controller) {
+					const chunk = chunks.shift();
+					if (chunk) controller.enqueue(chunk);
+					else controller.error(new Error('model down'));
+				},
+			}),
+		});
+
+		await expect(
+			runner.run(spawnRequest, { parentAgentId, projectId, credentialProvider, runType: 'test' }),
+		).rejects.toThrow('model down');
+
+		expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(
+			workspace,
+			expect.objectContaining({ projectId }),
+		);
+		expect(attachmentService.returnToParent).not.toHaveBeenCalled();
+	});
+
+	it('does not run the child when a passed file cannot be granted', async () => {
+		attachmentService.grantToSubAgent.mockRejectedValue(
+			new UserError('File "other" not found in this conversation'),
+		);
+
+		await expect(
+			runner.run(
+				{ ...spawnRequest, fileIds: ['other'] },
+				{ parentAgentId, projectId, credentialProvider, runType: 'test' },
+			),
+		).rejects.toThrow('File "other" not found in this conversation');
+		expect(childAgent.stream).not.toHaveBeenCalled();
+	});
+
+	it('keeps the child answer when the output files cannot be listed', async () => {
+		attachmentService.returnToParent.mockRejectedValue(new Error('db down'));
+
+		const result = await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'test',
+		});
+
+		expect(result.status).toBe('completed');
+		expect(result.files).toBeUndefined();
+		expect(result.filesError).toBe('The files of the sub-agent could not be listed');
 	});
 
 	it.each([
@@ -275,6 +401,19 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.stream.mock.calls[0][1]?.persistence?.hostMetadata).not.toHaveProperty(
 			EPISODIC_SCOPE_METADATA_KEY,
 		);
+	});
+
+	it('uses the captured job pause signal without an ancestor lookup', async () => {
+		const shouldPause = vi.fn().mockResolvedValue(true);
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			shouldPause,
+		});
+
+		expect(await childAgent.stream.mock.calls[0][1]?.shouldPause?.()).toBe(true);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
@@ -1013,6 +1152,36 @@ describe('SubAgentRunner', () => {
 		});
 	});
 
+	it('forwards a credits guardrail stop without a budget owner', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.credits' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.credits' },
+			},
+		});
+		// The wallet is a shared scope: no child owns it, so the notice carries
+		// no agentId — the preview chat cards it without pointing at the child.
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.credits' });
+	});
+
 	it('does not emit a budget notice for a non-budget guardrail stop', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
@@ -1083,7 +1252,8 @@ describe('SubAgentRunner', () => {
 		});
 
 		const options = childAgent.stream.mock.calls[0]?.[1];
-		expect(options?.guardrails?.hooks).toEqual([]);
+
+		expect(options?.guardrails?.hooks).toHaveLength(0);
 		expect(options?.guardrails?.onNotice).toBeDefined();
 	});
 
@@ -1163,7 +1333,12 @@ describe('SubAgentRunner', () => {
 			parentThreadId,
 			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
 		};
+		const planTask = {
+			planId: '00000000-0000-4000-a000-000000000001',
+			planTaskId: '00000000-0000-4000-a000-000000000002',
+		};
 		const runContext = {
+			planTask,
 			projectId,
 			parentAgentId,
 			credentialProvider,
@@ -1190,10 +1365,12 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.resumePaused).toHaveBeenCalledWith(
 			expect.objectContaining({
 				runId: 'child-run-1',
-				hostMetadata: { n8nExecutionId: 'agent-execution-1' },
-				shouldPause,
+				hostMetadata: { n8nExecutionId: 'agent-execution-1', n8nPlanTask: planTask },
+				shouldPause: expect.any(Function),
 			}),
 		);
+		expect(await childAgent.resumePaused.mock.calls[0][0].shouldPause?.()).toBe(true);
+		expect(shouldPause).toHaveBeenCalled();
 		expect(result).toMatchObject({
 			threadId: 'child-thread-1',
 			status: 'paused',
@@ -1209,6 +1386,36 @@ describe('SubAgentRunner', () => {
 				},
 			}),
 		).rejects.toBe(admissionError);
+	});
+
+	it('returns the files that the child made in all its runs after a resume', async () => {
+		const made = [
+			{ fileId: 'first-run', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 1 },
+			{ fileId: 'second-run', fileName: 'b.png', mimeType: 'image/png', sizeBytes: 2 },
+		];
+		attachmentService.returnToParent.mockResolvedValue(made);
+
+		const result = await runner.resumeForeground(
+			{
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				childThreadId: 'child-thread-1',
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1' },
+				parentThreadId,
+			},
+			{ projectId, parentAgentId, credentialProvider, runType: 'production' },
+		);
+
+		// The query is on the child thread, so it covers the runs before the pause too.
+		expect(attachmentService.returnToParent).toHaveBeenCalledWith({
+			projectId,
+			parentThreadId,
+			childThreadId: 'child-thread-1',
+		});
+		expect(attachmentService.grantToSubAgent).not.toHaveBeenCalled();
+		expect(result.files).toEqual(made);
 	});
 
 	it('records a draft child resume in the same thread only after host admission', async () => {
@@ -1574,7 +1781,7 @@ describe('SubAgentRunner', () => {
 				telemetry: {
 					...parentTelemetry,
 					functionId: undefined,
-					metadata: { agent_id: 'agent-1', thread_id: 'parent-thread-1', source: 'sub-agent' },
+					metadata: { thread_id: 'parent-thread-1', source: 'sub-agent' },
 					rootAnchored: false,
 				},
 			}),

@@ -1,6 +1,9 @@
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import {
 	classifyExpressionError,
+	errorOriginOf,
+	EXPRESSION_METRICS,
+	HostCallError,
 	MemoryLimitError,
 	SecurityViolationError,
 	TimeoutError,
@@ -14,6 +17,7 @@ import { evaluateExpression, setErrorHandler } from './expression-evaluator-prox
 import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import { evaluateNatively } from './expressions/native-evaluation';
+import type { NativeFallbackReason } from './expressions/native-evaluation/evaluator';
 import {
 	canVerifyNatively,
 	NativeVerifier,
@@ -47,10 +51,13 @@ setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
 
-/** What one engine did with one expression. `errorClass` names the failure without its message. */
+/**
+ * What one engine did with one expression. `errorClass` names the failure without its message.
+ * `errorOrigin` tells where a QuickJS failure started, when the bridge knows it.
+ */
 export type ExpressionEvaluationOutcome =
 	| { ok: true; value: unknown }
-	| { ok: false; error: unknown; errorClass: string };
+	| { ok: false; error: unknown; errorClass: string; errorOrigin?: string };
 
 export interface ExpressionShadowContext {
 	/** The expression after `extendSyntax`, as the engines receive it. */
@@ -88,7 +95,7 @@ export interface ShadowEvaluator {
 const KNOWN_ERROR_CLASSES = new Set(
 	[
 		'Error AggregateError EvalError InternalError RangeError ReferenceError SyntaxError',
-		'TypeError URIError ExpressionError ExpressionExtensionError UserError',
+		'TypeError URIError ExpressionError ExpressionExtensionError UserError RuntimeError',
 	]
 		.join(' ')
 		.split(' '),
@@ -97,9 +104,11 @@ const KNOWN_ERROR_CLASSES = new Set(
 function errorClassOf(error: unknown): string {
 	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
 	// `mapVmError` wraps them in an ExpressionError and keeps them as `cause`.
-	const runtimeClass = classifyExpressionError(
-		error instanceof ExpressionError && error.cause ? error.cause : error,
-	);
+	const vmError = error instanceof ExpressionError && error.cause ? error.cause : error;
+	if (vmError instanceof HostCallError) {
+		return `host_error:${hostErrorClass(vmError.hostErrorName)}`;
+	}
+	const runtimeClass = classifyExpressionError(vmError);
 	if (runtimeClass !== 'unknown') return runtimeClass;
 	// A minified build renames classes, and n8n errors take their `name` from the
 	// constructor, so check the class before the name. The subclass comes first.
@@ -107,7 +116,30 @@ function errorClassOf(error: unknown): string {
 	if (error instanceof ExpressionError) return 'ExpressionError';
 	if (error instanceof UserError) return 'UserError';
 	if (!(error instanceof Error)) return typeof error;
-	return KNOWN_ERROR_CLASSES.has(error.name) ? error.name : 'other';
+	return knownErrorClass(error.name);
+}
+
+/** Keeps the error classes in telemetry to a fixed set. Any other name becomes `other`. */
+function knownErrorClass(name: string): string {
+	return KNOWN_ERROR_CLASSES.has(name) ? name : 'other';
+}
+
+const TYPEOF_NAMES = new Set(
+	'bigint boolean function number object string symbol undefined'.split(' '),
+);
+
+/** Like `knownErrorClass`, but keeps the `typeof` name that the bridge gives a thrown non-Error. */
+function hostErrorClass(name: string): string {
+	return TYPEOF_NAMES.has(name) ? name : knownErrorClass(name);
+}
+
+/** Where a bridge error started, as `<kind>` or `<kind>:<class>`. The class is kept to a fixed set. */
+function errorOriginLabelOf(error: unknown): string | undefined {
+	const origin = errorOriginOf(error);
+	if (origin?.errorName !== undefined) {
+		return `${origin.kind}:${hostErrorClass(origin.errorName)}`;
+	}
+	return origin?.kind;
 }
 
 /**
@@ -300,9 +332,14 @@ export class Expression {
 
 	private static nativeVerifier?: NativeVerifier;
 
+	private static observability?: ObservabilityProvider;
+
 	private static shadowRunner?: ExpressionShadowRunner;
 
-	constructor(private readonly timezone: string) {}
+	constructor(
+		private readonly timezone: string,
+		private readonly allowNativeEvaluation = true,
+	) {}
 
 	/**
 	 * Check if VM evaluator should be used for evaluation.
@@ -360,6 +397,7 @@ export class Expression {
 		canReportNativeVerifyMismatch?: () => boolean;
 	}): Promise<void> {
 		this.nativeEvaluation = options.nativeEvaluation ?? false;
+		this.observability = options.observability;
 		const verifySample = options.nativeEvaluationVerifySample ?? 0;
 		this.nativeVerifier = options.reportNativeVerifyMismatch
 			? new NativeVerifier(
@@ -456,6 +494,12 @@ export class Expression {
 		});
 	}
 
+	/** Load the QuickJS WASM module, so a QuickJS evaluator created later starts without it. */
+	static async loadQuickJsWasm(): Promise<void> {
+		const runtime = await import('@n8n/expression-runtime');
+		await runtime.QuickJsBridge.loadWasm();
+	}
+
 	/**
 	 * Start a QuickJS evaluator for a shadow run, next to whatever engine is
 	 * active. It has its own bridge and caller, so it never changes what the main
@@ -487,7 +531,12 @@ export class Expression {
 				try {
 					return { ok: true, value: evaluator.evaluate(expression, data, caller, { timezone }) };
 				} catch (error) {
-					return { ok: false, error: mapVmError(error), errorClass: errorClassOf(error) };
+					return {
+						ok: false,
+						error: mapVmError(error),
+						errorClass: errorClassOf(error),
+						errorOrigin: errorOriginLabelOf(error),
+					};
 				}
 			},
 			dispose: async () => {
@@ -586,6 +635,35 @@ export class Expression {
 			this.nativeVerifier?.isSampled() === true &&
 			canVerifyNatively(expression)
 		);
+	}
+
+	private static evaluateNative(expression: string, data: IWorkflowDataProxyData) {
+		let native: ReturnType<typeof evaluateNatively>;
+		try {
+			native = evaluateNatively(expression, data);
+		} catch (error) {
+			// The error is the expression's result: the engine does not run.
+			this.countNativeResult('handled');
+			throw error;
+		}
+		if (native.handled) {
+			this.countNativeResult('handled');
+		} else if (native.fallbackReason) {
+			this.countNativeResult('fallback', native.fallbackReason);
+		} else {
+			this.countNativeResult('declined');
+		}
+		return native;
+	}
+
+	private static countNativeResult(
+		result: 'handled' | 'declined' | 'fallback',
+		reason: NativeFallbackReason | 'none' = 'none',
+	) {
+		this.observability?.metrics.counter(EXPRESSION_METRICS.nativeEvaluations.name, 1, {
+			result,
+			reason,
+		});
 	}
 
 	static initializeGlobalContext(data: IDataObject) {
@@ -819,16 +897,18 @@ export class Expression {
 		// engine (isolate). Everything else takes the regular pipeline below.
 		// Verify mode evaluates natively here, then returns the engine's result.
 		let nativeResult: ExpressionEvaluationOutcome | undefined;
-		if (Expression.shouldVerifyNative(parameterValue)) {
-			try {
-				const native = evaluateNatively(parameterValue, data);
-				if (native.handled) nativeResult = { ok: true, value: native.value };
-			} catch (error) {
-				nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
+		if (this.allowNativeEvaluation) {
+			if (Expression.shouldVerifyNative(parameterValue)) {
+				try {
+					const native = evaluateNatively(parameterValue, data);
+					if (native.handled) nativeResult = { ok: true, value: native.value };
+				} catch (error) {
+					nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
+				}
+			} else if (Expression.nativeEvaluation) {
+				const native = Expression.evaluateNative(parameterValue, data);
+				if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 			}
-		} else if (Expression.nativeEvaluation) {
-			const native = evaluateNatively(parameterValue, data);
-			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 		}
 
 		// Support only a subset of process properties

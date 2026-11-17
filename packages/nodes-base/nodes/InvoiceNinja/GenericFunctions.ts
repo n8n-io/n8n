@@ -7,8 +7,10 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export const eventID: { [key: string]: string } = {
 	create_client: '1',
@@ -21,7 +23,7 @@ export const eventID: { [key: string]: string } = {
 export async function invoiceNinjaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
@@ -37,15 +39,14 @@ export async function invoiceNinjaApiRequest(
 	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
 	const baseUrl = credentials.url || defaultUrl;
 
-	const options: IRequestOptions = {
-		method,
-		qs: query,
-		uri: uri || `${baseUrl}/api/v1${endpoint}`,
-		body,
-		json: true,
-	};
-
 	try {
+		const options: IRequestOptions | WithRequestTarget<IRequestOptions, 'uri'> = {
+			method,
+			qs: query,
+			...(uri ? { uri } : { uri: requestUrl`${baseUrl}/api/v1${endpoint}` }),
+			body,
+			json: true,
+		};
 		return await this.helpers.requestWithAuthentication.call(this, 'invoiceNinjaApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -56,7 +57,7 @@ export async function invoiceNinjaApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {

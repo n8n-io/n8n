@@ -10,6 +10,7 @@ import type { ModelCost } from '../../sdk/catalog';
 import type { RuntimeSkillSource } from '../../skills/types';
 import type { WorkspaceFilesystem } from '../../workspace';
 import type {
+	AgentMessage,
 	BuiltFileStore,
 	BuiltMemory,
 	BuiltProviderTool,
@@ -29,11 +30,43 @@ import type {
 	ModelConfig,
 	NativeToolDeferralConfig,
 	PromptCachingConfig,
+	ToolDeferralConfig,
 } from '../sdk/agent';
 
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
 }
+
+/** A context cue that a provider wants the model to see now. */
+export interface ContextCueEntry {
+	/**
+	 * Stable id. The runtime skips a cue whose id is already in the visible
+	 * conversation. Observation masking can hide a sent cue, so it can be sent again.
+	 */
+	id: string;
+	content: string;
+}
+
+export interface ContextCueRequest {
+	/** Messages the model sees, oldest first, before this model call. */
+	messages: readonly AgentMessage[];
+	/**
+	 * Whether a skill is active in this run. The runtime state is the source,
+	 * because compaction can hide the `load_skill` call from `messages`.
+	 */
+	isSkillActive(skillId: string): boolean;
+	/** Ids of the cues that the conversation already contains. */
+	sentCueIds: ReadonlySet<string>;
+	persistence?: AgentPersistenceOptions;
+	abortSignal?: AbortSignal;
+}
+
+/**
+ * Supplies context cues before each model call. The runtime saves the cues in the
+ * conversation as a `<system-reminder>`, after the earlier messages, so the
+ * prompt cache stays valid. A provider failure skips its cues for that call.
+ */
+export type ContextCueProvider = (request: ContextCueRequest) => Promise<ContextCueEntry[]>;
 
 export type VolatileInstructionsProvider = (
 	context: VolatileInstructionsContext,
@@ -43,18 +76,32 @@ export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
 	/**
-	 * Proxy-aware `fetch` used for all model calls in this runtime (main model and
-	 * title generation). When unset, model construction falls back to the ambient
+	 * Proxy-aware `fetch` used for all model and catalog calls in this runtime (main model,
+	 * title generation and memory tasks). When unset, model construction falls back to the ambient
 	 * HTTP_PROXY resolver.
 	 */
 	modelFetch?: FetchFn;
+	/**
+	 * Caller identity sent as the `x-n8n-function-id` header on this runtime's model
+	 * calls. Side calls add a suffix (`.memory-observer`, `.title`). Unset: no header.
+	 */
+	functionId?: string;
 	instructions: string;
 	skillSource?: RuntimeSkillSource;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
 	workspaceFilesystem?: WorkspaceFilesystem;
+	/** Starts preparing the agent's workspace. Called for tools with `requiresWorkspace`. */
+	prewarmWorkspace?: () => void;
 	nativeToolDeferral?: NativeToolDeferralConfig;
+	/** How `deferredTools` reach the model. Default: provider tool search, else the tool catalog. */
+	toolDeferral?: ToolDeferralConfig;
+	/** Tool catalog mode: the tool group each deferred tool is listed under, by tool name. */
+	deferredToolGroups?: Record<string, string>;
+	/** Tool catalog mode: one line on what each tool group holds, by tool group. */
+	deferredToolGroupDescriptions?: Record<string, string>;
+	/** Tool catalog mode: the most tools a `find_tools` query returns. */
 	toolSearch?: {
 		topK?: number;
 	};
@@ -99,4 +146,6 @@ export interface AgentRuntimeConfig {
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
 	/** The runtime loads these host instructions before each model call but does not save them. */
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
+	/** The runtime asks these providers for context cues before each model call. */
+	contextCueProviders?: ContextCueProvider[];
 }

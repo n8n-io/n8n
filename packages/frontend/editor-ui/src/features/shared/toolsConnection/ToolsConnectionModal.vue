@@ -15,7 +15,6 @@ import { useDebounceFn } from '@vueuse/core';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
-
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
@@ -58,6 +57,8 @@ const props = withDefaults(
 		showSuggestionFooter?: boolean;
 		createAction?: PickerCreateAction;
 		createActionLoading?: boolean;
+		/** Replace the body with a loading screen, e.g. until the consumer has credentials to match rows against. */
+		loading?: boolean;
 		emptyMessage?: string;
 		noResultsMessage?: string;
 		/** Render only the modal body when an owning feature supplies the dialog shell. */
@@ -80,6 +81,7 @@ const props = withDefaults(
 		showSuggestionFooter: false,
 		createAction: undefined,
 		createActionLoading: false,
+		loading: false,
 		emptyMessage: undefined,
 		noResultsMessage: undefined,
 		embedded: false,
@@ -183,6 +185,14 @@ onMounted(() => {
 	}
 });
 
+watch(
+	() => props.loading,
+	(isLoading) => {
+		// The search input is not rendered while loading.
+		if (!isLoading && props.open) focusSearchInput();
+	},
+);
+
 const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
 const hasActiveSearch = computed(() => normalizedSearchQuery.value.length > 0);
 const isGroupedSearch = computed(() => props.groupSearchResults && hasActiveSearch.value);
@@ -216,9 +226,36 @@ function isRestrictedItem(item: ToolConnectionItem): boolean {
 	return item.kind === 'node' && item.restriction !== undefined;
 }
 
+/** Node types that also have a row in the Gateway credits tab. */
+const gatewayNodeTypeNames = computed(
+	() =>
+		new Set(
+			props.items.flatMap((item) =>
+				item.kind === 'node' && categoryOf(item) === 'n8n-connect' ? [item.nodeTypeName] : [],
+			),
+		),
+);
+
+/**
+ * A gateway-eligible node has a second, plain row for users who bring their own
+ * credential. Its own tab keeps that row, but "All" shows the node only once.
+ */
+function isGatewayDuplicate(item: ToolConnectionItem): boolean {
+	return (
+		item.kind === 'node' &&
+		categoryOf(item) !== 'n8n-connect' &&
+		!hasToolConnection(item.status) &&
+		gatewayNodeTypeNames.value.has(item.nodeTypeName)
+	);
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
-	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
+	if (category === 'all') {
+		return props.items
+			.filter((item) => !isGatewayDuplicate(item) && categoryOf(item) !== 'recommended')
+			.sort((a, b) => allSortRank(a) - allSortRank(b));
+	}
 	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
 	const categoryItems = props.items.filter(
 		(item) =>
@@ -307,9 +344,9 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	workflows: 'tools.connection.categories.workflows',
 	agents: 'tools.connection.categories.agents',
 	project: 'tools.connection.categories.project',
-	'this-agent': 'tools.connection.categories.thisAgent',
 	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
+	recommended: 'tools.connection.categories.recommended',
 };
 
 function categoryLabel(category: ToolCategoryKey): string {
@@ -404,7 +441,18 @@ function handleOpenChange(value: boolean) {
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
-		<div v-if="detailItem && detailMode === 'settings'" :class="$style.body">
+		<component :is="bodyComponent" v-if="loading">
+			<div
+				:class="[$style.body, $style.loading]"
+				role="status"
+				:aria-label="i18n.baseText('generic.loading')"
+				data-test-id="tools-connection-loading"
+			>
+				<N8nIcon icon="loader-circle" size="xlarge" spin />
+				<N8nText color="text-light">{{ i18n.baseText('generic.loading') }}</N8nText>
+			</div>
+		</component>
+		<div v-else-if="detailItem && detailMode === 'settings'" :class="$style.body">
 			<ToolSettingsView
 				:key="detailItem.id"
 				:item="detailItem"
@@ -561,6 +609,12 @@ function handleOpenChange(value: boolean) {
 	height: 70vh;
 	max-height: calc(var(--height--5xl) * 6);
 	min-height: 0;
+}
+
+.loading {
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--xs);
 }
 
 .embedded {

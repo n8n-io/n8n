@@ -5,14 +5,18 @@ import {
 	AgentModelSchema,
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
+	findToolGuardrailRefIssues,
 	findVectorStoreToolNameCollisions,
 	getAgentModelProviderCredentialTypes,
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
+	integrationNeedsCredential,
 	isDraftIntegration,
+	nodeTypeAvailabilityScopeSchema,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
+	type AgentConfigValidationRestriction,
 	type AgentConfigValidationWarning,
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
@@ -22,6 +26,7 @@ import {
 	type AgentSkill,
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import type { PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	isMcpOAuth2Authentication,
@@ -31,11 +36,18 @@ import {
 } from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
-import { NodeTypes } from '@/node-types';
+import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
+import { NodeTypesProxy } from '@n8n/backend-services';
+import {
+	toPolicedMcpNodes,
+	toPolicedNodes,
+	withInlineAgentToolNodes,
+} from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefinitionService } from './agent-definition.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
 	getAgentDefinitionContent,
@@ -51,7 +63,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
-import { findNameClashGroups } from '@/modules/skills/skill-names';
+import { findNameClashGroups } from '@/modules/skills';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -78,8 +90,46 @@ function issue(
 	path: string,
 	capability: AgentConfigValidationIssue['capability'],
 	reason?: string,
+	restriction?: AgentConfigValidationRestriction,
 ): AgentConfigValidationIssue {
-	return reason === undefined ? { code, path, capability } : { code, path, capability, reason };
+	return {
+		code,
+		path,
+		capability,
+		...(reason === undefined ? {} : { reason }),
+		...(restriction === undefined ? {} : { restriction }),
+	};
+}
+
+const RESTRICTED_BY_INLINE_TOOL = 'restricted_by_inline_tool';
+
+/**
+ * A locked entry shows one reason, not a lock plus the credential issues of a tool the agent
+ * cannot use at all. A tool locked only by its inline agent keeps them: it stays usable once
+ * the embedded tool is removed.
+ */
+function withoutIssuesOfLockedEntries(
+	issues: AgentConfigValidationIssue[],
+): AgentConfigValidationIssue[] {
+	const entryKey = ({ capability }: AgentConfigValidationIssue) =>
+		`${capability.kind}:${capability.index}`;
+	const locked = new Set(
+		issues
+			.filter((i) => i.code === 'restricted_node_type' && i.reason !== RESTRICTED_BY_INLINE_TOOL)
+			.map(entryKey),
+	);
+	if (locked.size === 0) return issues;
+
+	return issues.filter((i) => i.code === 'restricted_node_type' || !locked.has(entryKey(i)));
+}
+
+/** A scope the API does not know is dropped rather than passed on as an open string. */
+function toRestriction(
+	nodeType: string,
+	violation: PolicyViolation,
+): AgentConfigValidationRestriction {
+	const scope = nodeTypeAvailabilityScopeSchema.safeParse(violation.scope);
+	return scope.success ? { nodeType, scope: scope.data } : { nodeType };
 }
 
 function agentIssue(
@@ -94,11 +144,12 @@ export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly definitionService: AgentDefinitionService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentPolicyService: AgentPolicyService,
 	) {}
 
 	/**
@@ -208,7 +259,7 @@ export class AgentValidationService {
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
-		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
+		const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, {});
 		return await this.validateDefinition(
 			agent.id,
 			projectId,
@@ -323,6 +374,9 @@ export class AgentValidationService {
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
+		// Runs in both scopes: a dangling guardrail ref blocks publish and run,
+		// but never the draft save (which does not reach this service).
+		this.collectToolGuardrailRefIssues(config, issues);
 		await this.collectMainCredentialIssues(
 			config,
 			findCredential,
@@ -333,6 +387,8 @@ export class AgentValidationService {
 		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
+		// Runs in both scopes: the runtime scope is what blocks the draft preview.
+		await this.collectRestrictedTypeIssues(ctx, issues);
 		if (scope === 'publish') {
 			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
 				if (config.tools?.[violation.toolIndex].enabled === false) continue;
@@ -351,7 +407,7 @@ export class AgentValidationService {
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
-		return this.dedupe(issues);
+		return this.dedupe(withoutIssuesOfLockedEntries(issues));
 	}
 
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
@@ -580,6 +636,22 @@ export class AgentValidationService {
 		}
 	}
 
+	/** A dangling guardrail tool ref blocks publish and run, never the draft save. */
+	private collectToolGuardrailRefIssues(
+		config: AgentJsonConfig,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const guardrails = config.config?.guardrails?.tools ?? [];
+		for (const { guardrailIndex, toolIndex } of findToolGuardrailRefIssues(config)) {
+			issues.push(
+				issue('invalid_value', `config.guardrails.tools.${guardrailIndex}.tools.${toolIndex}`, {
+					kind: 'guardrail',
+					id: guardrails[guardrailIndex].id,
+				}),
+			);
+		}
+	}
+
 	private async collectChannelIssues(
 		integrations: AgentIntegrationConfig[],
 		findCredential: FindCredential,
@@ -587,7 +659,7 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
-			if (integration.type === 'n8n_chat') continue;
+			if (!integrationNeedsCredential(integration)) continue;
 			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',
@@ -607,9 +679,84 @@ export class AgentValidationService {
 			}
 
 			const integrationImpl = this.chatIntegrationRegistry.get(integration.type);
-			if (integrationImpl && !integrationImpl.credentialTypes.includes(credential.type)) {
+			if (
+				integrationImpl &&
+				!integrationImpl.acceptedCredentialTypes(integration).includes(credential.type)
+			) {
 				issues.push(issue('incompatible_credential', path, capability));
 			}
+		}
+	}
+
+	/**
+	 * Reports every tool and MCP server whose node type a policy denies.
+	 *
+	 * Reads the types through the same mapping the publish gate polices, so the reported set
+	 * and the refused publish never disagree, inline agents and MCP servers included. Disabled
+	 * tools are reported too, because the gate does not read `enabled`.
+	 */
+	private async collectRestrictedTypeIssues(
+		ctx: ConfigurationValidationContext,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		const { config } = ctx;
+
+		const decision = await this.agentPolicyService.evaluatePublish(ctx.projectId, ctx.agentId, {
+			name: config.name,
+			tools: config.tools,
+			mcpServers: config.mcpServers,
+		});
+		const denied = deniedNodeTypes(decision);
+		if (denied.size === 0) return;
+
+		const firstDenied = (nodes: readonly { type: string }[]) => {
+			for (const node of nodes) {
+				const violation = denied.get(node.type);
+				if (violation) return toRestriction(node.type, violation);
+			}
+			return undefined;
+		};
+
+		const tools = config.tools ?? [];
+		for (let index = 0; index < tools.length; index++) {
+			const tool = tools[index];
+			// Only a node tool names a node type, and only a node tool can embed an inline agent.
+			if (tool.type !== 'node') continue;
+
+			const own = toPolicedNodes([tool]);
+			const ownRestriction = firstDenied(own);
+			// An inline agent's own tools run under the tool that embeds them, so the parent carries
+			// the issue: a violation names a type, never the entry that holds it. It reads as its own
+			// reason, because the tool itself stays usable and editable — the fix is to open it and
+			// drop the embedded tool.
+			const restriction = ownRestriction ?? firstDenied(withInlineAgentToolNodes(own));
+			if (!restriction) continue;
+
+			issues.push(
+				issue(
+					'restricted_node_type',
+					`tools.${index}.node.nodeType`,
+					{ kind: 'tool', id: tool.name, index, toolType: 'node' },
+					ownRestriction ? undefined : RESTRICTED_BY_INLINE_TOOL,
+					restriction,
+				),
+			);
+		}
+
+		const servers = config.mcpServers ?? [];
+		for (let index = 0; index < servers.length; index++) {
+			const restriction = firstDenied(toPolicedMcpNodes([servers[index]]));
+			if (!restriction) continue;
+
+			issues.push(
+				issue(
+					'restricted_node_type',
+					`mcpServers.${index}`,
+					{ kind: 'mcpServer', id: servers[index].name, index },
+					undefined,
+					restriction,
+				),
+			);
 		}
 	}
 

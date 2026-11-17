@@ -89,7 +89,9 @@ test.describe(
 
 			await n8n.navigate.toWorkflow(workflowId);
 
-			const saved = n8n.canvas.waitForSaveWorkflowCompleted();
+			// The timer also covers the hover-gated delete click, which can take
+			// several seconds on a loaded CI runner before autosave starts.
+			const saved = n8n.canvas.waitForSaveWorkflowCompleted({ timeout: 10_000 });
 			await n8n.canvas.deleteNodeByName(FUNCTION_NODE_NAME);
 
 			expect((await saved).ok()).toBe(true);

@@ -169,6 +169,36 @@ describe('loadRoutingCases', () => {
 				seed: { mode: 'inline', folders: [{ id: 'folder-1', name: 'Reports' }] },
 			}),
 			'route-debug-in-browser.json': exportedCase([], { credentialFixture: 'local' }),
+			'route-debug-recorded-run.json': exportedCase([], {
+				seed: {
+					mode: 'inline',
+					workflows: [{ id: 'dS8xQ2mV6bTn4Kp1', name: 'Sync', nodes: [], connections: {} }],
+					recordedRuns: [
+						{
+							workflow: 'dS8xQ2mV6bTn4Kp1',
+							envelope: {
+								format: 'n8n-instance-ai-failed-execution',
+								version: 1,
+								source: {
+									executionId: '42',
+									workflowId: 'source-wf',
+									workflowVersionId: null,
+									createdAt: '2026-10-20T06:00:00.000Z',
+									startedAt: '2026-10-20T06:00:00.000Z',
+									stoppedAt: '2026-10-20T06:00:05.000Z',
+								},
+								execution: {
+									mode: 'trigger',
+									status: 'error',
+									finished: false,
+									workflowData: {},
+									data: '[{}]',
+								},
+							},
+						},
+					],
+				},
+			}),
 		});
 
 		const { cases, needsSetup } = loadRoutingCases(dir);
@@ -177,6 +207,7 @@ describe('loadRoutingCases', () => {
 		expect(needsSetup).toEqual([
 			'route-debug-in-browser',
 			'route-debug-in-folder',
+			'route-debug-recorded-run',
 			'route-debug-replay',
 		]);
 	});

@@ -82,7 +82,8 @@ export interface BuiltMemory {
 	describe(): MemoryDescriptor;
 }
 
-export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
+/** `deleted` marks entries a user deleted; `dropped` marks entries the agent dropped. */
+export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped' | 'deleted';
 
 /**
  * The host's decision on who owns a turn's episodic memories. Memories are
@@ -116,7 +117,8 @@ export type EpisodicMemoryCaptureKind =
 	| 'resolution'
 	| 'request';
 
-export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed';
+/** `deleted` marks candidates a user deleted, before or after they were stored. */
+export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed' | 'deleted';
 
 export interface EpisodicMemoryCaptureCandidate {
 	id: string;
@@ -127,6 +129,7 @@ export interface EpisodicMemoryCaptureCandidate {
 	toolCallId: string;
 	content: string;
 	evidenceText: string;
+	/** New flags store `fact`; older rows keep their original kind. */
 	kind: EpisodicMemoryCaptureKind;
 	status: EpisodicMemoryCaptureStatus;
 	attemptCount: number;
@@ -149,7 +152,8 @@ export interface EpisodicMemoryEntry {
 	contentHash: string;
 	status: EpisodicMemoryStatus;
 	supersededBy: string | null;
-	embedding?: number[];
+	/** float32 values, so a store can keep them as bytes without converting them. */
+	embedding?: Float32Array;
 	embeddingModel?: string;
 	metadata?: JSONObject | null;
 	createdAt: Date;
@@ -195,18 +199,18 @@ export type NewEpisodicMemoryEntrySourceForEntry = NewEpisodicMemoryEntrySourceF
 	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
 
 export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
-	lexicalScore: number;
 	vectorScore: number;
-	rrfScore: number;
 	finalScore: number;
 }
 
 export interface EpisodicMemorySearchOptions {
 	topK?: number;
-	queryEmbedding?: number[];
+	queryEmbedding?: ArrayLike<number>;
 	includeStatuses?: EpisodicMemoryStatus[];
 	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
 	writeScopeOnly?: boolean;
+	/** Lowest cosine similarity to the query an entry needs. Without it, topK alone bounds the result. */
+	minSimilarity?: number;
 }
 
 export interface EpisodicMemoryTaskLockHandle {
@@ -259,52 +263,101 @@ export interface EpisodicMemoryCaptureMethods {
 	): Promise<EpisodicMemoryCaptureCandidate[]>;
 	completeCaptureCandidates(ids: string[]): Promise<void>;
 	recordCaptureCandidateFailure(ids: string[], maxAttempts: number): Promise<void>;
+	/**
+	 * Returns, for each embedding in order, the closest active entries of the
+	 * write scope. Load the scope once for all embeddings.
+	 */
+	findSimilarEntries(
+		scope: EpisodicMemoryScope,
+		embeddings: Array<ArrayLike<number>>,
+		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
+	): Promise<RetrievedEpisodicMemoryEntry[][]>;
+	/**
+	 * Adds sources to an active entry and sets its `lastSeenAt`. Claims the
+	 * capture candidates of the sources in the same write, like
+	 * `saveEntryWithSources`. Returns null when a user deleted a candidate or
+	 * the entry is not active.
+	 */
+	addEntrySources(
+		entryId: string,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+		lastSeenAt: Date,
+	): Promise<EpisodicMemoryEntry | null>;
 }
 
 export interface BuiltEpisodicMemoryCaptureStore {
 	episodic: EpisodicMemoryMethods & EpisodicMemoryCaptureMethods;
 }
 
-export interface EpisodicMemoryReflectionMerge {
-	supersedes: string[];
+export type EpisodicMemoryFactRelation = 'duplicate' | 'update' | 'different';
+
+/** A stored entry that is similar to a new fact. */
+export interface EpisodicMemoryConsolidationNeighbour {
+	id: string;
 	content: string;
+	createdAt: Date;
+	lastSeenAt: Date;
+	/** Evidence of the newest source of the entry, when it has one. */
+	evidenceText?: string;
 }
 
-export interface EpisodicMemoryReflection {
-	drop: string[];
-	merge: EpisodicMemoryReflectionMerge[];
+/** A new fact from a capture candidate, with the stored entries most similar to it. */
+export interface EpisodicMemoryConsolidationFact {
+	candidateId: string;
+	content: string;
+	evidenceText: string;
+	createdAt: Date;
+	neighbours: EpisodicMemoryConsolidationNeighbour[];
 }
 
-export interface EpisodicMemoryReflectorInput {
+export interface EpisodicMemoryConsolidatorInput {
 	scope: EpisodicMemoryScope;
 	now: Date;
-	seedEntryIds: string[];
-	entries: RetrievedEpisodicMemoryEntry[];
-	sources: EpisodicMemoryEntrySource[];
+	facts: EpisodicMemoryConsolidationFact[];
 	executionCounter?: AgentExecutionCounter;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
-export interface EpisodicMemoryReflectResult {
-	reflection: EpisodicMemoryReflection;
-	/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+export interface EpisodicMemoryConsolidation {
+	facts: Array<{
+		candidateId: string;
+		relations: Array<{
+			entryId: string;
+			relation: EpisodicMemoryFactRelation;
+			reason?: string;
+		}>;
+		/** The updated entry content. Required when a relation is `update`. */
+		mergedContent?: string | null;
+	}>;
+}
+
+export interface EpisodicMemoryConsolidateResult {
+	consolidation: EpisodicMemoryConsolidation;
+	/** Normalized token usage from the consolidation model call, when the provider reports it. */
 	usage?: TokenUsage;
-	/** Stable model id string of the model that produced the reflection. */
+	/** Stable model id string of the model that produced the consolidation. */
 	model: string;
 }
 
 /**
- * Reflect a cluster of episodic entries. Returns the reflection, or a
- * `{ reflection, usage, model }` result that also carries token usage for the
- * host to price. Bare `EpisodicMemoryReflection` returns are accepted for
- * backward compatibility.
+ * Compares new facts with similar stored entries. For each pair, returns
+ * whether the new fact is a duplicate, an update, or a different fact.
  */
-export type EpisodicMemoryReflectFn = (
-	input: EpisodicMemoryReflectorInput,
-) => Promise<EpisodicMemoryReflection | EpisodicMemoryReflectResult>;
+export type EpisodicMemoryConsolidateFn = (
+	input: EpisodicMemoryConsolidatorInput,
+) => Promise<EpisodicMemoryConsolidateResult>;
 
 export interface EpisodicMemoryReflectionApplyMerge {
 	supersedes: string[];
 	entry: NewEpisodicMemoryEntry;
+	/**
+	 * Sources to add to the replacement. The store claims their capture
+	 * candidates in the same write and skips the merge when a user deleted one.
+	 */
+	sources?: NewEpisodicMemoryEntrySourceForEntry[];
 }
 
 export interface EpisodicMemoryReflectionApply {
@@ -319,8 +372,16 @@ export interface EpisodicMemoryReflectionResult {
 }
 
 export interface EpisodicMemoryPrompts {
-	reflection?: string;
+	consolidation?: string;
 	recallToolInstruction?: string;
+}
+
+/** Builder-set topics that steer what the agent flags. Model instructions, not a filter. */
+export interface EpisodicMemoryCaptureGuidance {
+	/** Topics to prioritize. The agent still flags other useful details. */
+	include?: string[];
+	/** Topics the agent is told not to flag. */
+	exclude?: string[];
 }
 
 export interface EpisodicMemoryEmbeddingProviderOptions {
@@ -336,8 +397,9 @@ export interface EpisodicMemoryConfig {
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
-	reflect?: EpisodicMemoryReflectFn;
+	consolidate?: EpisodicMemoryConsolidateFn;
 	prompts?: EpisodicMemoryPrompts;
+	guidance?: EpisodicMemoryCaptureGuidance;
 }
 
 export interface TitleGenerationConfig {
@@ -357,7 +419,10 @@ export interface ObservationLogMemoryConfig {
 }
 
 export interface ObservationalMemoryConfig {
-	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
+	/**
+	 * Fixed token threshold for the Observer. When set, it replaces the default
+	 * window shares. Window shares are used when this is unset.
+	 */
 	observerThresholdTokens?: number;
 	/**
 	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
@@ -376,6 +441,70 @@ export interface ObservationalMemoryConfig {
 	observe?: ObservationLogObserveFn;
 	/** Policy callback that returns drop/merge instructions for the active observation log. */
 	reflect?: ObservationLogReflectFn;
+	/**
+	 * Derive thresholds from shares of the context window. Default when
+	 * `observerThresholdTokens` is unset: the default shares with a 200k cap.
+	 */
+	windowShares?: ObservationWindowShares;
+	/**
+	 * Prompt-cache lifetime. A thread idle for longer resumes from its notes.
+	 * Defaults to the provider cache retention from `promptCaching`.
+	 */
+	cacheTtlMs?: number;
+	/**
+	 * `message` (default) sends the observation log as the first conversation
+	 * message, so log updates do not change the cached system prefix.
+	 * `system` renders it into the system prompt.
+	 */
+	logPlacement?: ObservationLogPlacement;
+	/**
+	 * `retry` (default) tries a failed Observer call again at the next step,
+	 * up to `maxConsecutiveObserverFailures` in a row.
+	 * `disableForRun` stops observation for the rest of the run.
+	 */
+	failurePolicy?: ObservationFailurePolicy;
+	/** Failures in a row after which `retry` stops observing for the run. Default 3. */
+	maxConsecutiveObserverFailures?: number;
+	/**
+	 * Maximum Observer calls after one turn. Each call reads one batch. A
+	 * blocking observation has no limit. `0` means no limit. Default 5.
+	 */
+	maxObserverBatchesAfterTurn?: number;
+	/**
+	 * `background` (default) queues the Reflector after every turn.
+	 * `afterObserve` runs it only after an Observer call that advanced the cursor.
+	 */
+	reflectionMode?: ObservationReflectionMode;
+	/** Give the agent a `read_history` tool to read messages the log replaced. Default `true`. */
+	historyRecall?: boolean;
+}
+
+export type ObservationLogPlacement = 'system' | 'message';
+export type ObservationFailurePolicy = 'disableForRun' | 'retry';
+export type ObservationReflectionMode = 'background' | 'afterObserve';
+
+/** Thresholds as shares (0–1) of the model's context window. */
+export interface ObservationWindowShares {
+	/** Context window size. Looked up in the model catalog when unset. */
+	contextWindowTokens?: number;
+	/**
+	 * Upper limit for the window that the shares are taken from. The smaller of
+	 * this and the model's window is used, so memory starts early on very large
+	 * windows. Overrun checks still use the model's real window. No cap when unset.
+	 */
+	maxContextWindowTokens?: number;
+	/** Unobserved size that triggers the first observation. Default 0.2. */
+	observeAt?: number;
+	/** New unobserved size that triggers later observations. Default 0.1. */
+	observeNew?: number;
+	/** Visible window size that starts a background mid-run observation. Default 0.6. */
+	midRunAt?: number;
+	/** Visible window size at which the loop waits for observation. Default 0.9. */
+	waitAt?: number;
+	/** Observation log size that triggers the Reflector. Default 0.6. */
+	reflectAt?: number;
+	/** Largest unobserved batch that one Observer call reads. Default 0.6. */
+	batchAt?: number;
 }
 
 interface MemoryConfigBase {

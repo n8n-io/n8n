@@ -148,6 +148,13 @@ export interface BuiltTool {
 	 * never exposed to the model.
 	 */
 	readonly legacyNames?: readonly string[];
+	/**
+	 * Former tool names that this tool owns only for some values of the call's
+	 * `action` input, keyed by former name. Use it when one multi-action tool
+	 * became one tool for each action, so each persisted call resumes in the
+	 * tool that now owns its action. Never exposed to the model.
+	 */
+	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's
@@ -175,8 +182,16 @@ export interface BuiltTool {
 	 * The raw output is stored in history; only the transformed version goes to the model.
 	 */
 	readonly toModelOutput?: (output: unknown) => unknown;
+	/** Derive host-only trace data from the handler output. The model never sees it. */
+	readonly toTraceOutput?: (output: unknown) => unknown;
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	readonly outputTrust?: 'untrusted';
+	/**
+	 * The handler uses the agent's workspace. The runtime starts preparing the
+	 * workspace when the model begins to stream this tool's input, so a cold
+	 * sandbox can start while the arguments generate.
+	 */
+	readonly requiresWorkspace?: true;
 	/**
 	 * Ends the run after this call's batch settles, without another model call,
 	 * when it returns true for the output. For tools whose result is the last
@@ -223,6 +238,25 @@ export interface BuiltTool {
 	 * Defaults to `true` when absent.
 	 */
 	readonly editable?: boolean;
+	/**
+	 * Marks a tool that runs other tools, such as the tool catalog's `call_tool`.
+	 * The runtime asks it which tool owns each call, so approval, suspension,
+	 * output trust, and result transforms are the owning tool's own.
+	 */
+	readonly dispatch?: ToolDispatch;
+}
+
+export interface ToolDispatch {
+	/**
+	 * The tool that handles this call and the input to give it, or `undefined`
+	 * to run the dispatcher itself (for example, to report an unknown tool).
+	 */
+	resolve(input: unknown): { tool: BuiltTool; input: unknown } | undefined;
+	/**
+	 * The dispatcher input for a model call to `toolName` made directly, or
+	 * `undefined` when this dispatcher does not own that tool.
+	 */
+	wrap(toolName: string, input: unknown): Record<string, unknown> | undefined;
 }
 
 /**

@@ -113,6 +113,19 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		);
 	}
 
+	function trackTriggerRemoved(payload: { triggerType: string; triggers: string[] }) {
+		const s = snapshot();
+		withFingerprint(s.config, payload.triggers, (configVersion, configuredTriggers) => {
+			agentTelemetry.trackRemovedTrigger({
+				agentId: s.agentId,
+				triggerType: payload.triggerType,
+				triggers: configuredTriggers,
+				configVersion,
+				status: s.status,
+			});
+		});
+	}
+
 	/**
 	 * Eagerly derive configured trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
@@ -136,6 +149,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			deps.agentId.value,
 			knownTriggerTypes,
 			configuredIntegrations,
+			integrations.filter((integration) => isDraftIntegration(integration)),
 		);
 		return configured;
 	}
@@ -177,6 +191,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 
 	return {
 		trackTriggerAdded,
+		trackTriggerRemoved,
 		fetchInitialTriggersBaseline,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,

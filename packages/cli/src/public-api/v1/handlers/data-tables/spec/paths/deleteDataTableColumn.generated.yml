@@ -2,7 +2,10 @@ operationId: deleteDataTableColumn
 tags:
   - DataTable
 summary: Delete a column
-description: Remove a column from a data table. This will also delete all data in the column.
+description: |-
+  Remove a column from a data table. This will also delete all data in the column.
+
+  Requires the `dataTableColumn:delete` API key scope.
 x-required-scope: dataTableColumn:delete
 parameters:
   - schema:
@@ -30,3 +33,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

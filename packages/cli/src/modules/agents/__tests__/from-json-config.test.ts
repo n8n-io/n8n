@@ -8,16 +8,16 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
-import type { ToolExecutor } from '../json-config/from-json-config';
-import { buildVectorStore } from '../json-config/vector-store-factory';
+import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
+import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
 
-vi.mock('../json-config/vector-store-factory', () => ({
+vi.mock('@/modules/knowledge/vector-stores/factory', () => ({
 	buildVectorStore: vi.fn(),
 }));
 
@@ -125,6 +125,7 @@ describe('buildFromJson()', () => {
 						reflectorThresholdTokens?: number;
 						observationLogTailLimit?: number;
 						lockTtlMs?: number;
+						windowShares?: { maxContextWindowTokens?: number };
 						observe?: unknown;
 						reflect?: unknown;
 					};
@@ -137,7 +138,7 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						reflect?: unknown;
+						consolidate?: unknown;
 					};
 					titleGeneration?: {
 						sync?: boolean;
@@ -189,6 +190,8 @@ describe('buildFromJson()', () => {
 		getMessagesForObservationScope: vi.fn(),
 		getCursor: vi.fn(),
 		setCursor: vi.fn(),
+		getResumeState: vi.fn(),
+		saveResumeState: vi.fn(),
 		acquireObservationLogTaskLock: vi.fn(),
 		releaseObservationLogTaskLock: vi.fn(),
 		episodic: {
@@ -758,6 +761,7 @@ describe('buildFromJson()', () => {
 	});
 
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/anthropic/claude-sonnet-4.5',
 		'google-vertex/claude-sonnet-4-5',
@@ -781,7 +785,9 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: false });
 	});
 
+	// Inline agents have no `config` block, so an inline OpenAI agent sends no cache fields.
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/openai/gpt-5',
 		'google-vertex/gemini-2.5-pro',
@@ -1278,6 +1284,55 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
 	});
 
+	it.each([64_000, 0])(
+		'forwards a memory window cap of %i to observational memory',
+		async (maxContextWindowTokens) => {
+			const config = makeConfig({
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					observationalMemory: { windowShares: { maxContextWindowTokens } },
+				},
+			});
+
+			const agent = await buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				},
+			);
+
+			expect(getMemoryConfig(agent)?.observationalMemory).toEqual({
+				windowShares: { maxContextWindowTokens },
+			});
+		},
+	);
+
+	it('keeps the default memory window cap when windowShares has no cap', async () => {
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { windowShares: {} },
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
+	});
+
 	it('uses synchronous title generation so the first message can sync the title', async () => {
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n' },
@@ -1412,6 +1467,7 @@ describe('buildFromJson()', () => {
 					enabled: true,
 					credential: 'openai-key',
 					topK: 7,
+					guidance: { include: ['timezone'], exclude: ['passwords'] },
 				},
 			},
 		});
@@ -1430,13 +1486,44 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
 			topK: 7,
+			guidance: { include: ['timezone'], exclude: ['passwords'] },
 			embeddingProviderOptions: {
 				apiKey: 'test-api-key',
 				baseURL: 'https://custom.example/v1',
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.consolidate).toBeUndefined();
+	});
+
+	it('sends credential episodic memory embeddings through the model fetch', async () => {
+		const modelFetch = vi.fn();
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: { enabled: true, credential: 'openai-key' },
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: {
+					resolve: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+					list: vi.fn().mockResolvedValue([]),
+				},
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				modelFetch,
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.episodicMemory?.embeddingProviderOptions).toEqual({
+			apiKey: 'test-api-key',
+			fetch: modelFetch,
+		});
 	});
 
 	it('configures episodic memory with managed proxy embedding credentials', async () => {
@@ -1482,8 +1569,8 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
-		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
+	it('configures the episodic memory consolidator with a separate credential from embeddings', async () => {
+		const consolidateSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryConsolidateFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
@@ -1516,7 +1603,7 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(reflectSpy).toHaveBeenCalledWith({
+		expect(consolidateSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
 			baseURL: 'https://episodic-reflector-key.example/v1',
@@ -1780,62 +1867,250 @@ describe('buildFromJson()', () => {
 			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
 		});
 
-		async function buildSearchTool(searchHandler: ReturnType<typeof vi.fn>) {
+		function makeVectorStoreCredentialProvider() {
+			const credentialProvider = makeMockCredentialProvider();
+			credentialProvider.resolve.mockImplementation(async (id) => ({
+				apiKey: id === 'embed-cred' ? 'opaque-embedding-value' : 'opaque-store-value',
+			}));
+			return credentialProvider;
+		}
+
+		async function buildSearchTool(
+			searchHandler: ReturnType<typeof vi.fn>,
+			{
+				onVectorStoreSearch,
+				toModelOutput,
+			}: {
+				onVectorStoreSearch?: BuildFromJsonOptions['onVectorStoreSearch'];
+				toModelOutput?: BuiltTool['toModelOutput'];
+			} = {},
+		) {
 			const fakeTool = {
 				name: 'search_product_docs',
 				description: vectorStoreConfig.useWhen,
+				inputSchema: {
+					type: 'object' as const,
+					properties: { query: { type: 'string' as const } },
+				},
 				handler: searchHandler,
+				toModelOutput,
 			};
 			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
-			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
-			const finishSearch = vi.fn();
-			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				return mockVectorStore as never;
+			});
 
 			const agent = await buildFromJson(
 				makeConfig({ vectorStores: [vectorStoreConfig] }),
 				{},
 				{
 					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
+					credentialProvider: makeVectorStoreCredentialProvider(),
 					memoryFactory: makeMockMemoryFactory(),
 					onVectorStoreSearch,
 				},
 			);
 			const searchTool = agent.declaredTools.find((t) => t.name === 'search_product_docs');
-			return { searchTool, onVectorStoreSearch, finishSearch };
+			return { searchTool, fakeTool };
 		}
 
-		it('reports each vector store search with the run id and the size of its result', async () => {
+		it('reports result size and returns the original search result', async () => {
 			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
-			const searchHandler = vi.fn().mockResolvedValue(result);
-			const { searchTool, onVectorStoreSearch, finishSearch } =
-				await buildSearchTool(searchHandler);
-			const input = { query: 'refund policy' };
-			const ctx = { runId: 'run-1' };
-
-			await expect(searchTool?.handler?.(input, ctx)).resolves.toEqual(result);
-
-			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
-			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
-			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
-			expect(finishSearch).toHaveBeenCalledWith({
-				failed: false,
-				contentChars: JSON.stringify(result).length,
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			const { searchTool } = await buildSearchTool(vi.fn().mockResolvedValue(result), {
+				onVectorStoreSearch,
 			});
-		});
-
-		it('reports a failed vector store search as failed, then throws its error', async () => {
-			const error = new Error('vector store unavailable');
-			const searchHandler = vi.fn().mockRejectedValue(error);
-			const { searchTool, onVectorStoreSearch, finishSearch } =
-				await buildSearchTool(searchHandler);
 
 			await expect(
 				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
-			).rejects.toBe(error);
+			).resolves.toBe(result);
 
-			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
-			expect(finishSearch).toHaveBeenCalledWith({ failed: true });
+			expect(onVectorStoreSearch).toHaveBeenCalledExactlyOnceWith('run-1');
+			expect(finishSearch).toHaveBeenCalledExactlyOnceWith({
+				failed: false,
+				contentChars: JSON.stringify(result).length,
+				searchDurationMs: expect.any(Number),
+				emptySearch: false,
+			});
+		});
+
+		it('measures transformed output while preserving the search tool and raw result', async () => {
+			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
+			const searchHandler = vi.fn().mockResolvedValue(result);
+			const toModelOutput = vi.fn().mockReturnValue('model-visible output');
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			const { searchTool, fakeTool } = await buildSearchTool(searchHandler, {
+				onVectorStoreSearch,
+				toModelOutput,
+			});
+			const input = { query: 'refund policy' };
+			const ctx = { runId: 'run-1' };
+
+			expect(searchTool).toMatchObject({
+				name: fakeTool.name,
+				description: fakeTool.description,
+				inputSchema: fakeTool.inputSchema,
+				toModelOutput,
+			});
+			await expect(searchTool?.handler?.(input, ctx)).resolves.toBe(result);
+			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
+			expect(searchHandler.mock.contexts[0]).toBe(fakeTool);
+			expect(toModelOutput).toHaveBeenCalledExactlyOnceWith(result);
+			expect(onVectorStoreSearch).toHaveBeenCalledExactlyOnceWith('run-1');
+			expect(finishSearch).toHaveBeenCalledExactlyOnceWith({
+				failed: false,
+				contentChars: JSON.stringify('model-visible output').length,
+				searchDurationMs: expect.any(Number),
+				emptySearch: false,
+			});
+		});
+
+		it('returns the original search result without transforming it when telemetry is absent', async () => {
+			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
+			const toModelOutput = vi.fn().mockReturnValue('model-visible output');
+			const { searchTool } = await buildSearchTool(vi.fn().mockResolvedValue(result), {
+				toModelOutput,
+			});
+
+			await expect(searchTool?.handler?.({ query: 'refund policy' }, {})).resolves.toBe(result);
+			expect(toModelOutput).not.toHaveBeenCalled();
+		});
+
+		it('reports a vector store search without results as empty', async () => {
+			const finishSearch = vi.fn();
+			const { searchTool } = await buildSearchTool(vi.fn().mockResolvedValue({ results: [] }), {
+				onVectorStoreSearch: vi.fn().mockReturnValue(finishSearch),
+			});
+
+			await searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' });
+
+			expect(finishSearch).toHaveBeenCalledWith(expect.objectContaining({ emptySearch: true }));
+		});
+
+		it('reports the original failure type, then throws a sanitised error', async () => {
+			const error = new Error(
+				'Collection docs rejected opaque-store-value and opaque-embedding-value',
+			);
+			error.name = 'QdrantUnexpectedResponseError';
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+			const { searchTool } = await buildSearchTool(vi.fn().mockRejectedValue(error), {
+				onVectorStoreSearch,
+			});
+
+			await expect(
+				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
+			).rejects.toMatchObject({
+				message: 'Collection docs rejected [REDACTED] and [REDACTED]',
+				stack: undefined,
+			});
+
+			expect(onVectorStoreSearch).toHaveBeenCalledExactlyOnceWith('run-1');
+			expect(finishSearch).toHaveBeenCalledExactlyOnceWith({
+				failed: true,
+				searchDurationMs: expect.any(Number),
+				errorType: 'QdrantUnexpectedResponseError',
+			});
+		});
+
+		it('sanitises search failures when telemetry is absent', async () => {
+			const { searchTool } = await buildSearchTool(
+				vi.fn().mockRejectedValue('Rejected opaque-embedding-value and opaque-store-value'),
+			);
+
+			await expect(searchTool?.handler?.({ query: 'refund policy' }, {})).rejects.toThrow(
+				'Rejected [REDACTED] and [REDACTED]',
+			);
+		});
+
+		it('sanitises factory failures using both resolved credentials', async () => {
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				throw new Error(
+					'Cannot initialise docs using opaque-store-value and opaque-embedding-value',
+				);
+			});
+
+			await expect(
+				buildFromJson(
+					makeConfig({ vectorStores: [vectorStoreConfig] }),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeVectorStoreCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).rejects.toThrow('Cannot initialise docs using [REDACTED] and [REDACTED]');
+		});
+
+		it('sanitises tool-build failures after the factory returns', async () => {
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				return {
+					asTool: () => ({
+						build: () => {
+							throw new Error(
+								'Cannot build docs tool using opaque-store-value and opaque-embedding-value',
+							);
+						},
+					}),
+				} as never;
+			});
+
+			await expect(
+				buildFromJson(
+					makeConfig({ vectorStores: [vectorStoreConfig] }),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeVectorStoreCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).rejects.toThrow('Cannot build docs tool using [REDACTED] and [REDACTED]');
+		});
+
+		it('names the store and the credential role when a lookup fails during the build', async () => {
+			const secondStore = {
+				...vectorStoreConfig,
+				name: 'support_tickets',
+				credential: 'tickets-cred',
+				embedding: { ...vectorStoreConfig.embedding, credential: 'deleted-embed-cred' },
+			};
+			const credentialProvider = makeMockCredentialProvider();
+			credentialProvider.resolve.mockImplementation(async (id: string) => {
+				if (id === 'deleted-embed-cred') {
+					throw new Error('Credential "deleted-embed-cred" not found or not accessible');
+				}
+				return { apiKey: 'opaque-value' };
+			});
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				return { asTool: () => ({ build: () => ({ name: `search_${config.name}` }) }) } as never;
+			});
+
+			await expect(
+				buildFromJson(
+					makeConfig({ vectorStores: [vectorStoreConfig, secondStore] }),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider,
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).rejects.toMatchObject({
+				message: 'Could not resolve the embedding credential of vector store "support_tickets"',
+				stack: undefined,
+			});
 		});
 
 		it.each([

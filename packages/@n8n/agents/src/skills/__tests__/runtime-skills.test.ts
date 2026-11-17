@@ -30,12 +30,28 @@ function skillLoadText(output: unknown): string {
 }
 
 describe('runtime skills', () => {
+	it('loads a SKILL.md that still uses the deprecated recommended_tools key', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: legacy-skill
+description: Written before the tool group rename.
+recommended_tools:
+  - list_workflows
+---
+
+Do the thing.`);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.skill).not.toHaveProperty('recommendedToolGroups');
+		expect(result.skill).not.toHaveProperty('recommendedTools');
+	});
+
 	it('parses SKILL.md frontmatter into a runtime skill', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: workflow-builder
 description: Build workflows.
-recommended_tools:
-  - bash
+recommended_tool_groups:
+  - workflows
 allowed_tools: workflow
 interface:
   display_name: Workflow Builder
@@ -74,7 +90,7 @@ Follow the workflow-building process.`);
 				name: 'workflow-builder',
 				description: 'Build workflows.',
 				instructions: 'Follow the workflow-building process.',
-				recommendedTools: ['bash'],
+				recommendedToolGroups: ['workflows'],
 				allowedTools: ['workflow'],
 				interface: {
 					displayName: 'Workflow Builder',
@@ -128,6 +144,36 @@ Body`);
 				expect.objectContaining({ code: 'unknown_field', field: 'interface.unknown' }),
 			]),
 		);
+	});
+
+	it('parses a turn lifetime from the skill policy', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: turn
+---
+
+Pick a route.`);
+
+		expect(result.ok && result.skill.policy).toEqual({ lifetime: 'turn' });
+	});
+
+	it('rejects an unknown skill lifetime', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: forever
+---
+
+Pick a route.`);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error('Expected skill validation to fail');
+		expect(result.errors).toEqual([
+			expect.objectContaining({ code: 'invalid_field', field: 'policy.lifetime' }),
+		]);
 	});
 
 	it('rejects SKILL.md files without instruction content', () => {
@@ -520,7 +566,7 @@ Use the workflow SDK.`,
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
 				category: 'productivity',
-				recommendedTools: ['data-tables'],
+				recommendedToolGroups: ['data_tables'],
 				instructions: 'Extract private decisions.',
 			},
 		]);
@@ -531,7 +577,7 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
 		expect(prompt).toContain('category: "productivity"');
-		expect(prompt).toContain('recommendedTools: ["data-tables"]');
+		expect(prompt).toContain('recommendedToolGroups: ["data_tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('list_skills');
 		expect(prompt).not.toContain('Extract private decisions.');
@@ -583,6 +629,46 @@ Use the workflow SDK.`,
 			ok: false,
 			success: false,
 		});
+	});
+
+	it('accepts path-only reference metadata until the file is requested', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'deferred',
+				name: 'Deferred',
+				description: 'Load later.',
+				instructions: 'See the guide.',
+				linkedFiles: {
+					references: [{ path: 'references/guide.md' }],
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = vi.fn(async (skillId, filePath) => ({
+			skillId,
+			filePath,
+			content: 'Guide.',
+			bytes: 6,
+			sha256: 'guide-hash',
+		}));
+		const tool = createSkillLoadTool(source);
+		const activation = await tool.handler?.(
+			{ skillId: 'deferred' },
+			{ loadSkill: source.loadSkill },
+		);
+		if (!isZodSchema(tool.outputSchema)) throw new Error('Expected Zod output schema');
+		expect(tool.outputSchema.safeParse(activation).success).toBe(true);
+		expect(activation).toMatchObject({
+			linkedFiles: { references: [{ path: 'references/guide.md' }] },
+		});
+		expect(source.loadFile).not.toHaveBeenCalled();
+		const file = await tool.handler?.({ skillId: 'deferred', filePath: 'references/guide.md' }, {});
+		expect(tool.outputSchema.safeParse(file).success).toBe(true);
+		expect(file).toMatchObject({ content: 'Guide.', bytes: 6, sha256: 'guide-hash' });
 	});
 
 	it('prepares the runtime skill source before load_skill reads the registry', async () => {
@@ -805,7 +891,11 @@ Use the workflow SDK.`,
 			bytes: 15,
 			sha256: 'abc123',
 		});
-		expect(loadFile).toHaveBeenCalledWith('summarize_notes', 'references/guide.md');
+		expect(loadFile).toHaveBeenCalledWith(
+			'summarize_notes',
+			'references/guide.md',
+			expect.any(Function),
+		);
 	});
 
 	it('adds runtime skills to agents through one shared load path', () => {
@@ -970,7 +1060,7 @@ describe('reference skills', () => {
 		expect(agents).toContain('- "models": "Load before choosing a model."');
 	});
 
-	it('records references with descriptions in the activation result', async () => {
+	it('returns the activation acknowledgement, version, and reference paths', async () => {
 		writeBuilderWithReferences();
 		const source = loadRuntimeSkillSourceFromDirectory(root);
 		const loadTool = createSkillLoadTool(source);
@@ -983,6 +1073,8 @@ describe('reference skills', () => {
 		expect(result).toMatchObject({
 			success: true,
 			skillId: 'builder',
+			hash: source.registry.skills.find((skill) => skill.id === 'builder')?.hash,
+			content: 'The skill instructions are active. Follow them for this task.',
 			references: [{ skillId: 'models', description: 'Load before choosing a model.' }],
 			linkedFiles: { references: [expect.objectContaining({ path: 'references/notes.md' })] },
 		});

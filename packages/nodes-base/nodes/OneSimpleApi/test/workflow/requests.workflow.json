@@ -1,0 +1,337 @@
+{
+	"name": "OneSimpleApi Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "website",
+				"operation": "pdf",
+				"link": "https://n8n.io",
+				"download": true,
+				"output": "data",
+				"options": {}
+			},
+			"id": "onesimpleapi-0",
+			"name": "Website PDF",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "website",
+				"operation": "screenshot",
+				"link": "https://n8n.io",
+				"download": false,
+				"options": {}
+			},
+			"id": "onesimpleapi-1",
+			"name": "Website Screenshot",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "website",
+				"operation": "seo",
+				"link": "https://n8n.io",
+				"options": {}
+			},
+			"id": "onesimpleapi-2",
+			"name": "Website SEO",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "socialProfile",
+				"operation": "instagramProfile",
+				"profileName": "n8n.io"
+			},
+			"id": "onesimpleapi-3",
+			"name": "Instagram Profile",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "socialProfile",
+				"operation": "spotifyArtistProfile",
+				"artistName": "Daft Punk"
+			},
+			"id": "onesimpleapi-4",
+			"name": "Spotify Artist",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "information",
+				"operation": "exchangeRate",
+				"value": "10",
+				"fromCurrency": "EUR",
+				"toCurrency": "USD"
+			},
+			"id": "onesimpleapi-5",
+			"name": "Exchange Rate",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "information",
+				"operation": "imageMetadata",
+				"link": "https://n8n.io/logo.png"
+			},
+			"id": "onesimpleapi-6",
+			"name": "Image Metadata",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "utility",
+				"operation": "validateEmail",
+				"emailAddress": "hello@n8n.io"
+			},
+			"id": "onesimpleapi-7",
+			"name": "Validate Email",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "utility",
+				"operation": "expandURL",
+				"link": "https://bit.ly/3abcd"
+			},
+			"id": "onesimpleapi-8",
+			"name": "Expand URL",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "utility",
+				"operation": "qrCode",
+				"message": "Hello",
+				"download": false,
+				"options": {}
+			},
+			"id": "onesimpleapi-9",
+			"name": "QR Code",
+			"type": "n8n-nodes-base.oneSimpleApi",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"oneSimpleApi": {
+					"id": "1",
+					"name": "OneSimpleApi account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Website PDF": [
+			{
+				"json": {
+					"url": "https://onesimpleapi.com/files/a1b2c3.pdf"
+				}
+			}
+		],
+		"Website Screenshot": [
+			{
+				"json": {
+					"url": "https://onesimpleapi.com/files/d4e5f6.png"
+				}
+			}
+		],
+		"Website SEO": [
+			{
+				"json": {
+					"title": "n8n"
+				}
+			}
+		],
+		"Instagram Profile": [
+			{
+				"json": {
+					"username": "n8n.io"
+				}
+			}
+		],
+		"Spotify Artist": [
+			{
+				"json": {
+					"name": "Daft Punk"
+				}
+			}
+		],
+		"Exchange Rate": [
+			{
+				"json": {
+					"value": 10.9
+				}
+			}
+		],
+		"Image Metadata": [
+			{
+				"json": {
+					"width": 200
+				}
+			}
+		],
+		"Validate Email": [
+			{
+				"json": {
+					"deliverable": true
+				}
+			}
+		],
+		"Expand URL": [
+			{
+				"json": {
+					"url": "https://n8n.io"
+				}
+			}
+		],
+		"QR Code": [
+			{
+				"json": {
+					"url": "https://onesimpleapi.com/files/qr.png"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Website PDF",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Website Screenshot",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Website SEO",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Instagram Profile",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Spotify Artist",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Exchange Rate",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Image Metadata",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Validate Email",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Expand URL",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "QR Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

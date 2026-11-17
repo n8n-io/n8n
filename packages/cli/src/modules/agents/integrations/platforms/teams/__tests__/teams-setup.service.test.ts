@@ -61,7 +61,7 @@ describe('TeamsSetupService', () => {
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 			mock({ id: CREDENTIAL_ID, type }),
 		]);
-		credentialsService.decrypt.mockResolvedValue({
+		credentialsService.decryptForUse.mockResolvedValue({
 			clientId: CLIENT_ID,
 			tenantId: TENANT_ID,
 			clientSecret: 'super-secret',
@@ -112,7 +112,7 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsService.decryptForUse.mockResolvedValue({
 				clientId: CLIENT_ID,
 				tenantId: TENANT_ID,
 				clientSecret: 'super-secret',
@@ -164,7 +164,7 @@ describe('TeamsSetupService', () => {
 		describe('the provenance that offers the managed app', () => {
 			const provisionedFor = (agentId: string) => {
 				connectTeamsCredential();
-				credentialsService.decrypt.mockResolvedValue({
+				credentialsService.decryptForUse.mockResolvedValue({
 					clientId: CLIENT_ID,
 					tenantId: TENANT_ID,
 					clientSecret: 'super-secret',
@@ -186,7 +186,7 @@ describe('TeamsSetupService', () => {
 
 			it('links the Azure Bot the recommended setup recorded', async () => {
 				provisionedFor(AGENT_ID);
-				credentialsService.decrypt.mockResolvedValue({
+				credentialsService.decryptForUse.mockResolvedValue({
 					clientId: CLIENT_ID,
 					tenantId: TENANT_ID,
 					provisionedForAgentId: AGENT_ID,
@@ -245,7 +245,7 @@ describe('TeamsSetupService', () => {
 	describe('whether Teams holds an older version', () => {
 		const scope = { projectId: PROJECT_ID, agentId: AGENT_ID };
 		const recorded = (teamsAppFingerprint: string) =>
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsService.decryptForUse.mockResolvedValue({
 				clientId: CLIENT_ID,
 				tenantId: TENANT_ID,
 				teamsAppFingerprint,
@@ -451,7 +451,7 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsService.decryptForUse.mockResolvedValue({
 				clientId: CLIENT_ID,
 				tenantId: TENANT_ID,
 			});
@@ -474,7 +474,7 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsService.decryptForUse.mockResolvedValue({
 				clientId: 'not-a-guid',
 				tenantId: TENANT_ID,
 			});
@@ -575,7 +575,10 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({ clientId: CLIENT_ID, tenantId: TENANT_ID });
+			credentialsService.decryptForUse.mockResolvedValue({
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+			});
 
 			const archive = await service.buildPackage(user, {
 				projectId: PROJECT_ID,
@@ -591,7 +594,7 @@ describe('TeamsSetupService', () => {
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 			mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 		]);
-		credentialsService.decrypt.mockResolvedValue({ clientId: '', tenantId: '' });
+		credentialsService.decryptForUse.mockResolvedValue({ clientId: '', tenantId: '' });
 
 		const state = await service.getSetupState(
 			user,

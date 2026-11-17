@@ -2,11 +2,12 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
 import { reportSideCallUsage } from './forward-usage';
+import { messageToText } from './message-text';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
-import type { ObservationCursor } from '../../types/sdk/observation';
+import type { BuiltObservationResumeStore, ObservationCursor } from '../../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
 	ObservationLogBatchEntry,
@@ -16,7 +17,7 @@ import type {
 } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
-import { guardToolResultForModel } from '../tools/tool-result-guard';
+import { guardSerializedToolResultForModel } from '../tools/tool-result-guard';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -59,7 +60,10 @@ export interface RenderObserverTranscriptOptions {
 	maxObjectKeys?: number;
 }
 
-export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservationLogStore {
+export interface ObservationLogObserverMemory
+	extends BuiltMemory,
+		BuiltObservationLogStore,
+		BuiltObservationResumeStore {
 	getMessagesForObservationScope(
 		observationScopeId: string,
 		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
@@ -82,9 +86,9 @@ export async function readObservationState(
 		order: 'desc',
 	});
 	const hasActiveObservations = observations.length > 0;
-	// Missing memory is not proof that the processed history was empty.
+	// An empty valid batch also moves the cursor, so trust it without notes.
 	return {
-		cursor: hasActiveObservations ? storedCursor : null,
+		cursor: storedCursor,
 		storedCursor,
 		hasActiveObservations,
 	};
@@ -100,6 +104,13 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
+	functionId?: string;
+	/**
+	 * Largest batch of messages, in estimated tokens, that one call reads. Later
+	 * messages wait for the next call. The first message is always read.
+	 */
+	maxBatchTokens?: number;
 	/**
 	 * Receives the observer model call's usage the moment it resolves, before
 	 * any parsing or persistence. Forwarding it here (rather than only on the
@@ -115,6 +126,8 @@ export type RunObservationLogObserverResult =
 			status: 'ran';
 			observationsWritten: number;
 			cursorAdvanced: boolean;
+			/** Messages after this batch wait for another call. */
+			moreToObserve: boolean;
 			tokenCount: number;
 			skippedLines: string[];
 			/** Normalized token usage from the observer LLM call, when the provider reports it. */
@@ -221,10 +234,7 @@ export async function runObservationLogObserver(
 	opts: RunObservationLogObserverOpts,
 ): Promise<RunObservationLogObserverResult> {
 	const { memory, observationScopeId } = opts;
-	const { cursor, storedCursor, hasActiveObservations } = await readObservationState(
-		memory,
-		observationScopeId,
-	);
+	const { cursor, storedCursor } = await readObservationState(memory, observationScopeId);
 	const deltaMessages = await memory.getMessagesForObservationScope(
 		observationScopeId,
 		cursor
@@ -244,11 +254,13 @@ export async function runObservationLogObserver(
 	// LLM window and never part of a future observer delta. Observe only the
 	// messages before the host; the rest is picked up once the call settles.
 	const firstPendingIndex = deltaMessages.findIndex(hasPendingToolCall);
-	const observable =
+	const settled =
 		firstPendingIndex === -1 ? deltaMessages : deltaMessages.slice(0, firstPendingIndex);
-	if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
+	if (settled.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
+	const observable = await takeBatch(settled, opts.maxBatchTokens, tokenCounter);
+	const moreToObserve = observable.length < settled.length;
 	const input = await prepareObserverInput(opts, observable, tokenCounter);
 	const observeResult = await opts.observe(input);
 	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
@@ -261,12 +273,14 @@ export async function runObservationLogObserver(
 		status: 'ran' as const,
 		observationsWritten: 0,
 		cursorAdvanced: false,
+		moreToObserve,
 		tokenCount: input.transcriptTokenCount,
 		skippedLines: prepared.skippedLines,
 		usage,
 		model,
 	};
-	if (!prepared.entries || (prepared.entries.length === 0 && !hasActiveObservations)) {
+	// A valid `NO_OBSERVATIONS` batch still moves the cursor, so later batches are read.
+	if (!prepared.entries) {
 		return result;
 	}
 
@@ -288,6 +302,21 @@ export async function runObservationLogObserver(
 		observationsWritten: committed ? prepared.entries.length : 0,
 		cursorAdvanced: committed,
 	};
+}
+
+/** The longest prefix of `messages` that fits `maxTokens`, and at least one message. */
+async function takeBatch(
+	messages: AgentDbMessage[],
+	maxTokens: number | undefined,
+	tokenCounter: TokenCounter,
+): Promise<AgentDbMessage[]> {
+	if (maxTokens === undefined) return messages;
+	let total = 0;
+	for (let index = 0; index < messages.length; index++) {
+		total += await tokenCounter(messageToText(messages[index]));
+		if (total > maxTokens) return messages.slice(0, Math.max(1, index));
+	}
+	return messages;
 }
 
 async function prepareObserverInput(
@@ -319,6 +348,8 @@ async function prepareObserverInput(
 		renderedObservationLogTail: renderObservationLog(observationLogTail),
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
+		modelFetch: opts.modelFetch,
+		functionId: opts.functionId,
 	};
 }
 
@@ -383,7 +414,7 @@ async function guardObserverToolResults(
 			if (block.type !== 'tool-call' || block.state !== 'resolved') return block;
 			// Bound the serialized result so rich media metadata cannot bypass the guard.
 			const serialized = serializeForObserver(block.output, {}, true);
-			const guarded = await guardToolResultForModel(serialized, tokenCounter);
+			const guarded = await guardSerializedToolResultForModel(serialized, tokenCounter);
 			if (!guarded.truncated) return block;
 			return { ...block, output: guarded.historyOutput };
 		}),

@@ -12,6 +12,7 @@ Scans repository files for structural and dependency-policy violations:
 - **Encryption boundary coverage** — every package that depends on `n8n-core` or `@n8n/db` composes the encryption-boundary ESLint config at `error` severity and contains no ESLint directive that silences it
 - **TypeORM persistence boundary** — business logic cannot import TypeORM directly or through guarded `@n8n/db` re-exports; entity and repository declarations can use any package layout
 - **Agents and Instance AI boundary** — Agents cannot depend on Instance AI. Instance AI uses a fixed set of Agent services and contracts, plus public SDK entry points for `@n8n/agents`. Repositories, entities, and runtime reconstruction services stay private.
+- **Skills module boundary** — code outside `packages/cli/src/modules/skills` imports only its public API (`@/modules/skills`, and `@/modules/skills/testing` from tests). The skills module imports only an allowlist from the rest of cli. The rule resolves relative and aliased imports to files, so a relative import cannot bypass it.
 
 ## Usage
 
@@ -87,9 +88,9 @@ published tarball.
 On a finding it prints every physical copy with the package that pulled it in, then the fix options
 that apply to those requirers: move the library to `peerDependencies` (`catalog:`) in one of our
 packages, align a version in a package the peer rule exempts, bump/replace the third-party package
-pinning an incompatible range, or, as a last resort, add a documented `EXPECTED_DUPLICATES` entry in
-`src/single-instance/collect-copies.ts`. In CI the same findings also go to the job summary, so a
-finding is visible without opening the log.
+pinning an incompatible range, or, as a last resort, add a documented `EXPECTED_NPM_DUPLICATES`
+entry in `src/single-instance/verify-npm-install.ts`. In CI the same findings also go to the job
+summary, so a finding is visible without opening the log.
 
 A blocking run keeps its scratch install so you can walk the full requirer chain with `npm ls`; a
 `--report-only` run deletes it (it is a complete `node_modules`), so re-run the same targets locally

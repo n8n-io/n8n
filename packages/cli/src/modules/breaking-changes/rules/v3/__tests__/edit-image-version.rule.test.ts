@@ -32,7 +32,7 @@ describe('EditImageVersionRule', () => {
 			expect(result.issues).toHaveLength(0);
 		});
 
-		it('should report an info issue for version 1 without special cases', async () => {
+		it('should report an error issue for version 1 without special cases', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Edit Image', EDIT_IMAGE_NODE_TYPE, { operation: 'border', borderWidth: 2 }),
 			]);
@@ -42,7 +42,7 @@ describe('EditImageVersionRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
 			expect(result.issues[0]).toMatchObject({
-				level: 'info',
+				level: 'error',
 				nodeName: 'Edit Image',
 				title: "Node 'Edit Image' uses Edit Image version 1",
 			});
@@ -62,7 +62,7 @@ describe('EditImageVersionRule', () => {
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues[0].title).toContain('1.1');
-			expect(result.issues[0].level).toBe('info');
+			expect(result.issues[0].level).toBe('error');
 		});
 
 		it('should warn only when blur is used', async () => {
@@ -76,7 +76,7 @@ describe('EditImageVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.issues[0].level).toBe('warning');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.blur);
 			expect(result.issues[0].description).not.toContain(EDIT_IMAGE_WARNING.information);
 			expect(result.issues[0].description).not.toContain(EDIT_IMAGE_WARNING.quality);
@@ -90,7 +90,7 @@ describe('EditImageVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.issues[0].level).toBe('warning');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.information);
 			expect(result.issues[0].description).not.toContain(EDIT_IMAGE_WARNING.blur);
 		});
@@ -105,7 +105,7 @@ describe('EditImageVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.issues[0].level).toBe('warning');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.text);
 			expect(result.issues[0].description).not.toContain(EDIT_IMAGE_WARNING.blur);
 		});
@@ -120,7 +120,7 @@ describe('EditImageVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.issues[0].level).toBe('warning');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.quality);
 			expect(result.issues[0].description).not.toContain(EDIT_IMAGE_WARNING.blur);
 		});
@@ -174,7 +174,7 @@ describe('EditImageVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.issues[0].level).toBe('info');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].description).not.toContain(EDIT_IMAGE_WARNING.quality);
 		});
 
@@ -189,7 +189,7 @@ describe('EditImageVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.issues[0].level).toBe('warning');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.resize);
 		});
 
@@ -208,7 +208,7 @@ describe('EditImageVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.issues[0].level).toBe('warning');
+			expect(result.issues[0].level).toBe('error');
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.blur);
 			expect(result.issues[0].description).toContain(EDIT_IMAGE_WARNING.text);
 			expect(result.issues[0].description).not.toContain(EDIT_IMAGE_WARNING.information);
@@ -242,8 +242,8 @@ describe('EditImageVersionRule', () => {
 	});
 
 	describe('getMetadata()', () => {
-		it('should report a behaviorChanges impact', () => {
-			expect(rule.getMetadata().impact).toBe('behaviorChanges');
+		it('should report an executionsFail impact', () => {
+			expect(rule.getMetadata().impact).toBe('executionsFail');
 		});
 	});
 });

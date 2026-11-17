@@ -115,20 +115,20 @@ describe('PreferenceModal', () => {
 			expect(findOption('Just you · Personal project')).toBeDefined();
 		});
 
-		it('hides "Everyone" from a user who is not an instance owner or admin', () => {
+		it('hides "Global" from a user who is not an instance owner or admin', () => {
 			usersStore.currentUser = currentUser([]);
 
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Everyone')).toBeUndefined();
+			expect(findOption('Global')).toBeUndefined();
 		});
 
-		it('offers "Everyone" to an instance owner or admin', () => {
+		it('offers "Global" to an instance owner or admin', () => {
 			usersStore.currentUser = currentUser(['aiPreference:create']);
 
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Everyone')).toBeDefined();
+			expect(findOption('Global')).toBeDefined();
 		});
 
 		it('offers only the projects the user may write', () => {

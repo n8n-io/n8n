@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Transaction, User, UserRepository } from '@n8n/db';
+import type { Person, Transaction, User, UserRepository } from '@n8n/db';
 import type { Inbound, RefusalReason, Refused, ResourceAdmission } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -9,8 +9,7 @@ import jwt from 'jsonwebtoken';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { JwtService, TelemetryProxy } from '@n8n/backend-services';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
@@ -64,7 +63,7 @@ let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
 let mcpProtectedResource: Mocked<McpProtectedResource>;
 let admission: Mocked<ResourceAdmission>;
 let userRepository: Mocked<UserRepository>;
-let telemetry: Mocked<Telemetry>;
+let telemetry: Mocked<TelemetryProxy>;
 let logger: Mocked<Logger>;
 let service: McpServerMiddlewareService;
 
@@ -76,7 +75,7 @@ describe('McpServerMiddlewareService', () => {
 		}) as Mocked<McpProtectedResource>;
 		admission = mock<ResourceAdmission>();
 		userRepository = mock<UserRepository>();
-		telemetry = mockInstance(Telemetry);
+		telemetry = mockInstance(TelemetryProxy);
 		logger = mock<Logger>();
 
 		service = new McpServerMiddlewareService(
@@ -487,7 +486,7 @@ describe('McpServerMiddlewareService', () => {
 			it('keeps the token and the email out of the log lines', async () => {
 				const apiKey = jwtService.sign('mcpApiKey', { sub: 'user-123', iss: 'n8n' });
 				mcpServerApiKeyService.verifyApiKey.mockResolvedValueOnce({
-					user: mock<User>({ id: 'user-123', email: 'alice@example.com' }),
+					user: mock<Person>({ id: 'user-123', email: 'alice@example.com' }),
 					caller: { authType: 'api_key' },
 					authMethod: 'api-key',
 				});

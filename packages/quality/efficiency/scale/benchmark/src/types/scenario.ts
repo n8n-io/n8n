@@ -1,3 +1,5 @@
+import type { WorkflowEngineType } from '@/n8n-api-client/n8n-api-client.types';
+
 export type ScenarioData = {
 	/** Relative paths to the workflow files */
 	workflowFiles?: string[];
@@ -19,6 +21,8 @@ export type ScenarioManifest = {
 	scriptPath: string;
 	/** Data to import before running the scenario */
 	scenarioData: ScenarioData;
+	/** Execution engines that can run the workflows of the scenario */
+	supportedEngines: WorkflowEngineType[];
 };
 
 /**

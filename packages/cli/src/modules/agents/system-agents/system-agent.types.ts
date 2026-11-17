@@ -1,9 +1,12 @@
 import type {
 	Agent as RuntimeAgent,
+	CheckpointStore,
 	ExecutionOptions,
 	JSONObject,
+	ObservationLogObserverMemory,
 	ResumeOptions,
 	RunOptions,
+	SerializableAgentState,
 	SideCallUsageReport,
 	TokenUsage,
 } from '@n8n/agents';
@@ -13,6 +16,7 @@ import type { AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { ToolRegistry } from '../tool-registry';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentCompletingBoundaryHook } from '../types/agent-host-instruction';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type {
 	AgentTurnFinalizeOutcome,
@@ -21,8 +25,20 @@ import type {
 } from '../types/agent-turn-outcome';
 import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 
+export type { AgentHostInstruction as SystemAgentHostInstruction } from '../types/agent-host-instruction';
+
+/** The stream chunks that a system-agent provider sees through `onChunk`. */
+export type { AgentExecutionStreamChunk, SteeredMessageEvent } from '../types/agent-steering';
+
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
+
+/** The "always allow" decisions that the user made in one thread of a system agent. */
+export interface SystemAgentSessionGrants {
+	load(): Promise<Set<string>>;
+	grant(key: string): Promise<void>;
+	revoke(key: string): Promise<void>;
+}
 
 interface SystemAgentTurnBase<TLease> {
 	user: User;
@@ -33,15 +49,43 @@ interface SystemAgentTurnBase<TLease> {
 	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
 	workspace?: TLease;
 	/**
+	 * The memory of the agent in the Agents tables. Give it to the agent the
+	 * provider builds, so the turn's messages, title and observations are stored
+	 * with the thread.
+	 */
+	memory: ObservationLogObserverMemory;
+	/**
+	 * The checkpoint store of the agent. Give it to the agent the provider
+	 * builds: the runtime resumes a suspended turn only from this store.
+	 */
+	checkpointStore: CheckpointStore;
+	/** The "always allow" decisions in the thread. They last until the thread is deleted. */
+	sessionGrants: SystemAgentSessionGrants;
+	/**
 	 * Send a custom event to the chat during this turn. The runtime streams it
 	 * as a `host-event` SSE event and records it with the turn, so history
 	 * shows it again after a reload. Pass a `key` to update an earlier event
 	 * with the same name. The provider can keep the callback for its tools
 	 * and hooks. `onSettled` can emit only when the turn has an execution
 	 * record. Events after `onSettled` returns are dropped. It throws when
-	 * the payload is larger than 64 KiB as JSON.
+	 * the payload is larger than 64 KiB as JSON. The stream and history return
+	 * the payload as it is, so do not put secrets in it.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
+	/**
+	 * Find a file that the user attached to any message of this thread, by id.
+	 * Gives `undefined` for a file of another thread.
+	 */
+	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
+}
+
+/** A stored file of a system-agent thread. */
+export interface SystemAgentFile {
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
 }
 
 export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {
@@ -51,6 +95,11 @@ export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnB
 	/** The message as the user wrote it. It is the stored transcript text. */
 	message: string;
 	attachments: StoredAttachmentRef[];
+	/**
+	 * The content of one attachment of this turn. Gives `undefined` for a file
+	 * that is not an attachment of this turn or no longer exists.
+	 */
+	readAttachment(ref: StoredAttachmentRef): Promise<Buffer | undefined>;
 	options: SystemAgentTurnOptions;
 }
 
@@ -60,14 +109,23 @@ export interface SystemAgentResumeTurn<TLease = unknown>
 	type: 'resume';
 	/** Host metadata the suspended run stored in its checkpoint. */
 	checkpointHostMetadata: JSONObject;
+	/**
+	 * The tool calls that the checkpoint holds open, the resumed one included.
+	 * The runtime can send them again as suspensions during the resume.
+	 */
+	openSuspensions: Array<Pick<SuspendedToolCall, 'toolCallId' | 'toolName' | 'suspendPayload'>>;
 	resumeData: unknown;
 }
+
+/** A tool call that a suspended run still waits on. */
+export type SuspendedToolCall = Extract<
+	SerializableAgentState['pendingToolCalls'][string],
+	{ suspended: true }
+>;
 
 export type SystemAgentTurn<TLease = unknown> =
 	| SystemAgentStartTurn<TLease>
 	| SystemAgentResumeTurn<TLease>;
-
-export type SystemAgentTurnStatus = AgentTurnStatus;
 
 /**
  * The outcome that the runtime stores for the turn. A turn that failed
@@ -95,6 +153,25 @@ export interface SystemAgentTurnHandle {
 		'persistence' | 'onSideCallUsage'
 	>;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
+	/**
+	 * Runs the turn inside a context of the provider, such as the active span
+	 * of its trace. The runtime calls it once and runs the whole turn in `run`,
+	 * so model calls, tools and the settle hook see the same context. It must
+	 * call `run` exactly once and return or throw its result.
+	 */
+	withTurnContext?: <T>(run: () => Promise<T>) => Promise<T>;
+	/**
+	 * Called when the agent tries to end the turn and the turn can continue.
+	 * Return an instruction to give the model one more step in the same turn,
+	 * for example to finish a step that the agent skipped. Input that the user
+	 * steered into the turn goes first; the hook runs again at the next stop.
+	 *
+	 * The runtime adds at most one instruction for each turn. The provider
+	 * must still make sure that a later turn does not add the same instruction
+	 * again, for example with a stored marker. A failing hook only logs a
+	 * warning, and the turn ends.
+	 */
+	onCompletingBoundary?: AgentCompletingBoundaryHook;
 	/**
 	 * Called once for each model call that runs beside the turn: title
 	 * generation, the observation-log observer and reflector, and episodic
@@ -152,6 +229,20 @@ export interface SystemAgentWorkspaceDestroyScope {
 	userId?: string;
 }
 
+/** The thread that a user deletes, with the Agents memory that still holds its state. */
+export interface SystemAgentThreadDeletionScope {
+	agentId: string;
+	threadId: string;
+	/** The working project of the thread. */
+	projectId: string;
+	/** The user who deletes the thread. Account cleanup also deletes threads. */
+	userId: string;
+	memory: ObservationLogObserverMemory;
+}
+
+/** Work that runs after the thread deletion commits. */
+export type SystemAgentAfterThreadDeletion = () => Promise<void>;
+
 /**
  * Supplies the sandbox workspace of a system agent. The provider keeps its own
  * sandbox identity, images and lifecycle. The runtime only reports when a turn
@@ -197,6 +288,15 @@ export interface SystemAgentProvider<TLease = unknown> {
 	 */
 	authorize(user: User, projectId: string): Promise<boolean>;
 	prepareTurn(turn: SystemAgentTurn<TLease>): Promise<SystemAgentTurnHandle>;
+	/**
+	 * The user-facing text and code of an error that `prepareTurn` threw. The
+	 * turn has no handle yet, so its `formatError` cannot run. The same rules
+	 * apply: return `undefined`, or an empty message, to keep the raw error.
+	 * When it throws, the runtime logs the failure and keeps the raw error.
+	 * The errors of a stopped turn and errors that already have a client code
+	 * are not formatted.
+	 */
+	formatSetupError?(user: User, error: unknown): Promise<FormattedTurnError | undefined>;
 	/** Turn options for a message sent through the system-agent chat route. */
 	chatTurnOptions?(
 		user: User,
@@ -205,6 +305,16 @@ export interface SystemAgentProvider<TLease = unknown> {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/**
+	 * Called before a user deletes a thread of this agent, while the thread
+	 * state can still be read. Do not change data here: the deletion can still
+	 * fail, for example while a turn runs. Return the cleanup that must run
+	 * after the deletion commits. A failure is logged and does not stop the
+	 * deletion.
+	 */
+	onBeforeThreadDeletion?(
+		scope: SystemAgentThreadDeletionScope,
+	): Promise<SystemAgentAfterThreadDeletion | undefined>;
 	/**
 	 * Called once for each execution of a run that a turn of this agent
 	 * delegated, foreground or background, after the runner tries to store

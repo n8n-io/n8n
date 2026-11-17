@@ -3,7 +3,9 @@ import {
 	DeleteFolderDto,
 	ListFolderQueryDto,
 	TransferFolderBodyDto,
+	TransferPreviewQueryDto,
 	UpdateFolderDto,
+	type FolderTransferPreview,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -21,13 +23,29 @@ import {
 	Middleware,
 } from '@n8n/decorators';
 import { NextFunction, Response } from 'express';
-import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	ResponseError,
+	UserError,
+} from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+/** Maps a folder service error to its HTTP error. Returns `undefined` for an unknown error. */
+function toResponseError(e: unknown): ResponseError | undefined {
+	if (e instanceof ResponseError) return e;
+
+	if (e instanceof UserError) return new BadRequestError(e.message);
+
+	if (e instanceof FolderNotFoundError) return new NotFoundError(e.message);
+
+	return undefined;
+}
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {
@@ -67,10 +85,7 @@ export class ProjectController {
 			const folder = await this.folderService.createFolder(payload, projectId);
 			return folder;
 		} catch (e) {
-			if (e instanceof FolderNotFoundError) {
-				throw new NotFoundError(e.message);
-			}
-			throw new InternalServerError(undefined, e);
+			throw toResponseError(e) ?? new InternalServerError(undefined, e);
 		}
 	}
 
@@ -87,10 +102,7 @@ export class ProjectController {
 			const tree = await this.folderService.getFolderTree(folderId, projectId);
 			return tree;
 		} catch (e) {
-			if (e instanceof FolderNotFoundError) {
-				throw new NotFoundError(e.message);
-			}
-			throw new InternalServerError(undefined, e);
+			throw toResponseError(e) ?? new InternalServerError(undefined, e);
 		}
 	}
 
@@ -111,10 +123,7 @@ export class ProjectController {
 			);
 			return credentials;
 		} catch (e) {
-			if (e instanceof FolderNotFoundError) {
-				throw new NotFoundError(e.message);
-			}
-			throw new InternalServerError(undefined, e);
+			throw toResponseError(e) ?? new InternalServerError(undefined, e);
 		}
 	}
 
@@ -131,12 +140,7 @@ export class ProjectController {
 		try {
 			await this.folderService.updateFolder(folderId, projectId, payload);
 		} catch (e) {
-			if (e instanceof FolderNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof UserError) {
-				throw new BadRequestError(e.message);
-			}
-			throw new InternalServerError(undefined, e);
+			throw toResponseError(e) ?? new InternalServerError(undefined, e);
 		}
 	}
 
@@ -153,12 +157,7 @@ export class ProjectController {
 		try {
 			await this.folderService.deleteFolder(req.user, folderId, projectId, payload);
 		} catch (e) {
-			if (e instanceof FolderNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof UserError) {
-				throw new BadRequestError(e.message);
-			}
-			throw new InternalServerError(undefined, e);
+			throw toResponseError(e) ?? new InternalServerError(undefined, e);
 		}
 	}
 
@@ -192,10 +191,29 @@ export class ProjectController {
 				totalWorkflows,
 			};
 		} catch (e) {
-			if (e instanceof FolderNotFoundError) {
-				throw new NotFoundError(e.message);
-			}
-			throw new InternalServerError(undefined, e);
+			throw toResponseError(e) ?? new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/transfer-preview')
+	@ProjectScope('folder:move')
+	@Licensed('feat:folders')
+	async transferFolderPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('folderId') sourceFolderId: string,
+		@Param('projectId') sourceProjectId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<FolderTransferPreview> {
+		try {
+			return await this.enterpriseWorkflowService.previewFolderTransfer(
+				req.user,
+				sourceProjectId,
+				sourceFolderId,
+				query.destinationProjectId,
+			);
+		} catch (e) {
+			throw toResponseError(e) ?? e;
 		}
 	}
 

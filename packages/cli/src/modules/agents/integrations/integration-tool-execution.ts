@@ -54,6 +54,18 @@ export function isSilentActionOutput(output: unknown): boolean {
 	);
 }
 
+/** File IDs that a respond queued for the final reply, on its own or inside a batch. */
+export function readQueuedFileIds(output: unknown): string[] {
+	if (!isRecord(output) || output.ok !== true) return [];
+	if (Array.isArray(output.queuedFileIds)) {
+		return output.queuedFileIds.filter((fileId): fileId is string => typeof fileId === 'string');
+	}
+	if (!Array.isArray(output.results)) return [];
+	return output.results.flatMap((entry) =>
+		isRecord(entry) ? readQueuedFileIds(entry.result) : [],
+	);
+}
+
 export function integrationActionApprovalKey(connectionId: string, action: string): string {
 	return JSON.stringify(['integration_action', connectionId, action]);
 }
@@ -63,8 +75,10 @@ export async function executeContextToolOperation(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
 	queryExecutor: IntegrationContextQueryExecutor;
 	persistence: ToolContext['persistence'];
+	abortSignal?: AbortSignal;
 }): Promise<unknown> {
-	const { operation, descriptor, queryExecutor, persistence } = params;
+	const { operation, descriptor, queryExecutor, persistence, abortSignal } = params;
+	abortSignal?.throwIfAborted();
 
 	if (isCurrentContextQuery(operation.query)) {
 		if (!persistence) {
@@ -113,6 +127,7 @@ export async function executeContextToolOperation(params: {
 				query: 'get_user',
 				input: { userId: context.interactingUserId },
 				persistence,
+				abortSignal,
 			});
 		}
 
@@ -131,6 +146,7 @@ export async function executeContextToolOperation(params: {
 			query: 'get_channel_info',
 			input: { channelId },
 			persistence,
+			abortSignal,
 		});
 	}
 
@@ -139,6 +155,7 @@ export async function executeContextToolOperation(params: {
 		query: operation.query,
 		input: operation.input,
 		persistence,
+		abortSignal,
 	});
 }
 
@@ -148,8 +165,9 @@ export async function executeActionToolBatch(params: {
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
+	projectId?: string;
 }): Promise<unknown> {
-	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
+	const { operations, descriptor, messageContextStore, actionExecutor, ctx, projectId } = params;
 	let currentMessageContext = getOptionalCurrentContext({
 		descriptor,
 		persistence: ctx.persistence,
@@ -163,6 +181,7 @@ export async function executeActionToolBatch(params: {
 			messageContextStore,
 			actionExecutor,
 			ctx,
+			projectId,
 			currentMessageContext,
 			allowSuspend: false,
 		});
@@ -183,6 +202,8 @@ export async function executeActionToolOperation(params: {
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
 	interruptCtx?: InterruptibleToolContext;
+	/** Project of the agent. `input.fileIds` resolve in this project only. */
+	projectId?: string;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
 	/** Action the user just approved, so the gate below lets it through once. */
@@ -197,6 +218,7 @@ export async function executeActionToolOperation(params: {
 		interruptCtx,
 		allowSuspend,
 		approvedAction,
+		projectId,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -211,6 +233,23 @@ export async function executeActionToolOperation(params: {
 				message:
 					'Batch actions cannot include cards that wait for a user response. Send that action separately.',
 			},
+		};
+	}
+
+	// Refuse before the approval gate, so nobody approves a send that cannot go out.
+	const recipientRefusal = actionExecutor.checkRecipient?.({
+		descriptor,
+		action: operation.action,
+		input: actionInput,
+		resourceId: persistence?.resourceId,
+		currentMessageContext:
+			params.currentMessageContext ??
+			(persistence ? getOptionalCurrentContext({ descriptor, persistence }) : undefined),
+	});
+	if (recipientRefusal) {
+		return {
+			ok: false,
+			error: { code: INTEGRATION_ERROR_CODES.ACTION_DECLINED, message: recipientRefusal },
 		};
 	}
 
@@ -271,6 +310,10 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		resourceId: persistence?.resourceId,
+		...(projectId && persistence
+			? { fileScope: { projectId, threadId: persistence.threadId } }
+			: {}),
 	});
 
 	if (!result.ok) return result;
@@ -288,7 +331,9 @@ export async function executeActionToolOperation(params: {
 		// that task session. Chat mentions stay on their own thread.
 		// respond/edit/reaction operate on existing threads and do not bind.
 		if (
-			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
 			descriptor.agentId &&
 			messageContext.target.threadId &&
 			isTaskRunMemoryResourceId(persistence.resourceId)
@@ -297,6 +342,27 @@ export async function executeActionToolOperation(params: {
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 			);
+		}
+		// A delivery failure arrives later and names only the message. This lets
+		// it reach the session that sent the message.
+		if (
+			descriptor.integration.type === 'whatsapp' &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
+			descriptor.agentId &&
+			messageContext.messageId &&
+			messageContext.target.threadId
+		) {
+			try {
+				await messageContextStore.recordSentMessage(
+					`${descriptor.agentId}:${messageContext.target.threadId}`,
+					messageContext.messageId,
+					{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				);
+			} catch {
+				// The send worked. Without the record, a failure goes to the bound session.
+			}
 		}
 		actionResult = { ...result, messageContext };
 	}
@@ -309,6 +375,8 @@ export async function executeActionToolOperation(params: {
 			action: operation.action,
 			integrationConnectionId: descriptor.integrationConnectionId,
 			messageContext: actionResult.messageContext,
+			// The resume returns only the user's answer. The chat reads the files of the card from here.
+			...(actionResult.files !== undefined ? { files: actionResult.files } : {}),
 		},
 		// An approval resume leaves APPROVAL_RESUME_SCHEMA on this tool call. Name
 		// the action-tool schema here so a follow-up card is not still expecting
@@ -384,6 +452,14 @@ function withPreviousSubject(
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
+			: {}),
+		// A reply in the same thread keeps the user who started the run. A send to
+		// another thread does not, because that thread belongs to another user.
+		...(!context.interactingUserId &&
+		previousContext.interactingUserId &&
+		context.target.threadId !== undefined &&
+		context.target.threadId === previousContext.target.threadId
+			? { interactingUserId: previousContext.interactingUserId }
 			: {}),
 		...(replyExpectation ? { replyExpectation } : {}),
 		...(replyTarget ? { replyTarget } : {}),

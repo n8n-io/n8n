@@ -151,7 +151,7 @@ describe('SettingsPersonalView', () => {
 		const { getByTestId, getByRole, queryByTestId } = renderComponent({ pinia });
 		await waitAllPromises();
 
-		expect(getByRole('heading', { level: 1, name: 'Personal settings' })).toBeInTheDocument();
+		expect(getByRole('heading', { level: 1, name: 'Profile & preferences' })).toBeInTheDocument();
 		expect(queryByTestId('current-user-name')).not.toBeInTheDocument();
 		expect(getByRole('heading', { level: 2, name: 'Basic information' })).toBeInTheDocument();
 		expect(getByRole('heading', { level: 2, name: 'Security' })).toBeInTheDocument();

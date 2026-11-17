@@ -33,6 +33,8 @@ const PROMOTE_RESULT = {
 	git: { commitSha: 'abc1234', branchName: 'main' },
 };
 
+const PROMOTE_SELECTION_RESULT = { status: 'promoted', ...PROMOTE_RESULT };
+
 const SHA = 'd'.repeat(40);
 const IDENTITY = {
 	environmentId: 'env-1',
@@ -43,7 +45,7 @@ const SOURCE_CHANGED_RESULT = { ...IDENTITY, status: 'source-changed' };
 const BLOCKED_RESULT = {
 	...IDENTITY,
 	status: 'blocked',
-	preflight: {
+	check: {
 		missingProjects: [{ id: 'p-1', name: 'Sales' }],
 		missingBindings: [
 			{ kind: 'credential', sourceId: 'c-1' },
@@ -119,6 +121,21 @@ describe('promotion-environment promote command', () => {
 			expect.anything(),
 			PROMOTE_RESULT,
 		);
+	});
+
+	it('leaves the commit message out when no message is given', async () => {
+		const command = new PromotionEnvironmentPromote([], {} as Config);
+		const promotePackage = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		stubCommand(command, { force: false }, {
+			promotePackage,
+		} as unknown as Partial<N8nClient>);
+
+		await command.run();
+
+		expect(promotePackage).toHaveBeenCalledWith('env-1', {
+			commitMessage: undefined,
+			force: false,
+		});
 	});
 });
 
@@ -205,8 +222,8 @@ describe('promotion-environment apply command', () => {
 	it('exits 4 and tells how to confirm a destructive data table change', async () => {
 		const { run, logToStderr, exit } = runApply({
 			...BLOCKED_RESULT,
-			preflight: {
-				...BLOCKED_RESULT.preflight,
+			check: {
+				...BLOCKED_RESULT.check,
 				conflicts: [{ kind: 'data-table', code: 'destructive-change' }],
 			},
 		});
@@ -224,8 +241,8 @@ describe('promotion-environment apply command', () => {
 	it('exits 4 and lists the projects that a confirmed Apply deletes', async () => {
 		const { run, logToStderr, exit } = runApply({
 			...BLOCKED_RESULT,
-			preflight: {
-				...BLOCKED_RESULT.preflight,
+			check: {
+				...BLOCKED_RESULT.check,
 				conflicts: [
 					{
 						kind: 'project',
@@ -386,7 +403,7 @@ describe('promotion-environment promote-selection command', () => {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
 		};
 
-		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
 			flags: { workflow: ['wf-1', 'wf-2'] },
@@ -399,13 +416,18 @@ describe('promotion-environment promote-selection command', () => {
 		await command.run();
 
 		// `-w` values travel as the `workflowIds` array, with no message flag set.
-		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'] },
+			undefined,
+			undefined,
+		);
 		// A selection can be deletions only, so the summary names the branch and
 		// commit instead of a workflow count that would read "0" for that case.
 		expect(succeed).toHaveBeenCalledWith(
 			'Promoted selection to main as commit abc1234.',
 			expect.anything(),
-			PROMOTE_RESULT,
+			PROMOTE_SELECTION_RESULT,
 		);
 	});
 
@@ -415,7 +437,7 @@ describe('promotion-environment promote-selection command', () => {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
 		};
 
-		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
 			flags: { workflow: ['wf-1'], message: 'Promote checkout flow' },
@@ -429,9 +451,48 @@ describe('promotion-environment promote-selection command', () => {
 
 		expect(promoteProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'] },
 			'Promote checkout flow',
+			undefined,
 		);
+	});
+
+	it('sends the reviewed revision, and exits 3 without a success message when the preview changed', async () => {
+		const command = new PromotionEnvironmentPromoteSelection([], {} as Config);
+		const internals = command as unknown as ApplyInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+		const revision = 'f'.repeat(64);
+
+		const promoteProjectSelection = vi
+			.fn()
+			.mockResolvedValue({ status: 'preview-changed', environmentId: 'env-1' });
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { format: 'table', workflow: ['wf-1'], expectedPreviewRevision: revision },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			promoteProjectSelection,
+		} as unknown as N8nClient);
+		const succeed = vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+		const logToStderr = vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
+		const exit = vi.spyOn(internals, 'exit').mockImplementation(() => undefined as never);
+
+		await command.run();
+
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1'] },
+			undefined,
+			revision,
+		);
+		expect(logToStderr).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'The Promote preview changed since you reviewed it. Nothing was pushed.',
+			),
+		);
+		expect(exit).toHaveBeenCalledWith(3);
+		expect(succeed).not.toHaveBeenCalled();
 	});
 });
 
@@ -472,19 +533,31 @@ describe('promotion-environment apply-selection command', () => {
 
 		await run();
 
-		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'] },
+			undefined,
+			undefined,
+		);
 	});
 
-	it('sends the reviewed source built from the three expected flags', async () => {
+	it('sends the reviewed source and the reviewed preview revision', async () => {
+		const revision = 'b'.repeat(64);
 		const { run, applyProjectSelection } = runApplySelection(APPLY_RESULT, {
 			format: 'table',
 			workflow: ['wf-1'],
 			...PINNED_FLAGS,
+			expectedPreviewRevision: revision,
 		});
 
 		await run();
 
-		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1'], EXPECTED_SOURCE);
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1'] },
+			EXPECTED_SOURCE,
+			revision,
+		);
 	});
 
 	it('names the branch and commit it applied, and exits through succeed', async () => {
@@ -509,13 +582,23 @@ describe('promotion-environment apply-selection command', () => {
 		expect(exit).toHaveBeenCalledWith(3);
 	});
 
-	it('exits 4 with a Continue command that resends the same workflow ids', async () => {
-		const { run, logToStderr, exit } = runApplySelection(BLOCKED_RESULT);
+	it('exits 4 with a Continue command that resends the same workflow and folder ids', async () => {
+		const { run, applyProjectSelection, logToStderr, exit } = runApplySelection(BLOCKED_RESULT, {
+			format: 'table',
+			workflow: ['wf-1', 'wf-2'],
+			folder: ['f-1'],
+		});
 
 		await run();
 
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'], folderIds: ['f-1'] },
+			undefined,
+			undefined,
+		);
 		expect(logToStderr.mock.calls[0][0]).toContain(
-			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --folder f-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
@@ -548,8 +631,9 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
+			undefined,
 			undefined,
 		);
 		expect(exit).toHaveBeenCalledWith(3);
@@ -580,9 +664,10 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			true,
+			undefined,
 		);
 	});
 });

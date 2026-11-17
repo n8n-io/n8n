@@ -96,6 +96,31 @@ describe('SlackMethodsService', () => {
 		expect(credentialsService.delete).not.toHaveBeenCalled();
 	});
 
+	it('completes a Slack draft with its settings', async () => {
+		const { service, credentialsService, managementService } = makeService();
+		const user = { id: 'user-1' };
+		const settings = { messagingExperience: 'assistant', onlyRespondWhenMentioned: true } as const;
+		const draftAgent = {
+			...agent,
+			integrations: [{ type: 'slack', credentialId: '', settings }],
+		} as unknown as ProjectAgent;
+		credentialsService.createUnmanagedCredential.mockResolvedValue({
+			id: 'credential-1',
+		} as never);
+		managementService.connect.mockResolvedValue({
+			integration: { type: 'slack', credentialId: 'credential-1', settings },
+			savedAgent: draftAgent,
+		});
+
+		await service.connectBotCredential(draftAgent, user as never, 'xoxb-token', session);
+
+		expect(managementService.connect).toHaveBeenCalledWith({
+			agent: draftAgent,
+			user,
+			integration: { type: 'slack', credentialId: 'credential-1', settings },
+		});
+	});
+
 	describe('when the connect fails', () => {
 		const user = { id: 'user-1' };
 

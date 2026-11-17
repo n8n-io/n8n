@@ -1,7 +1,11 @@
 import type { XYPosition } from '@/Interface';
 import { useUIStore } from '@/app/stores/ui.store';
-import { computed, ref, watch } from 'vue';
-import { getMousePosition } from '@/app/utils/nodeViewUtils';
+import { computed, ref, toRaw, watch } from 'vue';
+import {
+	getMousePosition,
+	isPastableWorkflowText,
+	readClipboardTextIfGranted,
+} from '@/app/utils/nodeViewUtils';
 import { useContextMenuItems, type ContextMenuAction } from './useContextMenuItems';
 import { getEmptyGroupAnchor } from 'n8n-workflow';
 import { isPresent } from '@/app/utils/typesUtils';
@@ -23,6 +27,8 @@ export type ContextMenuActionCallback = (
 
 const position = ref<XYPosition>([0, 0]);
 const target = ref<ContextMenuTarget>();
+// undefined when the clipboard cannot be read without a prompt
+const clipboardHasPasteData = ref<boolean>();
 
 /** Identifies what a target points at, to detect re-invocations on the same element */
 function getTargetEntityId(menuTarget: ContextMenuTarget): string | undefined {
@@ -81,9 +87,23 @@ export const useContextMenu = () => {
 
 		target.value = menuTarget;
 		position.value = getMousePosition(event);
+
+		// Only the empty-canvas menu offers paste
+		clipboardHasPasteData.value = undefined;
+		if (menuTarget.source === 'canvas' && menuTarget.nodeIds.length === 0) {
+			void readClipboardTextIfGranted().then((text) => {
+				if (text === undefined || toRaw(target.value) !== menuTarget) return;
+				clipboardHasPasteData.value = isPastableWorkflowText(text);
+			});
+		}
 	};
 
-	const actions = useContextMenuItems(targetNodeIds, targetGroupId, targetReadOnly);
+	const actions = useContextMenuItems(
+		targetNodeIds,
+		targetGroupId,
+		targetReadOnly,
+		clipboardHasPasteData,
+	);
 
 	watch(() => uiStore.nodeViewOffsetPosition, close);
 

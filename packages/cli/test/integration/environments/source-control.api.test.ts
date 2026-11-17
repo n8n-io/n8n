@@ -54,6 +54,7 @@ describe('Source Control API', () => {
 			branchColor: '#ff6d5a',
 			branchReadOnly: false,
 			keyGeneratorType: 'rsa',
+			environmentsVersion: 'v1',
 		});
 	});
 
@@ -79,11 +80,11 @@ describe('Source Control API', () => {
 			expect(data.publicKey).toEqual(expect.stringMatching(/^ssh-/));
 		});
 
-		test('should return only branch read-only state to members without source-control access', async () => {
+		test('should return only the branch read-only state and the environments version to members without source-control access', async () => {
 			const res = await authMemberAgent.get('/source-control/preferences').expect(200);
 			const data = res.body.data ?? res.body;
 
-			expect(data).toEqual({ branchReadOnly: false });
+			expect(data).toEqual({ branchReadOnly: false, environmentsVersion: 'v1' });
 		});
 
 		test('should return safe branch metadata to project admins', async () => {
@@ -95,6 +96,7 @@ describe('Source Control API', () => {
 				branchName: 'main',
 				branchColor: '#ff6d5a',
 				branchReadOnly: false,
+				environmentsVersion: 'v1',
 			});
 			expect(data.repositoryUrl).toBeUndefined();
 			expect(data.publicKey).toBeUndefined();
@@ -126,7 +128,11 @@ describe('Source Control API', () => {
 			afterAll(async () => {
 				await sourceControlPreferencesService.setPreferences({
 					connected: true,
+					repositoryUrl: 'git@github.com:n8n-io/source-control-test.git',
+					branchName: 'main',
+					branchColor: '#ff6d5a',
 					branchReadOnly: false,
+					environmentsVersion: 'v1',
 				});
 			});
 
@@ -139,6 +145,31 @@ describe('Source Control API', () => {
 
 				const memberRes = await authMemberAgent.get('/source-control/preferences').expect(200);
 				expect((memberRes.body.data ?? memberRes.body).branchReadOnly).toBe(true);
+			});
+
+			test('owner sets the environments version and members read it', async () => {
+				const res = await authOwnerAgent
+					.patch('/source-control/preferences')
+					.send({ environmentsVersion: 'v2' })
+					.expect(200);
+				expect((res.body.data ?? res.body).environmentsVersion).toBe('v2');
+
+				const memberRes = await authMemberAgent.get('/source-control/preferences').expect(200);
+				expect((memberRes.body.data ?? memberRes.body).environmentsVersion).toBe('v2');
+			});
+
+			test('a disconnect keeps the environments version', async () => {
+				await authOwnerAgent
+					.patch('/source-control/preferences')
+					.send({ environmentsVersion: 'v2' })
+					.expect(200);
+				await authOwnerAgent
+					.post('/source-control/disconnect')
+					.send({ keepKeyPair: true })
+					.expect(200);
+
+				const res = await authOwnerAgent.get('/source-control/preferences').expect(200);
+				expect((res.body.data ?? res.body).environmentsVersion).toBe('v2');
 			});
 		});
 	});

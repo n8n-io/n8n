@@ -79,7 +79,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
-		expect(usersList).toHaveBeenCalledWith({ limit: 10, token: 'xoxb-token' });
+		expect(usersList).toHaveBeenCalledWith({ limit: 200, token: 'xoxb-token' });
 		expect(result).toEqual({
 			ok: true,
 			users: [
@@ -146,7 +146,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
 		expect(conversationsList).toHaveBeenCalledWith({
 			exclude_archived: true,
-			limit: 10,
+			limit: 200,
 			types: 'public_channel,private_channel',
 			token: 'xoxb-token',
 		});
@@ -787,11 +787,21 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			input: { query: 'page', cursor: 'cursor-page-2', limit: 1 },
 		});
 
-		expect(usersList).toHaveBeenCalledWith({ limit: 1, cursor: 'cursor-page-2' });
-		expect(result).toMatchObject({ ok: true, nextCursor: 'cursor-page-3' });
+		expect(usersList).toHaveBeenCalledWith({ limit: 200, cursor: 'cursor-page-2' });
+		expect(result).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+		const { nextCursor } = result as { nextCursor: string };
+		usersList.mockResolvedValueOnce({ members: [], response_metadata: {} });
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_users',
+				input: { query: 'page', cursor: nextCursor, limit: 1 },
+			}),
+		).resolves.toMatchObject({ ok: true, users: [], resultCount: 0 });
+		expect(usersList).toHaveBeenLastCalledWith({ limit: 200, cursor: 'cursor-page-3' });
 	});
 
-	it('paginates Slack channel search using the requested result limit', async () => {
+	it('paginates Slack channel search with a large directory page', async () => {
 		const conversationsList = vi.fn().mockResolvedValue({
 			channels: [
 				{
@@ -827,11 +837,26 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 
 		expect(conversationsList).toHaveBeenCalledWith({
 			exclude_archived: true,
-			limit: 1,
+			limit: 200,
 			types: 'public_channel,private_channel',
 			cursor: 'channel-cursor-page-2',
 		});
-		expect(result).toMatchObject({ ok: true, nextCursor: 'channel-cursor-page-3' });
+		expect(result).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+		const { nextCursor } = result as { nextCursor: string };
+		conversationsList.mockResolvedValueOnce({ channels: [], response_metadata: {} });
+		await expect(
+			executor.execute({
+				descriptor,
+				query: 'search_channels',
+				input: { query: 'page', cursor: nextCursor, limit: 1 },
+			}),
+		).resolves.toMatchObject({ ok: true, channels: [], resultCount: 0 });
+		expect(conversationsList).toHaveBeenLastCalledWith({
+			exclude_archived: true,
+			limit: 200,
+			types: 'public_channel,private_channel',
+			cursor: 'channel-cursor-page-3',
+		});
 	});
 });
 
@@ -919,6 +944,128 @@ describe('ChatIntegrationContextQueryExecutor — rate-limit handling', () => {
 				code: 'RATE_LIMIT_EXCEEDED',
 				message: expect.stringContaining('Slack'),
 			},
+		});
+	});
+});
+
+describe('ChatIntegrationContextQueryExecutor — deadlines', () => {
+	afterEach(() => vi.useRealTimers());
+
+	function setup() {
+		const list = vi.fn().mockResolvedValue({ members: [] });
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ client: { users: { list } } });
+		const service = mock<ChatIntegrationService>();
+		service.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			service,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
+		const params = {
+			descriptor: getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0],
+			query: 'search_users' as const,
+			input: { query: 'Example Person' },
+		};
+		return { executor, params, list, service };
+	}
+
+	it.each([
+		['get_user', true],
+		['search_users', true],
+		['get_channel_info', false],
+		['search_channels', false],
+		['get_current_subject', false],
+	] as const)(
+		'returns a timeout message for %s with the appropriate lookup guidance',
+		async (query, hasLookupHint) => {
+			vi.useFakeTimers();
+			const { executor, params, service } = setup();
+			service.getChatInstanceForTools.mockImplementationOnce(
+				async () => await new Promise(() => {}),
+			);
+			const pending = executor.execute({ ...params, query });
+			await vi.advanceTimersByTimeAsync(ChatIntegrationContextQueryExecutor.QUERY_TIMEOUT_MS);
+			const lookupHint = hasLookupHint
+				? ' For a user lookup, use a known ID or an exact email address, or ask the user for a mention.'
+				: '';
+			await expect(pending).resolves.toEqual({
+				ok: false,
+				error: {
+					code: 'CONTEXT_QUERY_TIMEOUT',
+					message: `The slack ${query} query took longer than ${ChatIntegrationContextQueryExecutor.QUERY_TIMEOUT_MS / 1000} seconds. The query did not finish.${lookupHint}`,
+				},
+			});
+		},
+	);
+
+	it('bounds all search pages by one deadline and permits a subsequent query', async () => {
+		vi.useFakeTimers();
+		const { executor, params, list } = setup();
+		list
+			.mockImplementationOnce(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10_000));
+				return { members: [], response_metadata: { next_cursor: 'page-2' } };
+			})
+			.mockImplementationOnce(async () => await new Promise(() => {}));
+		const pending = executor.execute(params);
+		await vi.advanceTimersByTimeAsync(30_000);
+		await expect(pending).resolves.toMatchObject({
+			ok: false,
+			error: { code: 'CONTEXT_QUERY_TIMEOUT' },
+		});
+		expect(list).toHaveBeenCalledTimes(2);
+		await expect(executor.execute(params)).resolves.toMatchObject({ ok: true, resultCount: 0 });
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('bounds connection setup and does not dispatch a query after the deadline', async () => {
+		vi.useFakeTimers();
+		const { executor, params, service, list } = setup();
+		const chat = mock<ChatInstance>();
+		let resolveChat!: (value: ChatInstance) => void;
+		service.getChatInstanceForTools.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveChat = resolve;
+			}),
+		);
+		const pending = executor.execute(params);
+		await vi.advanceTimersByTimeAsync(30_000);
+		await expect(pending).resolves.toMatchObject({
+			ok: false,
+			error: { code: 'CONTEXT_QUERY_TIMEOUT' },
+		});
+		resolveChat(chat);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(chat.getAdapter).not.toHaveBeenCalled();
+		expect(list).not.toHaveBeenCalled();
+	});
+
+	it('propagates a caller cancellation and clears the deadline', async () => {
+		vi.useFakeTimers();
+		const { executor, params, list } = setup();
+		list.mockImplementationOnce(async () => await new Promise(() => {}));
+		const controller = new AbortController();
+		const reason = new Error('Stopped by the caller');
+		const pending = executor.execute({ ...params, abortSignal: controller.signal });
+		const rejected = expect(pending).rejects.toBe(reason);
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort(reason);
+		await rejected;
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('recognizes a Slack SDK rate-limit error', async () => {
+		const { executor, params, list } = setup();
+		list.mockRejectedValue(
+			Object.assign(new Error('Rate limited'), {
+				code: 'slack_webapi_rate_limited_error',
+				retryAfter: 60,
+			}),
+		);
+		await expect(executor.execute(params)).resolves.toMatchObject({
+			ok: false,
+			error: { code: 'RATE_LIMIT_EXCEEDED' },
 		});
 	});
 });

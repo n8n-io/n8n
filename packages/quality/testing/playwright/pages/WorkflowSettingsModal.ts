@@ -23,6 +23,16 @@ export class WorkflowSettingsModal extends BasePage {
 		return this.container.getByTestId('workflow-settings-error-workflow');
 	}
 
+	getErrorWorkflowList(): Locator {
+		return this.page.getByRole('listbox').filter({ visible: true });
+	}
+
+	getErrorWorkflowWarning(workflowName: string): Locator {
+		return this.getVisiblePopoverOption(workflowName, { exact: true }).locator(
+			'[data-grace-area-trigger]',
+		);
+	}
+
 	getTimezoneField(): Locator {
 		return this.container.getByTestId('workflow-settings-timezone');
 	}
@@ -49,6 +59,15 @@ export class WorkflowSettingsModal extends BasePage {
 
 	getTimeoutInput(): Locator {
 		return this.container.getByTestId('workflow-settings-timeout-form').locator('input').first();
+	}
+
+	getEngineTypeSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-engine-type-select');
+	}
+
+	async selectEngineType(label: string): Promise<void> {
+		await this.getEngineTypeSelect().click();
+		await this.getVisiblePopoverOption(label, { exact: true }).click();
 	}
 
 	getRedactProductionSelect(): Locator {

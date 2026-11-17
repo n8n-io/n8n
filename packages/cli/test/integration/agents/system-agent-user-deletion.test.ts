@@ -4,54 +4,76 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import {
+	ProjectRepository,
+	SettingsRepository,
+	TransactionRunner,
+	UserRepository,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
+import { BinaryDataService } from 'n8n-core';
 
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
+import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
+import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
+import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
+import { chatThreadId } from '@/modules/agents/agent-test-chat.service';
+import { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
+import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { registerUserDeletionHandler } from '@/modules/agents/register-user-deletion-handler';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import { AgentMemoryEntryRepository } from '@/modules/agents/repositories/agent-memory-entry.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
+import {
+	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
+	systemChatMemoryResourceId,
+} from '@/modules/agents/utils/agent-memory-scope';
 import { UserService } from '@/services/user.service';
 
 import { createMember, createOwner } from '../shared/db/users';
 
 const INSTANCE_AGENT_ID = 'test-instance-assistant';
 
-/**
- * A user's system agent sessions are private. When the user is deleted, the
- * agents module deletes them through `deleteThread`, with or without a
- * transferee, so their memory, checkpoints, observations and workspace go too.
- */
-describe('System agent sessions on user deletion', () => {
+describe('Agent memory on user deletion', () => {
 	let threadRepo: AgentExecutionThreadRepository;
 	let executionRepo: AgentExecutionRepository;
 	let checkpointRepo: AgentCheckpointRepository;
+	let entryRepo: AgentMemoryEntryRepository;
 	let agentRepo: AgentRepository;
 	let memory: N8nMemory;
 	let admin: User;
 	const destroy = vi.fn(async () => {});
 
 	beforeAll(async () => {
+		Container.get(GlobalConfig).database.postgresdb.poolSize = 4;
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		executionRepo = Container.get(AgentExecutionRepository);
 		checkpointRepo = Container.get(AgentCheckpointRepository);
+		entryRepo = Container.get(AgentMemoryEntryRepository);
 		agentRepo = Container.get(AgentRepository);
 		memory = Container.get(N8nMemory);
 		admin = await createOwner();
-		await Container.get(SystemAgentExecutionService).register({
+		await Container.get(SystemAgentRegistrationService).register({
 			agentId: INSTANCE_AGENT_ID,
 			name: 'Assistant',
 			authorize: async () => true,
 			prepareTurn: vi.fn(),
 			workspace: { acquire: async () => undefined, destroy },
 		});
+		registerUserDeletionHandler();
 	});
 
 	afterEach(async () => {
@@ -66,152 +88,614 @@ describe('System agent sessions on user deletion', () => {
 		await testDb.terminate();
 	});
 
-	/**
-	 * An Assistant session with one recorded turn, a memory thread, a
-	 * checkpoint and an observation under the instance agent.
-	 */
-	async function createAssistantSession(user: User, projectId: string) {
+	async function createSession(
+		user: User,
+		system = false,
+		resourceId = draftChatMemoryResourceId(user.id),
+		personal = false,
+	) {
+		const project = personal
+			? await getPersonalProject(user)
+			: await createTeamProject(undefined, user);
+		const agent = system
+			? await agentRepo.findOneByOrFail({ id: INSTANCE_AGENT_ID })
+			: await agentRepo.save(
+					agentRepo.create({ name: 'Audit agent', projectId: project.id, integrations: [] }),
+				);
 		const threadId = uuid();
 		await threadRepo.save(
 			threadRepo.create({
 				id: threadId,
-				agentId: INSTANCE_AGENT_ID,
-				agentName: 'Assistant',
-				projectId,
+				agentId: agent.id,
+				agentName: agent.name,
+				projectId: project.id,
 				accessScope: 'user',
 				ownerId: user.id,
 			}),
 		);
-		const agentMemory = memory.getImplementation(INSTANCE_AGENT_ID);
-		await executionRepo.save(executionRepo.create({ id: uuid(), threadId, status: 'success' }));
-		await agentMemory.saveThread({ id: threadId, resourceId: user.id });
+		await executionRepo.save(
+			executionRepo.create({
+				id: uuid(),
+				threadId,
+				status: 'success',
+				author: { id: user.id, name: 'Test member' },
+			}),
+		);
 		await checkpointRepo.save(
 			checkpointRepo.create({
 				runId: `run-${threadId}`,
-				agentId: INSTANCE_AGENT_ID,
+				agentId: agent.id,
 				threadId,
 				state: '{}',
 			}),
 		);
-		await agentMemory.appendObservationLogEntries([
-			{ observationScopeId: threadId, marker: 'info', text: 'The user wants Slack.' },
-		]);
-		return threadId;
+		const store = memory.getImplementation(agent.id);
+		await store.saveThread({ id: threadId, resourceId });
+		await store.saveMessages({
+			threadId,
+			resourceId,
+			messages: [
+				{
+					id: uuid(),
+					createdAt: new Date(),
+					role: 'user',
+					content: [{ type: 'text', text: 'Keep this action in history.' }],
+				},
+			],
+		});
+		const scope = { resourceId, threadId };
+		const candidate = await store.episodic.enqueueCaptureCandidate({
+			...scope,
+			sourceMessageId: null,
+			runId: uuid(),
+			toolCallId: uuid(),
+			content: 'A stored preference.',
+			evidenceText: 'Keep this preference.',
+			kind: 'preference',
+		});
+		const source = { candidateId: candidate.id, threadId, evidenceText: candidate.evidenceText };
+		const entry = await entryRepo.saveEntryWithSources(
+			agent.id,
+			{
+				resourceId,
+				content: candidate.content,
+				embedding: new Float32Array([1, 0]),
+				embeddingModel: 'test-model',
+			},
+			[source],
+			{},
+		);
+		if (!entry) throw new Error('Expected a memory entry');
+		return { store, scope, entry, source, agentId: agent.id };
 	}
 
-	async function expectSessionGone(threadId: string) {
-		const agentMemory = memory.getImplementation(INSTANCE_AGENT_ID);
-		expect(await threadRepo.findOneBy({ id: threadId })).toBeNull();
-		expect(await executionRepo.findByThreadIdOrdered(threadId)).toEqual([]);
-		expect(await checkpointRepo.findByRunId(`run-${threadId}`)).toBeNull();
-		expect(await agentMemory.getThread(threadId)).toBeNull();
-		expect(await agentMemory.getObservationLog({ observationScopeId: threadId })).toEqual([]);
-	}
-
-	const teamProject = async (user: User) => (await createTeamProject(undefined, user)).id;
-	const personalProject = async (user: User) => (await getPersonalProject(user)).id;
-
-	// Runs first: the handler is registered only when the agents module initializes.
-	describe('when the agents module handler is not registered', () => {
-		it('leaves the sessions of a team project without an owner', async () => {
+	it.each([
+		{ name: 'Preview', system: false, resourceId: draftChatMemoryResourceId },
+		{ name: 'n8n Chat', system: false, resourceId: productionChatMemoryResourceId },
+	])(
+		'keeps $name session history and clears private embeddings',
+		async ({ system, resourceId }) => {
 			const user = await createMember();
-			const threadId = await createAssistantSession(user, await teamProject(user));
+			const { store, scope, entry } = await createSession(user, system, resourceId(user.id));
+			const before = await threadRepo.findOneByOrFail({ id: scope.threadId });
+			expect(
+				await Container.get(AgentExecutionService).getThreadDetail(
+					scope.threadId,
+					before.projectId,
+					before.agentId,
+					admin.id,
+				),
+			).toBeNull();
+			const sources = await store.episodic.getEntrySources([entry.id]);
+			const messages = await store.getMessages(scope.threadId);
 
 			await Container.get(UserService).deleteUser(admin, user.id);
 
-			expect(await threadRepo.findOneBy({ id: threadId })).toMatchObject({ ownerId: null });
+			expect(await threadRepo.findOneBy({ id: scope.threadId })).toMatchObject({ ownerId: null });
+			expect(await executionRepo.findByThreadIdOrdered(scope.threadId)).toHaveLength(1);
+			expect(await checkpointRepo.findByRunId(`run-${scope.threadId}`)).not.toBeNull();
+			expect(await store.getMessages(scope.threadId)).toEqual(messages);
+			expect(await entryRepo.findOneByOrFail({ id: entry.id })).toMatchObject({
+				status: 'deleted',
+				embedding: null,
+				embeddingModel: null,
+				content: entry.content,
+			});
+			expect(await store.episodic.getEntrySources([entry.id])).toEqual(sources);
+			expect(await store.episodic.getPendingCaptureCandidates(scope)).toEqual([]);
+			const history = await Container.get(AgentExecutionService).getThreads(
+				before.projectId,
+				before.agentId,
+				admin.id,
+				10,
+			);
+			expect(history.threads).toEqual([
+				expect.objectContaining({ id: scope.threadId, canContinueInPreview: false }),
+			]);
+			expect(
+				await Container.get(AgentExecutionService).getThreadDetail(
+					scope.threadId,
+					before.projectId,
+					before.agentId,
+					admin.id,
+				),
+			).not.toBeNull();
 			expect(destroy).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([false, true])(
+		'removes personal-project agent data with transfer=%s',
+		async (transfer) => {
+			const user = await createMember();
+			const personalProjectId = (await getPersonalProject(user)).id;
+			const personal = await createSession(user, false, draftChatMemoryResourceId(user.id), true);
+			const instance = await createSession(user, true, systemChatMemoryResourceId(user.id), true);
+			const kept = await createSession(user, false, productionChatMemoryResourceId(user.id));
+			const other = await createMember();
+			const untouched = await createSession(other);
+			const builderId = chatThreadId(personal.agentId, user.id);
+			await personal.store.saveThread({ id: builderId, resourceId: personal.scope.resourceId });
+			await personal.store.saveMessages({
+				threadId: builderId,
+				resourceId: personal.scope.resourceId,
+				messages: [
+					{
+						id: uuid(),
+						createdAt: new Date(),
+						role: 'user',
+						content: [{ type: 'text', text: 'A builder request.' }],
+					},
+				],
+			});
+			const logs = Container.get(AgentExecutionLogStore);
+			const refs = [];
+			for (const session of [personal, instance, kept]) {
+				const [execution] = await executionRepo.findByThreadIdOrdered(session.scope.threadId);
+				const ref = {
+					agentId: session.agentId,
+					threadId: session.scope.threadId,
+					executionId: execution.id,
+				};
+				await executionRepo.update(execution.id, { storedAt: 'fs', source: 'n8n_chat_production' });
+				await logs.write(ref, { timeline: [] }, 'fs');
+				refs.push(ref);
+			}
+			const sandbox = vi
+				.spyOn(Container.get(AgentKnowledgeService), 'destroyKnowledgeSandbox')
+				.mockResolvedValue();
+			try {
+				await Container.get(UserService).deleteUser(
+					admin,
+					user.id,
+					transfer ? (await getPersonalProject(other)).id : undefined,
+				);
+			} finally {
+				sandbox.mockRestore();
+			}
+			for (const session of [personal, instance]) {
+				expect(await threadRepo.findOneBy({ id: session.scope.threadId })).toBeNull();
+				expect(await executionRepo.findByThreadIdOrdered(session.scope.threadId)).toEqual([]);
+				expect(await session.store.getThread(session.scope.threadId)).toBeNull();
+				expect(await session.store.getMessages(session.scope.threadId)).toEqual([]);
+				expect(await entryRepo.findOneBy({ id: session.entry.id })).toBeNull();
+			}
+			expect(await agentRepo.findOneBy({ id: personal.agentId })).toBeNull();
+			expect(
+				await Container.get(SettingsRepository).findOneBy({
+					key: `agents.projectDeletion.${personalProjectId}`,
+				}),
+			).toBeNull();
+			expect(
+				await Container.get(SettingsRepository).findOneBy({
+					key: `agents.userDeletion.${user.id}`,
+				}),
+			).toBeNull();
+			expect(await agentRepo.findOneBy({ id: INSTANCE_AGENT_ID })).not.toBeNull();
+			expect(await checkpointRepo.findByRunId(`run-${personal.scope.threadId}`)).toBeNull();
+			expect(await checkpointRepo.findByRunId(`run-${instance.scope.threadId}`)).toBeNull();
+			expect(await checkpointRepo.findByRunId(`run-${kept.scope.threadId}`)).not.toBeNull();
+			expect(destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: instance.agentId,
+				threadId: instance.scope.threadId,
+				userId: user.id,
+			});
+			expect(await personal.store.getThread(builderId)).toBeNull();
+			expect(await personal.store.getMessages(builderId)).toEqual([]);
+			expect(await kept.store.getMessages(kept.scope.threadId)).toHaveLength(1);
+			expect(await untouched.store.getMessages(untouched.scope.threadId)).toHaveLength(1);
+			expect(await threadRepo.findOneByOrFail({ id: kept.scope.threadId })).toMatchObject({
+				ownerId: null,
+				accessScope: 'project',
+			});
+			expect(await threadRepo.findOneByOrFail({ id: untouched.scope.threadId })).toMatchObject({
+				ownerId: other.id,
+				accessScope: 'user',
+			});
+			const keptThread = await threadRepo.findOneByOrFail({ id: kept.scope.threadId });
+			const detail = await Container.get(AgentExecutionService).getThreadDetail(
+				kept.scope.threadId,
+				keptThread.projectId,
+				kept.agentId,
+				admin.id,
+			);
+			expect(detail?.executions).toHaveLength(1);
+			expect(detail?.executions[0].author).toEqual({ id: user.id, name: 'Test member' });
+			for (const ref of refs) {
+				expect(await logs.read(ref, 'fs')).toEqual(
+					ref.agentId === kept.agentId ? expect.objectContaining({ timeline: [] }) : null,
+				);
+			}
+			await logs.delete(refs.map((ref) => ({ ...ref, storedAt: 'fs' })));
+		},
+	);
+
+	it('removes private system chats and keeps project audit sessions and chats of other users', async () => {
+		const user = await createMember();
+		const root = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const child = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const rootThread = await threadRepo.findOneByOrFail({ id: root.scope.threadId });
+		await threadRepo.update(child.scope.threadId, {
+			projectId: rootThread.projectId,
+			parentThreadId: root.scope.threadId,
+			parentAgentId: root.agentId,
+		});
+		const projectSession = await createSession(user);
+		const other = await createMember();
+		const kept = await createSession(other, true, systemChatMemoryResourceId(other.id));
+		const logs = Container.get(AgentExecutionLogStore);
+		const refs = [];
+		for (const session of [root, child, kept]) {
+			const [execution] = await executionRepo.findByThreadIdOrdered(session.scope.threadId);
+			const ref = {
+				agentId: session.agentId,
+				threadId: session.scope.threadId,
+				executionId: execution.id,
+			};
+			await executionRepo.update(execution.id, { storedAt: 'fs', source: 'system_chat' });
+			await logs.write(ref, { timeline: [] }, 'fs');
+			refs.push(ref);
+		}
+		const settings = Container.get(AgentsSettingsService);
+		await settings.setEnabled(false);
+		try {
+			await Container.get(UserService).deleteUser(admin, user.id);
+		} finally {
+			await settings.setEnabled(true);
+		}
+		for (const session of [root, child]) {
+			expect(await threadRepo.findOneBy({ id: session.scope.threadId })).toBeNull();
+			expect(await executionRepo.findByThreadIdOrdered(session.scope.threadId)).toEqual([]);
+			expect(await checkpointRepo.findByRunId(`run-${session.scope.threadId}`)).toBeNull();
+			expect(await session.store.getThread(session.scope.threadId)).toBeNull();
+			expect(await session.store.getMessages(session.scope.threadId)).toEqual([]);
+			expect(await entryRepo.findOneBy({ id: session.entry.id })).toBeNull();
+			expect(destroy).toHaveBeenCalledWith({
+				agentId: session.agentId,
+				threadId: session.scope.threadId,
+				userId: user.id,
+			});
+		}
+		expect(destroy).toHaveBeenCalledTimes(2);
+		expect(await kept.store.getMessages(kept.scope.threadId)).toHaveLength(1);
+		expect(await threadRepo.findOneByOrFail({ id: kept.scope.threadId })).toMatchObject({
+			ownerId: other.id,
+		});
+		expect(await checkpointRepo.findByRunId(`run-${kept.scope.threadId}`)).not.toBeNull();
+		const audit = await threadRepo.findOneByOrFail({ id: projectSession.scope.threadId });
+		expect(
+			await Container.get(AgentExecutionService).getThreadDetail(
+				audit.id,
+				audit.projectId,
+				audit.agentId,
+				admin.id,
+			),
+		).not.toBeNull();
+		for (const ref of refs) {
+			const log = await logs.read(ref, 'fs');
+			if (ref.threadId === kept.scope.threadId) expect(log).not.toBeNull();
+			else expect(log).toBeNull();
+		}
+		await logs.delete(refs.map((ref) => ({ ...ref, storedAt: 'fs' })));
+	});
+
+	it('discards pending system turns and keeps their input for audit history', async () => {
+		const user = await createMember();
+		const { store, scope, agentId } = await createSession(
+			user,
+			true,
+			systemChatMemoryResourceId(user.id),
+		);
+		const thread = await threadRepo.findOneByOrFail({ id: scope.threadId });
+		const queue = Container.get(AgentMessageQueueService);
+		await queue.enqueue({
+			agentId,
+			projectId: thread.projectId,
+			threadId: thread.id,
+			sessionMode: 'existing',
+			source: 'system',
+			payload: {
+				kind: 'system',
+				userId: user.id,
+				resourceId: scope.resourceId,
+				messageId: uuid(),
+				message: 'Keep this queued request in history.',
+			},
+		});
+		const before = await store.getMessages(thread.id);
+
+		await Container.get(SystemAgentExecutionService).stopThreadsOfUser(user.id);
+
+		expect(await queue.claimNext(thread.id, async () => true)).toBeNull();
+		expect(await store.getMessages(thread.id)).toEqual(before);
+		expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
+	});
+
+	it('blocks new sessions, queued input and turn admission after account cleanup starts', async () => {
+		const user = await createMember();
+		const { scope, agentId } = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const thread = await threadRepo.findOneByOrFail({ id: scope.threadId });
+		const systemAgents = Container.get(SystemAgentExecutionService);
+		const stop = systemAgents.stopThreadsOfUser.bind(systemAgents);
+		const stopping = vi
+			.spyOn(systemAgents, 'stopThreadsOfUser')
+			.mockImplementation(async (userId) => {
+				await expect(
+					systemAgents.createThread({ agentId, user, projectId: thread.projectId }),
+				).rejects.toThrow('Session not found');
+				await expect(
+					Container.get(AgentMessageQueueService).enqueue({
+						agentId,
+						projectId: thread.projectId,
+						threadId: thread.id,
+						sessionMode: 'existing',
+						source: 'system',
+						payload: {
+							kind: 'system',
+							userId,
+							resourceId: scope.resourceId,
+							messageId: uuid(),
+							message: 'A late input.',
+						},
+					}),
+				).rejects.toThrow('user is being deleted');
+				await Container.get(TransactionRunner).run({}, async (ctx) => {
+					await expect(
+						Container.get(AgentExecutionService).reserveExecution(
+							{
+								agentId,
+								agentName: thread.agentName,
+								projectId: thread.projectId,
+								threadId: thread.id,
+								resourceId: scope.resourceId,
+								userMessage: 'A late turn.',
+								access: { accessScope: 'user', ownerId: userId },
+							},
+							new Date(),
+							ctx,
+							thread,
+						),
+					).rejects.toThrow('user is being deleted');
+				});
+				await stop(userId);
+			});
+		try {
+			await Container.get(UserService).deleteUser(admin, user.id);
+		} finally {
+			stopping.mockRestore();
+		}
+		expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
+	});
+
+	it('keeps the account and session owner when a running system chat cannot be removed', async () => {
+		const user = await createMember();
+		const { scope, entry } = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const deletion = vi
+			.spyOn(Container.get(AgentExecutionService), 'deleteThread')
+			.mockRejectedValue(new ConflictError('Session has active work'));
+		try {
+			await expect(Container.get(UserService).deleteUser(admin, user.id)).rejects.toThrow(
+				ConflictError,
+			);
+		} finally {
+			deletion.mockRestore();
+		}
+		expect(await Container.get(UserRepository).findOneBy({ id: user.id })).not.toBeNull();
+		expect(
+			await Container.get(SettingsRepository).findOneBy({ key: `agents.userDeletion.${user.id}` }),
+		).not.toBeNull();
+		expect(await entryRepo.findOneByOrFail({ id: entry.id })).toMatchObject({
+			status: 'active',
+			embedding: entry.embedding,
+		});
+		expect(await threadRepo.findOneByOrFail({ id: scope.threadId })).toMatchObject({
+			ownerId: user.id,
+			accessScope: 'user',
+		});
+		expect(destroy).not.toHaveBeenCalled();
+	}, 10_000);
+
+	it('rolls back module finalization with account deletion and allows a retry', async () => {
+		const user = await createMember();
+		const personal = await getPersonalProject(user);
+		const { scope } = await createSession(user);
+		const deletion = Container.get(AgentProjectDeletionRepository);
+		const complete = deletion.completeDeletion.bind(deletion);
+		const failure = vi
+			.spyOn(deletion, 'completeDeletion')
+			.mockImplementationOnce(async (projectId, ctx) => {
+				await complete(projectId, ctx);
+				throw new Error('Finalization failed');
+			});
+		try {
+			await expect(Container.get(UserService).deleteUser(admin, user.id)).rejects.toThrow(
+				'Finalization failed',
+			);
+		} finally {
+			failure.mockRestore();
+		}
+		expect(await Container.get(UserRepository).findOneBy({ id: user.id })).not.toBeNull();
+		expect(await Container.get(ProjectRepository).findOneBy({ id: personal.id })).not.toBeNull();
+		expect(await threadRepo.findOneByOrFail({ id: scope.threadId })).toMatchObject({
+			ownerId: user.id,
+			accessScope: 'user',
+		});
+		for (const key of [`agents.userDeletion.${user.id}`, `agents.projectDeletion.${personal.id}`]) {
+			expect(await Container.get(SettingsRepository).findOneBy({ key })).not.toBeNull();
+		}
+		await Container.get(UserService).deleteUser(admin, user.id);
+		expect(await Container.get(UserRepository).findOneBy({ id: user.id })).toBeNull();
+		expect(await threadRepo.findOneByOrFail({ id: scope.threadId })).toMatchObject({
+			ownerId: null,
+			accessScope: 'project',
 		});
 	});
 
-	describe('when the agents module handler is registered', () => {
-		beforeAll(() => {
-			registerUserDeletionHandler();
+	it.each(['during', 'after'])('rejects tool output files %s account deletion', async (when) => {
+		const user = await createMember();
+		const { scope, agentId } = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const thread = await threadRepo.findOneByOrFail({ id: scope.threadId });
+		const binary = Container.get(BinaryDataService);
+		const store = vi.spyOn(binary, 'store').mockResolvedValue({
+			id: 'filesystem-v2:late-output',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
 		});
-
-		it.each([
-			['a team project', teamProject],
-			['the personal project', personalProject],
-		])('deletes the sessions in %s with their state and workspace', async (_case, projectOf) => {
-			const user = await createMember();
-			const threadId = await createAssistantSession(user, await projectOf(user));
-
-			await Container.get(UserService).deleteUser(admin, user.id);
-
-			await expectSessionGone(threadId);
-			expect(destroy).toHaveBeenCalledExactlyOnceWith({
-				agentId: INSTANCE_AGENT_ID,
-				threadId,
-				userId: user.id,
-			});
-		});
-
-		it.each([
-			['a team project', teamProject],
-			['the personal project', personalProject],
-		])('deletes the sessions in %s also when the data is transferred', async (_case, projectOf) => {
-			const [user, transferee] = await Promise.all([createMember(), createMember()]);
-			const threadId = await createAssistantSession(user, await projectOf(user));
-
-			await Container.get(UserService).deleteUser(
-				admin,
-				user.id,
-				(await getPersonalProject(transferee)).id,
+		const read = vi.spyOn(binary, 'getAsBuffer').mockResolvedValue(Buffer.from('tool output'));
+		const remove = vi.spyOn(binary, 'deleteManyByBinaryDataId').mockResolvedValue();
+		const write = async () => {
+			const output = await Container.get(AgentFileBridge).adoptFromItems(
+				[
+					{
+						json: {},
+						binary: { data: { data: '', mimeType: 'text/plain', fileName: 'result.txt' } },
+					},
+				],
+				{ agentId, projectId: thread.projectId, threadId: thread.id, resourceId: scope.resourceId },
 			);
-
-			await expectSessionGone(threadId);
-			expect(destroy).toHaveBeenCalledTimes(1);
-		});
-
-		it('deletes the child sessions of delegated runs', async () => {
-			const user = await createMember();
-			const projectId = await teamProject(user);
-			const rootId = await createAssistantSession(user, projectId);
-			const childId = await createAssistantSession(user, projectId);
-			const grandchildId = await createAssistantSession(user, projectId);
-			await threadRepo.update(childId, {
-				parentThreadId: rootId,
-				parentAgentId: INSTANCE_AGENT_ID,
+			expect(output.files).toEqual([]);
+			expect(remove).toHaveBeenCalledWith(['filesystem-v2:late-output']);
+		};
+		const systemAgents = Container.get(SystemAgentExecutionService);
+		const stop = systemAgents.stopThreadsOfUser.bind(systemAgents);
+		const stopping = vi
+			.spyOn(systemAgents, 'stopThreadsOfUser')
+			.mockImplementation(async (userId) => {
+				if (when === 'during') await write();
+				await stop(userId);
 			});
-			await threadRepo.update(grandchildId, {
-				parentThreadId: childId,
-				parentAgentId: INSTANCE_AGENT_ID,
+		try {
+			await Container.get(UserService).deleteUser(admin, user.id);
+			if (when === 'after') await write();
+			expect(store).toHaveBeenCalledOnce();
+		} finally {
+			stopping.mockRestore();
+			remove.mockRestore();
+			read.mockRestore();
+			store.mockRestore();
+		}
+	});
+
+	it('clears inactive and source-less user memories across agents without changing other scopes', async () => {
+		const [user, other] = await Promise.all([createMember(), createMember()]);
+		const first = await createSession(user);
+		const second = await createSession(user);
+		const kept = await createSession(other);
+		const shared = await createSession(user, false, 'slack:T1:channel:C1');
+		await entryRepo.update(first.entry.id, { status: 'superseded' });
+		await entryRepo.update(second.entry.id, { status: 'dropped' });
+		// The earlier session cleanup can leave a memory without a source.
+		await second.store.deleteThread(second.scope.threadId);
+		await entryRepo.insert({ ...second.entry, status: 'dropped' });
+
+		await Container.get(UserService).deleteUser(admin, user.id);
+
+		for (const id of [first.entry.id, second.entry.id]) {
+			expect(await entryRepo.findOneByOrFail({ id })).toMatchObject({
+				status: 'deleted',
+				embedding: null,
 			});
-
-			await Container.get(UserService).deleteUser(admin, user.id);
-
-			for (const threadId of [rootId, childId, grandchildId]) {
-				await expectSessionGone(threadId);
-			}
-			expect(destroy).toHaveBeenCalledTimes(3);
+		}
+		expect(await entryRepo.findOneByOrFail({ id: kept.entry.id })).toMatchObject({
+			status: 'active',
+			embedding: kept.entry.embedding,
 		});
-
-		it('deletes the sessions when the Agents feature is turned off', async () => {
-			const settings = Container.get(AgentsSettingsService);
-			await settings.setEnabled(false);
-			try {
-				const user = await createMember();
-				const threadId = await createAssistantSession(user, await teamProject(user));
-
-				await Container.get(UserService).deleteUser(admin, user.id);
-
-				await expectSessionGone(threadId);
-			} finally {
-				await settings.setEnabled(true);
-			}
+		expect(await entryRepo.findOneByOrFail({ id: shared.entry.id })).toMatchObject({
+			status: 'active',
+			embedding: shared.entry.embedding,
 		});
+	});
 
-		it('keeps the sessions of other users', async () => {
-			const [user, other] = await Promise.all([createMember(), createMember()]);
-			const projectId = await teamProject(user);
-			await createAssistantSession(user, projectId);
-			const kept = await createAssistantSession(other, projectId);
+	it('keeps session history and disables later capture when personal data is transferred', async () => {
+		const [user, transferee] = await Promise.all([createMember(), createMember()]);
+		const { store, scope, entry, source, agentId } = await createSession(user);
+		await Container.get(UserService).deleteUser(
+			admin,
+			user.id,
+			(await getPersonalProject(transferee)).id,
+		);
 
+		expect(await threadRepo.findOneBy({ id: scope.threadId })).toMatchObject({ ownerId: null });
+		expect(
+			await entryRepo.saveEntryWithSources(
+				agentId,
+				{
+					resourceId: scope.resourceId,
+					content: entry.content,
+					embedding: new Float32Array([1, 0]),
+				},
+				[source],
+				{},
+			),
+		).toBeNull();
+		const candidate = await store.episodic.enqueueCaptureCandidate({
+			...scope,
+			sourceMessageId: null,
+			runId: uuid(),
+			toolCallId: uuid(),
+			content: 'Later fact.',
+			evidenceText: 'Later evidence.',
+			kind: 'fact',
+		});
+		expect(candidate.status).toBe('deleted');
+		expect(await entryRepo.findOneByOrFail({ id: entry.id })).toMatchObject({ embedding: null });
+	});
+
+	it('clears embeddings when the Agents feature is turned off', async () => {
+		const user = await createMember();
+		const { entry } = await createSession(user);
+		const settings = Container.get(AgentsSettingsService);
+		await settings.setEnabled(false);
+		try {
 			await Container.get(UserService).deleteUser(admin, user.id);
+			expect(await entryRepo.findOneByOrFail({ id: entry.id })).toMatchObject({
+				embedding: null,
+				status: 'deleted',
+			});
+		} finally {
+			await settings.setEnabled(true);
+		}
+	});
 
-			expect(await threadRepo.findOneBy({ id: kept })).toMatchObject({ ownerId: other.id });
-			expect(await checkpointRepo.findByRunId(`run-${kept}`)).not.toBeNull();
-			expect(destroy).not.toHaveBeenCalledWith(expect.objectContaining({ threadId: kept }));
+	it('retires a scope while capture writes run concurrently', async () => {
+		const user = await createMember();
+		const { entry, source, scope, agentId } = await createSession(user);
+		await Promise.all([
+			entryRepo.saveEntryWithSources(
+				agentId,
+				{
+					resourceId: scope.resourceId,
+					content: entry.content,
+					embedding: new Float32Array([0, 1]),
+				},
+				[source],
+				{},
+			),
+			entryRepo.retireUserScopes([scope.resourceId], {}),
+		]);
+		expect(await entryRepo.findOneByOrFail({ id: entry.id })).toMatchObject({
+			status: 'deleted',
+			embedding: null,
 		});
 	});
 });

@@ -28,6 +28,7 @@ import type {
 	SecretProviderConnection,
 	UpdateProjectDto,
 	UpdateProjectPoolSettingsDto,
+	WorkflowTransferResult,
 } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
@@ -145,6 +146,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		skip?: number;
 		type?: 'personal' | 'team';
 		activated?: boolean;
+		includeServiceAccounts?: boolean;
 	}) => {
 		return await projectsApi.searchShareableProjects(rootStore.restApiContext, params);
 	};
@@ -299,21 +301,18 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		projectId: string,
 		parentFolderId?: string,
 		shareCredentials?: string[],
-	) => {
+	): Promise<WorkflowTransferResult | undefined> => {
 		if (resourceType === 'workflow') {
-			await workflowsEEApi.moveWorkflowToProject(rootStore.restApiContext, resourceId, {
+			return await workflowsEEApi.moveWorkflowToProject(rootStore.restApiContext, resourceId, {
 				destinationProjectId: projectId,
 				destinationParentFolderId: parentFolderId,
 				shareCredentials,
 			});
-		} else {
-			await credentialsEEApi.moveCredentialToProject(
-				rootStore.restApiContext,
-				resourceId,
-				projectId,
-			);
-			await credentialsStore.fetchAllCredentials({ projectId: currentProjectId.value });
 		}
+
+		await credentialsEEApi.moveCredentialToProject(rootStore.restApiContext, resourceId, projectId);
+		await credentialsStore.fetchAllCredentials({ projectId: currentProjectId.value });
+		return undefined;
 	};
 
 	const getResourceCounts = async (projectId: string): Promise<ResourceCounts> => {

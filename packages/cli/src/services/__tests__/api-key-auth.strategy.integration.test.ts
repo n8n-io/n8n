@@ -2,7 +2,14 @@ import { Logger } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
+import {
+	accountFullName,
+	ApiKey,
+	ApiKeyRepository,
+	GLOBAL_MEMBER_ROLE,
+	ServiceAccountRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
@@ -86,6 +93,20 @@ describe('ApiKeyAuthStrategy', () => {
 			expect(grant.scopes.length).toBeGreaterThan(1);
 			expect(grant.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
 			expect(grant.apiKeyId).toBe(apiKeyId);
+		});
+
+		it('loads the name of a service account with the subject', async () => {
+			const serviceAccount = await Container.get(ServiceAccountRepository).create({
+				name: 'Deploy bot',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+			const apiKey = await signAndStoreMcpApiKey(serviceAccount);
+
+			const grant = await strategy.buildTokenGrant(apiKey, { audience: 'mcp-server-api' });
+
+			if (!grant) throw new Error('expected grant');
+			expect(grant.subject.role.slug).toBe(GLOBAL_MEMBER_ROLE.slug);
+			expect(accountFullName(grant.subject)).toBe('Deploy bot');
 		});
 
 		it('accepts legacy (non-JWT) api keys by looking up the record directly', async () => {

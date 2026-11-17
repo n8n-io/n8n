@@ -6,7 +6,6 @@ import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { ActionToggle } from './components/ActionToggle';
 import { CodeNodeEditor } from './components/CodeNodeEditor';
-import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
 import { NodeCreator } from './components/NodeCreator';
 import { NodeCredentials } from './components/NodeCredentials';
@@ -113,6 +112,34 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getRestrictedNodePanel(): Locator {
 		return this.container.getByTestId('node-restricted-panel');
+	}
+
+	/** The lock beside a credential type select whose saved value a policy blocks. */
+	getRestrictedCredentialTypeMarker(parameterName: string): Locator {
+		return this.getParameterInput(parameterName).getByTestId('credential-select-restricted');
+	}
+
+	/** The parameter input also holds the credential picker, so click the select itself. */
+	async openCredentialTypeList(parameterName: string): Promise<void> {
+		await this.getParameterInput(parameterName).getByTestId('credential-select').click();
+	}
+
+	/** The options of the open credential type list. A search hides the options it does not match. */
+	getCredentialTypeOptions(): Locator {
+		return this.getVisiblePopper()
+			.getByTestId('credential-select-option')
+			.filter({ visible: true });
+	}
+
+	getCredentialTypeOption(credentialType: string): Locator {
+		return this.getVisiblePopper().locator(
+			`[data-test-id="credential-select-option"][data-credential-name="${credentialType}"]`,
+		);
+	}
+
+	/** The popover that explains a restricted type. It is teleported out of the NDV. */
+	getRestrictedTypePopover(): Locator {
+		return this.getVisiblePoppers().getByTestId('node-restricted-popover');
 	}
 
 	getInputPanel() {
@@ -366,7 +393,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setParameterSwitch(parameterName: string, enabled: boolean): Promise<void> {
-		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
+		const switchElement = this.getParameterInput(parameterName).locator('[role="switch"]');
 		const isCurrentlyEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
 		if (isCurrentlyEnabled !== enabled) {
 			await switchElement.click();
@@ -432,7 +459,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterSwitch(parameterName: string) {
-		return this.getParameterInput(parameterName).locator('.el-switch');
+		return this.getParameterInput(parameterName).locator('[role="switch"]');
 	}
 
 	getParameterTextInput(parameterName: string) {
@@ -536,7 +563,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async checkParameterCheckboxInputByName(name: string): Promise<void> {
-		const checkbox = this.getParameterInput(name).locator('.el-switch.switch-input');
+		const checkbox = this.getParameterInput(name).locator('[role="switch"]');
 		await checkbox.click();
 	}
 
@@ -623,12 +650,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.codeNodeEditor.getFullscreenEditor();
 	}
 
+	/**
+	 * Fullscreen code editor dialog.
+	 * The node details view is also a dialog, so this locator stays on the editor.
+	 */
 	getCodeEditorDialog() {
-		return dialogRootIn(this.page);
+		return this.page.getByRole('dialog').filter({
+			has: this.page.getByTestId('code-editor-fullscreen'),
+		});
 	}
 
 	async closeCodeEditorDialog() {
-		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
+		await this.getCodeEditorDialog().getByTestId('dialog-close-button').click();
 	}
 
 	getNodeRunSuccessIndicator() {

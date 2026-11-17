@@ -31,9 +31,16 @@ export class AgentChatAttachment extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	projectId: string;
 
-	/** Conversation thread id; widths match agent_execution.threadId (prefixed ids exceed a bare uuid). */
+	/**
+	 * Root thread of the delegation tree; it owns the file. Widths match
+	 * agent_execution.threadId (prefixed ids exceed a bare uuid).
+	 */
 	@Column({ type: 'varchar', length: 128 })
 	threadId: string;
+
+	/** Thread that made the file: the root thread or one of its sub-agent threads. */
+	@Column({ type: 'varchar', length: 128 })
+	createdByThreadId: string;
 
 	/** Per-user scope within the thread (platform user), when known. */
 	@Column({ type: 'varchar', length: 255, nullable: true })
@@ -59,4 +66,8 @@ export class AgentChatAttachment extends WithTimestampsAndStringId {
 	/** Surface the file arrived from, e.g. 'chat', 'slack', 'telegram'. */
 	@Column({ type: 'varchar', length: 32 })
 	source: string;
+
+	/** SHA-256 of the bytes, hex. Null for rows stored before the column existed. */
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	contentHash: string | null;
 }

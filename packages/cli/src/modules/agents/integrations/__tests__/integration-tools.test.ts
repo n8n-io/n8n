@@ -53,6 +53,25 @@ function makeInterruptibleCtx(
 }
 
 describe('integration tools', () => {
+	it.each([false, true])('passes cancellation to context queries (batch: %s)', async (batch) => {
+		const abortSignal = new AbortController().signal;
+		const queryExecutor = mock<IntegrationContextQueryExecutor>();
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+			queryExecutor,
+		}).build();
+		const operation = { query: 'search_users', input: { query: 'Alice' } };
+
+		await tool.handler!(
+			batch ? { queries: [operation] } : operation,
+			makeInterruptibleCtx({ abortSignal }),
+		);
+
+		expect(queryExecutor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ abortSignal, query: 'search_users' }),
+		);
+	});
+
 	it('generates canonical names for first connection and 2-based suffixes for duplicates', () => {
 		const descriptors = getIntegrationToolConnectionDescriptors([slackB, linear, slackA]);
 
@@ -1459,6 +1478,45 @@ describe('integration tools', () => {
 			});
 		});
 
+		it('binds the outbound thread for send_template too', async () => {
+			const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-w' };
+			const templateContext = {
+				integrationConnectionId: 'whatsapp:cred-w',
+				platform: 'whatsapp',
+				target: {
+					type: 'dm' as const,
+					userId: '447700900123',
+					threadId: 'whatsapp:111:447700900123',
+				},
+				messageId: 'wamid.1',
+				updatedAt: '2026-08-20T10:00:00.000Z',
+			};
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: templateContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1', () => ({
+					actions: ['send_template'],
+				}))[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_template',
+					input: { userId: '447700900123', templateName: 'order_update', language: 'en_US' },
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:whatsapp:111:447700900123',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+			);
+		});
+
 		it('does not bind for respond (operates on an existing thread)', async () => {
 			const messageContextStore = mock<IntegrationMessageContextStore>();
 			const messageContext: IntegrationMessageContext | null = {
@@ -1607,6 +1665,68 @@ describe('integration tools', () => {
 		);
 	});
 
+	describe('interacting user after a send', () => {
+		const messageContext: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			messageId: '123.456',
+			interactingUserId: 'U_CUSTOMER',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		async function sendTo(target: IntegrationMessageContext['target']) {
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({
+				ok: true,
+				messageContext: {
+					integrationConnectionId: 'slack:cred-a',
+					platform: 'slack',
+					target,
+					messageId: '456.789',
+					updatedAt: '2026-05-18T10:01:00.000Z',
+				},
+			});
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{ action: 'send_dm', input: { userId: 'slack:U123', message: { text: 'Hello' } } },
+				makeInterruptibleCtx({
+					persistence: {
+						threadId: 'thread-1',
+						resourceId: 'resource-1',
+						hostMetadata: encodeIntegrationMessageContext(messageContext),
+					},
+				}),
+			);
+			return messageContextStore.setLatest.mock.calls[0][2];
+		}
+
+		it('keeps the user after a reply in the same thread', async () => {
+			const stored = await sendTo({
+				type: 'dm',
+				userId: 'slack:U123',
+				threadId: 'slack:C123:123.456',
+			});
+			expect(stored).toEqual(expect.objectContaining({ interactingUserId: 'U_CUSTOMER' }));
+		});
+
+		it('drops the user after a send to another thread', async () => {
+			const stored = await sendTo({ type: 'dm', userId: 'slack:U123', threadId: 'slack:D123' });
+			expect(stored.interactingUserId).toBeUndefined();
+		});
+
+		it('drops the user when the send has no thread', async () => {
+			const stored = await sendTo({ type: 'dm', userId: 'slack:U123' });
+			expect(stored.interactingUserId).toBeUndefined();
+		});
+	});
+
 	describe('action approval', () => {
 		const slackWithApproval: AgentIntegrationConfig = {
 			...slackA,
@@ -1634,6 +1754,24 @@ describe('integration tools', () => {
 			action: 'send_channel_message' as const,
 			input: { channelId: 'slack:C999', message: { text: 'Hi' } },
 		};
+
+		it('refuses a recipient before it asks for approval', async () => {
+			const { tool, actionExecutor } = approvalTool({ ...slackA, approval: { mode: 'global' } });
+			actionExecutor.checkRecipient = vi.fn().mockReturnValue('Not allowed for this chat.');
+			const ctx = makeInterruptibleCtx();
+
+			const result = await tool.handler!(
+				{ action: 'send_dm', input: { userId: 'slack:U1', message: { text: 'Hi' } } },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'ACTION_DECLINED', message: 'Not allowed for this chat.' },
+			});
+			expect(ctx.suspend).not.toHaveBeenCalled();
+			expect(actionExecutor.execute).not.toHaveBeenCalled();
+		});
 
 		it('limits a session allowance to its connection and action, including batches', async () => {
 			const approvedKeys = new Set<string>();

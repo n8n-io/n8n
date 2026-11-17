@@ -2,6 +2,7 @@ import {
 	SCHEDULED_JOB_NAME_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
+	isNodeIdTooLong,
 } from '@n8n/constants';
 
 import { deprovision, provision } from './provision';
@@ -128,7 +129,7 @@ function assertProvisionableOwner(
 	}
 	if (ownerMemberId === null) return;
 	const ownerMemberIdLength = characterCount(ownerMemberId);
-	if (ownerMemberIdLength === 0 || ownerMemberIdLength > SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH) {
+	if (ownerMemberIdLength === 0 || isNodeIdTooLong(ownerMemberId)) {
 		throw new InvalidOwnerMemberIdError(
 			ownerMemberIdLength,
 			SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,

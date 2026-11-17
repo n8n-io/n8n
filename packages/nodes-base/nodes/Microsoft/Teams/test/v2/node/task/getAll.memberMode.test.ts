@@ -2,6 +2,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { Mock } from 'vitest';
 import type { IExecuteFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
@@ -67,11 +68,11 @@ describe('Test MicrosoftTeamsV2, task => getAll (OAuth2 member mode)', () => {
 		// the OAuth2 member path MUST read tasksFor (the mirror of the SP "never reads it")
 		expect(readTasksFor).toBe(true);
 		// resolves the signed-in user, then lists that user's tasks
-		expect(transport.microsoftApiRequest).toHaveBeenCalledWith('GET', '/v1.0/me');
+		expect(transport.microsoftApiRequest).toHaveBeenCalledWith('GET', requestPath`/v1.0/me`);
 		expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 			'value',
 			'GET',
-			'/v1.0/users/me-123/planner/tasks',
+			requestPath`/v1.0/users/me-123/planner/tasks`,
 		);
 	});
 });

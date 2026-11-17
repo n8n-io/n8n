@@ -127,6 +127,67 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_OPENAI_API_KEY',
 		buildData: (key) => ({ apiKey: key }),
 	},
+	stripeApi: {
+		defaultName: '[eval] Stripe',
+		buildData: (key) => ({ secretKey: key }),
+	},
+	shopifyAccessTokenApi: {
+		defaultName: '[eval] Shopify',
+		buildData: (token) => ({
+			shopSubdomain: 'eval-shop',
+			accessToken: token,
+			appSecretKey: token,
+		}),
+	},
+	zendeskApi: {
+		defaultName: '[eval] Zendesk',
+		buildData: (token) => ({ subdomain: 'eval', email: 'eval@example.com', apiToken: token }),
+	},
+	telegramApi: {
+		defaultName: '[eval] Telegram',
+		// The node builds its URLs from `baseUrl`; a stored credential has no default.
+		buildData: (token) => ({ accessToken: token, baseUrl: 'https://api.telegram.org' }),
+	},
+	airtableTokenApi: {
+		defaultName: '[eval] Airtable',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	slackOAuth2Api: {
+		defaultName: '[eval] Slack OAuth2',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	jiraSoftwareCloudApi: {
+		defaultName: '[eval] Jira',
+		buildData: (token) => ({
+			email: 'eval@example.com',
+			apiToken: token,
+			domain: 'https://eval.atlassian.net',
+		}),
+	},
+	googleOAuth2Api: {
+		defaultName: '[eval] Google',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	typeformApi: {
+		defaultName: '[eval] Typeform',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	sendInBlueApi: {
+		defaultName: '[eval] Brevo',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	linearApi: {
+		defaultName: '[eval] Linear',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	hubspotOAuth2Api: {
+		defaultName: '[eval] HubSpot OAuth2',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	clearbitApi: {
+		defaultName: '[eval] Clearbit',
+		buildData: (key) => ({ apiKey: key }),
+	},
 	anthropicApi: {
 		defaultName: '[eval] Anthropic',
 		buildData: (key) => ({ apiKey: key, url: 'https://api.anthropic.com' }),
@@ -219,7 +280,7 @@ export async function createOneCredential(
 
 /**
  * Mint an `httpTemplatedCustomAuth` ("Simplified Custom Auth") credential from
- * a setup card's recipe. Unlike the 14 types above, this type has no fixed
+ * a setup card's recipe. Unlike the types above, this type has no fixed
  * field shape — the AI builder researches it at runtime per service — so there
  * is no `CREDENTIAL_TEMPLATES` entry to look up; the recipe carried on
  * `options.setupHint` is the only source of the data to persist.

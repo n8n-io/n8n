@@ -9,13 +9,14 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
+import { posix } from 'node:path';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 
 import { sendStreamToResponse } from '@/response-helper';
 
-import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
@@ -32,7 +33,7 @@ export type AgentChatStream = ReturnType<AgentChatRelayService['createChatStream
 export class AgentChatRelayService {
 	constructor(
 		private readonly messageQueue: AgentMessageQueueService,
-		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
+		private readonly queuedPreviewStreams: AgentQueuedTestStreamService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
 
@@ -89,16 +90,20 @@ export class AgentChatRelayService {
 				}
 
 				const mimeType = await resolveInboundMimeType(attachment.mimeType, data);
-				const row = await this.agentChatAttachmentService.storeInbound({
-					agentId,
-					projectId,
-					threadId,
-					resourceId,
-					source,
-					fileName: attachment.fileName,
-					mimeType,
-					data,
-				});
+				const row = await this.agentChatAttachmentService
+					.storeInbound({
+						agentId,
+						projectId,
+						threadId,
+						resourceId,
+						source,
+						fileName: attachment.fileName,
+						mimeType,
+						data,
+					})
+					.catch((error: unknown) => {
+						throw error instanceof AgentFileLimitError ? new BadRequestError(error.message) : error;
+					});
 				stored.push({
 					id: row.id,
 					fileName: row.fileName,
@@ -128,7 +133,7 @@ export class AgentChatRelayService {
 		const delivery = initSseStream(res);
 		const { send, abortSignal } = delivery;
 		let accepted = false;
-		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
+		let subscription: ReturnType<AgentQueuedTestStreamService['subscribe']> | undefined;
 		let attachments: StoredAttachmentRef[] | undefined;
 		try {
 			const input = await accept(send, abortSignal);
@@ -155,6 +160,35 @@ export class AgentChatRelayService {
 					.deleteByIds(attachments.map((ref) => ref.id))
 					.catch(() => {});
 			}
+			subscription?.close();
+			delivery.close();
+		}
+	}
+
+	/** Subscribe before the transaction commits so the report cannot outrun the browser. */
+	async relayQueuedStop(
+		res: FlushableResponse,
+		threadId: string,
+		request: (onQueued: (id: string) => void) => Promise<unknown>,
+	) {
+		const delivery = initSseStream(res);
+		let queueId: string | undefined;
+		let subscription: ReturnType<AgentQueuedTestStreamService['subscribe']> | undefined;
+
+		try {
+			await request((id) => {
+				queueId = id;
+				subscription = this.queuedPreviewStreams.subscribe(id, delivery);
+			});
+
+			if (subscription && queueId) {
+				subscription.accepted();
+				delivery.send({ type: 'message-queued', queueId, sessionId: threadId });
+				await subscription.done;
+			} else delivery.send({ type: 'done', sessionId: threadId });
+		} catch (error) {
+			delivery.send(toChatErrorEvent(error, 'Stop failed'));
+		} finally {
 			subscription?.close();
 			delivery.close();
 		}
@@ -187,7 +221,7 @@ export class AgentChatRelayService {
 			if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
 				res.setHeader(
 					'Content-Disposition',
-					`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+					`attachment; filename="${sanitizeFilename(posix.basename(attachment.fileName))}"`,
 				);
 			}
 		});

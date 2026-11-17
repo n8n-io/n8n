@@ -7,6 +7,7 @@ import { CredentialDocumentationUrlRule } from './credential-documentation-url.j
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { CredentialUnnecessaryPasswordRule } from './credential-unnecessary-password.js';
+import { IconContrastRule } from './icon-contrast.js';
 import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
@@ -20,6 +21,7 @@ import { NoEmojiInOptionsRule } from './no-emoji-in-options.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
 import { NoHardcodedSecretsRule } from './no-hardcoded-secrets.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
+import { NoMcpProtocolClientRule } from './no-mcp-protocol-client.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
@@ -32,6 +34,8 @@ import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
+import { OperationNameRepeatsResourceRule } from './operation-name-repeats-resource.js';
+import { OperationStandardActionRule } from './operation-standard-action.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -39,6 +43,7 @@ import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { SingleCredentialPerNodeRule } from './single-credential-per-node.js';
 import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
@@ -65,6 +70,7 @@ export const rules = {
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
 	'no-hardcoded-secrets': NoHardcodedSecretsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
+	'no-mcp-protocol-client': NoMcpProtocolClientRule,
 	'no-overrides-field': NoOverridesFieldRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
@@ -72,7 +78,9 @@ export const rules = {
 	'no-unsafe-connection-type-cast': NoUnsafeConnectionTypeCastRule,
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
+	'icon-contrast': IconContrastRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
+	'single-credential-per-node': SingleCredentialPerNodeRule,
 	'trigger-node-conventions': TriggerNodeConventionsRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
@@ -94,4 +102,6 @@ export const rules = {
 	'valid-node-categories': ValidNodeCategoriesRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
+	'operation-name-repeats-resource': OperationNameRepeatsResourceRule,
+	'operation-standard-action': OperationStandardActionRule,
 } satisfies Record<string, AnyRuleModule>;

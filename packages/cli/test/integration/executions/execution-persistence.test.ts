@@ -2,7 +2,7 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createEmptyRunExecutionData } from 'n8n-workflow';
+import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -87,6 +87,89 @@ describe('ExecutionPersistence', () => {
 			expect(reclaimedId).not.toBe(tombstoneId);
 			expect(await executionRepository.findOneBy({ id: tombstoneId })).toBeNull();
 			expect(await executionRepository.findOneBy({ id: reclaimedId })).not.toBeNull();
+		});
+	});
+
+	describe('unsaved manual executions', () => {
+		/** A finished manual run that n8n did not save, soft-deleted when it finished. */
+		const createUnsavedManualExecution = async () => {
+			const workflow = await createWorkflow();
+			const executionId = await executionPersistence.create({
+				data: createRunExecutionData({ resultData: { lastNodeExecuted: 'Get Message' } }),
+				workflowData: workflow,
+				mode: 'manual',
+				finished: false,
+				status: 'error',
+				workflowId: workflow.id,
+			});
+			await executionRepository.softDelete(executionId);
+			return { workflow, executionId };
+		};
+
+		it('writes run data to a soft-deleted execution only when asked to', async () => {
+			const { executionId } = await createUnsavedManualExecution();
+			const finished = {
+				status: 'error' as const,
+				data: createRunExecutionData({ resultData: { lastNodeExecuted: 'Get Message' } }),
+			};
+
+			expect(await executionPersistence.updateExistingExecution(executionId, finished)).toBe(false);
+			expect(
+				await executionPersistence.updateExistingExecution(executionId, finished, {
+					includeDeleted: true,
+				}),
+			).toBe(true);
+		});
+
+		it('does not restore an execution deleted between the read and the write of an update', async () => {
+			const workflow = await createWorkflow();
+			const executionId = await executionPersistence.create({
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				finished: false,
+				status: 'running',
+				workflowId: workflow.id,
+			});
+			// A caller writing back what it read earlier, like stopping a run.
+			const snapshot = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+			const findOne = executionRepository.findOne.bind(executionRepository);
+			vi.spyOn(executionRepository, 'findOne').mockImplementationOnce(async (options) => {
+				const entity = await findOne(options);
+				await executionRepository.softDelete(executionId);
+				return entity;
+			});
+
+			await executionPersistence.updateExistingExecution(
+				executionId,
+				{ ...snapshot, status: 'canceled' },
+				{ requireStatus: 'running' },
+			);
+
+			const row = await executionRepository.findOne({
+				where: { id: executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toBe('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('returns the run data of an unsaved manual execution', async () => {
+			const { workflow, executionId } = await createUnsavedManualExecution();
+
+			const execution = await executionPersistence.findUnsavedManualExecution(executionId);
+
+			expect(execution).toMatchObject({ id: executionId, workflowId: workflow.id, mode: 'manual' });
+			expect(execution?.data.resultData.lastNodeExecuted).toBe('Get Message');
+			expect(
+				await executionPersistence.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+				}),
+			).toBeUndefined();
 		});
 	});
 });

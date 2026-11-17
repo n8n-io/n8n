@@ -74,6 +74,30 @@ describe('WorkflowPublisherService', () => {
 		);
 	});
 
+	describe('findPublisherUserIdForAccessCheck', () => {
+		it("returns the version's publisher", async () => {
+			publishHistoryRepository.findPublisherUserId.mockResolvedValue('user-1');
+
+			await expect(
+				service.findPublisherUserIdForAccessCheck(workflowId, 'version-9'),
+			).resolves.toBe('user-1');
+			expect(publishHistoryRepository.findPublisherUserId).toHaveBeenCalledWith(
+				workflowId,
+				'version-9',
+			);
+		});
+
+		// An access check that reads a failed lookup as "no publisher" would refuse
+		// on a transient error, and the refusal would be final.
+		it('throws when the lookup fails', async () => {
+			publishHistoryRepository.findPublisherUserId.mockRejectedValue(new Error('connection lost'));
+
+			await expect(
+				service.findPublisherUserIdForAccessCheck(workflowId, 'version-9'),
+			).rejects.toThrow('connection lost');
+		});
+	});
+
 	// A wait resume and bootup recovery rebuild the run from the stored row, where
 	// the acting user is not a field. Without deriving it again, the run comes back
 	// unattributed and a credential only its publisher may use is refused halfway.

@@ -1037,3 +1037,16 @@ binary-check scored), **`eval:discovery`** (asserts first-hop tool/dispatch
 routing, no n8n server), **`eval:pairwise`** (head-to-head build comparison vs
 `ai-workflow-builder.ee`). Authoring them is out of scope here — see the README
 sections of the same names.
+
+To measure how much context a prompt, skill, or tool-description change adds or
+removes, run `pnpm context:budget` in `packages/@n8n/instance-ai` before and
+after the change. It needs no instance. It prints the size of the system prompt,
+the skill catalog, each always-loaded tool, and the skills that a build keeps
+loaded. Its test fails when a section grows past its ceiling. Use it next to an
+eval: a smaller context is not an improvement until an eval shows no quality
+loss. To compare two builds end to end, for example master and your branch (tokens per LLM
+call, call counts, and deterministic checks), use the A/B bench in the same package.
+Start an instance from each build, run `pnpm eval:ab-bench run --arm base` and
+`pnpm eval:ab-bench run --arm branch`, then `pnpm eval:ab-bench compare base branch`.
+[Its README](../../../packages/@n8n/instance-ai/evaluations/ab-bench/README.md) has the
+instance flags.

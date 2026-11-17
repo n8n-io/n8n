@@ -1,8 +1,7 @@
 import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
-import { credentialMissingModeUsesPackageData } from '../entities/credential/credential-missing-mode';
 import type { PlacedCredentialRequirement } from '../entities/credential/credential.types';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
@@ -36,13 +35,6 @@ export function workflowsInScope(
 	);
 }
 
-export function needsBundledCredentialData(
-	request: ImportCredentialProperties,
-	hasRequirements: boolean,
-): boolean {
-	return hasRequirements && credentialMissingModeUsesPackageData(request.credentialMissingMode);
-}
-
 /**
  * Attaches each requirement's bundled expression data. Lookup is by id: the manifest
  * rejects duplicate credential ids, so each requirement has at most one bundle entry —
@@ -63,6 +55,9 @@ export function placeCredentialData({
 		return {
 			...requirement,
 			...(packageData !== undefined ? { packageData } : {}),
+			...(credential?.description !== undefined
+				? { packageDescription: credential.description }
+				: {}),
 			...(credential?.dataIsComplete !== undefined
 				? { packageDataIsComplete: credential.dataIsComplete }
 				: {}),

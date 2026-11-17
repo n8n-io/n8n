@@ -1,7 +1,11 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -9,6 +13,7 @@ import type {
 	IExecutionBase,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
+	OperationContext,
 	User,
 } from '@n8n/db';
 import {
@@ -33,20 +38,28 @@ import type {
 } from 'n8n-workflow';
 import {
 	ManualExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
+	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { loginIdOf } from '@/events/login-id';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -64,6 +77,7 @@ import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
 
 import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
+import { toUserLike } from '@/utils/to-user-like';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -128,6 +142,7 @@ export class ExecutionService {
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
 	/**
@@ -205,12 +220,16 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
-		// A workflow runs on one engine, and only that engine holds its executions.
-		const settings = await this.workflowRepository.findSettings(workflowId);
-		const execution =
-			settings?.engineType === 'v2'
-				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
-				: await this.lastSuccessfulV1Execution(workflowId);
+		// Reading a workflow is not reading its runs: a custom project role can
+		// hold `workflow:read` without `execution:read`, as in the executions API.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId,
+		});
+		if (!canReadExecutions) return undefined;
+
+		const execution = this.workflowVersionedSettings.isEnabled()
+			? await this.lastSuccessfulExecutionOnEitherEngine(workflowId)
+			: await this.lastSuccessfulExecutionOnEngineV1(workflowId);
 		if (!execution) return undefined;
 
 		await this.executionRedactionServiceProxy.processExecution(execution, {
@@ -220,12 +239,40 @@ export class ExecutionService {
 		return execution;
 	}
 
-	private async lastSuccessfulV1Execution(
+	/**
+	 * Manual runs use the draft engine and production runs use the published one,
+	 * so the latest success can be on either engine.
+	 */
+	private async lastSuccessfulExecutionOnEitherEngine(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
+		const [v1Execution, v2Execution] = await Promise.all([
+			this.lastSuccessfulExecutionOnEngineV1(workflowId),
+			this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId]),
+		]);
+		if (!v1Execution || !v2Execution) return v1Execution ?? v2Execution;
+
+		// Both engines pick their newest run by creation. A queued run can start
+		// after a newer one, so comparing start times would mix two orders.
+		return v2Execution.createdAt.getTime() > v1Execution.createdAt.getTime()
+			? v2Execution
+			: v1Execution;
+	}
+
+	private async lastSuccessfulExecutionOnEngineV1(
 		workflowId: string,
 	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
-				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+				select: [
+					'id',
+					'mode',
+					'createdAt',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'jsonSizeBytes',
+				],
 				where: {
 					workflowId,
 					status: 'success',
@@ -243,17 +290,20 @@ export class ExecutionService {
 		return executions[0];
 	}
 
-	async retry({
-		executionId,
-		options = {},
-		sharedWorkflowIds,
-		user,
-	}: {
-		executionId: string;
-		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
-		sharedWorkflowIds: string[];
-		user: User;
-	}): Promise<RetriedExecution> {
+	async retry(
+		{
+			executionId,
+			options = {},
+			sharedWorkflowIds,
+			user,
+		}: {
+			executionId: string;
+			options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+			sharedWorkflowIds: string[];
+			user: User;
+		},
+		ctx: OperationContext = {},
+	): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -277,6 +327,30 @@ export class ExecutionService {
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
+		}
+
+		// A retry reuses the original run's identity, so its private credentials
+		// resolve as the user who started it. Only that user may retry it.
+		const runtimeData = execution.data.executionData.runtimeData;
+		const usesDynamicCredentials =
+			runtimeData?.usesDynamicCredentials === true ||
+			runDataUsedDynamicCredentials(execution.data.resultData?.runData);
+		if (usesDynamicCredentials && runtimeData?.executedByUserId !== user.id) {
+			this.logger.info('Attempt to retry an execution was blocked because it ran as another user', {
+				userId: user.id,
+				executionId,
+			});
+			throw new ForbiddenError(
+				"This execution ran with another user's credentials. Run the workflow yourself instead.",
+			);
+		}
+
+		// The saved workflow can reference private credentials that the original
+		// run did not. Keep the original identity and trigger secrets only for the
+		// user the run belongs to. Sub-workflows inherit this context, so this also covers them.
+		if (runtimeData && runtimeData.executedByUserId !== user.id) {
+			delete runtimeData.credentials;
+			delete runtimeData.secureArtifacts;
 		}
 
 		const executionMode = 'retry';
@@ -376,19 +450,14 @@ export class ExecutionService {
 		);
 
 		this.eventService.emit('workflow-executed', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			executionId: retriedExecutionId,
 			projectId,
 			projectName,
 			source: 'user-retry',
+			loginId: loginIdOf(ctx),
 		});
 
 		const summary: RetriedExecution = {
@@ -422,6 +491,7 @@ export class ExecutionService {
 		await this.executionRedactionServiceProxy.processExecution(response, {
 			user,
 			redactExecutionData: options.redactExecutionData,
+			ctx,
 		});
 
 		return response;
@@ -456,13 +526,7 @@ export class ExecutionService {
 		});
 
 		this.eventService.emit('execution-deleted', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			executionIds: ids ?? [],
 			deleteBefore,
 		});
@@ -526,16 +590,8 @@ export class ExecutionService {
 		return true;
 	}
 
-	/**
-	 * All executions still enqueued (`new`), plus the ids of those whose data could not be
-	 * read - those can never run, so the caller has to take them out of `new` itself.
-	 */
-	async findAllEnqueuedExecutions() {
-		return await this.executionPersistence.findMultipleExecutionsWithUnreadable({
-			select: ['id', 'mode'],
-			where: { status: 'new' },
-			order: { id: 'ASC' },
-		});
+	async findEnqueuedExecutionIds() {
+		return await this.executionRepository.findEnqueuedIds();
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
@@ -676,14 +732,18 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		// Broadcast a stop to whichever worker is running this execution; it cancels the execution
-		// from its own ActiveExecutions, and workers not running it ignore the command. This is the
-		// only way to reach a subworkflow execution, which runs inline in the parent's worker process
-		// and has no Bull job to abort. For a top-level execution this is redundant with the
-		// abort-job triggered above via ActiveExecutions, but both paths are idempotent.
-		await this.executionStopService.requestStop(execution.id);
-
-		return await this.stopDuringRun(execution);
+		// Mark the execution as canceled before the broadcast. A worker that dequeues the job after
+		// the update reads the canceled status and skips the job. The broadcast also runs when the
+		// update fails, so a worker does not keep running the execution.
+		try {
+			return await this.stopDuringRun(execution);
+		} finally {
+			// Broadcast a stop to whichever worker runs this execution. Workers not running it ignore
+			// the command. The abort-job triggered above only works on the main that enqueued the
+			// job, so the broadcast is the only stop path for a subworkflow execution and for a
+			// top-level job enqueued by another process. Both paths are idempotent.
+			await this.executionStopService.requestStop(execution.id);
+		}
 	}
 
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {

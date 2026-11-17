@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { isNodeIdTooLong } from '@n8n/constants';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
@@ -12,8 +13,10 @@ import {
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UserError, type INode, type WorkflowActivateMode } from 'n8n-workflow';
+import type { INode, WorkflowActivateMode } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -32,10 +35,12 @@ import type {
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import {
 	isTriggerLikeNodeType,
 	type WorkflowTriggerVersion,
 } from '@/workflows/triggers/enabled-trigger-nodes';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import {
 	WorkflowTriggerActivator,
@@ -92,6 +97,8 @@ export class WorkflowPublicationApplier {
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -155,6 +162,9 @@ export class WorkflowPublicationApplier {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
 
+		const oversized = this.rejectOversizedTriggerNodeIds(workflow, newVersion);
+		if (oversized !== null) return oversized;
+
 		const unrunnable = await this.handleUnrunnableVersion(
 			workflow,
 			oldVersion,
@@ -166,6 +176,9 @@ export class WorkflowPublicationApplier {
 
 		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
 		if (blocked !== null) return blocked;
+
+		const refused = await this.refuseUnusableTriggerCredentials(workflow, newVersion);
+		if (refused !== null) return refused;
 
 		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
@@ -465,24 +478,65 @@ export class WorkflowPublicationApplier {
 				violations: e.violations.map((violation) => violation.kind),
 			});
 
-			// Report every trigger as failed: `activated` rows left behind read as drift
-			// to the reconciler, which would then re-enqueue this forever.
-			const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
-			const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
-
-			return {
-				type: 'failed',
-				error: e,
-				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
-					activated: [],
-					failures: desiredTriggerNodes.map((node) => ({
-						nodeId: node.id,
-						nodeName: node.name,
-						error: e,
-					})),
-				}),
-			};
+			return this.failAllTriggers(newVersion, e);
 		}
+	}
+
+	/**
+	 * Blocks a version that uses a credential that its runs cannot use.
+	 * Registration uses the node's credentials before any run starts, so it must
+	 * pass the same check, as the same user: the publisher of this version.
+	 * It checks every node, not only triggers: a trigger can load its sub-nodes,
+	 * with their credentials, while it answers a webhook and before a run starts.
+	 */
+	private async refuseUnusableTriggerCredentials(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): Promise<PublicationResult | null> {
+		// A failed lookup throws, so the record is retried rather than refused.
+		const publisherUserId = await this.workflowPublisherService.findPublisherUserIdForAccessCheck(
+			workflow.id,
+			newVersion.versionId,
+		);
+
+		try {
+			await this.credentialsPermissionChecker.check(workflow.id, newVersion.nodes, publisherUserId);
+
+			return null;
+		} catch (e) {
+			// Any other error is transient, so the record is retried.
+			if (!(e instanceof UserError)) throw e;
+
+			this.logger.warn('Workflow publication blocked by credential access', {
+				workflowId: workflow.id,
+				versionId: newVersion.versionId,
+				error: e.message,
+			});
+
+			return this.failAllTriggers(newVersion, e);
+		}
+	}
+
+	/**
+	 * Reports every trigger as failed: `activated` rows left behind read as drift
+	 * to the reconciler, which would then re-enqueue this forever.
+	 */
+	private failAllTriggers(newVersion: WorkflowHistory, error: Error): PublicationResult {
+		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+
+		return {
+			type: 'failed',
+			error,
+			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+				activated: [],
+				failures: desiredTriggerNodes.map((node) => ({
+					nodeId: node.id,
+					nodeName: node.name,
+					error,
+				})),
+			}),
+		};
 	}
 
 	/**
@@ -690,6 +744,7 @@ export class WorkflowPublicationApplier {
 				nodes: healed.nodes,
 				connections: newVersion.connections,
 				nodeGroups: newVersion.nodeGroups,
+				settings: newVersion.settings,
 			},
 			newVersion.versionId,
 		);
@@ -703,6 +758,44 @@ export class WorkflowPublicationApplier {
 		});
 
 		return { type: 'skipped', reason: published.published ? 'node-ids-healed' : 'superseded' };
+	}
+
+	/**
+	 * Fails a version whose trigger node ids cannot be stored in status rows. This
+	 * runs before trigger changes, so the old version keeps running. Fitting ids
+	 * get failed rows to prevent reconciliation retries.
+	 */
+	private rejectOversizedTriggerNodeIds(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): PublicationResult | null {
+		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
+		const enabledTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const oversized = [...enabledTriggerNodes, ...unresolvable.map(({ node }) => node)].filter(
+			(node) => isNodeIdTooLong(node.id),
+		);
+		if (oversized.length === 0) return null;
+
+		this.logger.warn('Published version carries trigger node ids that are too long', {
+			workflowId: workflow.id,
+			versionId: newVersion.versionId,
+			nodeNames: oversized.map((node) => node.name),
+		});
+
+		const error = new TriggerNodeIdTooLongError(oversized);
+		const storable = enabledTriggerNodes.filter((node) => !isNodeIdTooLong(node.id));
+		return {
+			type: 'failed',
+			error,
+			triggerStatuses: this.buildTriggerStatuses(
+				storable,
+				this.workflowTriggerActivator.getTriggerKinds(storable),
+				{
+					activated: [],
+					failures: storable.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
+				},
+			),
+		};
 	}
 
 	private isTriggerLikeNode(node: INode): boolean {

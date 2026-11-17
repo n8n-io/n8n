@@ -209,7 +209,6 @@ const handleTooltipClose = () => {
 						theme="dark"
 						placement="bottom"
 						size="small"
-						icon-orientation="horizontal"
 						data-test-id="hidden-items-menu"
 						@visible-change="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"
@@ -272,7 +271,7 @@ const handleTooltipClose = () => {
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
-					<N8nLink v-if="item.href" :to="item.href" theme="text">
+					<N8nLink v-if="item.href" :to="item.href" :underline="false" theme="text">
 						<span v-if="item.icon" :class="$style.itemContent">
 							<N8nIcon
 								v-if="item.icon.type === 'icon'"

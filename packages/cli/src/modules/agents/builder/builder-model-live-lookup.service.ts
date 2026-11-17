@@ -6,7 +6,7 @@ import {
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -14,8 +14,8 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import type { ModelChoice } from './model-lookup.types';
+import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
 import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
-import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
 import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
@@ -58,8 +58,9 @@ interface ModelLookupOptions {
  * that backs the chat sub-nodes' model dropdowns). Nothing from
  * `@n8n/n8n-nodes-langchain` is loaded on this path.
  *
- * The credential must be usable by the user within the given project — the
- * same set as the workflow editor's credential picker.
+ * The credential must be usable by the user within the given project.
+ * Agent lookups exclude resolvable credentials and credentials available only
+ * through the personal route.
  */
 @Service()
 export class BuilderModelLiveLookupService {
@@ -180,7 +181,7 @@ export class BuilderModelLiveLookupService {
 	) {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId, excludePersonalRoute: true },
+			{ projectId, excludePersonalRoute: true, excludeResolvable: true },
 		);
 		const usable = usableCredentials.find((c) => c.id === credentialId);
 		if (!usable || !credentialTypes.includes(usable.type)) {

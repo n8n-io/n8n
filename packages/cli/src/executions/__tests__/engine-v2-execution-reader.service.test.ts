@@ -44,6 +44,7 @@ const snapshot = (overrides: Partial<ExecutionSnapshot> = {}): ExecutionSnapshot
 	hostMode: 'manual',
 	graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [], seeded: [] },
 	workflow: workflowDocument(),
+	parent: null,
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:05.000Z',
 	finishedAt: '2026-08-25T10:00:05.000Z',
@@ -275,6 +276,17 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
+	describe('fromSnapshot', () => {
+		it('maps a snapshot the caller already holds, without a read', async () => {
+			const result = await reader.fromSnapshot(snapshot({ status: 'waiting', finishedAt: null }));
+
+			expect(dataPlane.getExecution).not.toHaveBeenCalled();
+			expect(result).toEqual(
+				expect.objectContaining({ id: EXECUTION_ID, status: 'waiting', finished: false }),
+			);
+		});
+	});
+
 	describe('findOne', () => {
 		it('should map the snapshot onto an execution response', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
@@ -312,6 +324,19 @@ describe('EngineV2ExecutionReader', () => {
 
 			// The policy that was in force when the run started, not the current one.
 			expect(result?.workflowData.settings?.redactionPolicy).toBe('all');
+		});
+
+		it('should report the pin data the run used, the way v1 does', async () => {
+			const pinData = { Trigger: [{ json: { pinned: true } }] };
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({ workflow: workflowDocument({ pinData }) }),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.pinData).toEqual(pinData);
+			// The editor reads the pin marker off `resultData`, not off the workflow.
+			expect(result?.workflowData).not.toHaveProperty('pinData');
 		});
 
 		it('should report the same narrow workflow projection the v1 path reports', async () => {

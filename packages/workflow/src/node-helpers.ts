@@ -298,7 +298,7 @@ export function getNodeFeatures(
 	return features;
 }
 
-const getPropertyValues = (
+export const getPropertyValues = (
 	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
@@ -602,6 +602,27 @@ export function getActiveCredentialTypes(
 		// Malformed display options must not break callers that never evaluated them before
 		return null;
 	}
+}
+
+const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
+
+export function getRequestedCredentialTypes(
+	node: INode,
+	getNodeTypeDescription: () => INodeTypeDescription | null,
+): string[] {
+	const types = new Set(Object.keys(node.credentials ?? {}));
+
+	const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
+		(value): value is string => typeof value === 'string' && value !== '',
+	);
+	if (named.length > 0) {
+		const active = getActiveCredentialTypes(node, getNodeTypeDescription());
+		for (const type of named) if (active?.has(type)) types.add(type);
+	}
+
+	if (node.extendsCredential) types.add(node.extendsCredential);
+
+	return [...types];
 }
 
 /**
@@ -1394,14 +1415,10 @@ export function getNodeParametersIssues(
 
 /**
  * Returns the node's issues as a flat list of human-readable strings,
- * covering execution errors, parameter/credential/input issues, and unknown node types.
+ * covering parameter/credential/input issues and unknown node types.
  */
 export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
 	const messages: string[] = [];
-
-	if (issues.execution !== undefined) {
-		messages.push('Execution Error.');
-	}
 
 	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
 		if (propertyIssues === undefined) continue;
@@ -1843,10 +1860,6 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 		return;
 	}
 
-	if (source.execution === true) {
-		destination.execution = true;
-	}
-
 	const objectProperties = ['parameters', 'credentials'];
 
 	let destinationProperty: INodeIssueObjectProperty;
@@ -2198,6 +2211,29 @@ export function getSubworkflowId(node: {
 		return node.parameters.workflowId.value as string;
 	}
 	return;
+}
+
+/** Read a database workflow reference without evaluating expressions. */
+export function getStaticSubworkflowId(node: {
+	type: string;
+	parameters: Record<string, unknown>;
+}): string | undefined {
+	if (!isNodeWithWorkflowSelector(node)) return undefined;
+	const { source = 'database' } = node.parameters;
+	if (source !== 'database') return undefined;
+	const value = getSubworkflowId(node) ?? node.parameters.workflowId;
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed === '' || trimmed.startsWith('=') ? undefined : trimmed;
+}
+
+export function setStaticSubworkflowId(
+	node: { parameters: Record<string, unknown> },
+	workflowId: string,
+): void {
+	const stored = node.parameters.workflowId;
+	if (isResourceLocatorValue(stored)) stored.value = workflowId;
+	else node.parameters.workflowId = workflowId;
 }
 
 /**

@@ -6,6 +6,7 @@ import {
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { useI18n } from '@n8n/i18n';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
@@ -23,6 +24,7 @@ import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
+import { addReplyAttachments, newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
 	AgentsChatHostEvent,
@@ -240,6 +242,16 @@ export function rebuildInteractiveFromHistory(
 	return undefined;
 }
 
+export function createStoppedMessage(executionId: string): ChatMessage {
+	return {
+		id: `${executionId}:stopped`,
+		role: CHAT_MESSAGE_ROLE.ASSISTANT,
+		content: useI18n().baseText('agentSessions.stopped'),
+		status: CHAT_MESSAGE_STATUS.SUCCESS,
+		executionId,
+	};
+}
+
 /**
  * Convert persisted agent messages into the frontend ChatMessage format.
  *
@@ -253,6 +265,16 @@ export function convertDbMessages(
 	extensions: readonly AgentsChatInteractionExtension[] = [],
 ): ChatMessage[] {
 	const result: ChatMessage[] = [];
+	const lastMessageByExecution = new Map(
+		dbMessages
+			.filter(
+				(message) =>
+					message.executionId &&
+					Array.isArray(message.content) &&
+					(message.role === CHAT_MESSAGE_ROLE.USER || message.role === CHAT_MESSAGE_ROLE.ASSISTANT),
+			)
+			.map((message) => [message.executionId, message]),
+	);
 
 	for (const msg of dbMessages) {
 		if (!msg.role || !Array.isArray(msg.content)) continue;
@@ -307,7 +329,11 @@ export function convertDbMessages(
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
-				const canceled = part.canceled === true;
+				const canceled =
+					part.canceled === true ||
+					(msg.executionStatus === 'cancelled' &&
+						part.state !== 'resolved' &&
+						part.state !== 'rejected');
 				if (part.state === 'resolved') {
 					output = part.output;
 					if (canceled) {
@@ -323,6 +349,9 @@ export function convertDbMessages(
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
+				} else if (canceled) {
+					state = TOOL_CALL_STATE.CANCELLED;
+					output = undefined;
 				} else if (failed) {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
@@ -345,6 +374,8 @@ export function convertDbMessages(
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
+				attachments.push(...newReplyAttachments(attachments, toolCall));
+				if (msg.executionStatus === 'cancelled') continue;
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (!rebuilt) continue;
@@ -365,6 +396,7 @@ export function convertDbMessages(
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.stopReport ? { stopReport: true } : {}),
 			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
@@ -396,7 +428,15 @@ export function convertDbMessages(
 				...(msg.executionId ? { executionId: msg.executionId } : {}),
 			});
 		}
+		if (
+			msg.executionStatus === 'cancelled' &&
+			msg.executionId &&
+			lastMessageByExecution.get(msg.executionId) === msg
+		) {
+			result.push(createStoppedMessage(msg.executionId));
+		}
 	}
+
 	return result;
 }
 
@@ -434,6 +474,7 @@ export function applyOpenSuspensions(
 				if (suspension.suspendPayload !== undefined) {
 					toolCall.suspendPayload = suspension.suspendPayload;
 				}
+				addReplyAttachments(msg, toolCall);
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (rebuilt) {
 					rebuilt.runId = suspension.runId;

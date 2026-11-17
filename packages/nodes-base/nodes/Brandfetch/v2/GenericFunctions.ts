@@ -7,8 +7,10 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 const ALLOWED_LOGO_HOSTNAME_SUFFIXES = ['.brandfetch.io', '.brandfetch.com'];
 
@@ -48,18 +50,17 @@ function assertSafeLogoUrl(this: IExecuteFunctions, rawUrl: unknown): string {
 export async function brandfetchApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IHttpRequestOptions, 'json' | 'headers'> = {},
 ): Promise<any> {
 	try {
-		let options: IHttpRequestOptions = {
+		let options: WithRequestTarget<IHttpRequestOptions> = {
 			method,
 			qs,
 			body,
-			url: uri || `https://api.brandfetch.io/v2${resource}`,
+			url: requestUrl`https://api.brandfetch.io/v2${resource}`,
 			json: true,
 		};
 
