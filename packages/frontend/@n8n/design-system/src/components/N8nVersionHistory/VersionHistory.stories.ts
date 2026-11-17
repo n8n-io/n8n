@@ -11,7 +11,7 @@ import N8nInputLabel from '../N8nInputLabel';
 import N8nOption from '../N8nOption';
 import N8nSelect from '../N8nSelect';
 import N8nSwitch from '../N8nSwitch';
-import N8nTabs from '../N8nTabs';
+import { N8nTabs } from '../N8nTabs';
 import N8nText from '../N8nText/Text.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
 import {
