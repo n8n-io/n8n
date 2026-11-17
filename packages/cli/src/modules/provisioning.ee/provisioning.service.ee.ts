@@ -28,6 +28,7 @@ import { ZodError } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { UserService } from '@/services/user.service';
 import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
 
@@ -56,6 +57,7 @@ export class ProvisioningService {
 		private readonly roleMappingRuleRepository: RoleMappingRuleRepository,
 		private readonly roleResolverService: RoleResolverService,
 		private readonly roleMappingRuleService: RoleMappingRuleService,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async init() {
@@ -316,9 +318,13 @@ export class ProvisioningService {
 			return;
 		}
 
-		await this.projectRepository.manager.transaction(async (tx) => {
+		await this.projectRepository.runInTransaction({}, async (tx, ctx) => {
 			for (const project of projectsToRemoveAccessFrom) {
 				await tx.delete(ProjectRelation, { projectId: project.id, userId });
+				await this.resourceOwnerService.reassignOwnedBy(
+					{ userId, projectId: project.id, actor: undefined, reason: 'member-removed' },
+					ctx,
+				);
 			}
 
 			for (const { projectId, roleSlug } of validMappings) {

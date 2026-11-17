@@ -32,6 +32,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -82,6 +83,7 @@ export class WorkflowCreationService {
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 		private readonly workflowEngineDefaults: WorkflowEngineDefaults,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async prepareBatchContext(
@@ -368,6 +370,13 @@ export class WorkflowCreationService {
 						transactionManager,
 					);
 				}
+
+				newWorkflow.ownerUserId = await this.resourceOwnerService.ownerForNewResource(
+					user,
+					project.id,
+					'workflow',
+					trxCtx,
+				);
 
 				const workflow = await this.workflowRepository.createContent(newWorkflow, trxCtx);
 

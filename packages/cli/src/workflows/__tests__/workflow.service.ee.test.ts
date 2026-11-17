@@ -78,6 +78,7 @@ describe('EnterpriseWorkflowService', () => {
 			nodeTypes,
 			credentialsPermissionChecker,
 			workflowHistoryRepository,
+			mock(),
 		);
 	});
 

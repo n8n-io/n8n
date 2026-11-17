@@ -175,6 +175,13 @@ describe('POST /workflows', () => {
 		return (response.body.data as { pinData: IPinData }).pinData;
 	};
 
+	test('should make the creating user the owner', async () => {
+		const response = await authOwnerAgent.post('/workflows').send(makeWorkflow());
+
+		const stored = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
+		expect(stored.ownerUserId).toBe(owner.id);
+	});
+
 	test('should store pin data for node in workflow', async () => {
 		const pinData = await testWithPinData(true);
 		expect(pinData).toMatchObject(MOCK_PINDATA);

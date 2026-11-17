@@ -59,6 +59,9 @@ describe('UserService', () => {
 	const userRepository = mockInstance(UserRepository, {
 		manager,
 	});
+	userRepository.runInTransaction.mockImplementation(
+		async (ctx, fn) => await manager.transaction(async (em) => await fn(em, ctx)),
+	);
 	const projectRepository = mockInstance(ProjectRepository, {
 		manager,
 	});
@@ -103,6 +106,7 @@ describe('UserService', () => {
 		scimSwitchReader,
 		transactions,
 		serviceAccountUsageProxy,
+		mock(),
 	);
 
 	const commonMockPerson = Object.assign(new Person(), {

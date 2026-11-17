@@ -195,6 +195,7 @@ function makeService() {
 		globalConfig,
 		tagService,
 		agentServiceAccount,
+		mock(),
 	);
 
 	return {
