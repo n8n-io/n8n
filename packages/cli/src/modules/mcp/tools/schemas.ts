@@ -6,6 +6,7 @@ import type {
 	WorkflowFEMeta,
 } from 'n8n-workflow';
 import z from 'zod';
+import { folderResourceTypeSchema } from '@n8n/api-types';
 
 export const nodeCredentialSummarySchema = z
 	.object({
@@ -124,6 +125,7 @@ export const columnNameSchema = z
 	);
 
 export const folderOutputSchema = {
+	resourceType: folderResourceTypeSchema.optional(),
 	id: z.string().optional().describe('The ID of the folder'),
 	name: z.string().optional().describe('The name of the folder'),
 	parentFolderId: z
