@@ -14,6 +14,7 @@ import type { MintedToken } from './compiled-engine-credentials';
 import { CompiledEngineCredentials, mintExpiries } from './compiled-engine-credentials';
 import type { CompiledArtifact } from './compiled-engine.types';
 import { MANUAL_WORKFLOW_SUFFIX, WFRT_WEBHOOK_PREFIX } from './compiled-engine.types';
+import { CompiledExecutionStore } from './compiled-execution.store';
 import { CompiledWorkflowCompiler } from './compiled-workflow.compiler';
 import type { WfrtWorkflowStatus } from './wfrt-admin.client';
 import { WfrtAdminClient } from './wfrt-admin.client';
@@ -90,6 +91,9 @@ export class CompiledEngineSync {
 	/** The last static data save of each workflow, so saves stay in order. */
 	private readonly staticSaves = new Map<string, Promise<void>>();
 
+	/** The read of the stored nodes that run in the fallback host, shared by all compiles. */
+	private hostNodesRestored: Promise<void> | undefined;
+
 	constructor(
 		private readonly compiler: CompiledWorkflowCompiler,
 		private readonly client: WfrtAdminClient,
@@ -99,6 +103,7 @@ export class CompiledEngineSync {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly staticData: WorkflowStaticDataService,
+		private readonly store: CompiledExecutionStore,
 	) {
 		this.logger = this.logger.scoped('compiled-engine');
 	}
@@ -167,7 +172,29 @@ export class CompiledEngineSync {
 		return entry;
 	}
 
+	/**
+	 * Reads the stored nodes that run in the fallback host for a limit of `wfrt`, once, before
+	 * the first compile. Without them, the first run after a restart of n8n would reach the
+	 * limit again. A failed read is tried again at the next compile.
+	 */
+	private async restoreHostNodes() {
+		this.hostNodesRestored ??= this.readHostNodes();
+		await this.hostNodesRestored;
+	}
+
+	private async readHostNodes() {
+		try {
+			this.compiler.restoreHostNodes(await this.store.readHostNodes());
+		} catch (error) {
+			this.hostNodesRestored = undefined;
+			this.logger.warn('Could not read the nodes that run in the fallback host', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	async compile(workflowData: IWorkflowBase, trigger?: string) {
+		await this.restoreHostNodes();
 		return await this.compiler.compile({
 			...(trigger === undefined ? {} : { trigger }),
 			id: workflowData.id,
@@ -302,7 +329,9 @@ export class CompiledEngineSync {
 	 * run, so its next run has the node in the host.
 	 */
 	async onRuntimeLimit(workflowId: string, nodeName: string) {
+		await this.restoreHostNodes();
 		if (!this.compiler.runInHost(workflowId, nodeName)) return;
+		await this.saveHostNodes();
 		this.logger.info(
 			`Node "${nodeName}" of workflow ${workflowId} reached a limit of wfrt that the v1 engine does not have. It runs in the fallback host from the next run.`,
 			{ workflowId },
@@ -311,6 +340,21 @@ export class CompiledEngineSync {
 		for (const entry of this.loaded.values()) {
 			if (entry.workflowData.id !== workflowId) continue;
 			if (await this.compileAgain(entry)) await this.push(entry);
+		}
+	}
+
+	/**
+	 * Stores the nodes that run in the fallback host. Another main can have stored nodes since
+	 * this process read them: they are read again and kept.
+	 */
+	private async saveHostNodes() {
+		try {
+			this.compiler.restoreHostNodes(await this.store.readHostNodes());
+			await this.store.saveHostNodes(this.compiler.hostNodes());
+		} catch (error) {
+			this.logger.warn('Could not store the nodes that run in the fallback host', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

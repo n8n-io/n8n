@@ -19,6 +19,13 @@ import type {
 	WfrtTraceEvent,
 	WfrtWaitingEvent,
 } from './compiled-engine.types';
+import { HOST_STEP_SUFFIX, needsFallbackHost } from './compiled-engine.types';
+
+/** True when an item is the error item of a node for a limit of `wfrt` that v1 does not have. */
+function isLimitErrorItem(item: INodeExecutionData): boolean {
+	const error = item.json.error;
+	return typeof error === 'string' && needsFallbackHost(error);
+}
 
 /** A change of node state that the dispatcher sends to the lifecycle hooks. */
 export type NodeUpdate =
@@ -189,6 +196,9 @@ export class CompiledRunRecorder {
 
 	private failedNode: { nodeName: string; message: string } | undefined;
 
+	/** The nodes that reached a limit of `wfrt` that v1 does not have. At most the nodes of the workflow. */
+	private readonly limitNodes = new Set<string>();
+
 	waitingNode: string | undefined;
 
 	constructor(workflow: { nodes: INode[]; connections: IConnections }) {
@@ -203,6 +213,20 @@ export class CompiledRunRecorder {
 	/** The last node whose step failed, with the error text of `wfrt`. */
 	get failed() {
 		return this.failedNode;
+	}
+
+	/**
+	 * The nodes that reached a limit of `wfrt` that v1 does not have, in a failed step or in an
+	 * error item under a "continue" setting. They run in the fallback host from the next run.
+	 */
+	get hostLimitNodes(): string[] {
+		return [...this.limitNodes];
+	}
+
+	/** The node of a step: the fallback-host form of a compiled node has its own step name. */
+	private nodeOf(step: string): string {
+		if (this.nodesByName.has(step) || !step.endsWith(HOST_STEP_SUFFIX)) return step;
+		return step.slice(0, -HOST_STEP_SUFFIX.length);
 	}
 
 	/** The run data of the runs that have ended. */
@@ -233,30 +257,41 @@ export class CompiledRunRecorder {
 
 	onStep(event: WfrtStepEvent): NodeUpdate[] {
 		const updates: NodeUpdate[] = [];
-		if (!this.nodesByName.has(event.step)) return updates;
-		this.flushTrigger(updates, event.step);
+		const step = this.nodeOf(event.step);
+		if (!this.nodesByName.has(step)) return updates;
+		this.flushTrigger(updates, step);
 		if (event.status === 'retrying') return updates;
-		this.closeOthers(event.step, event.at, updates);
+		this.closeOthers(step, event.at, updates);
 
-		const run = this.ensureOpen(event.step, event.at, updates);
+		const run = this.ensureOpen(step, event.at, updates);
 		if (event.status === 'started') {
 			run.inFlight++;
+			if (step !== event.step) {
+				// The host runs the node again from its input: the failed compiled form gave nothing.
+				run.error = undefined;
+				run.outputs = [[]];
+				if (this.failedNode?.nodeName === step) this.failedNode = undefined;
+			}
 			return updates;
 		}
 
 		run.inFlight = Math.max(0, run.inFlight - 1);
 		run.endTime = event.at;
 		if (event.status === 'completed') {
-			run.outputs[0].push(...stepItems(event.result));
+			const items = stepItems(event.result);
+			if (items.some(isLimitErrorItem)) this.limitNodes.add(step);
+			run.outputs[0].push(...items);
 		} else {
 			run.error = event.error ?? 'The step failed';
-			this.failedNode = { nodeName: event.step, message: run.error };
+			this.failedNode = { nodeName: step, message: run.error };
+			if (needsFallbackHost(run.error)) this.limitNodes.add(step);
 		}
 		return updates;
 	}
 
-	onTrace(event: WfrtTraceEvent): NodeUpdate[] {
+	onTrace(traced: WfrtTraceEvent): NodeUpdate[] {
 		const updates: NodeUpdate[] = [];
+		const event = { ...traced, step: this.nodeOf(traced.step) };
 		if (!this.nodesByName.has(event.step)) return updates;
 		if (this.pendingTrigger?.nodeName === event.step) {
 			// The trace of the trigger node replaces the run made from the trigger value.
@@ -269,6 +304,9 @@ export class CompiledRunRecorder {
 		// A trace after the steps of a node gives its real output items, so it replaces the step results.
 		const run = this.ensureOpen(event.step, event.at, updates);
 		run.outputs = toOutputs(event.items);
+		if (run.outputs.some((output) => output.some(isLimitErrorItem))) {
+			this.limitNodes.add(event.step);
+		}
 		run.inFlight = 0;
 		this.close(run, event.at, updates);
 		return updates;
