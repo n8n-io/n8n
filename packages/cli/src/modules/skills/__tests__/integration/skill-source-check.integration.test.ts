@@ -187,6 +187,44 @@ describe('Skill source checks', () => {
 			return { ...imported, reviewed: await review(imported.sourceId) };
 		};
 
+		it('reviews and saves changes to converted reference examples', async () => {
+			pushChange({
+				'skills/docx/SKILL.md': skillMd('docx', 'Read `references/example.json`.'),
+				'skills/docx/references/example.json': '{"version":1}',
+			});
+			const { sourceId, docx } = await importAll();
+			const original = (await editor.get(`/skills/${docx}`).expect(200)).body.data.skill;
+			expect(original.instructions).toBe('Read `references/example.json.md`.');
+			expect(original.references).toEqual([
+				{
+					path: 'references/example.json.md',
+					content: expect.stringContaining('{"version":1}'),
+				},
+			]);
+			pushChange({ 'skills/docx/references/example.json': '{"version":2}' });
+			await sync().checkAll();
+			const pending = await review(sourceId);
+			expect(pending.updates).toHaveLength(1);
+			const update = pending.updates[0];
+			const detail = await editor
+				.get(`/skill-sources/${sourceId}/updates/${docx}`)
+				.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
+				.expect(200);
+			expect(detail.body.data.files).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						path: 'references/example.json.md',
+						before: expect.stringContaining('{"version":1}'),
+						after: expect.stringContaining('{"version":2}'),
+					}),
+				]),
+			);
+			expect((await editor.get(`/skills/${docx}`).expect(200)).body.data.skill).toEqual(original);
+			await accept(sourceId, pending);
+			const saved = (await editor.get(`/skills/${docx}`).expect(200)).body.data.skill;
+			expect(saved.references[0].content).toContain('{"version":2}');
+		});
+
 		it('keeps unselected updates pending and compares newer content with the saved version', async () => {
 			const { sourceId, docx, xlsx, reviewed } = await changed();
 			await accept(sourceId, {
@@ -567,6 +605,68 @@ describe('Skill source checks', () => {
 			} finally {
 				proxy.register(original);
 			}
+		});
+	});
+
+	describe('adding source members during update checks', () => {
+		const connectFolder = async (name: string, sourceId?: string) => {
+			const response = await server
+				.authAgentFor(ownerUser)
+				.post('/skill-sources')
+				.send({
+					url: `${REPO}/tree/main/skills/${name}`,
+					scope: 'instance',
+					existingSourceId: sourceId,
+					skillKeys: [JSON.stringify({ path: `skills/${name}` })],
+				})
+				.expect(200);
+			return response.body.data as SkillSourceConnectResponse;
+		};
+
+		it('downloads one archive when checking three separately imported folders', async () => {
+			pushChange({ 'skills/pdf/SKILL.md': skillMd('pdf', 'Follow pdf.') });
+			const { sourceId } = await connectFolder('docx');
+			await connectFolder('xlsx', sourceId);
+			await connectFolder('pdf', sourceId);
+			pushChange({ 'README.md': '# A new revision' });
+			github.requests.archives = 0;
+			await sync().checkAll();
+			expect(github.requests.archives).toBe(1);
+		});
+
+		it('checks a new member when another check advanced the cursor before import committed', async () => {
+			const { sourceId } = await connectFolder('docx');
+			const client = Container.get(GitHubSkillSourceClient);
+			const fetch = client.fetchLatest.bind(client);
+			vi.spyOn(client, 'fetchLatest').mockImplementationOnce(async (...args) => {
+				const old = await fetch(...args);
+				pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx', 'Updated xlsx.') });
+				await sync().checkAll();
+				return old;
+			});
+			const { imported } = await connectFolder('xlsx', sourceId);
+			expect((await sourceOf(sourceId)).probeCursor).toBeNull();
+			await sync().checkAll();
+			expect((await linkOf(imported[0].skillId)).pendingContent).toMatchObject({
+				instructions: 'Updated xlsx.',
+			});
+		});
+
+		it('does not let an in-flight check restore the cursor after membership changes', async () => {
+			const { sourceId } = await connectFolder('docx');
+			await db().update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
+			pushChange({ 'README.md': '# A new revision' });
+			const repository = Container.get(SkillSourceRepository);
+			const findLinks = repository.findLinksBySource.bind(repository);
+			vi.spyOn(repository, 'findLinksBySource').mockImplementationOnce(async (id) => {
+				const oldMembers = await findLinks(id);
+				await connectFolder('xlsx', sourceId);
+				return oldMembers;
+			});
+			await sync().checkAll();
+			expect((await sourceOf(sourceId)).probeCursor).toBeNull();
+			await sync().checkAll();
+			expect((await sourceOf(sourceId)).probeCursor).not.toBeNull();
 		});
 	});
 

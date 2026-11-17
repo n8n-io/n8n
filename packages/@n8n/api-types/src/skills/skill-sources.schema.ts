@@ -42,6 +42,10 @@ const skillSourceScope = {
 };
 
 const skillSourceTarget = {
+	/** Add to this source without changing its scope, branch, or credential. */
+	existingSourceId: z.string().uuid().optional(),
+	/** When supplied, reject omitted files outside this reviewed list. */
+	allowedSkippedFiles: z.array(z.string().min(1).max(512)).max(100).optional(),
 	/** A link to a repository, a folder, or one SKILL.md. */
 	url: z.string().trim().min(1).max(2048),
 	...skillSourceScope,
@@ -53,7 +57,11 @@ const skillSourceTarget = {
 };
 
 /** Reads a link and lists the skills in it, for the picker. Writes nothing. */
-export class DiscoverSkillSourceDto extends Z.class(skillSourceTarget) {}
+export class DiscoverSkillSourceDto extends Z.class({
+	...skillSourceTarget,
+	/** Reuse a matching source in the selected scope, if one exists. */
+	reuseExistingSource: z.boolean().optional(),
+}) {}
 
 export const SKILL_SOURCE_MAX_SKILLS = 200;
 
@@ -219,6 +227,8 @@ export type DiscoveredSkill = {
 
 export type SkillSourceDiscovery = {
 	source: SkillSourceSummary;
+	/** The matching source to send back when connecting the selected skills. */
+	existingSourceId?: string;
 	duplicate: SkillSourceDuplicate;
 	skills: DiscoveredSkill[];
 	/** True when the source has more skills than n8n lists (`too_many_skills`). */

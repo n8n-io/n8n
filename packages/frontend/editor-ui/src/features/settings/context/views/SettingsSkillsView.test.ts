@@ -937,6 +937,30 @@ describe('SettingsSkillsView', () => {
 			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
 		});
 
+		it.each(['variant', 'control', undefined])(
+			'shows only the catalog on an empty page when Skill Sync is enabled (recommendations: %s)',
+			async (variant) => {
+				assignVariant(variant);
+				mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+					(flag) => String(flag) === SKILL_SYNC_FLAG,
+				);
+				const view = renderView();
+				await view.findByTestId('skill-catalog');
+				expect(view.getByRole('tab', { name: 'Discover' })).toHaveAttribute(
+					'aria-selected',
+					'true',
+				);
+				expect(view.queryByTestId('skills-recommended-empty-state')).not.toBeInTheDocument();
+				expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+				expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+				expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+				await userEvent.click(view.getByRole('tab', { name: 'Your skills' }));
+				await userEvent.click(view.getByTestId('skills-create-menu-button'));
+				await view.findByTestId('skills-create-manual');
+				expect(view.queryByTestId('skills-create-recommended')).not.toBeInTheDocument();
+			},
+		);
+
 		it('tracks no exposure when the user has skills', async () => {
 			assignVariant('variant');
 			skillsStore.skills = [skill()];
@@ -1568,9 +1592,48 @@ describe('SettingsSkillsView', () => {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
 
+		it('opens a catalog selection in the GitHub import dialog', async () => {
+			enableSkillSync();
+			const view = renderWithDialogStub();
+			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
+			await view.findByTestId('skill-catalog');
+			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
+			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		it('opens a guide-based skill in the GitHub import flow', async () => {
+			enableSkillSync();
+			const view = renderWithDialogStub();
+			await userEvent.click(view.getByRole('tab', { name: 'Discover' }));
+			const card = await view.findByTestId('skill-catalog-n8n-memory-optimization');
+			await userEvent.click(within(card).getByRole('button'));
+			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('opens catalog details without permission to create skills', async () => {
+			enableSkillSync();
+			mockedStore(useProjectsStore).personalProject = null;
+			mockedStore(useProjectsStore).myProjects = [];
+			const view = renderView();
+			await view.findByTestId('skill-catalog');
+			await userEvent.click(view.getAllByTestId('skill-catalog-details')[0]);
+			const dialog = await view.findByRole('dialog');
+			expect(within(dialog).getByText(/workflow tools/)).toBeVisible();
+			expect(within(dialog).getByText(/permission/)).toBeVisible();
+			expect(within(dialog).getByRole('button', { name: 'Review skill' })).toBeDisabled();
+		});
+
+		it('hides Discover when Skill Sync is disabled', () => {
+			const view = renderWithDialogStub();
+			expect(view.queryByRole('tab', { name: 'Discover' })).not.toBeInTheDocument();
+		});
+
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
 			const view = renderWithDialogStub();
+			await view.findByTestId('skill-catalog');
+			await userEvent.click(view.getByRole('tab', { name: 'Your skills' }));
 
 			await userEvent.click(view.getByTestId('skills-create-menu-button'));
 
@@ -1800,6 +1863,7 @@ describe('SettingsSkillsView', () => {
 				enableSkillSync();
 				localStorage.setItem('n8n-skills-collapsed-sources:anonymous', JSON.stringify(['src-1']));
 				skillsStore.skills = [skill({ sourceId: 'src-1' })];
+				skillsStore.count = 21;
 				skillsStore.sources = [source];
 				skillsStore.fetchSources.mockResolvedValue([source]);
 				skillsStore.fetchSkills.mockImplementation(async (query) => {

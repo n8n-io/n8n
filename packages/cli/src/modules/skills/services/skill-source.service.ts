@@ -162,13 +162,36 @@ export class SkillSourceService {
 		try {
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
-			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
+			let existingSource = await this.reusableSource(payload.existingSourceId, source, target);
+			let duplicate = await this.duplicateOf(
+				user,
+				source.identityKey,
+				target.projectId,
+				existingSource?.id,
+			);
+			if (payload.reuseExistingSource && duplicate.kind === 'blocked' && duplicate.sourceId) {
+				const candidate = await this.sourceRepository.findById(duplicate.sourceId);
+				if (this.matchesSource(candidate, source, target)) {
+					existingSource = candidate;
+					duplicate = await this.duplicateOf(
+						user,
+						source.identityKey,
+						target.projectId,
+						candidate.id,
+					);
+				}
+			}
 			report.duplicate_result = duplicate.kind;
 			const discovered = await this.discoverAll(source);
 			const skills = await this.readAll(source, discovered);
 			const names = await this.skillRepository.findLatestNamesInTarget(target);
+			const linked = existingSource
+				? await this.sourceRepository.findLinksBySource(existingSource.id)
+				: [];
+			const linkedKeys = new Set(linked.map((link) => refKey(link.remoteRef)));
 			const nameTaken = (read: ReadSkill) =>
-				read.skill !== undefined && isNameTaken(read.skill.name, names);
+				linkedKeys.has(read.key) ||
+				(read.skill !== undefined && isNameTaken(read.skill.name, names));
 			const { client, locator } = source;
 			if (duplicate.kind === 'blocked') {
 				await this.skillsTelemetry.connectedSource(
@@ -182,6 +205,7 @@ export class SkillSourceService {
 			}
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
+				...(existingSource ? { existingSourceId: existingSource.id } : {}),
 				duplicate,
 				skills: skills.map((read): DiscoveredSkill => {
 					const preview = read.fetched
@@ -225,12 +249,20 @@ export class SkillSourceService {
 		try {
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
-			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
+			const existingSource = await this.reusableSource(payload.existingSourceId, source, target);
+			const duplicate = await this.duplicateOf(
+				user,
+				source.identityKey,
+				target.projectId,
+				existingSource?.id,
+			);
 			report.duplicate_result = duplicate.kind;
 			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
 			const { response, warning } = await this.importSkills(user, source, target, scopeType, {
 				skillKeys: payload.skillKeys,
 				reviewedSkillKeys: payload.reviewedSkillKeys ?? [],
+				existingSourceId: existingSource?.id,
+				allowedSkippedFiles: payload.allowedSkippedFiles,
 			});
 			await this.skillsTelemetry.connectedSource(
 				{ ...report, status: 'success', ...(warning ? { reason: warning } : {}) },
@@ -327,7 +359,7 @@ export class SkillSourceService {
 		let skillCount = 0;
 		try {
 			await this.txRunner.run({}, async (ctx) => {
-				await this.sourceRepository.lockForMove(sourceId, ctx);
+				await this.sourceRepository.lockForMemberChange(sourceId, ctx);
 				const locked = await this.sourceRepository.findById(sourceId, ctx);
 				if (!locked) throw new NotFoundError('Source not found');
 				// Permissions were checked before the transaction. They apply only to that scope.
@@ -680,7 +712,17 @@ export class SkillSourceService {
 		source: ParsedSource,
 		target: SkillTarget,
 		scopeType: ScopeType,
-		{ skillKeys, reviewedSkillKeys }: { skillKeys: string[]; reviewedSkillKeys: string[] },
+		{
+			skillKeys,
+			reviewedSkillKeys,
+			existingSourceId,
+			allowedSkippedFiles,
+		}: {
+			skillKeys: string[];
+			reviewedSkillKeys: string[];
+			existingSourceId?: string;
+			allowedSkippedFiles?: string[];
+		},
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
 		const reviewed = new Set(reviewedSkillKeys);
@@ -696,7 +738,7 @@ export class SkillSourceService {
 					provider: source.type,
 					access,
 					scope_type: scopeType,
-					first_or_more: 'first',
+					first_or_more: existingSourceId ? 'more' : 'first',
 					selected: keys.length,
 					imported: imported.length,
 					name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
@@ -712,7 +754,7 @@ export class SkillSourceService {
 			);
 		};
 
-		const sourceId = uuidv7();
+		const sourceId = existingSourceId ?? uuidv7();
 		let discovered: Discovered;
 		try {
 			discovered = await this.discoverAll(source);
@@ -728,7 +770,11 @@ export class SkillSourceService {
 			for (const read of reads) {
 				// The source can change after discover, so connect checks the content it imports.
 				// A SKILL.md that n8n cannot read is also blocked, and the check names the cause.
-				if (read.check?.verdict === 'blocked') {
+				if (
+					read.check?.verdict === 'blocked' ||
+					(allowedSkippedFiles &&
+						read.fetched?.skippedFiles.some((file) => !allowedSkippedFiles.includes(file)))
+				) {
 					failed.push({
 						key: read.key,
 						name: read.skill?.name ?? read.fetched?.content.name ?? null,
@@ -746,31 +792,36 @@ export class SkillSourceService {
 			}
 
 			await this.txRunner.run({}, async (ctx) => {
+				// Keep the same lock order as source moves and deletion.
+				if (existingSourceId)
+					await this.sourceRepository.lockForMemberChange(existingSourceId, ctx);
 				await this.skillRepository.lockNames(ctx);
+				await this.reusableSource(existingSourceId, source, target, ctx);
 				const duplicate = await this.duplicateOf(
 					user,
 					source.identityKey,
 					target.projectId,
-					undefined,
+					existingSourceId,
 					ctx,
 					[],
 				);
 				if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
 				try {
-					await this.sourceRepository.insertConnected(
-						{
-							id: sourceId,
-							type: source.type,
-							locator: source.locator,
-							identityKey: source.identityKey,
-							projectId: target.projectId,
-							credentialId: source.auth?.credentialId ?? null,
-							createdById: user.id,
-							// The check fetches nothing while the source stays at this revision.
-							probeCursor: discovered.revision ?? null,
-						},
-						ctx,
-					);
+					if (!existingSourceId)
+						await this.sourceRepository.insertConnected(
+							{
+								id: sourceId,
+								type: source.type,
+								locator: source.locator,
+								identityKey: source.identityKey,
+								projectId: target.projectId,
+								credentialId: source.auth?.credentialId ?? null,
+								createdById: user.id,
+								// The check fetches nothing while the source stays at this revision.
+								probeCursor: discovered.revision ?? null,
+							},
+							ctx,
+						);
 				} catch (error) {
 					if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
 					throw error;
@@ -780,10 +831,14 @@ export class SkillSourceService {
 				// that this import took gets the first free number ("ponytail 2").
 				const existing = await this.skillRepository.findLatestNamesInTarget(target, ctx);
 				const names = [...existing];
+				const linked = existingSourceId
+					? await this.sourceRepository.findLinksBySource(existingSourceId, ctx)
+					: [];
+				const linkedKeys = new Set(linked.map((link) => refKey(link.remoteRef)));
 				for (const read of importable) {
 					const { skill: fetchedSkill, fetched } = read;
 					if (!fetchedSkill || !fetched) continue;
-					if (isNameTaken(fetchedSkill.name, existing)) {
+					if (linkedKeys.has(read.key) || isNameTaken(fetchedSkill.name, existing)) {
 						failed.push({ key: read.key, name: fetchedSkill.name, reason: 'name_taken' });
 						continue;
 					}
@@ -826,6 +881,8 @@ export class SkillSourceService {
 					const reason = failed[0]?.reason ?? 'no_skills_found';
 					throw new SkillSourceRequestError(reason, noImportMessage(failed, reason));
 				}
+				if (existingSourceId)
+					await this.sourceRepository.invalidateCheckCursor(existingSourceId, ctx);
 			});
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
@@ -845,6 +902,36 @@ export class SkillSourceService {
 			{ source_provider: source.type, source_access: access },
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
+	}
+
+	/** Reuse only the connection that the user reviewed, with its access and branch unchanged. */
+	private async reusableSource(
+		id: string | undefined,
+		source: ParsedSource,
+		target: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<SkillSourceConnection | undefined> {
+		if (!id) return undefined;
+		const existing = await this.sourceRepository.findById(id, ctx);
+		if (!this.matchesSource(existing, source, target)) {
+			throw new SkillSourceRequestError('stale', 'The source changed. Review the import again.');
+		}
+		return existing;
+	}
+
+	private matchesSource(
+		existing: SkillSourceConnection | null,
+		source: ParsedSource,
+		target: SkillTarget,
+	): existing is SkillSourceConnection {
+		return (
+			existing !== null &&
+			(!existing.credentialRequired || !!source.auth) &&
+			existing.identityKey === source.identityKey &&
+			existing.projectId === target.projectId &&
+			existing.credentialId === (source.auth?.credentialId ?? null) &&
+			source.client.describe(existing.locator).ref === source.client.describe(source.locator).ref
+		);
 	}
 
 	/** One event for each skill that the picker shows as needing review or blocked. */

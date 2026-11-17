@@ -28,7 +28,7 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 /**
  * The files of a repository folder at one commit. Every file keeps its path, so the picker can
  * list the files that an import skips. Only the files that can become skill content keep their
- * text: SKILL.md files and markdown under a `references` folder.
+ * text: SKILL.md files, supported references, and license notices.
  */
 export type RepositoryArchive = {
 	paths: string[];
@@ -45,10 +45,10 @@ export function archiveSize(archive: RepositoryArchive): number {
 	return bytes;
 }
 
-function tooLarge(root: string): SkillSourceReadError {
+function tooLarge(root: string | string[]): SkillSourceReadError {
 	return new SkillSourceReadError(
 		'archive_too_large',
-		root === ''
+		(Array.isArray(root) ? root.includes('') : root === '')
 			? 'The repository is too large for n8n to read. Link to the folder of the skills.'
 			: 'The folder is too large for n8n to read. Link to a smaller folder.',
 	);
@@ -57,14 +57,15 @@ function tooLarge(root: string): SkillSourceReadError {
 /**
  * Reads a GitHub tarball (`codeload.github.com/<owner>/<repo>/tar.gz/<sha>`) as it streams in.
  * GitHub puts every file under one folder named after the repository and the commit. The paths
- * here leave it out. Only the entries under `root` are kept, and only they count toward the
+ * here leave it out. Entries under `root` and ancestor license notices count toward the
  * entry and size limits. Links, folders and other entries that are not files are left out.
  */
 export async function readRepositoryArchive(
 	source: Readable,
-	options: { root?: string; signal?: AbortSignal; limits?: ArchiveLimits } = {},
+	options: { root?: string | string[]; signal?: AbortSignal; limits?: ArchiveLimits } = {},
 ): Promise<RepositoryArchive> {
 	const { root = '', signal, limits = DEFAULT_ARCHIVE_LIMITS } = options;
+	const roots = Array.isArray(root) ? root : [root];
 	const paths: string[] = [];
 	const text = new Map<string, string>();
 	const oversized = new Set<string>();
@@ -96,7 +97,14 @@ export async function readRepositoryArchive(
 
 		parser.on('entry', (entry: ReadEntry) => {
 			const path = withoutTopFolder(entry.path);
-			if (path === undefined || !isInside(path, root)) {
+			if (
+				path === undefined ||
+				!roots.some(
+					(folder) =>
+						isInside(path, folder) ||
+						(isLicensePath(path) && isInside(folder, path.split('/').slice(0, -1).join('/'))),
+				)
+			) {
 				entry.resume();
 				return;
 			}
@@ -175,6 +183,11 @@ function withoutTopFolder(path: string): string | undefined {
 function keepsText(path: string): boolean {
 	const segments = path.split('/');
 	const name = segments.at(-1) ?? '';
-	if (name === 'SKILL.md') return true;
-	return segments.includes('references') && /\.(md|markdown)$/i.test(name);
+	if (name === 'SKILL.md' || isLicensePath(path)) return true;
+	return segments.includes('references') && /\.(md|markdown|json|ts)$/i.test(name);
+}
+
+/** License notices stay with imported content, including notices above a linked folder. */
+export function isLicensePath(path: string): boolean {
+	return /^(licen[cs]e|copying|notice)([-_.][a-z0-9]+)*$/i.test(path.split('/').at(-1) ?? '');
 }

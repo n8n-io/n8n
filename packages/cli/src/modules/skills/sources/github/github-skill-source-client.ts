@@ -19,6 +19,7 @@ import { createHash } from 'node:crypto';
 import {
 	DEFAULT_ARCHIVE_LIMITS,
 	archiveSize,
+	isLicensePath,
 	readRepositoryArchive,
 	type ArchiveLimits,
 	type RepositoryArchive,
@@ -32,11 +33,11 @@ import {
 } from './github-link';
 import { lsRefsRequestBody, parseLsRefsResponse, type GitRefs } from './git-refs';
 import { SKILL_FILE, filesOfSkill, findSkillFolders, isInside } from './skill-discovery';
+import { readGitHubSkillFolder } from './skill-reference-examples';
 import { SkillParseError } from '../../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillSourceUrlError } from '../../errors/skill-source-url.error';
-import { readSkillFolder } from '../../utils/skill-md';
 import {
 	SkillSourceClient,
 	type FetchedSkill,
@@ -113,7 +114,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		changeDetection: 'source',
 		pinnedFetch: true,
 		history: false,
-		// An import keeps SKILL.md and `references/*.md` only. It lists the other files in
+		// JSON and TypeScript references become Markdown. Other unsupported files stay in
 		// `skippedFiles`.
 		importFidelity: 'lossy',
 	};
@@ -264,11 +265,21 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		ref: RemoteSkillRef,
 		auth?: SkillSourceAuth,
 		revision?: string,
+		checkedRefs?: RemoteSkillRef[],
 	): Promise<FetchedSkill> {
 		const parsed = readLocator(locator);
 		const { path } = readRef(ref);
 		const sha = revision ?? (await this.head(parsed, auth));
-		const archive = await this.archiveAt(parsed, sha, auth);
+		// A source check reads all linked folders from one archive, including later imports.
+		const roots = [
+			...new Set([
+				parsed.path,
+				...[ref, ...(checkedRefs ?? [])]
+					.map((item) => readRef(item).path)
+					.filter((folder) => !isInside(folder, parsed.path)),
+			]),
+		].sort();
+		const archive = await this.archiveAt(parsed, sha, auth, roots);
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
@@ -286,12 +297,41 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
-		const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+		const { content, skippedFiles, unstorableFiles } = readGitHubSkillFolder(folderName, files);
+		const noticePaths = archive.paths.filter((file) => {
+			if (!isLicensePath(file)) return false;
+			const directory = file.split('/').slice(0, -1).join('/');
+			return isInside(path, directory) || isInside(file, path);
+		});
+		let noticeBytes = 0;
+		const notices = noticePaths.sort().map((file) => {
+			const text = archive.text.get(file);
+			if (text === undefined || text.includes('\0')) {
+				throw new SkillParseError('The license notice cannot be stored.');
+			}
+			noticeBytes += Buffer.byteLength(text);
+			if (noticeBytes > 256 * 1024) throw new SkillParseError('The license notices exceed 256 KB.');
+			return { path: file, text };
+		});
+		if (notices.length > 0) {
+			const noticePath = 'references/SOURCE.md';
+			if (content.files.some((file) => file.path === noticePath)) {
+				throw new SkillParseError('The source already contains references/SOURCE.md.');
+			}
+			// References survive skill downloads and MCP reads, which omit extra frontmatter.
+			content.files.push({
+				path: noticePath,
+				content: [
+					`# Source and license notices\n\nSource: ${this.webUrl(locator, ref)}`,
+					...notices.map((notice) => `## ${notice.path}\n\n${notice.text}`),
+				].join('\n\n'),
+			});
+		}
 		return {
 			content,
 			revision: sha,
 			fidelity: [],
-			skippedFiles: [...skippedFiles, ...oversized],
+			skippedFiles: [...skippedFiles.filter((file) => !isLicensePath(file)), ...oversized],
 			unstorableFiles,
 		};
 	}
@@ -385,21 +425,23 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/**
-	 * The archive of the folder of the link. Each link keeps only the files under its folder.
-	 * The cache key holds the access, as for `head`, so one credential never gets an archive
-	 * that another one read.
+	 * One archive for the requested folders. The cache key includes access, so one
+	 * credential never gets an archive that another one read.
 	 */
 	private async archiveAt(
 		locator: GitHubLocator,
 		sha: string,
 		auth?: SkillSourceAuth,
+		roots = [locator.path],
 	): Promise<RepositoryArchive> {
-		const { owner, repository, path } = locator;
+		const { owner, repository } = locator;
 		// The folder keeps its case, as the paths in the archive do.
-		const key = `${owner}/${repository}@${sha}`.toLowerCase() + `:${path}#${accessKey(auth)}`;
+		const key =
+			`${owner}/${repository}@${sha}`.toLowerCase() +
+			`:${JSON.stringify(roots)}#${accessKey(auth)}`;
 		const cached = this.archives.get(key);
 		if (cached) return await cached;
-		const archive = this.downloads(async () => await this.download(locator, sha, auth));
+		const archive = this.downloads(async () => await this.download(locator, sha, auth, roots));
 		this.archives.set(key, archive, { size: 1 });
 		archive.then(
 			(read) => {
@@ -428,8 +470,9 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		locator: GitHubLocator,
 		sha: string,
 		auth?: SkillSourceAuth,
+		roots = [locator.path],
 	): Promise<RepositoryArchive> {
-		const { owner, repository, path } = locator;
+		const { owner, repository } = locator;
 		const [o, r, s] = [owner, repository, sha].map(encodeURIComponent);
 		const target = auth
 			? {
@@ -461,7 +504,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				throwForStatus(response.statusCode, response.headers, auth);
 			}
 			return await readRepositoryArchive(response.body, {
-				root: path,
+				root: roots,
 				signal: deadline.signal,
 				limits: this.archiveLimits,
 			});

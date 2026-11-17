@@ -620,6 +620,7 @@ export class SkillSyncService {
 			await this.recordCheck(source, {
 				checkedAt,
 				errorReason: null,
+				checkedSkillIds: links.map((link) => link.skillId),
 				...(next !== undefined ? { probeCursor: { from: source.probeCursor, to: next } } : {}),
 			});
 			// A concurrent source check can set a newer limit for the same credential.
@@ -734,13 +735,14 @@ export class SkillSyncService {
 		const counts: VerdictCounts = { pass: 0, needs_review: 0, blocked: 0 };
 		let conflict = false;
 		if (links.length === 0) return { counts, conflict };
+		const checkedRefs = links.map((link) => link.remoteRef);
 		for (let start = 0; start < links.length; start += FETCH_CONCURRENCY) {
 			const batch = links.slice(start, start + FETCH_CONCURRENCY);
 			// Per batch, so a source with many large skills never holds all of them at once.
 			const latest = await this.skillRepository.findLatestSaved(batch.map((link) => link.skillId));
 			const verdicts = await Promise.all(
 				batch.map(async (link) => {
-					const fetched = await this.fetch(source, client, link, auth, revision);
+					const fetched = await this.fetch(source, client, link, auth, revision, checkedRefs);
 					const row = latest.get(link.skillId);
 					if (!(await this.sourceRepository.setLinkAvailability(link, !fetched))) return 'conflict';
 					if (!fetched || !row) return undefined;
@@ -768,9 +770,10 @@ export class SkillSyncService {
 		link: SkillSourceLink,
 		auth: SkillSourceAuth | undefined,
 		revision: string | undefined,
+		checkedRefs: SkillSourceLink['remoteRef'][],
 	): Promise<Fetched | undefined> {
 		try {
-			return await client.fetchLatest(source.locator, link.remoteRef, auth, revision);
+			return await client.fetchLatest(source.locator, link.remoteRef, auth, revision, checkedRefs);
 		} catch (error) {
 			if (error instanceof SkillSourceNotFoundError && error.skill) return undefined;
 			if (error instanceof SkillParseError) {

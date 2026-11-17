@@ -65,6 +65,16 @@ describe('agentSkillExport', () => {
 		await expect(useAgentSkillImport().importSkillFiles(files)).resolves.toEqual(skill);
 	});
 
+	it('keeps imported source and license notices in the downloaded package', async () => {
+		const notice = '# Source\nhttps://github.com/acme/skills\n\nCopyright Acme. Permission notice.';
+		const result = await exportAgentSkill({
+			...base,
+			references: [{ path: 'references/SOURCE.md', content: notice }],
+		});
+		const entries = unzipSync(await blobBytes(result.blob));
+		expect(strFromU8(entries['research-search/references/SOURCE.md'])).toBe(notice);
+	});
+
 	it.each(['.', '..', '  '])('names the folder `skill` for the name %j', async (name) => {
 		const result = await exportAgentSkill({
 			...base,

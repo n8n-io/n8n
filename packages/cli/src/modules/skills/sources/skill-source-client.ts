@@ -189,6 +189,8 @@ export abstract class SkillSourceClient {
 		ref: RemoteSkillRef,
 		auth?: SkillSourceAuth,
 		revision?: string,
+		/** Other skills in this check, so a client can share one bounded source read. */
+		checkedRefs?: RemoteSkillRef[],
 	): Promise<FetchedSkill>;
 }
 
