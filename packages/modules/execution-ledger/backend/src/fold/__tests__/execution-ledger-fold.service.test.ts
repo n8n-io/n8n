@@ -323,28 +323,15 @@ describe('ExecutionLedgerFoldService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('emits step-failed with the step and attempt, and not succeeded', async () => {
+		it('emits step-failed with the step, and not succeeded', async () => {
 			failingStep();
 
 			await failOnce();
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-step-failed', {
 				step: 'bad',
-				attempt: 1,
 			});
 			expect(emitted('execution-ledger-fold-succeeded')).toHaveLength(0);
-		});
-
-		it('counts the attempt up on the same batch', async () => {
-			failingStep();
-
-			await failOnce();
-			await failOnce();
-
-			expect(emitted('execution-ledger-fold-step-failed').map(([, payload]) => payload)).toEqual([
-				{ step: 'bad', attempt: 1 },
-				{ step: 'bad', attempt: 2 },
-			]);
 		});
 
 		it('carries firstLedgerId and the fold step tag on the thrown error', async () => {

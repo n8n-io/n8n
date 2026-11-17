@@ -1,5 +1,4 @@
-import { ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionLedgerBacklogProbe } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
@@ -10,19 +9,16 @@ import type { PrometheusMetricsCollector } from './base';
 import { toGaugeValue } from './cached-metric-query';
 import { DatabaseMetricQueryService } from './database-metric-query.service';
 
-/** Short enough for a lag alert of a few minutes, long enough to keep COUNT(*) rare. */
+/** Long enough to keep the backlog COUNT(*) rare. */
 const BACKLOG_CACHE_TTL_MS = 30 * Time.seconds.toMilliseconds;
 
-/**
- * Collects metrics for the execution ledger fold, so an alert can catch a stopped fold
- * before the ledger table grows. Main only, because only mains fold.
- */
+/** Metrics for the execution ledger fold. Main only, because only mains fold. */
 @Service()
 export class PrometheusExecutionLedgerMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly moduleRegistry: ModuleRegistry,
+		private readonly ledgerBacklogProbe: ExecutionLedgerBacklogProbe,
 		private readonly eventService: EventService,
 		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
@@ -31,7 +27,7 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 		return (
 			this.config.includeExecutionLedgerMetrics &&
 			this.instanceSettings.instanceType === 'main' &&
-			this.moduleRegistry.isActive('execution-ledger')
+			this.ledgerBacklogProbe.isRegistered
 		);
 	}
 

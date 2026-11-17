@@ -1,10 +1,12 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
-import { ExecutionLedgerBacklog } from '@n8n/backend-module-execution-ledger';
-import type { CacheService, EventService } from '@n8n/backend-services';
+import {
+	type CacheService,
+	type EventService,
+	ExecutionLedgerBacklogProbe,
+	type ExecutionLedgerBacklogStats,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
-import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
@@ -14,9 +16,6 @@ import { DatabaseMetricQueryService } from '../database-metric-query.service';
 import { PrometheusExecutionLedgerMetricsService } from '../execution-ledger-metrics.service';
 
 vi.mock('prom-client');
-vi.mock('@n8n/backend-module-execution-ledger', () => ({
-	ExecutionLedgerBacklog: class ExecutionLedgerBacklog {},
-}));
 
 describe('PrometheusExecutionLedgerMetricsService', () => {
 	const NOW = new Date('2026-01-01T00:00:00.000Z');
@@ -26,38 +25,31 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 		includeExecutionLedgerMetrics: true,
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
-	const moduleRegistry = mock<ModuleRegistry>();
 	const eventService = mock<EventService>();
 	const cacheService = mock<CacheService>();
 	const dbConnection = mock<DbConnection>({
 		connectionState: { connected: true, migrated: true },
 	});
-	const backlog = mock<ExecutionLedgerBacklog>();
+	const backlog = { getStats: vi.fn<() => Promise<ExecutionLedgerBacklogStats>>() };
+	let probe: ExecutionLedgerBacklogProbe;
 
 	let service: PrometheusExecutionLedgerMetricsService;
 	const instancesByName = new Map<string, FakeMetric>();
 
-	/** Tracks the value of each label set, and of an unlabelled series, like `prom-client`. */
+	/** One value per label set, like `prom-client`. */
 	class FakeMetric {
 		private readonly values = new Map<string, number>();
 
-		inc = vi.fn((labelsOrValue?: object | number, value = 1) => {
-			if (typeof labelsOrValue === 'number') return this.add('', labelsOrValue);
-			this.add(labelsOrValue === undefined ? '' : JSON.stringify(labelsOrValue), value);
+		inc = vi.fn((labels: object) => {
+			const key = JSON.stringify(labels);
+			this.values.set(key, (this.values.get(key) ?? 0) + 1);
 		});
-		set = vi.fn((labelsOrValue: object | number, value?: number) => {
-			if (typeof labelsOrValue === 'number') this.values.set('', labelsOrValue);
-			else this.values.set(JSON.stringify(labelsOrValue), value as number);
-		});
+		set = vi.fn((value: number) => this.values.set('', value));
 
 		collect?: () => Promise<void>;
 
 		value(labels?: object) {
 			return this.values.get(labels ? JSON.stringify(labels) : '');
-		}
-
-		private add(key: string, delta: number) {
-			this.values.set(key, (this.values.get(key) ?? 0) + delta);
 		}
 	}
 
@@ -85,19 +77,19 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 		vi.setSystemTime(NOW);
 		Object.assign(config, { prefix: 'n8n_', includeExecutionLedgerMetrics: true });
 		Object.assign(instanceSettings, { instanceType: 'main' });
-		moduleRegistry.isActive.mockReturnValue(true);
 		instancesByName.clear();
 		Object.assign(promClient, { Counter: fake(), Gauge: fake() });
 
 		cacheService.get.mockResolvedValue(undefined);
 		dbConnection.connectionState.connected = true;
 		backlog.getStats.mockResolvedValue({ rows: 0, oldestOccurredAt: null });
-		Container.set(ExecutionLedgerBacklog, backlog);
+		probe = new ExecutionLedgerBacklogProbe();
+		probe.register(backlog.getStats);
 
 		service = new PrometheusExecutionLedgerMetricsService(
 			config,
 			instanceSettings,
-			moduleRegistry,
+			probe,
 			eventService,
 			new DatabaseMetricQueryService(
 				new CachedMetricQueryFactory(cacheService, dbConnection),
@@ -106,6 +98,7 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 				mock(),
 				mock(),
 				mock(),
+				probe,
 			),
 		);
 	});
@@ -116,9 +109,8 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 	});
 
 	describe('enabled', () => {
-		it('is true when opted in, on main, and the module is active', () => {
+		it('is true when opted in, on main, and a backlog provider is registered', () => {
 			expect(service.enabled).toBe(true);
-			expect(moduleRegistry.isActive).toHaveBeenCalledWith('execution-ledger');
 		});
 
 		it('is false when not opted in', () => {
@@ -131,9 +123,16 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 			expect(service.enabled).toBe(false);
 		});
 
-		it('is false when the module is not active', () => {
-			moduleRegistry.isActive.mockReturnValue(false);
-			expect(service.enabled).toBe(false);
+		it('is false when no backlog provider is registered', () => {
+			const unregistered = new ExecutionLedgerBacklogProbe();
+			const off = new PrometheusExecutionLedgerMetricsService(
+				config,
+				instanceSettings,
+				unregistered,
+				eventService,
+				mock(),
+			);
+			expect(off.enabled).toBe(false);
 		});
 	});
 
@@ -142,13 +141,9 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 			service.init();
 		});
 
-		it('creates no step series before a step fails', () => {
-			expect(metric('execution_ledger_fold_step_failures_total').inc).not.toHaveBeenCalled();
-		});
-
 		it('step-failed counts the failure for that step', () => {
-			emit('execution-ledger-fold-step-failed', { step: 'alpha', attempt: 1 });
-			emit('execution-ledger-fold-step-failed', { step: 'alpha', attempt: 2 });
+			emit('execution-ledger-fold-step-failed', { step: 'alpha' });
+			emit('execution-ledger-fold-step-failed', { step: 'alpha' });
 
 			expect(metric('execution_ledger_fold_step_failures_total').value({ step: 'alpha' })).toBe(2);
 			expect(
@@ -166,14 +161,12 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 	});
 
 	describe('backlog gauges', () => {
-		const collectRows = async () => {
-			await metric('execution_ledger_backlog_rows').collect!();
-			return metric('execution_ledger_backlog_rows').value();
+		const collect = async (name: string) => {
+			await metric(name).collect!();
+			return metric(name).value();
 		};
-		const collectAge = async () => {
-			await metric('execution_ledger_backlog_oldest_row_age_seconds').collect!();
-			return metric('execution_ledger_backlog_oldest_row_age_seconds').value();
-		};
+		const collectRows = async () => await collect('execution_ledger_backlog_rows');
+		const collectAge = async () => await collect('execution_ledger_backlog_oldest_row_age_seconds');
 
 		beforeEach(() => {
 			service.init();

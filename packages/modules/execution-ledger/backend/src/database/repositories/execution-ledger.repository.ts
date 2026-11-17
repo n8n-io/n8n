@@ -1,3 +1,4 @@
+import type { ExecutionLedgerBacklogStats } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import {
 	BaseRepository,
@@ -27,8 +28,6 @@ class ExecutionLedgerTable extends BaseRepository<ExecutionLedgerEntity> {
 export type NewExecutionLedgerRow = Omit<ExecutionLedgerRow, 'id'>;
 
 type RawLedgerRow = Record<keyof ExecutionLedgerRow, unknown>;
-
-export type ExecutionLedgerBacklogStats = { rows: number; oldestOccurredAt: Date | null };
 
 /** The only reader and writer of `execution_ledger`. */
 @Service()
@@ -83,7 +82,6 @@ export class ExecutionLedgerRepository {
 		return rows.map(toLedgerRow);
 	}
 
-	/** Counts the rows that no fold has claimed yet, and finds the oldest one. */
 	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
 		const manager = this.table.managerFor({});
 		const table = manager.connection.driver.escape(this.table.metadata.tableName);

@@ -25,7 +25,6 @@ const BATCH_DELAY_MS = 250;
 /** Consecutive lock skips after which the fold warns that something else holds the lock. */
 const SKIP_WARN_THRESHOLD = 5;
 
-/** Failures in a row on the same batch after which the fold logs an alert. */
 export const FOLD_FAILURE_ALERT_THRESHOLD = 3;
 
 /**
@@ -34,7 +33,7 @@ export const FOLD_FAILURE_ALERT_THRESHOLD = 3;
  */
 @Service()
 export class ExecutionLedgerFoldService {
-	/** The step that failed last, and its batch by first ledger id. A handover resets it. */
+	/** Last failed step and batch (by first ledger id). A handover resets it. */
 	private failedBatch: { key: string; step: string; failures: number } | undefined;
 
 	private consecutiveLockSkips = 0;
@@ -146,8 +145,8 @@ export class ExecutionLedgerFoldService {
 	}
 
 	private reportStepFailure({ step, attempt, firstLedgerId }: FoldStepFailedError) {
-		this.emitMetric('execution-ledger-fold-step-failed', { step, attempt });
-		// Logged once per batch, since the task runner already logs every failed run.
+		this.emitMetric('execution-ledger-fold-step-failed', { step });
+		// Logged once per streak, since the task runner already logs every failed run.
 		if (attempt !== FOLD_FAILURE_ALERT_THRESHOLD) return;
 
 		this.logger.error('Execution ledger fold step keeps failing on the same batch', {

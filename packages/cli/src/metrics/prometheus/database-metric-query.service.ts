@@ -1,3 +1,4 @@
+import { ExecutionLedgerBacklogProbe } from '@n8n/backend-services';
 import { ScheduledJobOwnerType, Time } from '@n8n/constants';
 import {
 	LicenseMetricsRepository,
@@ -7,7 +8,7 @@ import {
 	type WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 
 import { CachedMetricQueryFactory } from './cached-metric-query';
 
@@ -41,6 +42,7 @@ export class DatabaseMetricQueryService {
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly taskRepository: ScheduledTaskRepository,
 		private readonly jobRepository: ScheduledJobRepository,
+		private readonly ledgerBacklogProbe: ExecutionLedgerBacklogProbe,
 	) {}
 
 	activeWorkflowCount(ttlMs: number) {
@@ -82,14 +84,13 @@ export class DatabaseMetricQueryService {
 		});
 	}
 
-	/** Call only while the `execution-ledger` module is active. It owns the table. */
+	/** Call only once the `execution-ledger` module has registered its backlog provider. */
 	executionLedgerBacklog(ttlMs: number) {
 		return this.cachedQueries.create<LedgerBacklogState>({
 			cacheKey: 'metrics:execution-ledger:backlog:v1',
 			ttlMs,
 			query: async () => {
-				const { ExecutionLedgerBacklog } = await import('@n8n/backend-module-execution-ledger');
-				const { rows, oldestOccurredAt } = await Container.get(ExecutionLedgerBacklog).getStats();
+				const { rows, oldestOccurredAt } = await this.ledgerBacklogProbe.getStats();
 				return { rows, oldestMs: oldestOccurredAt?.getTime() ?? null };
 			},
 		});

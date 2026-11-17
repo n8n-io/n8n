@@ -1,4 +1,4 @@
-import { ExecutionLedger } from '@n8n/backend-services';
+import { ExecutionLedger, ExecutionLedgerBacklogProbe } from '@n8n/backend-services';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -13,6 +13,14 @@ export class ExecutionLedgerModule implements ModuleInterface {
 	async init() {
 		const { ExecutionLedgerRowWriter } = await import('./execution-ledger-row.writer.js');
 		Container.get(ExecutionLedger).setImplementation(Container.get(ExecutionLedgerRowWriter));
+
+		const { ExecutionLedgerRepository } = await import(
+			'./database/repositories/execution-ledger.repository.js'
+		);
+		const repository = Container.get(ExecutionLedgerRepository);
+		Container.get(ExecutionLedgerBacklogProbe).register(
+			async () => await repository.getBacklogStats(),
+		);
 	}
 
 	async systemTasks() {
