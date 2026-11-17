@@ -12,6 +12,7 @@ import type {
 } from '@n8n/api-types';
 import { get, makeRestApiRequest } from '@n8n/rest-api-client';
 import { isRecord } from '@n8n/utils/is-record';
+import { retry } from '@n8n/utils/retry';
 import type { Themed } from 'n8n-workflow';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -93,7 +94,16 @@ function toThemed(value: unknown): Themed<string> | undefined {
 export async function fetchCredentialTypeSummaries(
 	baseUrl: string,
 ): Promise<Map<string, CredentialTypeSummary>> {
-	const types: unknown = await get(baseUrl, 'types/credentials.json');
+	let types: unknown;
+	// Right after startup the server can still be writing the file, as the editor's own read allows.
+	await retry(
+		async () => {
+			types = await get(baseUrl, 'types/credentials.json');
+			return Array.isArray(types);
+		},
+		500,
+		5,
+	);
 	if (!Array.isArray(types)) return new Map();
 
 	return new Map(

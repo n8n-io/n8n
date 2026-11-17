@@ -155,6 +155,16 @@ describe('InstancePolicyTable', () => {
 		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
 	});
 
+	it('emits open for a click on a row, but not for a click on its Access menu', async () => {
+		const { getByTestId, getByText, emitted } = setup();
+
+		await userEvent.click(getByText('Notion API'));
+		expect(emitted('open')).toEqual([['notionApi']]);
+
+		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
+		expect(emitted('open')).toEqual([['notionApi']]);
+	});
+
 	it('offers the opt-in filter when a row has that access', async () => {
 		const { getByRole } = setup([...ROWS, row('slackApi', 'Slack API', 'delegate')]);
 

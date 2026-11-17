@@ -95,9 +95,29 @@ describe('instance access requests', () => {
 		]);
 	});
 
-	it('returns no credential types when the file is not a list', async () => {
+	it('reads the file again while the server has not written it yet', async () => {
+		vi.useFakeTimers();
+		get
+			.mockResolvedValueOnce({})
+			.mockResolvedValue([{ name: 'bitlyApi', displayName: 'Bitly API' }]);
+
+		const request = fetchCredentialTypeSummaries('/');
+		await vi.runAllTimersAsync();
+
+		expect([...(await request).keys()]).toEqual(['bitlyApi']);
+		expect(get).toHaveBeenCalledTimes(2);
+		vi.useRealTimers();
+	});
+
+	it('returns no credential types when the file never becomes a list', async () => {
+		vi.useFakeTimers();
 		get.mockResolvedValue({});
 
-		expect((await fetchCredentialTypeSummaries('/')).size).toBe(0);
+		const request = fetchCredentialTypeSummaries('/');
+		await vi.runAllTimersAsync();
+
+		expect((await request).size).toBe(0);
+		expect(get).toHaveBeenCalledTimes(5);
+		vi.useRealTimers();
 	});
 });

@@ -34,7 +34,11 @@ const props = defineProps<{
 	searchPlaceholder: string;
 }>();
 
-const emit = defineEmits<{ change: [name: string, access: PolicyAction] }>();
+const emit = defineEmits<{
+	change: [name: string, access: PolicyAction];
+	/** A click on a row, outside its Access menu. */
+	open: [name: string];
+}>();
 
 const i18n = useI18n();
 
@@ -186,6 +190,10 @@ const accessMenuItems = computed<Record<PolicyAction, Array<DropdownMenuItemProp
 	() => ({ allow: menuItems('allow'), deny: menuItems('deny'), delegate: menuItems('delegate') }),
 );
 
+function onRowClick(_event: MouseEvent, { item }: { item: InstancePolicyTableRow }) {
+	emit('open', item.name);
+}
+
 function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	if (access !== row.access) emit('change', row.name, access);
 }
@@ -231,6 +239,7 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 			:pin-columns="1"
 			show-sizes-label
 			data-test-id="instance-policy-table"
+			@click:row="onRowClick"
 		>
 			<template #[`item.displayName`]="{ item }">
 				<div :class="$style.name">
@@ -247,9 +256,11 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 					@select="(access: PolicyAction) => onAccessChange(item, access)"
 				>
 					<template #trigger>
+						<!-- The menu opens on its own, so the click must not also open the row. -->
 						<N8nButton
 							variant="ghost"
 							size="small"
+							@click.stop
 							:aria-label="
 								i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.access.ariaLabel', {
 									interpolate: { name: item.displayName },
