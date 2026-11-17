@@ -1,4 +1,5 @@
 import type { AgentHitlOptionsPage } from '@n8n/api-types';
+import { httpStatusFromError } from '@n8n/backend-network';
 import type { ChannelHitlDefinition, ChannelHitlOptionsContext } from '../../channel-hitl';
 import {
 	approvalNode,
@@ -40,10 +41,15 @@ export const discordHitl = {
 	async listOptions(context) {
 		if (context.query.field === 'guild')
 			return await listDiscordPage(context, 'guild', context.query.cursor);
-		return await listReviewRecipients(
-			context.query.cursor,
-			async (kind, cursor) => await listDiscordPage(context, kind, cursor),
-		);
+		return await listReviewRecipients(context.query.cursor, async (kind, cursor) => {
+			try {
+				return await listDiscordPage(context, kind, cursor);
+			} catch (error) {
+				// A bot without the Server Members intent cannot list members. Keep the channels.
+				if (kind === 'user' && httpStatusFromError(error) === 403) return { options: [] };
+				throw error;
+			}
+		});
 	},
 	createNode(configuration) {
 		if (!configuration.guildId || !/^\d+$/.test(configuration.recipient.id))

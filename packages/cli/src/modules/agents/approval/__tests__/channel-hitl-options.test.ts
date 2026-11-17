@@ -133,3 +133,95 @@ it('rejects malformed destination cursors before contacting a platform', async (
 	).rejects.toThrow('Invalid destination page');
 	expect(httpClient.request).not.toHaveBeenCalled();
 });
+
+it('pages Discord servers after a full page of 200 rows', async () => {
+	const httpClient = mock<HttpRequestClient>();
+	const fullPage = Array.from({ length: 200 }, (_, index) => ({
+		id: String(index + 1),
+		name: `Server ${index + 1}`,
+	}));
+	httpClient.request.mockImplementation(async ({ url }) =>
+		String(url).includes('after=200') ? [{ id: '201', name: 'Last server' }] : fullPage,
+	);
+	const context = {
+		httpClient,
+		credential: { botToken: 'test' },
+		query: { channel: 'discord', credentialId: 'credential', field: 'guild', query: '' },
+	} as const;
+
+	const first = await discordHitl.listOptions(context);
+	expect(first.options).toHaveLength(200);
+	expect(first.nextCursor).toBe('200');
+
+	const second = await discordHitl.listOptions({
+		...context,
+		query: { ...context.query, cursor: first.nextCursor },
+	});
+	expect(second).toEqual({ options: [{ id: '201', name: 'Last server' }], nextCursor: undefined });
+	expect(httpClient.request).toHaveBeenLastCalledWith(
+		expect.objectContaining({
+			url: 'https://discord.com/api/v10/users/@me/guilds?limit=200&after=200',
+		}),
+	);
+});
+
+it.each([
+	['server', { field: 'guild', cursor: 'next' }],
+	['destination', { field: 'recipient', guildId: '42', cursor: JSON.stringify({ user: 'next' }) }],
+] as const)('rejects a non-numeric Discord %s cursor before any request', async (_label, query) => {
+	const httpClient = mock<HttpRequestClient>();
+	await expect(
+		discordHitl.listOptions({
+			httpClient,
+			credential: { botToken: 'test' },
+			query: { channel: 'discord', credentialId: 'credential', query: '', ...query },
+		}),
+	).rejects.toThrow('Invalid Discord page');
+	expect(httpClient.request).not.toHaveBeenCalled();
+});
+
+it('returns Discord channels when the bot cannot list server members', async () => {
+	const httpClient = mock<HttpRequestClient>();
+	httpClient.request.mockImplementation(async ({ url }) => {
+		if (String(url).includes('/members?'))
+			throw Object.assign(new Error('Missing Access'), { response: { status: 403 } });
+		return [{ id: '3', name: 'approvals', type: 0 }];
+	});
+
+	expect(
+		await discordHitl.listOptions({
+			httpClient,
+			credential: { botToken: 'test' },
+			query: {
+				channel: 'discord',
+				credentialId: 'credential',
+				field: 'recipient',
+				guildId: '42',
+				query: '',
+			},
+		}),
+	).toEqual({ options: [{ id: '3', name: '#approvals', kind: 'channel' }], nextCursor: undefined });
+});
+
+it('fails the Discord lookup on other member errors', async () => {
+	const httpClient = mock<HttpRequestClient>();
+	httpClient.request.mockImplementation(async ({ url }) => {
+		if (String(url).includes('/members?'))
+			throw Object.assign(new Error('Unauthorized'), { response: { status: 401 } });
+		return [];
+	});
+
+	await expect(
+		discordHitl.listOptions({
+			httpClient,
+			credential: { botToken: 'test' },
+			query: {
+				channel: 'discord',
+				credentialId: 'credential',
+				field: 'recipient',
+				guildId: '42',
+				query: '',
+			},
+		}),
+	).rejects.toThrow('Unauthorized');
+});

@@ -2093,6 +2093,47 @@ describe('human review validation', () => {
 			expect.objectContaining({ code: 'missing_reference', path: 'tools.0.approvalRoute' }),
 		);
 	});
+	it('accepts assignments that match saved configurations and skips disabled tools', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mockDeep<WorkflowEntity>({
+				id: 'decision',
+				isArchived: false,
+				nodes: [{ disabled: false, type: 'n8n-nodes-base.agentDecisionTrigger' }],
+			}),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				hitlConfigurations: [
+					{ id: 'first', name: 'First', method: 'workflow', workflowId: 'decision' },
+					{ id: 'second', name: 'Second', method: 'workflow', workflowId: 'decision' },
+				],
+				tools: [
+					{
+						type: 'custom',
+						id: 'matched-tool',
+						approvalRoute: { type: 'configuration', configurationIds: ['second', 'first'] },
+					},
+					{
+						type: 'custom',
+						id: 'disabled-tool',
+						enabled: false,
+						approvalRoute: { type: 'configuration', configurationIds: ['missing'] },
+					},
+				],
+			} as unknown as AgentJsonConfig),
+		);
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			'runtime',
+		);
+		expect(result.issues.filter(({ path }) => path.endsWith('.approvalRoute'))).toEqual([]);
+		expect(result.issues.filter(({ path }) => path.startsWith('hitlConfigurations'))).toEqual([]);
+	});
+
 	it.each(['missing', 'archived', 'unpublished', 'wrong-trigger', 'valid'] as const)(
 		'checks a decision workflow before publication: %s',
 		async (state) => {
@@ -2132,8 +2173,96 @@ describe('human review validation', () => {
 				'publish',
 			);
 			const issues = result.issues.filter(({ path }) => path === 'hitlConfigurations.0.workflowId');
-			if (state === 'valid') expect(issues).toEqual([]);
-			else expect(issues).toHaveLength(1);
+			const expectedByState = {
+				missing: { code: 'missing_reference' },
+				archived: { code: 'missing_reference' },
+				unpublished: { code: 'incompatible_reference', reason: 'not_published' },
+				'wrong-trigger': { code: 'incompatible_reference', reason: 'no_decision_trigger' },
+				valid: undefined,
+			} as const;
+			const expected = expectedByState[state];
+			expect(issues).toEqual(expected ? [expect.objectContaining(expected)] : []);
 		},
 	);
+
+	describe('channel destination', () => {
+		const slackHitl = { supported: true, credentialType: 'slackApi' };
+		const channelConfiguration = {
+			id: 'review',
+			name: 'Review',
+			method: 'channel',
+			channel: 'slack',
+			credentialId: 'slack-cred',
+			recipient: { kind: 'channel', id: 'C123' },
+		} as const;
+
+		async function validateChannel({
+			integrations,
+			credentials,
+		}: {
+			integrations: Array<{ type: string; credentialId: string }>;
+			credentials: Array<{ id: string; type: string }>;
+		}) {
+			const { service, agentRepository, chatIntegrationRegistry } = makeService();
+			chatIntegrationRegistry.get.mockReturnValue({
+				type: 'slack',
+				credentialTypes: ['slackApi'],
+				acceptedCredentialTypes: () => ['slackApi'],
+				hitl: slackHitl,
+			} as never);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ ...runnableConfig, hitlConfigurations: [channelConfiguration] }, {}, {
+					integrations,
+				} as Partial<ProjectAgent>),
+			);
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }, ...credentials]),
+				'runtime',
+			);
+			return result.issues.filter(({ path }) => path === 'hitlConfigurations.0.credentialId');
+		}
+
+		it('accepts a connected channel with a compatible credential', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
+					credentials: [{ id: 'slack-cred', type: 'slackApi' }],
+				}),
+			).resolves.toEqual([]);
+		});
+
+		it('reports a missing integration for the review credential', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'other-cred' }],
+					credentials: [{ id: 'slack-cred', type: 'slackApi' }],
+				}),
+			).resolves.toEqual([
+				expect.objectContaining({
+					code: 'missing_reference',
+					capability: { kind: 'humanReview', id: 'review', index: 0 },
+				}),
+			]);
+		});
+
+		it('reports a credential that no longer exists', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
+					credentials: [],
+				}),
+			).resolves.toEqual([expect.objectContaining({ code: 'invalid_credential' })]);
+		});
+
+		it('reports a credential of the wrong type', async () => {
+			await expect(
+				validateChannel({
+					integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
+					credentials: [{ id: 'slack-cred', type: 'httpHeaderAuth' }],
+				}),
+			).resolves.toEqual([expect.objectContaining({ code: 'incompatible_credential' })]);
+		});
+	});
 });

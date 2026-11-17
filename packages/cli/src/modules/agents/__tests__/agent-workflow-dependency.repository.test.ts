@@ -118,6 +118,16 @@ describe('AgentWorkflowDependencyRepository', () => {
 		);
 		entityManager.find.mockResolvedValue(workflows('decision-draft', 'decision-published'));
 		await repository.refreshForAgent(agent.id);
+		expect(entityManager.find).toHaveBeenCalledWith(WorkflowEntity, {
+			where: [
+				{
+					id: In(['wf-draft', 'wf-published', 'decision-draft', 'decision-published']),
+					shared: { projectId: 'project-1' },
+				},
+				{ name: In(['Legacy WF']), shared: { projectId: 'project-1' } },
+			],
+			select: ['id'],
+		});
 		expect(entityManager.insert).toHaveBeenCalledWith(AgentWorkflowDependency, [
 			{ agentId: agent.id, workflowId: 'decision-draft' },
 			{ agentId: agent.id, workflowId: 'decision-published' },

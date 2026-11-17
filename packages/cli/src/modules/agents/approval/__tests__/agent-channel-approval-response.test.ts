@@ -3,13 +3,17 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import type { IExecutionResponse } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { buildHitlCallbackReference } from 'n8n-core';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Adapter } from 'chat';
 import { mock } from 'vitest-mock-extended';
 import type { INode, IRunExecutionData, IExecuteData } from 'n8n-workflow';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { WaitTracker } from '@/wait-tracker';
-import { AgentChannelHitlService } from '../agent-channel-hitl.service';
+import {
+	AgentChannelHitlService,
+	APPROVAL_JOB_LOOKUP_DELAYS_MS,
+} from '../agent-channel-hitl.service';
 import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegration,
@@ -27,16 +31,20 @@ function setup() {
 	const executions = mock<ExecutionPersistence>();
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const tracker = mock<WaitTracker>();
+	tracker.startExecution.mockResolvedValue(true);
 	Container.set(WaitTracker, tracker);
 	const registry = new ChatIntegrationRegistry();
+	// A plain object: `mock()` wraps the shared adapter again in every test.
 	for (const [type, hitl, credentialType] of [
 		['slack', slackHitl, 'slackApi'],
 		['telegram', telegramHitl, 'telegramApi'],
 		['discord', discordHitl, 'discordBotApi'],
 	] as const)
-		registry.register(
-			mock<AgentChatIntegration>({ type, hitl, credentialTypes: [credentialType] }),
-		);
+		registry.register({
+			type,
+			hitl,
+			credentialTypes: [credentialType],
+		} as unknown as AgentChatIntegration);
 	const service = new AgentChannelHitlService(
 		mock<AgentRepository>(),
 		registry,
@@ -91,9 +99,11 @@ function setup() {
 		adapter,
 		user: mock({ userId: 'U1' }),
 	});
-	const respond = async () =>
-		await service.respond('agent', 'project', { type: 'slack', credentialId: 'credential' }, event);
-	return { service, executions, jobs, tracker, node, execution, job, event, respond };
+	const integration: { value: AgentIntegrationConfig } = {
+		value: { type: 'slack', credentialId: 'credential' },
+	};
+	const respond = async () => await service.respond('agent', 'project', integration.value, event);
+	return { service, executions, jobs, tracker, node, execution, job, event, integration, respond };
 }
 afterEach(() => Container.reset());
 
@@ -151,7 +161,15 @@ it.each([
 	'credential',
 	'node',
 	'state',
-	'job',
+	'suspended',
+	'missingExecution',
+	'missingNode',
+	'unsupportedPlatform',
+	'nodeType',
+	'integrationCredential',
+	'jobKind',
+	'jobAgent',
+	'jobStatus',
 	'parentRun',
 	'parentThread',
 	'workflow',
@@ -159,7 +177,7 @@ it.each([
 	'user',
 	'channel',
 ] as const)('does not resume an unavailable %s response', async (reason) => {
-	const { event, execution, node, job, jobs, tracker, respond } = setup();
+	const { event, execution, executions, node, job, integration, tracker, respond } = setup();
 	if (reason === 'malformed') event.actionId = 'invalid';
 	if (reason === 'signature')
 		event.actionId = buildHitlCallbackReference('123', 'd', 'another-secret');
@@ -168,7 +186,17 @@ it.each([
 	if (reason === 'credential') node.credentials!.slackApi.id = 'other';
 	if (reason === 'node') node.parameters.agentApproval = false;
 	if (reason === 'state') execution.status = 'success';
-	if (reason === 'job') jobs.findWorkflowJobByExecutionId.mockResolvedValue(null);
+	if (reason === 'suspended') execution.data.waitReason = 'suspended';
+	if (reason === 'missingExecution') executions.findSingleExecution.mockResolvedValue(undefined);
+	if (reason === 'missingNode') execution.data.executionData!.nodeExecutionStack = [];
+	if (reason === 'unsupportedPlatform')
+		integration.value = { type: 'teams', credentialId: 'credential' } as AgentIntegrationConfig;
+	if (reason === 'nodeType') node.type = 'n8n-nodes-base.telegram';
+	if (reason === 'integrationCredential')
+		integration.value = { type: 'slack' } as AgentIntegrationConfig;
+	if (reason === 'jobKind') job.kind = 'workflow';
+	if (reason === 'jobAgent') job.parentAgentId = 'other';
+	if (reason === 'jobStatus') job.status = 'completed';
 	if (reason === 'parentRun') job.parentRunId = 'other-run';
 	if (reason === 'parentThread') job.parentThreadId = 'other-thread';
 	if (reason === 'workflow') job.workflowId = 'other-workflow';
@@ -182,6 +210,48 @@ it.each([
 		};
 	expect(await respond()).toBe('unavailable');
 	expect(tracker.startExecution).not.toHaveBeenCalled();
+});
+
+it('reads the job again when the response arrives before the job is saved', async () => {
+	vi.useFakeTimers();
+	try {
+		const { job, jobs, tracker, respond } = setup();
+		jobs.findWorkflowJobByExecutionId.mockReset();
+		jobs.findWorkflowJobByExecutionId.mockResolvedValueOnce(null).mockResolvedValueOnce(job);
+		const result = respond();
+		await vi.advanceTimersByTimeAsync(APPROVAL_JOB_LOOKUP_DELAYS_MS[0]);
+		expect(await result).toBe(true);
+		expect(jobs.findWorkflowJobByExecutionId).toHaveBeenCalledTimes(2);
+		expect(tracker.startExecution).toHaveBeenCalledOnce();
+	} finally {
+		vi.useRealTimers();
+	}
+});
+
+it('does not resume when the job stays missing', async () => {
+	vi.useFakeTimers();
+	try {
+		const { jobs, tracker, respond } = setup();
+		jobs.findWorkflowJobByExecutionId.mockResolvedValue(null);
+		const result = respond();
+		await vi.advanceTimersByTimeAsync(
+			APPROVAL_JOB_LOOKUP_DELAYS_MS.reduce((total, delay) => total + delay, 0),
+		);
+		expect(await result).toBe('unavailable');
+		expect(jobs.findWorkflowJobByExecutionId).toHaveBeenCalledTimes(
+			APPROVAL_JOB_LOOKUP_DELAYS_MS.length + 1,
+		);
+		expect(tracker.startExecution).not.toHaveBeenCalled();
+	} finally {
+		vi.useRealTimers();
+	}
+});
+
+it('reports the response as unavailable when the resume is refused', async () => {
+	const { tracker, respond } = setup();
+	tracker.startExecution.mockResolvedValue(false);
+	expect(await respond()).toBe('unavailable');
+	expect(tracker.startExecution).toHaveBeenCalledOnce();
 });
 
 it('treats a concurrent response as already handled', async () => {

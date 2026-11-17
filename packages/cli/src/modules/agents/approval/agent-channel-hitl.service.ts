@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { AGENT_DECISION_TRIGGER_NODE_TYPE } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
+import { sleep } from '@n8n/utils/sleep';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -25,6 +26,9 @@ import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChannelHitlAdapter } from '../integrations/channel-hitl';
 import { AgentCredentialLookupService } from '../integrations/agent-credential-lookup.service';
+
+/** Waits between job reads. A fast response can arrive before the job row is saved. */
+export const APPROVAL_JOB_LOOKUP_DELAYS_MS = [250, 500, 1250];
 
 @Service()
 export class AgentChannelHitlService {
@@ -72,7 +76,7 @@ export class AgentChannelHitlService {
 			node.credentials?.[platform.hitl.credentialType]?.id !== integration.credentialId
 		)
 			return 'unavailable';
-		const job = await this.jobs.findWorkflowJobByExecutionId(reference.executionId);
+		const job = await this.findApprovalJob(reference.executionId);
 		if (
 			!job ||
 			job.kind !== 'approval' ||
@@ -88,8 +92,9 @@ export class AgentChannelHitlService {
 
 		const approved = reference.decision === 'a';
 		const { WaitTracker } = await import('@/wait-tracker.js');
+		let resumed: boolean;
 		try {
-			await Container.get(WaitTracker).startExecution(reference.executionId, {
+			resumed = await Container.get(WaitTracker).startExecution(reference.executionId, {
 				nodeId: node.id,
 				data: [
 					{
@@ -110,7 +115,19 @@ export class AgentChannelHitlService {
 			if (error instanceof ExecutionAlreadyResumingError) return 'unavailable';
 			throw error;
 		}
+		// The resume-attempt limit can refuse the resume. Then the tool does not run.
+		if (!resumed) return 'unavailable';
 		return approved;
+	}
+
+	private async findApprovalJob(executionId: string) {
+		let job = await this.jobs.findWorkflowJobByExecutionId(executionId);
+		for (const delay of APPROVAL_JOB_LOOKUP_DELAYS_MS) {
+			if (job) break;
+			await sleep(delay);
+			job = await this.jobs.findWorkflowJobByExecutionId(executionId);
+		}
+		return job;
 	}
 
 	async listChannels(

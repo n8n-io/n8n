@@ -20,8 +20,13 @@ describe('AgentCheckpointRepository', () => {
 		repository = new AgentCheckpointRepository(mockDataSource as never, mock<TransactionRunner>());
 	});
 
-	it('releases only settled approval receipts when a run finishes', async () => {
+	it('expires the checkpoint and releases only settled approval receipts when a run finishes', async () => {
 		await repository.expireByRunIdAndAgentId('run-1', 'agent-1');
+		expect(entityManager.update).toHaveBeenCalledWith(
+			AgentCheckpoint,
+			{ runId: 'run-1', agentId: 'agent-1' },
+			{ expired: true, state: null },
+		);
 		expect(entityManager.update).toHaveBeenCalledWith(
 			AgentBackgroundJob,
 			{

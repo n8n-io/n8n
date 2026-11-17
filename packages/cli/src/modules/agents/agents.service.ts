@@ -1041,11 +1041,18 @@ export class AgentsService {
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
 
-		// Remove the account before any cleanup that cannot be undone. If the
-		// removal fails, for example because a policy blocks the transfer of its
-		// work, the agent stays as it was.
-		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
+		// Check approval blockers before any step that cannot be undone. This check
+		// makes no changes, so a pending approval leaves the agent as it was.
+		await this.approvalCleanup.assertCanCleanupAgent(agentId);
+		// Stop pending approvals before the account goes. If a resume wins the race,
+		// cleanup throws and the account stays. The agent is archived, so stopped
+		// approvals are the only effect if the account removal then fails.
 		await this.approvalCleanup.cleanupAgent(agentId, agentProjectId, agent.approvalWorkflowId);
+
+		// Remove the account before the other cleanup that cannot be undone. If the
+		// removal fails, for example because a policy blocks the transfer of its
+		// work, the files, logs and memory stay.
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
 
 		await this.deleteKnowledgeFiles(agentProjectId, agentId);
 

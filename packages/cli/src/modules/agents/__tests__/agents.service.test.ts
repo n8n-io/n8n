@@ -1,6 +1,7 @@
 import type { FolderService } from '@/services/folder.service';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
+import type { AgentApprovalCleanupService } from '@/modules/agents/approval/agent-approval-cleanup.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import {
@@ -171,10 +172,7 @@ function makeService() {
 	);
 
 	const agentServiceAccount = mock<AgentServiceAccountService>();
-	const folderService = mock<FolderService>();
-	const licenseState = mock<LicenseState>();
-	licenseState.isFoldersLicensed.mockReturnValue(true);
-
+	const approvalCleanup = mock<AgentApprovalCleanupService>();
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
@@ -199,7 +197,7 @@ function makeService() {
 		setupCompletion,
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
-		mock(),
+		approvalCleanup,
 		globalConfig,
 		tagService,
 		folderService,
@@ -236,6 +234,7 @@ function makeService() {
 		globalConfig,
 		tagService,
 		agentServiceAccount,
+		approvalCleanup,
 	};
 }
 
@@ -1355,6 +1354,63 @@ describe('AgentsService', () => {
 			service.delete(agentId, user, projectId, { requireArchived: true }),
 		).rejects.toThrow('Agent must be archived before it can be deleted.');
 		expect(agentServiceAccount.deleteForAgent).not.toHaveBeenCalled();
+	});
+
+	it('cleans up approvals with the agent owner before it removes the agent', async () => {
+		const { service, agentRepository, approvalCleanup } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ approvalWorkflowId: 'owner-1' }),
+		);
+
+		await service.delete(agentId, user, projectId);
+
+		expect(approvalCleanup.cleanupAgent).toHaveBeenCalledWith(agentId, projectId, 'owner-1');
+		expect(approvalCleanup.cleanupAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('checks approval blockers before it removes the service account', async () => {
+		const { service, agentRepository, approvalCleanup, agentServiceAccount } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+
+		await service.delete(agentId, user, projectId);
+
+		expect(approvalCleanup.assertCanCleanupAgent).toHaveBeenCalledWith(agentId);
+		expect(approvalCleanup.assertCanCleanupAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			approvalCleanup.cleanupAgent.mock.invocationCallOrder[0],
+		);
+		expect(approvalCleanup.cleanupAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			agentServiceAccount.deleteForAgent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('keeps the service account when approval cleanup loses a race', async () => {
+		const { service, agentRepository, approvalCleanup, agentServiceAccount } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+		approvalCleanup.cleanupAgent.mockRejectedValue(new ConflictError('resumed'));
+
+		await expect(service.delete(agentId, user, projectId)).rejects.toThrow('resumed');
+		expect(agentServiceAccount.deleteForAgent).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
+	});
+
+	it('keeps the agent and its service account when an approval blocks cleanup', async () => {
+		const {
+			service,
+			agentRepository,
+			approvalCleanup,
+			agentServiceAccount,
+			agentKnowledgeService,
+		} = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+		approvalCleanup.assertCanCleanupAgent.mockRejectedValue(new ConflictError('still stopping'));
+
+		await expect(service.delete(agentId, user, projectId)).rejects.toThrow('still stopping');
+		expect(agentServiceAccount.deleteForAgent).not.toHaveBeenCalled();
+		expect(approvalCleanup.cleanupAgent).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
 	describe('findByIdForUser', () => {

@@ -45,8 +45,14 @@ export class AgentDecisionResponse implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'Approved must be a boolean', {
 						itemIndex: index,
 					});
+				// An expression can resolve to any type. Accept only a string or no value.
+				const reason = this.getNodeParameter('reason', index, '') ?? '';
+				if (typeof reason !== 'string')
+					throw new NodeOperationError(this.getNode(), 'Reason must be a string', {
+						itemIndex: index,
+					});
 				return {
-					json: { approved, reason: this.getNodeParameter('reason', index, '') },
+					json: { approved, reason },
 					pairedItem: { item: index },
 				};
 			}),

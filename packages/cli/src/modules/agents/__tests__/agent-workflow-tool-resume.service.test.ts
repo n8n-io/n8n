@@ -490,6 +490,11 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 });
 
 describe('AgentWorkflowToolResumeService → background job settlement', () => {
+	/** The sub-workflow connection map that decision collection reads. */
+	const subWorkflowConnections = () => ({
+		Fetch: { main: [[{ node: 'Set', type: 'main' as const, index: 0 }]] },
+	});
+
 	/** Like {@link afterContext}, with node output the settle serializes. */
 	function afterContextWithOutput(status: IRun['status']): WorkflowExecuteAfterContext {
 		const ctx = afterContext(status, agentRun);
@@ -497,6 +502,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			Fetch: [{ data: { main: [[{ json: { page: 1 } }]] } } as never],
 			Set: [{ data: { main: [[{ json: { ok: true } }]] } } as never],
 		};
+		Object.assign(ctx, { workflow: { connections: subWorkflowConnections() } });
 		return ctx;
 	}
 
@@ -510,7 +516,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			'exec-1',
 			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
 			ctx.runData.data.resultData.runData,
-			ctx.workflow.connections,
+			subWorkflowConnections(),
 		);
 	});
 
@@ -535,7 +541,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			'exec-1',
 			{ status: 'failed', result: null, error: 'boom' },
 			ctx.runData.data.resultData.runData,
-			ctx.workflow.connections,
+			subWorkflowConnections(),
 		);
 	});
 

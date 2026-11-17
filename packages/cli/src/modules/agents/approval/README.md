@@ -32,10 +32,14 @@ The coordinator does not read platform-specific node parameters.
 
 ## Configuration
 
-Open a saved Agent's Settings, then Human review. Create a destination and
-assign tools in its modal. Tools and MCP servers can also select the destination
-as ordered pills in their approval settings. All reviews must approve in the listed
-order before the tool runs. Rejection, expiry, or an error stops the sequence.
+The Settings > Human review page and the approval pills come in a later change.
+Until then, set human review in the Agent JSON as this section describes.
+
+When the page is available, open a saved Agent's Settings, then Human review.
+Create a destination and assign tools in its modal. Tools and MCP servers can
+also select the destination as ordered pills in their approval settings.
+
+All reviews must approve in the listed order before the tool runs. Rejection, expiry, or an error stops the sequence.
 Approval must be enabled separately. An MCP server's
 route applies to its Ask first tools.
 

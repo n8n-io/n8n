@@ -40,7 +40,9 @@ export function getModuleDisabledNotice(
 	if (!moduleName || isModuleEnabled(moduleRegistry, moduleName, nodeType)) return undefined;
 
 	const fix =
-		isHumanReviewNodeType(nodeType) && moduleRegistry.isActive('agents')
+		isHumanReviewNodeType(nodeType) &&
+		moduleRegistry.isActive('agents') &&
+		!isTurnedOffInSettings(moduleRegistry, 'agents')
 			? 'Enable human-review in N8N_AGENTS_MODULES to use this node.'
 			: moduleRegistry.isActive(moduleName)
 				? `An admin turned "${moduleName}" off in the instance settings.`

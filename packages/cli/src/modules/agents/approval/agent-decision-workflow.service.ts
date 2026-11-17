@@ -30,6 +30,7 @@ import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-l
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { buildApprovalArgs } from '../execution-recorder';
 import { buildApprovalCardPayload } from '../integrations/agent-chat-suspension-cards';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -38,6 +39,7 @@ import { AgentChannelHitlService } from './agent-channel-hitl.service';
 import { getAgentRuntimeDefinitionHash } from '../utils/agent-config-hash';
 import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from './approval-expiry';
 import { collectAgentDecision } from './decision-result';
+import { DECISION_CONTINUATION_SCHEMA } from './decision-continuation';
 import { readWorkflowCaller } from './workflow-caller';
 import { readReviewRequester, type AgentReviewRequester } from './review-requester';
 
@@ -51,16 +53,6 @@ interface ApprovalRunIdentity {
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 }
-
-export const DECISION_CONTINUATION_SCHEMA = z.object({
-	__agentDecisionWorkflow: z.literal(true),
-	executionId: z.string(),
-	definitionHash: z.string(),
-	workflowVersionId: z.string().optional(),
-	reviewIndex: z.number().int().min(0).default(0),
-	toolSuspended: z.boolean().optional(),
-	toolContinuation: z.string().optional(),
-});
 
 const RESUME_SCHEMA = z.object({ type: z.string().optional(), value: z.string().optional() });
 
@@ -427,11 +419,10 @@ export class AgentDecisionWorkflowService {
 			});
 		}
 
-		let job = await this.jobRepository.findWorkflowJobByExecutionId(executionId);
-		if (job && hasApprovalExpired(job)) {
-			if (job.status === 'running') await this.jobs.expireApprovalJob(job, { resumeAgent: false });
-			throw new OperationalError(APPROVAL_EXPIRED_ERROR);
-		}
+		let job = await this.expireIfPastDeadline(
+			await this.jobRepository.findWorkflowJobByExecutionId(executionId),
+			executionId,
+		);
 		if (job?.status === 'running') {
 			const execution = await this.executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
@@ -443,7 +434,11 @@ export class AgentDecisionWorkflowService {
 					execution.data.resultData.runData,
 					execution.workflowData.connections,
 				);
-				await this.jobs.settle(job.id, { status: 'completed', result: JSON.stringify(decision) });
+				await this.jobs.settle(job.id, {
+					status: 'completed',
+					result: JSON.stringify(decision),
+					settledAt: stoppedAtOf(execution),
+				});
 			} else if (
 				execution.status !== 'waiting' &&
 				execution.status !== 'running' &&
@@ -452,15 +447,13 @@ export class AgentDecisionWorkflowService {
 				await this.jobs.settle(job.id, {
 					status: 'failed',
 					error: `Decision workflow ended with status ${execution.status}`,
+					settledAt: stoppedAtOf(execution),
 				});
 			}
 			job = await this.jobRepository.findWorkflowJobByExecutionId(executionId);
 		}
+		job = await this.expireIfPastDeadline(job, executionId);
 		if (!job) throw new OperationalError('The approval job is unavailable');
-		if (hasApprovalExpired(job)) {
-			if (job.status === 'running') await this.jobs.expireApprovalJob(job, { resumeAgent: false });
-			throw new OperationalError(APPROVAL_EXPIRED_ERROR);
-		}
 		if (job.status === 'running') {
 			return await ctx.suspend(
 				{
@@ -517,4 +510,26 @@ export class AgentDecisionWorkflowService {
 			resumeSchema: undefined,
 		});
 	}
+
+	/**
+	 * Expire a job that is past its deadline. A decision that finished before
+	 * the deadline settles as on time, so read the job again before throwing.
+	 */
+	private async expireIfPastDeadline(
+		job: AgentBackgroundJob | null,
+		executionId: string,
+	): Promise<AgentBackgroundJob | null> {
+		if (!job || !hasApprovalExpired(job)) return job;
+		if (job.status !== 'running') throw new OperationalError(APPROVAL_EXPIRED_ERROR);
+		await this.jobs.expireApprovalJob(job, { resumeAgent: false });
+		const current = await this.jobRepository.findWorkflowJobByExecutionId(executionId);
+		if (!current || hasApprovalExpired(current)) throw new OperationalError(APPROVAL_EXPIRED_ERROR);
+		return current;
+	}
+}
+
+function stoppedAtOf(execution: { stoppedAt?: Date | string | null }): Date | undefined {
+	if (!execution.stoppedAt) return undefined;
+	const stoppedAt = new Date(execution.stoppedAt);
+	return Number.isNaN(stoppedAt.getTime()) ? undefined : stoppedAt;
 }

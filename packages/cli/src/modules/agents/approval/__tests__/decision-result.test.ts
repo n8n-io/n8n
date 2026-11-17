@@ -82,6 +82,48 @@ describe('collectAgentDecision', () => {
 		},
 	);
 
+	it('reads the decision from an unconnected output when the connected output is empty', () => {
+		const runData: IRunData = {
+			Trigger: [output({ requestId: 'request' })],
+			If: [{ ...output({}), data: { main: [[], [{ json: { approved: true } }]] } }],
+			Notify: [],
+		};
+		expect(
+			collectAgentDecision(runData, {
+				Trigger: { main: [[{ node: 'If', type: 'main', index: 0 }]] },
+				If: { main: [[{ node: 'Notify', type: 'main', index: 0 }]] },
+			}),
+		).toEqual({ approved: true });
+	});
+
+	it('excludes items from a connected output of the same node', () => {
+		const runData: IRunData = {
+			If: [
+				{
+					...output({}),
+					data: { main: [[{ json: { approved: false } }], [{ json: { approved: true } }]] },
+				},
+			],
+			Log: [{ ...output({}), data: { main: [[]] } }],
+		};
+		expect(
+			collectAgentDecision(runData, {
+				If: { main: [[{ node: 'Log', type: 'main', index: 0 }]] },
+			}),
+		).toEqual({ approved: true });
+	});
+
+	it('keeps the reason and limits it to 1000 characters', () => {
+		expect(
+			collectAgentDecision({ Review: [output({ approved: false, reason: 'Too risky' })] }, {}),
+		).toEqual({ approved: false, reason: 'Too risky' });
+		const result = collectAgentDecision(
+			{ Review: [output({ approved: true, reason: 'x'.repeat(1500) })] },
+			{},
+		);
+		expect(result).toEqual({ approved: true, reason: 'x'.repeat(1000) });
+	});
+
 	it('rejects two terminal branches', () => {
 		expect(() =>
 			collectAgentDecision(

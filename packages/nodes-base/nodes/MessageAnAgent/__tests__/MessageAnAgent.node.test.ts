@@ -93,6 +93,20 @@ describe('MessageAnAgent Node', () => {
 		expect(result[0]).toHaveLength(1);
 	});
 
+	it('keeps invocation results when a version 4 invocation suspends', async () => {
+		executeFunctions.getNode.mockReturnValue({ ...executeFunctions.getNode(), typeVersion: 4 });
+		mockParams();
+		executeFunctions.getInputData.mockReturnValue([{ json: { item: 0 } }, { json: { item: 1 } }]);
+		executeFunctions.executeAgent.mockResolvedValueOnce(mockAgentResult).mockResolvedValueOnce({
+			...mockAgentResult,
+			waiting: { runId: 'run', executionIds: ['decision'] },
+		});
+		const result = await node.execute.call(executeFunctions);
+		expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(2);
+		expect(result[0]).toHaveLength(1);
+		expect(executeFunctions.setMetadata).not.toHaveBeenCalledWith({ agentInvocations: undefined });
+	});
+
 	it('drops temporary invocation results when version 4 finishes its items', async () => {
 		executeFunctions.getNode.mockReturnValue({ ...executeFunctions.getNode(), typeVersion: 4 });
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);

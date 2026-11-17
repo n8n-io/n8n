@@ -424,7 +424,8 @@ export class AgentBackgroundJobService {
 		);
 		const results = await Promise.allSettled(
 			selected.map(async (job) => {
-				if (job.kind === 'workflow' && job.status === 'running') await this.cancelWorkflowJob(job);
+				if ((job.kind === 'workflow' || job.kind === 'approval') && job.status === 'running')
+					await this.cancelWorkflowJob(job);
 				else if (job.kind === 'subagent' && job.status === 'suspended') await this.pause(job.id);
 			}),
 		);
@@ -977,6 +978,22 @@ export class AgentBackgroundJobService {
 		return 'cancelled';
 	}
 
+	/** Stop the running approval of a parent run, for example when its checkpoint is discarded. */
+	async cancelApprovalByExecutionId(
+		executionId: string,
+		parentAgentId: string,
+		parentRunId: string,
+	): Promise<void> {
+		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
+		if (
+			job?.kind !== 'approval' ||
+			job.parentAgentId !== parentAgentId ||
+			job.parentRunId !== parentRunId
+		)
+			return;
+		await this.cancelWorkflowJob(job);
+	}
+
 	async cancelForParent(
 		parentAgentId: string,
 		parentThreadId: string,
@@ -1222,6 +1239,11 @@ export class AgentBackgroundJobService {
 		options: { resumeAgent?: boolean } = {},
 	): Promise<void> {
 		if (!hasApprovalExpired(job) || (job.status !== 'running' && job.status !== 'failed')) return;
+		const finished = await this.findDecisionFinishedInTime(job);
+		if (finished) {
+			await this.settleFinishedWorkflowJob(finished.job, finished.status, finished.stoppedAt);
+			return;
+		}
 		await this.stopWorkflowJobExecution(job);
 		await this.settle(
 			job.id,
@@ -1512,13 +1534,31 @@ export class AgentBackgroundJobService {
 		return true;
 	}
 
+	/**
+	 * A decision can finish before its deadline while its settle hook is lost,
+	 * for example in a crash. Returns the execution outcome in that case.
+	 */
+	private async findDecisionFinishedInTime(job: AgentBackgroundJob) {
+		const { childExecutionId, timeoutAt } = job;
+		if (job.kind !== 'approval' || job.status !== 'running' || !childExecutionId || !timeoutAt)
+			return undefined;
+		const execution = await this.executionPersistence.findSingleExecution(childExecutionId);
+		if (!execution?.stoppedAt || !isTerminalExecutionStatus(execution.status)) return undefined;
+		const stoppedAt = new Date(execution.stoppedAt);
+		// An invalid date gives NaN, which fails this check.
+		if (!(stoppedAt.getTime() < timeoutAt.getTime())) return undefined;
+		return { job: { ...job, childExecutionId }, status: execution.status, stoppedAt };
+	}
+
+	/** `settledAt` is the execution end time of a decision that finished before its deadline. */
 	private async settleFinishedWorkflowJob(
 		job: AgentBackgroundJob & { childExecutionId: string },
 		executionStatus: ExecutionStatus | undefined,
+		settledAt?: Date,
 	): Promise<boolean> {
 		const executionId = job.childExecutionId;
 		try {
-			if (hasApprovalExpired(job)) {
+			if (!settledAt && hasApprovalExpired(job)) {
 				await this.expireApprovalJob(job);
 				return true;
 			}
@@ -1538,6 +1578,7 @@ export class AgentBackgroundJobService {
 				status,
 				...output,
 				error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
+				...(settledAt && { settledAt }),
 			});
 			if (!settled) await this.deleteUnusedFiles(job.id, output.files);
 			return settled;

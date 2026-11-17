@@ -95,7 +95,8 @@ describe('Private approval execution ownership', () => {
 			'approval started during cleanup',
 		);
 		expect(await agents.findOneBy({ id: agent.id })).not.toBeNull();
-		await owners.deleteExecutionOwner(project.id, agent.id, ownerId);
+		await owners.detachExecutionOwner(project.id, agent.id, ownerId);
+		await owners.deleteDetachedExecutionOwner(ownerId);
 		await agents.removeAfterApprovalCleanup(agent.id, project.id);
 		expect(await agents.findOneBy({ id: agent.id })).toBeNull();
 		await expect(owners.ensureExecutionOwner(project.id, agent.id)).rejects.toThrow(
@@ -138,5 +139,53 @@ describe('Private approval execution ownership', () => {
 				}),
 			),
 		).rejects.toThrow();
+	});
+
+	it('stops resolving a detached owner and deletes it only after detachment', async () => {
+		const project = await createTeamProject();
+		const agent = await createAgent(project.id);
+		const owners = Container.get(AgentHitlWorkflowRepository);
+		const ownerId = await owners.ensureExecutionOwner(project.id, agent.id);
+		expect(await owners.findExecutionProject(ownerId)).toMatchObject({ id: project.id });
+
+		await owners.deleteDetachedExecutionOwner(ownerId);
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: ownerId })).not.toBeNull();
+
+		await owners.detachExecutionOwner(project.id, agent.id, ownerId);
+		expect(await owners.findExecutionProject(ownerId)).toBeUndefined();
+		expect(await Container.get(AgentRepository).findOneBy({ id: agent.id })).toMatchObject({
+			approvalWorkflowId: null,
+			updatedAt: agent.updatedAt,
+		});
+
+		await owners.deleteDetachedExecutionOwner(ownerId);
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: ownerId })).toBeNull();
+	});
+
+	it('consumes only the settled approval receipts with the given ids', async () => {
+		const project = await createTeamProject();
+		const agent = await createAgent(project.id);
+		const jobs = Container.get(AgentBackgroundJobRepository);
+		const create = async (status: 'running' | 'completed' | 'failed', title: string) =>
+			await jobs.save(
+				jobs.create({
+					kind: 'approval',
+					status,
+					parentAgentId: agent.id,
+					parentThreadId: 'thread',
+					parentResourceId: 'resource',
+					parentPrincipalHash: 'principal',
+					title,
+				}),
+			);
+		const completed = await create('completed', 'Completed review');
+		const active = await create('running', 'Active review');
+		const other = await create('failed', 'Other review');
+
+		await jobs.consumeSettledApprovals([completed.id, active.id]);
+
+		expect(await jobs.findById(completed.id)).toMatchObject({ notifiedAt: expect.any(Date) });
+		expect(await jobs.findById(active.id)).toMatchObject({ notifiedAt: null });
+		expect(await jobs.findById(other.id)).toMatchObject({ notifiedAt: null });
 	});
 });

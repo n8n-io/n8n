@@ -1,4 +1,10 @@
-import { BaseRepository, TransactionRunner, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import {
+	BaseRepository,
+	SharedWorkflow,
+	TransactionRunner,
+	WorkflowEntity,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
@@ -34,19 +40,34 @@ export class AgentHitlWorkflowRepository {
 		return agent?.project ?? undefined;
 	}
 
-	async deleteExecutionOwner(
+	/**
+	 * Clear the Agent reference to its private owner. The owner resolver then
+	 * fails, so no new run can start with this owner.
+	 */
+	async detachExecutionOwner(
 		projectId: string,
 		agentId: string,
 		workflowId: string,
 	): Promise<void> {
-		await this.transactions.run({}, async (ctx) => {
-			const manager = this.table.managerFor(ctx);
-			const result = await manager.update(
+		await this.table
+			.managerFor({})
+			.update(
 				Agent,
 				{ id: agentId, projectId, approvalWorkflowId: workflowId },
 				{ approvalWorkflowId: null, updatedAt: () => '"updatedAt"' },
 			);
-			if (result.affected === 1) await manager.delete(WorkflowEntity, { id: workflowId });
+	}
+
+	/** Delete a detached private owner. Keep a row that an Agent references or that has shares. */
+	async deleteDetachedExecutionOwner(workflowId: string): Promise<void> {
+		await this.transactions.run({}, async (ctx) => {
+			const manager = this.table.managerFor(ctx);
+			if (
+				(await manager.existsBy(Agent, { approvalWorkflowId: workflowId })) ||
+				(await manager.existsBy(SharedWorkflow, { workflowId }))
+			)
+				return;
+			await manager.delete(WorkflowEntity, { id: workflowId });
 		});
 	}
 

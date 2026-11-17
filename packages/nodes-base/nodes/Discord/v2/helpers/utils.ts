@@ -1,5 +1,3 @@
-import { Container } from '@n8n/di';
-import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import FormData from 'form-data';
 import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
@@ -441,10 +439,8 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 						...(context.getNode()?.parameters.agentApproval === true
 							? {
 									style: option.approved ? 1 : 4,
-									custom_id: buildHitlCallbackReference(
-										context.getExecutionId(),
-										option.approved ? 'a' : 'd',
-										Container.get(InstanceSettings).hmacSignatureSecret,
+									custom_id: context.getApprovalCallbackReference(
+										option.approved ? 'approve' : 'decline',
 									),
 								}
 							: { style: 5, url: option.url }),

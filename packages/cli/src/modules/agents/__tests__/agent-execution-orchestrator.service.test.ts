@@ -915,6 +915,34 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it.each([
+		{ source: 'mcp', expected: 'mcp' },
+		{ source: undefined, expected: N8N_CHAT_INTEGRATION_TYPE },
+	])(
+		'records requester source $expected for a draft run with source $source',
+		async ({ source, expected }) => {
+			const { service, runtimeCacheService } = makeService();
+			const runtime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+			await collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					user,
+					message: 'Hello',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					...(source ? { source } : {}),
+				}),
+			);
+
+			expect(readReviewRequester(runtime.agent.stream.mock.calls[0][1]?.persistence)).toEqual({
+				id: user.id,
+				source: expected,
+			});
+		},
+	);
+
 	it('sends the knowledge use even when recording the turn fails', async () => {
 		const { service, runtimeCacheService, executionService, knowledgeUsageTracker } = makeService();
 		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());

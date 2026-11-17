@@ -1,4 +1,4 @@
-import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
+import type { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -6,9 +6,10 @@ import type { IExecutionResponse } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mock } from 'vitest';
 import { createRunExecutionData, WorkflowOperationError } from 'n8n-workflow';
+import type { IDataObject, ITaskData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import type { Publisher } from '@n8n/backend-services';
@@ -2465,4 +2466,193 @@ it('recovers a decision that finishes before the Agent checkpoint is saved', asy
 	await service.reconcileWorkflowJobs();
 	expect(resume.resumeIfSuspended).toHaveBeenCalledWith(parent, 'success');
 	expect(jobRepository.consumeApprovalJob).not.toHaveBeenCalled();
+});
+
+describe('approval jobs', () => {
+	afterEach(() => Container.reset());
+
+	function reviewOutput(json: IDataObject): ITaskData {
+		return {
+			executionTime: 0,
+			startTime: 0,
+			executionIndex: 0,
+			source: [],
+			data: { main: [[{ json }]] },
+		};
+	}
+
+	it('stops a running approval when the user stops background tasks', async () => {
+		const { service, jobRepository } = setup();
+		const job = makeWorkflowJob({ kind: 'approval', pauseRequestId: 'stop-1' });
+		jobRepository.findByParentThread.mockResolvedValue([job]);
+		const executionService = mock<ExecutionService>();
+		Container.set(ExecutionService, executionService);
+
+		await service.requestPause('agent-1', 'thread-1', 'draft-chat:user-1');
+
+		expect(executionService.stop).toHaveBeenCalledWith('exec-1', ['workflow-1']);
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			job.id,
+			expect.objectContaining({ status: 'cancelled' }),
+			undefined,
+		);
+	});
+
+	it('stores the decision when the live completion settles an approval', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(
+			makeWorkflowJob({ kind: 'approval' }),
+		);
+
+		await service.settleWorkflowJobByExecutionId(
+			'exec-1',
+			{ status: 'completed', result: null },
+			{ Review: [reviewOutput({ approved: true })] },
+			{},
+		);
+
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'wf-job-1',
+			expect.objectContaining({ status: 'completed', result: '{"approved":true}' }),
+			undefined,
+		);
+	});
+
+	it.each([
+		{ name: 'no output', runData: {} },
+		{
+			name: 'two terminal nodes',
+			runData: {
+				A: [reviewOutput({ approved: true })],
+				B: [reviewOutput({ approved: false })],
+			},
+		},
+		{ name: 'an invalid decision', runData: { Review: [reviewOutput({ approved: 'yes' })] } },
+	])('fails an approval whose decision workflow returns $name', async ({ runData }) => {
+		const { service, jobRepository } = setup();
+		jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(
+			makeWorkflowJob({ kind: 'approval' }),
+		);
+
+		await service.settleWorkflowJobByExecutionId(
+			'exec-1',
+			{ status: 'completed', result: null },
+			runData as never,
+			{},
+		);
+
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'wf-job-1',
+			expect.objectContaining({ status: 'failed', error: expect.any(String) }),
+			undefined,
+		);
+	});
+
+	describe('decision that finished before its deadline', () => {
+		function finishedApproval(stoppedAt: Date) {
+			const fixture = setup();
+			const timeoutAt = new Date(Date.now() - 60_000);
+			const job = makeWorkflowJob({ kind: 'approval', parentRunId: 'run-1', timeoutAt });
+			const executionService = mock<ExecutionService>();
+			const resumes = mock<AgentWorkflowToolResumeService>();
+			Container.set(ExecutionService, executionService);
+			Container.set(AgentWorkflowToolResumeService, resumes);
+			fixture.executionPersistence.findSingleExecution.mockResolvedValue({
+				status: 'success',
+				stoppedAt,
+				workflowData: { connections: {} },
+				data: createRunExecutionData({
+					resultData: { runData: { Review: [reviewOutput({ approved: true })] } },
+				}),
+			} as unknown as IExecutionResponse);
+			return { ...fixture, job, timeoutAt, executionService, resumes };
+		}
+
+		it('settles the decision with the execution end time instead of expiring it', async () => {
+			const stoppedAt = new Date(Date.now() - 120_000);
+			const { service, job, jobRepository, executionService } = finishedApproval(stoppedAt);
+
+			await service.expireApprovalJob(job);
+
+			expect(executionService.stop).not.toHaveBeenCalled();
+			expect(jobRepository.settleIfActive).toHaveBeenCalledExactlyOnceWith(
+				job.id,
+				expect.objectContaining({
+					status: 'completed',
+					result: '{"approved":true}',
+					settledAt: stoppedAt,
+				}),
+				undefined,
+			);
+		});
+
+		it('settles the decision during reconciliation', async () => {
+			const stoppedAt = new Date(Date.now() - 120_000);
+			const { service, job, jobRepository, executionPersistence } = finishedApproval(stoppedAt);
+			jobRepository.findRunningJobs.mockImplementation(async (kind) =>
+				kind === 'approval' ? [job] : [],
+			);
+			executionPersistence.findStatusesByIds.mockResolvedValue([
+				{ id: 'exec-1', status: 'success' },
+			]);
+
+			await service.reconcileWorkflowJobs();
+
+			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+				job.id,
+				expect.objectContaining({ status: 'completed', settledAt: stoppedAt }),
+				undefined,
+			);
+			expect(jobRepository.settleIfActive).not.toHaveBeenCalledWith(
+				job.id,
+				{ status: 'failed', error: APPROVAL_EXPIRED_ERROR },
+				expect.anything(),
+			);
+		});
+
+		it('expires a decision that finished after its deadline', async () => {
+			const { service, job, jobRepository, executionService } = finishedApproval(new Date());
+
+			await service.expireApprovalJob(job);
+
+			expect(executionService.stop).toHaveBeenCalledWith('exec-1', ['workflow-1']);
+			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+				job.id,
+				{ status: 'failed', error: APPROVAL_EXPIRED_ERROR },
+				{ status: 'running', timeoutAt: job.timeoutAt },
+			);
+		});
+	});
+
+	describe('cancelApprovalByExecutionId', () => {
+		it('stops the running approval of the parent run', async () => {
+			const { service, jobRepository } = setup();
+			const job = makeWorkflowJob({ kind: 'approval', parentRunId: 'run-1' });
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(job);
+			const executionService = mock<ExecutionService>();
+			Container.set(ExecutionService, executionService);
+
+			await service.cancelApprovalByExecutionId('exec-1', 'agent-1', 'run-1');
+
+			expect(executionService.stop).toHaveBeenCalledWith('exec-1', ['workflow-1']);
+			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(job.id, { status: 'cancelled' });
+		});
+
+		it.each([
+			{ name: 'a workflow job', overrides: { kind: 'workflow' as const } },
+			{ name: 'another Agent', overrides: { parentAgentId: 'agent-2' } },
+			{ name: 'another run', overrides: { parentRunId: 'run-2' } },
+		])('does not stop $name', async ({ overrides }) => {
+			const { service, jobRepository } = setup();
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(
+				makeWorkflowJob({ kind: 'approval', parentRunId: 'run-1', ...overrides }),
+			);
+			const executionService = mock<ExecutionService>();
+			Container.set(ExecutionService, executionService);
+
+			await service.cancelApprovalByExecutionId('exec-1', 'agent-1', 'run-1');
+
+			expect(executionService.stop).not.toHaveBeenCalled();
+		});
+	});
 });

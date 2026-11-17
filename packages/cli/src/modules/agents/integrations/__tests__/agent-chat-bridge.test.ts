@@ -2997,6 +2997,52 @@ describe('AgentChatBridge — consumeStream', () => {
 			},
 		);
 
+		it('routes a review decision from a user outside the platform allowlist', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = makeAgentExecutor([]);
+			const channelApprovals = mock<AgentChannelHitlService>();
+			channelApprovals.respond.mockResolvedValue('unavailable');
+			Container.set(AgentChannelHitlService, channelApprovals);
+			const integration = {
+				type: 'test-restricted',
+				credentialId: 'cred-1',
+			} as unknown as AgentIntegrationConfig;
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integration,
+			);
+			const user = { userId: 'reviewer', userName: 'reviewer' };
+
+			const event = {
+				actionId: buildHitlCallbackReference('123', 'a', 'test-secret'),
+				thread,
+				threadId: 'thread-1',
+				user,
+			};
+			await handlers.action!(event);
+			await handlers.action!({
+				actionId: 'resume:run-1:tool-1:0',
+				value: '{"approved":true}',
+				thread,
+				threadId: 'thread-1',
+				user,
+			});
+
+			expect(channelApprovals.respond).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				integration,
+				event,
+			);
+			expect(agentExecutor.resumeForChat).not.toHaveBeenCalled();
+		});
+
 		it('sets a thinking status and streams the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();

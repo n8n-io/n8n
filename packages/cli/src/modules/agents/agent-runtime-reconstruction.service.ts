@@ -964,6 +964,17 @@ export class AgentRuntimeReconstructionService {
 		if (!effective || effective.type === 'conversation') {
 			return withApprovalDescription(wrapToolForApproval(tool, { requireApproval: true }));
 		}
+		// A review suspends the run. Do not start one that the caller cannot resume.
+		if (!(options.supportsHitl ?? options.runtimeProfile === 'top-level')) {
+			return {
+				...tool,
+				handler: async () => {
+					throw new UserError(
+						'Human review needs a run that can pause, such as Message an Agent version 4',
+					);
+				},
+			};
+		}
 		return withApprovalDescription(
 			Container.get(AgentDecisionWorkflowService).wrap(
 				tool,

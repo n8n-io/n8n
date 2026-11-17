@@ -55,6 +55,8 @@ export class AgentProjectCleanupService {
 			agentTestChatService,
 		} = this;
 		const agents = await agentRepository.findByProjectId(projectId);
+		// Check every agent first, so a blocked approval stops deletion before any account is removed.
+		for (const agent of agents) await this.approvalCleanup.assertCanCleanupAgent(agent.id);
 		for (const agent of agents) {
 			await this.approvalCleanup.cleanupAgent(agent.id, projectId, agent.approvalWorkflowId);
 			try {

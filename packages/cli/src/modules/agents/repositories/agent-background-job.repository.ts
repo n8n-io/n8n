@@ -1,5 +1,5 @@
 import type { AgentPlanTaskRef, AgentToolOutputFile, AgentToolSkippedFile } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
 import { OperationalError, UserError } from '@n8n/errors';
@@ -50,6 +50,8 @@ export type AgentBackgroundJobSettlement = {
 	error?: string | null;
 	files?: AgentToolOutputFile[] | null;
 	skippedFiles?: AgentToolSkippedFile[] | null;
+	/** When the outcome happened. Defaults to now. */
+	settledAt?: Date;
 };
 
 export type ExpectedBackgroundJobState = {
@@ -201,6 +203,21 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		return await this.find({
 			where: { kind: 'approval', parentAgentId: agentId, notifiedAt: IsNull() },
 		});
+	}
+
+	/** Mark the settled approval receipts with these ids as consumed. Active receipts stay unconsumed. */
+	async consumeSettledApprovals(ids: string[]): Promise<void> {
+		for (const batch of chunkIds(ids)) {
+			await this.update(
+				{
+					id: In(batch),
+					kind: 'approval',
+					status: In(['completed', 'failed', 'cancelled']),
+					notifiedAt: IsNull(),
+				},
+				{ notifiedAt: new Date() },
+			);
+		}
 	}
 
 	async findExecutionIdsRetainedForApproval(): Promise<string[]> {
@@ -749,7 +766,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				error: settlement.error ?? null,
 				files: settlement.files ?? null,
 				skippedFiles: settlement.skippedFiles ?? null,
-				settledAt: new Date(),
+				settledAt: settlement.settledAt ?? new Date(),
 				notifiedAt:
 					settlement.status === 'cancelled' || expected?.status === 'paused'
 						? () =>

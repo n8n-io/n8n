@@ -26,6 +26,7 @@ import {
 	type InlineAgentPayload,
 } from 'n8n-workflow';
 import { OperationalError, UserError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
@@ -61,7 +62,7 @@ import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { DECISION_CONTINUATION_SCHEMA } from './approval/agent-decision-workflow.service';
+import { DECISION_CONTINUATION_SCHEMA } from './approval/decision-continuation';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
@@ -113,6 +114,12 @@ interface WorkflowAgentStreamParams {
 	budget?: BudgetGuardrailConfig;
 	streamObserver?: WorkflowAgentStreamObserver;
 	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
+	/**
+	 * Runs after the stream ends and before the execution record is finalized,
+	 * while the execution still owns its checkpoint. A failure marks the
+	 * execution as failed and is thrown after finalization.
+	 */
+	beforeFinalize?: (run: { recorder: ExecutionRecorder; runId?: string }) => Promise<void>;
 }
 
 interface WorkflowAgentStreamConsumption {
@@ -597,8 +604,23 @@ export class AgentWorkflowExecutionService {
 			agentExecutionId = admission.executionId;
 		}
 
-		const { structuredOutput, toolCalls, streamError, executionError, executionStarted, runId } =
-			await this.consumeWorkflowAgentStream({ ...params, admission }, recorder, streamAdapter);
+		const consumption = await this.consumeWorkflowAgentStream(
+			{ ...params, admission },
+			recorder,
+			streamAdapter,
+		);
+		const { structuredOutput, toolCalls, streamError, executionStarted, runId } = consumption;
+		let { executionError } = consumption;
+		let beforeFinalizeError: Error | undefined;
+		if (params.beforeFinalize) {
+			try {
+				await params.beforeFinalize({ recorder, runId });
+			} catch (error) {
+				beforeFinalizeError = ensureError(error);
+				executionError ??= error;
+				recorder.record({ type: 'error', error });
+			}
+		}
 
 		const messageRecord = recorder.getMessageRecord();
 		if (recordingParams && agentExecutionId) {
@@ -610,6 +632,7 @@ export class AgentWorkflowExecutionService {
 				runId,
 			});
 		}
+		if (beforeFinalizeError) throw beforeFinalizeError;
 
 		return {
 			recorder,
@@ -770,6 +793,8 @@ export class AgentWorkflowExecutionService {
 			snapshot,
 			modelCredentialGatewayManaged,
 		} = prepared;
+		// Filled by `beforeFinalize` when the run waits for a human review.
+		const suspension: { waiting?: { runId: string; executionIds: string[] } } = {};
 		try {
 			const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
 				resume: prepared.resume,
@@ -782,37 +807,14 @@ export class AgentWorkflowExecutionService {
 				...(sandboxScope
 					? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
 					: {}),
+				// The checkpoint write needs a running execution, so store the
+				// snapshot before the execution record is finalized.
+				beforeFinalize: async ({ recorder, runId }) => {
+					if (!recorder.suspended || !snapshot || !runId) return;
+					suspension.waiting = await this.storeWorkflowSuspension(runId, agentId, snapshot);
+				},
 			});
-			if (run.recorder.suspended && snapshot && run.runId) {
-				const checkpoint = await this.checkpointStorage.load(run.runId, agentId);
-				const executionIds = checkpoint
-					? Object.values(checkpoint.pendingToolCalls).flatMap((call) => {
-							if (!call.suspended) return [];
-							const decision = DECISION_CONTINUATION_SCHEMA.safeParse(call.continuation);
-							if (decision.success) return [decision.data.executionId];
-							const pending = call.continuation;
-							return pending &&
-								typeof pending === 'object' &&
-								!Array.isArray(pending) &&
-								typeof pending.executionId === 'string'
-								? [pending.executionId]
-								: [];
-						})
-					: [];
-				if (executionIds.length === 0) {
-					await this.checkpointStorage.delete(run.runId, agentId);
-					throw new UserError('This Agent needs a human review to approve its tool');
-				}
-				if (!checkpoint?.persistence)
-					throw new OperationalError('The suspended Agent checkpoint is unavailable');
-				snapshot.approvalExecutionIds = [
-					...new Set([...(snapshot.approvalExecutionIds ?? []), ...executionIds]),
-				];
-				checkpoint.persistence.hostMetadata = {
-					...checkpoint.persistence.hostMetadata,
-					workflowAgentSnapshot: JSON.stringify(snapshot),
-				};
-				await this.checkpointStorage.save(run.runId, checkpoint, agentId);
+			if (suspension.waiting) {
 				return {
 					response: '',
 					structuredOutput: null,
@@ -820,10 +822,7 @@ export class AgentWorkflowExecutionService {
 					toolCalls: [],
 					finishReason: 'suspended',
 					session: null,
-					waiting: {
-						runId: run.runId,
-						executionIds: [...new Set(executionIds)],
-					},
+					waiting: suspension.waiting,
 				};
 			}
 			for (const executionId of snapshot?.approvalExecutionIds ?? []) {
@@ -838,6 +837,47 @@ export class AgentWorkflowExecutionService {
 		} finally {
 			await this.closeAgentQuietly(agentInstance);
 		}
+	}
+
+	/**
+	 * Store the run snapshot and the review execution ids on the suspended
+	 * checkpoint. Return the wait that the calling node reports.
+	 */
+	private async storeWorkflowSuspension(
+		runId: string,
+		agentId: string,
+		snapshot: WorkflowRunSnapshot,
+	): Promise<{ runId: string; executionIds: string[] }> {
+		const checkpoint = await this.checkpointStorage.load(runId, agentId);
+		const executionIds = checkpoint
+			? Object.values(checkpoint.pendingToolCalls).flatMap((call) => {
+					if (!call.suspended) return [];
+					const decision = DECISION_CONTINUATION_SCHEMA.safeParse(call.continuation);
+					if (decision.success) return [decision.data.executionId];
+					const pending = call.continuation;
+					return pending &&
+						typeof pending === 'object' &&
+						!Array.isArray(pending) &&
+						typeof pending.executionId === 'string'
+						? [pending.executionId]
+						: [];
+				})
+			: [];
+		if (executionIds.length === 0) {
+			await this.checkpointStorage.delete(runId, agentId);
+			throw new UserError('This Agent needs a human review to approve its tool');
+		}
+		if (!checkpoint?.persistence)
+			throw new OperationalError('The suspended Agent checkpoint is unavailable');
+		snapshot.approvalExecutionIds = [
+			...new Set([...(snapshot.approvalExecutionIds ?? []), ...executionIds]),
+		];
+		checkpoint.persistence.hostMetadata = {
+			...checkpoint.persistence.hostMetadata,
+			workflowAgentSnapshot: JSON.stringify(snapshot),
+		};
+		await this.checkpointStorage.save(runId, checkpoint, agentId);
+		return { runId, executionIds: [...new Set(executionIds)] };
 	}
 
 	private async prepareWorkflowContinuation(params: StoredWorkflowExecutionContext) {
@@ -1033,6 +1073,7 @@ export class AgentWorkflowExecutionService {
 			| 'budget'
 			| 'resume'
 			| 'modelCredentialGatewayManaged'
+			| 'beforeFinalize'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
 		const {

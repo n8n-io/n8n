@@ -156,6 +156,33 @@ describe('Agent review workflow approval', () => {
 		expect(context.suspend).not.toHaveBeenCalled();
 	});
 
+	it('rejects a decision workflow that is also the calling workflow', async () => {
+		const { loader, jobService, wrapped, handler, context } = setup();
+		Container.set(WorkflowRunner, mock<WorkflowRunner>());
+		const execute = vi.spyOn(workflowTools, 'executeWorkflow');
+		loader.loadWorkflow.mockResolvedValue({
+			id: 'caller',
+			nodes: [{ name: 'Decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+			settings: {},
+		} as WorkflowEntity);
+		await expect(
+			wrapped.handler?.(
+				{},
+				{
+					...context,
+					continuation: undefined,
+					suspendPayload: undefined,
+					runId: 'run',
+					persistence: workflowPersistence(),
+				},
+			),
+		).rejects.toThrow('A decision workflow cannot call itself');
+		expect(execute).not.toHaveBeenCalled();
+		expect(jobService.registerWorkflowJob).not.toHaveBeenCalled();
+		expect(handler).not.toHaveBeenCalled();
+		expect(context.suspend).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		[false, undefined, false],
 		[true, 3600, false],
@@ -764,6 +791,59 @@ describe('Agent review workflow approval', () => {
 		await wrapped.handler?.({}, context);
 		expect(handler).toHaveBeenCalledOnce();
 	});
+
+	it('uses a decision that the expiry sweep settles as on time', async () => {
+		const { jobs, jobService, wrapped, context, handler } = setup();
+		const timeoutAt = new Date(Date.now() - 1000);
+		const running = mock<AgentBackgroundJob>({
+			id: 'job',
+			kind: 'approval',
+			status: 'running',
+			timeoutAt,
+			settledAt: null,
+		});
+		jobs.findWorkflowJobByExecutionId.mockResolvedValueOnce(running).mockResolvedValue(
+			mock<AgentBackgroundJob>({
+				kind: 'approval',
+				status: 'completed',
+				timeoutAt,
+				settledAt: new Date(timeoutAt.getTime() - 1000),
+				result: '{"approved":true}',
+			}),
+		);
+		await wrapped.handler?.({}, context);
+		expect(jobService.expireApprovalJob).toHaveBeenCalledWith(running, { resumeAgent: false });
+		expect(handler).toHaveBeenCalledOnce();
+	});
+
+	it('settles a finished decision at the time its workflow stopped', async () => {
+		const { jobs, jobService, executions, wrapped, context, handler } = setup();
+		const stoppedAt = new Date(Date.now() - 5000);
+		jobs.findWorkflowJobByExecutionId
+			.mockResolvedValueOnce(
+				mock<AgentBackgroundJob>({
+					id: 'job',
+					kind: 'approval',
+					status: 'running',
+					timeoutAt: new Date(Date.now() + 60_000),
+					settledAt: null,
+				}),
+			)
+			.mockResolvedValue(
+				mock<AgentBackgroundJob>({ kind: 'approval', status: 'failed', timeoutAt: null }),
+			);
+		executions.findSingleExecution.mockResolvedValue({
+			status: 'error',
+			stoppedAt,
+		} as IExecutionResponse);
+		await expect(wrapped.handler?.({}, context)).rejects.toThrow();
+		expect(jobService.settle).toHaveBeenCalledWith('job', {
+			status: 'failed',
+			error: 'Decision workflow ended with status error',
+			settledAt: stoppedAt,
+		});
+		expect(handler).not.toHaveBeenCalled();
+	});
 });
 
 it('does not use a decision after the Agent definition changes', async () => {
@@ -956,6 +1036,31 @@ describe('ordered human reviews', () => {
 			{},
 			expect.objectContaining({ continuation: { executionId: 'protected-child' } }),
 		);
+	});
+
+	it('rejects a suspended tool continuation that does not point at the last review', async () => {
+		const fixture = sequenceFixture();
+		const continuation = {
+			__agentDecisionWorkflow: true,
+			executionId: 'protected-child',
+			definitionHash: getAgentRuntimeDefinitionHash(fixture.config),
+			reviewIndex: 0,
+			toolSuspended: true,
+		};
+		await expect(
+			fixture.wrapped.handler?.({}, { ...fixture.context, continuation }),
+		).rejects.toThrow('The human review continuation is invalid');
+		expect(fixture.handler).not.toHaveBeenCalled();
+		expect(fixture.execute).not.toHaveBeenCalled();
+
+		// The same continuation at the last review resumes the tool.
+		await expect(
+			fixture.wrapped.handler?.(
+				{},
+				{ ...fixture.context, continuation: { ...continuation, reviewIndex: 1 } },
+			),
+		).resolves.toBe('executed');
+		expect(fixture.handler).toHaveBeenCalledOnce();
 	});
 
 	it('does not send a later request after rejection', async () => {

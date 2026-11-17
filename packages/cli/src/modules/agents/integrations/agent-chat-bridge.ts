@@ -475,7 +475,8 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
-				if (!this.canUserAccess(event.user, event.raw)) return;
+				// Reviewers need not be on the chat allowlist. `respond` verifies the signed
+				// callback and the configured recipient.
 				if (event.actionId.startsWith(HITL_CALLBACK_PREFIX)) {
 					const { AgentChannelHitlService } = await import(
 						'../approval/agent-channel-hitl.service.js'
@@ -496,6 +497,7 @@ export class AgentChatBridge {
 					} else await this.hitlResumeHandler.settleApprovalAction(event, decision);
 					return;
 				}
+				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.hitlResumeHandler.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);

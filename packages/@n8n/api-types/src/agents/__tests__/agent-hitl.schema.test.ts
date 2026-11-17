@@ -87,8 +87,8 @@ it('preserves review order and normalizes saved single-review routes', () => {
 		AgentApprovalRouteSchema.parse({ type: 'configuration', configurationId: 'existing' }),
 	).toEqual({ type: 'configuration', configurationIds: ['existing'] });
 });
-it.each([[], ['same', 'same'], ['']])(
-	'rejects an empty or repeated review sequence %s',
+it.each([[[]], [['same', 'same']], [['']]])(
+	'rejects an empty or repeated review sequence %j',
 	(configurationIds) => {
 		expect(
 			AgentApprovalRouteSchema.safeParse({ type: 'configuration', configurationIds }).success,
