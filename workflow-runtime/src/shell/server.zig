@@ -165,7 +165,9 @@ pub const Options = struct {
         o.slots = 4096;
         o.max_egress = 4096;
         o.egress.max_conns = 1024;
-        o.egress.h2_conns = 64;
+        // An origin without an HTTP/2 state speaks HTTP/1.1, one connection
+        // for each request: 64 states ran out with a few hundred vendor hosts.
+        o.egress.h2_conns = 256;
         o.egress_big_slots = 2;
         o.event_queue_bytes = 32 << 20;
         o.snap_bytes = 128 << 20;
@@ -406,7 +408,23 @@ pub const Stats = struct {
     finished: std.atomic.Value(u64) = .init(0),
     rejected: std.atomic.Value(u64) = .init(0),
     syscalls_write: std.atomic.Value(u64) = .init(0),
+    /// The egress client (`egress.Gauges`, `egress.Counters`), copied a few
+    /// times each second when `--stats` is set.
+    egress_active: std.atomic.Value(u64) = .init(0),
+    egress_waiting: std.atomic.Value(u64) = .init(0),
+    egress_conns: std.atomic.Value(u64) = .init(0),
+    egress_origin_conns_max: std.atomic.Value(u64) = .init(0),
+    egress_h2_streams: std.atomic.Value(u64) = .init(0),
+    egress_refused_retried: std.atomic.Value(u64) = .init(0),
+    egress_deadline: std.atomic.Value(u64) = .init(0),
+    egress_deadline_queued: std.atomic.Value(u64) = .init(0),
+    egress_no_socket: std.atomic.Value(u64) = .init(0),
+    egress_queue_full: std.atomic.Value(u64) = .init(0),
+    egress_h2_reclaimed: std.atomic.Value(u64) = .init(0),
 };
+
+/// The time between two copies of the egress numbers to `Stats`.
+const egress_stats_gap_ms = 250;
 
 /// The log file. Records collect in a buffer (reserved at startup) and go
 /// to the file in one write when the shard syncs: at once for the `sync`
@@ -536,6 +554,7 @@ pub const Runner = struct {
     flog: ?*FileLog = null,
     last_sync_ms: i64 = 0,
     stats: *Stats,
+    egress_stats_ms: i64 = 0,
     stop: *std.atomic.Value(bool),
     admin_lfd: c_int = -1,
     admin_conns: []AdminConn = &.{},
@@ -885,6 +904,7 @@ pub const Runner = struct {
             if (r.stream != null and (r.stream_more or r.queue.bytes > 0 or r.queue.notice_len > 0)) r.flushStream();
             const now = sys.nowMs();
             r.egress.afterEvents(now);
+            if (r.opts.stats and now - r.egress_stats_ms >= egress_stats_gap_ms) r.publishEgressStats(now);
             r.sql.afterEvents(now);
             r.mysql.afterEvents(now);
             r.drainSql();
@@ -1582,6 +1602,25 @@ pub const Runner = struct {
     }
 
     // ---- outbound HTTP --------------------------------------------------------
+
+    /// Copy the numbers of the egress client to `Stats` for the `--stats` line.
+    fn publishEgressStats(r: *Runner, now: i64) void {
+        r.egress_stats_ms = now;
+        const g = r.egress.gauges();
+        const k = &r.egress.counters;
+        const st = r.stats;
+        st.egress_active.store(g.active, .monotonic);
+        st.egress_waiting.store(g.waiting, .monotonic);
+        st.egress_conns.store(g.conns, .monotonic);
+        st.egress_origin_conns_max.store(g.origin_conns_max, .monotonic);
+        st.egress_h2_streams.store(g.h2_streams, .monotonic);
+        st.egress_refused_retried.store(k.refused_retried, .monotonic);
+        st.egress_deadline.store(k.deadline, .monotonic);
+        st.egress_deadline_queued.store(k.deadline_queued, .monotonic);
+        st.egress_no_socket.store(k.no_socket, .monotonic);
+        st.egress_queue_full.store(k.queue_full, .monotonic);
+        st.egress_h2_reclaimed.store(k.h2_reclaimed, .monotonic);
+    }
 
     fn startEgress(r: *Runner, a: core.Action) void {
         _ = r.stats.egress.fetchAdd(1, .monotonic);

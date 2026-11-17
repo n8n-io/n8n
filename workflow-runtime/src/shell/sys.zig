@@ -258,6 +258,37 @@ extern "c" fn strerror(code: c_int) [*:0]const u8;
 
 extern "c" fn signal(sig: c_int, handler: usize) usize;
 
+/// True for the error of `socket` when the process or the system has no
+/// free file descriptor.
+pub fn isNoDescriptor(code: c_int) bool {
+    return code == @as(c_int, @backingInt(c.E.MFILE)) or code == @as(c_int, @backingInt(c.E.NFILE));
+}
+
+pub const FdLimit = struct { soft: u64, hard: u64 };
+
+/// Raise the soft limit of open files to `want` or the hard limit, as
+/// Node.js does at its start. The result is the limit afterwards, or null
+/// when the system does not say.
+pub fn raiseFdLimit(want: u64) ?FdLimit {
+    var lim: c.rlimit = .{ .cur = 0, .max = 0 };
+    if (c.getrlimit(.NOFILE, &lim) != 0) return null;
+    const goal: u64 = @min(want, lim.max);
+    if (lim.cur < goal) {
+        // macOS refuses more than OPEN_MAX (10,240) while the hard limit says "unlimited".
+        if (!setFdSoftLimit(goal) and lim.cur < 10_240) _ = setFdSoftLimit(@min(goal, 10_240));
+        if (c.getrlimit(.NOFILE, &lim) != 0) return null;
+    }
+    return .{ .soft = lim.cur, .hard = lim.max };
+}
+
+/// Set the soft limit of open files. False when the system refuses.
+pub fn setFdSoftLimit(soft: u64) bool {
+    var lim: c.rlimit = .{ .cur = 0, .max = 0 };
+    if (c.getrlimit(.NOFILE, &lim) != 0) return false;
+    lim.cur = soft;
+    return c.setrlimit(.NOFILE, &lim) == 0;
+}
+
 /// Writes to a closed peer return an error instead of killing the process.
 /// OpenSSL writes with write(2), which has no MSG_NOSIGNAL.
 pub fn ignoreSigpipe() void {

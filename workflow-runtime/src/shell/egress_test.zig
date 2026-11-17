@@ -306,6 +306,8 @@ const H2Server = struct {
     refused: u32 = 0,
     streams: u32 = 2,
     seed: u64 = 0,
+    /// Not 0: each stream whose number is a multiple of it gets no answer.
+    hang_every: std.atomic.Value(u32) = .init(0),
     conn: Conn = undefined,
     list_mem: [16 << 10]u8 = undefined,
     block: [64 << 10]u8 = undefined,
@@ -315,7 +317,7 @@ const H2Server = struct {
 
     const big_len = 200_000;
     /// A small answer echoes the request path: a token unique to the request.
-    const Pending = struct { sid: u32, body_len: u32, sent: u32 = 0, headers_sent: bool = false, window: i64, path: [32]u8 = undefined };
+    const Pending = struct { sid: u32, body_len: u32, sent: u32 = 0, headers_sent: bool = false, hung: bool = false, window: i64, path: [32]u8 = undefined };
 
     const Conn = struct {
         fd: c_int,
@@ -335,6 +337,8 @@ const H2Server = struct {
         /// With a seed: streams refused at random and answered in random order.
         rng: ?std.Random.DefaultPrng = null,
         rst_out: [16]u8 = undefined,
+        hang_every: *const std.atomic.Value(u32),
+        accepted: u32 = 0,
         pub const Err = error{OutOfMemory};
 
         pub fn onDataStart(_: *Conn, _: u32, _: u32, _: bool) Err!void {}
@@ -367,9 +371,19 @@ const H2Server = struct {
             }
             var pend: Pending = .{ .sid = sid, .body_len = if (p.big) big_len else @intCast(p.len), .window = cn.client_initial };
             @memcpy(pend.path[0..p.len], p.buf[0..p.len]);
+            cn.accepted += 1;
+            const every = cn.hang_every.load(.acquire);
+            pend.hung = every != 0 and cn.accepted % every == 0;
             try cn.open.append(cn.gpa, pend);
         }
-        pub fn onRst(_: *Conn, _: u32, _: http2.ErrorCode) Err!void {}
+        /// The client gave the stream up: it is not open any more.
+        pub fn onRst(cn: *Conn, sid: u32, _: http2.ErrorCode) Err!void {
+            for (cn.open.items, 0..) |p, i| {
+                if (p.sid != sid) continue;
+                _ = cn.open.orderedRemove(i);
+                return;
+            }
+        }
         pub fn onSetting(cn: *Conn, id: u16, v: u32) Err!void {
             if (id == 4) {
                 const delta = @as(i64, v) - cn.client_initial;
@@ -424,7 +438,7 @@ const H2Server = struct {
         var fba = std.heap.FixedBufferAllocator.init(&s.list_mem);
         const gpa = fba.allocator();
         const cn = &s.conn;
-        cn.* = .{ .fd = fd, .reader = http2.Reader.init(&s.block, http2.default_max_frame), .dec = hpack.Decoder.init(&s.ring, &s.ents, &s.scratch), .gpa = gpa };
+        cn.* = .{ .fd = fd, .reader = http2.Reader.init(&s.block, http2.default_max_frame), .dec = hpack.Decoder.init(&s.ring, &s.ents, &s.scratch), .gpa = gpa, .hang_every = &s.hang_every };
         defer cn.open.deinit(gpa);
         // Our SETTINGS: 2 streams at once.
         var len: usize = 0;
@@ -464,6 +478,10 @@ const H2Server = struct {
                     continue;
                 };
                 const p = &cn.open.items[i];
+                if (p.hung) {
+                    i += 1;
+                    continue;
+                }
                 if (!p.headers_sent) {
                     if (cn.out.len - len < 256) break;
                     var hl: usize = len + 9;
@@ -846,4 +864,135 @@ test "h2 sim: many requests interleaved on one connection, answered in random or
         try std.testing.expectEqual(@as(u32, 0), results.err);
         try std.testing.expect(server.refused > 0);
     }
+}
+
+test "regression: 700 requests share the 100 streams of a server; a stream without an answer ends at its deadline with the cause, and every slot comes back" {
+    const gpa = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const fp = try freePort(43000);
+    defer sys.close(fp.lfd);
+    const server = try a.create(H2Server);
+    server.* = .{ .lfd = fp.lfd, .streams = 100 };
+    // Each tenth stream gets no answer: 70 of the 700.
+    server.hang_every.store(10, .release);
+    const th = try std.Thread.spawn(.{}, H2Server.run, .{server});
+    defer th.join();
+    defer server.stop.store(true, .release);
+    var poller = try sys.Poller.init();
+    defer poller.deinit();
+    var results: BodyResults = .{};
+    const client = try a.create(egress.Client);
+    var rule_buf: [64]u8 = undefined;
+    const rule = try egress.Rule.parse(try std.fmt.bufPrint(&rule_buf, "127.0.0.1:{d} h2=prior conns=1", .{fp.port}));
+    try client.init(a, .{ .max_conns = 4, .max_reqs = 1024, .big_slots = 2, .max_body = 1 << 20, .h2_conns = 2, .stuck_ms = 0, .rules = &.{rule} }, .{ .ctx = &results, .done = BodyResults.done }, &poller, kind_conn, kind_dns);
+    defer client.deinit();
+    var args_buf: [160]u8 = undefined;
+    const n: u32 = 700;
+    for (0..n) |i| {
+        const args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/t{d}\",\"method\":\"GET\",\"timeoutMs\":1500}}", .{ fp.port, i + 1 });
+        client.start(i + 1, 0, args, null, null, 0, 0, sys.nowMs());
+    }
+    // More requests than streams: the rest wait, none fails.
+    try std.testing.expectEqual(@as(u32, 0), results.err);
+    try std.testing.expect(client.gauges().waiting > 0);
+    drive(client, &poller, &results, n);
+    if (server.failed) |f| std.debug.print("h2 server: {s}\n", .{f});
+    try std.testing.expect(server.failed == null);
+    // The answered requests are ok. The others ended at their deadline,
+    // and the error says what they waited for.
+    try std.testing.expectEqual(@as(u32, 630), results.ok);
+    try std.testing.expectEqual(@as(u32, 70), results.err);
+    const last = results.last_err[0..results.last_err_len];
+    try std.testing.expect(std.mem.indexOf(u8, last, "timed out after 1500 ms; no response headers arrived") != null);
+    try std.testing.expectEqual(@as(u64, 70), client.counters.deadline);
+    try std.testing.expectEqual(@as(u64, 0), client.counters.deadline_queued);
+    try std.testing.expect(server.max_open <= 100);
+    try std.testing.expectEqual(@as(u32, 0), server.refused);
+    // Nothing is held: no request, no stream.
+    const g = client.gauges();
+    try std.testing.expectEqual(@as(u32, 0), g.active);
+    try std.testing.expectEqual(@as(u32, 0), g.waiting);
+    try std.testing.expectEqual(@as(u32, 0), g.h2_streams);
+    // The load is over and the server answers again: every request is ok.
+    server.hang_every.store(0, .release);
+    for (0..100) |i| {
+        const args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/t{d}\",\"method\":\"GET\",\"timeoutMs\":1500}}", .{ fp.port, n + i + 1 });
+        client.start(n + i + 1, 0, args, null, null, 0, 0, sys.nowMs());
+    }
+    drive(client, &poller, &results, n + 100);
+    try std.testing.expectEqual(@as(u32, 730), results.ok);
+    try std.testing.expectEqual(@as(u32, 70), results.err);
+    try std.testing.expectEqual(@as(u64, 1), client.counters.h2_conns);
+}
+
+/// Counts the 200 answers, and keeps the text of the last error.
+const WaitResults = struct {
+    ok: u32 = 0,
+    err: u32 = 0,
+    last_err: [256]u8 = undefined,
+    last_err_len: usize = 0,
+
+    fn done(ctx: *anyopaque, _: u64, _: u32, r: egress.Result) void {
+        const self: *WaitResults = @ptrCast(@alignCast(ctx));
+        switch (r) {
+            .ok => |resp| {
+                if (resp.status == 200) self.ok += 1 else self.err += 1;
+            },
+            .err => |msg| {
+                self.err += 1;
+                self.last_err_len = @min(msg.len, self.last_err.len);
+                @memcpy(self.last_err[0..self.last_err_len], msg[0..self.last_err_len]);
+            },
+        }
+    }
+};
+
+test "regression: with no free file descriptor a request waits for a socket and goes out when one is free; at its deadline the error names the cause" {
+    const gpa = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const fp = try freePort(44000);
+    defer sys.close(fp.lfd);
+    var server: StatusServer = .{ .lfd = fp.lfd, .resp = "HTTP/1.1 200 OK\r\ncontent-length: 2\r\n\r\nok" };
+    const th = try std.Thread.spawn(.{}, StatusServer.run, .{&server});
+    defer th.join();
+    defer server.stop.store(true, .release);
+    var poller = try sys.Poller.init();
+    defer poller.deinit();
+    var results: WaitResults = .{};
+    const client = try a.create(egress.Client);
+    try client.init(a, .{ .max_conns = 16, .max_reqs = 32, .big_slots = 1, .max_body = 1 << 16, .stuck_ms = 0 }, .{ .ctx = &results, .done = WaitResults.done }, &poller, kind_conn, kind_dns);
+    defer client.deinit();
+    var args_buf: [160]u8 = undefined;
+    const before = sys.raiseFdLimit(0) orelse return error.SkipZigTest;
+    // No new file can open: files 0 to 2 are in use.
+    try std.testing.expect(sys.setFdSoftLimit(3));
+    var restored = false;
+    defer if (!restored) {
+        _ = sys.setFdSoftLimit(before.soft);
+    };
+    const args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/x\",\"method\":\"GET\"}}", .{fp.port});
+    for (0..8) |i| client.start(i + 1, 0, args, null, null, 0, 0, sys.nowMs());
+    // One with a short deadline: it ends while no file is free.
+    const short = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/x\",\"method\":\"GET\",\"timeoutMs\":200}}", .{fp.port});
+    client.start(100, 0, short, null, null, 0, 0, sys.nowMs());
+    drive(client, &poller, &results, 1);
+    try std.testing.expectEqual(@as(u32, 0), results.ok);
+    try std.testing.expectEqual(@as(u32, 1), results.err);
+    const last = results.last_err[0..results.last_err_len];
+    try std.testing.expect(std.mem.indexOf(u8, last, "timed out after 200 ms; it waited for a socket") != null);
+    try std.testing.expect(std.mem.indexOf(u8, last, "no free file descriptor") != null);
+    try std.testing.expectEqual(@as(u64, 1), client.counters.deadline_queued);
+    // The others wait. The client tried again a few times, not in a busy loop.
+    try std.testing.expectEqual(@as(u32, 8), client.gauges().waiting);
+    try std.testing.expect(client.counters.no_socket >= 2 and client.counters.no_socket <= 40);
+    restored = sys.setFdSoftLimit(before.soft);
+    try std.testing.expect(restored);
+    drive(client, &poller, &results, 9);
+    try std.testing.expectEqual(@as(u32, 8), results.ok);
+    try std.testing.expectEqual(@as(u32, 1), results.err);
+    try std.testing.expectEqual(@as(u32, 0), client.gauges().active);
 }
