@@ -824,7 +824,10 @@ describe('Test MySql V2, operations', () => {
 		const createCatalogPool = () => {
 			const pool = createFakePool(fakeConnection);
 			vi.mocked(pool.query).mockResolvedValue([
-				[{ Non_unique: 0, Key_name: 'PRIMARY', Column_name: 'id' }],
+				[
+					{ Non_unique: 0, Key_name: 'PRIMARY', Column_name: 'id', Null: '' },
+					{ Non_unique: 0, Key_name: 'uq_email', Column_name: 'email', Null: 'YES' },
+				],
 				[],
 			] as never);
 			return pool;
@@ -949,6 +952,11 @@ describe('Test MySql V2, operations', () => {
 				'Output Columns leaves out the cursor column',
 				{ options: { outputColumns: ['name'] } },
 				'Add "id" to Output Columns',
+			],
+			[
+				'the cursor column can be null',
+				{ startAfter: { values: { column: 'email', value: '5' } } },
+				'Column "email" can be null',
 			],
 			[
 				'Start After has no column',

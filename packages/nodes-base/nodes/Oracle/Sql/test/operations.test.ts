@@ -1805,6 +1805,21 @@ VALUES (
 				);
 			});
 
+			it('should throw when the cursor column can be null', async () => {
+				mockConnection.execute.mockImplementation((sql: string = '') =>
+					isCatalogQuery([sql]) ? { rows: [{ COLUMN_NAME: 'AGE' }] } : defaultImpl(sql),
+				);
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'AGE', value: '7' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await expect(
+					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
+				).rejects.toThrow('Column "AGE" can be null');
+			});
+
 			it('should throw when the cursor column is not the first sort rule', async () => {
 				const mockThis = createMockExecuteFunction({
 					...baseParameters,

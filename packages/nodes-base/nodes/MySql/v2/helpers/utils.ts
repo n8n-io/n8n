@@ -589,16 +589,21 @@ export function addSortRules(
 	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
 }
 
-export async function getUniqueKeyColumns(pool: Mysql2Pool, table: string): Promise<string[]> {
+export async function getUniqueKeyColumns(
+	pool: Mysql2Pool,
+	table: string,
+): Promise<Array<{ column: string; nullable: boolean }>> {
 	const [rows] = await pool.query<RowDataPacket[]>(`SHOW INDEX FROM ${escapeSqlIdentifier(table)}`);
-	const columnsByKey = new Map<string, Array<string | null>>();
+	const columnsByKey = new Map<string, Array<{ column: string; nullable: boolean } | null>>();
 	for (const row of rows) {
 		if (Number(row.Non_unique) !== 0) continue;
 		const key = String(row.Key_name);
 		// A functional key part has no Column_name. It still counts as a part of the key
 		columnsByKey.set(key, [
 			...(columnsByKey.get(key) ?? []),
-			row.Column_name == null ? null : String(row.Column_name).toLowerCase(),
+			row.Column_name == null
+				? null
+				: { column: String(row.Column_name).toLowerCase(), nullable: row.Null === 'YES' },
 		]);
 	}
 	return [...columnsByKey.values()].flatMap((cols) =>

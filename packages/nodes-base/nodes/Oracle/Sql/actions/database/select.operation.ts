@@ -11,6 +11,7 @@ import type * as oracleDBTypes from 'oracledb';
 import {
 	addCursorPredicate,
 	assertCursorColumnInOutput,
+	assertCursorColumnNotNull,
 	assertUniqueCursorColumn,
 	getStartAfter,
 	getStartAfterSortRules,
@@ -159,6 +160,7 @@ export async function execute(
 			assertCursorColumnInOutput(this.getNode(), i, outputColumns, column);
 			rules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
 			assertUniqueCursorColumn(this.getNode(), i, await uniqueColumnsOf(schema, table), column);
+			assertCursorColumnNotNull(this.getNode(), i, column, columnMetaDataObject[column].nullable);
 
 			if (value !== undefined) {
 				const operator = rules[0].direction === 'DESC' ? '<' : '>';

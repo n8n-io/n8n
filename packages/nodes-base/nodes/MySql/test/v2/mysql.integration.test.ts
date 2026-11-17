@@ -160,7 +160,7 @@ describe('MySQL Integration - Select Start After', () => {
 	beforeAll(async () => {
 		await executeQuery('DROP TABLE IF EXISTS paging_test');
 		await executeQuery(
-			'CREATE TABLE paging_test (id INT PRIMARY KEY, code VARCHAR(8) UNIQUE, grp INT, INDEX (grp))',
+			'CREATE TABLE paging_test (id INT PRIMARY KEY, code VARCHAR(8) NOT NULL UNIQUE, grp INT, INDEX (grp))',
 		);
 		await executeQuery(
 			"INSERT INTO paging_test (id, code, grp) VALUES (1,'g',1),(2,'f',1),(3,'e',1),(4,'d',1),(5,'c',1),(6,'b',1),(7,'a',1)",

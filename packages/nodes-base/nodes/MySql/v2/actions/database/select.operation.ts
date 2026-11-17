@@ -10,6 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import {
 	addCursorPredicate,
 	assertCursorColumnInOutput,
+	assertCursorColumnNotNull,
 	assertUniqueCursorColumn,
 	getStartAfter,
 	getStartAfterSortRules,
@@ -144,7 +145,20 @@ export async function execute(
 				const { column, value } = startAfter;
 				assertCursorColumnInOutput(this.getNode(), i, outputColumns, column, true);
 				rules = getStartAfterSortRules(this.getNode(), i, sortRules, column, true);
-				assertUniqueCursorColumn(this.getNode(), i, await uniqueColumnsOf(table), column, true);
+				const uniqueColumns = await uniqueColumnsOf(table);
+				assertUniqueCursorColumn(
+					this.getNode(),
+					i,
+					uniqueColumns.map((unique) => unique.column),
+					column,
+					true,
+				);
+				assertCursorColumnNotNull(
+					this.getNode(),
+					i,
+					column,
+					uniqueColumns.some((unique) => unique.nullable && unique.column === column.toLowerCase()),
+				);
 
 				if (value !== undefined) {
 					const operator = rules[0].direction === 'DESC' ? '<' : '>';

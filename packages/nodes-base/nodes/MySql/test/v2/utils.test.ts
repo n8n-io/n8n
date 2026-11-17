@@ -484,8 +484,14 @@ describe('Test MySql V2, getUniqueKeyColumns', () => {
 		const pool = {
 			query: vi.fn().mockResolvedValue([
 				[
-					{ Key_name: 'PRIMARY', Non_unique: '0', Seq_in_index: 1, Column_name: 'id' },
-					{ Key_name: 'uq_email', Non_unique: 0, Seq_in_index: 1, Column_name: 'Email' },
+					{ Key_name: 'PRIMARY', Non_unique: '0', Seq_in_index: 1, Column_name: 'id', Null: '' },
+					{
+						Key_name: 'uq_email',
+						Non_unique: 0,
+						Seq_in_index: 1,
+						Column_name: 'Email',
+						Null: 'YES',
+					},
 					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 1, Column_name: 'a' },
 					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 2, Column_name: 'b' },
 					{ Key_name: 'uq_expr', Non_unique: 0, Seq_in_index: 1, Column_name: null },
@@ -497,7 +503,10 @@ describe('Test MySql V2, getUniqueKeyColumns', () => {
 			]),
 		} as unknown as Mysql2Pool;
 
-		await expect(getUniqueKeyColumns(pool, 'otherdb.orders')).resolves.toEqual(['id', 'email']);
+		await expect(getUniqueKeyColumns(pool, 'otherdb.orders')).resolves.toEqual([
+			{ column: 'id', nullable: false },
+			{ column: 'email', nullable: true },
+		]);
 		expect(pool.query).toHaveBeenCalledWith('SHOW INDEX FROM `otherdb`.`orders`');
 	});
 });

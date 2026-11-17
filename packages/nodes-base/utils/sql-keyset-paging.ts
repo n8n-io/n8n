@@ -81,6 +81,20 @@ export function assertUniqueCursorColumn(
 	}
 }
 
+export function assertCursorColumnNotNull(
+	node: INode,
+	itemIndex: number,
+	column: string,
+	nullable: boolean,
+) {
+	if (nullable) {
+		throw new NodeOperationError(node, `Column "${column}" can be null`, {
+			itemIndex,
+			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,
+		});
+	}
+}
+
 /**
  * Adds the cursor predicate to a query. `base` is the query before
  * addWhereClauses, which prepends ' WHERE '. The existing conditions are
