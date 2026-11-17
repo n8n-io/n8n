@@ -8,7 +8,6 @@
  * The credentials helper applies `authenticate` as n8n's CLI does, so the
  * recorded requests carry the credential like real ones.
  */
-import { createHash } from 'node:crypto';
 import {
 	existsSync,
 	mkdirSync,
@@ -36,6 +35,14 @@ import { errorDetailOfResult as errorDetailOf, normalizeRequest } from './equiva
 import { fixtureBytes } from '../../reference/binary-response.ts';
 import { installNetworkGuard } from './no-network.ts';
 import { networkErrorText } from './equivalence.ts';
+import type { Cut } from './build-identity.ts';
+import {
+	declarationsKey,
+	digest,
+	nodeTypesIdentity,
+	processText,
+	sharedIdentity,
+} from './build-identity.ts';
 
 // Code of v1 nodes runs in this process: no connection may leave the machine.
 installNetworkGuard();
@@ -43,7 +50,7 @@ installNetworkGuard();
 const here = dirname(fileURLToPath(import.meta.url));
 const packagesDir = join(here, '../../../../..');
 export const FALLBACK_HOST_DIR = join(packagesDir, '@n8n/workflow-fallback-host');
-const NODE_PACKAGES: Record<string, string> = {
+export const NODE_PACKAGES: Record<string, string> = {
 	'n8n-nodes-base': join(packagesDir, 'nodes-base'),
 	'@n8n/n8n-nodes-langchain': join(packagesDir, '@n8n/nodes-langchain'),
 };
@@ -1090,47 +1097,91 @@ const CACHE_DIR = join(here, '../../../node_modules/.cache/v1-recordings');
 const CACHE_MAX_ENTRIES = 400_000;
 /** The share of the entries that a full cache removes: the ones that were read or written longest ago. */
 const CACHE_EVICT_SHARE = 0.1;
-function buildFiles(): string[] {
-	const hostRequire = createRequire(join(FALLBACK_HOST_DIR, 'package.json'));
-	const built = ['n8n-workflow', 'n8n-core', '@n8n/node-engine-compatibility'].map((name) => {
-		try {
-			return hostRequire.resolve(name);
-		} catch {
-			return name;
-		}
-	});
-	return [
-		join(NODE_PACKAGES['n8n-nodes-base'], 'dist/known/nodes.json'),
-		join(NODE_PACKAGES['n8n-nodes-base'], 'dist/known/credentials.json'),
-		...built,
-	];
-}
-const RECORDER_FILES = [fileURLToPath(import.meta.url), join(here, 'equivalence.ts')];
+/** The form of a recording. A new member of `Recording` needs a new value, so old files are not read. */
+const RECORDING_FORM = 'wire-2';
 
-function digest(text: string): string {
-	return createHash('sha256').update(text).digest('hex');
-}
-
-let buildIdentity: string | undefined;
+/** The node type that `recordInEngine` puts before the node of the case. */
+export const START_TYPE = 'n8n-nodes-base.manualTrigger';
 
 /**
- * A recording stays valid while the built packages and the recorder itself do
- * not change: the size and time of the build outputs, and the text of the recorder.
+ * The parts of this file that a case does not run. `recordNode` calls `recordInEngine` only for
+ * a case with settings or sub-nodes, and `recordInEngine` installs the fake `fetch` only for a
+ * case with sub-nodes. `declarationsKey` checks that each use of the name is under the
+ * condition; when it is not, the name stays in the key.
  */
-/** The form of a recording. A new member of `Recording` needs a new value, so old files are not read. */
-const RECORDING_FORM = 'wire-1';
+const ENGINE_CUT: Cut = { name: 'recordInEngine', under: 'testCase.settings || testCase.subNodes' };
+const SUB_NODE_CUT: Cut = {
+	name: 'installFakeFetch',
+	under: 'subNodes.length > 0',
+	needs: ['const subNodes = testCase.subNodes ?? [];'],
+};
 
-function identityOfBuild(): string {
-	if (buildIdentity !== undefined) return buildIdentity;
-	const parts = buildFiles().map((file) => {
-		if (!existsSync(file)) return `${file}:none`;
-		const { size, mtimeMs } = statSync(file);
-		return `${file}:${size}:${mtimeMs}`;
-	});
-	for (const file of RECORDER_FILES) parts.push(digest(readFileSync(file, 'utf8')));
-	parts.push(process.version, process.env.TZ ?? '');
-	buildIdentity = digest(parts.join('\n'));
-	return buildIdentity;
+type CaseKind = 'plain' | 'engine' | 'sub-nodes';
+
+function kindOf(testCase: EquivalenceCase): CaseKind {
+	if (testCase.subNodes) return 'sub-nodes';
+	return testCase.settings ? 'engine' : 'plain';
+}
+
+const CUTS: Record<CaseKind, Cut[]> = {
+	plain: [ENGINE_CUT],
+	engine: [SUB_NODE_CUT],
+	'sub-nodes': [],
+};
+
+const recorderKeys = new Map<CaseKind, string>();
+
+/**
+ * The code of the recorder that a case of this kind runs: the declarations that `recordV1`
+ * needs, here and in the files this file imports. The cache below, comments, types and the
+ * parts that the kind does not run are no part, so a change there keeps the recordings.
+ */
+export function recorderKey(kind: CaseKind, file = fileURLToPath(import.meta.url)): string {
+	if (file !== fileURLToPath(import.meta.url))
+		return declarationsKey(file, ['recordV1'], CUTS[kind]);
+	const known = recorderKeys.get(kind);
+	if (known !== undefined) return known;
+	const key = declarationsKey(file, ['recordV1'], CUTS[kind]);
+	recorderKeys.set(kind, key);
+	return key;
+}
+
+/** The built code of the node types of a case. A type of no known package takes each package whole. */
+function nodesIdentity(types: string[]): string {
+	return nodeTypesIdentity(NODE_PACKAGES, types);
+}
+
+const MAX_IDENTITIES = 1024;
+const identities = new Map<string, string>();
+
+/**
+ * What a recording of a case depends on, apart from the case: the form of a recording, the
+ * code of the recorder that the case runs, the built code of the node types of the case and of
+ * the packages below them, the lock file, and the Node.js and time zone of this process. Each
+ * part is a hash of content, so the cache is good on each machine with the same files.
+ */
+export function recordingIdentity(testCase: EquivalenceCase): string {
+	const kind = kindOf(testCase);
+	const types = [
+		testCase.type,
+		...(kind === 'plain' ? [] : [START_TYPE]),
+		...(testCase.subNodes ?? []).map((sub) => sub.type),
+	];
+	const key = `${kind}\n${types.join('\n')}`;
+	const known = identities.get(key);
+	if (known !== undefined) return known;
+	const identity = digest(
+		[
+			RECORDING_FORM,
+			recorderKey(kind),
+			sharedIdentity(FALLBACK_HOST_DIR, Object.keys(NODE_PACKAGES)),
+			nodesIdentity(types),
+			processText(),
+		].join('\n'),
+	);
+	if (identities.size >= MAX_IDENTITIES) identities.clear();
+	identities.set(key, identity);
+	return identity;
 }
 
 let cacheEntries: number | undefined;
@@ -1195,13 +1246,13 @@ function store(file: string, recording: Recording): boolean {
 }
 
 /**
- * `recordV1` with a bounded cache on disk. The key is the case and the identity
- * of the build, so a second run with the same node code does not run the v1 node.
+ * `recordV1` with a bounded cache on disk. The key is the case and `recordingIdentity`,
+ * so a second run with the same node code does not run the v1 node.
  */
 export async function recordV1Cached(testCase: EquivalenceCase): Promise<Recording> {
 	const file = join(
 		CACHE_DIR,
-		`${digest(`${RECORDING_FORM}\n${identityOfBuild()}\n${JSON.stringify(testCase)}`)}.json`,
+		`${digest(`${recordingIdentity(testCase)}\n${JSON.stringify(testCase)}`)}.json`,
 	);
 	const stored = storedRecording(file);
 	if (stored !== undefined) return stored;
