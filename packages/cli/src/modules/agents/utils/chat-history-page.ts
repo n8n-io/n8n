@@ -1,8 +1,6 @@
 import type { AgentChatMessagesQueryDto } from '@n8n/api-types';
 import { BadRequestError } from '@n8n/errors';
 
-const MAX_TURNS_PER_PAGE = 100;
-
 /** The position of an execution in its thread, in the order of `createdAt` and `id`. */
 export interface ExecutionPosition {
 	createdAt: Date;
@@ -38,8 +36,8 @@ function decodeChatHistoryCursor(cursor: string): ExecutionPosition {
 }
 
 /**
- * The page that the query asks for. Without `limit`, the query asks for the
- * whole thread, so the result is `undefined`.
+ * The page that the query asks for. The DTO validates and caps `limit`. Without
+ * `limit`, the query asks for the whole thread, so the result is `undefined`.
  */
 export function parseChatHistoryPage(
 	query: AgentChatMessagesQueryDto | undefined,
@@ -48,10 +46,8 @@ export function parseChatHistoryPage(
 		if (query?.cursor !== undefined) throw new BadRequestError('A cursor requires a limit');
 		return undefined;
 	}
-	const limit = Math.trunc(Number(query.limit));
-	if (!Number.isFinite(limit) || limit < 1) throw new BadRequestError('Invalid limit');
 	return {
-		limit: Math.min(limit, MAX_TURNS_PER_PAGE),
+		limit: query.limit,
 		...(query.cursor !== undefined ? { before: decodeChatHistoryCursor(query.cursor) } : {}),
 	};
 }

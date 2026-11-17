@@ -207,6 +207,9 @@ export class ListSystemAgentThreadsQueryDto extends Z.class({
 	search: threadTitleSearchSchema,
 }) {}
 
+/** The largest number of turns in one page of a chat thread's messages. */
+const MAX_CHAT_HISTORY_PAGE_TURNS = 100;
+
 /**
  * One page of a chat thread's messages. Without `limit`, the route returns the
  * whole thread. With `limit`, it returns the newest turns before `cursor`.
@@ -214,7 +217,14 @@ export class ListSystemAgentThreadsQueryDto extends Z.class({
 export class AgentChatMessagesQueryDto extends Z.class({
 	// The `nextCursor` of the previous page. The route decodes it.
 	cursor: z.string().min(1).max(512).optional(),
-	limit: z.string().optional(),
+	// No default: a request without `limit` asks for the whole thread.
+	limit: z
+		.string()
+		.regex(/^\d+$/, 'Param `limit` must be a positive integer')
+		.transform(Number)
+		.refine((limit) => limit >= 1, { message: 'Param `limit` must be a positive integer' })
+		.transform((limit) => Math.min(limit, MAX_CHAT_HISTORY_PAGE_TURNS))
+		.optional(),
 }) {}
 
 /** A new title for a thread of a system agent. */

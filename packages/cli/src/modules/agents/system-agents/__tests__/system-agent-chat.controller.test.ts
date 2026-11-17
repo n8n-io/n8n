@@ -568,7 +568,7 @@ describe('SystemAgentChatController', () => {
 		const result = await controller.getChatMessages(
 			request({ agentId: AGENT_ID, threadId: 'thread-1' }),
 			mock<Response>(),
-			{ limit: '20', cursor: '2026-05-07T10:00:00.000Z|execution-1' },
+			{ limit: 20, cursor: '2026-05-07T10:00:00.000Z|execution-1' },
 		);
 
 		expect(orchestrator.getConversationHistory).toHaveBeenCalledWith(
@@ -595,7 +595,7 @@ describe('SystemAgentChatController', () => {
 			controller.getChatMessages(
 				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
 				mock<Response>(),
-				{ limit: '20', cursor: 'invalid' },
+				{ limit: 20, cursor: 'invalid' },
 			),
 		).rejects.toThrow(BadRequestError);
 		expect(systemAgents.getUsableThread).not.toHaveBeenCalled();

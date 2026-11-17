@@ -753,7 +753,7 @@ describe('AgentChatController chat message history', () => {
 		};
 
 		const result = await controller.getChatMessages(request as never, mock<express.Response>(), {
-			limit: '20',
+			limit: 20,
 		});
 
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith(
@@ -763,7 +763,7 @@ describe('AgentChatController chat message history', () => {
 	});
 
 	describe('a page of older turns', () => {
-		const olderPage = { limit: '20', cursor: '2026-05-07T10:00:00.000Z|execution-1' };
+		const olderPage = { limit: 20, cursor: '2026-05-07T10:00:00.000Z|execution-1' };
 		const request = {
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			user: { id: 'user-1' },
