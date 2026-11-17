@@ -30,6 +30,7 @@ import { isKnownTimezone } from '../../compiler/triggers.ts';
 import { DEFAULT_TIMEZONE } from '../triggers.ts';
 import { LOCALE_NAMES, LOCALE_TABLE } from './locale-data.generated.ts';
 import { planBody, planCatch } from './catch-check.ts';
+import { derivedLocaleEntry } from './locale-derive.ts';
 import { checkRegex } from './regex-syntax.ts';
 
 export type CodeMode = 'all' | 'each';
@@ -1863,7 +1864,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	) =>
 		Object.hasOwn(LOCALE_TABLE, JSON.stringify([method, a.locale, a.options]))
 			? LOCALE_TABLE[JSON.stringify([method, a.locale, a.options])]
-			: undefined;
+			: // A combination outside the table: its specs from the ICU data, checked against Node.js.
+				derivedLocaleEntry(method, a.locale, a.options);
 
 	/** The code makes a Date somewhere: \`new Date(…)\` or \`Date(…)\`. */
 	const makesDates = /\bnew\s+Date\b|\bDate\s*\(/.test(input.code);
