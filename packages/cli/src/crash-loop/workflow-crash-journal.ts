@@ -93,8 +93,8 @@ export class WorkflowCrashJournal {
 		return { workflowId: this.streak.workflowId, crashes: this.streak.crashedAt.length };
 	}
 
-	/** Returns the callback that marks the attempt as no longer in flight. */
-	recordStart(attempt: JobAttempt): () => void {
+	/** Marks the attempt as in flight. Returns the callback that marks it as settled. */
+	track(attempt: JobAttempt): () => void {
 		const { payload } = attempt;
 		if (!isWorkflowNodeTaskPayload(payload)) return () => {};
 		const key = attemptKey(attempt);

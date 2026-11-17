@@ -152,9 +152,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// on that path (it only moves through the staged commit or __emit below), so
 				// an abandoned tick leaves the poll window untouched for the next occurrence.
 				// The poll stays in flight in the crash journal until it settles, even after a timeout abandons it.
-				const settle = this.crashJournal.recordStart(task);
+				const untrack = this.crashJournal.track(task);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
-				void poll.then(settle, settle);
+				void poll.then(untrack, untrack);
 				await Promise.race([poll, aborted(leaseSignal, pollFunctions)]);
 				if (leaseSignal.reason instanceof TaskTimeoutError) {
 					await this.recordPollTimeout(logContext, node.type, state);
