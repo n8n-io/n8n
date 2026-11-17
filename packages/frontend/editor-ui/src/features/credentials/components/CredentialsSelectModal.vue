@@ -297,27 +297,20 @@ function openCredentialType() {
 				</div>
 			</N8nDialogBody>
 			<N8nDialogFooter>
-				<div :class="$style.footer">
-					<N8nButton
-						:label="i18n.baseText('credentialSelectModal.continue')"
-						float="right"
-						size="large"
-						:disabled="!selected || !!getCredentialTypeRestriction(selected)"
-						data-test-id="new-credential-type-button"
-						@click="openCredentialType"
-					/>
-				</div>
+				<N8nButton
+					:label="i18n.baseText('credentialSelectModal.continue')"
+					float="right"
+					size="large"
+					:disabled="!selected || !!getCredentialTypeRestriction(selected)"
+					data-test-id="new-credential-type-button"
+					@click="openCredentialType"
+				/>
 			</N8nDialogFooter>
 		</template>
 	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.footer {
-	display: flex;
-	justify-content: flex-end;
-}
-
 .restrictedOption {
 	display: flex;
 	align-items: center;
