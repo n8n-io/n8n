@@ -29,6 +29,10 @@ Requires the Promotions feature to be licensed. The API key scopes are:
 - `promotions:promote`: preview and promote
 - `promotions:apply`: preview, apply and continue
 
+A scope lets the key start the operation. The role of the key owner still
+decides what the operation can read and write. For example, the change details
+show variable values only when that role can list variables.
+
 ## Setup example: Git over SSH
 
 ```bash
