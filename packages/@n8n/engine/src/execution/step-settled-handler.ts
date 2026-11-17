@@ -109,8 +109,6 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
-			// The parent goes before the cascade: the cascade can throw, and a
-			// redelivered event finds the execution ended and does nothing more.
 			if (execution.parent?.awaited) {
 				const { executionStore, stepStore, stepQueue } = this;
 				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {

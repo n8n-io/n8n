@@ -54,8 +54,6 @@ export class CancelExecutionService {
 				});
 			}
 			// So a parent step that waits for this execution fails rather than waits for ever.
-			// The parent goes before the cascade: the cascade can throw, and a repeated
-			// cancel finds the execution ended and does nothing more.
 			const { executionStore, stepStore, stepQueue } = this;
 			await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
 				status: 'cancelled',
