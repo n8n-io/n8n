@@ -12,6 +12,7 @@ import {
 	addCursorPredicate,
 	assertCursorColumnInOutput,
 	assertCursorColumnNotNull,
+	assertCursorColumnType,
 	assertUniqueCursorColumn,
 	getStartAfter,
 	getStartAfterSortRules,
@@ -160,6 +161,14 @@ export async function execute(
 			assertCursorColumnInOutput(this.getNode(), i, outputColumns, column);
 			rules = getStartAfterSortRules(this.getNode(), i, sortRules, column);
 			assertUniqueCursorColumn(this.getNode(), i, await uniqueColumnsOf(schema, table), column);
+			// n8n outputs the other types as objects, or with less precision
+			assertCursorColumnType(
+				this.getNode(),
+				i,
+				column,
+				columnMetaDataObject[column].type,
+				/^(NUMBER|N?VARCHAR2|N?CHAR)$/,
+			);
 			assertCursorColumnNotNull(this.getNode(), i, column, columnMetaDataObject[column].nullable);
 
 			if (value !== undefined) {

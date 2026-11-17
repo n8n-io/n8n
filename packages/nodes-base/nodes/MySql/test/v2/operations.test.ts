@@ -825,8 +825,47 @@ describe('Test MySql V2, operations', () => {
 			const pool = createFakePool(fakeConnection);
 			vi.mocked(pool.query).mockResolvedValue([
 				[
-					{ Non_unique: 0, Key_name: 'PRIMARY', Column_name: 'id', Null: '' },
-					{ Non_unique: 0, Key_name: 'uq_email', Column_name: 'email', Null: 'YES' },
+					// One row set answers both SHOW INDEX and SHOW COLUMNS
+					{
+						Non_unique: 0,
+						Key_name: 'PRIMARY',
+						Column_name: 'id',
+						Null: '',
+						Field: 'id',
+						Type: 'int',
+					},
+					{
+						Non_unique: 0,
+						Key_name: 'uq_email',
+						Column_name: 'email',
+						Null: 'YES',
+						Field: 'email',
+						Type: 'varchar(64)',
+					},
+					{
+						Non_unique: 0,
+						Key_name: 'uq_code',
+						Column_name: 'code',
+						Null: '',
+						Field: 'code',
+						Type: 'varchar(8)',
+					},
+					{
+						Non_unique: 0,
+						Key_name: 'uq_created',
+						Column_name: 'created',
+						Null: '',
+						Field: 'created',
+						Type: 'datetime',
+					},
+					{
+						Non_unique: 0,
+						Key_name: 'uq_price',
+						Column_name: 'price',
+						Null: '',
+						Field: 'price',
+						Type: 'decimal(10,2)',
+					},
 				],
 				[],
 			] as never);
@@ -963,6 +1002,25 @@ describe('Test MySql V2, operations', () => {
 				{ startAfter: { values: { column: '', value: '5' } } },
 				'Choose a column in Start After',
 			],
+			[
+				'the type of the cursor column is not supported',
+				{ startAfter: { values: { column: 'created', value: '' } } },
+				'Start After does not support the column "created" of type datetime',
+			],
+			[
+				'a DECIMAL cursor column is output as a number',
+				{
+					startAfter: { values: { column: 'price', value: '5' } },
+					options: { decimalNumbers: true },
+				},
+				'Turn off Output Decimals as Numbers to page by "price"',
+			],
+			[
+				// The mocked pool returns rows for each query, so the empty text lookup finds a row
+				'a text cursor column has empty text and Value is empty',
+				{ startAfter: { values: { column: 'code', value: '' } } },
+				'Column "code" has empty text in one row',
+			],
 		])('should throw when %s', async (_, overrides, message) => {
 			const pool = createCatalogPool();
 			const promise = runSelect(
@@ -1015,7 +1073,7 @@ describe('Test MySql V2, operations', () => {
 			expect(result[0].json.message).toContain('Column "name"');
 			expect(result[1].json.message).toContain('Column "name"');
 			expect(mockRunQueries).not.toHaveBeenCalled();
-			expect(pool.query).toHaveBeenCalledTimes(1);
+			expect(pool.query).toHaveBeenCalledTimes(2);
 		});
 
 		it('should keep a valid cursor item after an invalid one under continueOnFail', async () => {
@@ -1054,7 +1112,7 @@ describe('Test MySql V2, operations', () => {
 					itemIndex: 1,
 				},
 			]);
-			expect(pool.query).toHaveBeenCalledTimes(1);
+			expect(pool.query).toHaveBeenCalledTimes(2);
 		});
 
 		it('should match the cursor column to the index case-insensitively', async () => {

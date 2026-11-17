@@ -1820,6 +1820,21 @@ VALUES (
 				).rejects.toThrow('Column "AGE" can be null');
 			});
 
+			it('should throw when the type of the cursor column is not supported', async () => {
+				mockConnection.execute.mockImplementation((sql: string = '') =>
+					isCatalogQuery([sql]) ? { rows: [{ COLUMN_NAME: 'JOIN_DATE' }] } : defaultImpl(sql),
+				);
+				const mockThis = createMockExecuteFunction({
+					...baseParameters,
+					startAfter: { values: { column: 'JOIN_DATE', value: '' } },
+				});
+				const runQueries = getRunQueriesFn(mockThis, pool);
+
+				await expect(
+					select.execute.call(mockThis, runQueries, items, nodeOptions, pool),
+				).rejects.toThrow('Start After does not support the column "JOIN_DATE" of type DATE');
+			});
+
 			it('should throw when the cursor column is not the first sort rule', async () => {
 				const mockThis = createMockExecuteFunction({
 					...baseParameters,

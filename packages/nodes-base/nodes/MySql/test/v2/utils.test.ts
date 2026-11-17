@@ -482,31 +482,41 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 describe('Test MySql V2, getUniqueKeyColumns', () => {
 	it('should return lower-cased single-column unique keys of a qualified table', async () => {
 		const pool = {
-			query: vi.fn().mockResolvedValue([
-				[
-					{ Key_name: 'PRIMARY', Non_unique: '0', Seq_in_index: 1, Column_name: 'id', Null: '' },
-					{
-						Key_name: 'uq_email',
-						Non_unique: 0,
-						Seq_in_index: 1,
-						Column_name: 'Email',
-						Null: 'YES',
-					},
-					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 1, Column_name: 'a' },
-					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 2, Column_name: 'b' },
-					{ Key_name: 'uq_expr', Non_unique: 0, Seq_in_index: 1, Column_name: null },
-					{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 1, Column_name: 'c' },
-					{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 2, Column_name: null },
-					{ Key_name: 'idx_name', Non_unique: 1, Seq_in_index: 1, Column_name: 'name' },
-				],
-				[],
-			]),
+			query: vi
+				.fn()
+				.mockResolvedValueOnce([
+					[
+						{ Key_name: 'PRIMARY', Non_unique: '0', Seq_in_index: 1, Column_name: 'id', Null: '' },
+						{
+							Key_name: 'uq_email',
+							Non_unique: 0,
+							Seq_in_index: 1,
+							Column_name: 'Email',
+							Null: 'YES',
+						},
+						{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 1, Column_name: 'a' },
+						{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 2, Column_name: 'b' },
+						{ Key_name: 'uq_expr', Non_unique: 0, Seq_in_index: 1, Column_name: null },
+						{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 1, Column_name: 'c' },
+						{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 2, Column_name: null },
+						{ Key_name: 'idx_name', Non_unique: 1, Seq_in_index: 1, Column_name: 'name' },
+					],
+					[],
+				])
+				.mockResolvedValueOnce([
+					[
+						{ Field: 'id', Type: 'BIGINT unsigned' },
+						{ Field: 'Email', Type: 'varchar(64)' },
+					],
+					[],
+				]),
 		} as unknown as Mysql2Pool;
 
 		await expect(getUniqueKeyColumns(pool, 'otherdb.orders')).resolves.toEqual([
-			{ column: 'id', nullable: false },
-			{ column: 'email', nullable: true },
+			{ column: 'id', nullable: false, type: 'bigint unsigned' },
+			{ column: 'email', nullable: true, type: 'varchar(64)' },
 		]);
+		expect(pool.query).toHaveBeenCalledWith('SHOW COLUMNS FROM `otherdb`.`orders`');
 		expect(pool.query).toHaveBeenCalledWith('SHOW INDEX FROM `otherdb`.`orders`');
 	});
 });

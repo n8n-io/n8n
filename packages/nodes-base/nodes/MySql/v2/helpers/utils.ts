@@ -592,8 +592,14 @@ export function addSortRules(
 export async function getUniqueKeyColumns(
 	pool: Mysql2Pool,
 	table: string,
-): Promise<Array<{ column: string; nullable: boolean }>> {
+): Promise<Array<{ column: string; nullable: boolean; type: string }>> {
 	const [rows] = await pool.query<RowDataPacket[]>(`SHOW INDEX FROM ${escapeSqlIdentifier(table)}`);
+	const [columns] = await pool.query<RowDataPacket[]>(
+		`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)}`,
+	);
+	const typeOf = new Map(
+		columns.map((row) => [String(row.Field).toLowerCase(), String(row.Type).toLowerCase()]),
+	);
 	const columnsByKey = new Map<string, Array<{ column: string; nullable: boolean } | null>>();
 	for (const row of rows) {
 		if (Number(row.Non_unique) !== 0) continue;
@@ -607,8 +613,21 @@ export async function getUniqueKeyColumns(
 		]);
 	}
 	return [...columnsByKey.values()].flatMap((cols) =>
-		cols.length === 1 && cols[0] !== null ? [cols[0]] : [],
+		cols.length === 1 && cols[0] !== null
+			? [{ ...cols[0], type: typeOf.get(cols[0].column) ?? '' }]
+			: [],
 	);
+}
+
+export async function hasEmptyText(
+	pool: Mysql2Pool,
+	table: string,
+	column: string,
+): Promise<boolean> {
+	const [rows] = await pool.query<RowDataPacket[]>(
+		`SELECT 1 FROM ${escapeSqlIdentifier(table)} WHERE ${escapeSqlIdentifier(column)} = '' LIMIT 1`,
+	);
+	return rows.length > 0;
 }
 
 export function replaceEmptyStringsByNulls(

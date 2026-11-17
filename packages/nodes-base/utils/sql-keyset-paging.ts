@@ -95,6 +95,26 @@ export function assertCursorColumnNotNull(
 	}
 }
 
+export function assertCursorColumnType(
+	node: INode,
+	itemIndex: number,
+	column: string,
+	type: string,
+	supported: RegExp,
+) {
+	if (!supported.test(type)) {
+		throw new NodeOperationError(
+			node,
+			`Start After does not support the column "${column}" of type ${type}`,
+			{
+				itemIndex,
+				description:
+					'n8n can change values of this type in the output, so the next page can repeat or skip rows. Use a unique column with numbers or text.',
+			},
+		);
+	}
+}
+
 /**
  * Adds the cursor predicate to a query. `base` is the query before
  * addWhereClauses, which prepends ' WHERE '. The existing conditions are
