@@ -1,17 +1,17 @@
 /**
  * Re-triggers the PR Size Limit check when a maintainer comments `/size-limit-override`.
  *
- * Finds the latest `PR Size Limit` check run on the PR's HEAD commit and re-requests it.
- * The re-run scans comments, finds the override, and passes — satisfying branch protection
- * without any label manipulation or status API calls.
+ * Re-runs failed jobs in the latest PR quality workflow that ran the size check for this PR and HEAD.
+ * This also re-runs the required aggregate check after the size check passes.
  *
  * Exit codes:
- *   0 – Check run re-requested successfully
- *   1 – Commenter lacks permission, or no check run found to re-request
+ *   0 – Failed jobs re-run, or the workflow already passed
+ *   1 – Commenter lacks permission, or the workflow cannot re-run yet
  */
 
 import { initGithub, getEventFromGithubEventPath } from '../github-helpers.mjs';
 
+const WORKFLOW_ID = 'ci-pr-quality.yml';
 const CHECK_NAME = 'PR Size Limit';
 
 /**
@@ -44,27 +44,53 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 	});
 	const headSha = pr.head.sha;
 
-	const {
-		data: { check_runs },
-	} = await octokit.rest.checks.listForRef({
-		owner,
-		repo,
-		ref: headSha,
-		check_name: CHECK_NAME,
-		per_page: 1,
-	});
+	let workflowRun;
+	for await (const { data: runs } of octokit.paginate.iterator(
+		octokit.rest.actions.listWorkflowRuns,
+		{
+			owner,
+			repo,
+			workflow_id: WORKFLOW_ID,
+			event: 'pull_request',
+			head_sha: headSha,
+			per_page: 100,
+		},
+	)) {
+		for (const candidate of runs) {
+			if (!candidate.pull_requests.some((pullRequest) => pullRequest.number === prNumber)) continue;
 
-	if (check_runs.length === 0) {
+			const jobs = await octokit.paginate(octokit.rest.actions.listJobsForWorkflowRun, {
+				owner,
+				repo,
+				run_id: candidate.id,
+				per_page: 100,
+			});
+			// Label events can pass while the size check is skipped.
+			if (jobs.some((job) => job.name === CHECK_NAME && job.conclusion !== 'skipped')) {
+				workflowRun = candidate;
+				break;
+			}
+		}
+		if (workflowRun) break;
+	}
+
+	if (!workflowRun) {
 		throw new Error(
-			`No '${CHECK_NAME}' check run found for ${headSha}. Push a new commit to trigger it.`,
+			`No PR quality workflow found with '${CHECK_NAME}' for PR #${prNumber} at ${headSha}. Push a new commit to trigger it.`,
 		);
 	}
 
-	await octokit.rest.checks.rerequestRun({
-		owner,
-		repo,
-		check_run_id: check_runs[0].id,
-	});
+	if (workflowRun.status !== 'completed') {
+		throw new Error('Wait for the PR quality workflow to finish, then post the override again.');
+	}
+
+	if (workflowRun.conclusion !== 'success') {
+		await octokit.rest.actions.reRunWorkflowFailedJobs({
+			owner,
+			repo,
+			run_id: workflowRun.id,
+		});
+	}
 
 	await octokit.rest.reactions.createForIssueComment({
 		owner,
@@ -73,7 +99,7 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 		content: '+1',
 	});
 
-	console.log(`Re-requested '${CHECK_NAME}' check run (${check_runs[0].id}) for ${headSha}`);
+	console.log(`Processed size override for PR quality workflow ${workflowRun.id} on ${headSha}`);
 }
 
 export async function main() {

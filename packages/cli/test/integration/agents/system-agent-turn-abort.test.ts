@@ -80,7 +80,8 @@ interface TurnProbe {
 	outcome?: SystemAgentTurnOutcome;
 }
 
-describe('System agent turn abort', () => {
+// Startup and cancellation each have a separate 10-second wait.
+describe('System agent turn abort', { timeout: 30_000 }, () => {
 	let probe: TurnProbe;
 	let service: SystemAgentExecutionService;
 	let owner: User;
@@ -91,10 +92,11 @@ describe('System agent turn abort', () => {
 		name: 'Test System Agent',
 		authorize: async () => true,
 		async prepareTurn(turn: SystemAgentTurn) {
-			probe.turnSignal = turn.abortSignal;
-			if (probe.slowSetup) {
-				probe.setupStarted = true;
-				probe.setupEnd = await new Promise((resolve) => {
+			const turnProbe = probe;
+			turnProbe.turnSignal = turn.abortSignal;
+			if (turnProbe.slowSetup) {
+				turnProbe.setupStarted = true;
+				turnProbe.setupEnd = await new Promise((resolve) => {
 					const timer = setTimeout(() => resolve('timeout'), 5_000);
 					turn.abortSignal.addEventListener('abort', () => {
 						clearTimeout(timer);
@@ -103,14 +105,14 @@ describe('System agent turn abort', () => {
 				});
 				turn.abortSignal.throwIfAborted();
 			}
-			probe.providerAbort = new AbortController();
+			turnProbe.providerAbort = new AbortController();
 			// The tool waits for the run signal, so the turn stays active until it aborts.
 			const wait = new Tool('wait')
 				.description('Wait')
 				.input(z.object({}))
 				.handler(async (_input, ctx) => {
-					probe.toolStarted = true;
-					probe.toolEnd = await new Promise((resolve) => {
+					turnProbe.toolStarted = true;
+					turnProbe.toolEnd = await new Promise((resolve) => {
 						const timer = setTimeout(() => resolve('timeout'), 5_000);
 						ctx.abortSignal?.addEventListener('abort', () => {
 							clearTimeout(timer);
@@ -127,9 +129,9 @@ describe('System agent turn abort', () => {
 				.checkpoint(Container.get(N8NCheckpointStorage).getStorage(AGENT_ID));
 			return {
 				agent,
-				runOptions: { abortSignal: probe.providerAbort.signal },
+				runOptions: { abortSignal: turnProbe.providerAbort.signal },
 				onSettled: async (outcome) => {
-					probe.outcome = outcome;
+					turnProbe.outcome = outcome;
 				},
 			};
 		},

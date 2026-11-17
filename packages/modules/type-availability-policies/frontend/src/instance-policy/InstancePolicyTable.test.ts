@@ -182,7 +182,9 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(getByRole('button', { name: /next/i }));
 		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))[0]).toBe('Type 25'));
 
-		await userEvent.type(getByPlaceholderText('Search credentials'), 'Type');
+		const user = userEvent.setup();
+		await user.click(getByPlaceholderText('Search credentials'));
+		await user.paste('Type');
 
 		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))[0]).toBe('Type 00'));
 	});

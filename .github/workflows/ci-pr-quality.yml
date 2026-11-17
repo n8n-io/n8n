@@ -19,8 +19,8 @@ jobs:
 
   handle-size-override:
     name: Handle /size-limit-override
-    # Re-requests the PR Size Limit check run on the PR's HEAD commit, so it re-runs
-    # in the original PR context and picks up the override comment.
+    # Re-run failed PR jobs so the size check reads the override comment and
+    # the required aggregate check reads the new result.
     if: |
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      checks: write
+      actions: write
       issues: write
       pull-requests: read
     steps:
@@ -38,7 +38,7 @@ jobs:
         with:
           sparse-checkout: .github
 
-      - name: Re-request PR Size Limit check
+      - name: Re-run failed PR quality jobs
         uses: ./.github/actions/run-workflow-script
         with:
           script: .github/scripts/quality/handle-size-override.mjs

@@ -87,7 +87,9 @@ it('shows a saved selection outside discovery results by its label and clears em
 	expect(emitted('update:modelValue')).toBeUndefined();
 	expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	api.fetchPromotionRepositories.mockResolvedValue({ data: [], nextCursor: null });
-	await userEvent.type(screen.getByRole('combobox'), 'team');
+	const user = userEvent.setup();
+	await user.click(screen.getByRole('combobox'));
+	await user.paste('team');
 	await waitFor(() =>
 		expect(screen.getByRole('status')).toHaveTextContent('No repositories found'),
 	);
@@ -141,7 +143,9 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 			kind === 'repository' ? 'Search or select a repository' : 'Search or select a branch',
 		);
 		expect(requests()[0]).toEqual({ search: undefined, limit: 25 });
-		await userEvent.type(input, 'team');
+		const user = userEvent.setup();
+		await user.click(input);
+		await user.paste('team');
 		await waitFor(() => expect(requests()).toHaveLength(2));
 		onClick.mockClear();
 		await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
