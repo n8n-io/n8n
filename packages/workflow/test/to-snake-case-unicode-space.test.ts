@@ -27,4 +27,15 @@ describe('toSnakeCase with Unicode whitespace separators', () => {
 		expect(toSnakeCase('i_am_a_test')).toBe('i_am_a_test');
 		expect(toSnakeCase('Ä Ö Ü ß')).toBe('ä_ö_ü_ß');
 	});
+
+	// A BOM is a byte order mark, not a word separator: drop it instead of
+	// emitting a leading (or embedded) underscore.
+	it('strips a byte order mark instead of converting it to an underscore', () => {
+		expect(toSnakeCase('\uFEFFfirst name')).toBe('first_name');
+		expect(toSnakeCase('first\uFEFFname')).toBe('firstname');
+	});
+
+	it('treats U+0085 (NEXT LINE) as a word separator', () => {
+		expect(toSnakeCase('first\u0085name')).toBe('first_name');
+	});
 });
