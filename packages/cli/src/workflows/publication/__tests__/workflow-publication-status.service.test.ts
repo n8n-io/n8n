@@ -316,24 +316,30 @@ describe('WorkflowPublicationStatusService', () => {
 		);
 	});
 
-	it('ignores a retained failure after the workflow was unpublished and its completed record expired', async () => {
-		const record = makeOutbox({ status: 'failed', errorMessage: 'Invalid interval' });
-		outboxRepository.findLatestByWorkflowId.mockResolvedValue(record);
-		outboxRepository.findLatestByWorkflowIds.mockResolvedValue([record]);
-		workflowRepository.findActiveVersionIds.mockResolvedValue(new Map([[WORKFLOW_ID, null]]));
+	it.each([
+		{ publishedVersionId: 'v-2', errorMessage: 'Invalid interval' },
+		{ publishedVersionId: UNPUBLISH_VERSION_SENTINEL, errorMessage: 'Teardown failed' },
+	])(
+		'ignores a retained failure for $publishedVersionId after unpublication and completed record cleanup',
+		async ({ publishedVersionId, errorMessage }) => {
+			const record = makeOutbox({ status: 'failed', publishedVersionId, errorMessage });
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(record);
+			outboxRepository.findLatestByWorkflowIds.mockResolvedValue([record]);
+			workflowRepository.findActiveVersionIds.mockResolvedValue(new Map([[WORKFLOW_ID, null]]));
 
-		await expect(service.getLatestStatus(WORKFLOW_ID)).resolves.toMatchObject({
-			status: 'not_published',
-			versionId: null,
-			liveVersionId: null,
-			errorMessage: null,
-		});
-		await expect(service.getStatus(WORKFLOW_ID)).resolves.toMatchObject({
-			status: 'not_published',
-		});
-		expect(await service.getListStatusesByWorkflowIds([WORKFLOW_ID])).toEqual(new Map());
-		await expect(service.getFailedActivationError(WORKFLOW_ID, [])).resolves.toBeNull();
-	});
+			await expect(service.getLatestStatus(WORKFLOW_ID)).resolves.toMatchObject({
+				status: 'not_published',
+				versionId: null,
+				liveVersionId: null,
+				errorMessage: null,
+			});
+			await expect(service.getStatus(WORKFLOW_ID)).resolves.toMatchObject({
+				status: 'not_published',
+			});
+			expect(await service.getListStatusesByWorkflowIds([WORKFLOW_ID])).toEqual(new Map());
+			await expect(service.getFailedActivationError(WORKFLOW_ID, [])).resolves.toBeNull();
+		},
+	);
 
 	describe('publication outcomes for callers', () => {
 		beforeEach(() => {

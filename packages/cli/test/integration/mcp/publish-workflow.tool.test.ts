@@ -57,7 +57,7 @@ vi.mock('@n8n/utils/sleep', async (importOriginal) => {
 });
 
 mockInstance(ActiveExecutions);
-mockInstance(Push);
+const push = mockInstance(Push);
 mockInstance(ExternalSecretsProxy);
 mockInstance(ExecutionService);
 mockInstance(ExternalHooks);
@@ -448,6 +448,13 @@ describe('publish_workflow trigger activation', () => {
 					error: error.message,
 					publicationStatus,
 				});
+				expect(push.sendToUsers).toHaveBeenLastCalledWith(
+					{
+						type: 'workflowFailedToActivate',
+						data: { workflowId: workflow.id, errorMessage: error.message },
+					},
+					expect.any(Array),
+				);
 				for (const detailLevel of ['full', 'execution'] as const) {
 					expect(
 						(await detailsFor(owner, workflow.id, detailLevel)).structuredContent,
@@ -643,6 +650,19 @@ describe('publish_workflow trigger activation', () => {
 				error: expect.stringContaining('Invalid interval'),
 				publicationStatus: { status, versionId: workflow.versionId },
 			});
+			if (!includeValidTrigger) {
+				expect(push.sendToUsers).toHaveBeenLastCalledWith(
+					{
+						type: 'workflowFailedToActivate',
+						data: {
+							workflowId: workflow.id,
+							errorMessage: expect.stringContaining('Invalid interval'),
+							nodeId: invalidTrigger.id,
+						},
+					},
+					expect.any(Array),
+				);
+			}
 			for (const detailLevel of ['full', 'execution'] as const) {
 				expect((await detailsFor(owner, workflow.id, detailLevel)).structuredContent).toMatchObject(
 					{

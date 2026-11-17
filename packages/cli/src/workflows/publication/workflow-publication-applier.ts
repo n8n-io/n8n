@@ -722,6 +722,7 @@ export class WorkflowPublicationApplier {
 			return {
 				type: 'failed',
 				error: this.toActivationError(outcome.failures),
+				nodeId: outcome.failures.length === 1 ? outcome.failures[0].nodeId : undefined,
 				triggerState: { versionId, triggerStatuses },
 			};
 		}
@@ -881,6 +882,7 @@ export class WorkflowPublicationApplier {
 		return {
 			type: 'failed',
 			error,
+			nodeId: oversized.length === 1 ? oversized[0].id : undefined,
 			triggerState: {
 				versionId: newVersion.versionId,
 				triggerStatuses: this.buildTriggerStatuses(

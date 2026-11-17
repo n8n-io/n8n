@@ -1181,6 +1181,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'failed',
 			error,
+			nodeId: 'b',
 			triggerState: {
 				versionId: 'v-2',
 				triggerStatuses: [
@@ -1716,6 +1717,7 @@ describe('WorkflowPublicationApplier', () => {
 			const message = `Cannot publish workflow: trigger "Long" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters. Remove and re-add the affected nodes to give them new IDs.`;
 			expect(result).toEqual({
 				type: 'failed',
+				nodeId: longId,
 				error: expect.objectContaining({
 					message,
 					affectedNodes: [{ id: longId, name: 'Long' }],

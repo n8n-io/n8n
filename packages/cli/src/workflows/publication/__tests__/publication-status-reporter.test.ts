@@ -7,6 +7,7 @@ import type {
 	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -398,6 +399,7 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
+			nodeId: 'b',
 			triggerState: {
 				versionId: 'v-2',
 				triggerStatuses: [
@@ -550,6 +552,7 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
+			nodeId: 'too-long',
 			triggerState: {
 				versionId: 'v-2',
 				triggerStatuses: [
@@ -605,13 +608,15 @@ describe('PublicationStatusReporter', () => {
 		);
 	});
 
-	// A policy refusal marks every trigger failed with the policy error, so the
-	// one failed row is not the node whose own error this is.
-	test('failed by policy with one failed row pushes no nodeId', async () => {
-		const error = new PolicyViolationError([
-			{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
-		]);
-
+	test.each([
+		{
+			cause: 'policy',
+			error: new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+			]),
+		},
+		{ cause: 'credential access', error: new UserError('Credential access changed') },
+	])('failed by $cause with one failed row pushes no nodeId', async ({ error }) => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,

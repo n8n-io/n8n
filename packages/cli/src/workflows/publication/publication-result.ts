@@ -97,6 +97,8 @@ export type PublicationResult =
 	| {
 			type: 'failed';
 			error: Error;
+			/** The node that caused the error. Omit this for workflow-level failures. */
+			nodeId?: string;
 			/** The trigger state can belong to a previous version that a refusal left running. */
 			triggerState?: {
 				versionId: string;
