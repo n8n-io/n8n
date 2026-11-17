@@ -109,6 +109,8 @@ export interface MaterializeWorkspaceBundleOptions<
 	logger: Logger;
 	loadPrebaked: () => Promise<TBundle | undefined>;
 	buildBundle: () => Promise<TBundle> | TBundle;
+	/** Runs before a fresh write, e.g. to clear files that the bundle no longer contains. */
+	beforeWrite?: () => Promise<void>;
 	/** Hash that the bundle manifest records. */
 	bundleHash: (bundle: TBundle) => string;
 }
@@ -144,6 +146,7 @@ export async function materializeWorkspaceBundle<
 
 			const startedAt = Date.now();
 			const bundle = await options.buildBundle();
+			await options.beforeWrite?.();
 			const payloadFiles = new Map(bundle.files);
 			payloadFiles.delete(bundle.manifestPath);
 

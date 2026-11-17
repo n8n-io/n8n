@@ -116,8 +116,6 @@ import type {
 	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
 	AppNamespaceTakenError,
@@ -240,7 +238,7 @@ import {
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
+import { createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -290,8 +288,6 @@ import { fetchAndExtract, fetchCachedPage, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import { toUserLike } from '@/utils/to-user-like';
-
-type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
@@ -462,8 +458,6 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
-
-	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -716,7 +710,6 @@ export class InstanceAiAdapterService {
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
-			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
@@ -1040,18 +1033,6 @@ export class InstanceAiAdapterService {
 		const hiddenProperties = config.hiddenNodeProperties?.[nodeName];
 		if (hiddenProperties && hiddenProperties.length > 0) meta.hiddenProperties = hiddenProperties;
 		return meta;
-	}
-
-	getTemplatesService(): BuilderTemplatesServiceInstance {
-		if (!this.templatesService) {
-			this.templatesService = new BuilderTemplatesService({
-				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
-				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
-				logger: this.logger,
-				fetch: createAiProxyFetch(this.outboundHttp),
-			});
-		}
-		return this.templatesService;
 	}
 
 	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {

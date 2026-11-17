@@ -13,13 +13,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { join as posixJoin } from 'node:path/posix';
 
+import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
-import {
-	buildTemplatesIndexFromArchive,
-	KNOWLEDGE_BASE_TEMPLATES_DIR,
-} from './build-templates-index';
-export { KNOWLEDGE_BASE_TEMPLATES_DIR };
-import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
 import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
 import {
@@ -27,7 +22,7 @@ import {
 	materializeWorkspaceBundle,
 	type VerifiedWorkspaceBundles,
 } from '../workspace/prebaked-workspace-bundle';
-import type { SandboxWorkspace } from '../workspace/sandbox-fs';
+import { escapeSingleQuotes, runInSandbox, type SandboxWorkspace } from '../workspace/sandbox-fs';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
 import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
@@ -71,9 +66,6 @@ export interface KnowledgeBaseRootIndex {
 		indexFile: string;
 		entries: KnowledgeBaseIndexEntry[];
 	};
-	templates: {
-		indexFile: string;
-	};
 	reference: {
 		indexFile: string;
 		entries: KnowledgeBaseReferenceIndexEntry[];
@@ -95,43 +87,12 @@ export interface KnowledgeBaseWorkspaceBundle {
 
 export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 	root: string;
-	templatesArchive?: Buffer | null;
 	logger: Logger;
 }
 
 interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
 	workspace: SandboxWorkspace;
 	verifiedBundles?: VerifiedWorkspaceBundles;
-}
-
-function addTemplatesToKnowledgeBaseFiles(
-	files: Map<string, string>,
-	rootDir: string,
-	templatesArchive: Buffer,
-	logger: Logger,
-): void {
-	const extracted = extractBuilderTemplatesArchive(templatesArchive);
-	if (!extracted) {
-		logger.warn('[knowledge-base] rejected templates archive during bundle build', {
-			archiveBytes: templatesArchive.byteLength,
-		});
-		return;
-	}
-
-	const templatesIndex = buildTemplatesIndexFromArchive(extracted);
-	const templatesDir = posixJoin(rootDir, KNOWLEDGE_BASE_TEMPLATES_DIR);
-
-	for (const [name, content] of extracted) {
-		if (!name.endsWith('.ts')) continue;
-		files.set(posixJoin(templatesDir, name), withTrailingNewline(content));
-	}
-
-	const templatesIndexPath = posixJoin(templatesDir, KNOWLEDGE_BASE_INDEX_FILE);
-	files.set(templatesIndexPath, stringifyWorkspaceJson(templatesIndex));
-
-	// The decompressed archive has been copied into `files`; release the
-	// intermediate map so the duplicate copy isn't held until GC.
-	extracted.clear();
 }
 
 const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
@@ -230,7 +191,7 @@ async function addReferenceFilesToKnowledgeBase(
 export async function buildKnowledgeBaseWorkspaceBundle(
 	options: BuildKnowledgeBaseWorkspaceBundleOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle> {
-	const { root, templatesArchive = null, logger } = options;
+	const { root } = options;
 	const rootDir = posixJoin(root, SANDBOX_KNOWLEDGE_BASE_DIR);
 	const files = new Map<string, string>();
 	const bestPracticeEntries: KnowledgeBaseIndexEntry[] = [];
@@ -262,9 +223,6 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 	const bestPracticesIndex: KnowledgeBaseBestPracticesIndex = { entries: bestPracticeEntries };
 	files.set(bestPracticesIndexPath, stringifyWorkspaceJson(bestPracticesIndex));
 
-	if (templatesArchive) {
-		addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger);
-	}
 	const referenceEntries = await addReferenceFilesToKnowledgeBase(files, rootDir);
 
 	const rootIndexPath = posixJoin(rootDir, KNOWLEDGE_BASE_INDEX_FILE);
@@ -272,9 +230,6 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 		bestPractices: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_BEST_PRACTICES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
 			entries: bestPracticeEntries,
-		},
-		templates: {
-			indexFile: posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
 		},
 		reference: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, KNOWLEDGE_BASE_INDEX_FILE),
@@ -301,6 +256,32 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 }
 
 const KNOWLEDGE_BASE_FILE_LABEL = 'Knowledge base file';
+
+/**
+ * Bundle writes only add or overwrite files. Clear the directory first so that
+ * files from an older bundle (for example removed sections) do not stay behind.
+ */
+async function clearKnowledgeBaseDirectory(
+	options: MaterializeKnowledgeBaseOptions,
+): Promise<void> {
+	if (!options.workspace.sandbox) return;
+
+	const rootDir = posixJoin(options.root, SANDBOX_KNOWLEDGE_BASE_DIR);
+	// Best effort: a failed cleanup leaves old files, but the write must still run.
+	try {
+		const result = await runInSandbox(options.workspace, `rm -rf '${escapeSingleQuotes(rootDir)}'`);
+		if (result.exitCode === 0) return;
+		options.logger.warn('Failed to clear the knowledge base directory before a write', {
+			rootDir,
+			stderr: result.stderr.slice(0, 500),
+		});
+	} catch (error) {
+		options.logger.warn('Failed to clear the knowledge base directory before a write', {
+			rootDir,
+			error: formatErrorForLog(error),
+		});
+	}
+}
 
 export async function loadPrebakedKnowledgeBaseBundle(
 	options: MaterializeKnowledgeBaseOptions,
@@ -338,13 +319,9 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 				logger: options.logger,
 				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
 				buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
+				beforeWrite: async () => await clearKnowledgeBaseDirectory(options),
 				bundleHash: (bundle) => bundle.contentHash,
 			});
 		},
 	);
 }
-
-export type {
-	KnowledgeBaseTemplateEntry,
-	KnowledgeBaseTemplatesIndex,
-} from './build-templates-index';
