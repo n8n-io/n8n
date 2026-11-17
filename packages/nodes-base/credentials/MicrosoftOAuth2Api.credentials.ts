@@ -148,14 +148,5 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			default: 'https://graph.microsoft.com',
 			description: 'Select the endpoint for your Microsoft cloud environment.',
 		},
-		{
-			// Re-declared because the base `oAuth2Api` field is `doNotInherit`. Microsoft
-			// APIs answer an expired token with 401 (Graph, Power Automate) or 403
-			// (Power BI), so accept both.
-			displayName: 'Token Expired Status Code',
-			name: 'tokenExpiredStatusCode',
-			type: 'hidden',
-			default: [401, 403],
-		},
 	];
 }
