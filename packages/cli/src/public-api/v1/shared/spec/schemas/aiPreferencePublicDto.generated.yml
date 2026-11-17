@@ -22,6 +22,7 @@ properties:
       - ui
       - aia
       - mcp
+      - api
   createdAt:
     type: string
   updatedAt:

@@ -115,7 +115,7 @@ export class AiPreferencesPublicController {
 		_res: Response,
 		@Body body: CreateAiPreferencePublicDto,
 	): Promise<AiPreferencePublicDto> {
-		return toAiPreferencePublicDto(await this.aiPreferenceService.create(req.user, body, 'ui'));
+		return toAiPreferencePublicDto(await this.aiPreferenceService.create(req.user, body, 'api'));
 	}
 
 	@Patch('/:preferenceId')

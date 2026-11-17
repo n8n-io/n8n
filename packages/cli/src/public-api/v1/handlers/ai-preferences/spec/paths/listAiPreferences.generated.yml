@@ -61,6 +61,7 @@ responses:
                       - ui
                       - aia
                       - mcp
+                      - api
                   createdAt:
                     type: string
                   updatedAt:

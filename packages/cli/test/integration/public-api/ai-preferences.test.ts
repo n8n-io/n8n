@@ -330,11 +330,13 @@ describe('Public API /ai-preferences', () => {
 				scope: 'user',
 				userId: member.id,
 				projectId: null,
-				source: 'ui',
+				source: 'api',
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
-			expect(await repository().existsBy({ id: response.body.id })).toBe(true);
+			expect(await repository().findOneByOrFail({ id: response.body.id })).toMatchObject({
+				source: 'api',
+			});
 		});
 
 		test('lets an owner and an admin save an instance preference', async () => {
