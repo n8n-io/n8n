@@ -208,6 +208,8 @@ export interface OracleOptions {
 	additionalData?: Record<string, unknown>;
 	/** Report binary data as the `$binary` key of each item, the form of compiled code (spec 10). */
 	withBinary?: boolean;
+	/** With `withBinary`: also report an empty `binary` object of an item, as `$binary: {}`. */
+	emptyBinary?: boolean;
 	/** The execution id of the main run (`$execution.id`, resume URLs). Default: a counter. */
 	executionId?: string;
 	/**
@@ -269,6 +271,8 @@ async function initDeduplicator(): Promise<void> {
 
 export interface OracleResult {
 	error: string | null;
+	/** The description of the error of the run, when it has one. */
+	errorDescription?: string;
 	/** Node names in the order in which they finished each run. */
 	order: string[];
 	/** The output lists of each node: one list for each output, the items of all runs joined. */
@@ -296,7 +300,7 @@ interface RunData {
 				}>
 			>;
 			metadata?: Record<string, string>;
-			error?: { message: string };
+			error?: { message: string; description?: string | null };
 			lastNodeExecuted?: string;
 		};
 	};
@@ -450,7 +454,7 @@ export async function runOracle(
 						options.withBinary &&
 						typeof i.binary === 'object' &&
 						i.binary !== null &&
-						Object.keys(i.binary).length > 0 &&
+						(options.emptyBinary === true || Object.keys(i.binary).length > 0) &&
 						typeof i.json === 'object' &&
 						i.json !== null
 							? { ...i.json, $binary: i.binary }
@@ -468,6 +472,9 @@ export async function runOracle(
 	}
 	return {
 		error: run.data.resultData.error?.message ?? null,
+		...(typeof run.data.resultData.error?.description === 'string'
+			? { errorDescription: run.data.resultData.error.description }
+			: {}),
 		order,
 		nodes,
 		responses,

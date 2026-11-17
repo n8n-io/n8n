@@ -32,6 +32,8 @@ export type { NodeSources } from './node-compile/convert.ts';
 export type { CredentialTypeInfo, CredentialTypeRegistry } from './credentials/types.ts';
 export { runDataTableCall } from './services/data-table.ts';
 export type { DataTableBackend, ServiceAnswer, ServiceCallEvent } from './services/data-table.ts';
+export { BINARY_DATA_MAX_BYTES, runBinaryDataCall } from './services/binary-data.ts';
+export type { BinaryDataBackend } from './services/binary-data.ts';
 export { runDeduplicationCall } from './services/deduplication.ts';
 export type { DeduplicationBackend } from './services/deduplication.ts';
 export {

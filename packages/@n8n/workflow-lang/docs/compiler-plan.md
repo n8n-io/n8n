@@ -412,6 +412,78 @@ file name with an extension and a `Content-Type`, and a file name without an ext
   Request node of the library never stores a response: a file response runs in the host
   (`http-binary`), so it does not reach the limit.
 
+**Built: the bytes of an item (file nodes, 2026-11-17).** `nodes/extract-from-file.ts`,
+`nodes/convert-to-file.ts`, `services/binary-data.ts`, `compiled-service-calls.ts` of the n8n module.
+
+- *The API.* Bytes are base64 text in the language. Two calls of the `binaryData` service
+  (`ctx.service`, spec 9.9) go to n8n: `read` (`{ id | data, as: 'text' | 'base64', encoding?, stripBOM?,
+  limit }`) gives `{ text }` or `{ data }`, and `store` (`{ data, fileName?, mimeType? }`) gives
+  `{ entry }`, the entry of n8n-core's `prepareBinaryData` (so the metadata and the place of the bytes
+  are those of v1). n8n reads only a file of the workflow of the execution. The runtime still answers
+  `metadata` itself. A call without an exact form gives `{ host: <reason> }`.
+- *Limit.* 262,144 bytes for one file (`BINARY_DATA_MAX_BYTES`): a call must fit `--service-call-kb`.
+  Above it the library node ends with the mark `RUNS_IN_HOST`, and the host form of the node runs the
+  v1 node for all items in the same run (`emitWithHostForm`). The nodes send no request, so a second
+  run changes nothing.
+- *Text.* An inline file of ASCII bytes without NUL and ESC is decoded in the module (`atob`): each
+  encoding that `chardet` can give for such bytes keeps ASCII. All other files go to `read`: n8n finds
+  the encoding with `chardet` when the node names none, and decodes UTF-8 and Latin-1. Each other
+  encoding of bytes above 0x7F goes to the host (n8n's `cli` package has no `iconv-lite`).
+- *Native operations.* Extract From File: `text`, `xml`, `fromJson`, `binaryToPropery`, and `csv`
+  from version 1.1. Convert To File: `toText`, `toBinary`, `toJson` with one file for each item. To the
+  host at run time: a field name or a key that lodash reads as a path, an encoding other than UTF-8
+  for a write, a data URI, bytes as an array, and the workflow setting `binaryMode: combined` (at
+  conversion).
+- *Options that n8n does not show.* n8n gives a node no value of a collection option that the node
+  description hides. `addBOM` and `stripBOM` show only with an `encoding` of `utf8`, `cesu8` or `ucs2`
+  in the same collection, so without it they have no effect. The v1 test found this.
+- *CSV read.* v1 reads CSV with `csv-parse` 7.0.2 (`SpreadsheetFile/v2/fromFile.operation.ts`):
+  `delimiter`, `from_line`, `to`, `bom`, `encoding`, `columns` (the header row), `relax_quotes`,
+  `skip_records_with_error`, and always `skip_empty_lines`. Fields stay texts: there is no type
+  inference. The library node ports `parse` of `lib/api/index.js` for one ASCII delimiter, UTF-8, and
+  the record delimiter that the text shows first. The node then removes empty cells unless
+  `includeEmptyCells` is set (without a header row that makes an object with index keys, as in v1).
+  Each error of csv-parse goes to the host: a quote inside a field, a quote that does not close, a
+  record with another number of fields. So do a column name that is an array index (JavaScript puts
+  such a key first), `relaxQuotes`, `skipRecordsWithErrors`, another encoding, a text with U+FFFD, a
+  missing file on an item after the first (the v1 error text depends on the item before), and
+  version 1 (its reader does not wait for the parser).
+- *Proof.* `nodes/__tests__/file-nodes-v1.test.ts` runs each case in n8n's engine with the real nodes
+  and on the reference runner, with the service over the real `prepareBinaryData` and `chardet`:
+  output items, `$binary` with its metadata (an empty `binary` object too), error message and
+  description. It has 160 generated CSV texts.
+- *The place of a new file.* v1 writes `workflows/<workflow id>/executions/<execution id>/binary_data/
+  <uuid>` (`binary-helper-functions.ts` `getBinaryHelperFunctions`, with `additionalData.executionId`
+  and `workflow.id` from `execute-context.ts`). The `store` call uses the workflow id without
+  `~manual`, and the execution id of the event when n8n gave it; for a runtime id (`wfrt-<n>`) it
+  writes under `wfrt-wfrt-<n>`, as the runtime (`server.zig` `egressStored`) and the host
+  (`binary-store.ts` `storedExecutionId`) do, and the dispatcher moves the file to n8n's id when it
+  saves the run (`compiled-binary-data.ts`).
+
+**Not built: the other file operations.**
+
+- *CSV write (the default operation of Convert To File).* v1 writes with SheetJS (`@e965/xlsx`,
+  `utils/binary.ts` `convertJsonToSpreadsheetBinary`): `flattenObject` of each item, `json_to_sheet`
+  (option `skipHeader` for `headerRow: false`), then `write` with `bookType: 'csv'`, `bookSST: false`
+  and `FS` for the delimiter; the file name is `File.csv` or `options.fileName`, through
+  `prepareBinaryData`. A port needs: the column order of the union of keys, the cell type of each
+  value (number, boolean, text, Date, null and undefined), the general number format of SheetJS for
+  numbers, and its CSV quoting. It is one call for all items.
+- *`html`, `rtf`, `xlsx`, `xls`, `ods`.* SheetJS reads and writes them. An exact native form is a
+  runtime primitive: a ZIP reader and writer (deflate), the XML of SpreadsheetML and ODS (shared
+  strings, styles, number formats, dates with the 1900 and 1904 systems), BIFF8 for `xls`, and
+  `sheet_to_json` with `range`, `header`, `defval` and `UTC`. A later card, format by format.
+- *`pdf`.* pdf.js extracts the text. No native form is planned; the node stays in the host.
+- *`fromIcs`, `iCal`.* `node-ical` and `ics`. Small text formats: bytecode over text, a later card.
+- *`toJson` with one file for all items.* It needs a call for all items, and v1 stops the workflow
+  under each "continue" setting after it adds an error item.
+- *FTP and SFTP.* A protocol client in the runtime, as for Postgres: for FTP the control connection
+  (USER, PASS, TYPE I, PASV or EPSV, LIST, RETR, STOR, RNFR and RNTO, DELE, MKD, RMD) with a second
+  data connection, explicit and implicit TLS, and the listing parser of `promise-ftp`; for SFTP the
+  SSH 2 transport (key exchange, host key, ciphers and MACs of `ssh2`), password and private key
+  authentication, and the SFTP version 3 packets (open, read, write, readdir, rename, remove, mkdir,
+  stat). Both stream to and from the binary data store (`sourcePeek`, `putBody`). Not built.
+
 **Not built.**
 
 - *A retry in the fallback host of the step that reached the limit.* A compiled node is code of the
