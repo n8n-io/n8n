@@ -1,4 +1,6 @@
-//! Tests of the PostgreSQL client against a real server. They run when
+//! Tests of the PostgreSQL client. The `pg fake` tests run against the
+//! scripted server of `pg_fake.zig`, in the thread of the test, without a
+//! database. The `pg live` tests run against a real server when
 //! `WFRT_TEST_PG` names one (`host:port`, user `postgres`, password in
 //! `WFRT_TEST_PG_PASSWORD`, database `postgres`), and are skipped without
 //! it. docs/sql-effect.md says how to start the server that they expect.
@@ -6,6 +8,7 @@ const std = @import("std");
 const sys = @import("sys.zig");
 const creds = @import("creds.zig");
 const pg = @import("pg.zig");
+const fake = @import("pg_fake.zig");
 
 const kind_conn: u8 = 13;
 const kind_dns: u8 = 14;
@@ -268,4 +271,339 @@ test "pg live: a pool has a fixed size, calls wait in order, and a slow statemen
     }
     try std.testing.expect(gone);
     try std.testing.expectEqual(@as(u64, 2), h.client.counters.connects);
+}
+
+// ---- tests against the scripted server (no database) ----------------------------
+
+const kind_fake: u8 = 15;
+
+const int4 = 23;
+const text_oid = 25;
+const hundred: [100]u8 = @splat('x');
+const nine_k: [9000]u8 = @splat('x');
+
+/// The script of the fake tests: one rule for each statement text.
+const script = [_]fake.Rule{
+    .{ .text = "select 42 as x", .cols = &.{.{ .name = "x", .oid = int4 }}, .rows = &.{&.{"42"}}, .tag = "SELECT 1" },
+    .{
+        .text = "select $1::int4 as a, $2 as t, $3 as z",
+        .cols = &.{ .{ .name = "a", .oid = int4 }, .{ .name = "t", .oid = text_oid }, .{ .name = "z", .oid = text_oid } },
+        .rows = &.{&.{ "7", "x'y; drop table x --", null }},
+        .tag = "SELECT 1",
+    },
+    .{ .text = "insert into t values ($1)", .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values ($1) -- twice", .run_fail = .{ .code = "23505", .message = "duplicate key value" } },
+    .{ .text = "insert into t values (1); select 1", .parse_fail = .{ .code = "42601", .message = "cannot insert multiple commands into a prepared statement" } },
+    .{ .text = "insert into t values (1) returning b", .cols = &.{.{ .name = "b", .oid = 1001 }}, .rows = &.{&.{"{}"}}, .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values (1) returning big", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "INSERT 0 50" },
+    .{ .text = "select big", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "SELECT 50" },
+    .{ .text = "select one_big_row", .cols = &.{.{ .name = "big", .oid = text_oid }}, .rows = &.{&.{&nine_k}}, .tag = "SELECT 1" },
+    .{ .text = "select pg_sleep(30)", .cols = &.{.{ .name = "s", .oid = text_oid }}, .act = .hang },
+    .{ .text = "select then_close", .cols = &.{.{ .name = "s", .oid = text_oid }}, .act = .close },
+};
+
+/// The client and the scripted server on one poller, with a clock that
+/// only the test moves.
+const FakeHarness = struct {
+    arena: std.heap.ArenaAllocator,
+    poller: sys.Poller,
+    client: *pg.Client,
+    server: *fake.Server,
+    store: creds.Store,
+    next_seq: u32 = 1,
+    now: i64 = 1_000_000,
+
+    /// The harness lives in its own arena: `destroy` frees all of it.
+    fn create(cfg: pg.Config, auth: fake.Auth) !*FakeHarness {
+        var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+        errdefer arena.deinit();
+        const a = arena.allocator();
+        const h = try a.create(FakeHarness);
+        h.* = .{ .arena = arena, .poller = try sys.Poller.init(), .client = try a.create(pg.Client), .server = try a.create(fake.Server), .store = try creds.Store.parse(a, "{}") };
+        try h.server.init(a, &h.poller, kind_fake);
+        h.server.rules = &script;
+        h.server.auth = auth;
+        h.server.password = "secret";
+        const doc = try std.fmt.allocPrint(a,
+            \\{{"db":{{"data":{{"host":"127.0.0.1","port":{0d},"user":"alice","password":"secret","database":"app","maxConnections":100}}}},
+            \\"db2":{{"data":{{"host":"127.0.0.1","port":{0d},"user":"bob","password":"secret","database":"app"}}}},
+            \\"wrong":{{"data":{{"host":"127.0.0.1","port":{0d},"user":"alice","password":"not-the-password","database":"app"}}}},
+            \\"tls":{{"data":{{"host":"127.0.0.1","port":{0d},"user":"alice","password":"secret","database":"app","ssl":"require","allowUnauthorizedCerts":true}}}}}}
+        , .{h.server.port});
+        h.store = try creds.Store.parse(a, doc);
+        try h.client.init(a, cfg, &h.poller, kind_conn, kind_dns);
+        // The arena as it is after the last allocation above.
+        h.arena = arena;
+        return h;
+    }
+
+    fn destroy(h: *FakeHarness) void {
+        h.client.deinit();
+        h.server.deinit();
+        h.poller.deinit();
+        var arena = h.arena;
+        arena.deinit();
+    }
+
+    fn begin(h: *FakeHarness, args: []const u8) !u32 {
+        const seq = h.next_seq;
+        h.next_seq += 1;
+        if (h.client.start(7, seq, args, &h.store, h.now)) |msg| {
+            std.debug.print("start refused: {s}\n", .{msg});
+            return error.Refused;
+        }
+        return seq;
+    }
+
+    /// One round of the event loop. It waits only while no socket is ready.
+    fn step(h: *FakeHarness) void {
+        var ready: [64]sys.Ready = @splat(.{ .token = 0, .readable = false, .writable = false, .eof = false });
+        const n = h.poller.wait(&ready, 5);
+        for (ready[0..n]) |ev| {
+            const idx: u32 = @truncate(ev.token);
+            const gen: u32 = @truncate((ev.token >> 32) & 0xFFFFFF);
+            switch (ev.token >> 56) {
+                kind_fake => h.server.onReady(ev),
+                kind_conn => h.client.onConn(idx, gen, ev, h.now),
+                // The name lookups of the client: the tests use addresses.
+                else => h.client.onDns(@intCast(idx), ev),
+            }
+        }
+        h.client.afterEvents(h.now);
+    }
+
+    /// Run the event loop until one call ends; give its seq and its answer.
+    fn wait(h: *FakeHarness, seq_out: *u32) !Answer {
+        for (0..4000) |_| {
+            if (h.client.nextDone()) |d| {
+                const text = try h.arena.allocator().dupe(u8, d.payload);
+                seq_out.* = d.seq;
+                h.client.release(d.req);
+                return .{ .ok = d.ok, .text = text };
+            }
+            h.step();
+        }
+        return error.NoAnswer;
+    }
+
+    fn call(h: *FakeHarness, comptime slot: []const u8, comptime rest: []const u8) !Answer {
+        var seq: u32 = 0;
+        _ = try h.begin("{\"credential\":\"" ++ slot ++ "\",\"dialect\":\"postgres\"," ++ rest ++ "}");
+        const a = try h.wait(&seq);
+        try std.testing.expect(!h.server.failed);
+        return a;
+    }
+
+    fn expectResult(h: *FakeHarness, comptime rest: []const u8, want: []const u8) !void {
+        const a = try h.call("db", rest);
+        if (!a.ok) std.debug.print("effect error: {s}\n", .{a.text});
+        try std.testing.expect(a.ok);
+        try std.testing.expectEqualStrings(want, a.text);
+    }
+
+    fn expectError(h: *FakeHarness, comptime rest: []const u8, want_part: []const u8) !void {
+        const a = try h.call("db", rest);
+        if (a.ok or std.mem.indexOf(u8, a.text, want_part) == null) std.debug.print("got ok={}: {s}\n", .{ a.ok, a.text });
+        try std.testing.expect(!a.ok);
+        try std.testing.expect(std.mem.indexOf(u8, a.text, want_part) != null);
+    }
+
+    /// The lines of the server log since the last call of this function.
+    fn takeLog(h: *FakeHarness) ![]const u8 {
+        const text = try h.arena.allocator().dupe(u8, h.server.logText());
+        h.server.clearLog();
+        return text;
+    }
+};
+
+const one_row = "{\"results\":[{\"rows\":[{\"x\":42}],\"command\":\"SELECT\",\"rowCount\":1}]}";
+const select_x = "\"statements\":[{\"text\":\"select 42 as x\"}]";
+
+test "pg fake: the clear, MD5 and SCRAM logins, a wrong password and a server without TLS" {
+    const methods = [_]fake.Auth{ .trust, .clear, .md5, .scram };
+    for (methods) |method| {
+        const h = try FakeHarness.create(.{}, method);
+        defer h.destroy();
+        try h.expectResult(select_x, one_row);
+        try std.testing.expectEqual(@as(u32, 1), h.server.count("login alice"));
+        if (method == .trust) continue;
+        // The server refuses the password: the result has the error of the server.
+        const a = try h.call("wrong", select_x);
+        try std.testing.expect(a.ok);
+        try std.testing.expect(std.mem.startsWith(u8, a.text, "{\"results\":[],\"connect\":{\"length\":"));
+        try std.testing.expect(std.mem.indexOf(u8, a.text, "\"severity\":\"FATAL\",\"code\":\"28P01\"") != null);
+        try std.testing.expectEqual(@as(u32, 1), h.server.count("refused alice"));
+        try std.testing.expectEqual(@as(u32, 1), h.server.logins);
+    }
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    const a = try h.call("tls", select_x);
+    try std.testing.expectEqualStrings("{\"results\":[],\"connect\":{\"message\":\"The server does not support SSL connections\"}}", a.text);
+}
+
+test "pg fake: a statement is prepared once, and values go as binds" {
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    for (0..3) |_| try h.expectResult(select_x, one_row);
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("parse select 42 as x"));
+    try std.testing.expectEqual(@as(u32, 3), h.server.count("run select 42 as x"));
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.prepared);
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
+    try std.testing.expectEqual(@as(u64, 2), h.client.counters.reused);
+    _ = try h.takeLog();
+    try h.expectResult(
+        \\"statements":[{"text":"select $1::int4 as a, $2 as t, $3 as z","values":[7,"x'y; drop table x --",null]}]
+    ,
+        \\{"results":[{"rows":[{"a":7,"t":"x'y; drop table x --","z":null}],"command":"SELECT","rowCount":1}]}
+    );
+    // The text has the placeholders; the values are in the Bind message only.
+    try std.testing.expectEqualStrings(
+        \\parse select $1::int4 as a, $2 as t, $3 as z
+        \\bind 7|x'y; drop table x --|NULL
+        \\run select $1::int4 as a, $2 as t, $3 as z
+        \\
+    , try h.takeLog());
+}
+
+test "pg fake: the three modes, and an error in a transaction rolls back" {
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    const three =
+        \\"statements":[{"text":"insert into t values ($1)","values":[1]},{"text":"insert into t values ($1) -- twice","values":[1]},{"text":"insert into t values ($1)","values":[2]}]
+    ;
+    const failure = "{\"error\":{\"length\":47,\"severity\":\"ERROR\",\"code\":\"23505\",\"message\":\"duplicate key value\"}}";
+    const insert = "{\"rows\":[],\"command\":\"INSERT\",\"rowCount\":1}";
+    // transaction: the results end with the failure, and nothing is committed.
+    try h.expectResult("\"mode\":\"transaction\"," ++ three, "{\"results\":[" ++ insert ++ "," ++ failure ++ "]}");
+    try std.testing.expectEqualStrings(
+        \\login alice
+        \\parse insert into t values ($1)
+        \\parse insert into t values ($1) -- twice
+        \\BEGIN
+        \\bind 1
+        \\run insert into t values ($1)
+        \\bind 1
+        \\run insert into t values ($1) -- twice
+        \\ROLLBACK
+        \\
+    , try h.takeLog());
+    // single with more than one statement is the same transaction.
+    try h.expectResult(three, "{\"results\":[" ++ insert ++ "," ++ failure ++ "]}");
+    try std.testing.expectEqualStrings("BEGIN\nbind 1\nrun insert into t values ($1)\nbind 1\nrun insert into t values ($1) -- twice\nROLLBACK\n", try h.takeLog());
+    // independently: each statement runs alone, and the one after the failure runs.
+    try h.expectResult("\"mode\":\"independently\"," ++ three, "{\"results\":[" ++ insert ++ "," ++ failure ++ "," ++ insert ++ "]}");
+    try std.testing.expectEqualStrings("bind 1\nrun insert into t values ($1)\nbind 1\nrun insert into t values ($1) -- twice\nbind 2\nrun insert into t values ($1)\n", try h.takeLog());
+    // transaction with one statement, and all statements good: COMMIT.
+    try h.expectResult("\"mode\":\"transaction\",\"statements\":[{\"text\":\"insert into t values ($1)\",\"values\":[5]}]", "{\"results\":[" ++ insert ++ "]}");
+    try std.testing.expectEqualStrings("BEGIN\nbind 5\nrun insert into t values ($1)\nCOMMIT\n", try h.takeLog());
+    // single with one statement that gives no rows runs alone.
+    try h.expectResult("\"statements\":[{\"text\":\"insert into t values ($1)\",\"values\":[6]}]", "{\"results\":[" ++ insert ++ "]}");
+    try std.testing.expectEqualStrings("bind 6\nrun insert into t values ($1)\n", try h.takeLog());
+}
+
+test "pg fake: a call without an exact native form ends with a marker and commits nothing" {
+    const h = try FakeHarness.create(.{ .max_result = 2048 }, .trust);
+    defer h.destroy();
+    // The server refuses to prepare two commands: nothing ran.
+    try h.expectError("\"statements\":[{\"text\":\"insert into t values ($1)\",\"values\":[1]},{\"text\":\"insert into t values (1); select 1\"}]", "(limit: sql-statement)");
+    try std.testing.expectEqual(@as(u32, 0), h.server.count("BEGIN"));
+    try std.testing.expect(std.mem.indexOf(u8, h.server.logText(), "run ") == null);
+    // A column type without a native form shows when the statement is described.
+    try h.expectError("\"statements\":[{\"text\":\"insert into t values (1) returning b\"}]", "(limit: sql-type)");
+    try std.testing.expect(std.mem.indexOf(u8, h.server.logText(), "run ") == null);
+    _ = try h.takeLog();
+    // A result over the limit shows in the rows: the statement is rolled back.
+    try h.expectError("\"statements\":[{\"text\":\"insert into t values (1) returning big\"}]", "(limit: sql-max-result)");
+    try std.testing.expectEqualStrings("parse insert into t values (1) returning big\nBEGIN\nbind\nrun insert into t values (1) returning big\nROLLBACK\n", try h.takeLog());
+    // A SELECT runs again in the host: no transaction.
+    try h.expectError("\"statements\":[{\"text\":\"select big\"}]", "(limit: sql-max-result)");
+    try std.testing.expectEqualStrings("parse select big\nbind\nrun select big\n", try h.takeLog());
+    // One row larger than the read buffer of the connection.
+    try h.expectError("\"statements\":[{\"text\":\"select one_big_row\"}]", "(limit: sql-max-result)");
+    // The connection is good for the next call.
+    try h.expectResult(select_x, one_row);
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
+    try std.testing.expectEqual(@as(u64, 5), h.client.counters.to_host);
+    // After a committed statement the call cannot run again: no marker.
+    const a = try h.call("db", "\"mode\":\"independently\",\"statements\":[{\"text\":\"insert into t values ($1)\",\"values\":[1]},{\"text\":\"select big\"}]");
+    try std.testing.expect(!a.ok);
+    try std.testing.expect(std.mem.indexOf(u8, a.text, "(limit: sql-") == null);
+    try std.testing.expect(std.mem.endsWith(u8, a.text, "(limit)"));
+}
+
+test "pg fake: a pool has a fixed size, calls wait in order, and a call without a slot is refused" {
+    const h = try FakeHarness.create(.{ .max_reqs = 3, .pool_conns = 1, .max_conns = 1 }, .trust);
+    defer h.destroy();
+    const args = "{\"credential\":\"db\",\"dialect\":\"postgres\"," ++ select_x ++ "}";
+    var seqs: [3]u32 = @splat(0);
+    for (&seqs) |*s| s.* = try h.begin(args);
+    // The fourth call has no slot: it is refused at once.
+    try std.testing.expect(h.client.start(7, 99, args, &h.store, h.now) != null);
+    for (seqs) |want| {
+        var seq: u32 = 0;
+        const a = try h.wait(&seq);
+        try std.testing.expectEqualStrings(one_row, a.text);
+        // One connection: the calls end in the order in which they came.
+        try std.testing.expectEqual(want, seq);
+    }
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
+    try std.testing.expectEqual(@as(u64, 2), h.client.counters.waited);
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.refused);
+    // The shard has one connection: a call of another credential closes the idle one.
+    const other = try h.call("db2", select_x);
+    try std.testing.expectEqualStrings(one_row, other.text);
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("login bob"));
+    try std.testing.expectEqual(@as(u64, 2), h.client.counters.connects);
+    // An idle connection closes after `idle_ms`, with a Terminate message.
+    h.now += 31_000;
+    for (0..200) |_| {
+        if (h.server.sessions() == 0) break;
+        h.step();
+    }
+    try std.testing.expectEqual(@as(u32, 0), h.server.sessions());
+    try std.testing.expect(!h.server.failed);
+}
+
+test "pg fake: the time limit of a call cancels the statement" {
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    var seq: u32 = 0;
+    _ = try h.begin("{\"credential\":\"db\",\"dialect\":\"postgres\",\"timeoutMs\":500,\"statements\":[{\"text\":\"select pg_sleep(30)\"}]}");
+    // The statement runs on the server, which gives no answer.
+    for (0..200) |_| {
+        if (h.server.count("run select pg_sleep(30)") == 1) break;
+        h.step();
+    }
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("run select pg_sleep(30)"));
+    try std.testing.expectEqual(@as(?pg.Done, null), h.client.nextDone());
+    h.now += 600;
+    const a = try h.wait(&seq);
+    try std.testing.expect(!a.ok);
+    try std.testing.expectEqualStrings("sql: no result before the time limit of the call; the statement was cancelled", a.text);
+    // The cancel request goes on a connection of its own, with the key of the session.
+    for (0..200) |_| {
+        if (h.server.cancels == 1 and h.server.sessions() == 0) break;
+        h.step();
+    }
+    try std.testing.expectEqual(@as(u32, 1), h.server.cancels);
+    try std.testing.expectEqual(@as(u32, 1000), h.server.cancel_pid);
+    try std.testing.expectEqual(fake.Server.secret_key, h.server.cancel_key);
+    try std.testing.expectEqual(@as(u32, 0), h.server.sessions());
+    try std.testing.expectEqual(@as(u64, 1), h.client.counters.timeouts);
+    // The next call opens a new connection.
+    try h.expectResult(select_x, one_row);
+    try std.testing.expectEqual(@as(u64, 2), h.client.counters.connects);
+}
+
+test "pg fake: a connection that closes while a statement runs fails the step" {
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    try h.expectResult(select_x, one_row);
+    const a = try h.call("db", "\"statements\":[{\"text\":\"select then_close\"}]");
+    try std.testing.expect(!a.ok);
+    try std.testing.expectEqualStrings("sql: the connection to the database closed", a.text);
+    // The pool has no connection now: the next call logs in again.
+    try h.expectResult(select_x, one_row);
+    try std.testing.expectEqual(@as(u64, 2), h.client.counters.connects);
+    try std.testing.expectEqual(@as(u32, 2), h.server.logins);
 }

@@ -86,13 +86,23 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
 - TLS verification errors have the text of OpenSSL, not of Node.js.
 - Not built: array, interval, point and circle columns; the escape format of `bytea`; SSH tunnels; CA and client
   certificates; the simple query protocol for a text with more than one command; a retry on a connection that the
-  server closed while idle; a deterministic fake server for tests without a database.
+  server closed while idle.
 
 ## Tests
 
 - `src/core/pgwire.zig`, `src/shell/pg_call.zig`: unit tests of the codec, the bind types and the result JSON.
 - `src/core/fuzz_test.zig`: three fuzz targets (backend messages, column values, the SCRAM server-first message).
-- `src/shell/pg_test.zig`: tests against a real server. They are skipped without `WFRT_TEST_PG`:
+- `src/shell/pg_fake.zig`: a scripted PostgreSQL server for tests without a database. It runs on the poller and
+  in the thread of the test, with a clock that only the test moves. A rule gives the columns, the rows, the tag
+  or the error of one statement text, or says that the server gives no answer or closes. The server writes a log
+  line for each login, Parse, Bind (with the values), Execute, `BEGIN`, `COMMIT`, `ROLLBACK` and cancel request.
+- `src/shell/pg_test.zig`, the `pg fake` tests (fast tier): the trust, clear, MD5 and SCRAM logins and a wrong
+  password, prepare and reuse, the three modes, an error in a transaction, the markers and their rollback, the
+  pool queue, the call-slot limit, the connection limit of the shard, the idle close, the time limit with its
+  cancel request, and a connection that closes while a statement runs.
+- `src/shell/server.zig`: a run of a module with a `sql` step through the shard (`startSql`, `drainSql`) against
+  the scripted server, and results that wait while the event list has no room.
+- `src/shell/pg_test.zig`, the `pg live` tests: against a real server. They are skipped without `WFRT_TEST_PG`:
 
 ```bash
 docker run -d --name wfrt-pg -e POSTGRES_PASSWORD=secret -p 127.0.0.1:5544:5432 postgres:17
