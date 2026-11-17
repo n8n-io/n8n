@@ -1,0 +1,38 @@
+import { ExternalSecretsProxy } from 'n8n-core';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+
+import type { ExecutionSetup } from '../execution-context';
+import { TestCredentialsHelper } from '../instance-state/credentials-helper';
+import { refuseCodeTask, refuseSubWorkflow } from '../runtime/refusals';
+import { createNodeHandler } from './node-handler';
+
+const BASE_URL = 'http://localhost:5678';
+
+export function createAdditionalData(context: ExecutionSetup): IWorkflowExecuteAdditionalData {
+	return {
+		executionId: context.executionId,
+		hooks: context.hooks,
+		credentialsHelper: new TestCredentialsHelper(context),
+		evalNodeMockHandler: createNodeHandler(context),
+		externalSecretsProxy: new ExternalSecretsProxy(),
+		variables: {},
+		currentNodeExecutionIndex: 0,
+		executeWorkflow: async (_workflowInfo, _additionalData, { node }) =>
+			refuseSubWorkflow(context, node),
+		startRunnerTask: async (_additionalData, _jobType, _settings, _functions, _inputData, node) =>
+			refuseCodeTask(context, node),
+		getRunExecutionData: async () => undefined,
+		getRuntimeCredential: async () => undefined,
+		logAiEvent: () => {},
+		restApiUrl: `${BASE_URL}/rest`,
+		instanceBaseUrl: BASE_URL,
+		formBaseUrl: `${BASE_URL}/form`,
+		formWaitingBaseUrl: `${BASE_URL}/form-waiting`,
+		formTestBaseUrl: `${BASE_URL}/form-test`,
+		webhookBaseUrl: `${BASE_URL}/webhook`,
+		webhookWaitingBaseUrl: `${BASE_URL}/webhook-waiting`,
+		webhookTestBaseUrl: `${BASE_URL}/webhook-test`,
+		mcpBaseUrl: `${BASE_URL}/mcp`,
+		mcpTestBaseUrl: `${BASE_URL}/mcp-test`,
+	};
+}

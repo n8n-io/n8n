@@ -1,0 +1,33 @@
+{
+	"id": "get-customer-1",
+	"name": "Get customer",
+	"nodes": [
+		{
+			"id": "e0000000-0000-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "e0000000-0000-4000-8000-000000000002",
+			"name": "Get customer",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 0],
+			"parameters": {
+				"url": "={{ $json.baseUrl }}/customers/{{ $json.customerId }}",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [{ "name": "X-Api-Key", "value": "={{ $json.apiKey }}" }]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Start": { "main": [[{ "node": "Get customer", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

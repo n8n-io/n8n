@@ -1,0 +1,79 @@
+{
+	"id": "refusals-1",
+	"name": "Approve refund",
+	"nodes": [
+		{
+			"id": "d4000000-0003-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "d4000000-0003-4000-8000-000000000002",
+			"name": "Wait for approval",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"webhookId": "d4000000-0003-4000-8000-0000000000aa",
+			"parameters": { "resume": "webhook", "options": {} }
+		},
+		{
+			"id": "d4000000-0003-4000-8000-000000000003",
+			"name": "Wait for form",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [220, 200],
+			"webhookId": "d4000000-0003-4000-8000-0000000000bb",
+			"parameters": {
+				"resume": "form",
+				"formTitle": "Refund",
+				"formFields": { "values": [{ "fieldLabel": "Reason" }] },
+				"options": {}
+			}
+		},
+		{
+			"id": "d4000000-0003-4000-8000-000000000004",
+			"name": "Ask manager",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [220, 400],
+			"webhookId": "d4000000-0003-4000-8000-0000000000cc",
+			"parameters": {
+				"operation": "sendAndWait",
+				"sendTo": "manager@example.com",
+				"subject": "Approve refund",
+				"message": "Approve the refund?",
+				"approvalOptions": { "values": {} },
+				"options": {}
+			},
+			"credentials": { "gmailOAuth2": { "id": "1", "name": "Gmail account" } }
+		},
+		{
+			"id": "d4000000-0003-4000-8000-000000000005",
+			"name": "Find refund",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"parameters": {
+				"operation": "get",
+				"dataTableId": { "__rl": true, "mode": "id", "value": "refunds" },
+				"filters": { "conditions": [] }
+			}
+		},
+		{
+			"id": "d4000000-0003-4000-8000-000000000006",
+			"name": "Score refund",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 800],
+			"parameters": {
+				"language": "pythonNative",
+				"pythonCode": "return [{'json': {'score': 1}}]"
+			}
+		}
+	],
+	"connections": {},
+	"settings": { "executionOrder": "v1" }
+}
