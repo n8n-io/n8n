@@ -2486,6 +2486,287 @@ const OUTPUT_PARSER_CASES: EquivalenceCase[] = [
 	},
 ];
 
+/** The memory sub-node `memoryBufferWindow`. Each case has its own session key. */
+function windowMemory(typeVersion: number, parameters: Record<string, unknown>): SubNodeCase {
+	return {
+		name: 'Memory',
+		type: `${LC}memoryBufferWindow`,
+		typeVersion,
+		parameters,
+		connection: 'ai_memory',
+	};
+}
+const customKey = (key: unknown, extra: Record<string, unknown> = {}) =>
+	windowMemory(1.3, { sessionIdType: 'customKey', sessionKey: key, ...extra });
+const asked = { text: '={{ $json.q }}', options: { systemMessage: 'Be brief' } };
+const questions = { items: [{ q: 'one' }, { q: 'two' }, { q: 'three' }] };
+
+/** The Tools Agent with the window buffer memory, and no tools. */
+const MEMORY_CASES: EquivalenceCase[] = [
+	...[2, 2.1, 2.2, 3, 3.1].map((version) =>
+		agent(
+			`memory, version ${version}`,
+			version,
+			gpt,
+			[completion('first'), completion('second'), completion('third')],
+			asked,
+			{ ...questions, subNodes: [gpt, customKey(`key-${version}`)] },
+		),
+	),
+	agent(
+		'memory, window of one exchange',
+		3.1,
+		gpt,
+		[completion('first'), completion('second'), completion('third')],
+		asked,
+		{ ...questions, subNodes: [gpt, customKey('key-window', { contextWindowLength: 1 })] },
+	),
+	agent(
+		'memory, responses',
+		3.1,
+		openAiModel(1.3, 'gpt-5', {}),
+		[response(outputText('first')), response(outputText('second')), response(outputText('third'))],
+		asked,
+		{ ...questions, subNodes: [openAiModel(1.3, 'gpt-5', {}), customKey('key-responses')] },
+	),
+	agent(
+		'memory, anthropic',
+		3.1,
+		sonnet,
+		[claude([claudeText('first')]), claude([claudeText('second')]), claude([claudeText('third')])],
+		asked,
+		{
+			...questions,
+			...withAnthropic,
+			subNodes: [sonnet, customKey('key-anthropic')],
+		},
+	),
+	agent(
+		'memory, gemini',
+		3.1,
+		flash,
+		[gemini([{ text: 'first' }]), gemini([{ text: 'second' }]), gemini([{ text: 'third' }])],
+		asked,
+		{ ...questions, ...withGoogle, subNodes: [flash, customKey('key-gemini')] },
+	),
+	agent(
+		'memory, key from the first item',
+		3.1,
+		gpt,
+		[completion('first'), completion('second')],
+		{ text: '={{ $json.q }}' },
+		{
+			items: [
+				{ q: 'one', sid: 'key-item-a' },
+				{ q: 'two', sid: 'key-item-b' },
+			],
+			subNodes: [gpt, customKey('={{ $json.sid }}')],
+		},
+	),
+	agent(
+		'memory, version 1.1 of the memory',
+		2.2,
+		gpt,
+		[completion('first'), completion('second')],
+		{ text: '={{ $json.q }}' },
+		{
+			items: [
+				{ q: 'one', sessionId: 'key-old' },
+				{ q: 'two', sessionId: 'key-other' },
+			],
+			subNodes: [gpt, windowMemory(1.1, {})],
+		},
+	),
+	agent(
+		'memory, version 1 of the memory',
+		3,
+		gpt,
+		[completion('first'), completion('second')],
+		{ text: '={{ $json.q }}' },
+		{
+			items: [{ q: 'one' }, { q: 'two' }],
+			subNodes: [gpt, windowMemory(1, { sessionKey: 'key-v1' })],
+		},
+	),
+	agent(
+		'memory, empty key',
+		3.1,
+		gpt,
+		[completion('first')],
+		{},
+		{
+			subNodes: [gpt, customKey('={{ $json.none }}')],
+			expectedError: 'Error in sub-node Memory',
+		},
+	),
+	agent(
+		'memory, empty key, version 2.2',
+		2.2,
+		gpt,
+		[completion('first')],
+		{},
+		{
+			subNodes: [gpt, customKey('')],
+			expectedError: 'Error in sub-node Memory',
+		},
+	),
+	agent(
+		'memory, number as key',
+		3.1,
+		gpt,
+		[completion('first'), completion('second')],
+		{ text: '={{ $json.q }}' },
+		{ items: [{ q: 'one' }, { q: 'two' }], subNodes: [gpt, customKey('={{ 4711 }}')] },
+	),
+	agent(
+		'memory, failed call is not kept',
+		3.1,
+		gpt,
+		[failed(400), completion('second'), completion('third')],
+		asked,
+		{
+			...questions,
+			settings: { onError: 'continueRegularOutput' },
+			subNodes: [gpt, customKey('key-failed')],
+		},
+	),
+	agent(
+		'memory, failed call is not kept, version 2.2',
+		2.2,
+		gpt,
+		[completion('first'), failed(400), completion('third')],
+		asked,
+		{
+			...questions,
+			settings: { onError: 'continueRegularOutput' },
+			subNodes: [gpt, customKey('key-failed-2')],
+		},
+	),
+	agent('memory, empty answer', 3.1, gpt, [completion(''), completion('second')], asked, {
+		...questions,
+		items: questions.items.slice(0, 2),
+		subNodes: [gpt, customKey('key-empty')],
+	}),
+	agent(
+		'memory, empty answer, version 2.2',
+		2.2,
+		gpt,
+		[completion(''), completion('second')],
+		asked,
+		{ ...questions, items: questions.items.slice(0, 2), subNodes: [gpt, customKey('key-empty-2')] },
+	),
+	agent(
+		'memory, tool call without tools',
+		3.1,
+		gpt,
+		[completion('first'), toolCall(), completion('again one'), completion('again two')],
+		asked,
+		{ ...questions, items: questions.items.slice(0, 2), subNodes: [gpt, customKey('key-tool')] },
+	),
+	agent(
+		'memory, tool call without tools, version 2.2',
+		2.2,
+		gpt,
+		[toolCall(), completion('after'), completion('second')],
+		asked,
+		{ ...questions, items: questions.items.slice(0, 2), subNodes: [gpt, customKey('key-tool-2')] },
+	),
+	agent(
+		'memory, object as key',
+		3.1,
+		gpt,
+		[completion('first')],
+		{},
+		{
+			subNodes: [gpt, customKey('={{ $json }}')],
+			expectedError: 'Error in sub-node Memory',
+		},
+	),
+	agent(
+		'memory, no prompt',
+		3.1,
+		gpt,
+		[completion('first')],
+		{ text: '={{ $json.none }}' },
+		{
+			subNodes: [gpt, customKey('key-no-prompt')],
+			expectedError: 'No prompt specified',
+		},
+	),
+	agent(
+		'memory, no prompt, version 2.2',
+		2.2,
+		gpt,
+		[completion('first')],
+		{ text: '={{ $json.none }}' },
+		{
+			subNodes: [gpt, customKey('key-no-prompt-2')],
+			expectedError: 'No prompt specified',
+		},
+	),
+	agent(
+		'memory, max iterations, version 2.2',
+		2.2,
+		gpt,
+		[toolCall(), completion('second')],
+		{ ...asked, options: { systemMessage: 'Be brief', maxIterations: 1 } },
+		{ ...questions, items: questions.items.slice(0, 2), subNodes: [gpt, customKey('key-max-2')] },
+	),
+	agent(
+		'memory, max iterations',
+		3.1,
+		gpt,
+		[completion('first'), toolCall(), completion('x'), completion('y')],
+		{ ...asked, options: { systemMessage: 'Be brief', maxIterations: 1 } },
+		{
+			...questions,
+			items: questions.items.slice(0, 2),
+			subNodes: [gpt, customKey('key-max')],
+			expectedError:
+				'Max iterations (1) reached. The agent could not complete the task within the allowed number of iterations.',
+		},
+	),
+	agent(
+		'memory, empty answer, anthropic, version 2.2',
+		2.2,
+		sonnet,
+		[claude([claudeText('')]), claude([claudeText('second')])],
+		asked,
+		{
+			...questions,
+			items: questions.items.slice(0, 2),
+			...withAnthropic,
+			subNodes: [sonnet, customKey('key-empty-anthropic')],
+		},
+	),
+	agent(
+		'memory, empty answer, gemini, version 2.2',
+		2.2,
+		flash,
+		[gemini([{ text: '' }]), gemini([{ text: 'second' }])],
+		asked,
+		{
+			...questions,
+			items: questions.items.slice(0, 2),
+			...withGoogle,
+			subNodes: [flash, customKey('key-empty-gemini')],
+		},
+	),
+	agent(
+		'memory, retry',
+		3.1,
+		gpt,
+		[completion('first'), failed(400), completion('again one'), completion('again two')],
+		asked,
+		{
+			...questions,
+			items: questions.items.slice(0, 2),
+			settings: retry,
+			subNodes: [gpt, customKey('key-retry')],
+		},
+	),
+];
+
 /** Every case that runs in the engine of n8n and through the converter. */
 export const ENGINE_CASES: EquivalenceCase[] = [
 	...OUTPUT_PARSER_CASES,
@@ -2497,4 +2778,5 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...TOOL_CALL_CASES,
 	...NETWORK_CASES,
 	...OPEN_ROUTER_CASES,
+	...MEMORY_CASES,
 ];

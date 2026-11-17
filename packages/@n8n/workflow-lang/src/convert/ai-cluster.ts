@@ -61,6 +61,8 @@ export interface NativeCluster {
 	model: string;
 	/** The name of the output parser sub-node. The library node gives its runs in `parserRuns`. */
 	parser?: string;
+	/** The name of the memory sub-node, when the cluster has one. The library node gives its runs. */
+	memory?: string;
 	/** The credential flags that the library node reads, and the guard of their proven values. */
 	derivations: ClusterDerivation[];
 }
@@ -428,6 +430,34 @@ function promptOf(p: Record<string, unknown>): unknown {
 }
 
 /**
+ * The memory sub-node `memoryBufferWindow` as the parameter `aiMemory`: the session key and
+ * the window. The session key of the chat trigger (`fromInput`) stays in the host: v1 reads
+ * it from the trigger when the input has none, and adds the name of the node to it.
+ */
+function windowMemory(sub: ClusterSubNode): { node: string; key: string; window: number } | string {
+	if (sub.type !== `${LC}memoryBufferWindow`) return `memory ${sub.type.replace(LC, '')}`;
+	if (sub.connection !== 'ai_memory' || sub.target !== undefined) return 'sub-nodes';
+	if ((sub.targetIndex ?? 0) !== 0) return 'sub-nodes';
+	const version = sub.typeVersion ?? 1;
+	if (![1, 1.1, 1.2, 1.3].includes(version)) return `memory version ${version}`;
+	const p = sub.parameters ?? {};
+	let key: unknown;
+	if (version >= 1.2) {
+		if ((p.sessionIdType ?? 'fromInput') !== 'customKey') return 'memory session from the input';
+		key = p.sessionKey ?? '';
+	} else {
+		key = p.sessionKey ?? (version === 1 ? 'chat_history' : '={{ $json.sessionId }}');
+	}
+	if (typeof key !== 'string') return 'memory session key';
+	// A window of 0 gives the model all messages of the session: that list has no limit.
+	const window = p.contextWindowLength ?? 5;
+	if (typeof window !== 'number' || !Number.isInteger(window) || window < 1 || window > 1000) {
+		return 'memory window';
+	}
+	return { node: sub.name, key, window };
+}
+
+/**
  * The Tools Agent of versions 2 to 3.1 with one OpenAI chat model and nothing else. It is one
  * call of the model, so it runs as the library node of the chain with `kind: 'agent'`.
  * Versions before 2 ask the model for a stream; they stay in the host.
@@ -438,12 +468,18 @@ function toolsAgent(
 	p: Record<string, unknown>,
 	subs: ClusterSubNode[],
 	context: ClusterContext,
+	settings: ClusterSettings,
 ): NativeCluster | string {
 	if (![2, 2.1, 2.2, 3, 3.1].includes(version)) return `agent version ${version}`;
-	if (subs.length !== 1) return 'sub-nodes';
-	const [sub] = subs;
-	if (sub.connection !== 'ai_languageModel' || sub.target !== undefined) return 'sub-nodes';
+	if (subs.some((s) => s.connection === 'ai_tool')) return 'tools';
+	if (subs.some((s) => s.connection === 'ai_outputParser')) return 'output parser';
+	if (subs.length !== 1 && subs.length !== 2) return 'sub-nodes';
+	const sub = subs.find((s) => s.connection === 'ai_languageModel');
+	if (sub === undefined || sub.target !== undefined) return 'sub-nodes';
 	if ((sub.targetIndex ?? 0) !== 0) return 'sub-nodes';
+	const memorySub = subs.find((s) => s !== sub);
+	const aiMemory = memorySub === undefined ? undefined : windowMemory(memorySub);
+	if (typeof aiMemory === 'string') return aiMemory;
 	const chat = chatModel(root, sub);
 	if (typeof chat === 'string') return chat;
 	const { aiModel } = chat;
@@ -474,6 +510,14 @@ function toolsAgent(
 	const size = batching.batchSize ?? 1;
 	const delay = batching.delayBetweenBatches ?? 0;
 	if (typeof size !== 'number' || size < 1 || typeof delay !== 'number') return 'batching';
+	// The items of a batch read the memory together, and v1 keeps their answers in the order
+	// in which the model gives them.
+	if (aiMemory !== undefined && size !== 1) return 'memory with batches';
+	// An empty session key fails in the memory sub-node: the proof is for the node that stops.
+	const stops = (settings.onError ?? 'stopWorkflow') === 'stopWorkflow' && !settings.retryOnFail;
+	if (aiMemory !== undefined && aiMemory.key.startsWith('=') && !stops) {
+		return 'memory key expression with an error setting';
+	}
 	const shared: Record<string, unknown> = {
 		kind: 'agent',
 		nodeVersion: version,
@@ -486,11 +530,18 @@ function toolsAgent(
 		libraryType: `${LC}chainLlm`,
 		shared,
 		perItem: { text, systemMessage: options.systemMessage },
-		forFirstItem: { aiModel },
+		forFirstItem: aiMemory === undefined ? { aiModel } : { aiModel, aiMemory },
 		credentialOf: sub.name,
 		model: sub.name,
+		...(memorySub === undefined ? {} : { memory: memorySub.name }),
 		derivations: chat.derivations,
 	};
+}
+
+/** The error settings of the root node. */
+export interface ClusterSettings {
+	onError?: string;
+	retryOnFail?: boolean;
 }
 
 /** What the converter knows about the workflow of the cluster. */
@@ -508,9 +559,10 @@ export function nativeCluster(
 	parameters: Record<string, unknown>,
 	subs: ClusterSubNode[],
 	context: ClusterContext = { streams: false },
+	settings: ClusterSettings = {},
 ): NativeCluster | string {
 	if (root.type === `${LC}agent`) {
-		return toolsAgent(root.name, root.typeVersion, parameters, subs, context);
+		return toolsAgent(root.name, root.typeVersion, parameters, subs, context, settings);
 	}
 	if (root.type === `${LC}chainLlm`) return chainLlm(root.name, root.typeVersion, parameters, subs);
 	return 'root type';

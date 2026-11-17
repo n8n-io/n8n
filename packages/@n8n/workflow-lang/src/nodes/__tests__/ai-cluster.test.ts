@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
+import { nativeCluster } from '../../convert/ai-cluster.ts';
 import { convertWorkflow } from '../../convert/index.ts';
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { deriveInject } from '../../credentials/inject.ts';
@@ -24,7 +25,12 @@ import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import { ENGINE_CASES, AI_HOST_CASES } from './ai-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
-import { applyCredential, networkErrorText, normalizeRequest } from './equivalence.ts';
+import {
+	applyCredential,
+	errorDetailOfResult,
+	networkErrorText,
+	normalizeRequest,
+} from './equivalence.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const recordings: Record<string, Recording> = JSON.parse(
@@ -222,6 +228,11 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			const node = traced(out.trace ?? [], NODE);
 			expect(node.error).toBe(recording.error);
 			expect(out.status).toBe(recording.error === undefined ? 'ok' : 'error');
+			// A description that the library node gives is the description of v1.
+			const detail = errorDetailOfResult(out.result);
+			if (recording.error !== undefined && detail.description !== null) {
+				expect(detail.description).toBe(recording.errorDetail?.description);
+			}
 			if (recording.error === undefined) {
 				const outputs = recording.outputs ?? [];
 				expect(node.outputs).toEqual(outputs.length === 0 ? [[]] : outputs);
@@ -231,6 +242,119 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 					recording.subRuns?.[sub.name] ?? [],
 				);
 			}
+		});
+	});
+
+	describe('the window buffer memory between executions', () => {
+		const c = ENGINE_CASES.find((x) => x.name === 'agent memory, window of one exchange');
+		const HOUR = 60 * 60 * 1000;
+
+		/** The messages of each request of a run that starts with the static data of another run. */
+		async function messagesOf(staticData: Record<string, unknown>, now: number) {
+			if (c === undefined) throw new Error('The case is missing');
+			const result = converted(c);
+			const fixture = { ...fixtureOf(c, result), staticData, now };
+			const out = await runReference(result.source, fixture);
+			const compiled = compile(result.source);
+			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
+			const messages = out.effects
+				.filter((e) => e.kind === 'http')
+				.map((e) => (isRecord(e.args) && isRecord(e.args.body) ? e.args.body.messages : undefined));
+			return { messages, staticData: out.staticData };
+		}
+
+		it('gives the next execution the window of the session', async () => {
+			const first = await messagesOf({}, 1000);
+			const second = await messagesOf(first.staticData ?? {}, 1000 + HOUR);
+			expect(second.messages[0]).toEqual([
+				{ role: 'system', content: 'Be brief' },
+				{ role: 'user', content: 'three' },
+				{ role: 'assistant', content: 'third' },
+				{ role: 'user', content: 'one' },
+			]);
+		});
+
+		it('drops a session that no agent used for more than one hour', async () => {
+			const first = await messagesOf({}, 1000);
+			const second = await messagesOf(first.staticData ?? {}, 1001 + HOUR);
+			expect(second.messages[0]).toEqual([
+				{ role: 'system', content: 'Be brief' },
+				{ role: 'user', content: 'one' },
+			]);
+		});
+
+		it('keeps only the window of each session', async () => {
+			const first = await messagesOf({}, 1000);
+			const store = Object.values(first.staticData ?? {})[0];
+			const session = isRecord(store) ? store['s:key-window'] : undefined;
+			expect(isRecord(session) ? session.messages : undefined).toEqual([
+				{ ai: false, text: 'three' },
+				{ ai: true, text: 'third' },
+			]);
+		});
+	});
+
+	describe('agent shapes that stay in the fallback host', () => {
+		const LC = '@n8n/n8n-nodes-langchain.';
+		const root = { name: NODE, type: `${LC}agent`, typeVersion: 3.1 };
+		const parameters = { promptType: 'define', text: 'Hi', options: {} };
+		const model = {
+			name: 'Model',
+			type: `${LC}lmChatOpenAi`,
+			typeVersion: 1.2,
+			parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o' }, options: {} },
+			connection: 'ai_languageModel',
+		};
+		const memory = (memoryParameters: Record<string, unknown>, typeVersion = 1.3) => ({
+			name: 'Memory',
+			type: `${LC}memoryBufferWindow`,
+			typeVersion,
+			parameters: memoryParameters,
+			connection: 'ai_memory',
+		});
+		const custom = { sessionIdType: 'customKey', sessionKey: 'k' };
+
+		it.each([
+			['tools', [model, { ...model, name: 'Tool', type: `${LC}toolCode`, connection: 'ai_tool' }]],
+			[
+				'output parser',
+				[
+					model,
+					{
+						...model,
+						name: 'P',
+						type: `${LC}outputParserStructured`,
+						connection: 'ai_outputParser',
+					},
+				],
+			],
+			[
+				'memory memoryPostgresChat',
+				[model, { ...memory(custom), type: `${LC}memoryPostgresChat` }],
+			],
+			['memory session from the input', [model, memory({})]],
+			['memory window', [model, memory({ ...custom, contextWindowLength: 0 })]],
+			['memory window', [model, memory({ ...custom, contextWindowLength: '={{ $json.k }}' })]],
+			['memory version 2', [model, memory(custom, 2)]],
+		])('gives the reason "%s"', (reason, subs) => {
+			expect(nativeCluster(root, parameters, subs)).toBe(reason);
+		});
+
+		it('keeps a memory with batches of more than one item in the host', () => {
+			const batched = { ...parameters, options: { batching: { batchSize: 2 } } };
+			expect(nativeCluster(root, batched, [model, memory(custom)])).toBe('memory with batches');
+		});
+
+		it('keeps a session key expression with an error setting in the host', () => {
+			const subs = [model, memory({ ...custom, sessionKey: '={{ $json.id }}' })];
+			const reason = 'memory key expression with an error setting';
+			const streams = { streams: false };
+			expect(nativeCluster(root, parameters, subs, streams, { retryOnFail: true })).toBe(reason);
+			expect(
+				nativeCluster(root, parameters, subs, streams, { onError: 'continueRegularOutput' }),
+			).toBe(reason);
+			expect(typeof nativeCluster(root, parameters, subs, streams, {})).toBe('object');
 		});
 	});
 
