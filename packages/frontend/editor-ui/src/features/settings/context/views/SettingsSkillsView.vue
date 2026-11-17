@@ -22,6 +22,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { ResponseError } from '@n8n/rest-api-client';
+import { isRecord } from '@n8n/utils/is-record';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
@@ -76,7 +77,11 @@ import SkillsTable from '../components/SkillsTable.vue';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
-import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
+import {
+	CONTEXT_DEFAULT_SORT_BY,
+	PREFERENCES_PAGE_SIZES,
+	SKILLS_DEFAULT_PAGE_SIZE,
+} from '../context.constants';
 import {
 	canWriteInstanceSkillScope,
 	canWriteProjectSkillScope,
@@ -137,11 +142,39 @@ const recommendedOpen = ref(false);
 const sourceToDelete = ref<SkillSourceListItem>();
 const sourceToReplaceCredential = ref<SkillSourceListItem>();
 
-const tableOptions = ref<TableOptions>({
+const usersStore = useUsersStore();
+const defaultTableOptions: TableOptions = {
 	page: 0,
 	itemsPerPage: SKILLS_DEFAULT_PAGE_SIZE,
 	sortBy: CONTEXT_DEFAULT_SORT_BY,
-});
+};
+const tableOptions = useLocalStorage<TableOptions>(
+	() => `n8n-skills-pagination:${usersStore.currentUserId ?? 'anonymous'}`,
+	{ ...defaultTableOptions },
+	{
+		// Another tab must not move this table while the user reads it.
+		listenToStorageChanges: false,
+		serializer: {
+			read(value) {
+				const saved: unknown = JSON.parse(value);
+				if (!isRecord(saved)) return { ...defaultTableOptions };
+				return {
+					page:
+						typeof saved.page === 'number' && Number.isSafeInteger(saved.page) && saved.page >= 0
+							? saved.page
+							: 0,
+					itemsPerPage:
+						typeof saved.itemsPerPage === 'number' &&
+						PREFERENCES_PAGE_SIZES.includes(saved.itemsPerPage)
+							? saved.itemsPerPage
+							: SKILLS_DEFAULT_PAGE_SIZE,
+					sortBy: CONTEXT_DEFAULT_SORT_BY,
+				};
+			},
+			write: ({ page, itemsPerPage }) => JSON.stringify({ page, itemsPerPage }),
+		},
+	},
+);
 const search = ref('');
 const filters = ref<SkillFilters>({ ...NO_FILTERS });
 const agentOptions = ref<SkillAgentOption[]>([]);
@@ -869,7 +902,6 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 }
 
 /** The sources that the user folded, kept in this browser, so the table opens as it was left. */
-const usersStore = useUsersStore();
 const collapsedSourceIds = useLocalStorage<string[]>(
 	() => `n8n-skills-collapsed-sources:${usersStore.currentUserId ?? 'anonymous'}`,
 	[],
@@ -918,7 +950,7 @@ async function onToggleSource(sourceId: string) {
 	if (ids.has(sourceId)) ids.delete(sourceId);
 	else ids.add(sourceId);
 	collapsedSourceIds.value = [...ids];
-	await load(sourceId);
+	await load();
 }
 
 /** Check for updates on a source: progress on its row, then a toast with the result. */
@@ -1001,7 +1033,6 @@ async function goBack() {
 // The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
 watch(skillSyncEnabled, async (enabled) => {
 	if (!enabled) filters.value = { ...filters.value, sourceIds: [] };
-	tableOptions.value = { ...tableOptions.value, page: 0 };
 	await Promise.all([load(), ...(enabled ? [loadSources()] : [])]);
 });
 
@@ -1232,6 +1263,7 @@ onMounted(async () => {
 			:sources="tableSources"
 			:collapsed-source-ids="collapsedSourceIds"
 			:collapsed-sources="skillsStore.collapsedSources"
+			:source-ranges="skillsStore.sourceRanges"
 			:checking-source-ids="checkingSourceIds"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"

@@ -128,13 +128,22 @@ describe('useSkillsStore', () => {
 
 	it('stores grouped page metadata and clears it for an ungrouped list', async () => {
 		const store = useSkillsStore();
-		list.mockResolvedValueOnce({ ...page('a'), page: 2, pageCount: 3, collapsedSources: [] });
+		const sourceRanges = [{ sourceId: 'source-1', start: 20, end: 26, total: 26 }];
+		list.mockResolvedValueOnce({
+			...page('a'),
+			page: 2,
+			pageCount: 3,
+			collapsedSources: [],
+			sourceRanges,
+		});
 		await store.fetchSkills({ groupBy: 'source' });
 		expect(store.page).toBe(2);
 		expect(store.pageCount).toBe(3);
+		expect(store.sourceRanges).toEqual(sourceRanges);
 		list.mockResolvedValueOnce(page('a'));
 		await store.fetchSkills();
 		expect(store.pageCount).toBeUndefined();
+		expect(store.sourceRanges).toEqual([]);
 	});
 
 	it('keeps the newest list when an older request answers last', async () => {

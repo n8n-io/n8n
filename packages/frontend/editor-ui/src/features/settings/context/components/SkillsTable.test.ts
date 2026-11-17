@@ -5,6 +5,7 @@ import type {
 	SkillDetail,
 	SkillListCollapsedSource,
 	SkillListItem,
+	SkillListSourceRange,
 	SkillSourceListItem,
 } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
@@ -191,10 +192,11 @@ describe('SkillsTable', () => {
 		expect(queryByTestId('skill-available-to-mcp-icon')).not.toBeInTheDocument();
 	});
 
-	it('shows a dash for a skill that no agent uses', () => {
+	it('leaves the Agents cell empty for a skill that no agent uses', () => {
 		const { getByTestId, queryByTestId } = render([skill({ usedByAgents: 0 })]);
 
-		expect(getByTestId('skill-agents-none')).toHaveTextContent('—');
+		const row = getByTestId('skill-name').closest('tr');
+		expect(row?.querySelectorAll('td')[2].textContent?.trim()).toBe('');
 		expect(queryByTestId('skill-agents-trigger')).not.toBeInTheDocument();
 	});
 
@@ -406,6 +408,7 @@ describe('SkillsTable', () => {
 				sources: SkillSourceListItem[];
 				collapsedSourceIds: string[];
 				collapsedSources: SkillListCollapsedSource[];
+				sourceRanges: SkillListSourceRange[];
 				checkingSourceIds: string[];
 			}> = {},
 		) {
@@ -437,6 +440,32 @@ describe('SkillsTable', () => {
 			const { getByTestId } = renderGrouped({ sources: [] });
 
 			expect(getByTestId('skill-group-title')).toHaveTextContent('Unknown source');
+		});
+
+		it.each([
+			{ start: 1, end: 9, text: '1–9 of 26 skills' },
+			{ start: 10, end: 19, text: '10–19 of 26 skills' },
+			{ start: 20, end: 26, text: '20–26 of 26 skills' },
+			{ start: 26, end: 26, text: '26 of 26 skills' },
+		])('shows the source range $text on an expanded page', ({ start, end, text }) => {
+			const { getByTestId } = renderGrouped({
+				skills: Array.from({ length: end - start + 1 }, (_, index) => synced(`skill-${index}`)),
+				sourceRanges: [{ sourceId: 'src-1', start, end, total: 26 }],
+			});
+			expect(getByTestId('skill-group-count')).toHaveTextContent(text);
+			expect(getByTestId('skill-group-toggle')).toHaveAccessibleDescription(text);
+		});
+
+		it('shows a filtered source count only when its complete group is folded', async () => {
+			const { queryByTestId, getByTestId, rerender } = renderGrouped({
+				sources: [source({ skillCount: 26 })],
+				sourceRanges: [{ sourceId: 'src-1', start: 1, end: 2, total: 2 }],
+			});
+			expect(queryByTestId('skill-group-count')).not.toBeInTheDocument();
+			await rerender({ collapsedSourceIds: ['src-1'] });
+			expect(getByTestId('skill-group-count')).toHaveTextContent('2 skills');
+			await rerender({ collapsedSourceIds: [] });
+			expect(queryByTestId('skill-group-count')).not.toBeInTheDocument();
 		});
 
 		it('names the source menu and keeps health visible without review permission', () => {
@@ -506,7 +535,7 @@ describe('SkillsTable', () => {
 
 		it.each([
 			{ available: 2, blocked: 1, text: '3 updates', red: false },
-			{ available: 0, blocked: 1, text: '1 update', red: true },
+			{ available: 0, blocked: 1, text: '1 blocked update', red: true },
 		])(
 			'shows $text, red only when every update is blocked',
 			({ available, blocked, text, red }) => {
@@ -514,9 +543,10 @@ describe('SkillsTable', () => {
 					sources: [source({ updatesAvailable: available, updatesBlocked: blocked })],
 				});
 
-				const badge = getByTestId('skill-group-updates');
-				expect(badge).toHaveTextContent(text);
-				expect(badge.className).toMatch(red ? /danger/ : /warning/);
+				expect(getByTestId('skill-group-review-updates')).toHaveAccessibleName(text);
+				expect(getByTestId('skill-group-update-status').className).toMatch(
+					red ? /danger/ : /warning/,
+				);
 			},
 		);
 
