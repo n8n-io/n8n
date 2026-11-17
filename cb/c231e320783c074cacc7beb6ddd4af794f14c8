@@ -1,0 +1,46 @@
+packages/cli/src/services/locale.service.ts
+  s_3fcd2798627395::t_12a9859ca418bc 5,8-9,17-20,24-28,38,43-45,49,53-55,68-69,99-100,102-103,105-107,109-118,121,123,127,131-135,138-139,142-145
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_3fcd2798627395::t_39c9c0bd79c6fa 153-155,157
+packages/frontend/editor-ui/src/app/App.vue
+  s_3fcd2798627395::t_00d347683eada9 29,120-125,127
+packages/cli/src/controllers/__tests__/translation.controller.test.ts
+  s_3fcd2798627395::t_01060d5d0f48ce 7
+packages/frontend/@n8n/rest-api-client/src/api/settings.ts
+  s_3fcd2798627395::t_80f52c12aef9a5 18-23,25-27,29,33,36,39-41,46
+packages/frontend/@n8n/rest-api-client/src/api/settings.test.ts
+  s_3fcd2798627395::t_52f859a6f3c4c1 1,3-4,14,19-20,22-24,26-31,33,35-36,38-39,41-42,44-45,47,50-51,53-54,56-57,59-60,62-63,65
+packages/cli/test/integration/server-static-assets.test.ts
+  s_3fcd2798627395::t_e1665ba7777fc6 49-50,128-129,285-307
+  s_3fcd2798627395::t_b4c0ccccf41788 308-309
+packages/cli/src/server.ts
+  s_3fcd2798627395::t_706f56590926eb 582
+  s_3fcd2798627395::t_7d49fba227cb61 383,569-575,577-581,583-584
+  s_3fcd2798627395::t_2f6a612dafb8db 34,576
+  s_3fcd2798627395::t_956b57b4bedc88 585-586
+packages/cli/src/controllers/translation.controller.ts
+  s_3fcd2798627395::t_3e510d2f3bf1fd 4,9
+packages/cli/src/commands/start.ts
+  s_3fcd2798627395::t_7d49fba227cb61 47,305
+packages/cli/src/services/__tests__/locale.service.test.ts
+  s_3fcd2798627395::t_233d3a8f670ca3 12,17,30,33,46,55-59,62,81,112-115,120-128,130-131,136-137,141-153,156-166,170-172,176-184,199,201,205
+  s_3fcd2798627395::t_bbddd922641d24 3-11,116-118,167-169,173-175
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_3fcd2798627395::t_39c9c0bd79c6fa 727
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cbc231e320783c074cacc7beb6ddd4af794f14c8",
+  "prompts": {},
+  "sessions": {
+    "s_3fcd2798627395": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "385f8a79-ffe5-46ae-a396-9600aa41e650",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

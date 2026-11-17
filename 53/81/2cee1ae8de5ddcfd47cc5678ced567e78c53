@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolCallRouteList.test.ts
+  s_9af1b09aa006a5::t_cb3088e20a2df3 5-461,468-469
+  s_9af1b09aa006a5::t_8f6327720b34c8 462,465-467,470-478
+packages/frontend/editor-ui/src/features/agents/components/AgentToolCallRouteList.vue
+  s_9af1b09aa006a5::t_64214adc4d2d4c 3,6-7,23,32
+packages/frontend/editor-ui/src/features/agents/components/AgentToolCallRouteRow.vue
+  s_9af1b09aa006a5::t_f0c401f5ca8c5f 1-193
+  s_9af1b09aa006a5::t_ee4a49fc449729 194-197
+packages/frontend/editor-ui/src/features/agents/components/AgentToolCallRouteIcon.vue
+  s_9af1b09aa006a5::t_e41277e92a3943 2,6-7,10-11,14,19,24,26-30,32,38,40-46,49-51,54-56,59-61,64-67
+packages/frontend/editor-ui/src/features/agents/utils/toolCallSimulation.ts
+  s_9af1b09aa006a5::t_92833f677ecf1a 1,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53812cee1ae8de5ddcfd47cc5678ced567e78c53",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

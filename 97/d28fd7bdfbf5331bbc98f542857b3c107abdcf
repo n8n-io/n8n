@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_a88340529c4722::t_1a2a57b313776a 1228-1233
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_a88340529c4722::t_417d5a79973fc4 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97d28fd7bdfbf5331bbc98f542857b3c107abdcf",
+  "prompts": {},
+  "sessions": {
+    "s_a88340529c4722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f32cad09-c2ae-42bb-971a-14c0acd9e1ec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

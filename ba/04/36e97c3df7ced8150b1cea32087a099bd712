@@ -1,0 +1,50 @@
+packages/cli/src/modules/instance-ai/eval/consume-eval-stream.ts
+  s_dd7e80244d88e6::t_d5170543df69d8 8
+  s_dd7e80244d88e6::t_1521de246ac001 1-7,9-39,41-64,68,70-89
+  s_dd7e80244d88e6::t_713e636411b579 40
+  s_dd7e80244d88e6::t_e5048fbd725ee9 65-67
+  s_dd7e80244d88e6::t_4deed5e56c74c8 69
+packages/cli/src/modules/instance-ai/eval/agent-scenario-seed.ts
+  s_dd7e80244d88e6::t_aad0d9397874b5 119,125,132-134,141
+packages/cli/src/modules/agents/evaluation/evaluation-config.ts
+  s_dd7e80244d88e6::t_bcbc20378a93c9 50-54
+  s_dd7e80244d88e6::t_7c28ef70f0c142 55-63,65-69
+  s_dd7e80244d88e6::t_878bf669a6bfe6 64,70-72
+packages/cli/src/modules/instance-ai/eval/__tests__/consume-eval-stream.test.ts
+  s_dd7e80244d88e6::t_8bd1a4eaddb918 1-54
+  s_dd7e80244d88e6::t_6dabc640da903e 55-78
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_dd7e80244d88e6::t_60cb889a7e35b4 497,511,530
+  s_dd7e80244d88e6::t_96786077a05af0 7,31-37,199,201,284,403,407-410,440,442,458-460,462,494,505-509,512-513,523-528,531-533
+  s_dd7e80244d88e6::t_26a42ee7ce9220 240,242,244,420,446
+  s_dd7e80244d88e6::t_f04b4c2492a92b 237-239
+  s_dd7e80244d88e6::t_b877d70cede25c 241
+  s_dd7e80244d88e6::t_d32ecb52d88328 437-439
+  s_dd7e80244d88e6::t_de6d020bbc94c3 441
+  s_dd7e80244d88e6::t_7b27343d650b47 461
+  s_dd7e80244d88e6::t_ec53217c630608 510
+  s_dd7e80244d88e6::t_34f5a90dc86a3c 529
+  s_dd7e80244d88e6::t_c08edbbed566a7 234-236,434-436
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_dd7e80244d88e6::t_82b81b312390d8 1,124-149,160
+  s_dd7e80244d88e6::t_9700bd3c9a65a7 150-159,161-169
+packages/cli/src/modules/agents/evaluation/__tests__/evaluation-config.test.ts
+  s_dd7e80244d88e6::t_a70b842eebf6d3 43-52
+  s_dd7e80244d88e6::t_246e7d0110fae6 53-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba0436e97c3df7ced8150b1cea32087a099bd712",
+  "prompts": {},
+  "sessions": {
+    "s_dd7e80244d88e6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18cf2-d4b8-71df-9e22-8184693749a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
