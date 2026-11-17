@@ -178,7 +178,13 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	updatedBefore: z.coerce.date().optional(),
 	/** Comma-separated session IDs, or repeated query parameters. An empty list matches nothing. */
 	sessionIds: z.preprocess(
-		(value) => (typeof value === 'string' ? (value === '' ? [] : value.split(',')) : value),
+		(value) =>
+			typeof value === 'string'
+				? value
+						.split(',')
+						.map((id) => id.trim())
+						.filter(Boolean)
+				: value,
 		z.array(z.string().min(1).max(128)).max(500).optional(),
 	),
 }) {}

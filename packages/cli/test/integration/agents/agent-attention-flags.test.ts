@@ -148,7 +148,7 @@ describe('Agent attention flags', () => {
 				refreshed.resolve();
 				await release.promise;
 			});
-			await refreshed.promise;
+			await Promise.race([refreshed.promise, refresh]);
 			const dismissal = flags.dismiss(
 				scope(),
 				'session-error',

@@ -26,6 +26,10 @@ describe('Agent attention flag DTOs', () => {
 
 	it.each([
 		['a,b', ['a', 'b']],
+		['a, b', ['a', 'b']],
+		['a,b,', ['a', 'b']],
+		[' , a, , b, ', ['a', 'b']],
+		[' , , ', []],
 		[
 			['a', 'b'],
 			['a', 'b'],
