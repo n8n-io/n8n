@@ -485,8 +485,8 @@ export async function updateParentExecutionWithChildResults(
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
 		return false;
 	}
-	const agentInvocations = nodeExecutionStack[0].metadata?.agentInvocations;
-	if (!agentInvocations && !subworkflowError && !lastExecutedNodeData?.data) return false;
+	const reexecute = nodeExecutionStack[0].metadata?.resumeMode === 'reexecute';
+	if (!reexecute && !subworkflowError && !lastExecutedNodeData?.data) return false;
 
 	// The parent may have moved on to a later wait since this child was spawned, and that wait
 	// belongs to whichever children it parked on. A child left over from an earlier wait would
@@ -500,7 +500,7 @@ export async function updateParentExecutionWithChildResults(
 	) {
 		return false;
 	}
-	if (agentInvocations && waitingChildExecutionIds?.length) {
+	if (reexecute && waitingChildExecutionIds?.length) {
 		const statuses = await executionPersistence.findStatusesByIds(waitingChildExecutionIds);
 		if (
 			statuses.length !== waitingChildExecutionIds.length ||
@@ -512,7 +512,7 @@ export async function updateParentExecutionWithChildResults(
 	const reports: { data: IRun['data']; workflow?: IWorkflowBase }[] = [
 		{ data: subworkflowResults.data, workflow: childWorkflowData },
 	];
-	if (agentInvocations) {
+	if (reexecute) {
 		for (const id of waitingChildExecutionIds ?? []) {
 			if (id === childExecution?.executionId) continue;
 			const sibling = await executionPersistence.findSingleExecution(id, {
@@ -593,7 +593,7 @@ export async function updateParentExecutionWithChildResults(
 		);
 	}
 
-	if (!agentInvocations && subworkflowError) {
+	if (!reexecute && subworkflowError) {
 		// Record the error on the waiting parent's Execute Workflow node so the node
 		// fails with error on resume instead of appearing as successful. `subExecution`
 		// links the parent's node run to the failed child execution in the UI.
@@ -602,7 +602,7 @@ export async function updateParentExecutionWithChildResults(
 			resumeError: subworkflowError,
 			...(childExecution && { subExecution: childExecution }),
 		};
-	} else if (!agentInvocations && lastExecutedNodeData?.data) {
+	} else if (!reexecute && lastExecutedNodeData?.data) {
 		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
 		// so that the Execute Workflow node returns the correct data when parent execution is resumed
 		// and the Execute Workflow node is executed again in disabled mode.

@@ -3669,15 +3669,12 @@ type SubNodeExecutionDataAction = {
 };
 
 export interface ITaskMetadata {
-	/** Completed items and the pending item of a resumable Message an Agent node. */
-	agentInvocations?: {
-		version: 1;
-		items: Array<{
-			threadId: string;
-			result?: ExecuteAgentData;
-			error?: string;
-		}>;
-	};
+	/**
+	 * Waiting nodes normally resume by forwarding the child output without running again.
+	 * Use 'reexecute' when a node must restore its own progress and finish its input items.
+	 * The engine keeps its input unchanged and lets the node handle child results and errors.
+	 */
+	resumeMode?: 'reexecute';
 	subRun?: ITaskSubRunMetadata[];
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;

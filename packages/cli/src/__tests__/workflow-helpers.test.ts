@@ -1040,12 +1040,12 @@ describe('updateParentExecutionWithChildResults', () => {
 			},
 		}) as unknown as IRun;
 
-	it('waits for all Agent reviews and preserves the caller input on resume', async () => {
+	it('waits for all children and preserves input when the node must execute again', async () => {
 		const persistence = mockInstance(ExecutionPersistence);
 		const parent = waitingParent();
 		const stack = parent.data.executionData!.nodeExecutionStack[0];
 		stack.metadata = {
-			agentInvocations: { version: 1, items: [] },
+			resumeMode: 'reexecute',
 			waitingChildExecutionIds: ['a', 'b'],
 		};
 		const input = structuredClone(stack.data);

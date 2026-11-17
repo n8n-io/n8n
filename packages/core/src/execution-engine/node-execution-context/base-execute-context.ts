@@ -54,6 +54,15 @@ import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
 
+interface AgentInvocationState {
+	runIndex: number;
+	items: Array<{
+		threadId: string;
+		result?: ExecuteAgentData;
+		error?: string;
+	}>;
+}
+
 export class BaseExecuteContext extends NodeExecutionContext {
 	constructor(
 		workflow: Workflow,
@@ -239,15 +248,20 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.node.type === 'n8n-nodes-base.messageAnAgent' &&
 			this.node.typeVersion >= 4 &&
 			!agentInfo.inlineAgent;
-		const invocations = supportsSuspension
-			? (this.executeData.metadata?.agentInvocations ?? { version: 1, items: [] })
-			: undefined;
+		let invocations: AgentInvocationState | undefined;
+		if (supportsSuspension) {
+			const context = this.getContext('node');
+			const saved: AgentInvocationState | undefined = context.agentInvocations;
+			invocations =
+				saved?.runIndex === this.runIndex ? saved : { runIndex: this.runIndex, items: [] };
+			context.agentInvocations = invocations;
+			this.setMetadata({ resumeMode: 'reexecute' });
+		}
 		const previous = invocations?.items[itemIndex];
 		if (previous?.error) throw new OperationalError(previous.error);
 		const threadId = previous?.threadId ?? (callerSessionId || randomUUID());
 		if (invocations) {
 			invocations.items[itemIndex] = { ...previous, threadId };
-			this.setMetadata({ agentInvocations: invocations });
 		}
 
 		return { supportsSuspension, invocations, previous, threadId, callerSessionId };
@@ -345,7 +359,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 	private async runAgentInvocation(
 		run: () => Promise<ExecuteAgentData>,
-		invocations: ITaskMetadata['agentInvocations'],
+		invocations: AgentInvocationState | undefined,
 		threadId: string,
 		itemIndex: number,
 	): Promise<ExecuteAgentData> {
@@ -364,7 +378,6 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		if (invocations) {
 			invocations.items[itemIndex] = { threadId, result };
 			this.setMetadata({
-				agentInvocations: invocations,
 				waitingChildExecutionIds: result.waiting?.executionIds,
 			});
 			if (result.waiting) await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);

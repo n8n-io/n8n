@@ -34,7 +34,6 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 
 		for (const nodeName of Object.keys(runData)) {
 			for (const taskData of runData[nodeName]) {
-				if (taskData.metadata) delete taskData.metadata.agentInvocations;
 				if (taskData.data) {
 					this.redactConnections(taskData.data, reason);
 				}
@@ -57,10 +56,10 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 		const executionData = execution.data.executionData;
 
 		if (executionData) {
-			for (const runs of Object.values(executionData.metadata ?? {}))
-				for (const metadata of runs) delete metadata.agentInvocations;
+			for (const context of Object.values(executionData.contextData ?? {})) {
+				delete context.agentInvocations;
+			}
 			for (const executeData of executionData.nodeExecutionStack ?? []) {
-				if (executeData.metadata) delete executeData.metadata.agentInvocations;
 				if (executeData.data) {
 					this.redactConnections(executeData.data, reason);
 				}

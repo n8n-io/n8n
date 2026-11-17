@@ -1552,7 +1552,7 @@ export class WorkflowExecute {
 			// normally instead of passing their input through in disabled mode.
 			if (
 				!executionStackEntry.metadata?.resumeError &&
-				!executionStackEntry.metadata?.agentInvocations
+				executionStackEntry.metadata?.resumeMode !== 'reexecute'
 			) {
 				executionStackEntry.node.disabled = true;
 			}

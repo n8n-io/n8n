@@ -2598,11 +2598,11 @@ describe('WorkflowExecute', () => {
 
 		const lastRun = (result: IRun) => result.data.resultData.runData[SUB_NODE].at(-1)!;
 
-		it('runs a resumable Agent node instead of passing its inputs through', async () => {
-			// Agent (waiting) → After. The Agent must execute when the wait ends.
+		it('runs a waiting node again when the resume mode requires execution', async () => {
+			// The waiting node must execute again instead of passing its input through.
 			const { result } = await runResumedSubError(
 				{},
-				{ resumeError: undefined, agentInvocations: { version: 1, items: [] } },
+				{ resumeError: undefined, resumeMode: 'reexecute' },
 			);
 			expect(result.status).toBe('success');
 			expect(lastRun(result).data?.main?.[0]?.[0]?.json).toEqual({ ran: true });
