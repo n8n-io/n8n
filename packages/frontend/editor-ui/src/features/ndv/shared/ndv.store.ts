@@ -26,10 +26,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { computed, inject, ref, type ShallowRef } from 'vue';
-import {
-	PANE_DEFAULT_DISPLAY_MODE,
-	resolveDisplayMode,
-} from '@/features/ndv/runData/composables/useRunDataDisplayModes';
+import { PANE_DEFAULT_DISPLAY_MODE, resolveDisplayMode } from './ndv.utils';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
