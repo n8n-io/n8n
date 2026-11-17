@@ -73,10 +73,17 @@ interface HttpRequestParameters {
 	 * The request whose body was too large has no answer here: the v1 node sends it.
 	 */
 	replay?: Replay;
+	/**
+	 * Pagination with `replay`: the number of input items of the node. Paged requests that
+	 * are not GET requests have a compiled form for one input item only: v1 sends the pages
+	 * of several items at the same time, so the order of its requests is not the order of
+	 * the list of answers.
+	 */
+	pageInputs?: number;
 }
 
 /**
- * The GET requests of the node with their answers, for the fallback host. The converted
+ * The requests of the node with their answers, for the fallback host. The converted
  * workflow owns the object: it lives for all calls of the node in one run.
  */
 interface Replay {
@@ -85,6 +92,11 @@ interface Replay {
 	bytes: number;
 	/** True when the answers did not fit. The list is then empty, and stays empty. */
 	full: boolean;
+	/**
+	 * True when the node sent a request that is not a GET request. The fallback host then
+	 * gives the answers in the order of the list, and sends no request of the list again.
+	 */
+	ordered?: boolean;
 }
 
 /**
@@ -136,13 +148,15 @@ const REPLAY_ENTRIES = 256;
 /** The most bytes of bodies that the node keeps for the host: far below a host frame (64 MiB). */
 const REPLAY_BYTES = 8 * 1024 * 1024;
 
-/** Keeps the answer of a GET request. The answer is not copied. */
+/** Keeps the answer of a request. The answer is not copied. */
 function keepAnswer(
 	replay: Replay,
 	url: string,
 	qs: Record<string, unknown>,
 	response: HttpResponse<unknown>,
+	method = 'GET',
 ): void {
+	if (method !== 'GET') replay.ordered = true;
 	if (replay.full) return;
 	// A stored body is a reference. The body of a redirect is text.
 	const size = 1024 + (typeof response.body === 'string' ? response.body.length : 0);
@@ -152,7 +166,19 @@ function keepAnswer(
 		return;
 	}
 	replay.bytes += size;
-	replay.list.push({ method: 'GET', url, qs, response });
+	replay.list.push({ method, url, qs, response });
+}
+
+/**
+ * The error of a node that cannot hand over to the fallback host: it sent requests that are
+ * not GET requests, and the list of their answers is not complete. The host would send them
+ * a second time.
+ */
+function noHandOver(what: string): unknown {
+	return {
+		name: 'Error',
+		message: `${what}, and the node sent requests that are not GET requests. The fallback host cannot run the node without a second copy of these requests (limit: replay)`,
+	};
 }
 
 interface FormRow {
@@ -672,8 +698,18 @@ export default defineNode<HttpRequestParameters>({
 			const pageFormat = options.responseFormat;
 			const detectsPage =
 				parameters.replay !== undefined &&
-				method === 'GET' &&
 				(pageFormat === undefined ? version >= 3 : pageFormat === 'autodetect');
+			// The fallback host can send a GET request again. It gives each other request the
+			// answer of the list, in the order of the list: v1 sends the pages of one item in
+			// order, and the pages of several items at the same time.
+			const repeatable = method === 'GET';
+			if (detectsPage && !repeatable && (parameters.pageInputs ?? 2) > 1) {
+				// oxlint-disable-next-line typescript/only-throw-error
+				throw {
+					name: 'Error',
+					message: `The node has more than one input item, and its paged requests are not GET requests ${PAGE_RUNS_IN_HOST}`,
+				};
+			}
 			let pageResponse: HttpResponse<unknown>;
 			try {
 				pageResponse = await ctx.http<unknown>({
@@ -694,7 +730,9 @@ export default defineNode<HttpRequestParameters>({
 							: { inlineTypes: 'application/json', storeTypes: BINARY_TYPES },
 				});
 			} catch (error) {
-				if (detectsPage) {
+				// The request that failed has no answer in the list: the host sends it again. A
+				// request that is not a GET request fails here, as it does with each other format.
+				if (detectsPage && repeatable && parameters.replay?.ordered !== true) {
 					const limit = fileLimitError(error);
 					// oxlint-disable-next-line typescript/only-throw-error
 					if (limit !== undefined) throw limit;
@@ -702,11 +740,17 @@ export default defineNode<HttpRequestParameters>({
 				throw error;
 			}
 			if (detectsPage && parameters.replay !== undefined) {
-				keepAnswer(parameters.replay, url, query, pageResponse);
+				keepAnswer(parameters.replay, url, query, pageResponse, method);
 				const type = pageResponse.headers['content-type'];
 				const stored =
 					typeof type === 'string' && !type.includes('application/json') && storesType(type);
 				if (stored && (pageResponse.status < 300 || options.neverError === true)) {
+					if (parameters.replay.ordered === true && parameters.replay.full) {
+						// oxlint-disable-next-line typescript/only-throw-error
+						throw noHandOver(
+							'A page of the response is a file, the list of answers for the fallback host is full',
+						);
+					}
 					// oxlint-disable-next-line typescript/only-throw-error
 					throw {
 						name: 'Error',
