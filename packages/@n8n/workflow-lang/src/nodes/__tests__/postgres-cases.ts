@@ -3,6 +3,7 @@
  * library node on a real database with the same tables, and the test compares
  * the output or the error, and the tables afterwards.
  */
+import { POSTGRES_QUERY_TEXT_CASES, POSTGRES_WRITE_CASES } from './postgres-write-cases.ts';
 
 export interface PostgresCase {
 	/** Unique name. The recording file uses it as the key. */
@@ -88,6 +89,17 @@ export const POSTGRES_SETUP = [
 		('Cy "The" O''Neil', 61, 0.00, -1, NULL, '"text"', '2001-12-31', '1999-12-31 23:59:59+02', '1999-12-31 23:59:59.5', 1e300, '{}', '\\x')`,
 	'CREATE TABLE pgcase.notes (id int PRIMARY KEY, person int REFERENCES pgcase.people(id), body text)',
 	"INSERT INTO pgcase.notes VALUES (1, 1, 'first')",
+	"CREATE TYPE pgcase.mood AS ENUM ('sad', 'ok', 'happy')",
+	`CREATE TABLE pgcase.things (
+		id int PRIMARY KEY, label text NOT NULL, qty int, price numeric(10,2), ok bool, doc jsonb,
+		raw json, tags text[], nums int[], day date, at timestamptz, plain timestamp, lunch time,
+		feel pgcase.mood, note text DEFAULT 'none', UNIQUE (label, qty))`,
+	"INSERT INTO pgcase.things (id, label, qty) VALUES (1, 'one', 1), (2, 'two', 2)",
+	`CREATE TABLE pgcase.plain (
+		id serial PRIMARY KEY, label text NOT NULL, qty int, price numeric(10,2), ok bool,
+		doc jsonb, at timestamptz, "Odd ""Name" text DEFAULT 'none')`,
+	"INSERT INTO pgcase.plain (label, qty) VALUES ('first', 1)",
+	'CREATE TABLE pgcase.strict (id int, tags text[] NOT NULL)',
 ];
 
 /** The state of the tables, as text. A table that is gone gives the error text. */
@@ -95,6 +107,10 @@ export const POSTGRES_STATE = [
 	"SELECT coalesce(jsonb_agg(to_jsonb(p) ORDER BY id)::text, '[]') AS state FROM pgcase.people p",
 	"SELECT coalesce(jsonb_agg(to_jsonb(n) ORDER BY id)::text, '[]') AS state FROM pgcase.notes n",
 	'SELECT last_value::text || is_called::text AS state FROM pgcase.people_id_seq',
+	"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY id)::text, '[]') AS state FROM pgcase.things t",
+	"SELECT coalesce(jsonb_agg(to_jsonb(p) ORDER BY id)::text, '[]') AS state FROM pgcase.plain p",
+	'SELECT last_value::text || is_called::text AS state FROM pgcase.plain_id_seq',
+	"SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id)::text, '[]') AS state FROM pgcase.strict s",
 ];
 
 export const POSTGRES_CASES: PostgresCase[] = [
@@ -458,4 +474,6 @@ export const POSTGRES_CASES: PostgresCase[] = [
 		},
 		{ items: [{ id: 1 }, { id: 2 }] },
 	),
+	...POSTGRES_QUERY_TEXT_CASES,
+	...POSTGRES_WRITE_CASES,
 ];

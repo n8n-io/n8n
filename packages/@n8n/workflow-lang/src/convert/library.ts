@@ -224,10 +224,33 @@ const ADAPTERS: Record<
 	// parameters of `executeQuery`: v1 reads that raw text and evaluates each `{{ }}` of it
 	// (`executeQuery.operation.ts`). A raw value that the library node cannot read gets a
 	// marker that is not in the `supports` list, so the node runs in the host.
+	//
+	// A query that is not an expression can hold `{{ }}` parts, which v1 evaluates for each
+	// item: the library node gets their values in `queryParts`.
+	//
+	// `insert`, `update` and `upsert`: the library node gets the mapping with only the fields
+	// of the resource mapper that v1 casts (`postgresColumns`).
+	//
+	// With `replaceEmptyStrings`, v1 writes null into the empty strings of the input items
+	// before it evaluates the parameters of each item. So an expression of the node can give
+	// another value than it gives on the input items, and the node runs in the host.
 	'n8n-nodes-base.postgres': (p, version) => {
 		const out: Record<string, unknown> = { ...p, nodeVersion: version };
-		if (p.operation !== 'executeQuery') return out;
 		const options = isRecord(p.options) ? p.options : {};
+		const replace = options.replaceEmptyStrings ?? false;
+		if (replace !== false && (replace !== true || hasExpression(p))) {
+			return { ...out, postgresHost: true };
+		}
+		const operation = p.operation ?? 'insert';
+		if (operation === 'insert' || operation === 'update' || operation === 'upsert') {
+			const columns = postgresColumns(p.columns);
+			return columns ? { ...out, columns } : { ...out, postgresHost: true };
+		}
+		if (operation !== 'executeQuery') return out;
+		if (typeof p.query === 'string' && !p.query.startsWith('=')) {
+			const parts = p.query.match(/({{[\s\S]*?}})/g) ?? [];
+			if (parts.length > 0) out.queryParts = parts.map((r) => `=${r}`);
+		}
 		const given = options.queryReplacement;
 		const replacement: Record<string, unknown> = { present: 'queryReplacement' in options };
 		out.replacement = replacement;
@@ -249,6 +272,49 @@ const ADAPTERS: Record<
 		return out;
 	},
 };
+
+/** True when a parameter value holds an expression that n8n or the Postgres node evaluates. */
+function hasExpression(value: unknown): boolean {
+	if (typeof value === 'string') return value.startsWith('=') || /{{[\s\S]*?}}/.test(value);
+	if (Array.isArray(value)) return value.some(hasExpression);
+	return isRecord(value) && Object.values(value).some(hasExpression);
+}
+
+/**
+ * The `columns` parameter of a Postgres write for the library node: the mapping mode, the
+ * values, the columns to match on, and the fields of the resource mapper that n8n casts
+ * (`validateResourceMapperValue`): for each field with a value, its type, `required` and
+ * the values of its options. Without `schema`, n8n does not cast, and the result has no
+ * `schema`. Null: v1 fails on the stored fields, so the node runs in the host.
+ */
+function postgresColumns(columns: unknown): Record<string, unknown> | null {
+	if (!isRecord(columns)) return null;
+	const out: Record<string, unknown> = { mappingMode: columns.mappingMode, value: columns.value };
+	if ('matchingColumns' in columns) out.matchingColumns = columns.matchingColumns;
+	const mapper = 'mappingMode' in columns && 'schema' in columns && 'value' in columns;
+	if (!mapper || !Array.isArray(columns.schema)) return out;
+	const value = columns.value;
+	const fields: Array<Record<string, unknown>> = [];
+	const seen = new Set<unknown>();
+	for (const field of columns.schema) {
+		if (!isRecord(field)) return null;
+		if (seen.has(field.id)) continue;
+		seen.add(field.id);
+		if (typeof field.id !== 'string' || (isRecord(value) && !(field.id in value))) continue;
+		if (field.type !== undefined && field.type !== null && typeof field.type !== 'string') {
+			return null;
+		}
+		const kept: Record<string, unknown> = { id: field.id, type: field.type ?? '' };
+		if (field.required === true) kept.required = true;
+		if (typeof field.type === 'string' && field.type.toLowerCase() === 'options') {
+			const options = Array.isArray(field.options) ? field.options : [];
+			kept.options = options.filter(isRecord).map((option) => option.value ?? null);
+		}
+		fields.push(kept);
+	}
+	out.schema = fields;
+	return out;
+}
 
 /**
  * True when v1 inserts the rows of all items with one call: the table id is not an

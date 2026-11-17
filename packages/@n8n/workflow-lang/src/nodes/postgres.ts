@@ -1,7 +1,7 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.postgres` versions
- * 2.5 to 2.8, operations `executeQuery`, `select` and `deleteTable`, for a
- * node that stops the workflow on an error.
+ * 2.5 to 2.8, operations `executeQuery`, `select`, `deleteTable`, `insert`,
+ * `update` and `upsert`, for a node that stops the workflow on an error.
  *
  * The v1 node writes values into the query text with pg-promise and sends
  * simple queries. This node never writes a value into the text: each value
@@ -19,8 +19,20 @@
  * a query parameter that is null in a version below 2.8 (v1 treats undefined
  * and null differently, and the converter gives both as null).
  *
+ * `insert`, `update` and `upsert` read the columns of the table first, as v1
+ * does, with `sql` calls that only read. They go to the fallback host for an
+ * array that is not for an array column, for a mapped date and time that is
+ * not ISO 8601 text with an offset (v1 reads other forms in the time zone of
+ * the workflow), and for a value where v1 separates null from undefined.
+ *
+ * A query that is not an expression can hold `{{ }}` parts. v1 evaluates them
+ * for each item and puts the text of each value in their place. The converter
+ * gives the values in `queryParts`, and this node puts the text in the same
+ * places. This is the text of the query, as with a query that is an
+ * expression: it is not a query parameter.
+ *
  * The converter runs the node once for all items, with the parameters of
- * each item in `batch`, and adds `nodeVersion` and `replacement`.
+ * each item in `batch`, and adds `nodeVersion`, `replacement` and `queryParts`.
  */
 import {
 	defineNode,
@@ -53,6 +65,23 @@ interface SortRule {
 	direction?: unknown;
 }
 
+/** A field of the resource mapper, as the converter keeps it. */
+interface MapperField {
+	id?: unknown;
+	type?: unknown;
+	required?: unknown;
+	/** The values of an `options` field. */
+	options?: unknown;
+}
+
+interface Columns {
+	mappingMode?: unknown;
+	value?: unknown;
+	matchingColumns?: unknown;
+	/** The fields of the mapper that have a value. Absent: v1 does not cast the values. */
+	schema?: unknown;
+}
+
 interface PostgresOptions {
 	queryReplacement?: unknown;
 	queryBatching?: string;
@@ -63,6 +92,7 @@ interface PostgresOptions {
 	treatQueryParametersInSingleQuotesAsText?: boolean;
 	outputColumns?: unknown;
 	cascade?: unknown;
+	skipOnConflict?: unknown;
 }
 
 interface PostgresParameters {
@@ -78,11 +108,14 @@ interface PostgresParameters {
 	combineConditions?: unknown;
 	deleteCommand?: unknown;
 	restartSequences?: unknown;
+	columns?: Columns;
 	options?: PostgresOptions;
 	/** The version of the node. Set by the converter. */
 	nodeVersion?: number;
 	/** The parts of `options.queryReplacement`, as v1 reads its raw text. Set by the converter. */
 	replacement?: Replacement;
+	/** The value of each `{{ }}` of a query that is not an expression, in order. Set by the converter. */
+	queryParts?: unknown[];
 	/** The parameters of each input item. Set by the converter. */
 	batch?: PostgresParameters[];
 }
@@ -92,6 +125,8 @@ interface Query {
 	values: unknown[];
 	/** The error of pg-promise for a name of this query. v1 raises it when it sends the query. */
 	nameError?: string;
+	/** This node made the text of an insert or an update: it is one command and not a select. */
+	write?: boolean;
 }
 
 const HOST_MARKER = '(limit: sql-host)';
@@ -126,6 +161,28 @@ const VALUE_WORDS = [
 ];
 const VALUE_MARKS = '=<>(,+-*/%|!~[';
 const TOP_LEVEL_COMMANDS = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'MERGE'];
+const WRITES = ['insert', 'update', 'upsert'];
+/** The runtime refuses a call with more statements (`--sql-max-statements`). */
+const MAX_STATEMENTS = 256;
+/** `getTableSchema` of the v1 node. */
+const TABLE_SCHEMA =
+	'SELECT column_name, data_type, is_nullable, udt_name, column_default FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2';
+/** Names that a plain object of JavaScript has before a column gives them. */
+const OBJECT_NAMES = [
+	'constructor',
+	'toString',
+	'valueOf',
+	'toLocaleString',
+	'hasOwnProperty',
+	'isPrototypeOf',
+	'propertyIsEnumerable',
+	'__proto__',
+	'__defineGetter__',
+	'__defineSetter__',
+	'__lookupGetter__',
+	'__lookupSetter__',
+];
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -517,13 +574,92 @@ function quotedVariables(query: string): string[] {
 	return out;
 }
 
+/** The `{{ }}` parts of a text, as `getResolvables` of the v1 node finds them. */
+function resolvables(text: string): string[] {
+	const out: string[] = [];
+	let at = text.indexOf('{{');
+	while (at !== -1) {
+		const end = text.indexOf('}}', at + 2);
+		if (end === -1) break;
+		out.push(text.slice(at, end + 2));
+		at = text.indexOf('{{', end + 2);
+	}
+	return out;
+}
+
+function isPrimitive(value: unknown): value is string | number | boolean {
+	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+/** The text of JavaScript's `String` for the value of a part of a query. */
+function partText(value: unknown): string {
+	if (isPrimitive(value)) return String(value);
+	if (Array.isArray(value)) {
+		const members: string[] = [];
+		for (const member of value) {
+			if (!isPrimitive(member)) {
+				throw hostError('A part of the query text is a list with a null or an object');
+			}
+			members.push(String(member));
+		}
+		return members.join(',');
+	}
+	// v1 writes `undefined`, `null` or `[object Object]`, and the converter gives null for undefined.
+	throw hostError('A part of the query text is null or an object');
+}
+
+/** The replacement text of `String.prototype.replace` for a text pattern: its `$` patterns. */
+function substitution(value: string, matched: string, before: string, after: string): string {
+	if (!value.includes('$')) return value;
+	let out = '';
+	let i = 0;
+	while (i < value.length) {
+		const c = value[i];
+		const next = value[i + 1];
+		if (c === '$' && next === '$') out += '$';
+		else if (c === '$' && next === '&') out += matched;
+		else if (c === '$' && next === '`') out += before;
+		else if (c === '$' && next === "'") out += after;
+		else {
+			out += c;
+			i++;
+			continue;
+		}
+		i += 2;
+	}
+	return out;
+}
+
+/**
+ * A query that is not an expression: the text of each `{{ }}` value in the place of its
+ * part, as the v1 node puts it with `query.replace(part, value)`.
+ */
+function withParts(query: string, parts: unknown[]): string {
+	const found = resolvables(query);
+	if (found.length !== parts.length) throw hostError('The parts of the query text do not fit');
+	let text = query;
+	for (let i = 0; i < found.length; i++) {
+		const value = partText(parts[i]);
+		const at = text.indexOf(found[i]);
+		if (at === -1) continue;
+		const before = text.slice(0, at);
+		const after = text.slice(at + found[i].length);
+		text = before + substitution(value, found[i], before, after) + after;
+	}
+	return text;
+}
+
 /** The query and the values of one item of `executeQuery`, as the v1 node makes them. */
 function executeQueryOf(p: PostgresParameters, version: number): Query {
 	if (typeof p.query !== 'string') throw hostError('The query is not text');
 	let query = p.query;
-	const open = query.indexOf('{{');
-	if (open !== -1 && query.indexOf('}}', open + 2) !== -1) {
-		throw hostError('The query text has an expression after its expressions ran');
+	if (p.queryParts !== undefined) {
+		query = withParts(query, p.queryParts);
+	} else {
+		const open = query.indexOf('{{');
+		if (open !== -1 && query.indexOf('}}', open + 2) !== -1) {
+			throw hostError('The query text has an expression after its expressions ran');
+		}
 	}
 	const options = p.options ?? {};
 	const replacement = p.replacement ?? {};
@@ -671,6 +807,374 @@ function deleteOf(p: PostgresParameters): Query {
 	return query;
 }
 
+function digitsAt(text: string, at: number, count: number): boolean {
+	if (at + count > text.length) return false;
+	for (let i = at; i < at + count; i++) if (!isDigit(text[i])) return false;
+	return true;
+}
+
+/** The end of `[+-]` and `count` digits at `at`, or -1. */
+function signedDigits(text: string, at: number, count: number): number {
+	if (text[at] !== '+' && text[at] !== '-') return -1;
+	return digitsAt(text, at + 1, count) ? at + 1 + count : -1;
+}
+
+/** True when the rest of a time from `at` is the last group of v1's pattern, or nothing. */
+function timeEnd(text: string, at: number): boolean {
+	if (at === text.length) return true;
+	for (const count of [2, 1]) {
+		const end = signedDigits(text, at, count);
+		if (end === -1) continue;
+		if (end === text.length) return true;
+		if (text[end] === ':' && digitsAt(text, end + 1, 2) && end + 3 === text.length) return true;
+	}
+	return false;
+}
+
+/** The pattern of `tryToParseTime`: `hh:mm`, seconds, an offset of four digits, an offset. */
+function isTime(text: string): boolean {
+	if (!digitsAt(text, 0, 2) || text[2] !== ':' || !digitsAt(text, 3, 2)) return false;
+	const starts = [5];
+	if (text[5] === ':' && digitsAt(text, 6, 2)) starts.push(8);
+	for (const start of starts) {
+		if (timeEnd(text, start)) return true;
+		const four = signedDigits(text, start, 4);
+		if (four !== -1 && timeEnd(text, four)) return true;
+	}
+	return false;
+}
+
+/**
+ * A mapped date and time as pg-promise writes the Luxon value of v1: the JSON of its ISO
+ * text. Only for ISO 8601 text with seconds and an offset. v1 reads other forms too, in
+ * the time zone of the workflow, so they go to the host.
+ */
+function dateTimeJson(value: unknown): string {
+	const fail = hostError('A mapped date and time is not ISO 8601 text with an offset');
+	if (typeof value !== 'string') throw fail;
+	const text = value.trim();
+	const shaped =
+		digitsAt(text, 0, 4) &&
+		text[4] === '-' &&
+		digitsAt(text, 5, 2) &&
+		text[7] === '-' &&
+		digitsAt(text, 8, 2) &&
+		text[10] === 'T' &&
+		digitsAt(text, 11, 2) &&
+		text[13] === ':' &&
+		digitsAt(text, 14, 2) &&
+		text[16] === ':' &&
+		digitsAt(text, 17, 2);
+	if (!shaped) throw fail;
+	const year = Number(text.slice(0, 4));
+	const month = Number(text.slice(5, 7));
+	const day = Number(text.slice(8, 10));
+	const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+	const days = month === 2 && leap ? 29 : (DAYS_IN_MONTH[month - 1] ?? 0);
+	if (year < 1000 || day < 1 || day > days) throw fail;
+	if (Number(text.slice(11, 13)) > 23 || Number(text.slice(14, 16)) > 59) throw fail;
+	if (Number(text.slice(17, 19)) > 59) throw fail;
+	let at = 19;
+	let millis = 0;
+	if (text[at] === '.') {
+		let end = at + 1;
+		while (end < text.length && isDigit(text[end])) end++;
+		if (end === at + 1 || end > at + 10) throw fail;
+		// As Luxon's `parseMillis`.
+		millis = Math.floor(Number(`0.${text.slice(at + 1, end)}`) * 1000);
+		at = end;
+	}
+	let offset = 'Z';
+	if (text[at] === 'Z') {
+		if (at + 1 !== text.length) throw fail;
+	} else if (signedDigits(text, at, 2) === at + 3 && text[at + 3] === ':') {
+		if (!digitsAt(text, at + 4, 2) || at + 6 !== text.length) throw fail;
+		const hours = text.slice(at + 1, at + 3);
+		const minutes = text.slice(at + 4, at + 6);
+		if (Number(hours) > 23 || Number(minutes) > 59) throw fail;
+		if (hours !== '00' || minutes !== '00') offset = `${text[at]}${hours}:${minutes}`;
+	} else {
+		throw fail;
+	}
+	const fraction = millis < 10 ? `00${millis}` : millis < 100 ? `0${millis}` : String(millis);
+	return JSON.stringify(`${text.slice(0, 19)}.${fraction}${offset}`);
+}
+
+interface Cast {
+	ok: boolean;
+	value?: unknown;
+}
+
+function parsed(text: string): Cast {
+	try {
+		const value: unknown = JSON.parse(text);
+		return { ok: true, value };
+	} catch (error) {
+		return { ok: false };
+	}
+}
+
+/**
+ * A value as n8n's resource mapper casts it for the Postgres node (`validateFieldType`,
+ * not strict, strings as they are). Not `ok`: v1 fails the field.
+ */
+function castField(value: unknown, field: MapperField): Cast {
+	const type = typeof field.type === 'string' ? field.type.toLowerCase() : '';
+	if (type === 'number') {
+		if (!isPrimitive(value)) throw hostError('A mapped number is a list or an object');
+		const n = Number(value);
+		return isNaN(n) ? { ok: false } : { ok: true, value: n };
+	}
+	if (type === 'boolean') {
+		if (typeof value === 'boolean') return { ok: true, value };
+		if (!isPrimitive(value)) throw hostError('A mapped boolean is a list or an object');
+		if (typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) {
+			return { ok: true, value: value.toLowerCase() === 'true' };
+		}
+		if (!(typeof value === 'string' && value.trim() === '')) {
+			const n = Number(value);
+			if (n === 0) return { ok: true, value: false };
+			if (n === 1) return { ok: true, value: true };
+		}
+		return { ok: false };
+	}
+	if (type === 'datetime') return { ok: true, value: dateTimeJson(value) };
+	if (type === 'time') {
+		if (!isPrimitive(value)) throw hostError('A mapped time is a list or an object');
+		return isTime(String(value)) ? { ok: true, value: String(value) } : { ok: false };
+	}
+	if (type === 'object') {
+		if (isRecord(value)) return { ok: true, value };
+		if (Array.isArray(value)) throw hostError('A mapped object is a list');
+		if (typeof value !== 'string') return { ok: false };
+		const read = parsed(value);
+		// v1 reads text that is not JSON as a JavaScript object.
+		if (!read.ok) throw hostError('A mapped object is text that is not JSON');
+		if (typeof read.value !== 'object' || Array.isArray(read.value)) return { ok: false };
+		return { ok: true, value: read.value };
+	}
+	if (type === 'array') {
+		if (Array.isArray(value)) return { ok: true, value };
+		if (typeof value !== 'string') return { ok: false };
+		let read = parsed(value);
+		if (!read.ok) read = parsed(value.replaceAll("'", '"'));
+		return read.ok && Array.isArray(read.value) ? { ok: true, value: read.value } : { ok: false };
+	}
+	if (type === 'options') {
+		const options: unknown[] = Array.isArray(field.options) ? field.options : [];
+		return options.includes(value) ? { ok: true, value } : { ok: false };
+	}
+	if (type !== '' && type !== 'string' && type !== 'json') {
+		throw hostError('A mapped field has a type that the compiled library does not have');
+	}
+	return { ok: true, value };
+}
+
+/**
+ * `columns.value` as `getNodeParameter` of v1 gives it (`validateResourceMapperValue`):
+ * each field with a type is cast, and null becomes undefined. `add`: the mode of `insert`,
+ * where a required field must have a value. The error is v1's message.
+ */
+function mappedValues(
+	value: Record<string, unknown>,
+	schema: unknown,
+	index: number,
+	add: boolean,
+): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const key of Object.keys(value)) out[key] = value[key];
+	if (!Array.isArray(schema)) return out;
+	for (const key of Object.keys(out)) {
+		let field: MapperField | undefined;
+		for (const entry of schema) {
+			if (field === undefined && isRecord(entry) && entry.id === key) field = entry;
+		}
+		const given = out[key];
+		const empty = given === null || given === undefined;
+		if (add && field?.required === true && field.type !== 'boolean' && empty) {
+			throw new Error(`Invalid input for '${key}' [item ${index}]`);
+		}
+		if (field === undefined || typeof field.type !== 'string' || field.type === '') continue;
+		if (empty) {
+			out[key] = undefined;
+			continue;
+		}
+		const cast = castField(given, field);
+		if (!cast.ok) throw new Error(`Invalid input for '${key}' [item ${index}]`);
+		out[key] = cast.value;
+	}
+	return out;
+}
+
+/** The JSON of an input item for a write, with `replaceEmptyStringsByNulls` of the v1 node. */
+function inputValues(item: Item | undefined, replace: boolean): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	if (item === undefined) return out;
+	for (const key of Object.keys(item)) {
+		if (key === '$binary') continue;
+		const value: unknown = item[key];
+		out[key] = replace && value === '' ? null : value;
+	}
+	return out;
+}
+
+/** `convertArraysToPostgresFormat` of the v1 node: a list for an array column as `{...}` text. */
+function withArrayText(data: Record<string, unknown>, columns: Item[]): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const key of Object.keys(data)) out[key] = data[key];
+	for (const column of columns) {
+		if (String(column.data_type).toUpperCase() !== 'ARRAY') continue;
+		const name = String(column.column_name);
+		let value = out[name];
+		if (typeof value === 'string') {
+			const read = parsed(value);
+			// v1 fails here with the message of its JSON reader.
+			if (!read.ok) throw hostError('The text for an array column is not JSON');
+			value = read.value;
+		}
+		if (Array.isArray(value)) {
+			const entries: string[] = [];
+			for (const entry of value) {
+				if (typeof entry === 'number') {
+					entries.push(String(entry));
+				} else {
+					const text = typeof entry === 'string' ? entry : JSON.stringify(entry);
+					entries.push(`"${text.replaceAll('"', '\\"')}"`);
+				}
+			}
+			out[name] = `{${entries.join(',')}}`;
+		} else if (column.is_nullable === 'NO') {
+			throw new Error(`Column '${name}' has to be an array`);
+		}
+	}
+	return out;
+}
+
+/**
+ * `checkItemAgainstSchema` of the v1 node. v1 fails a null of a column that is not
+ * nullable, and sends an undefined to the database. `passed`: the values that are
+ * undefined in v1. `unsure`: a null of this item can be undefined in v1.
+ */
+function checkItem(
+	item: Record<string, unknown>,
+	columns: Item[],
+	unsure: boolean,
+	passed: string[],
+): void {
+	if (columns.length === 0) return;
+	for (const key of Object.keys(item)) {
+		if (OBJECT_NAMES.includes(key)) throw hostError('A column has the name of an object member');
+		const column = columns.find((c) => c.column_name === key);
+		if (column === undefined) throw new Error(`Column '${key}' does not exist in selected table`);
+		if (item[key] === null && column.is_nullable !== 'YES' && !passed.includes(key)) {
+			if (unsure) throw hostError('A value is null or undefined');
+			throw new Error(`Column '${key}' is not nullable`);
+		}
+	}
+}
+
+/** Adds a value to `query` and gives its place in the text. */
+function place(query: Query, value: unknown): string {
+	query.values.push(value);
+	return `$${query.values.length}`;
+}
+
+/** `addReturning` of the v1 node. */
+function addReturning(query: Query, options: PostgresOptions | undefined): void {
+	if (options?.outputColumns === null) throw hostError('The output columns are null');
+	const columns = options?.outputColumns ?? ['*'];
+	if (!Array.isArray(columns) && typeof columns !== 'string') {
+		throw hostError('The output columns are not a list');
+	}
+	if (columns.includes('*')) query.query += ' RETURNING *';
+	else query.query += ` RETURNING ${nameIn(query, columns)}`;
+}
+
+/** The names of the columns to match on, for `update` and `upsert`. */
+function matchingColumns(columns: Columns): string[] {
+	const out: string[] = [];
+	if (!Array.isArray(columns.matchingColumns)) {
+		throw hostError('The columns to match on are not a list');
+	}
+	for (const name of columns.matchingColumns) {
+		if (typeof name !== 'string') throw hostError('A column to match on is not text');
+		out.push(name);
+	}
+	return out;
+}
+
+/** The names of the columns of a write in the text of `query`: pg-promise's `:name` of an object. */
+function columnNames(query: Query, names: string[]): string {
+	const parts: string[] = [];
+	for (const name of names) parts.push(nameIn(query, [name]));
+	return parts.join(',');
+}
+
+/** The query of one item of `insert`, from the checked values. */
+function insertOf(p: PostgresParameters, item: Record<string, unknown>, version: number): Query {
+	const query: Query = { query: '', values: [], write: true };
+	const into = `INSERT INTO ${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
+	const names = Object.keys(item);
+	if (version >= 2.6 && names.length === 0) {
+		query.query = `${into} DEFAULT VALUES`;
+	} else {
+		if (names.length === 0 && query.nameError === undefined) {
+			query.nameError = 'Cannot retrieve sql names from an empty array/object.';
+		}
+		const columns = columnNames(query, names);
+		const places: string[] = [];
+		for (const name of names) places.push(place(query, item[name]));
+		const conflict = p.options?.skipOnConflict ? ' ON CONFLICT DO NOTHING' : '';
+		query.query = `${into}(${columns}) VALUES(${places.join(',')})${conflict}`;
+	}
+	addReturning(query, p.options);
+	return query;
+}
+
+/** The query of one item of `update`, from the checked values. */
+function updateOf(p: PostgresParameters, item: Record<string, unknown>, matching: string[]): Query {
+	const query: Query = { query: '', values: [], write: true };
+	const table = `${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
+	const updates: string[] = [];
+	for (const name of Object.keys(item)) {
+		if (matching.includes(name)) continue;
+		updates.push(`${nameIn(query, name)} = ${place(query, item[name])}`);
+	}
+	if (updates.length === 0) {
+		throw new Error(
+			"Add values to update to the input item or set the 'Data Mode' to 'Define Below' to define the values to update.",
+		);
+	}
+	const conditions: string[] = [];
+	for (const name of matching) {
+		conditions.push(`${nameIn(query, name)} = ${place(query, item[name])}`);
+	}
+	query.query = `UPDATE ${table} SET ${updates.join(', ')} WHERE ${conditions.join(' AND ')}`;
+	addReturning(query, p.options);
+	return query;
+}
+
+/** The query of one item of `upsert`, from the checked values. */
+function upsertOf(p: PostgresParameters, item: Record<string, unknown>, matching: string[]): Query {
+	const query: Query = { query: '', values: [], write: true };
+	const into = `INSERT INTO ${nameIn(query, p.schema)}.${nameIn(query, p.table)}`;
+	const names = Object.keys(item);
+	const columns = columnNames(query, names);
+	const places: string[] = [];
+	for (const name of names) places.push(place(query, item[name]));
+	const conflict: string[] = [];
+	for (const name of matching) conflict.push(nameIn(query, name));
+	const updates: string[] = [];
+	for (const name of names) {
+		if (matching.includes(name)) continue;
+		updates.push(`${nameIn(query, name)} = ${place(query, item[name])}`);
+	}
+	const action = updates.length > 0 ? ` DO UPDATE  SET ${updates.join(', ')}` : ' DO NOTHING ';
+	query.query = `${into}(${columns}) VALUES(${places.join(',')}) ON CONFLICT (${conflict.join(',')})${action}`;
+	addReturning(query, p.options);
+	return query;
+}
+
 /** The message of `parsePostgresError` of the v1 node. */
 function errorMessage(error: SqlError, queries: Query[]): string {
 	let message = error.message;
@@ -704,9 +1208,9 @@ function errorMessage(error: SqlError, queries: Query[]): string {
 }
 
 /** The items of one result of v1: the rows, or `success` for a query that is not a select. */
-function rowsOrSuccess(rows: Item[], query: string): Item[] {
+function rowsOrSuccess(rows: Item[], query: Query): Item[] {
 	if (rows.length > 0) return rows;
-	return isSelectQuery(query) ? [] : [{ success: true }];
+	return query.write !== true && isSelectQuery(query.query) ? [] : [{ success: true }];
 }
 
 export default defineNode<PostgresParameters>({
@@ -728,6 +1232,7 @@ export default defineNode<PostgresParameters>({
 				'options.treatQueryParametersInSingleQuotesAsText',
 				'nodeVersion',
 				'replacement',
+				'queryParts',
 				'batch',
 			],
 			'database.select': [
@@ -740,6 +1245,61 @@ export default defineNode<PostgresParameters>({
 				'sort',
 				'sort.values',
 				'combineConditions',
+				'options',
+				'options.outputColumns',
+				'options.queryBatching',
+				'options.largeNumbersOutput',
+				'options.connectionTimeout',
+				'options.delayClosingIdleConnection',
+				'options.replaceEmptyStrings',
+				'nodeVersion',
+				'batch',
+			],
+			'database.insert': [
+				'schema',
+				'table',
+				'columns',
+				'columns.mappingMode',
+				'columns.value',
+				'columns.matchingColumns',
+				'columns.schema',
+				'options',
+				'options.skipOnConflict',
+				'options.outputColumns',
+				'options.queryBatching',
+				'options.largeNumbersOutput',
+				'options.connectionTimeout',
+				'options.delayClosingIdleConnection',
+				'options.replaceEmptyStrings',
+				'nodeVersion',
+				'batch',
+			],
+			'database.update': [
+				'schema',
+				'table',
+				'columns',
+				'columns.mappingMode',
+				'columns.value',
+				'columns.matchingColumns',
+				'columns.schema',
+				'options',
+				'options.outputColumns',
+				'options.queryBatching',
+				'options.largeNumbersOutput',
+				'options.connectionTimeout',
+				'options.delayClosingIdleConnection',
+				'options.replaceEmptyStrings',
+				'nodeVersion',
+				'batch',
+			],
+			'database.upsert': [
+				'schema',
+				'table',
+				'columns',
+				'columns.mappingMode',
+				'columns.value',
+				'columns.matchingColumns',
+				'columns.schema',
 				'options',
 				'options.outputColumns',
 				'options.queryBatching',
@@ -770,7 +1330,7 @@ export default defineNode<PostgresParameters>({
 			],
 		},
 	},
-	async run(ctx, parameters, _items, credential) {
+	async run(ctx, parameters, items, credential) {
 		const each = parameters.batch ?? [parameters];
 		const first = each[0];
 		if (first === undefined) throw hostError('The node has no input item');
@@ -785,32 +1345,14 @@ export default defineNode<PostgresParameters>({
 			throw hostError('The query batching mode is unknown');
 		}
 
-		const queries: Query[] = [];
-		for (const p of each) {
-			if (operation === 'executeQuery') queries.push(executeQueryOf(p, version));
-			else if (operation === 'select') queries.push(selectOf(p));
-			else if (operation === 'deleteTable') queries.push(deleteOf(p));
-			else throw hostError('The operation is not in the compiled library');
-		}
-		const statements: SqlStatement[] = [];
-		const joined = mode === 'single' && queries.length > 1;
-		// pg-promise raises the error of a name when it writes the query: before all queries in
-		// the mode `single`, and after the queries before it in the other modes.
-		const badName = queries.findIndex((q) => q.nameError !== undefined);
-		if (badName > 0 && mode !== 'single')
-			throw hostError('A name is not valid after queries that run');
-		if (badName !== -1) throw new Error(queries[badName].nameError ?? '');
-		for (const q of queries) {
-			const text = clean(q.query);
-			checkQuery(text, q.values.length, joined);
-			const values: SqlValue[] = [];
-			for (const value of q.values) values.push(bindValue(value));
-			statements.push({ text, values });
-		}
-
 		// `sent`: a statement of an earlier call ran, so the host must not run the node again.
-		const send = async (list: SqlStatement[], sent: boolean): Promise<SqlResult> => {
-			const batching = mode === 'transaction' ? 'transaction' : 'single';
+		// `lookup`: the call only reads, alone, as v1 reads the columns of a table.
+		const send = async (
+			list: SqlStatement[],
+			sent: boolean,
+			lookup: boolean,
+		): Promise<SqlResult> => {
+			const batching = mode === 'transaction' && !lookup ? 'transaction' : 'single';
 			const largeNumbers = options.largeNumbersOutput === 'numbers' ? 'numbers' : 'text';
 			const dates = version >= 2.7 ? 'text' : 'legacy';
 			let result: SqlResult;
@@ -848,20 +1390,139 @@ export default defineNode<PostgresParameters>({
 			if (result.connect !== undefined) throw new Error(errorMessage(result.connect, []));
 			return result;
 		};
+		// The rows of one statement that only reads. v1 gives the error of the database as it is.
+		const read = async (text: string, given: unknown[]): Promise<Item[]> => {
+			const values: SqlValue[] = [];
+			for (const value of given) values.push(bindValue(value));
+			const result = await send([{ text, values }], false, true);
+			const entry = result.results[0];
+			if (entry === undefined) throw new Error('Postgres: the runtime gave no result');
+			if ('error' in entry) throw new Error(entry.error.message);
+			return entry.rows;
+		};
+
+		const queries: Query[] = [];
+		if (typeof operation === 'string' && WRITES.includes(operation)) {
+			const replace = options.replaceEmptyStrings ? true : false;
+			let schema = first.schema;
+			let table = first.table;
+			let columnsInfo = await read(TABLE_SCHEMA, [schema, table]);
+			for (let i = 0; i < each.length; i++) {
+				const p = each[i];
+				const columns = p.columns;
+				if (!isRecord(columns) || typeof columns.mappingMode !== 'string') {
+					throw hostError('The columns of the node are not a mapping');
+				}
+				const matching = operation === 'insert' ? [] : matchingColumns(columns);
+				let item: Record<string, unknown> = {};
+				// v1 has undefined for these values, and does not check them against the columns.
+				const passed: string[] = [];
+				let unsure = false;
+				if (columns.mappingMode === 'autoMapInputData') item = inputValues(items?.[i], replace);
+				if (columns.mappingMode === 'defineBelow') {
+					const value = columns.value;
+					if (!isRecord(value)) throw hostError('The values of the columns are not an object');
+					const json = columnsInfo.filter((c) => c.data_type === 'json');
+					if (operation === 'insert' && json.length > 0) {
+						// `convertValuesToJsonWithPgp`: v1 reads the values without a cast.
+						unsure = true;
+						for (const key of Object.keys(value)) item[key] = value[key];
+						for (const column of json) {
+							const name = String(column.column_name);
+							const member = item[name];
+							if (member !== null && member !== undefined) item[name] = JSON.stringify(member);
+						}
+					} else {
+						item = mappedValues(value, columns.schema, i, operation === 'insert');
+						for (const key of Object.keys(item)) {
+							if (item[key] === undefined) {
+								item[key] = null;
+								passed.push(key);
+							}
+						}
+					}
+				}
+				if (operation === 'update') {
+					// `doesRowExist` of the v1 node.
+					const exists: Query = { query: '', values: [] };
+					const from = `${nameIn(exists, p.schema)}.${nameIn(exists, p.table)}`;
+					const conditions: string[] = [];
+					for (const name of matching) {
+						conditions.push(`${nameIn(exists, name)}=${place(exists, item[name])}`);
+					}
+					if (exists.nameError !== undefined) throw new Error(exists.nameError);
+					const rows = await read(
+						`SELECT EXISTS(SELECT 1 FROM ${from} WHERE ${conditions.join(' AND ')})`,
+						exists.values,
+					);
+					if (rows[0]?.exists !== true) {
+						throw new Error("The row you are trying to update doesn't exist");
+					}
+				}
+				if (operation === 'upsert') {
+					const key = matching[0];
+					if (key === undefined || !item[key]) {
+						throw new Error(
+							"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
+						);
+					}
+					if (Object.keys(item).length === 1) {
+						throw new Error(
+							"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",
+						);
+					}
+				}
+				if (p.schema !== schema || p.table !== table) {
+					schema = p.schema;
+					table = p.table;
+					columnsInfo = await read(TABLE_SCHEMA, [schema, table]);
+				}
+				item = withArrayText(item, columnsInfo);
+				checkItem(item, columnsInfo, unsure, passed);
+				if (operation === 'insert') queries.push(insertOf(p, item, version));
+				else if (operation === 'update') queries.push(updateOf(p, item, matching));
+				else queries.push(upsertOf(p, item, matching));
+			}
+		} else {
+			for (const p of each) {
+				if (operation === 'executeQuery') queries.push(executeQueryOf(p, version));
+				else if (operation === 'select') queries.push(selectOf(p));
+				else if (operation === 'deleteTable') queries.push(deleteOf(p));
+				else throw hostError('The operation is not in the compiled library');
+			}
+		}
+		const statements: SqlStatement[] = [];
+		const joined = mode === 'single' && queries.length > 1;
+		// pg-promise raises the error of a name when it writes the query: before all queries in
+		// the mode `single`, and after the queries before it in the other modes.
+		const badName = queries.findIndex((q) => q.nameError !== undefined);
+		if (badName > 0 && mode !== 'single')
+			throw hostError('A name is not valid after queries that run');
+		if (badName !== -1) throw new Error(queries[badName].nameError ?? '');
+		if (mode !== 'independently' && queries.length > MAX_STATEMENTS) {
+			throw hostError('The node has more statements than one call takes');
+		}
+		for (const q of queries) {
+			const text = q.write === true ? q.query : clean(q.query);
+			if (q.write !== true) checkQuery(text, q.values.length, joined);
+			const values: SqlValue[] = [];
+			for (const value of q.values) values.push(bindValue(value));
+			statements.push({ text, values });
+		}
 
 		const out: Item[] = [];
 		if (mode === 'independently') {
 			// v1 stops at the first failure, so each statement is one call.
 			for (let i = 0; i < statements.length; i++) {
-				const result = await send([statements[i]], i > 0);
+				const result = await send([statements[i]], i > 0, false);
 				const entry = result.results[0];
 				if (entry === undefined) throw new Error('Postgres: the runtime gave no result');
 				if ('error' in entry) throw new Error(errorMessage(entry.error, queries));
-				for (const row of rowsOrSuccess(entry.rows, queries[i].query)) out.push(row);
+				for (const row of rowsOrSuccess(entry.rows, queries[i])) out.push(row);
 			}
 			return out;
 		}
-		const result = await send(statements, false);
+		const result = await send(statements, false, false);
 		for (const entry of result.results) {
 			if ('error' in entry) throw new Error(errorMessage(entry.error, queries));
 		}
@@ -872,7 +1533,7 @@ export default defineNode<PostgresParameters>({
 			for (let i = 0; i < result.results.length; i++) {
 				const entry = result.results[i];
 				if ('error' in entry) continue;
-				for (const row of rowsOrSuccess(entry.rows, queries[i].query)) out.push(row);
+				for (const row of rowsOrSuccess(entry.rows, queries[i])) out.push(row);
 			}
 			return out;
 		}
@@ -881,7 +1542,9 @@ export default defineNode<PostgresParameters>({
 			for (const row of entry.rows) out.push(row);
 		}
 		if (out.length > 0) return out;
-		for (const q of queries) if (!isSelectQuery(q.query)) return [{ success: true }];
+		for (const q of queries) {
+			if (q.write === true || !isSelectQuery(q.query)) return [{ success: true }];
+		}
 		return [];
 	},
 });
