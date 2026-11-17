@@ -600,6 +600,63 @@ describe('CompiledEngineCredentials', () => {
 			).rejects.toThrow();
 		});
 
+		describe('for the HTTP Request node', () => {
+			const httpMints = {
+				sa: [
+					{
+						name: 'mgooglehttp',
+						kind: 'google-service-account-http' as const,
+						service: 'httpRequest',
+						scopes: [],
+					},
+				],
+			};
+
+			beforeEach(async () => {
+				const { GoogleApi } = await import(
+					'n8n-nodes-base/dist/credentials/GoogleApi.credentials.js'
+				);
+				credentialTypes.getByName.mockReturnValue(new GoogleApi());
+			});
+
+			it('makes the token with the authenticate of the credential type and the scopes of the data', async () => {
+				helper.getDecrypted.mockResolvedValue({
+					email: 'robot@project.test',
+					privateKey,
+					httpNode: true,
+					scopes: 'https://scopes.test/a, https://scopes.test/b',
+				});
+				let form = '';
+				nock('https://oauth2.googleapis.com')
+					.post('/token', (body: unknown) => {
+						form = typeof body === 'string' ? body : new URLSearchParams(body as never).toString();
+						return true;
+					})
+					.reply(200, { access_token: 'http-token', expires_in: 3599, token_type: 'Bearer' });
+
+				const document = await credentials().buildDocument('wf1', [serviceAccount], {}, httpMints);
+
+				expect(document.sa).toMatchObject({
+					data: { n8nMinted: { mgooglehttp: { access_token: 'http-token' } } },
+				});
+				const assertion = new URLSearchParams(form).get('assertion') ?? '';
+				const claims = JSON.parse(
+					Buffer.from(assertion.split('.')[1], 'base64url').toString('utf8'),
+				) as Record<string, unknown>;
+				expect(claims).toMatchObject({
+					iss: 'robot@project.test',
+					scope: 'https://scopes.test/a https://scopes.test/b',
+				});
+			});
+
+			it('makes no token for a credential that is not set up for the HTTP Request node', async () => {
+				const document = await credentials().buildDocument('wf1', [serviceAccount], {}, httpMints);
+
+				expect(document).toEqual({});
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+			});
+		});
+
 		it('does not make a token when the scopes are not the scopes of n8n', async () => {
 			const other = { sa: [{ ...mints.sa[0], scopes: ['https://scopes.test/other'] }] };
 

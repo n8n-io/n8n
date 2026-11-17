@@ -1882,6 +1882,18 @@ function withContentType(headers: Json, name: string, value: Json): Json {
 	return out;
 }`,
 	},
+	withBearer: {
+		uses: [],
+		source: `/** The headers of a request with the token of the credential, as its \`authenticate\` adds it. */
+function withBearer(headers: Json, token: string): Json {
+	const out: Json = {};
+	if (headers !== null && typeof headers === 'object') {
+		for (const key of Object.keys(headers)) out[key] = headers[key];
+	}
+	out.Authorization = token;
+	return out;
+}`,
+	},
 	itemAt: {
 		uses: [],
 		source: `/** \`$item(k).$node[name].json\`: the JSON of item k of the node, with the errors of v1. */

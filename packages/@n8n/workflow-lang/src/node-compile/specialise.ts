@@ -157,7 +157,7 @@ export interface CredentialDerivation {
 
 export interface CredentialMint {
 	name: string;
-	kind: 'google-service-account';
+	kind: 'google-service-account' | 'google-service-account-http';
 	service: string;
 	scopes: string[];
 }

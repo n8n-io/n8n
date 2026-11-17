@@ -124,6 +124,11 @@ const FLAG_NAME = /^f[0-9a-f]{8}$/;
 /** The lifetime that n8n assumes when the token endpoint gives none. */
 const UNKNOWN_LIFETIME_SECONDS = 300;
 
+/** The request that `GoogleApi.authenticate` signs for a minted token. It is never sent. */
+const GOOGLE_TOKEN_PROBE_URL = 'https://www.googleapis.com/';
+
+const BEARER = 'Bearer ';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -497,12 +502,13 @@ export class CompiledEngineCredentials {
 	private async mintToken(
 		binding: CredentialSlotBinding,
 		mint: CredentialMintRequest,
-		data: IDataObject,
+		data: ICredentialDataDecryptedObject,
 		workflowId: string,
 	): Promise<MintedToken> {
 		const { getGoogleAccessToken, googleServiceAccountScopes } = await import(
 			'n8n-nodes-base/dist/nodes/Google/GenericFunctions.js'
 		);
+		if (mint.kind === 'google-service-account-http') return await this.mintHttpToken(data);
 		const isService = (name: string): name is keyof typeof googleServiceAccountScopes =>
 			Object.hasOwn(googleServiceAccountScopes, name);
 		if (mint.kind !== 'google-service-account' || !isService(mint.service)) {
@@ -524,6 +530,32 @@ export class CompiledEngineCredentials {
 				? response.expires_in
 				: UNKNOWN_LIFETIME_SECONDS;
 		return { access_token: token, expires_at: requestedAt + lifetime * 1000 };
+	}
+
+	/**
+	 * The token of the HTTP Request node for a Google service account: the `authenticate` of the
+	 * credential type signs with the scopes of the credential data and exchanges the token, as
+	 * for each request of the v1 node. v1 sends no token for a credential that is not set up
+	 * for the HTTP Request node, so there is none to make then.
+	 */
+	private async mintHttpToken(data: ICredentialDataDecryptedObject): Promise<MintedToken> {
+		const type = this.credentialTypes.getByName('googleApi');
+		if (data.httpNode !== true || typeof type.authenticate !== 'function') {
+			throw new UserError('The credential is not set up for the HTTP Request node');
+		}
+		const requestedAt = Date.now();
+		const signed = await type.authenticate(
+			{ ...data },
+			{ url: GOOGLE_TOKEN_PROBE_URL, headers: {} },
+		);
+		const header: unknown = signed.headers?.Authorization;
+		const token =
+			typeof header === 'string' && header.startsWith(BEARER) ? header.slice(BEARER.length) : '';
+		if (token === '' || token === 'undefined') {
+			throw new OperationalError('The token endpoint gave no access token');
+		}
+		// `authenticate` does not say how long the token lives.
+		return { access_token: token, expires_at: requestedAt + UNKNOWN_LIFETIME_SECONDS * 1000 };
 	}
 
 	/**
