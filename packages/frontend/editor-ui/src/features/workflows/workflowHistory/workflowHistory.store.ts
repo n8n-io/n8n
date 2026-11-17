@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { saveAs } from 'file-saver';
+import { applyVersionedSettings, pickVersionedSettings } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
@@ -20,6 +21,8 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getNewWorkflow } from '@/app/api/workflows';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
+
+type WorkflowVersionActionData = { formattedCreatedAt: string };
 
 export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
@@ -53,7 +56,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const downloadVersion = async (
 		workflowId: string,
 		workflowVersionId: WorkflowVersionId,
-		data: { formattedCreatedAt: string },
+		data: WorkflowVersionActionData,
 	) => {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsListStore.fetchWorkflow(workflowId),
@@ -65,6 +68,12 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			nodes,
 			connections,
 			nodeGroups: nodeGroups ?? [],
+			versionId: workflowVersion.versionId,
+			settings: applyVersionedSettings(
+				workflow.settings,
+				pickVersionedSettings(workflowVersion.settings),
+			),
+			meta: { ...workflow.meta, instanceId: rootStore.instanceId },
 		};
 		if (!emptyCanvasGroupsEnabled.value) {
 			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
@@ -78,7 +87,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const cloneIntoNewWorkflow = async (
 		workflowId: string,
 		workflowVersionId: string,
-		data: { formattedCreatedAt: string },
+		data: WorkflowVersionActionData,
 	): Promise<IWorkflowDb> => {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsListStore.fetchWorkflow(workflowId),
@@ -94,6 +103,8 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			connections,
 			nodeGroups: nodeGroups ?? [],
 			name: newWorkflow.name,
+			// Without settings, the server sets the default engine of the instance.
+			settings: pickVersionedSettings(workflowVersion.settings),
 		};
 		if (!emptyCanvasGroupsEnabled.value) {
 			removeEmptyCanvasGroupsFromWorkflowData(newWorkflowData);
