@@ -14,7 +14,13 @@
  * from v1: v1 removes one slash at the end of the host. This node does not,
  * so a host that ends with a slash gives a URL with two slashes.
  */
-import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	wholeNodeError,
+	type FailedResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface Condition {
 	keyName?: unknown;
@@ -306,18 +312,23 @@ export default defineNode<SupabaseParameters>({
 			);
 			const headers: Record<string, string> = { Prefer: 'return=representation' };
 			if (first.useCustomSchema === true) headers['Content-Profile'] = first.schema ?? 'public';
-			const response = await ctx.http<unknown>({
-				acceptAs: 'request',
-				json: true,
-				method: 'POST',
-				url: `{{$credentials.host}}/rest/v1/${pathSegment(first.tableId)}`,
-				headers,
-				qs: {},
-				body: records,
-				credential,
-			});
-			if (response.status >= 400) throw requestFailure(response);
-			return itemsOf(response.body);
+			// `helpers.httpRequestWithAuthentication` of n8n sends a request again, once, after a
+			// 401 answer, for a credential that is not OAuth2.
+			for (let attempt = 1; ; attempt++) {
+				const response = await ctx.http<unknown>({
+					acceptAs: 'request',
+					json: true,
+					method: 'POST',
+					url: `{{$credentials.host}}/rest/v1/${pathSegment(first.tableId)}`,
+					headers,
+					qs: {},
+					body: records,
+					credential,
+				});
+				if (response.status === 401 && attempt === 1) continue;
+				if (response.status >= 400) throw requestFailure(response);
+				return itemsOf(response.body);
+			}
 		}
 		if (resource !== 'row' || !['getAll', 'get', 'update'].includes(operation)) {
 			throw new Error(`Supabase: ${resource}.${operation} is not in the compiled library`);
@@ -335,18 +346,23 @@ export default defineNode<SupabaseParameters>({
 			else headers['Accept-Profile'] = schema;
 		}
 		const request = async (url: string, qs: Record<string, unknown>, body: unknown) => {
-			const response = await ctx.http<unknown>({
-				acceptAs: 'request',
-				json: true,
-				method,
-				url: `{{$credentials.host}}/rest/v1${url}`,
-				headers,
-				qs,
-				body,
-				credential,
-			});
-			if (response.status >= 400) throw requestFailure(response);
-			return response.body;
+			// `helpers.httpRequestWithAuthentication` of n8n sends a request again, once, after a
+			// 401 answer, for a credential that is not OAuth2.
+			for (let attempt = 1; ; attempt++) {
+				const response = await ctx.http<unknown>({
+					acceptAs: 'request',
+					json: true,
+					method,
+					url: `{{$credentials.host}}/rest/v1${url}`,
+					headers,
+					qs,
+					body,
+					credential,
+				});
+				if (response.status === 401 && attempt === 1) continue;
+				if (response.status >= 400) throw requestFailure(response);
+				return response.body;
+			}
 		};
 		const conditions = parameters.filters?.conditions ?? [];
 		const filterType = parameters.filterType ?? 'manual';
@@ -359,7 +375,8 @@ export default defineNode<SupabaseParameters>({
 			const qs: Record<string, unknown> = {};
 			if (operation === 'get') {
 				if (conditions.length === 0) {
-					throw new Error('At least one select condition must be defined');
+					// v1 throws this error before its `try` for the item.
+					throw wholeNodeError('At least one select condition must be defined');
 				}
 				// buildGetQuery: the last condition of a key wins.
 				for (const condition of conditions) {
@@ -370,7 +387,8 @@ export default defineNode<SupabaseParameters>({
 			}
 			if (filterType === 'manual') {
 				if (operation === 'update' && conditions.length === 0) {
-					throw new Error('At least one select condition must be defined');
+					// v1 throws this error before its `try` for the item.
+					throw wholeNodeError('At least one select condition must be defined');
 				}
 				if (conditions.length > 0) {
 					if (matchType === 'allFilters' && operation === 'getAll') {

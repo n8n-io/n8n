@@ -11,7 +11,13 @@
  * once for all items, as the router of the v1 node does: under "continue on fail"
  * an item that fails gives `{ error }`, and else the first failure stops the node.
  */
-import { defineNode, type HttpResponse, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	operationError,
+	type HttpResponse,
+	type Item,
+} from '@n8n/workflow-lang';
 
 interface Locator {
 	__rl?: boolean;
@@ -42,22 +48,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** The messages of n8n's NodeApiError for the status of a failed request. */
-const STATUS_MESSAGES: Record<string, string> = {
-	'400': 'Bad request - please check your parameters',
-	'401': 'Authorization failed - please check your credentials',
-	'402': 'Payment required - perhaps check your payment details?',
-	'403': 'Forbidden - perhaps check your credentials?',
-	'404': 'The resource you are requesting could not be found',
-	'405': 'Method not allowed - please check you are using the right HTTP method',
-	'429': 'The service is receiving too many requests from you',
-	'500': 'The service was not able to process your request',
-	'502': 'Bad gateway - the service failed to handle your request',
-	'503':
-		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
-	'504': 'Gateway timed out - perhaps try again later?',
-};
-
 /** The messages of n8n's NodeApiError for a request without an answer, by the code of Node.js. */
 const NETWORK_MESSAGES: Array<[string, string]> = [
 	['ECONNREFUSED', 'The service refused the connection - perhaps it is offline'],
@@ -84,14 +74,6 @@ function networkError(error: unknown): Error {
 		if (text.includes(code)) return new Error(message);
 	}
 	return new Error(text);
-}
-
-function statusMessage(status: number): string {
-	const known = STATUS_MESSAGES[String(status)];
-	if (known !== undefined) return known;
-	return status >= 500
-		? 'The service failed to process your request'
-		: 'Your request is invalid or could not be processed by the service';
 }
 
 /** The options that the v1 node checks, in its order, with the type of each one. */
@@ -238,7 +220,8 @@ export default defineNode<GeminiParameters>({
 						throw networkError(error);
 					}
 					if (response.status === 401 && attempt === 1) continue;
-					if (response.status >= 400) throw new Error(statusMessage(response.status));
+					// The router of the v1 node gives a NodeOperationError with the message and the description.
+					if (response.status >= 400) throw apiError(response, { operationError: true });
 					const answer = response.body;
 					if (!isObject(answer)) throw new Error('Google Gemini: the answer is not an object');
 					const version = answer.modelVersion;
@@ -248,7 +231,10 @@ export default defineNode<GeminiParameters>({
 						version !== '' &&
 						plainModel(version) !== requested
 					) {
-						throw new Error('Google returned a different model');
+						throw operationError(
+							'Google returned a different model',
+							`Requested "${model}", but Google returned "${version}". Check that the selected model is available for your API key.`,
+						);
 					}
 					return answer;
 				}

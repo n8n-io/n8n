@@ -65,6 +65,51 @@ interface HttpRequestParameters {
 	 * converter writes the page loop around it.
 	 */
 	page?: PageRequest;
+	/**
+	 * Response format "file": the node adds the answers of its GET requests here. When a
+	 * file is over the largest size of the runtime, the fallback host runs the v1 node, and
+	 * the converted workflow gives it these answers: the v1 node sends none of these
+	 * requests again. A stored body goes as its reference (`{ $binary }`), not as bytes.
+	 * The request whose body was too large has no answer here: the v1 node sends it.
+	 */
+	replay?: Replay;
+}
+
+/**
+ * The GET requests of the node with their answers, for the fallback host. The converted
+ * workflow owns the object: it lives for all calls of the node in one run.
+ */
+interface Replay {
+	list: unknown[];
+	/** About the size of the bodies in `list`. */
+	bytes: number;
+	/** True when the answers did not fit. The list is then empty, and stays empty. */
+	full: boolean;
+}
+
+/** The most answers that the node keeps for the host. */
+const REPLAY_ENTRIES = 256;
+
+/** The most bytes of bodies that the node keeps for the host: far below a host frame (64 MiB). */
+const REPLAY_BYTES = 8 * 1024 * 1024;
+
+/** Keeps the answer of a GET request. The answer is not copied. */
+function keepAnswer(
+	replay: Replay,
+	url: string,
+	qs: Record<string, unknown>,
+	response: HttpResponse<unknown>,
+): void {
+	if (replay.full) return;
+	// A stored body is a reference. The body of a redirect is text.
+	const size = 1024 + (typeof response.body === 'string' ? response.body.length : 0);
+	if (replay.list.length >= REPLAY_ENTRIES || replay.bytes + size > REPLAY_BYTES) {
+		replay.full = true;
+		replay.list = [];
+		return;
+	}
+	replay.bytes += size;
+	replay.list.push({ method: 'GET', url, qs, response });
 }
 
 interface FormRow {
@@ -656,6 +701,11 @@ export default defineNode<HttpRequestParameters>({
 			const status = response.status;
 			const location = response.headers.location;
 			if (![301, 302, 303, 307, 308].includes(status) || typeof location !== 'string') break;
+			// The answers for the host are kept only on the paths of a redirect and of a stored
+			// file, so a request without them costs nothing more.
+			if (responseBinary !== undefined && current === 'GET' && parameters.replay !== undefined) {
+				keepAnswer(parameters.replay, url, hop === 0 ? (parameters.qs ?? {}) : {}, response);
+			}
 			url = resolveUrl(url, location);
 			const keep = status === 307 || status === 308;
 			const before = current;
@@ -782,6 +832,12 @@ export default defineNode<HttpRequestParameters>({
 			};
 		}
 		if (responseBinary !== undefined && status < 300) {
+			// The query is in the first request only. A redirect to the first URL itself gives an
+			// entry that answers no request of the v1 node: the v1 node then sends that request.
+			if (parameters.replay !== undefined && current === 'GET') {
+				const first = url === parameters.url;
+				keepAnswer(parameters.replay, url, first ? (parameters.qs ?? {}) : {}, response);
+			}
 			return [fileItem(response, items?.[0], options, url)];
 		}
 		return responseItems(response.body, response.headers, status, options, version);

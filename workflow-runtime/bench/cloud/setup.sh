@@ -15,6 +15,7 @@
 #   TOOLS         where the tools go (default ~/.cache/wfrt-bench)
 #   ZIG_TARBALL   a Zig 0.17.0 tarball already on disk; it is checked too
 #   PNPM_STORE    pnpm store folder (default: pnpm's own)
+#   PNPM_OFFLINE  when set, install from the store only (a machine without egress)
 #
 # Logs go to $TOOLS/logs. The script stops at the first failure.
 set -euo pipefail
@@ -107,7 +108,7 @@ step "wfrt (ReleaseSafe)"
 
 # ---- workspace and fallback host ----
 step "pnpm install"
-(cd "$REPO" && CI=true nice pnpm install --frozen-lockfile ${PNPM_STORE:+--store-dir "$PNPM_STORE"} > "$LOGS/pnpm-install.log" 2>&1) || { tail -20 "$LOGS/pnpm-install.log"; fail "pnpm install failed; see $LOGS/pnpm-install.log"; }
+(cd "$REPO" && CI=true nice pnpm install --frozen-lockfile ${PNPM_OFFLINE:+--offline} ${PNPM_STORE:+--store-dir "$PNPM_STORE"} > "$LOGS/pnpm-install.log" 2>&1) || { tail -20 "$LOGS/pnpm-install.log"; fail "pnpm install failed; see $LOGS/pnpm-install.log"; }
 step "fallback host and its n8n packages (turbo; this takes a while)"
 (cd "$REPO" && nice pnpm turbo run build --filter=@n8n/workflow-fallback-host... > "$LOGS/host-build.log" 2>&1) || { tail -30 "$LOGS/host-build.log"; fail "host build failed; see $LOGS/host-build.log"; }
 [ -f "$REPO/packages/@n8n/workflow-fallback-host/dist/main.js" ] || fail "no host build output"

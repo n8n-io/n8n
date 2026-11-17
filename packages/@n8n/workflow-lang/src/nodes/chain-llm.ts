@@ -744,7 +744,8 @@ function stepOf(call: ToolCall, result: ToolResult, text: string | undefined): A
 	const input: Record<string, unknown> = {};
 	let log: unknown;
 	let type: unknown;
-	if (Array.isArray(call.raw)) {
+	if (Array.isArray(call.raw) || typeof call.raw === 'string') {
+		// v1 spreads the arguments: a list or a text gives its members by index.
 		for (let k = 0; k < call.raw.length; k++) input[String(k)] = call.raw[k];
 	} else if (isObject(call.raw)) {
 		for (const key of Object.keys(call.raw)) {
@@ -1225,11 +1226,13 @@ export default defineNode<ChainParameters>({
 			}
 			session = String(key);
 			// v1 fixes the window of a session when it makes the session, so the store gets it here.
-			await ctx.service({
+			const opened = await ctx.service<{ host?: boolean }>({
 				service: 'chatMemory',
 				op: 'open',
 				args: { sessionKey: session, window: memory.window ?? 5 },
 			});
+			// The store takes no new session: the fallback host runs the cluster, as the v1 node.
+			if (opened?.host === true) return [{ items: [], runs, host: true }];
 		}
 		/** The agent keeps the prompt and its answer in the session. */
 		const remember = async (input: string, output: string): Promise<void> => {
@@ -1582,6 +1585,13 @@ export default defineNode<ChainParameters>({
 							let known = false;
 							for (const step of steps) if (step.action.toolCallId === call.id) known = true;
 							if (known) continue;
+							if (call.raw === null) {
+								// v1 reads members of the arguments when it makes the step.
+								return fail(
+									"Cannot destructure property 'id' of 'toolInput' as it is null.",
+									'Original error: TypeError',
+								);
+							}
 							steps.push(stepOf(call, given[k] ?? {}, fresh === 0 ? call.text : undefined));
 							fresh++;
 						}
@@ -1620,13 +1630,22 @@ export default defineNode<ChainParameters>({
 							for (const call of turn.calls) {
 								const tool = toolOf(call.name);
 								if (tool === undefined) continue;
+								// The engine of v1 gives the tool node the arguments and the id of the call.
+								const input: Record<string, unknown> = {};
+								const raw = call.raw;
+								if (Array.isArray(raw) || typeof raw === 'string') {
+									for (let k = 0; k < raw.length; k++) input[String(k)] = raw[k];
+								} else if (isObject(raw)) {
+									for (const key of Object.keys(raw)) input[key] = raw[key];
+								}
+								input.toolCallId = call.id;
 								const made: ToolCall = {
 									item: i,
 									id: call.id,
 									name: call.name,
 									tool: tool.node,
-									raw: call.raw,
-									args: call.raw,
+									raw,
+									args: input,
 								};
 								if (text !== undefined) made.text = text;
 								calls.push(made);

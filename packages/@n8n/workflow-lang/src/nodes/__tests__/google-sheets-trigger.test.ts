@@ -41,6 +41,9 @@ class Spreadsheet {
 		Archive: { id: 7, rows: [['id', 'note']] },
 	};
 
+	/** The answer to each read of the values, when the service fails. */
+	failure?: { status: number; body: unknown };
+
 	answer(url: string, qs: Json): Answer {
 		const path = decodeURIComponent(
 			url.replace(/^https:\/\/sheets\.googleapis\.com\/v4\/spreadsheets\/[^/]+/, ''),
@@ -62,6 +65,9 @@ class Spreadsheet {
 				},
 			};
 		}
+		if (this.failure && path.startsWith('/values/')) {
+			return { status: this.failure.status, headers: {}, body: this.failure.body };
+		}
 		// /values/<sheet>!<from><row>:<to>[<row>]
 		const m = /^\/values\/([^!]+)!([A-Z]+)(\d*):([A-Z]+)(\d*)$/.exec(path);
 		if (!m) return { status: 400, headers: {}, body: { error: { message: `bad range ${path}` } } };
@@ -80,6 +86,22 @@ class Spreadsheet {
 			},
 		};
 	}
+}
+
+/** The class name is what n8n-workflow reads to find the status (`constructor.name`). */
+class AxiosError extends Error {}
+
+/** The error of `helpers.requestOAuth2` of n8n for an answer with a failure status. */
+function clientFailure(status: number, body: unknown): Error {
+	return Object.assign(new AxiosError(`${status} - ${JSON.stringify(body)}`), {
+		name: 'AxiosError',
+		isAxiosError: true,
+		code: status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST',
+		status,
+		response: { status, headers: {} },
+		statusCode: status,
+		error: body,
+	});
 }
 
 function v1Trigger(): { poll: (this: unknown) => Promise<unknown> } {
@@ -126,7 +148,7 @@ async function pollV1(parameters: Json, staticData: Json, sheet: Spreadsheet) {
 				requests.push(request);
 				const answer = sheet.answer(request.url, qs);
 				answers.push(structuredClone(answer));
-				if (answer.status >= 400) throw new Error(`HTTP ${answer.status}`);
+				if (answer.status >= 400) throw clientFailure(answer.status, answer.body);
 				return answer.body;
 			},
 		},
@@ -227,7 +249,66 @@ const CASES: Array<{ name: string; parameters: Json; steps: Step[] }> = [
 	},
 ];
 
+const google = (code: number, message: string) => ({ error: { code, message, status: 'FAILED' } });
+
+/** A failed read of the sheet: the status and the body of the answer of Google. */
+const FAILURES: Array<{ name: string; status: number; body: unknown }> = [
+	{ name: 'status 403', status: 403, body: google(403, 'The caller does not have permission') },
+	{
+		name: 'status 403, no access to the file',
+		status: 403,
+		body: google(403, 'The user does not have sufficient permissions for file 1AbC.'),
+	},
+	{ name: 'status 404', status: 404, body: google(404, 'Requested entity was not found.') },
+	{ name: 'status 400', status: 400, body: google(400, 'Unable to parse range: Orders!A1:ZZ') },
+	{ name: 'status 429 with a text body', status: 429, body: 'Slow down' },
+	{ name: 'status 500 without a body', status: 500, body: {} },
+];
+
 describe.runIf(built)('Google Sheets Trigger poll (rowAdded): compiled library vs v1', () => {
+	describe.each(FAILURES)('a failed request, $name', (failure) => {
+		it('fails with the message, the description and the HTTP code of v1', async () => {
+			const sheet = new Spreadsheet();
+			sheet.failure = failure;
+			let thrown: unknown;
+			try {
+				await pollV1(base, {}, sheet);
+			} catch (error) {
+				thrown = error;
+			}
+			expect(thrown).toBeInstanceOf(Error);
+			const read = (key: string): unknown => (isRecord(thrown) ? thrown[key] : undefined);
+			const source = librarySource(base);
+			const fixture: Fixture = {
+				trigger: { scheduledAt: 0 },
+				now: 1_731_400_000_000,
+				seed: 1,
+				effects: {
+					[NODE]: [
+						sheet.answer('https://sheets.googleapis.com/v4/spreadsheets/x', {}),
+						{ status: failure.status, headers: {}, body: failure.body },
+					],
+				},
+				staticData: {},
+			};
+			const reference = await runReference(source, fixture);
+			expect(reference.status).toBe('error');
+			const result = isRecord(reference.result) ? reference.result : {};
+			expect({
+				message: result.message,
+				description: result.description ?? null,
+				httpCode: result.httpCode ?? null,
+			}).toEqual({
+				message: thrown instanceof Error ? thrown.message : undefined,
+				description: read('description') ?? null,
+				httpCode: read('httpCode') ?? null,
+			});
+			const compiled = compile(source);
+			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(reference));
+		});
+	});
+
 	describe.each(CASES)('$name', (c) => {
 		it('sends the same requests, gives the same rows and keeps the same static data', async () => {
 			const sheet = new Spreadsheet();

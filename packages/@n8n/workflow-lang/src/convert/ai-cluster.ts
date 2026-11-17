@@ -36,6 +36,8 @@ export interface ClusterSubNode {
 	workflowParameters?: Record<string, unknown>;
 	/** A tool node: true when the node has an error, retry, or output setting. */
 	hasSettings?: boolean;
+	/** A tool node: true when the node has a credential. */
+	hasCredential?: boolean;
 }
 
 /** A value that n8n computes from the fields of a credential (`CredentialDerivation`). */
@@ -477,16 +479,58 @@ const BASE = 'n8n-nodes-base.';
  * is the tool as the library node reads it (`ToolSpec` of `chain-llm.ts`), or the reason why
  * the cluster stays in the host.
  */
-function toolSpec(sub: ClusterSubNode): Record<string, unknown> | string {
-	if (!sub.type.startsWith(BASE) || !sub.type.endsWith('Tool')) {
-		return `tool ${sub.type.replace(LC, '')}`;
+/** The paths of the strings of a value that have a `$fromAI` call. */
+function fromAiPlaces(value: unknown, path: string, out: Array<[string, string]>): void {
+	if (typeof value === 'string') {
+		if (/\$fromAI/i.test(value)) out.push([path, value]);
+	} else if (Array.isArray(value)) {
+		value.forEach((member, k) => fromAiPlaces(member, `${path}[${k}]`, out));
+	} else if (isRecord(value)) {
+		for (const [key, member] of Object.entries(value)) {
+			fromAiPlaces(member, path === '' ? key : `${path}.${key}`, out);
+		}
 	}
+}
+
+/**
+ * The places of the HTTP Request tool where an argument of the model has a proof: the URL
+ * (the converted source gives the v1 error for a URL that is no text), the value of a query
+ * parameter, and, before version 3, a JSON body that is one argument of the type `json`
+ * (the schema check of LangChain gives it an object or a list). Version 3 does not check
+ * the arguments, so a JSON body from an argument has no proof there. Returns the reason of
+ * a place without a proof.
+ */
+function unprovenArgument(p: Record<string, unknown>, agentVersion: number): string | undefined {
+	const places: Array<[string, string]> = [];
+	fromAiPlaces(p, '', places);
+	for (const [path, text] of places) {
+		if (path === 'url') continue;
+		if (/^queryParameters\.parameters\[\d+\]\.value$/.test(path)) continue;
+		if (path === 'jsonBody' && agentVersion < 3) {
+			const whole = /^=\s*\{\{\s*\$fromAI\([^{}()]*\)\s*\}\}\s*$/.test(text);
+			const args = toolArguments({ text });
+			const json = typeof args !== 'string' && args.arguments[0]?.type === 'json';
+			if (whole && json) continue;
+		}
+		return `tool argument in the parameter ${path.replace(/\[\d+\]/g, '')}`;
+	}
+	return undefined;
+}
+
+function toolSpec(sub: ClusterSubNode, agentVersion: number): Record<string, unknown> | string {
+	// The proof is for the HTTP Request tool. Each other tool form of a node needs recordings.
+	if (sub.type !== `${BASE}httpRequestTool`) return `tool ${sub.type.replace(LC, '')}`;
 	if (sub.target !== undefined || (sub.targetIndex ?? 0) !== 0) return 'sub-nodes';
 	if (sub.hasSettings === true) return 'tool with node settings';
 	const p = sub.parameters ?? {};
+	if (sub.hasCredential === true || (p.authentication ?? 'none') !== 'none') {
+		return 'tool with a credential';
+	}
+	const unproven = unprovenArgument(p, agentVersion);
+	if (unproven !== undefined) return unproven;
 	// A node with a resource or an operation makes its description from them by default.
 	const manual = p.descriptionType === 'manual';
-	const http = sub.type === `${BASE}httpRequestTool` && p.descriptionType === undefined;
+	const http = p.descriptionType === undefined;
 	if (!manual && !http) return 'tool description from the operation';
 	const description = p.toolDescription;
 	if (typeof description !== 'string' || description.trim() === '') return 'tool description';
@@ -603,7 +647,7 @@ function toolsAgent(
 		// v1 gives the model the tools in the reverse order of their connections.
 		const specs: Array<Record<string, unknown>> = [];
 		for (const toolSub of [...toolSubs].reverse()) {
-			const spec = toolSpec(toolSub);
+			const spec = toolSpec(toolSub, version);
 			if (typeof spec === 'string') return spec;
 			if (specs.some((other) => other.name === spec.name)) return 'tools with one name';
 			specs.push(spec);

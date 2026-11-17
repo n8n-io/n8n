@@ -19,9 +19,28 @@ vi.mock('@/deduplication/deduplication-helper', () => ({
 	}),
 }));
 
+const memory = vi.hoisted(() => ({ created: [] as Array<{ maxBytes: number }>, run: vi.fn() }));
+vi.mock('../workflow-lang', async (original) => {
+	const actual = await original<typeof import('../workflow-lang')>();
+	return {
+		loadWorkflowLang: async () => ({
+			...(await actual.loadWorkflowLang()),
+			// The rules of the store have their tests in `@n8n/workflow-lang`.
+			ChatMemoryStore: class {
+				constructor(options: { maxBytes: number }) {
+					memory.created.push(options);
+				}
+
+				run = memory.run;
+			},
+		}),
+	};
+});
+
 import { EngineDataTablesService } from '../../engine-v2/engine-data-tables.service';
 import { CompiledEngineCredentials } from '../compiled-engine-credentials';
 import { CompiledEngineSync } from '../compiled-engine-sync.service';
+import type { CompiledEngineConfig } from '../compiled-engine.config';
 import { CompiledServiceCalls } from '../compiled-service-calls';
 import type { LoadedWorkflow } from '../compiled-engine-sync.service';
 import type { WfrtServiceEvent } from '../compiled-engine.types';
@@ -49,7 +68,14 @@ describe('CompiledServiceCalls', () => {
 	const credentials = mock<CompiledEngineCredentials>();
 	logger.scoped.mockReturnValue(logger);
 
-	const makeCalls = () => new CompiledServiceCalls(client, logger, sync, credentials);
+	const makeCalls = (chatMemoryMb = 64) =>
+		new CompiledServiceCalls(
+			client,
+			logger,
+			sync,
+			credentials,
+			mock<CompiledEngineConfig>({ chatMemoryMb }),
+		);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -236,5 +262,38 @@ describe('CompiledServiceCalls', () => {
 			{ workflow: { id: 'wf1' }, node: { id: 'n1' } },
 			{ mode: 'entries' },
 		);
+	});
+	it('runs the chat memory calls of all executions with one session store', async () => {
+		memory.created.length = 0;
+		memory.run.mockReturnValue({ ok: true, result: {} });
+		const calls = makeCalls(2);
+		const event = parseWfrtEvent(line) as WfrtServiceEvent;
+		const open = {
+			...event,
+			service: 'chatMemory',
+			op: 'open',
+			args: { sessionKey: 'k', window: 5, workflowId: 'other' },
+		};
+		expect(await calls.run(open)).toEqual({ ok: true, result: {} });
+		await calls.run({ ...open, executionId: '78', op: 'load', args: { sessionKey: 'k' } });
+		expect(memory.created).toEqual([{ maxBytes: 2 * 1024 * 1024 }]);
+		// The workflow of the session is the workflow of the execution, without the manual mark.
+		expect(memory.run.mock.calls).toEqual([
+			[{ service: 'chatMemory', op: 'open', args: open.args }, 'wf1'],
+			[{ service: 'chatMemory', op: 'load', args: { sessionKey: 'k' } }, 'wf1'],
+		]);
+		expect(tables.call).not.toHaveBeenCalled();
+	});
+
+	it('gives the answer of the store, also the one that sends the run to the host', async () => {
+		memory.run.mockReturnValue({ ok: true, result: { host: true } });
+		const event = parseWfrtEvent(line) as WfrtServiceEvent;
+		const answer = await makeCalls(0).run({
+			...event,
+			service: 'chatMemory',
+			op: 'open',
+			args: { sessionKey: 'k', window: 5 },
+		});
+		expect(answer).toEqual({ ok: true, result: { host: true } });
 	});
 });

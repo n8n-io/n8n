@@ -22,8 +22,10 @@ import { DEFAULT_NODE_PACKAGES, loadCredentialTypes, registryOf } from '../../cr
 import { evaluateCredentialFlags, unprovenFlagNodes } from '../../node-compile/evaluate-node.ts';
 import type { Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
+import { ChatMemoryStore } from '../../services/chat-memory.ts';
 import { runModule } from '../../testing/vm.ts';
-import { ENGINE_CASES, AI_HOST_CASES, TOOL_PROBE_CASES } from './ai-cases.ts';
+import { ENGINE_CASES, AI_HOST_CASES, TOOL_PENDING_CASES, TOOL_PROBE_CASES } from './ai-cases.ts';
+import { ERROR_ITEM_CASES } from './equivalence-cases.ts';
 import type { EquivalenceCase, NormalRequest, Recording } from './equivalence.ts';
 import {
 	applyCredential,
@@ -132,23 +134,37 @@ function fixtureOf(c: EquivalenceCase, result: ReturnType<typeof convertWorkflow
 	};
 }
 
-/** The store of the service `chatMemory` with the rules of v1, for one run. */
-function memoryAnswers(calls: Array<Record<string, unknown>>): unknown[] {
-	const sessions = new Map<string, { window: number; messages: unknown[] }>();
-	return calls.map((call) => {
-		const args = isRecord(call.args) ? call.args : {};
-		const key = String(args.sessionKey);
-		if (call.op === 'open' && !sessions.has(key)) {
-			sessions.set(key, { window: Number(args.window), messages: [] });
-		}
-		const session = sessions.get(key);
-		if (session === undefined) throw new Error('The session is not open');
-		if (call.op === 'load') return { messages: session.messages.slice(-session.window * 2) };
-		if (call.op === 'save') {
-			session.messages.push({ ai: false, text: args.input }, { ai: true, text: args.output });
-		}
-		return {};
-	});
+/**
+ * The answers of the service `chatMemory` to the calls, from the store that n8n uses
+ * (`ChatMemoryStore`). `before` has the calls of earlier executions of the workflow.
+ */
+function memoryAnswers(
+	calls: Array<Record<string, unknown>>,
+	before: Array<Record<string, unknown>> = [],
+	maxBytes = 1_000_000,
+): unknown[] {
+	const store = new ChatMemoryStore({ maxBytes, now: () => 0 });
+	return [...before, ...calls]
+		.map((call) => {
+			const answer = store.run(
+				{
+					service: 'chatMemory',
+					op: String(call.op),
+					args: isRecord(call.args) ? call.args : {},
+				},
+				'wf1',
+			);
+			if (!answer.ok) throw new Error(answer.error.message);
+			return answer.result;
+		})
+		.slice(before.length);
+}
+
+/** The service calls of the node in a run, in their order. */
+function serviceCalls(out: Awaited<ReturnType<typeof runReference>>) {
+	return out.effects
+		.filter((e) => e.step === NODE && e.kind === 'service')
+		.map((e) => (isRecord(e.args) ? e.args : {}));
 }
 
 /**
@@ -160,6 +176,8 @@ function memoryAnswers(calls: Array<Record<string, unknown>>): unknown[] {
 async function withMemory(
 	source: string,
 	fixture: Fixture,
+	before: Array<Record<string, unknown>> = [],
+	maxBytes?: number,
 	tools: string[] = [],
 ): Promise<Fixture> {
 	const http = fixture.effects[NODE];
@@ -167,10 +185,7 @@ async function withMemory(
 	for (let round = 0; round < 64; round++) {
 		const out = await runReference(source, fixture);
 		const effects = out.effects.filter((e) => steps.includes(e.step) && e.kind !== 'wait');
-		const calls = effects
-			.filter((e) => e.kind === 'service')
-			.map((e) => (isRecord(e.args) ? e.args : {}));
-		const answers = memoryAnswers(calls);
+		const answers = memoryAnswers(serviceCalls(out), before, maxBytes);
 		const lists: Record<string, unknown[]> = { [NODE]: [] };
 		let model = 0;
 		let service = 0;
@@ -223,7 +238,9 @@ function traced(traces: Trace[], name: string) {
 describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine recordings', () => {
 	const registry = registryOf(loadCredentialTypes().types);
 
-	describe.each(ENGINE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+	// The cases of the AI nodes, and the error items of the other library nodes.
+	const cases = [...ENGINE_CASES, ...ERROR_ITEM_CASES];
+	describe.each(cases.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
 
 		it('has a v1 recording of the result that the case names', () => {
@@ -242,7 +259,13 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 
 		it('gives the same result from the bytecode as from the reference runner', async () => {
 			const result = converted(c);
-			const fixture = await withMemory(result.source, fixtureOf(c, result), toolsOf(c));
+			const fixture = await withMemory(
+				result.source,
+				fixtureOf(c, result),
+				[],
+				undefined,
+				toolsOf(c),
+			);
 			const compiled = compile(result.source);
 			expect(compiled.module).toBeDefined();
 			const reference = await runReference(result.source, fixture);
@@ -254,7 +277,7 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			const result = converted(c);
 			const out = await runReference(
 				result.source,
-				await withMemory(result.source, fixtureOf(c, result), toolsOf(c)),
+				await withMemory(result.source, fixtureOf(c, result), [], undefined, toolsOf(c)),
 			);
 			const data = withDerivedValues(c.credential?.type ?? '', {
 				...(registry.get(c.credential?.type ?? '')?.defaults ?? {}),
@@ -288,7 +311,31 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 					);
 					return request;
 				});
-			expect(requests).toEqual(recording.requests.map(({ qsFormat: _format, ...r }) => r));
+			// Before version 3 LangChain starts the tools of an answer together, so v1 sends
+			// their requests in no fixed order. The compiled form sends them in the order of
+			// the calls. The requests between two calls of the model compare as a set.
+			const unordered = c.typeVersion < 3 && tools.length > 0;
+			const settled = (list: NormalRequest[]): NormalRequest[] => {
+				if (!unordered) return list;
+				const out: NormalRequest[] = [];
+				let group: NormalRequest[] = [];
+				const flush = () => {
+					group.sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)));
+					out.push(...group);
+					group = [];
+				};
+				for (const request of list) {
+					if (request.url.endsWith('/chat/completions')) {
+						flush();
+						out.push(request);
+					} else group.push(request);
+				}
+				flush();
+				return out;
+			};
+			expect(settled(requests)).toEqual(
+				settled(recording.requests.map(({ qsFormat: _format, ...r }) => r)),
+			);
 			// The waits: between the tries of the engine, of LangChain's caller, and between batches.
 			for (const effect of effects.filter((e) => e.kind === 'wait')) {
 				const duration = isRecord(effect.args) ? Number(effect.args.duration) : Number.NaN;
@@ -300,12 +347,22 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			expect(out.status).toBe(recording.error === undefined ? 'ok' : 'error');
 			// A description that the library node gives is the description of v1.
 			const detail = errorDetailOfResult(out.result);
-			if (recording.error !== undefined && detail.description !== null) {
+			// A recording made before the recorder kept the detail has none: it is compared after it is made again.
+			if (
+				recording.error !== undefined &&
+				detail.description !== null &&
+				recording.errorDetail !== undefined
+			) {
 				expect(detail.description).toBe(recording.errorDetail?.description);
 			}
 			if (recording.error === undefined) {
+				// A node that threw under a continue setting has no run data for its error output.
 				const outputs = recording.outputs ?? [];
-				expect(node.outputs).toEqual(outputs.length === 0 ? [[]] : outputs);
+				const given =
+					recording.nodeError !== undefined && node.outputs[1]?.length === 0
+						? node.outputs.slice(0, 1)
+						: node.outputs;
+				expect(given).toEqual(outputs.length === 0 ? [[]] : outputs);
 			}
 			for (const sub of c.subNodes ?? []) {
 				expect(traced(out.trace ?? [], sub.name).subRuns).toEqual(
@@ -410,6 +467,49 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			expect(without.fallbackNodes).toContain(NODE);
 		});
 
+		it.each(
+			TOOL_PENDING_CASES.filter((c) => c.name.includes('JSON argument')).map(
+				(c) => [c.name, c] as const,
+			),
+		)('keeps "%s" in the host, and says why', (_name, c) => {
+			const result = converted(c);
+			expect(result.fallbackNodes).toContain(NODE);
+			expect(result.diagnostics.map((d) => d.message)).toContain(
+				'The agent with tools runs in the fallback host: tool argument in the parameter jsonBody.',
+			);
+		});
+
+		it('gives the reason of a tool without a proof', () => {
+			const tool = (extra: Record<string, unknown>) => ({
+				name: 'Tool',
+				type: 'n8n-nodes-base.httpRequestTool',
+				typeVersion: 4.2,
+				parameters: { toolDescription: 'Reads', url: 'https://example.com', options: {} },
+				connection: 'ai_tool',
+				workflowParameters: { url: 'https://example.com' },
+				...extra,
+			});
+			const reason = (extra: Record<string, unknown>) =>
+				nativeCluster(root, parameters, [model, tool(extra)]);
+			expect(typeof reason({})).toBe('object');
+			expect(reason({ type: 'n8n-nodes-base.slackTool' })).toBe('tool n8n-nodes-base.slackTool');
+			expect(reason({ hasCredential: true })).toBe('tool with a credential');
+			expect(reason({ hasSettings: true })).toBe('tool with node settings');
+			expect(
+				reason({
+					parameters: {
+						toolDescription: 'Reads',
+						url: 'https://example.com',
+						sendHeaders: true,
+						headerParameters: { parameters: [{ name: 'x', value: "={{ $fromAI('x') }}" }] },
+					},
+				}),
+			).toBe('tool argument in the parameter headerParameters.parameters.value');
+			expect(reason({ parameters: { url: 'https://example.com', options: {} } })).toBe(
+				'tool description',
+			);
+		});
+
 		it('keeps a memory with batches of more than one item in the host', () => {
 			const batched = { ...parameters, options: { batching: { batchSize: 2 } } };
 			expect(nativeCluster(root, batched, [model, memory(custom)])).toBe('memory with batches');
@@ -424,6 +524,127 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 				nativeCluster(root, parameters, subs, streams, { onError: 'continueRegularOutput' }),
 			).toBe(reason);
 			expect(typeof nativeCluster(root, parameters, subs, streams, {})).toBe('object');
+		});
+	});
+
+	describe('the window buffer memory with the session store of n8n', () => {
+		const c = ENGINE_CASES.find((x) => x.name === 'agent memory, version 3.1');
+		if (c === undefined) throw new Error('The case "agent memory, version 3.1" is missing');
+		const recording = recordings[c.name];
+		const items = c.items ?? [];
+		const httpArgs = (out: Awaited<ReturnType<typeof runReference>>) =>
+			out.effects.filter((e) => e.step === NODE && e.kind === 'http').map((e) => e.args);
+
+		it('holds a conversation over two executions as v1 holds it over the items of one', async () => {
+			const result = converted(c);
+			const whole = await runReference(
+				result.source,
+				await withMemory(result.source, fixtureOf(c, result)),
+			);
+			// The first execution has the first question. The second has the others.
+			const part = (from: number, to: number): Fixture => {
+				const fixture = fixtureOf({ ...c, responses: c.responses.slice(from, to) }, result);
+				return {
+					...fixture,
+					trigger: { body: { items: items.slice(from, to) }, headers: {}, query: {} },
+				};
+			};
+			const first = await runReference(result.source, await withMemory(result.source, part(0, 1)));
+			const second = await runReference(
+				result.source,
+				await withMemory(result.source, part(1, items.length), serviceCalls(first)),
+			);
+			expect(items.length).toBeGreaterThan(1);
+			expect(first.status).toBe('ok');
+			expect(second.status).toBe('ok');
+			// Each execution opens the session once. The second finds the exchange of the first.
+			expect(serviceCalls(first).map((x) => x.op)).toEqual(['open', 'load', 'save']);
+			expect(serviceCalls(second).filter((x) => x.op === 'open')).toHaveLength(1);
+			expect([...httpArgs(first), ...httpArgs(second)]).toEqual(httpArgs(whole));
+			expect(httpArgs(whole)).toHaveLength(recording.requests.length);
+			expect([
+				...(traced(first.trace ?? [], NODE).outputs[0] ?? []),
+				...(traced(second.trace ?? [], NODE).outputs[0] ?? []),
+			]).toEqual(recording.outputs?.[0]);
+		});
+
+		it('runs the cluster in the fallback host when the store takes no new session', async () => {
+			const result = converted(c);
+			expect(result.fallbackNodes ?? []).not.toContain(NODE);
+			expect(compile(result.source).diagnostics).toEqual([]);
+			const hostStep = `${NODE} (fallback host)`;
+			const answer = [{ json: { output: 'from the host' } }];
+			const fixture: Fixture = {
+				...fixtureOf(c, result),
+				effects: {
+					// A store without room: `open` answers `{ host: true }`.
+					[NODE]: memoryAnswers([{ op: 'open', args: { sessionKey: 'k', window: 5 } }], [], 0),
+					[hostStep]: [[{ items: answer }, { subRuns: { Memory: [{ error: null }] } }]],
+				},
+			};
+			expect(fixture.effects[NODE]).toEqual([{ host: true }]);
+			const out = await runReference(result.source, fixture);
+			expect(out.status).toBe('ok');
+			// The library node sends no request to the model and writes nothing to the store.
+			expect(out.effects.filter((e) => e.step === NODE).map((e) => e.kind)).toEqual(['service']);
+			const host = out.effects.filter((e) => e.step === hostStep);
+			expect(host.map((e) => e.kind)).toEqual(['node']);
+			const args = isRecord(host[0].args) ? host[0].args : {};
+			expect(args.type).toBe(c.type);
+			const subNodes = Array.isArray(args.subNodes) ? args.subNodes : [];
+			expect(subNodes.map((sub) => (isRecord(sub) ? sub.target : undefined))).toEqual(
+				subNodes.map(() => hostStep),
+			);
+			expect(traced(out.trace ?? [], NODE).outputs).toEqual([answer]);
+			expect(traced(out.trace ?? [], 'Memory').subRuns).toEqual([{ error: null }]);
+			const bytecode = runModule(
+				decodeModule(compile(result.source).module ?? new Uint8Array()),
+				fixture,
+			);
+			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
+		});
+
+		it('keeps every memory cluster in the host when two nodes can use one session', () => {
+			const workflow = workflowOf(c);
+			if (!isRecord(workflow) || !Array.isArray(workflow.nodes)) throw new Error('No workflow');
+			const nodes: unknown[] = workflow.nodes;
+			const memory = nodes.find((n) => isRecord(n) && n.name === 'Memory');
+			if (!isRecord(memory) || !isRecord(workflow.connections)) throw new Error('No memory');
+			const second = {
+				...workflow,
+				nodes: [...nodes, { ...memory, id: 'm2', name: 'Memory 2' }],
+			};
+			expect(convertWorkflow(second, { trace: 'all', chatMemory: true }).fallbackNodes).toContain(
+				NODE,
+			);
+			const manager = {
+				...workflow,
+				nodes: [
+					...nodes,
+					{
+						id: 'mm',
+						name: 'Manager',
+						type: '@n8n/n8n-nodes-langchain.memoryManager',
+						typeVersion: 1.1,
+						position: [600, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					...workflow.connections,
+					Memory: {
+						ai_memory: [
+							[
+								{ node: NODE, type: 'ai_memory', index: 0 },
+								{ node: 'Manager', type: 'ai_memory', index: 0 },
+							],
+						],
+					},
+				},
+			};
+			expect(convertWorkflow(manager, { trace: 'all', chatMemory: true }).fallbackNodes).toContain(
+				NODE,
+			);
 		});
 	});
 

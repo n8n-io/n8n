@@ -19,6 +19,7 @@ const workload = @import("workload.zig");
 const cred_flags = @import("cred_flags.zig");
 const Arena = @import("arena.zig").Arena;
 const reserveMem = @import("arena.zig").reserve;
+const poison = @import("arena.zig").poison;
 const Value = value.Value;
 
 // ---- configuration ----------------------------------------------------------
@@ -1832,9 +1833,10 @@ fn takeRegion(s: *State, class: u8) ?struct { idx: u32, region: heap.Region } {
     return .{ .idx = idx, .region = .{ .buf = buf, .used = 0, .probe = s.cfg.probe } };
 }
 
-/// Give a region back. `used`: the bytes it held. Safe builds fill them
-/// with 0xAA and track ownership, so a stale offset reads poison and a
-/// double release fails an assertion.
+/// Give a region back. `used`: the bytes it held. Safe builds track
+/// ownership, so a double release fails an assertion. Debug builds and tests
+/// also fill the bytes with 0xAA (`arena.poison`), so a stale offset reads
+/// poison.
 fn giveRegion(s: *State, class: u8, idx: u32, used: u32, owner: SlotId) void {
     std.debug.assert(s.pool_nfree[class] < s.pool_free[class].len);
     if (@import("builtin").mode == .debug) {
@@ -1848,6 +1850,8 @@ fn giveRegion(s: *State, class: u8, idx: u32, used: u32, owner: SlotId) void {
     if (std.debug.runtime_safety) {
         std.debug.assert(s.pool_owned[class][idx]);
         s.pool_owned[class][idx] = false;
+    }
+    if (poison) {
         const size = s.cfg.region_sizes[class];
         @memset(s.pools[class][@as(usize, idx) * size ..][0..@min(used, size)], 0xAA);
     }
@@ -2132,6 +2136,12 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
                 const keep = try handleEffect(s, slot, &vm, req, scratch);
                 if (!keep) t.end();
                 if (s.slot_state[slot] == .free) return;
+                // The only fibre waits on this effect (a respond completes at
+                // once): one more `run` would only find the execution idle.
+                if (req.only_fibre and req.kind != .respond) {
+                    if (@import("builtin").mode == .debug) std.debug.assert(interp.run(&vm, 0, &fuel, s.cfg.limits) == .idle);
+                    return maybeEvictWaiting(s, slot, scratch);
+                }
             },
             .trace => |req| {
                 // The action payload lives in scratch until the batch ends.
@@ -2785,7 +2795,10 @@ fn popTimer(s: *State) Timer {
 }
 
 fn fireTimers(s: *State, scratch: *Arena) StepError!void {
-    var deferred: [64]Timer = undefined;
+    // The deferred timers live in scratch, taken at the first one. Most
+    // batches have none, and a safe build fills a stack array with 0xAA in
+    // every batch (1,536 bytes).
+    var deferred: []Timer = &.{};
     var nd: usize = 0;
     while (s.ntimers > 0 and s.timers[0].at_ms <= s.now_ms) {
         const t = popTimer(s);
@@ -2793,6 +2806,7 @@ fn fireTimers(s: *State, scratch: *Arena) StepError!void {
             if (s.parked.get(t.exec_id) != null) {
                 // Evicted: ask the shell for the snapshot, fire next batch.
                 try emit(s, .{ .kind = .wake, .exec_id = t.exec_id });
+                if (deferred.len == 0) deferred = scratch.push(Timer, 64) catch return error.ArenaFull;
                 if (nd < deferred.len) {
                     deferred[nd] = t;
                     nd += 1;
@@ -2981,13 +2995,23 @@ fn redispatchInDoubt(s: *State, exec_id: u64, scratch: *Arena) StepError!void {
 /// The operations of n8n services that only read (spec 9.9).
 const service_reads = [_][]const u8{ "getColumns", "getManyRowsAndCount", "getManyAndCount", "getProjectId", "getProcessedDataCount" };
 
-/// True when the args of a `service` effect name an operation that only reads.
+/// The calls of the service `chatMemory` that can go again (spec 9.9): `load` only reads, and
+/// an `open` that goes twice touches the session twice, which changes no answer.
+const chat_memory_repeats = [_][]const u8{ "open", "load" };
+
+/// True when the args of a `service` effect name an operation that can go again after a crash.
 fn serviceRead(vm: *ops.Vm, args: Value) bool {
     if (value.kindOf(args) != .object) return false;
     const op = vm.objGet(value.payload(args), "op");
     if (value.kindOf(op) != .string) return false;
     const name = vm.str(op);
     for (service_reads) |r| {
+        if (std.mem.eql(u8, name, r)) return true;
+    }
+    const service = vm.objGet(value.payload(args), "service");
+    if (value.kindOf(service) != .string) return false;
+    if (!std.mem.eql(u8, vm.str(service), "chatMemory")) return false;
+    for (chat_memory_repeats) |r| {
         if (std.mem.eql(u8, name, r)) return true;
     }
     return false;
@@ -3136,8 +3160,7 @@ fn noteSlotEnd(s: *const State, slot: SlotId) void {
 fn noteRelease(s: *const State, class: u8, idx: u32, used: u32) void {
     const size = s.cfg.region_sizes[class];
     mem.wr(s.cfg.probe, .region_pool, .core_row, &s.pool_free[class][s.pool_nfree[class]], 4);
-    const mode = @import("builtin").mode;
-    if (mode != .debug and mode != .safe) return;
+    if (!poison) return;
     mem.wrSlice(s.cfg.probe, .region_pool, .core_copy, s.pools[class][@as(usize, idx) * size ..][0..@min(used, size)]);
     mem.scan(s.cfg.probe, .byte_fill, @min(used, size));
 }

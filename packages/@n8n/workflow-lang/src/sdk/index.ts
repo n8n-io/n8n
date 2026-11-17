@@ -185,6 +185,13 @@ export interface NodeCall extends StepOptions {
 	 * runtime sends it and keeps what the step changed. Fallback host only.
 	 */
 	staticData?: boolean;
+	/**
+	 * Fallback host only. The answers of the GET requests that a library node received before
+	 * it handed the node over to the host: `{ method, url, qs, response: { status, headers,
+	 * body } }` for each request, in the order of the requests. The host gives each answer once
+	 * to the v1 node for the same request, and sends each other request.
+	 */
+	replay?: unknown[];
 }
 
 /** Outputs of other nodes that n8n expressions read in the fallback host. */
@@ -675,9 +682,10 @@ export interface ApiErrorOptions {
 	 * `helpers.httpRequestWithAuthentication`; the error of v1 has the body as
 	 * `response.data`. `legacy`: `helpers.request`, `helpers.requestWithAuthentication` and
 	 * `helpers.requestOAuth2`; the error of v1 has the body as `error` and the message
-	 * `<status> - <body as JSON>`.
+	 * `<status> - <body as JSON>`. `object`: the v1 node gives the NodeApiError an object of
+	 * its own (`response.body` here), with the status as `statusCode`.
 	 */
-	helper?: 'request' | 'legacy';
+	helper?: 'request' | 'legacy' | 'object';
 	/** The `message` option of the NodeApiError of the v1 node. It replaces the status message. */
 	message?: string;
 	/** The `description` option of the NodeApiError of the v1 node. */
@@ -696,6 +704,12 @@ export interface ApiError extends Error {
 	/** The HTTP status as text. */
 	httpCode?: string;
 	description?: unknown;
+	/**
+	 * True when the v1 node throws this error outside its own handling of a failed item
+	 * (`this.continueOnFail()`). Under a continue setting, n8n's engine then drops the output
+	 * of the node and passes all input items on output 0 (`handleNodeExecutionError`).
+	 */
+	wholeNode?: boolean;
 }
 
 /** The keys of a message in an error answer, in the order of n8n-workflow (POSSIBLE_ERROR_MESSAGE_KEYS). */
@@ -815,19 +829,24 @@ export function apiError(response: FailedResponse, options?: ApiErrorOptions): A
 	const status = response.status;
 	const body = response.body;
 	const legacy = options !== undefined && options.helper === 'legacy';
+	const direct = options !== undefined && options.helper === 'object';
 	const raw = legacy
 		? String(status) + ' - ' + JSON.stringify(body)
 		: 'Request failed with status code ' + String(status);
 	let description: unknown = options !== undefined ? options.description : undefined;
-	if (!legacy && apiErrorRecord(body)) {
+	if (direct && !description && apiErrorRecord(body) && body.description) {
+		description = body.description;
+	}
+	if (!legacy && !direct && apiErrorRecord(body)) {
 		const inner = body.error;
 		if (body.message) description = body.message;
 		else if (apiErrorRecord(inner) && inner.message) description = inner.message;
 	}
 	if (!description) {
 		// v1 searches the error of the HTTP client: its `error` (the body, legacy only), then its message.
-		const found: ApiErrorFound = legacy ? apiErrorValue(body) : { done: false, text: null };
-		description = found.done ? found.text : raw;
+		const found: ApiErrorFound =
+			legacy || direct ? apiErrorValue(body) : { done: false, text: null };
+		description = found.done ? found.text : direct ? null : raw;
 	}
 	let message = apiStatusMessage(status);
 	if (options !== undefined && options.message !== undefined && options.message !== '') {
@@ -846,5 +865,23 @@ export function apiError(response: FailedResponse, options?: ApiErrorOptions): A
 		failure.httpCode = String(status);
 	}
 	if (description && !same) failure.description = description;
+	return failure;
+}
+
+/**
+ * The error of a library node that needs no request: the NodeOperationError of the v1 node,
+ * with its `description`. It has no `httpCode`.
+ */
+export function operationError(message: string, description?: string): ApiError {
+	const failure: ApiError = new Error(message);
+	failure.name = 'NodeOperationError';
+	if (description !== undefined && description !== '') failure.description = description;
+	return failure;
+}
+
+/** An `operationError` that the v1 node throws outside its handling of a failed item. */
+export function wholeNodeError(message: string): ApiError {
+	const failure = operationError(message);
+	failure.wholeNode = true;
 	return failure;
 }

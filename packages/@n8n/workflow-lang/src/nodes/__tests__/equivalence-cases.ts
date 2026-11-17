@@ -2884,9 +2884,6 @@ const ALL_STATUSES = [400, 401, 403, 404, 429, 500];
 // (compiled-engine-credentials.ts, `refreshOAuth2`), and the step fails with that message
 // (`settle`). The reference runner of this test has no renewal, so the node would get the 401.
 const OAUTH_STATUSES = [400, 403, 404, 429, 500];
-// Status 401 with `helpers.httpRequestWithAuthentication` has no case yet: the requests of v1
-// and of the library node differ for it (not examined).
-const NO_401 = OAUTH_STATUSES;
 const statusOnly = (text: string) => text;
 const bodyText = () => FAILURE_TEXT;
 const clientText = (status: number) => `Request failed with status code ${status}`;
@@ -2901,10 +2898,10 @@ const FAILED_REQUEST_CASES: EquivalenceCase[] = [
 		statusOnly,
 		bodyText,
 	),
-	...failedRequests('notion databasePage.create', NO_401, statusOnly, clientText),
+	...failedRequests('notion databasePage.create', ALL_STATUSES, statusOnly, clientText),
 	...failedRequests(
 		'supabase row.get',
-		NO_401,
+		ALL_STATUSES,
 		(text, description, json) => `${text}: ${json ? description.json : description.text}`,
 		clientText,
 	),
@@ -2914,6 +2911,69 @@ const FAILED_REQUEST_CASES: EquivalenceCase[] = [
 		(text) => `${text} (item 0)`,
 		bodyText,
 	),
+];
+
+/**
+ * The item that v1 gives for an input item that failed, under "continue" and under "continue
+ * (using error output)". Each case has two input items: the request of the first one fails.
+ * The recorder runs them in n8n's engine, and `ai-cluster.test.ts` runs them through the
+ * converter and compares the items of each output.
+ */
+function errorItems(
+	base: string,
+	failure: EquivalenceCase['responses'] = [{ status: 400, body: FAILURE_BODY }],
+	after: EquivalenceCase['responses'] | undefined = undefined,
+): EquivalenceCase[] {
+	const found = [...handPorted, ...HTTP_ERROR_CASES, ...MICROSOFT_TEAMS_CASES].find(
+		(c) => c.name === base,
+	);
+	if (!found) throw new Error(`no case ${base}`);
+	const { expectedError: _expected, ...rest } = found;
+	const one: EquivalenceCase = {
+		...rest,
+		items: found.items ?? [{ a: 1 }, { a: 2 }],
+		responses: [...failure, ...(after ?? found.responses)],
+	};
+	return [
+		{
+			...one,
+			name: `${base}: error item, continue`,
+			settings: { onError: 'continueRegularOutput' },
+		},
+		{
+			...one,
+			name: `${base}: error item, error output`,
+			settings: { onError: 'continueErrorOutput' },
+		},
+	];
+}
+
+const done = [{ status: 204, body: '' }];
+
+export const ERROR_ITEM_CASES: EquivalenceCase[] = [
+	...errorItems('telegram message.sendMessage no attribution'),
+	...errorItems('telegram message.sendMessage no attribution', [
+		{ status: 400, body: FAILURE_TEXT },
+	]).map((c) => ({
+		...c,
+		name: `${c.name}, text body`,
+	})),
+	...errorItems('gmail message.delete'),
+	...errorItems('gmail draft.create with an address that has no at sign', [], []),
+	...errorItems('supabase row.get'),
+	...errorItems('supabase row.create define below for all items'),
+	...errorItems('supabase row.update define below', [], []).map((c) => ({
+		...c,
+		parameters: { ...c.parameters, filters: {} },
+	})),
+	...errorItems('googleDrive file.deleteFile for good'),
+	...errorItems('notion databasePage.create'),
+	...errorItems('slack reaction.add', [{ body: { ok: false, error: 'channel_not_found' } }]),
+	// The router of the v1 node catches the failure for all items.
+	...errorItems('googleSheets failed request 404', []),
+	...errorItems('googleCalendar failed request 404', undefined, done),
+	...errorItems('microsoftOutlook failed request 404', undefined, done),
+	...errorItems('microsoftTeams task.get status 404', undefined, [{ body: { id: 'task-2' } }]),
 ];
 
 export const EQUIVALENCE_CASES: EquivalenceCase[] = [
@@ -2931,4 +2991,5 @@ export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...GEMINI_CASES,
 	...ENGINE_CASES,
 	...TOOL_PENDING_CASES,
+	...ERROR_ITEM_CASES,
 ];

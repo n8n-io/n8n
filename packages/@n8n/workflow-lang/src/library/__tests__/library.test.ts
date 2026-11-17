@@ -173,11 +173,19 @@ describe('value-limited library parameters (`name=value` in supports)', () => {
 		expect(outcome(gmail("{ operation: 'getAll', filters: { q: 'x' } }")).linked).toEqual([true]);
 	});
 
-	it('runs Gmail getAll with simple off in the fallback host', () => {
+	it('links Gmail getAll with simple off: the library node parses the raw message', () => {
 		expect(outcome(gmail("{ operation: 'getAll', simple: false }"))).toMatchObject({
-			warnings: ['WL061'],
-			linked: [false],
+			warnings: [],
+			linked: [true],
 		});
+	});
+
+	it('runs Gmail getAll that downloads attachments in the fallback host', () => {
+		expect(
+			outcome(
+				gmail("{ operation: 'getAll', simple: false, options: { downloadAttachments: true } }"),
+			),
+		).toMatchObject({ warnings: ['WL061'], linked: [false] });
 	});
 
 	it('checks the value in the converter too', async () => {

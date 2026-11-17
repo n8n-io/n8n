@@ -1180,6 +1180,42 @@ Each slot comes from the workflow's document first, then from the global
 one. A slot that neither document has is left out. `type` is `null` when
 the document gives none.
 
+**Answers of a library node (`args.replay`).** A library node can find,
+after it sent GET requests, that only the v1 node gives the exact result (a
+Gmail read without "simplify" of a message that the native parser does not
+read as mailparser; an HTTP Request file over `--binary-max-file-mb`). The
+node ends with the marker `(no request to repeat: the fallback host runs the
+node)` and the converted workflow runs the host form of the node in the same
+run. n8n's v1 engine sends each request once, so the host step carries the
+answers that the library node received:
+
+* The converted workflow makes one object `{ list, bytes, full }` for the
+  node and gives it to each call of the library node (`parameters.replay`).
+  The node adds `{ method: "GET", url, qs, response: { status, headers,
+  body } }` for each GET request, in order. The answer is not copied. A body
+  that the runtime stored is its reference (`{ $binary: handle }`).
+* The host step gets `replay: <object>.list`. The runtime passes it on as
+  each other member of `args`.
+* The host answers a GET or HEAD request of the v1 node without a body that
+  has the method, the URL and the query of an entry. Each entry answers one
+  request, in the order of the list. Each other request goes to the network,
+  also a second identical request when the list has one entry for it. The
+  host answers where n8n-core's request helpers send (`http.request`,
+  `https.request`), with the status, the headers and the body of the entry.
+  The headers `content-encoding`, `content-length`, `transfer-encoding`,
+  `connection` and `keep-alive` describe the first transfer and are made
+  again. A JSON body is written again as JSON, so its bytes can differ from
+  the first response; its value does not. The host reads a stored body from
+  n8n's binary data store.
+* Limits. The list of one node has at most 256 answers and about 8 MiB of
+  bodies (a host frame is at most 64 MiB). Above that, the library node
+  empties the list and keeps it empty: the v1 node then sends each request
+  again. The step never fails because of the list. The host reads at most
+  1,024 entries and leaves out an entry that it cannot answer.
+* The answer of the HTTP request whose body was over `--binary-max-file-mb`
+  is not in the list (the runtime did not keep the body): the v1 node sends
+  that one request again.
+
 **Fallback host connections (protocol version 2).** A frame is a 4-byte
 little-endian length, then JSON. `wfrt` starts each connection with
 `{"hello":{"version":2}}` and sends nothing else until the answer.
@@ -1679,6 +1715,9 @@ a call that was in flight has no answer in the log:
 * a call whose `op` only reads (`getColumns`, `getManyRowsAndCount`,
   `getManyAndCount`, `getProjectId`, `getProcessedDataCount`) is sent again
   with a new `attempt`;
+* the calls `open` and `load` of the service `chatMemory` are sent again too:
+  `load` only reads, and an `open` that runs twice touches the session twice,
+  which changes no answer;
 * any other call is not sent again: the execution ends with
   `needs_attention` on the step, as a non-idempotent `http` effect does, so
   an operator decides. A write that the client ran before the crash is not

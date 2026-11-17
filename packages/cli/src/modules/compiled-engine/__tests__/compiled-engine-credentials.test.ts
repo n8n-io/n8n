@@ -135,6 +135,22 @@ describe('CompiledEngineCredentials', () => {
 		});
 	});
 
+	it('refuses the renewal with the text of the v1 engine when there is no refresh token', async () => {
+		helper.getDecrypted.mockResolvedValue({
+			grantType: 'authorizationCode',
+			accessTokenUrl: tokenUrl,
+			clientId: 'c',
+			clientSecret: 's',
+			authentication: 'body',
+			oauthTokenData: { access_token: 'old' },
+		});
+		// `ClientOAuth2Token.refresh` of @n8n/client-oauth2: the step of the runtime fails with it.
+		await expect(credentials().refreshOAuth2(binding, 'wf1')).rejects.toThrow(
+			'OAuth access token expired and no refresh token is available. Please reconnect the credentials.',
+		);
+		expect(helper.updateCredentialsOauthTokenData).not.toHaveBeenCalled();
+	});
+
 	describe('allowed domains', () => {
 		const plain = { ...binding, slot: 'plain', type: 'httpHeaderAuth' };
 

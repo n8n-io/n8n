@@ -2872,7 +2872,10 @@ const httpToolWith = (name: string, parameters: Record<string, unknown>): SubNod
 /** A tool without arguments, a tool whose arguments all have a default, and a JSON argument. */
 const fixedTool = httpToolWith('Fixed.tool (1)', { url: 'https://example.com/fixed' });
 const defaultsTool = httpToolWith('Defaults', {
-	method: "={{ $fromAI('verb', 'GET or POST', 'string', 'GET') }}",
+	sendQuery: true,
+	queryParameters: {
+		parameters: [{ name: 'verb', value: "={{ $fromAI('verb', 'GET or POST', 'string', 'GET') }}" }],
+	},
 	url: "=https://example.com/{{ $fromAI('strict', '', 'boolean', false) }}/{{ $fromAI('count', ' padded ', 'number', 2) }}",
 });
 const jsonTool = httpToolWith('Send', {
@@ -2914,31 +2917,160 @@ const TOOL_ERRORS: Record<string, string> = {
 	'agent tools 2.2, JSON argument that is missing': BAD_INPUT + EMPTY_JSON,
 	'agent tools 2.2, arguments that are a list': `${BAD_INPUT}✖ Expected object, received array`,
 	'agent tools 2.2, a good call and a call with a wrong argument': `${BAD_INPUT}✖ Expected string, received number\n  → at url`,
+	'agent tools 2.2, arguments that are 5': `${BAD_INPUT}✖ Expected object, received number`,
+	'agent tools 2.2, arguments that are "text"': `${BAD_INPUT}✖ Expected object, received string`,
+	'agent tools 2.2, arguments that are null': `${BAD_INPUT}✖ Expected object, received null`,
+	'agent tools 2.2, arguments that are true': `${BAD_INPUT}✖ Expected object, received boolean`,
+	'agent tools 3.1, arguments that are null':
+		"Cannot destructure property 'id' of 'toolInput' as it is null.",
 };
 
 /**
  * The Tools Agent with tools, native: the converter writes the loop, and each tool call is a
  * step of the tool node (`docs/compiler-plan.md`, "Tools").
  */
-const ALL_TOOL_CASES: EquivalenceCase[] = [2.2, 3.1]
-	.flatMap((version) => toolCases(version))
-	.map((c) => (c.name in TOOL_ERRORS ? { ...c, expectedError: TOOL_ERRORS[c.name] } : c));
+const ALL_TOOL_CASES: EquivalenceCase[] = [
+	...[2.2, 3.1].flatMap((version) => toolCases(version)),
+	...[2, 2.1, 3].map((version) => twoRounds(version)),
+	...uncheckedCases(),
+].map((c) => (c.name in TOOL_ERRORS ? { ...c, expectedError: TOOL_ERRORS[c.name] } : c));
 
 /**
- * Cases whose tool node gets an argument of a type that its parameter does not take, on an
- * agent of version 3 (that agent does not check the arguments). The HTTP Request library
- * node has no form of the v1 errors "URL parameter must be a string" and "The value in the
- * "JSON Body" field is not valid JSON": the recordings stay as the facts of v1.
+ * Cases that stay in the fallback host: a JSON body from an argument on an agent of version
+ * 3. That agent does not check the arguments, and the HTTP Request library node has no form
+ * of the v1 error "The value in the "JSON Body" field is not valid JSON". The recordings
+ * stay as the facts of v1.
  */
 const TOOL_INPUT_GAPS = [
-	'agent tools 3.1, a good call and a call with a wrong argument',
+	'agent tools 3.1, JSON argument',
 	'agent tools 3.1, JSON argument that is missing',
+	// The HTTP Request library node reads a response of another content type as text
+	// (`autodetect`); v1 gives a file. These four are the facts of v1 for the tool.
+	'agent tools 2.2, tool gives a file',
+	'agent tools 3.1, tool gives a file',
+	'agent tools 2.2, tool without arguments gives a file',
+	'agent tools 3.1, tool without arguments gives a file',
 ];
 export const TOOL_PENDING_CASES = ALL_TOOL_CASES.filter((c) => TOOL_INPUT_GAPS.includes(c.name));
 export const TOOL_CASES = ALL_TOOL_CASES.filter((c) => !TOOL_INPUT_GAPS.includes(c.name));
 
+function twoRounds(version: number): EquivalenceCase {
+	return agent(
+		`tools ${version}, two rounds`,
+		version,
+		gpt,
+		[fetchA, page('A'), fetchB, page('B'), completion('A and B')],
+		brief(version),
+		withTools([httpTool]),
+	);
+}
+
+/** Version 3 does not check the arguments: values of every JSON type reach the tool node. */
+function uncheckedCases(): EquivalenceCase[] {
+	return [
+		agent(
+			'tools 3.1, query arguments of every type',
+			3.1,
+			gpt,
+			[
+				callsTools([
+					['Read_list', { page: null, all: [1, 2], q: { a: 1 } }, 'call_1'],
+					['Read_list', { page: 1.5, all: null, q: ['x', 'y'] }, 'call_2'],
+				]),
+				page('L'),
+				page('M'),
+				completion('Done'),
+			],
+			brief(3.1),
+			withTools([typedTool]),
+		),
+		agent(
+			'tools 3.1, URL arguments of every type',
+			3.1,
+			gpt,
+			[
+				callsTools([
+					['Fetch_page', { url: null }, 'call_1'],
+					['Fetch_page', { url: { a: 1 } }, 'call_2'],
+					['Fetch_page', {}, 'call_3'],
+					['Fetch_page', { url: true }, 'call_4'],
+				]),
+				completion('Done'),
+			],
+			brief(3.1),
+			withTools([httpTool]),
+		),
+		agent(
+			'tools 3.1, URL parts of every type',
+			3.1,
+			gpt,
+			[
+				callsTools([
+					['Defaults', { strict: null, count: { a: 1 }, verb: 5 }, 'call_1'],
+					['Defaults', { strict: [1], count: 'x y', verb: true }, 'call_2'],
+				]),
+				page('L'),
+				page('M'),
+				completion('Done'),
+			],
+			brief(3.1),
+			withTools([defaultsTool]),
+		),
+	];
+}
+
 function toolCases(version: number): EquivalenceCase[] {
 	return [
+		agent(
+			`tools ${version}, three tools`,
+			version,
+			gpt,
+			[
+				callsTools([
+					['Fixed_tool_1_', {}, 'call_1'],
+					['Read_list', { all: true, q: 'a' }, 'call_2'],
+					['Fetch_page', { url: 'https://example.com/a' }, 'call_3'],
+				]),
+				// Before version 3 the tools run together: the answers are the same, so the
+				// order of their requests does not show in the messages.
+				page('P'),
+				page('P'),
+				page('P'),
+				completion('Done'),
+			],
+			brief(version),
+			withTools([httpTool, typedTool, fixedTool]),
+		),
+		...['5', '"text"', 'null', 'true'].map((text) =>
+			agent(
+				`tools ${version}, arguments that are ${text}`,
+				version,
+				gpt,
+				[callsTools([['Fixed_tool_1_', text, 'call_1']]), page('F'), completion('Done')],
+				brief(version),
+				withTools([fixedTool]),
+			),
+		),
+		agent(
+			`tools ${version}, tool without arguments gives a file`,
+			version,
+			gpt,
+			[
+				callsTools([['Fixed_tool_1_', {}, 'call_1']]),
+				{ headers: { 'content-type': 'image/png' }, body: 'PNGDATA' },
+				completion('Done'),
+			],
+			brief(version),
+			withTools([fixedTool]),
+		),
+		agent(
+			`tools ${version}, tool gives a file`,
+			version,
+			gpt,
+			[fetchA, { headers: { 'content-type': 'image/png' }, body: 'PNGDATA' }, completion('Done')],
+			brief(version),
+			withTools([httpTool]),
+		),
 		agent(
 			`tools ${version}, two rounds`,
 			version,

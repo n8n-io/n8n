@@ -184,4 +184,14 @@ export class CompiledEngineConfig {
 	 */
 	@Env('N8N_COMPILED_ENGINE_WORKLOAD_CLASS_HOST_STEPS')
 	workloadClassHostSteps: string = '';
+
+	/**
+	 * Memory limit in megabytes for the chat sessions of Simple Memory nodes that
+	 * n8n keeps for compiled workflows. n8n keeps these sessions in memory only,
+	 * and a restart of n8n clears them. When the sessions reach the limit, AI
+	 * Agent nodes with a new session run in the fallback host. Set to 0 to run
+	 * every AI Agent node that has a Simple Memory node in the fallback host.
+	 */
+	@Env('N8N_COMPILED_ENGINE_CHAT_MEMORY_MB', z.number({ coerce: true }).int().min(0))
+	chatMemoryMb: number = 64;
 }

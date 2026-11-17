@@ -415,8 +415,8 @@ pub const Shard = struct {
     }
 
     pub fn endBatch(sh: *Shard) void {
-        // A safe build fills the released scratch bytes.
-        if (mem.enabled and std.debug.runtime_safety) {
+        // A Debug build fills the released scratch bytes.
+        if (mem.enabled and core_lib.arena.poison) {
             mem.wrSlice(sh.st.cfg.probe, .scratch, .shell_buf, sh.scratch.buf[0..sh.scratch.used]);
             mem.scan(sh.st.cfg.probe, .byte_fill, sh.scratch.used);
         }

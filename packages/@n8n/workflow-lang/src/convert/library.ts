@@ -29,6 +29,7 @@ import {
 	isClusterRoot,
 	LANGCHAIN_PREFIX,
 	lowerAiNode,
+	lowerCluster,
 	lowerHostNode,
 } from './host-node.ts';
 import { googleMint } from '../node-compile/specialise.ts';
@@ -40,13 +41,15 @@ import {
 	nodeDescription,
 	workflowParameters,
 } from './node-parameters.ts';
-import type { StepCall } from './steps.ts';
+import type { HostForm, StepCall } from './steps.ts';
 import {
 	emitStep,
 	emitWithHostForm,
+	replayOf,
 	errorRetry,
 	hostFormOf,
 	nodeCall,
+	errorItemIsExact,
 	tryCompiledNode,
 } from './steps.ts';
 import type { N8nNode } from './types.ts';
@@ -727,6 +730,7 @@ function clusterSubNode(root: string, m: ClusterMember): ClusterSubNode {
 	sub.parameters = raw;
 	sub.workflowParameters = workflowParameters(base, version, own);
 	sub.hasSettings = hasNodeSettings(m.node);
+	sub.hasCredential = Object.keys(m.node.credentials ?? {}).length > 0;
 	return sub;
 }
 
@@ -767,6 +771,26 @@ function emitToolCalls(c: NodeContext, tools: N8nNode[]): string | undefined {
 	return undefined;
 }
 
+/**
+ * True when another node of the workflow can use the session of the memory node `memory`:
+ * a second window buffer memory (v1 keys a session by the workflow and the session key, so
+ * two memory nodes with one key share it), or a second node that the memory supplies (a
+ * chat memory manager, a chat trigger, another agent). The fallback host keeps its sessions
+ * in its own process, so all users of a session must run there.
+ */
+function sharesMemory(workflow: NodeContext['workflow'], memory: string): boolean {
+	const type = `${LANGCHAIN_PREFIX}memoryBufferWindow`;
+	const memories = workflow.nodes.filter((n) => n.type === type && n.disabled !== true);
+	if (memories.length > 1) return true;
+	const targets = new Set<string>();
+	for (const outputs of Object.values(workflow.connections?.[memory] ?? {})) {
+		for (const list of outputs ?? []) {
+			for (const link of list ?? []) if (link?.node !== undefined) targets.add(link.node);
+		}
+	}
+	return targets.size > 1;
+}
+
 export function lowerNativeCluster(c: NodeContext): void {
 	const members = clusterMembers(c.workflow, c.node.name);
 	const native = nativeCluster(
@@ -792,7 +816,8 @@ export function lowerNativeCluster(c: NodeContext): void {
 		NOT_INJECTABLE.has(credentialType) ||
 		!c.addCredentialDerivations ||
 		// The memory needs the service `chatMemory` (`ConvertOptions.chatMemory`).
-		(native.memory !== undefined && (c.chatMemory !== true || c.services === false))
+		(native.memory !== undefined &&
+			(c.chatMemory !== true || c.services === false || sharesMemory(c.workflow, native.memory)))
 	) {
 		if (typeof native === 'string' && members.some((m) => m.connection === 'ai_tool')) {
 			c.info('ai-tools-host', `The agent with tools runs in the fallback host: ${native}.`);
@@ -836,11 +861,29 @@ export function lowerNativeCluster(c: NodeContext): void {
 		lowerAiNode(c);
 		return;
 	}
+	// The store of the service can refuse a new session (`open` answers `{ host: true }`): the
+	// cluster then runs in the fallback host in the same run, where the v1 node keeps the session.
+	let hostForm: HostForm | null = null;
+	if (native.memory !== undefined) {
+		hostForm = hostFormOf(c, (to) =>
+			lowerCluster(
+				to,
+				members.map((m) => (m.target === c.node.name ? { ...m, target: to.node.name } : m)),
+			),
+		);
+		// Without a host form the gate has no second form, so the host runs the cluster always.
+		if (hostForm === null) {
+			lowerAiNode(c);
+			return;
+		}
+	}
+	const inHost = hostForm ? c.local('RunsInHost') : '';
 	c.addCredentialDerivations(credential, native.derivations);
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	const out = c.output(0);
 	w.line(`const ${out}: Json[] = [];`);
+	if (hostForm) w.line(`let ${inHost} = false;`);
 	// The node gives the items that failed as `{ error }`; `splitErrorItems` moves them.
 	if (onError === 'continueErrorOutput') w.line(`const ${c.output(1, 'Errors')}: Json[] = [];`);
 	const entries: Array<[string, Code]> = Object.entries(native.shared).map(([k, v]) => [
@@ -943,7 +986,17 @@ export function lowerNativeCluster(c: NodeContext): void {
 	w.line('throw failure;');
 	w.close();
 	w.line(`for (const r of run.items ?? []) ${out}.push(r);`);
+	if (hostForm) w.line(`if (run.host === true) ${inHost} = true;`);
 	w.close();
+	if (hostForm) {
+		w.open(`if (${inHost}) {`);
+		w.append(hostForm.text.split('\n'));
+		w.line(`for (const r of ${hostForm.out}) ${out}.push(r);`);
+		if (onError === 'continueErrorOutput') {
+			w.line(`for (const r of ${hostForm.errors}) ${c.output(1, 'Errors')}.push(r);`);
+		}
+		w.close();
+	}
 }
 
 /**
@@ -1029,23 +1082,28 @@ export function lowerLibrary(c: NodeContext): void {
 	const noToken = account !== undefined && c.addCredentialMints === undefined;
 	// A Gmail read without "simplify" parses the raw message. The library node parses the
 	// messages that it reads exactly as mailparser. For each other message it ends with the
-	// mark of `RUNS_IN_HOST` after its GET requests, and the v1 node in the host sends them
-	// again. v1 sends them once, so the node runs in the host unless the caller accepts this.
+	// mark of `RUNS_IN_HOST` after its GET requests. The host step then gets the answers of
+	// these requests (`replayOf`), so the v1 node in the host sends none of them again.
 	const gmailRaw =
 		type === 'n8n-nodes-base.gmail' &&
 		(adapted.resource ?? 'message') === 'message' &&
 		(adapted.operation === 'get' || adapted.operation === 'getAll') &&
 		adapted.simple === false;
-	const repeats = gmailRaw && c.repeatRequestsInHost !== true;
+	// The error item of some v1 nodes has no exact form in a library call.
+	const continues =
+		c.node.onError === 'continueRegularOutput' ||
+		c.node.onError === 'continueErrorOutput' ||
+		(!c.node.onError && c.node.continueOnFail === true);
+	const inexact = continues && !errorItemIsExact(type, adapted);
 	const unsupported =
-		(support && !librarySupports(support, adapted)) || older || noToken || repeats;
+		(support && !librarySupports(support, adapted)) || older || noToken || inexact;
 	// The caller says that the node runs in the host (`NodeSources.runsInHost`): a limit of
 	// the runtime, or a token for a service account that the caller does not make. Without
 	// this, a workflow with such a library node had no conversion with the node compiler.
 	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
 	// The library node comes first. An operation that it does not have is compiled from the
 	// source of the v1 node when that compiles, and else runs in the host.
-	if (unsupported && !service && !moved && !repeats && tryCompiledNode(c)) return;
+	if (unsupported && !service && !moved && tryCompiledNode(c)) return;
 	if (unsupported || (attribution && !c.instance) || service || moved) {
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
@@ -1144,13 +1202,25 @@ export function lowerLibrary(c: NodeContext): void {
 		});
 		return;
 	}
-	// The host form of a Gmail read without "simplify" (`repeatRequestsInHost`).
+	// The host form of a Gmail read without "simplify", with the answers of the library node.
 	if (gmailRaw) {
-		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
-		const hostForm = hostFormOf(c, inHost);
-		if (hostForm === null) return inHost(c);
+		const replay = c.local('Replay');
+		const answers = replayOf(replay);
+		const hostForm = hostFormOf(c, (to) =>
+			lowerHostNode(to, 1, [['host', raw("'fallback'")], answers.host]),
+		);
+		if (hostForm === null || parameters.code.kind !== 'object') {
+			return lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
+		}
+		parameters.code.entries.push(answers.compiled);
 		const call = nodeCall(c, type, parameters, c.credential(), true);
-		emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
+		emitWithHostForm(
+			c,
+			false,
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			hostForm,
+			replay,
+		);
 		return;
 	}
 	// v1 runs the node once for each item, so the library node runs once for each item too.
@@ -1823,9 +1893,13 @@ function lowerHttpLibrary(c: NodeContext): void {
 		return;
 	}
 	if (storesFile) {
-		// A file over the largest size of the runtime: the fallback host runs the v1 node.
-		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
-		const hostForm = hostFormOf(c, inHost);
+		// A file over the largest size of the runtime: the fallback host runs the v1 node, with
+		// the answers of the requests that the library node sent before (`replayOf`).
+		const replay = c.local('Replay');
+		const answers = replayOf(replay);
+		const hostForm = hostFormOf(c, (to) =>
+			lowerHostNode(to, 1, [['host', raw("'fallback'")], answers.host]),
+		);
 		if (hostForm === null) {
 			throw new NodeFailure(
 				'http-binary',
@@ -1833,7 +1907,14 @@ function lowerHttpLibrary(c: NodeContext): void {
 				'options.response',
 			);
 		}
-		emitWithHostForm(c, false, (to, hostLimit) => emitStep(to, { ...call, hostLimit }), hostForm);
+		entries.push(answers.compiled);
+		emitWithHostForm(
+			c,
+			false,
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			hostForm,
+			replay,
+		);
 		return;
 	}
 	// v1 sends one request for each item.

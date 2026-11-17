@@ -244,14 +244,20 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.close('} catch (error) {');
 		w.depth++;
 		if (call.oneErrorItem && errors && call.pairedErrorItem) {
-			w.line(
-				`${errors}.push(${input}.length === 1 ? { ...${input}[0], error: error.message } : { error: error.message });`,
-			);
+			const first = FIRST_PAIRED_ERROR_ITEMS.has(c.node.type);
+			const text = errorText(c).code;
+			const merged = errorOutputPush(c, errors, `${input}[0]`, `${out}.push({});`);
+			if (first || UNPAIRED_ERROR_ITEMS.has(c.node.type)) w.line(merged);
+			else w.line(`if (${input}.length === 1) ${merged} else ${errors}.push({ error: ${text} });`);
+		} else if (call.oneErrorItem && call.pairedErrorItem) {
+			w.line(`${out}.push(${errorItem(c)});`);
 		} else if (call.oneErrorItem) {
 			// As v1's Code node: one item with the message, on the error output when there is one.
 			w.line(`${errors ?? out}.push({ error: error.message });`);
 		} else if (errors) {
-			w.line(`for (const ${ITEM} of ${input}) ${errors}.push(${errorOutputItem(c)});`);
+			w.line(
+				`for (const ${ITEM} of ${input}) ${errorOutputPush(c, errors, ITEM, `${out}.push({});`)}`,
+			);
 		} else {
 			w.line(`${out} = ${input}.map(() => (${errorItem(c)}));`);
 		}
@@ -308,23 +314,74 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		}
 		w.close('} catch (error) {');
 		w.depth++;
-		w.line(errors ? `${errors}.push(${errorOutputItem(c)});` : push(errorItem(c)));
+		if (WHOLE_NODE_ERRORS.has(c.node.type)) {
+			// The v1 node throws this error: n8n passes all input items on output 0.
+			w.open('if (error.wholeNode === true) {');
+			w.line(`while (${out}.length > 0) ${out}.pop();`);
+			w.line(`for (const given of ${input}) ${out}.push(given);`);
+			if (errors) w.line(`while (${errors}.length > 0) ${errors}.pop();`);
+			if (pairs) {
+				w.line(`while (${pairs}.paired.length > 0) ${pairs}.paired.pop();`);
+				w.line(`for (let k = 0; k < ${input}.length; k++) ${pairs}.paired.push(k);`);
+			}
+			w.line('break;');
+			w.close();
+		}
+		w.line(errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c)));
 		w.close();
 	}
 	w.close();
 }
 
+/** The text of the error item of a v1 node: the code that reads it from the caught error. */
+interface ErrorText {
+	code: string;
+	/**
+	 * True when the text can be absent. v1 then gives an item without an `error`, and its
+	 * engine does not move that item to the error output (`handleNodeErrorOutput`).
+	 */
+	optional: boolean;
+}
+
+const MESSAGE: ErrorText = { code: 'error.message', optional: false };
+
 /**
- * The item that a node gives for an item that failed under "continue on fail", as the
- * v1 node makes it in its own catch: most nodes give `{ error }`; Airtable gives
- * `{ message, error }`.
+ * The text that a v1 node puts in the item of an input item that failed under a continue
+ * setting (`this.continueOnFail()` in its own catch). Most nodes give `{ error: error.message }`.
+ * null: the item of the v1 node has no exact form here, so the node does not run as a
+ * library node under a continue setting.
+ * - Telegram.node.ts: `{ error: error.description ?? error.message }`.
+ * - Supabase.node.ts: `{ error: error.description }`, and `error.message` for `get`.
+ * - Airtable (`{ message, error }`): `error` is the whole error object of v1.
  */
-const ERROR_ITEMS: Record<string, string> = {
-	'n8n-nodes-base.airtable': '{ message: error.message, error: { message: error.message } }',
+const ERROR_TEXTS: Record<string, (parameters: Record<string, unknown>) => ErrorText | null> = {
+	'n8n-nodes-base.telegram': () => ({
+		code: '(error.description ?? error.message)',
+		optional: false,
+	}),
+	'n8n-nodes-base.supabase': (parameters) => {
+		const operation = parameters.operation ?? 'create';
+		if (typeof operation !== 'string' || operation.startsWith('=')) return null;
+		return operation === 'get' ? MESSAGE : { code: 'error.description', optional: true };
+	},
+	'n8n-nodes-base.airtable': () => null,
 };
 
+/** False when the error item of the v1 node has no exact form in a library call. */
+export function errorItemIsExact(type: string, parameters: Record<string, unknown>): boolean {
+	const own = ERROR_TEXTS[type];
+	return own === undefined || own(parameters) !== null;
+}
+
+function errorText(c: NodeContext): ErrorText {
+	return ERROR_TEXTS[c.node.type]?.(c.parameters) ?? MESSAGE;
+}
+
 function errorItem(c: NodeContext): string {
-	return ERROR_ITEMS[c.node.type] ?? '{ error: error.message }';
+	const text = errorText(c);
+	return text.optional
+		? `(${text.code} ? { error: ${text.code} } : {})`
+		: `{ error: ${text.code} }`;
 }
 
 /**
@@ -334,11 +391,27 @@ function errorItem(c: NodeContext): string {
  */
 const UNPAIRED_ERROR_ITEMS = new Set(['n8n-nodes-base.googleSheets']);
 
-/** An item of the error output: the input item with the error item of the node, as v1 merges them. */
-function errorOutputItem(c: NodeContext): string {
-	if (UNPAIRED_ERROR_ITEMS.has(c.node.type)) return '{ error: error.message }';
-	const own = ERROR_ITEMS[c.node.type];
-	return own ? `{ ...${ITEM}, ...${own} }` : `{ ...${ITEM}, error: error.message }`;
+/**
+ * Library nodes that mark an error which the v1 node throws outside its handling of a failed
+ * item (`wholeNode` of the SDK). n8n's engine then passes all input items on output 0.
+ */
+const WHOLE_NODE_ERRORS = new Set(['n8n-nodes-base.supabase']);
+
+/**
+ * Nodes that pair their one error item with all input items (Supabase.node.ts,
+ * `mapPairedItemsFrom`): v1 merges it into the first input item.
+ */
+const FIRST_PAIRED_ERROR_ITEMS = new Set(['n8n-nodes-base.supabase']);
+
+/**
+ * The statement that moves the error item of `item` to the error output, as v1 merges it
+ * into the input item. An item without a text stays on output 0 (`toMain`).
+ */
+function errorOutputPush(c: NodeContext, errors: string, item: string, toMain: string): string {
+	const text = errorText(c);
+	if (UNPAIRED_ERROR_ITEMS.has(c.node.type)) return `${errors}.push({ error: ${text.code} });`;
+	const moved = `${errors}.push({ ...${item}, error: ${text.code} });`;
+	return text.optional ? `if (${text.code}) ${moved} else ${toMain}` : moved;
 }
 
 /**
@@ -750,6 +823,19 @@ function renamed(c: NodeContext, out: string, errors: string): NodeContext {
 	return { ...c, output: (index) => (index === 0 ? out : errors) };
 }
 
+/** The empty list of answers of a library node that can hand the node over to the host. */
+const REPLAY_START = '{ list: [], bytes: 0, full: false }';
+
+/**
+ * The two option entries of a list of answers: `compiled` goes into the parameters of the
+ * library node, which adds the answer of each GET request. `host` goes into the options of
+ * the host step. The list is empty when the answers did not fit (the library node keeps a
+ * bounded list): the v1 node then sends each request again.
+ */
+export function replayOf(name: string): { compiled: [string, Code]; host: [string, Code] } {
+	return { compiled: ['replay', raw(name)], host: ['replay', raw(`${name}.list`)] };
+}
+
 /**
  * Writes the fallback-host form of a node (the code of `lowerHost`) one level below the
  * current place. Null when the host form has no code here: the caller does not compile the node.
@@ -785,12 +871,17 @@ export function hostFormOf(
  * has a largest size for a stored file (`--binary-max-file-mb`) and v1 has none. The module
  * marks the error of that limit when it sent only GET requests (`RUNS_IN_HOST`): v1 can
  * send a GET again. The node then runs in the host, in the same run, as the v1 node.
+ *
+ * `replay` is the name of the list of answers of the node (`replayOf`): the compiled form
+ * adds the answer of each GET request to it, and the host form gives the list to the host
+ * step. The host gives each answer to the v1 node, so no request goes out a second time.
  */
 export function emitWithHostForm(
 	c: NodeContext,
 	errorOutput: boolean,
 	emitForm: (to: NodeContext, hostLimit: boolean) => void,
 	host: HostForm,
+	replay?: string,
 ): void {
 	const { w } = c;
 	const out = c.output(0);
@@ -798,6 +889,7 @@ export function emitWithHostForm(
 	const inHost = c.local('RunsInHost');
 	const compiled = renamed(c, c.local('Compiled'), c.local('CompiledErrors'));
 	c.helper('fileLimitInHost');
+	if (replay !== undefined) w.line(`const ${replay}: Json = ${REPLAY_START};`);
 	w.line(`let ${out}: Json[] = [];`);
 	if (errors) w.line(`let ${errors}: Json[] = [];`);
 	w.line(`let ${inHost} = false;`);

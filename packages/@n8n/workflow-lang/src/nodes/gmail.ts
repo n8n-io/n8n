@@ -14,8 +14,11 @@
  * table). Each other message ends the node with an error that the converted workflow
  * reads, and the fallback host runs the v1 node: HTML without a text part at the root
  * (html-to-text), an image by content id, other charsets, a text line over 4,000
- * characters. The host sends the GET requests again, so the converter links this read
- * only with `repeatRequestsInHost`. The download of attachments runs in the host.
+ * characters. v1 sends each GET request once. So the node keeps the answers of its GET
+ * requests (`replay` of the parameters), and the converted workflow gives them to the
+ * host step: the host gives each one to the v1 node, and no request goes out twice. The
+ * list holds at most 256 answers and about 8 MiB. Above that, the node drops the list and
+ * the v1 node sends the requests again. The download of attachments runs in the host.
  *
  * The v1 node builds the MIME message with nodemailer. This port builds an
  * equal message in the subset: the same addresses, subject and body, with a
@@ -38,7 +41,57 @@
  * The attribution link has no instance id: a compiled workflow does not know
  * the n8n instance.
  */
-import { apiError, defineNode, type FailedResponse, type Item } from '@n8n/workflow-lang';
+import {
+	apiError,
+	defineNode,
+	operationError,
+	type FailedResponse,
+	type HttpResponse,
+	type Item,
+} from '@n8n/workflow-lang';
+
+/**
+ * The GET requests of the node with their answers, for the fallback host. The converted
+ * workflow owns the object: it lives for all calls of the node in one run.
+ */
+interface Replay {
+	list: unknown[];
+	/** About the size of the bodies in `list`. */
+	bytes: number;
+	/** True when the answers did not fit. The list is then empty, and stays empty. */
+	full: boolean;
+}
+
+/** The most answers that the node keeps for the host. */
+const REPLAY_ENTRIES = 256;
+
+/** The most bytes of bodies that the node keeps for the host: far below a host frame (64 MiB). */
+const REPLAY_BYTES = 8 * 1024 * 1024;
+
+/** Keeps the answer of a GET request. The answer is not copied. */
+function keepAnswer(
+	replay: Replay,
+	url: string,
+	qs: Record<string, unknown>,
+	response: HttpResponse<unknown>,
+): void {
+	if (replay.full) return;
+	// A raw message is the large part of a body: its length is known without a pass over it.
+	let size = 1024;
+	const body = response.body;
+	if (typeof body === 'object' && body !== null) {
+		if ('raw' in body && typeof body.raw === 'string') size += body.raw.length;
+		if ('messages' in body && Array.isArray(body.messages)) size += body.messages.length * 64;
+	}
+	if (replay.list.length >= REPLAY_ENTRIES || replay.bytes + size > REPLAY_BYTES) {
+		replay.full = true;
+		replay.list = [];
+		return;
+	}
+	replay.bytes += size;
+	// The node changes the query of a list between its pages, so the entry has its own.
+	replay.list.push({ method: 'GET', url, qs: { ...qs }, response });
+}
 
 interface GmailOptions {
 	appendAttribution?: boolean;
@@ -107,6 +160,8 @@ interface GmailParameters {
 	replyToHeader?: boolean;
 	/** The index of the item in the input, for the messages of v1. */
 	itemIndex?: number;
+	/** A read without "simplify": the node adds the answers of its GET requests here. */
+	replay?: Replay;
 }
 
 /** Base64 of the UTF-8 bytes of a string, with the native codec (spec section 4.3). */
@@ -214,14 +269,21 @@ function headerAddresses(list: Address[]): string {
 	return list.map((entry) => headerAddress(entry)).join(', ');
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** prepareEmailsInput of the v1 node, as a header value. */
-function addresses(input: string, index: number): string {
+function addresses(input: string, field: string, index: number): string {
 	const out: string[] = [];
 	for (const entry of String(input).split(',')) {
 		const email = entry.trim();
 		if (!email.includes('@')) {
 			// The loop of the v1 node adds the index of the item to each message.
-			throw new Error(`Invalid email address (item ${index})`);
+			throw operationError(
+				`Invalid email address (item ${index})`,
+				`The email address '${email}' in the '${field}' field isn't valid`,
+			);
 		}
 		out.push(email.includes('<') && email.includes('>') ? email : `<${email}>`);
 	}
@@ -1276,6 +1338,7 @@ export default defineNode<GmailParameters>({
 				'returnAll',
 				'limit',
 				'simple=true|false',
+				'replay',
 				'filters',
 				'filters.includeSpamTrash',
 				'filters.labelIds',
@@ -1292,6 +1355,7 @@ export default defineNode<GmailParameters>({
 				'authentication',
 				'messageId',
 				'simple=true|false',
+				'replay',
 				'options',
 				'options.downloadAttachments=false',
 				'options.dataPropertyAttachmentsPrefixName',
@@ -1385,18 +1449,34 @@ export default defineNode<GmailParameters>({
 				itemSuffix: parameters.itemIndex ?? (position < 0 ? 0 : position),
 				operationError: true,
 			});
+		// A request that fails without an answer, or whose credential n8n does not renew (an
+		// OAuth2 token without a refresh token): the item loop of the v1 node adds ` (item N)`.
+		const stepFailure = (error: unknown): Error => {
+			const text =
+				isObject(error) && typeof error.message === 'string' ? error.message : String(error);
+			const index = parameters.itemIndex ?? (position < 0 ? 0 : position);
+			return operationError(`${text} (item ${index})`);
+		};
+		// Only a read without "simplify" can end in the host after its requests.
+		const replay = parameters.simple === false ? parameters.replay : undefined;
 		const get = async <T>(url: string, qs: Record<string, unknown>): Promise<T> => {
-			const response = await ctx.http<T>({
-				acceptAs: 'legacy',
-				json: true,
-				method: 'GET',
-				url,
-				headers,
-				qs,
-				body: undefined,
-				credential,
-			});
+			let response: HttpResponse<T>;
+			try {
+				response = await ctx.http<T>({
+					acceptAs: 'legacy',
+					json: true,
+					method: 'GET',
+					url,
+					headers,
+					qs,
+					body: undefined,
+					credential,
+				});
+			} catch (error) {
+				throw stepFailure(error);
+			}
 			if (response.status >= 400) throw requestFailure(response);
+			if (replay !== undefined) keepAnswer(replay, url, qs, response);
 			return response.body;
 		};
 		// Without "simplify", v1 reads the raw message and parses it (parseRawEmail).
@@ -1418,16 +1498,21 @@ export default defineNode<GmailParameters>({
 				position++;
 				const url = `${api}/messages/${String(parameters.messageId ?? '')}`;
 				if (operation === 'delete') {
-					const response = await ctx.http<unknown>({
-						acceptAs: 'legacy',
-						json: true,
-						method: 'DELETE',
-						url,
-						headers,
-						qs: {},
-						body: undefined,
-						credential,
-					});
+					let response: HttpResponse<unknown>;
+					try {
+						response = await ctx.http<unknown>({
+							acceptAs: 'legacy',
+							json: true,
+							method: 'DELETE',
+							url,
+							headers,
+							qs: {},
+							body: undefined,
+							credential,
+						});
+					} catch (error) {
+						throw stepFailure(error);
+					}
 					if (response.status >= 400) throw requestFailure(response);
 					out.push({ success: true });
 					continue;
@@ -1437,16 +1522,21 @@ export default defineNode<GmailParameters>({
 				if (operation === 'markAsUnread') body = { addLabelIds: ['UNREAD'] };
 				if (operation === 'addLabels') body = { addLabelIds: parameters.labelIds };
 				if (operation === 'removeLabels') body = { removeLabelIds: parameters.labelIds };
-				const response = await ctx.http<Item>({
-					acceptAs: 'legacy',
-					json: true,
-					method: 'POST',
-					url: `${url}/modify`,
-					headers,
-					qs: {},
-					body,
-					credential,
-				});
+				let response: HttpResponse<Item>;
+				try {
+					response = await ctx.http<Item>({
+						acceptAs: 'legacy',
+						json: true,
+						method: 'POST',
+						url: `${url}/modify`,
+						headers,
+						qs: {},
+						body,
+						credential,
+					});
+				} catch (error) {
+					throw stepFailure(error);
+				}
 				if (response.status >= 400) throw requestFailure(response);
 				out.push(response.body);
 			}
@@ -1512,16 +1602,21 @@ export default defineNode<GmailParameters>({
 		}
 		const options = parameters.options ?? {};
 		const post = async (url: string, qs: Record<string, unknown>, body: unknown): Promise<Item> => {
-			const response = await ctx.http<Item>({
-				acceptAs: 'legacy',
-				json: true,
-				method: 'POST',
-				url,
-				headers,
-				qs,
-				body,
-				credential,
-			});
+			let response: HttpResponse<Item>;
+			try {
+				response = await ctx.http<Item>({
+					acceptAs: 'legacy',
+					json: true,
+					method: 'POST',
+					url,
+					headers,
+					qs,
+					body,
+					credential,
+				});
+			} catch (error) {
+				throw stepFailure(error);
+			}
 			if (response.status >= 400) throw requestFailure(response);
 			return response.body;
 		};
@@ -1538,8 +1633,8 @@ export default defineNode<GmailParameters>({
 						`Both "Reply to Sender Only" and "Reply to Recipient Only" cannot be enabled at the same time. Please select only one option. (item ${index})`,
 					);
 				}
-				const cc = options.ccList ? addresses(options.ccList, index) : '';
-				const bcc = options.bccList ? addresses(options.bccList, index) : '';
+				const cc = options.ccList ? addresses(options.ccList, 'CC', index) : '';
+				const bcc = options.bccList ? addresses(options.bccList, 'BCC', index) : '';
 				const original = await get<{
 					payload?: { headers?: MessageHeader[] };
 					threadId?: unknown;
@@ -1605,10 +1700,10 @@ export default defineNode<GmailParameters>({
 					options.threadId && typeof options.threadId === 'string' ? options.threadId : '';
 				const email: Email = {
 					from: options.fromAlias ? headerAddresses(parseAddresses(options.fromAlias)) : '',
-					to: options.sendTo ? addresses(options.sendTo, index) : '',
-					cc: options.ccList ? addresses(options.ccList, index) : '',
-					bcc: options.bccList ? addresses(options.bccList, index) : '',
-					replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+					to: options.sendTo ? addresses(options.sendTo, 'To', index) : '',
+					cc: options.ccList ? addresses(options.ccList, 'CC', index) : '',
+					bcc: options.bccList ? addresses(options.bccList, 'BCC', index) : '',
+					replyTo: options.replyTo ? addresses(options.replyTo, 'ReplyTo', index) : '',
 					inReplyTo: '',
 					subject: parameters.subject ?? '',
 					type,
@@ -1645,10 +1740,10 @@ export default defineNode<GmailParameters>({
 			}
 			const raw = encodeEmail({
 				from,
-				to: addresses(parameters.sendTo ?? '', index),
-				cc: options.ccList ? addresses(options.ccList, index) : '',
-				bcc: options.bccList ? addresses(options.bccList, index) : '',
-				replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+				to: addresses(parameters.sendTo ?? '', 'To', index),
+				cc: options.ccList ? addresses(options.ccList, 'CC', index) : '',
+				bcc: options.bccList ? addresses(options.bccList, 'BCC', index) : '',
+				replyTo: options.replyTo ? addresses(options.replyTo, 'ReplyTo', index) : '',
 				inReplyTo: '',
 				subject: parameters.subject ?? '',
 				type,
