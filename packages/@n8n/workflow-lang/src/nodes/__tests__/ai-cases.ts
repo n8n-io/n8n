@@ -2325,8 +2325,170 @@ const PROMPT_SOURCE_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/** The Structured Output Parser sub-node (`outputParserStructured`) of a chain. */
+function structuredParser(typeVersion: number, parameters: Record<string, unknown>): SubNodeCase {
+	return {
+		name: 'Parser',
+		type: `${LC}outputParserStructured`,
+		typeVersion,
+		parameters,
+		connection: 'ai_outputParser',
+	};
+}
+
+const cityExample = structuredParser(1.3, {
+	jsonSchemaExample: '{ "state": "California", "cities": ["Los Angeles", "San Diego"] }',
+});
+const personSchema = structuredParser(1.2, {
+	schemaType: 'manual',
+	inputSchema: JSON.stringify({
+		type: 'object',
+		properties: {
+			name: { type: 'string', description: 'The name' },
+			age: { type: 'integer' },
+			tags: { type: 'array', items: { type: 'string' } },
+		},
+		required: ['name'],
+	}),
+});
+const everyType = structuredParser(1.3, {
+	schemaType: 'manual',
+	inputSchema: JSON.stringify({
+		type: 'object',
+		properties: {
+			score: { type: 'number' },
+			active: { type: 'boolean' },
+			nothing: { type: 'null' },
+			mood: { type: 'string', enum: ['good', 'bad'] },
+			inner: {
+				type: 'object',
+				properties: { id: { type: 'integer' } },
+				additionalProperties: false,
+			},
+			map: { type: 'object' },
+			free: {},
+		},
+		required: ['score', 'active', 'nothing', 'mood'],
+		additionalProperties: true,
+	}),
+});
+const texas = { output: { state: 'Texas', cities: ['Austin'] } };
+const PARSER_FAILED = "Model output doesn't fit required format";
+const PARSER_EMPTY = 'The AI model returned an empty response to the Structured Output Parser';
+
+/** A chain with a model and a parser. */
+function parsed(
+	name: string,
+	parser: SubNodeCase,
+	responses: EquivalenceCase['responses'],
+	extra: Partial<EquivalenceCase> = {},
+): EquivalenceCase {
+	const base = chain(`parser ${name}`, gpt, responses, { hasOutputParser: true }, extra);
+	return { ...base, subNodes: [...(base.subNodes ?? []), parser] };
+}
+
+/** The Basic LLM Chain with the Structured Output Parser. */
+const OUTPUT_PARSER_CASES: EquivalenceCase[] = [
+	parsed(
+		'from an example',
+		cityExample,
+		[
+			completion(JSON.stringify(texas)),
+			completion(`The answer:\n\`\`\`json\n${JSON.stringify({ ...texas, more: 1 })}\n\`\`\``),
+		],
+		two,
+	),
+	parsed(
+		'from a schema, with messages',
+		personSchema,
+		[completion(JSON.stringify({ output: { age: 3, name: 'Ann', other: true } }))],
+		{
+			typeVersion: 1.7,
+			parameters: { promptType: 'define', hasOutputParser: true, text: 'Who?', messages },
+		},
+	),
+	parsed('without the output', personSchema, [completion('{"name":"Ann"}')], { typeVersion: 1.5 }),
+	parsed(
+		'with an output in the output',
+		structuredParser(1.3, { jsonSchemaExample: '{"output":"x"}' }),
+		[completion('{"output":{"output":"y"}}')],
+	),
+	parsed('answer that is not JSON', cityExample, [completion('Texas')], {
+		expectedError: PARSER_FAILED,
+	}),
+	parsed(
+		'answer of another type',
+		cityExample,
+		[completion('{"output":{"state":5,"cities":[]}}')],
+		{
+			typeVersion: 1.8,
+			expectedError: PARSER_FAILED,
+		},
+	),
+	parsed(
+		'every type of the schema',
+		everyType,
+		[
+			completion(
+				JSON.stringify({
+					output: {
+						more: 'kept',
+						free: [1],
+						map: { k: 1 },
+						inner: { id: 2 },
+						mood: 'good',
+						nothing: null,
+						active: false,
+						score: 1.5,
+					},
+				}),
+			),
+			completion('{"output":{"score":1,"active":true,"nothing":null,"mood":"sad"}}'),
+			completion(
+				'{"output":{"score":1,"active":true,"nothing":null,"mood":"bad","inner":{"x":1}}}',
+			),
+			completion('{"output":{"score":1,"active":true,"nothing":null,"mood":"bad","map":[]}}'),
+			completion('{"output":{"score":1,"active":true,"nothing":null,"mood":"bad"}}'),
+		],
+		{
+			items: [{ a: 1 }, { a: 2 }, { a: 3 }, { a: 4 }, { a: 5 }],
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	parsed('empty answer', cityExample, [completion('{}')], { expectedError: PARSER_EMPTY }),
+	parsed('answer without text', cityExample, [completion('')], {
+		typeVersion: 1.6,
+		expectedError: PARSER_EMPTY,
+	}),
+	parsed('continue', cityExample, [completion('no'), completion(JSON.stringify(texas))], {
+		...two,
+		settings: { onError: 'continueRegularOutput' },
+	}),
+	parsed('error output', cityExample, [completion(JSON.stringify(texas)), completion('{}')], {
+		...two,
+		settings: { onError: 'continueErrorOutput' },
+	}),
+	{
+		...parsed('responses API', cityExample, [response(outputText(JSON.stringify(texas)))]),
+		subNodes: [openAiModel(1.3, 'gpt-5-mini'), cityExample],
+	},
+	{
+		...parsed('anthropic model', personSchema, [
+			claude([claudeText('{"output":'), claudeText('{"name":"Ann"}}')]),
+		]),
+		...withAnthropic,
+		subNodes: [sonnet, personSchema],
+	},
+	{
+		...parsed('gemini model', cityExample, [gemini([{ text: JSON.stringify(texas) }])]),
+		...withGoogle,
+		subNodes: [flash, cityExample],
+	},
+];
+
 /** Every case that runs in the engine of n8n and through the converter. */
 export const ENGINE_CASES: EquivalenceCase[] = [
+	...OUTPUT_PARSER_CASES,
 	...AI_ENGINE_CASES,
 	...AGENT_ENGINE_CASES,
 	...PROMPT_SOURCE_CASES,

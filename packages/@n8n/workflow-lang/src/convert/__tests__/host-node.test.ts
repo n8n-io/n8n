@@ -169,7 +169,7 @@ describe('AI clusters', () => {
 			const r = convertWorkflow(chain(prompt, model), { trace: 'all' });
 			expect(r.source).toContain("ctx.trace('Model', { $subRuns: run.runs });");
 			expect(r.source).toContain(
-				"ctx.trace('Chain', { $error: { message: run.error, description: '' } });",
+				"ctx.trace('Chain', { $error: { message: run.error, description: run.errorDescription ?? '' } });",
 			);
 		});
 

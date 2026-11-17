@@ -13,6 +13,7 @@
  * proves the parameters that the converter writes.
  */
 import { credentialFlagKey } from '../credentials/flags.ts';
+import { structuredOutput } from './ai-output-schema.ts';
 import { isRecord } from './types.ts';
 
 const LC = '@n8n/n8n-nodes-langchain.';
@@ -58,6 +59,8 @@ export interface NativeCluster {
 	credentialOf: string;
 	/** The name of the model sub-node. The library node gives its runs. */
 	model: string;
+	/** The name of the output parser sub-node. The library node gives its runs in `parserRuns`. */
+	parser?: string;
 	/** The credential flags that the library node reads, and the guard of their proven values. */
 	derivations: ClusterDerivation[];
 }
@@ -334,12 +337,30 @@ function chainLlm(
 	p: Record<string, unknown>,
 	subs: ClusterSubNode[],
 ): NativeCluster | string {
-	if (subs.length !== 1) return 'sub-nodes';
-	const [sub] = subs;
-	if (sub.connection !== 'ai_languageModel' || sub.target !== undefined) return 'sub-nodes';
+	const models = subs.filter((s) => s.connection === 'ai_languageModel');
+	const parsers = subs.filter((s) => s.connection === 'ai_outputParser');
+	if (models.length !== 1 || models.length + parsers.length !== subs.length) return 'sub-nodes';
+	if (subs.some((s) => s.target !== undefined)) return 'sub-nodes';
+	const [sub] = models;
 	const chat = chatModel(root, sub);
 	if (typeof chat === 'string') return chat;
 	const { aiModel } = chat;
+	// The parameter exists from version 1.4. Without it, a connected parser has no effect.
+	const hasParser = p.hasOutputParser ?? false;
+	if (typeof hasParser !== 'boolean') return 'output parser';
+	if (hasParser ? parsers.length !== 1 || version < 1.4 : parsers.length !== 0) {
+		return 'output parser';
+	}
+	let outputParser: Record<string, unknown> | undefined;
+	if (hasParser) {
+		const [parser] = parsers;
+		if (parser.type !== `${LC}outputParserStructured`) {
+			return `output parser ${parser.type.replace(LC, '')}`;
+		}
+		const structured = structuredOutput(parser.typeVersion ?? 1, parser.parameters ?? {});
+		if (typeof structured === 'string') return structured;
+		outputParser = { ...structured };
+	}
 	let text: unknown;
 	if (version <= 1.3) {
 		// The default of `prompt` is an expression that differs by version.
@@ -349,7 +370,6 @@ function chainLlm(
 		text = promptOf(p);
 		if (text === undefined) return 'prompt type';
 	}
-	if ((p.hasOutputParser ?? false) !== false) return 'output parser';
 	if ((p.needsFallback ?? false) !== false) return 'fallback model';
 	const values = isRecord(p.messages) ? (p.messages.messageValues ?? []) : [];
 	if (p.messages !== undefined && !isRecord(p.messages)) return 'messages';
@@ -376,6 +396,7 @@ function chainLlm(
 		shared.batchSize = size;
 		shared.delayBetweenBatches = delay;
 	}
+	if (outputParser !== undefined) shared.outputParser = outputParser;
 	return {
 		libraryType: `${LC}chainLlm`,
 		shared,
@@ -383,6 +404,7 @@ function chainLlm(
 		forFirstItem: { aiModel },
 		credentialOf: sub.name,
 		model: sub.name,
+		...(outputParser !== undefined ? { parser: parsers[0].name } : {}),
 		derivations: chat.derivations,
 	};
 }

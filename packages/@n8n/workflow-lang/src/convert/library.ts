@@ -793,6 +793,11 @@ export function lowerNativeCluster(c: NodeContext): void {
 		w.line(
 			`if ((run.runs ?? []).length > 0) ctx.trace(${str(native.model)}, { $subRuns: run.runs });`,
 		);
+		if (native.parser !== undefined) {
+			w.line(
+				`if ((run.parserRuns ?? []).length > 0) ctx.trace(${str(native.parser)}, { $subRuns: run.parserRuns });`,
+			);
+		}
 	}
 	if (retry) {
 		w.line("if (typeof run.error !== 'string' && !retryError(run.items?.[0])) break;");
@@ -800,7 +805,9 @@ export function lowerNativeCluster(c: NodeContext): void {
 	}
 	w.open("if (typeof run.error === 'string') {");
 	if (c.traceAll) {
-		w.line(`ctx.trace(${str(c.node.name)}, { $error: { message: run.error, description: '' } });`);
+		w.line(
+			`ctx.trace(${str(c.node.name)}, { $error: { message: run.error, description: run.errorDescription ?? '' } });`,
+		);
 	}
 	w.line('throw new Error(run.error);');
 	w.close();

@@ -64,9 +64,14 @@
 				"qs": {
 					"projectId": "proj/1",
 					"limit": "25",
-					"branches": ["main", "dev"],
+					"branches": [
+						"main",
+						"dev"
+					],
 					"status": "FAILED",
-					"tags": ["nightly"]
+					"tags": [
+						"nightly"
+					]
 				},
 				"headers": {
 					"accept": "application/json",
@@ -200,7 +205,10 @@
 					"authorization": "Bearer fake-currents-key"
 				},
 				"body": {
-					"machineId": ["m1", "m2"]
+					"machineId": [
+						"m1",
+						"m2"
+					]
 				}
 			}
 		],
@@ -262,7 +270,9 @@
 				}
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"highLevel contact.get": {
 		"requests": [
@@ -447,7 +457,10 @@
 					"query": "retry a node",
 					"country": "DE",
 					"max_results": 3,
-					"search_domain_filter": ["n8n.io", "docs.n8n.io"]
+					"search_domain_filter": [
+						"n8n.io",
+						"docs.n8n.io"
+					]
 				}
 			}
 		],
@@ -474,7 +487,10 @@
 				},
 				"body": {
 					"model": "pplx-embed-v1-4b",
-					"input": ["first line", "second line"],
+					"input": [
+						"first line",
+						"second line"
+					],
 					"dimensions": 256
 				}
 			}
@@ -483,7 +499,9 @@
 			{
 				"data": [
 					{
-						"embedding": [0.1]
+						"embedding": [
+							0.1
+						]
 					}
 				]
 			}
@@ -822,7 +840,10 @@
 				"url": "https://api.airtable.com/v0/appBase1/tbl1",
 				"qs": {
 					"filterByFormula": "{Status} = 'Open'",
-					"fields": ["Name", "Status"],
+					"fields": [
+						"Name",
+						"Status"
+					],
 					"sort": [
 						{
 							"field": "Name",
@@ -937,7 +958,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -1026,7 +1050,9 @@
 				"body": {
 					"typecast": false,
 					"performUpsert": {
-						"fieldsToMergeOn": ["Name"]
+						"fieldsToMergeOn": [
+							"Name"
+						]
 					},
 					"records": [
 						{
@@ -1125,7 +1151,9 @@
 				"body": {
 					"typecast": false,
 					"performUpsert": {
-						"fieldsToMergeOn": ["Name"]
+						"fieldsToMergeOn": [
+							"Name"
+						]
 					},
 					"records": [
 						{
@@ -1142,7 +1170,9 @@
 				"method": "GET",
 				"url": "https://api.airtable.com/v0/appBase1/tbl1",
 				"qs": {
-					"fields": ["Name"],
+					"fields": [
+						"Name"
+					],
 					"filterByFormula": "AND({Name} = 'Ada')",
 					"pageSize": "100"
 				},
@@ -1161,7 +1191,9 @@
 				"body": {
 					"typecast": false,
 					"performUpsert": {
-						"fieldsToMergeOn": ["Name"]
+						"fieldsToMergeOn": [
+							"Name"
+						]
 					},
 					"records": [
 						{
@@ -2163,8 +2195,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null,
 				"property_gr_e": 1
@@ -2175,8 +2213,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			},
@@ -2186,8 +2230,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			}
@@ -2353,8 +2403,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			},
@@ -2364,8 +2420,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			}
@@ -2480,8 +2542,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			}
@@ -2576,8 +2644,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			},
@@ -2587,8 +2661,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			}
@@ -2678,8 +2758,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			}
@@ -2790,8 +2876,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			},
@@ -2801,8 +2893,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			},
@@ -2812,8 +2910,14 @@
 				"url": "https://www.notion.so/page-1",
 				"property_name": "",
 				"property_due_count": 3,
-				"property_tags": ["a", "b"],
-				"property_owner": ["ada@example.com", {}],
+				"property_tags": [
+					"a",
+					"b"
+				],
+				"property_owner": [
+					"ada@example.com",
+					{}
+				],
 				"property_status": "Done",
 				"property_url_field": null
 			}
@@ -2879,7 +2983,9 @@
 			{
 				"id": "m1",
 				"threadId": "t1",
-				"labelIds": ["SENT"]
+				"labelIds": [
+					"SENT"
+				]
 			}
 		]
 	},
@@ -2934,7 +3040,9 @@
 				"message": {
 					"id": "m1",
 					"threadId": "t1",
-					"labelIds": ["DRAFT"]
+					"labelIds": [
+						"DRAFT"
+					]
 				}
 			},
 			{
@@ -2942,7 +3050,9 @@
 				"message": {
 					"id": "m1",
 					"threadId": "t1",
-					"labelIds": ["DRAFT"]
+					"labelIds": [
+						"DRAFT"
+					]
 				}
 			}
 		]
@@ -2954,7 +3064,9 @@
 				"url": "https://www.googleapis.com/gmail/v1/users/me/threads/thread-7",
 				"qs": {
 					"format": "metadata",
-					"metadataHeaders": ["Message-ID"]
+					"metadataHeaders": [
+						"Message-ID"
+					]
 				},
 				"headers": {
 					"accept": "application/json",
@@ -3097,7 +3209,9 @@
 			{
 				"id": "sent-1",
 				"threadId": "thread-1",
-				"labelIds": ["SENT"]
+				"labelIds": [
+					"SENT"
+				]
 			}
 		]
 	},
@@ -3322,7 +3436,9 @@
 				"url": "https://www.googleapis.com/gmail/v1/users/me/messages",
 				"qs": {
 					"includeSpamTrash": "false",
-					"labelIds": ["INBOX"],
+					"labelIds": [
+						"INBOX"
+					],
 					"q": "subject:invoice is:unread after:1709287200",
 					"maxResults": "2"
 				},
@@ -3337,11 +3453,19 @@
 				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m1",
 				"qs": {
 					"includeSpamTrash": "false",
-					"labelIds": ["INBOX"],
+					"labelIds": [
+						"INBOX"
+					],
 					"q": "subject:invoice is:unread after:1709287200",
 					"maxResults": "2",
 					"format": "metadata",
-					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+					"metadataHeaders": [
+						"From",
+						"To",
+						"Cc",
+						"Bcc",
+						"Subject"
+					]
 				},
 				"headers": {
 					"accept": "application/json",
@@ -3354,11 +3478,19 @@
 				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m2",
 				"qs": {
 					"includeSpamTrash": "false",
-					"labelIds": ["INBOX"],
+					"labelIds": [
+						"INBOX"
+					],
 					"q": "subject:invoice is:unread after:1709287200",
 					"maxResults": "2",
 					"format": "metadata",
-					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+					"metadataHeaders": [
+						"From",
+						"To",
+						"Cc",
+						"Bcc",
+						"Subject"
+					]
 				},
 				"headers": {
 					"accept": "application/json",
@@ -3496,7 +3628,13 @@
 					"q": "from:ada@example.com before:1711929600",
 					"maxResults": "100",
 					"format": "metadata",
-					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+					"metadataHeaders": [
+						"From",
+						"To",
+						"Cc",
+						"Bcc",
+						"Subject"
+					]
 				},
 				"headers": {
 					"accept": "application/json",
@@ -3511,7 +3649,13 @@
 					"q": "from:ada@example.com before:1711929600",
 					"maxResults": "100",
 					"format": "metadata",
-					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+					"metadataHeaders": [
+						"From",
+						"To",
+						"Cc",
+						"Bcc",
+						"Subject"
+					]
 				},
 				"headers": {
 					"accept": "application/json",
@@ -3660,7 +3804,13 @@
 				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m7",
 				"qs": {
 					"format": "metadata",
-					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+					"metadataHeaders": [
+						"From",
+						"To",
+						"Cc",
+						"Bcc",
+						"Subject"
+					]
 				},
 				"headers": {
 					"accept": "application/json",
@@ -3734,7 +3884,10 @@
 					"authorization": "Bearer fake-gmail-token"
 				},
 				"body": {
-					"addLabelIds": ["Label_1", "STARRED"]
+					"addLabelIds": [
+						"Label_1",
+						"STARRED"
+					]
 				},
 				"qsFormat": "repeat"
 			},
@@ -3747,7 +3900,10 @@
 					"authorization": "Bearer fake-gmail-token"
 				},
 				"body": {
-					"addLabelIds": ["Label_1", "STARRED"]
+					"addLabelIds": [
+						"Label_1",
+						"STARRED"
+					]
 				},
 				"qsFormat": "repeat"
 			}
@@ -3768,12 +3924,20 @@
 			{
 				"id": "m7",
 				"threadId": "t7",
-				"labelIds": ["INBOX", "Label_1", "STARRED"]
+				"labelIds": [
+					"INBOX",
+					"Label_1",
+					"STARRED"
+				]
 			},
 			{
 				"id": "m7",
 				"threadId": "t7",
-				"labelIds": ["INBOX", "Label_1", "STARRED"]
+				"labelIds": [
+					"INBOX",
+					"Label_1",
+					"STARRED"
+				]
 			}
 		]
 	},
@@ -3788,7 +3952,9 @@
 					"authorization": "Bearer fake-gmail-token"
 				},
 				"body": {
-					"removeLabelIds": ["INBOX"]
+					"removeLabelIds": [
+						"INBOX"
+					]
 				},
 				"qsFormat": "repeat"
 			}
@@ -3819,7 +3985,9 @@
 					"authorization": "Bearer fake-gmail-token"
 				},
 				"body": {
-					"removeLabelIds": ["UNREAD"]
+					"removeLabelIds": [
+						"UNREAD"
+					]
 				},
 				"qsFormat": "repeat"
 			}
@@ -3835,7 +4003,9 @@
 			{
 				"id": "m9",
 				"threadId": "t9",
-				"labelIds": ["INBOX"]
+				"labelIds": [
+					"INBOX"
+				]
 			}
 		]
 	},
@@ -3850,7 +4020,9 @@
 					"authorization": "Bearer fake-gmail-token"
 				},
 				"body": {
-					"addLabelIds": ["UNREAD"]
+					"addLabelIds": [
+						"UNREAD"
+					]
 				},
 				"qsFormat": "repeat"
 			}
@@ -3866,7 +4038,10 @@
 			{
 				"id": "m9",
 				"threadId": "t9",
-				"labelIds": ["INBOX", "UNREAD"]
+				"labelIds": [
+					"INBOX",
+					"UNREAD"
+				]
 			}
 		]
 	},
@@ -3913,7 +4088,9 @@
 				"body": {
 					"name": "Invoices",
 					"mimeType": "application/vnd.google-apps.folder",
-					"parents": ["1FolderX"],
+					"parents": [
+						"1FolderX"
+					],
 					"folderColorRgb": "#ff0000"
 				}
 			}
@@ -3944,7 +4121,9 @@
 				"body": {
 					"name": "Untitled",
 					"mimeType": "application/vnd.google-apps.folder",
-					"parents": ["drive9"]
+					"parents": [
+						"drive9"
+					]
 				}
 			}
 		],
@@ -4022,7 +4201,12 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json",
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "f1"
@@ -4076,7 +4260,10 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "f2"
@@ -4118,7 +4305,10 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "f3"
@@ -4141,7 +4331,9 @@
 				},
 				"body": {
 					"name": "Doc",
-					"parents": ["folder-9"],
+					"parents": [
+						"folder-9"
+					],
 					"mimeType": "application/vnd.google-apps.document",
 					"properties": {
 						"team": "ops"
@@ -4169,7 +4361,10 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "d1"
@@ -4231,7 +4426,9 @@
 				},
 				"body": {
 					"copyRequiresWriterPermission": true,
-					"parents": ["1FolderX"],
+					"parents": [
+						"1FolderX"
+					],
 					"name": "Copy of Plan.docx",
 					"description": "copy"
 				}
@@ -4279,7 +4476,9 @@
 		"output": [
 			{
 				"id": "1AbCfile",
-				"parents": ["1FolderX"]
+				"parents": [
+					"1FolderX"
+				]
 			}
 		]
 	},
@@ -4664,7 +4863,9 @@
 					"dateTime": "2024-05-02T10:00:00+02:00"
 				},
 				"created": "2024-05-02T00:00:00.000Z",
-				"recurrence": ["RRULE:FREQ=DAILY"]
+				"recurrence": [
+					"RRULE:FREQ=DAILY"
+				]
 			},
 			{
 				"id": "e3",
@@ -4871,7 +5072,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"output": [
@@ -4940,7 +5143,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "resp_2",
@@ -5004,7 +5209,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"output": [
@@ -5401,7 +5608,14 @@
 				},
 				"body": {
 					"range": "Sales Q1!3:3",
-					"values": [["Cy", 7, "[\"a\",\"b\"]", ""]]
+					"values": [
+						[
+							"Cy",
+							7,
+							"[\"a\",\"b\"]",
+							""
+						]
+					]
 				}
 			}
 		],
@@ -5409,7 +5623,10 @@
 			{
 				"Name": "Cy",
 				"Count": 7,
-				"Tags": ["a", "b"]
+				"Tags": [
+					"a",
+					"b"
+				]
 			}
 		]
 	},
@@ -5466,7 +5683,12 @@
 				},
 				"body": {
 					"range": "Sales Q1!3:3",
-					"values": [["", 7]]
+					"values": [
+						[
+							"",
+							7
+						]
+					]
 				}
 			}
 		],
@@ -5510,7 +5732,13 @@
 				},
 				"body": {
 					"range": "Sales Q1!1:1",
-					"values": [["Region", "Total", "Owner"]]
+					"values": [
+						[
+							"Region",
+							"Total",
+							"Owner"
+						]
+					]
 				}
 			},
 			{
@@ -5543,7 +5771,18 @@
 				},
 				"body": {
 					"range": "Sales Q1!2:3",
-					"values": [["EU", 5, "ada"], ["US", "", ""]]
+					"values": [
+						[
+							"EU",
+							5,
+							"ada"
+						],
+						[
+							"US",
+							"",
+							""
+						]
+					]
 				}
 			}
 		],
@@ -5604,7 +5843,12 @@
 				},
 				"body": {
 					"range": "Sales Q1!4:4",
-					"values": [["Di", null]]
+					"values": [
+						[
+							"Di",
+							null
+						]
+					]
 				}
 			}
 		],
@@ -5648,15 +5892,27 @@
 					"data": [
 						{
 							"range": "Sales Q1!B3",
-							"values": [[9]]
+							"values": [
+								[
+									9
+								]
+							]
 						},
 						{
 							"range": "Sales Q1!C3",
-							"values": [[""]]
+							"values": [
+								[
+									""
+								]
+							]
 						},
 						{
 							"range": "Sales Q1!D3",
-							"values": [["{\"a\":1}"]]
+							"values": [
+								[
+									"{\"a\":1}"
+								]
+							]
 						}
 					],
 					"valueInputOption": "USER_ENTERED"
@@ -5708,11 +5964,19 @@
 					"data": [
 						{
 							"range": "Sales Q1!B3",
-							"values": [[9]]
+							"values": [
+								[
+									9
+								]
+							]
 						},
 						{
 							"range": "Sales Q1!C3",
-							"values": [[""]]
+							"values": [
+								[
+									""
+								]
+							]
 						}
 					],
 					"valueInputOption": "USER_ENTERED"
@@ -6476,7 +6740,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6515,7 +6782,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6554,7 +6824,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6593,7 +6866,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6632,7 +6908,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6671,7 +6950,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6710,7 +6992,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6749,7 +7034,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6788,7 +7076,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6827,7 +7118,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6866,7 +7160,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -6905,7 +7202,10 @@
 							"fields": {
 								"Name": "Ada",
 								"Count": "7",
-								"Tags": ["a", "b"],
+								"Tags": [
+									"a",
+									"b"
+								],
 								"Notes": null
 							}
 						}
@@ -8342,7 +8642,10 @@
 								}
 							]
 						},
-						"sortBy": ["score", "ASC"]
+						"sortBy": [
+							"score",
+							"ASC"
+						]
 					}
 				}
 			},
@@ -8379,7 +8682,10 @@
 								}
 							]
 						},
-						"sortBy": ["score", "ASC"]
+						"sortBy": [
+							"score",
+							"ASC"
+						]
 					}
 				}
 			}
@@ -9136,19 +9442,35 @@
 					"data": [
 						{
 							"range": "Sales Q1!B3",
-							"values": [[7]]
+							"values": [
+								[
+									7
+								]
+							]
 						},
 						{
 							"range": "Sales Q1!C3",
-							"values": [[""]]
+							"values": [
+								[
+									""
+								]
+							]
 						},
 						{
 							"range": "Sales Q1!B3",
-							"values": [[7]]
+							"values": [
+								[
+									7
+								]
+							]
 						},
 						{
 							"range": "Sales Q1!C3",
-							"values": [[""]]
+							"values": [
+								[
+									""
+								]
+							]
 						}
 					],
 					"valueInputOption": "USER_ENTERED"
@@ -9221,7 +9543,13 @@
 				},
 				"body": {
 					"range": "Sales Q1!4:4",
-					"values": [["Zed", "3", ""]]
+					"values": [
+						[
+							"Zed",
+							"3",
+							""
+						]
+					]
 				}
 			}
 		],
@@ -9266,7 +9594,14 @@
 				},
 				"body": {
 					"range": "Sales Q1!1:1",
-					"values": [["Name", "Count", "Note", "Extra"]]
+					"values": [
+						[
+							"Name",
+							"Count",
+							"Note",
+							"Extra"
+						]
+					]
 				}
 			},
 			{
@@ -9280,11 +9615,19 @@
 					"data": [
 						{
 							"range": "Sales Q1!B3",
-							"values": [[5]]
+							"values": [
+								[
+									5
+								]
+							]
 						},
 						{
 							"range": "Sales Q1!D3",
-							"values": [["x"]]
+							"values": [
+								[
+									"x"
+								]
+							]
 						}
 					],
 					"valueInputOption": "USER_ENTERED"
@@ -9320,7 +9663,14 @@
 				},
 				"body": {
 					"range": "Sales Q1!4:4",
-					"values": [["Dan", "", "", "{\"k\":1}"]]
+					"values": [
+						[
+							"Dan",
+							"",
+							"",
+							"{\"k\":1}"
+						]
+					]
 				}
 			}
 		],
@@ -9373,7 +9723,11 @@
 					"data": [
 						{
 							"range": "Sales Q1!B2",
-							"values": [[4]]
+							"values": [
+								[
+									4
+								]
+							]
 						}
 					],
 					"valueInputOption": "USER_ENTERED"
@@ -9443,7 +9797,13 @@
 				},
 				"body": {
 					"range": "Sheet1!3:3",
-					"values": [["2024-01-01", "ada@example.com", "Ada"]]
+					"values": [
+						[
+							"2024-01-01",
+							"ada@example.com",
+							"Ada"
+						]
+					]
 				},
 				"qsFormat": "brackets"
 			}
@@ -9556,7 +9916,16 @@
 				},
 				"body": {
 					"range": "Sheet1!3:3",
-					"values": [["c1", "a1", "b1", "e1", "d1", ""]]
+					"values": [
+						[
+							"c1",
+							"a1",
+							"b1",
+							"e1",
+							"d1",
+							""
+						]
+					]
 				},
 				"qsFormat": "brackets"
 			}
@@ -9730,7 +10099,12 @@
 				},
 				"body": {
 					"range": "Sheet1!1:1",
-					"values": [["Name", "Count"]]
+					"values": [
+						[
+							"Name",
+							"Count"
+						]
+					]
 				},
 				"qsFormat": "brackets"
 			}
@@ -9757,7 +10131,9 @@
 				"userAgent": "n8n"
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"googleSheets sheet.clear rows": {
 		"requests": [
@@ -9798,7 +10174,9 @@
 				"userAgent": "n8n"
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"googleSheets sheet.clear columns": {
 		"requests": [
@@ -9839,7 +10217,9 @@
 				"userAgent": "n8n"
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"googleSheets sheet.clear one column": {
 		"requests": [
@@ -9880,7 +10260,9 @@
 				"userAgent": "n8n"
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"googleSheets sheet.clear a range with a sheet name in it": {
 		"requests": [
@@ -9921,7 +10303,9 @@
 				"userAgent": "n8n"
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"googleSheets sheet.clear the default range": {
 		"requests": [
@@ -9962,7 +10346,9 @@
 				"userAgent": "n8n"
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"googleSheets sheet.delete rows": {
 		"requests": [
@@ -10334,7 +10720,13 @@
 				},
 				"body": {
 					"range": "Sheet1!3:3",
-					"values": [["2024-01-01", "ada@example.com", "Ada"]]
+					"values": [
+						[
+							"2024-01-01",
+							"ada@example.com",
+							"Ada"
+						]
+					]
 				},
 				"qsFormat": "brackets"
 			}
@@ -11096,7 +11488,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2",
@@ -11123,7 +11518,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2",
@@ -11155,7 +11552,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2"
@@ -11174,7 +11573,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"success": true
@@ -11218,7 +11619,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "19:abc123@thread.tacv2",
@@ -11281,7 +11684,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "c1"
@@ -11314,7 +11719,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "c1"
@@ -11365,7 +11773,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"success": true
@@ -11405,7 +11815,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000001",
@@ -11441,7 +11854,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000002"
@@ -11460,7 +11875,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000001"
@@ -11493,7 +11910,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "m1"
@@ -11518,7 +11938,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "m1"
@@ -11542,7 +11964,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "r1"
@@ -11567,7 +11991,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000003"
@@ -11592,7 +12018,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000003"
@@ -11611,7 +12039,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"success": true
@@ -11630,7 +12060,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"success": true
@@ -11649,7 +12081,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "19:7e2f1174_0c5cfdbb@unq.gbl.spaces",
@@ -11708,7 +12142,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "a"
@@ -11735,7 +12172,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "a"
@@ -11754,7 +12193,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "mem1"
@@ -11773,7 +12214,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"success": true
@@ -11813,7 +12256,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000009"
@@ -11841,7 +12287,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000010"
@@ -11860,7 +12308,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "1700000000009"
@@ -11906,7 +12356,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "m1"
@@ -11939,7 +12391,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "m1"
@@ -11974,7 +12429,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "task-1",
@@ -11999,7 +12456,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "task-2"
@@ -12028,7 +12487,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"success": true
@@ -12047,7 +12509,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "task-1"
@@ -12075,7 +12539,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "t1"
@@ -12094,7 +12561,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "t1"
@@ -12139,7 +12608,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"success": true
@@ -12386,7 +12858,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "t"
@@ -12405,7 +12879,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "42"
@@ -12448,7 +12924,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"index": 0,
@@ -12496,7 +12974,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "chatcmpl-2",
@@ -12559,7 +13039,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"index": 0,
@@ -12600,7 +13082,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"output": [
@@ -12650,7 +13134,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"id": "resp_1",
@@ -14298,7 +14784,9 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"content": {
@@ -14374,7 +14862,9 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"content": {
@@ -14435,7 +14925,9 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"candidates": [
@@ -14599,7 +15091,11 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json",
+			"application/json"
+		],
 		"output": [
 			{
 				"content": {
@@ -14640,7 +15136,9 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"output": [
 			{
 				"content": {
@@ -15150,6 +15648,1170 @@
 			"httpCode": null
 		}
 	},
+	"chainLlm parser from an example": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			null
+		],
+		"output": [
+			{
+				"output": {
+					"state": "Texas",
+					"cities": [
+						"Austin"
+					]
+				}
+			},
+			{
+				"output": {
+					"state": "Texas",
+					"cities": [
+						"Austin"
+					]
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": {
+						"state": "Texas",
+						"cities": [
+							"Austin"
+						]
+					}
+				},
+				{
+					"output": {
+						"state": "Texas",
+						"cities": [
+							"Austin"
+						]
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			false,
+			false
+		]
+	},
+	"chainLlm parser from a schema, with messages": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "system",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Who?\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"The name\"},\"age\":{\"type\":\"integer\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"name\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"output": [
+			{
+				"output": {
+					"name": "Ann",
+					"age": 3
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": {
+						"name": "Ann",
+						"age": 3
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
+	"chainLlm parser without the output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"The name\"},\"age\":{\"type\":\"integer\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"name\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"output": [
+			{}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
+	"chainLlm parser with an output in the output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"string\"}},\"required\":[\"output\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"output": [
+			{
+				"output": "y"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "y"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
+	"chainLlm parser answer that is not JSON": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": "Model output doesn't fit required format"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Model output doesn't fit required format",
+		"errorDetail": {
+			"description": "To continue the execution when this happens, change the 'On Error' parameter in the root node's settings",
+			"httpCode": null
+		}
+	},
+	"chainLlm parser answer of another type": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": "Model output doesn't fit required format"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Model output doesn't fit required format",
+		"errorDetail": {
+			"description": "To continue the execution when this happens, change the 'On Error' parameter in the root node's settings",
+			"httpCode": null
+		}
+	},
+	"chainLlm parser every type of the schema": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"score\":{\"type\":\"number\"},\"active\":{\"type\":\"boolean\"},\"nothing\":{\"type\":\"null\"},\"mood\":{\"type\":\"string\",\"enum\":[\"good\",\"bad\"]},\"inner\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"}},\"additionalProperties\":false},\"map\":{\"type\":\"object\",\"additionalProperties\":{}},\"free\":{}},\"required\":[\"score\",\"active\",\"nothing\",\"mood\"],\"additionalProperties\":{}}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"score\":{\"type\":\"number\"},\"active\":{\"type\":\"boolean\"},\"nothing\":{\"type\":\"null\"},\"mood\":{\"type\":\"string\",\"enum\":[\"good\",\"bad\"]},\"inner\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"}},\"additionalProperties\":false},\"map\":{\"type\":\"object\",\"additionalProperties\":{}},\"free\":{}},\"required\":[\"score\",\"active\",\"nothing\",\"mood\"],\"additionalProperties\":{}}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"score\":{\"type\":\"number\"},\"active\":{\"type\":\"boolean\"},\"nothing\":{\"type\":\"null\"},\"mood\":{\"type\":\"string\",\"enum\":[\"good\",\"bad\"]},\"inner\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"}},\"additionalProperties\":false},\"map\":{\"type\":\"object\",\"additionalProperties\":{}},\"free\":{}},\"required\":[\"score\",\"active\",\"nothing\",\"mood\"],\"additionalProperties\":{}}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"score\":{\"type\":\"number\"},\"active\":{\"type\":\"boolean\"},\"nothing\":{\"type\":\"null\"},\"mood\":{\"type\":\"string\",\"enum\":[\"good\",\"bad\"]},\"inner\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"}},\"additionalProperties\":false},\"map\":{\"type\":\"object\",\"additionalProperties\":{}},\"free\":{}},\"required\":[\"score\",\"active\",\"nothing\",\"mood\"],\"additionalProperties\":{}}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"score\":{\"type\":\"number\"},\"active\":{\"type\":\"boolean\"},\"nothing\":{\"type\":\"null\"},\"mood\":{\"type\":\"string\",\"enum\":[\"good\",\"bad\"]},\"inner\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"}},\"additionalProperties\":false},\"map\":{\"type\":\"object\",\"additionalProperties\":{}},\"free\":{}},\"required\":[\"score\",\"active\",\"nothing\",\"mood\"],\"additionalProperties\":{}}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null
+		],
+		"output": [
+			{
+				"output": {
+					"score": 1.5,
+					"active": false,
+					"nothing": null,
+					"mood": "good",
+					"inner": {
+						"id": 2
+					},
+					"map": {
+						"k": 1
+					},
+					"free": [
+						1
+					],
+					"more": "kept"
+				}
+			},
+			{
+				"error": "Model output doesn't fit required format"
+			},
+			{
+				"error": "Model output doesn't fit required format"
+			},
+			{
+				"error": "Model output doesn't fit required format"
+			},
+			{
+				"output": {
+					"score": 1,
+					"active": true,
+					"nothing": null,
+					"mood": "bad"
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				},
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": {
+						"score": 1.5,
+						"active": false,
+						"nothing": null,
+						"mood": "good",
+						"inner": {
+							"id": 2
+						},
+						"map": {
+							"k": 1
+						},
+						"free": [
+							1
+						],
+						"more": "kept"
+					}
+				},
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"output": {
+						"score": 1,
+						"active": true,
+						"nothing": null,
+						"mood": "bad"
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				},
+				{
+					"item": 4
+				}
+			]
+		],
+		"nodePaired": [
+			false,
+			true,
+			true,
+			true,
+			false
+		]
+	},
+	"chainLlm parser empty answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": "The AI model returned an empty response to the Structured Output Parser"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The AI model returned an empty response to the Structured Output Parser",
+		"errorDetail": {
+			"description": "This usually happens when the model runs out of tokens before it can generate the structured output. Try reducing the prompt length, increasing the model's max output tokens, or simplifying the output schema. To continue the execution when this happens, change the 'On Error' parameter in the root node's settings.",
+			"httpCode": null
+		}
+	},
+	"chainLlm parser answer without text": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": "The AI model returned an empty response to the Structured Output Parser"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The AI model returned an empty response to the Structured Output Parser",
+		"errorDetail": {
+			"description": "This usually happens when the model runs out of tokens before it can generate the structured output. Try reducing the prompt length, increasing the model's max output tokens, or simplifying the output schema. To continue the execution when this happens, change the 'On Error' parameter in the root node's settings.",
+			"httpCode": null
+		}
+	},
+	"chainLlm parser continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			null
+		],
+		"output": [
+			{
+				"error": "Model output doesn't fit required format"
+			},
+			{
+				"output": {
+					"state": "Texas",
+					"cities": [
+						"Austin"
+					]
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Model output doesn't fit required format"
+				},
+				{
+					"output": {
+						"state": "Texas",
+						"cities": [
+							"Austin"
+						]
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			true,
+			false
+		]
+	},
+	"chainLlm parser error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			null
+		],
+		"output": [
+			{
+				"output": {
+					"state": "Texas",
+					"cities": [
+						"Austin"
+					]
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				},
+				{
+					"error": "The AI model returned an empty response to the Structured Output Parser"
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": {
+						"state": "Texas",
+						"cities": [
+							"Austin"
+						]
+					}
+				}
+			],
+			[
+				{
+					"a": 2,
+					"error": "The AI model returned an empty response to the Structured Output Parser"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			],
+			[
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [
+			false,
+			true
+		]
+	},
+	"chainLlm parser responses API": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					],
+					"model": "gpt-5-mini",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"output": [
+			{
+				"output": {
+					"state": "Texas",
+					"cities": [
+						"Austin"
+					]
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": {
+						"state": "Texas",
+						"cities": [
+							"Austin"
+						]
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
+	"chainLlm parser anthropic model": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"stream": false,
+					"max_tokens": 16384,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"The name\"},\"age\":{\"type\":\"integer\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"name\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"output": [
+			{
+				"output": {
+					"name": "Ann"
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": {
+						"name": "Ann"
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
+	"chainLlm parser gemini model": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {},
+				"headers": {
+					"x-goog-api-key": "fake-google-key"
+				},
+				"body": {
+					"generationConfig": {
+						"stopSequences": []
+					},
+					"safetySettings": [],
+					"contents": [
+						{
+							"role": "user",
+							"parts": [
+								{
+									"text": "Say hi to {name}\nYou must format your output as a JSON value that adheres to a given \"JSON Schema\" instance.\n\n\"JSON Schema\" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example \"JSON Schema\" instance {{\"properties\": {{\"foo\": {{\"description\": \"a list of test words\", \"type\": \"array\", \"items\": {{\"type\": \"string\"}}}}}}, \"required\": [\"foo\"]}}}}\nwould match an object with one required property, \"foo\". The \"type\" property specifies \"foo\" must be an \"array\", and the \"description\" property semantically describes it as \"a list of test words\". The items within \"foo\" must be strings.\nThus, the object {{\"foo\": [\"bar\", \"baz\"]}} is a well-formatted instance of this example \"JSON Schema\". The object {{\"properties\": {{\"foo\": [\"bar\", \"baz\"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\"},\"cities\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"state\",\"cities\"],\"additionalProperties\":false}},\"required\":[\"output\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}\n```\n"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null
+		],
+		"output": [
+			{
+				"output": {
+					"state": "Texas",
+					"cities": [
+						"Austin"
+					]
+				}
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			],
+			"Parser": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": {
+						"state": "Texas",
+						"cities": [
+							"Austin"
+						]
+					}
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			false
+		]
+	},
 	"googleGemini text.message stop, wrong option type": {
 		"requests": [
 			{
@@ -15177,7 +16839,9 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"outputs": [],
 		"paired": [],
 		"error": "Parameter \"temperature\" does not match any of the expected types: number"
@@ -15209,7 +16873,9 @@
 				}
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -15239,7 +16905,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"googleGemini text.message error output": {
 		"requests": [
@@ -15292,7 +16961,10 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -15328,7 +17000,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"googleGemini text.message retry continue": {
 		"requests": [
@@ -15429,7 +17104,12 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json",
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -15468,7 +17148,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"anthropic text.message stop": {
 		"requests": [
@@ -15613,7 +17296,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"anthropic text.message error output": {
 		"requests": [
@@ -15702,7 +17388,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"anthropic text.message retry continue": {
 		"requests": [
@@ -15843,7 +17532,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"anthropic text.message retry then answer": {
 		"requests": [
@@ -15984,7 +17676,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message stop": {
 		"requests": [
@@ -16025,7 +17720,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [],
 		"paired": [],
 		"error": "Bad request - please check your parameters"
@@ -16069,7 +17767,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16095,7 +17796,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message continue (old setting)": {
 		"requests": [
@@ -16136,7 +17840,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16162,7 +17869,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message error output": {
 		"requests": [
@@ -16203,7 +17913,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16234,7 +17947,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message error output all fail": {
 		"requests": [
@@ -16275,7 +17991,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[],
 			[
@@ -16300,7 +18019,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message retry then answer": {
 		"requests": [
@@ -16359,7 +18081,11 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16390,7 +18116,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message retry continue": {
 		"requests": [
@@ -16467,7 +18196,12 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json",
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16498,7 +18232,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message retry error output": {
 		"requests": [
@@ -16575,7 +18312,12 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json",
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16608,7 +18350,10 @@
 			],
 			[]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.message always output data": {
 		"requests": [
@@ -16649,8 +18394,15 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
-		"outputs": [[{}]],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
+		"outputs": [
+			[
+				{}
+			]
+		],
 		"paired": [
 			[
 				[
@@ -16688,7 +18440,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16708,7 +18462,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"openAi text.response continue": {
 		"requests": [
@@ -16765,7 +18521,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16800,7 +18559,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.response error output": {
 		"requests": [
@@ -16857,7 +18619,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -16897,7 +18662,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.response retry error output": {
 		"requests": [
@@ -17006,7 +18774,12 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json",
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -17057,7 +18830,10 @@
 			],
 			[]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm openAi completions": {
 		"requests": [
@@ -17102,7 +18878,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi there"
@@ -17129,7 +18907,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi completions reasoning model": {
 		"requests": [
@@ -17171,7 +18951,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -17198,7 +18980,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi completions gpt-5-chat": {
 		"requests": [
@@ -17222,7 +19006,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": ""
@@ -17249,7 +19035,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi version 1 prompt, items": {
 		"requests": [
@@ -17292,7 +19080,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "one"
@@ -17331,7 +19122,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"chainLlm openAi custom url, responses off": {
 		"requests": [
@@ -17355,7 +19149,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -17382,7 +19178,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi model from the item": {
 		"requests": [
@@ -17427,7 +19225,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -17466,7 +19267,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"chainLlm openAi completions no choices": {
 		"requests": [
@@ -17490,7 +19294,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -17540,7 +19346,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -17567,7 +19375,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm prompt number and object": {
 		"requests": [
@@ -17610,7 +19420,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -17649,7 +19462,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"chainLlm openAi responses": {
 		"requests": [
@@ -17698,7 +19514,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi!"
@@ -17725,7 +19543,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi model that prefers responses": {
 		"requests": [
@@ -17752,7 +19572,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -17779,7 +19601,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi responses empty output": {
 		"requests": [
@@ -17805,7 +19629,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": ""
@@ -17832,7 +19658,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi responses error in body": {
 		"requests": [
@@ -17858,7 +19686,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -17894,7 +19724,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -17929,7 +19761,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -17956,7 +19790,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm credential with a custom header that is off": {
 		"requests": [
@@ -17982,7 +19818,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -18009,7 +19847,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi status 400": {
 		"requests": [
@@ -18035,7 +19875,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18069,7 +19911,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18103,7 +19947,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18137,7 +19983,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18171,7 +20019,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18205,7 +20055,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18239,7 +20091,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18273,7 +20127,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18326,7 +20182,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -18353,7 +20212,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openAi status 503 twice": {
 		"requests": [
@@ -18400,7 +20261,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18453,7 +20317,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18509,7 +20376,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18546,7 +20416,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18580,7 +20452,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -18652,7 +20526,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -18703,7 +20581,11 @@
 				}
 			]
 		],
-		"nodePaired": [false, false, false]
+		"nodePaired": [
+			false,
+			false,
+			false
+		]
 	},
 	"chainLlm continue": {
 		"requests": [
@@ -18746,7 +20628,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -18785,7 +20670,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"chainLlm continue, prompt without a value": {
 		"requests": [
@@ -18809,7 +20697,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"error": "No prompt specified"
@@ -18845,7 +20735,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"chainLlm error output": {
 		"requests": [
@@ -18888,7 +20781,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "ok"
@@ -18929,7 +20825,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"chainLlm retry, then answer": {
 		"requests": [
@@ -18972,7 +20871,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -19002,7 +20904,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm retry, all fail": {
 		"requests": [
@@ -19045,7 +20949,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -19139,7 +21046,12 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "ok2"
@@ -19184,7 +21096,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"chainLlm retry continue, second item fails": {
 		"requests": [
@@ -19227,7 +21142,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "ok"
@@ -19266,7 +21184,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, true]
+		"nodePaired": [
+			false,
+			true
+		]
 	},
 	"chainLlm retry error output": {
 		"requests": [
@@ -19347,7 +21268,12 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "ok2"
@@ -19394,7 +21320,10 @@
 			],
 			[]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"chainLlm execute once": {
 		"requests": [
@@ -19418,7 +21347,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -19445,7 +21376,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm always output data": {
 		"requests": [
@@ -19469,7 +21402,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "a"
@@ -19496,7 +21431,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent version 2": {
 		"requests": [
@@ -19524,7 +21461,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi there "
@@ -19551,7 +21490,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent version 2.1": {
 		"requests": [
@@ -19579,7 +21520,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi there "
@@ -19606,7 +21549,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent version 2.2": {
 		"requests": [
@@ -19634,7 +21579,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi there "
@@ -19661,7 +21608,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent version 3": {
 		"requests": [
@@ -19689,7 +21638,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi there "
@@ -19716,7 +21667,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent version 3.1": {
 		"requests": [
@@ -19744,7 +21697,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi there "
@@ -19771,7 +21726,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent responses, no system message": {
 		"requests": [
@@ -19797,7 +21754,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi!"
@@ -19824,7 +21783,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent responses, reasoning model with system message": {
 		"requests": [
@@ -19856,7 +21817,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -19883,7 +21846,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent completions, reasoning model": {
 		"requests": [
@@ -19912,7 +21877,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi"
@@ -19939,7 +21906,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent intermediate steps": {
 		"requests": [
@@ -19963,7 +21932,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi",
@@ -19992,7 +21963,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent empty system message, version 2": {
 		"requests": [
@@ -20016,7 +21989,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi"
@@ -20043,7 +22018,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent empty answer": {
 		"requests": [
@@ -20067,7 +22044,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -20094,7 +22073,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent answer without content": {
 		"requests": [
@@ -20118,7 +22099,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -20145,7 +22128,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent no choices": {
 		"requests": [
@@ -20169,7 +22154,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -20211,7 +22198,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -20238,7 +22227,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent prompt null, number and object": {
 		"requests": [
@@ -20300,7 +22291,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -20351,7 +22346,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent prompt of the chat trigger": {
 		"requests": [
@@ -20375,7 +22374,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -20402,7 +22403,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent prompt of the chat trigger, missing": {
 		"requests": [],
@@ -20499,7 +22502,12 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -20562,7 +22570,12 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent model from the item": {
 		"requests": [
@@ -20605,7 +22618,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -20644,7 +22660,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent credential with an organization": {
 		"requests": [
@@ -20668,7 +22687,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -20695,7 +22716,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent credential with a custom header": {
 		"requests": [
@@ -20720,7 +22743,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -20747,7 +22772,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent first item fails": {
 		"requests": [
@@ -20771,7 +22798,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -20805,7 +22834,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -20858,7 +22889,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -20914,7 +22948,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -20989,7 +23026,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -21040,7 +23081,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent delay between batches of one": {
 		"requests": [
@@ -21083,7 +23128,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -21122,7 +23170,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent continue": {
 		"requests": [
@@ -21165,7 +23216,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -21204,7 +23258,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent continue, version 2": {
 		"requests": [
@@ -21247,7 +23304,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -21286,7 +23346,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent error output": {
 		"requests": [
@@ -21329,7 +23392,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -21370,7 +23436,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent retry, then answer": {
 		"requests": [
@@ -21413,7 +23482,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "late"
@@ -21443,7 +23515,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent retry, all fail": {
 		"requests": [
@@ -21486,7 +23560,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -21580,7 +23657,12 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok2"
@@ -21625,7 +23707,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent retry error output": {
 		"requests": [
@@ -21706,7 +23791,12 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok2"
@@ -21753,7 +23843,10 @@
 			],
 			[]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent status 500 then answer": {
 		"requests": [
@@ -21796,7 +23889,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "late"
@@ -21823,7 +23919,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent execute once": {
 		"requests": [
@@ -21847,7 +23945,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -21874,7 +23974,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent always output data": {
 		"requests": [
@@ -21898,7 +24000,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "a"
@@ -21925,7 +24029,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm prompt of the chat trigger": {
 		"requests": [
@@ -21949,7 +24055,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "x"
@@ -21976,7 +24084,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm prompt of the chat trigger, missing": {
 		"requests": [],
@@ -22008,7 +24118,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "x"
@@ -22035,7 +24147,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent prompt of the guardrails node": {
 		"requests": [
@@ -22059,7 +24173,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -22086,7 +24202,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm anthropic defaults": {
 		"requests": [
@@ -22111,7 +24229,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi there"
@@ -22138,7 +24258,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic version 1.5": {
 		"requests": [
@@ -22176,7 +24298,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22203,7 +24327,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic version 1.2": {
 		"requests": [
@@ -22230,7 +24356,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": ""
@@ -22257,7 +24385,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-3-haiku-20240307 temperature": {
 		"requests": [
@@ -22283,7 +24413,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22310,7 +24442,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-3-haiku-20240307 topP": {
 		"requests": [
@@ -22336,7 +24470,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22363,7 +24499,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-3-7-sonnet-20250219 topK": {
 		"requests": [
@@ -22389,7 +24527,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22416,7 +24556,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-3-5-haiku-latest topK topP": {
 		"requests": [
@@ -22443,7 +24585,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22470,7 +24614,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-haiku-4-5 temperature topK": {
 		"requests": [
@@ -22497,7 +24643,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22524,7 +24672,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-sonnet-4-20250514 temperature": {
 		"requests": [
@@ -22550,7 +24700,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22577,7 +24729,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-sonnet-4-6 temperature": {
 		"requests": [
@@ -22603,7 +24757,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22630,7 +24786,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-opus-4 temperature": {
 		"requests": [
@@ -22656,7 +24814,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22683,7 +24843,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-opus-4-20250514 temperature maxTokensToSample": {
 		"requests": [
@@ -22709,7 +24871,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22736,7 +24900,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-opus-4-5 temperature": {
 		"requests": [
@@ -22762,7 +24928,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22789,7 +24957,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-opus-4-6-20260101 temperature": {
 		"requests": [
@@ -22815,7 +24985,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22842,7 +25014,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-opus-4-7 temperature topK topP maxTokensToSample": {
 		"requests": [
@@ -22867,7 +25041,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22894,7 +25070,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-opus-4-10 temperature": {
 		"requests": [
@@ -22919,7 +25097,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22946,7 +25126,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-opus-5 temperature": {
 		"requests": [
@@ -22971,7 +25153,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -22998,7 +25182,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-sonnet-5 temperature": {
 		"requests": [
@@ -23023,7 +25209,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -23050,7 +25238,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-fable-5-2 topP": {
 		"requests": [
@@ -23075,7 +25265,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -23102,7 +25294,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-2.1 temperature": {
 		"requests": [
@@ -23128,7 +25322,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -23155,7 +25351,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling claude-instant-1 temperature": {
 		"requests": [
@@ -23181,7 +25379,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -23208,7 +25408,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling my-gateway-model temperature topK": {
 		"requests": [
@@ -23235,7 +25437,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -23262,7 +25466,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic system message that is not first": {
 		"requests": [],
@@ -23329,7 +25535,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23365,7 +25573,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -23392,7 +25602,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic status 400": {
 		"requests": [
@@ -23417,7 +25629,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23452,7 +25666,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23487,7 +25703,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23522,7 +25740,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23557,7 +25777,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23612,7 +25834,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -23639,7 +25864,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic status 500 seven times": {
 		"requests": [
@@ -23784,7 +26011,15 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23839,7 +26074,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -23866,7 +26104,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic network, then answer": {
 		"requests": [
@@ -23911,7 +26151,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -23938,7 +26181,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm anthropic sampling parameter refused": {
 		"requests": [
@@ -23964,7 +26209,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -23999,7 +26246,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24054,7 +26303,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -24093,7 +26345,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"agent anthropic": {
 		"requests": [
@@ -24120,7 +26375,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi there"
@@ -24147,7 +26404,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent anthropic, version 2.2, thinking only": {
 		"requests": [
@@ -24173,7 +26432,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "hm"
@@ -24200,7 +26461,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent anthropic, tool use, version 3.1": {
 		"requests": [
@@ -24247,7 +26510,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -24277,7 +26543,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent anthropic, tool use, version 2.2": {
 		"requests": [
@@ -24351,7 +26619,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -24381,7 +26652,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent anthropic, error output": {
 		"requests": [
@@ -24428,7 +26701,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -24469,7 +26745,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm gemini defaults": {
 		"requests": [
@@ -24498,7 +26777,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi there"
@@ -24525,7 +26806,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm gemini options and messages": {
 		"requests": [
@@ -24595,7 +26878,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -24622,7 +26907,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm gemini model without a prefix": {
 		"requests": [
@@ -24651,7 +26938,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": ""
@@ -24678,7 +26967,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm gemini system message that is not first": {
 		"requests": [],
@@ -24721,7 +27012,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24760,7 +27053,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24799,7 +27094,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24838,7 +27135,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24877,7 +27176,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24916,7 +27217,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24955,7 +27258,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -24994,7 +27299,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -25033,7 +27340,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -25096,7 +27405,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -25123,7 +27435,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm gemini network, then answer": {
 		"requests": [
@@ -25176,7 +27490,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -25203,7 +27520,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm gemini status 500 seven times": {
 		"requests": [
@@ -25376,7 +27695,15 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -25559,7 +27886,15 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -25622,7 +27957,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -25661,7 +27999,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"agent gemini": {
 		"requests": [
@@ -25698,7 +28039,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi there"
@@ -25725,7 +28068,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, one text part": {
 		"requests": [
@@ -25754,7 +28099,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi "
@@ -25781,7 +28128,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, one text part, version 3.1": {
 		"requests": [
@@ -25810,7 +28159,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi "
@@ -25837,7 +28188,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, thought and text": {
 		"requests": [
@@ -25866,7 +28219,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi"
@@ -25893,7 +28248,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, thought only": {
 		"requests": [
@@ -25922,7 +28279,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "thinking"
@@ -25949,7 +28308,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, no parts": {
 		"requests": [
@@ -25978,7 +28339,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -26005,7 +28368,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, function call, version 3.1": {
 		"requests": [
@@ -26058,7 +28423,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -26088,7 +28456,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, function call, version 2.2": {
 		"requests": [
@@ -26167,7 +28537,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -26197,7 +28570,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent gemini, error output": {
 		"requests": [
@@ -26250,7 +28625,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -26291,7 +28669,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent 3, tool call, then answer": {
 		"requests": [
@@ -26334,7 +28715,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -26364,7 +28748,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 3, tool calls up to the limit": {
 		"requests": [
@@ -26426,7 +28812,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -26485,7 +28875,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -26515,7 +28908,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 3.1, tool calls up to the limit": {
 		"requests": [
@@ -26577,7 +28972,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -26788,7 +29187,18 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null, null, null, null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -26872,7 +29282,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -26902,7 +29315,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 3.1, two items, the first calls a tool": {
 		"requests": [
@@ -26983,7 +29398,12 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "c"
@@ -27028,7 +29448,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent 3.1, tool calls up to the limit, continue": {
 		"requests": [
@@ -27109,7 +29532,12 @@
 				}
 			}
 		],
-		"accepts": [null, null, null, null],
+		"accepts": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Max iterations (2) reached. The agent could not complete the task within the allowed number of iterations."
@@ -27154,7 +29582,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent 2, tool call, then answer": {
 		"requests": [
@@ -27216,7 +29647,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -27246,7 +29680,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 2, tool calls up to the limit": {
 		"requests": [
@@ -27365,7 +29801,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Agent stopped due to max iterations."
@@ -27398,7 +29838,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 2.1, tool call, then answer": {
 		"requests": [
@@ -27460,7 +29902,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -27490,7 +29935,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 2.1, tool calls up to the limit": {
 		"requests": [
@@ -27609,7 +30056,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Agent stopped due to max iterations."
@@ -27642,7 +30093,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 2.2, tool call, then answer": {
 		"requests": [
@@ -27704,7 +30157,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "after"
@@ -27734,7 +30190,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 2.2, tool calls up to the limit": {
 		"requests": [
@@ -27853,7 +30311,11 @@
 				}
 			}
 		],
-		"accepts": [null, null, null],
+		"accepts": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Agent stopped due to max iterations."
@@ -27886,7 +30348,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"openAi text.message network ECONNREFUSED, continue": {
 		"requests": [
@@ -27927,7 +30391,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -27953,7 +30420,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm network ECONNREFUSED, continue": {
 		"requests": [
@@ -27996,7 +30466,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Connection error."
@@ -28035,7 +30508,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"openAi text.message network ENOTFOUND, continue": {
 		"requests": [
@@ -28076,7 +30552,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -28102,7 +30581,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm network ENOTFOUND, continue": {
 		"requests": [
@@ -28145,7 +30627,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Connection error."
@@ -28184,7 +30669,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"openAi text.message network ETIMEDOUT, continue": {
 		"requests": [
@@ -28225,7 +30713,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -28251,7 +30742,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm network ETIMEDOUT, continue": {
 		"requests": [
@@ -28294,7 +30788,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Request timed out."
@@ -28333,7 +30830,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"openAi text.message network ECONNRESET, continue": {
 		"requests": [
@@ -28374,7 +30874,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -28400,7 +30903,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm network ECONNRESET, continue": {
 		"requests": [
@@ -28443,7 +30949,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Connection error."
@@ -28482,7 +30991,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"openAi text.message network EAI_AGAIN, continue": {
 		"requests": [
@@ -28523,7 +31035,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -28549,7 +31064,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm network EAI_AGAIN, continue": {
 		"requests": [
@@ -28592,7 +31110,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Connection error."
@@ -28631,7 +31152,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"openAi text.message network EHOSTUNREACH, continue": {
 		"requests": [
@@ -28672,7 +31196,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -28698,7 +31225,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm network EHOSTUNREACH, continue": {
 		"requests": [
@@ -28741,7 +31271,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Connection error."
@@ -28780,7 +31313,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"openAi text.message network, stop": {
 		"requests": [
@@ -28803,7 +31339,9 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json"],
+		"accepts": [
+			"application/json"
+		],
 		"outputs": [],
 		"paired": [],
 		"error": "The service refused the connection - perhaps it is offline"
@@ -28847,7 +31385,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -28878,7 +31419,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"openAi text.response network, continue": {
 		"requests": [
@@ -28935,7 +31479,10 @@
 				"qsFormat": "brackets"
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -28970,7 +31517,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"anthropic text.message network, continue": {
 		"requests": [
@@ -29054,7 +31604,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"googleGemini text.message network, error output": {
 		"requests": [
@@ -29107,7 +31660,10 @@
 				}
 			}
 		],
-		"accepts": ["application/json", "application/json"],
+		"accepts": [
+			"application/json",
+			"application/json"
+		],
 		"outputs": [
 			[
 				{
@@ -29143,7 +31699,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm network, then answer": {
 		"requests": [
@@ -29186,7 +31745,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -29213,7 +31775,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm network twice, stop": {
 		"requests": [
@@ -29256,7 +31820,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -29309,7 +31876,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -29350,7 +31920,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"chainLlm openRouter options": {
 		"requests": [
@@ -29394,7 +31967,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -29421,7 +31996,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openRouter defaults": {
 		"requests": [
@@ -29444,7 +32021,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -29471,7 +32050,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openRouter reasoning model with a vendor prefix": {
 		"requests": [
@@ -29511,7 +32092,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -29538,7 +32121,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openRouter reasoning model without a prefix": {
 		"requests": [
@@ -29578,7 +32163,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -29605,7 +32192,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openRouter model that prefers responses": {
 		"requests": [
@@ -29651,7 +32240,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "Hi"
@@ -29678,7 +32269,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openRouter another url": {
 		"requests": [
@@ -29701,7 +32294,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"text": "x"
@@ -29728,7 +32323,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openRouter error in the body": {
 		"requests": [
@@ -29751,7 +32348,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -29784,7 +32383,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -29817,7 +32418,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -29850,7 +32453,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -29883,7 +32488,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -29934,7 +32541,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"text": "late"
@@ -29961,7 +32571,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm openRouter continue": {
 		"requests": [
@@ -30002,7 +32614,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -30041,7 +32656,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"agent openRouter": {
 		"requests": [
@@ -30068,7 +32686,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": " Hi "
@@ -30095,7 +32715,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent openRouter, version 2.2, error output": {
 		"requests": [
@@ -30136,7 +32758,10 @@
 				}
 			}
 		],
-		"accepts": [null, null],
+		"accepts": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -30177,7 +32802,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"googleSheets sheet.clear rows and keep the first row": {
 		"requests": [
@@ -30218,7 +32846,9 @@
 				"userAgent": "n8n"
 			}
 		],
-		"output": [{}]
+		"output": [
+			{}
+		]
 	},
 	"googleSheets sheet.clear with a failed request": {
 		"requests": [
@@ -30307,7 +32937,9 @@
 				}
 			}
 		],
-		"accepts": [null],
+		"accepts": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi",
@@ -30336,7 +32968,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm openAi responses effort": {
 		"requests": [
@@ -30388,6 +33022,8 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	}
 }

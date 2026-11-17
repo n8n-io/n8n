@@ -26,8 +26,11 @@
  * API), `lmChatOpenRouter`, `lmChatAnthropic` (versions 1 to 1.5, without thinking
  * options) and `lmChatGoogleGemini` (versions 1 and 1.1), with the options that map to
  * fields of the request body.
- * Not supported (the converter keeps these in the fallback host): an output
- * parser, a fallback model, image messages, the JSON response format, the reasoning
+ * The chain also takes the Structured Output Parser of versions 1.2 and 1.3 without
+ * auto-fixing (`outputParser`): the converter gives the format instructions that v1 adds to
+ * the prompt, and the shape that zod checks the answer with.
+ * Not supported (the converter keeps these in the fallback host): other output
+ * parsers, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
  */
 import { defineNode, type Item } from '@n8n/workflow-lang';
@@ -58,6 +61,24 @@ interface AiModel {
 	safetySettings?: unknown[];
 }
 
+/** What zod checks for one value (`OutputShape` of `src/convert/ai-output-schema.ts`). */
+interface OutputShape {
+	kind: string;
+	values?: string[];
+	items?: OutputShape;
+	keys?: string[];
+	shapes?: OutputShape[];
+	required?: boolean[];
+	extra?: string;
+}
+
+/** The Structured Output Parser sub-node, as the converter writes it. */
+interface OutputParser {
+	instructions?: string;
+	shape?: OutputShape;
+	outputRequired?: boolean;
+}
+
 /** The parameters of the root for one input item. */
 interface ItemParameters {
 	text?: unknown;
@@ -86,6 +107,8 @@ interface ChainParameters {
 	continueOnFail?: boolean;
 	/** The chat model sub-node. v1 reads its parameters for the first input item only. */
 	aiModel?: AiModel;
+	/** The chain: the Structured Output Parser sub-node. */
+	outputParser?: OutputParser;
 	batch?: ItemParameters[];
 }
 
@@ -93,6 +116,8 @@ interface ChainParameters {
 interface Outcome {
 	item?: Item;
 	error?: string;
+	/** The description of `error`, when v1 gives one. */
+	description?: string;
 	/** The agent of version 3: the answer calls a tool, so the engine runs the node again. */
 	again?: boolean;
 }
@@ -154,7 +179,12 @@ const ROLES: Record<string, string> = {
  * The messages of the v1 prompt template. The chain: the message list, then the prompt as a
  * user message. The agent: the system message when the option has a value, then the prompt.
  */
-function chatMessages(parameters: ItemParameters, model: string, agent: boolean): ChatMessage[] {
+function chatMessages(
+	parameters: ItemParameters,
+	model: string,
+	agent: boolean,
+	instructions?: string,
+): ChatMessage[] {
 	const reasoning = isReasoningModel(model);
 	const out: ChatMessage[] = [];
 	if (agent) {
@@ -176,8 +206,156 @@ function chatMessages(parameters: ItemParameters, model: string, agent: boolean)
 			content: value.message ?? '',
 		});
 	}
-	out.push({ role: 'user', content: promptText(parameters.text) });
+	// With an output parser, the format instructions follow the prompt on a new line.
+	const query = promptText(parameters.text);
+	out.push({
+		role: 'user',
+		content: instructions === undefined ? query : `${query}\n${instructions}`,
+	});
 	return out;
+}
+
+const PARSER_EMPTY = 'The AI model returned an empty response to the Structured Output Parser';
+const PARSER_EMPTY_DESCRIPTION =
+	"This usually happens when the model runs out of tokens before it can generate the structured output. Try reducing the prompt length, increasing the model's max output tokens, or simplifying the output schema. To continue the execution when this happens, change the 'On Error' parameter in the root node's settings.";
+const PARSER_FAILED = "Model output doesn't fit required format";
+const PARSER_FAILED_DESCRIPTION =
+	"To continue the execution when this happens, change the 'On Error' parameter in the root node's settings";
+
+/** The first issue that zod finds: `empty` is a missing object, the test of v1 for an empty answer. */
+interface Issues {
+	first: string;
+}
+
+interface Checked {
+	ok: boolean;
+	value: unknown;
+}
+
+function refuse(issues: Issues, kind: string): Checked {
+	if (issues.first === '') issues.first = kind;
+	return { ok: false, value: undefined };
+}
+
+/**
+ * The value as zod gives it for the shape. zod reads the keys of an object in the order of
+ * the schema, then the other keys, so the result has that order. Only the first issue counts
+ * for the error of v1, so the check stops there.
+ */
+function checkShape(shape: OutputShape, value: unknown, present: boolean, issues: Issues): Checked {
+	const kind = shape.kind;
+	if (kind === 'any') return { ok: true, value };
+	if (!present) return refuse(issues, kind === 'object' || kind === 'record' ? 'empty' : 'other');
+	if (kind === 'string' || kind === 'number' || kind === 'boolean') {
+		return typeof value === kind ? { ok: true, value } : refuse(issues, 'other');
+	}
+	if (kind === 'integer') {
+		return typeof value === 'number' && Number.isInteger(value)
+			? { ok: true, value }
+			: refuse(issues, 'other');
+	}
+	if (kind === 'null') return value === null ? { ok: true, value } : refuse(issues, 'other');
+	if (kind === 'enum') {
+		return typeof value === 'string' && (shape.values ?? []).includes(value)
+			? { ok: true, value }
+			: refuse(issues, 'other');
+	}
+	if (kind === 'array') {
+		if (!Array.isArray(value)) return refuse(issues, 'other');
+		const items = shape.items ?? { kind: 'any' };
+		const list: unknown[] = [];
+		for (const element of value) {
+			const checked = checkShape(items, element, true, issues);
+			if (!checked.ok) return checked;
+			list.push(checked.value);
+		}
+		return { ok: true, value: list };
+	}
+	if (!isObject(value)) return refuse(issues, 'other');
+	if (kind === 'record') return { ok: true, value };
+	const keys = shape.keys ?? [];
+	const shapes = shape.shapes ?? [];
+	const required = shape.required ?? [];
+	const out: Record<string, unknown> = {};
+	for (let k = 0; k < keys.length; k++) {
+		const key = keys[k];
+		const child = value[key];
+		const has = child !== undefined;
+		if (!has && !required[k]) continue;
+		const checked = checkShape(shapes[k], child, has, issues);
+		if (!checked.ok) return checked;
+		if (has) out[key] = checked.value;
+	}
+	if (shape.extra !== 'strip') {
+		for (const key of Object.keys(value)) {
+			if (keys.includes(key)) continue;
+			if (shape.extra === 'strict') return refuse(issues, 'other');
+			out[key] = value[key];
+		}
+	}
+	return { ok: true, value: out };
+}
+
+/** The text between the first code fence of the answer and its end, or the text. */
+function fencedJson(text: string): string {
+	const lines = text.split('\n');
+	let start = -1;
+	let end = -1;
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i].trim();
+		if (start === -1 && (line === '```' || line === '```json')) {
+			start = i;
+		} else if (start !== -1 && line === '```') {
+			end = i;
+			break;
+		}
+	}
+	return start !== -1 && end !== -1 ? lines.slice(start + 1, end).join('\n') : text;
+}
+
+/**
+ * `parse` of the Structured Output Parser of v1 (N8nStructuredOutputParser): the JSON of the
+ * answer, the check of zod, and the two errors. The result is `{ output }`; an output that
+ * is `{ output }` again loses one level.
+ */
+export function parseStructured(
+	text: string,
+	parser: OutputParser,
+): { value?: Item; error?: string; description?: string } {
+	const issues: Issues = { first: '' };
+	let result: Item | undefined;
+	let json: unknown;
+	let valid = true;
+	try {
+		json = JSON.parse(fencedJson(text.trim()).trim());
+	} catch {
+		valid = false;
+	}
+	if (valid) {
+		if (!isObject(json)) {
+			issues.first = 'other';
+		} else {
+			const output = json.output;
+			const has = output !== undefined;
+			if (!has && parser.outputRequired !== true) {
+				result = {};
+			} else {
+				const checked = checkShape(parser.shape ?? { kind: 'any' }, output, has, issues);
+				if (checked.ok) result = has ? { output: checked.value } : {};
+			}
+		}
+	}
+	if (result === undefined) {
+		const trimmed = text.trim();
+		return trimmed === '' || trimmed === '{}' || issues.first === 'empty'
+			? { error: PARSER_EMPTY, description: PARSER_EMPTY_DESCRIPTION }
+			: { error: PARSER_FAILED, description: PARSER_FAILED_DESCRIPTION };
+	}
+	const inner = result.output;
+	if (isObject(inner) && Object.keys(inner).length === 1 && inner.output !== undefined) {
+		return { value: inner };
+	}
+	return { value: result };
 }
 
 const STATUS_MESSAGES: Record<string, string> = {
@@ -502,10 +680,15 @@ function anthropicSamples(model: string): boolean {
 }
 
 /** The request of the Anthropic chat model (`lmChatAnthropic`, ChatAnthropic of LangChain). */
-function anthropicRequest(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
+function anthropicRequest(
+	item: ItemParameters,
+	ai: AiModel,
+	agent: boolean,
+	instructions?: string,
+): ModelRequest {
 	const options = ai.options ?? {};
 	const model = ai.model ?? '';
-	const messages = chatMessages(item, '', agent);
+	const messages = chatMessages(item, '', agent, instructions);
 	const request: ModelRequest = { responses: false, anthropic: true, body: {} };
 	let maxTokens = options.maxTokens;
 	if (maxTokens === undefined) {
@@ -554,9 +737,14 @@ function geminiModel(model: string): string {
 }
 
 /** The request of the Gemini chat model (`lmChatGoogleGemini`, ChatGoogleGenerativeAI of LangChain). */
-function geminiRequest(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
+function geminiRequest(
+	item: ItemParameters,
+	ai: AiModel,
+	agent: boolean,
+	instructions?: string,
+): ModelRequest {
 	const options = ai.options ?? {};
-	const messages = chatMessages(item, '', agent);
+	const messages = chatMessages(item, '', agent, instructions);
 	const request: ModelRequest = { responses: false, gemini: true, body: {} };
 	const body: Record<string, unknown> = {
 		generationConfig: {
@@ -643,13 +831,18 @@ function refusesSampling(message: string): boolean {
 }
 
 /** The request body of the item, and true when it goes to the Responses API. */
-function requestOf(item: ItemParameters, ai: AiModel, agent: boolean): ModelRequest {
-	if (ai.provider === 'anthropic') return anthropicRequest(item, ai, agent);
-	if (ai.provider === 'gemini') return geminiRequest(item, ai, agent);
+function requestOf(
+	item: ItemParameters,
+	ai: AiModel,
+	agent: boolean,
+	instructions?: string,
+): ModelRequest {
+	if (ai.provider === 'anthropic') return anthropicRequest(item, ai, agent, instructions);
+	if (ai.provider === 'gemini') return geminiRequest(item, ai, agent, instructions);
 	const options = ai.options ?? {};
 	const maxTokens = options.maxTokens === -1 ? undefined : options.maxTokens;
 	const model = ai.model ?? '';
-	const messages = chatMessages(item, model, agent);
+	const messages = chatMessages(item, model, agent, instructions);
 	if (ai.responses === true || prefersResponses(model)) {
 		return {
 			responses: true,
@@ -692,6 +885,7 @@ export default defineNode<ChainParameters>({
 				'delayBetweenBatches',
 				'continueOnFail',
 				'aiModel',
+				'outputParser',
 				'batch',
 			],
 		},
@@ -700,6 +894,9 @@ export default defineNode<ChainParameters>({
 		const batch = parameters.batch ?? [];
 		const ai = parameters.aiModel ?? {};
 		const runs: Array<{ error: string | null }> = [];
+		// The runs of the output parser sub-node: one for each answer that it parses.
+		const parserRuns: Array<{ error: string | null }> = [];
+		const parser = parameters.kind === 'agent' ? undefined : parameters.outputParser;
 		// The OpenRouter model is the same LangChain client with another credential type, which
 		// injects the key only, and without the header of the OpenAI nodes.
 		const openAi = ai.provider === 'openAi';
@@ -880,7 +1077,7 @@ export default defineNode<ChainParameters>({
 			}
 			// An expression that finds no value gives undefined, as in v1.
 			if (item.text === undefined) return { error: 'No prompt specified' };
-			const request = requestOf(item, ai, agent);
+			const request = requestOf(item, ai, agent, parser?.instructions);
 			for (let turn = 1; ; turn++) {
 				const answer = await send(request);
 				if (answer.error !== undefined) return { error: answer.error };
@@ -920,6 +1117,19 @@ export default defineNode<ChainParameters>({
 					if (parameters.returnIntermediateSteps === true) output.intermediateSteps = [];
 					return { item: output };
 				}
+				if (parser !== undefined) {
+					// The parser reads the text of the answer: the text parts, joined.
+					let answerText = '';
+					for (const part of parts) {
+						if (part.type === 'text' && typeof part.text === 'string') answerText += part.text;
+					}
+					const parserRun: { error: string | null } = { error: null };
+					parserRuns.push(parserRun);
+					const parsed = parseStructured(answerText, parser);
+					if (parsed.value !== undefined) return { item: parsed.value };
+					parserRun.error = parsed.error ?? null;
+					return { error: parsed.error, description: parsed.description };
+				}
 				// The string output parser of the chain works after the run of the model.
 				try {
 					let text = '';
@@ -948,14 +1158,22 @@ export default defineNode<ChainParameters>({
 					} else if (parameters.continueOnFail === true) {
 						items.push({ error: outcome.error });
 					} else {
-						return [{ items: [], runs, error: outcome.error }];
+						return [
+							{
+								items: [],
+								runs,
+								parserRuns,
+								error: outcome.error,
+								errorDescription: outcome.description ?? '',
+							},
+						];
 					}
 				}
 				if (batched && start + step < batch.length && delay > 0) {
 					await ctx.wait({ duration: delay });
 				}
 			}
-			if (!again) return [{ items, runs }];
+			if (!again) return [{ items, runs, parserRuns }];
 		}
 	},
 });
