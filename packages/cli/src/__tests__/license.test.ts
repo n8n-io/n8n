@@ -631,7 +631,7 @@ describe('License', () => {
 		it('should fall back to derivedInstanceId and warn once when the license fingerprint is too short', async () => {
 			const derivedInstanceId = 'b'.repeat(64);
 			const instanceSettings = mock<InstanceSettings>({
-				instanceId: 'short-id',
+				instanceId: 'c'.repeat(64),
 				licenseFingerprint: 'short-id',
 				derivedInstanceId,
 				instanceType: 'main',

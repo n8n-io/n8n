@@ -438,6 +438,27 @@ describe('InstanceSettings', () => {
 				expect(seededFingerprint()).toBeUndefined();
 			});
 
+			it('should use the winner row when a concurrent fingerprint insert is ignored', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) => {
+					if (type !== 'license.fingerprint') return null;
+					const seeded = mockRepo.seedActiveIdentifier.mock.calls.some(([t]) => t === type);
+					return seeded ? { value: 'winner-fingerprint' } : null;
+				});
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.licenseFingerprint).toEqual('winner-fingerprint');
+			});
+
+			it('should seed the derived ID as the fingerprint for a licensed install with no stored ID', async () => {
+				const derivedId = settings.derivedInstanceId;
+
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: true });
+
+				expect(seededFingerprint()).toEqual(derivedId);
+				expect(settings.licenseFingerprint).toEqual(derivedId);
+			});
+
 			it('should not seed the license fingerprint when canSeed is false', async () => {
 				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
 					type === 'instance.id' ? { value: 'db-stored-id' } : null,
