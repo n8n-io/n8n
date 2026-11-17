@@ -21,6 +21,13 @@ interface Out {
 	kind: Kind;
 }
 
+/**
+ * What an expression whose value is a DateTime gives: nothing (`reject`: the expression has
+ * no native form), the DateTime (`object`, for a caller that reads it), or its ISO text
+ * (`text`, as \`toString\` gives it).
+ */
+export type LuxonValue = 'reject' | 'object' | 'text';
+
 export type LuxonRewrite =
 	| { ok: true; code: string; zones: string[] }
 	| { ok: false; feature: string; message: string };
@@ -161,7 +168,11 @@ class Stop extends Error {
  * Rewrites the Luxon forms of one translated expression body. `timezone` is
  * the workflow time zone. The code must parse as one expression.
  */
-export function rewriteLuxon(code: string, timezone: string): LuxonRewrite {
+export function rewriteLuxon(
+	code: string,
+	timezone: string,
+	value: LuxonValue = 'reject',
+): LuxonRewrite {
 	if (!USES_LUXON.test(code)) return { ok: true, code, zones: [] };
 	const text = `(${code})`;
 	const sf = ts.createSourceFile('e.ts', text, ts.ScriptTarget.ES2022, true);
@@ -376,15 +387,42 @@ export function rewriteLuxon(code: string, timezone: string): LuxonRewrite {
 		if (!root || !ts.isExpressionStatement(root)) {
 			return { ok: false, feature: 'syntax', message: 'The body is not one expression.' };
 		}
-		const out = emit(root.expression);
-		if (out.kind !== null) {
-			return {
-				ok: false,
-				feature: 'Luxon value',
-				message: 'An expression that gives a DateTime or a Duration has no native form.',
-			};
-		}
-		return { ok: true, code: out.code.slice(1, -1), zones: [...zones] };
+		/**
+		 * The value of the whole expression: a DateTime there is what \`value\` says. The
+		 * branches of a condition and the sides of \`||\`, \`&&\` and \`??\` are values too.
+		 */
+		const whole = (e: ts.Expression): string => {
+			if (value !== 'reject') {
+				if (ts.isParenthesizedExpression(e)) return `(${whole(e.expression)})`;
+				if (ts.isConditionalExpression(e)) {
+					const test = emit(e.condition);
+					if (test.kind !== null) stop('Luxon value', 'A DateTime as a condition.');
+					return `${test.code} ? ${whole(e.whenTrue)} : ${whole(e.whenFalse)}`;
+				}
+				if (
+					ts.isBinaryExpression(e) &&
+					[
+						ts.SyntaxKind.BarBarToken,
+						ts.SyntaxKind.AmpersandAmpersandToken,
+						ts.SyntaxKind.QuestionQuestionToken,
+					].includes(e.operatorToken.kind)
+				) {
+					const op = text.slice(e.left.getEnd(), e.right.getStart(sf));
+					return `${whole(e.left)}${op}${whole(e.right)}`;
+				}
+			}
+			const out = emit(e);
+			if (out.kind === 'dt' && value === 'object') return out.code;
+			if (out.kind === 'dt' && value === 'text') return `luxText(${out.code})`;
+			if (out.kind !== null) {
+				stop(
+					'Luxon value',
+					'An expression that gives a DateTime or a Duration has no native form.',
+				);
+			}
+			return out.code;
+		};
+		return { ok: true, code: whole(root.expression).slice(1, -1), zones: [...zones] };
 	} catch (e) {
 		if (e instanceof Stop) return { ok: false, feature: e.feature, message: e.message };
 		throw e;

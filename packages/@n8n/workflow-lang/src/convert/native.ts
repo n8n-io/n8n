@@ -34,9 +34,17 @@ function flat(code: Code): string {
 
 /** Operand translation for conditions: literal values stay values. */
 function operand(c: NodeContext, usage: { item: boolean; index: boolean }): Operand {
-	return (value, path) => {
+	return (value, path, kind) => {
 		if (!isExpression(value)) return { code: flat(literal(value)), literal: true, value };
-		const t = c.compiled(value, path);
+		const t = c.compiled(
+			value,
+			path,
+			kind === 'date'
+				? { luxonValue: 'object' }
+				: kind === 'object'
+					? { binaryValue: true }
+					: undefined,
+		);
 		usage.item ||= t.usage.item;
 		usage.index ||= t.usage.index;
 		return { code: flat(t.code), literal: false, value };
@@ -197,7 +205,12 @@ export function lowerSwitch(c: NodeContext): void {
 			const o = filterOptions(r.conditions, opts, undefined);
 			return filterCode(
 				r.conditions,
-				{ caseSensitive: o.caseSensitive && loose.caseSensitive, loose: o.loose || loose.loose },
+				{
+					caseSensitive: o.caseSensitive && loose.caseSensitive,
+					loose: o.loose || loose.loose,
+					version: o.version,
+					zone: c.scope.timezone,
+				},
 				operand(c, usage),
 				`rules.values[${k}].conditions`,
 			);
@@ -205,6 +218,7 @@ export function lowerSwitch(c: NodeContext): void {
 	);
 	if (conds.some((x) => x.includes('asBoolean('))) c.helper('asBoolean');
 	if (conds.some((x) => x.includes('looseBoolean('))) c.helper('looseBoolean');
+	for (const cond of conds) dateHelpers(c, cond);
 	const fallbackTarget = extra ?? (typeof fallback === 'number' ? outs[fallback] : null);
 	openLoop(c, c.input, usage.index);
 	if (opts.allMatchingOutputs === true) {
@@ -335,7 +349,8 @@ function fieldValue(
 				);
 		}
 	}
-	const t: TranslatedValue = c.compiled(f.value, f.path);
+	// The value is inside a collection parameter: v1 gives the text of a DateTime there.
+	const t: TranslatedValue = c.compiled(f.value, f.path, { luxonValue: 'text' });
 	usage.item ||= t.usage.item;
 	usage.index ||= t.usage.index;
 	const code = flat(t.code);
@@ -496,7 +511,14 @@ export function lowerSet(c: NodeContext): void {
 				c.helper('orUndefined');
 				c.helper('parseRawJson');
 				const t = c.compiled(rawJson.replace(/^=+/, '='), 'jsonOutput', {
-					templatePart: (code) => `toText(${code.replace(/^orNull\(/, 'orUndefined(')})`,
+					templatePart: (code) => {
+						// A part in its native form has the guard for every error (`orNullAll`).
+						if (code.startsWith('orNullAll(')) c.helper('orUndefinedAll');
+						const guarded = code
+							.replace(/^orNull\(/, 'orUndefined(')
+							.replace(/^orNullAll\(/, 'orUndefinedAll(');
+						return `toText(${guarded})`;
+					},
 				});
 				usage.item ||= t.usage.item;
 				usage.index ||= t.usage.index;
@@ -789,12 +811,28 @@ export function lowerSplitOut(c: NodeContext): void {
 		);
 	}
 	const fields = splitList(p.fieldToSplitOut).map((f) => f.replace(/^\$json\./, ''));
-	if (fields.includes('$binary'))
-		throw new NodeFailure('binary', 'Binary data is not supported.', 'fieldToSplitOut');
 	const destinations = splitList(opts.destinationFieldName);
-	c.helper('splitOut');
+	// The name of a row field for binary data, and "Include Binary" as an expression, have
+	// no place in the helper.
+	if (fields.includes('$binary') && destinations.length > 0) {
+		throw new NodeFailure(
+			'binary',
+			'Binary data with a destination field is not supported.',
+			'options.destinationFieldName',
+		);
+	}
+	if (opts.includeBinary !== undefined && typeof opts.includeBinary !== 'boolean') {
+		throw new NodeFailure(
+			'binary',
+			'The option "Include Binary" is not a fixed value.',
+			'options.includeBinary',
+		);
+	}
+	// The helper with binary data is for the field `$binary` and for "Include Binary" only.
+	const files = fields.includes('$binary') || opts.includeBinary === true;
+	c.helper(files ? 'splitOutFiles' : 'splitOut');
 	c.w.line(
-		`const ${c.output(0)}: Json[] = splitOut(${c.input}, ${flat(literal(fields))}, ${flat(literal(destinations))}, ${str(text(p.include, 'noOtherFields'))}, ${flat(literal(splitList(p.fieldsToInclude)))}, ${String(opts.disableDotNotation !== true)});`,
+		`const ${c.output(0)}: Json[] = ${files ? 'splitOutFiles' : 'splitOut'}(${c.input}, ${flat(literal(fields))}, ${flat(literal(destinations))}, ${str(text(p.include, 'noOtherFields'))}, ${flat(literal(splitList(p.fieldsToInclude)))}, ${String(opts.disableDotNotation !== true)}${files ? `, ${String(opts.includeBinary === true)}` : ''});`,
 	);
 }
 

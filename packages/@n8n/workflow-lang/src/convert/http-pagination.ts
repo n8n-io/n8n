@@ -68,7 +68,12 @@ export function readPaging(c: NodeContext, options: Record<string, unknown>): Pa
 		usesIndex ||= t.usage.index;
 		// n8n-core resolves a pagination value that throws a TypeError to no value, so
 		// lodash merge keeps the request part (the URL of the first page, for example).
-		const code = c.print(t.code);
+		let code = c.print(t.code);
+		// A value in its native form has the guard for every error (`orNullAll`).
+		if (code.includes('orNullAll(')) {
+			c.helper('orUndefinedAll');
+			code = code.replaceAll('orNullAll(', 'orUndefinedAll(');
+		}
 		if (!code.includes('orNull(')) return code;
 		c.helper('orUndefined');
 		return code.replaceAll('orNull(', 'orUndefined(');

@@ -397,6 +397,12 @@ export class ModuleGenerator {
 
 	private readonly helpers = new Set<string>();
 
+	/**
+	 * Helpers that translated expressions call. The source has a helper of this set only when
+	 * the final code calls it: a node that runs in the host after all leaves no helper behind.
+	 */
+	private readonly expressionHelpers = new Set<string>();
+
 	/** IANA time zones that native Code nodes format dates in (META \`zones\`). */
 	private readonly zones = new Set<string>();
 
@@ -666,6 +672,9 @@ export class ModuleGenerator {
 			},
 			binaryMode:
 				typeof b.wf.settings?.binaryMode === 'string' ? b.wf.settings.binaryMode : undefined,
+			useHelper: (name) => {
+				this.expressionHelpers.add(name);
+			},
 		};
 	}
 
@@ -2014,6 +2023,7 @@ export class ModuleGenerator {
 		const body = w.toString();
 		if (body.includes('orNull(')) this.helpers.add('orNull');
 		for (const h of LUXON_ENTRY_HELPERS) if (body.includes(`${h}(`)) this.helpers.add(h);
+		for (const h of this.expressionHelpers) if (body.includes(`${h}(`)) this.helpers.add(h);
 		const helpers = helperSources(this.helpers);
 		if (helpers.length > 0) footer.push(helpers.join('\n\n'), '');
 		const marked = `${header.join('\n')}\n${w.toString()}\n${footer.join('\n')}`;

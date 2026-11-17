@@ -62,6 +62,12 @@ export interface CodeNativeInput {
 	 * names that the module defines; a catch block can read the error.
 	 */
 	nodeCode?: { globals: Set<string> };
+	/**
+	 * The code is one parameter expression that the converter translated already
+	 * (`../native-expression.ts`): `globals` are the variables of the generated source that it
+	 * reads. They stay as they are.
+	 */
+	expression?: { globals: Set<string> };
 	/** The name of the node, for static data of type `node`. */
 	nodeName?: string;
 	/**
@@ -2727,6 +2733,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	const visitGlobal = (n: ts.Identifier): boolean => {
 		const name = n.text;
 		const parent = n.parent;
+		if (input.expression?.globals.has(name)) return true;
 		switch (name) {
 			case '$input':
 				itemChain(n, ITEMS, true);
