@@ -20,6 +20,13 @@
  * alone. A connection that closes without `worker_lost` (the whole host or
  * its server process stopped) blames no step: a step alone on it fails as
  * retryable.
+ *
+ * `{"worker_lost":{"reason":"...","again":true}}`: the host stopped the worker
+ * because a step blocked it (`docs/isolation.md`). The host runs such a step
+ * in its slow lane the next time, so the runtime blames no step that ran
+ * there for the first time: it sends each step again once as a new step, on
+ * any connection, also a step that was alone. A step that is lost a second
+ * time follows the rule above.
  */
 import { isJsonObject } from './protocol';
 
@@ -53,6 +60,6 @@ export const GOAWAY = { goaway: {} };
  * process writes it, then closes the connection. The runtime puts `reason`
  * in the error of a step that was alone on the connection.
  */
-export function workerLost(reason: string) {
-	return { worker_lost: { reason } };
+export function workerLost(reason: string, again = false) {
+	return { worker_lost: again ? { reason, again } : { reason } };
 }

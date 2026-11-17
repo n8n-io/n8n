@@ -208,6 +208,14 @@ const FbEntry = struct {
     calls: u32 = 0,
     /// A frame that waits for a host connection: when its wait ends.
     wait_till: i64 = 0,
+    /// The frame went again as a new step after `worker_lost` with `again`.
+    again: bool = false,
+
+    /// True when the frame can go again as a new step after `worker_lost`
+    /// with `again`: it has a copy, and it was not sent again before.
+    fn canGoAgain(e: *const FbEntry) bool {
+        return e.jlen > 0 and !e.again and !e.alone;
+    }
 };
 /// `FbEntry.conn` of a frame that waits to be sent again alone.
 const fb_queued: u8 = 0xFF;
@@ -249,6 +257,9 @@ const FbConn = struct {
     /// The host sent `worker_lost`: the worker of this connection stopped.
     /// Only then is a step alone on it to blame.
     lost_seen: bool = false,
+    /// The `worker_lost` frame said `again`: the host runs the cause in its
+    /// slow lane the next time, so each step goes again once as a new step.
+    lost_again: bool = false,
     /// The error for a step alone on this connection when its worker
     /// stopped, with the reason of `worker_lost` (`lost_ready`). It stays
     /// until each failure that refers to it (`lost_refs`) is in the event
@@ -2814,6 +2825,12 @@ pub const Runner = struct {
         var b = ar.builder();
         core_lib.json.writeString(&b, m.str(m.steps[a.step].name)) catch return error.NameTooLong;
         try w.appendSliceBounded(b.bytes());
+        // The host keeps the steps of a workflow that block it apart, by workflow and step name.
+        const lm = &r.sh.st.modules[a.module];
+        if (lm.wf_id_len > 0) {
+            try w.appendSliceBounded(",\"workflowId\":");
+            try appendJsonStringBounded(w, lm.workflowId());
+        }
         try w.printBounded(",\"key\":\"{s}\",\"args\":", .{&a.key});
         try w.appendSliceBounded(args);
         try r.appendFrameCredential(w, a.module, args);
@@ -2993,12 +3010,17 @@ pub const Runner = struct {
     /// retryable. A step alone on a connection that closed without it (the
     /// host or its server process stopped) fails as retryable. Several steps
     /// each go again, alone on an idle connection, so the one that stops its
-    /// worker again is found and the others get their real result.
+    /// worker again is found and the others get their real result. After
+    /// `worker_lost` with `again` (the host stopped a worker that a step
+    /// blocked, and runs that step in its slow lane the next time), each step
+    /// goes again once as a new step on any connection (`fb_waitq`); a step
+    /// that was lost before follows the rules above.
     fn lostFallback(r: *Runner, ci: u8) void {
         const v2 = r.fb_version == 2;
         const c = &r.fb_conns[ci];
         r.closeFbConn(ci, if (v2) 0 else fb_reconnect_ms);
         r.dropHostServiceCalls(ci);
+        if (v2 and c.lost_seen and c.lost_again) r.sendAgain(ci);
         var on_conn: u32 = 0;
         var alone_before = false;
         var it0 = r.fb_inflight.valueIterator();
@@ -3030,10 +3052,40 @@ pub const Runner = struct {
         }
         c.lost_ready = false;
         c.lost_seen = false;
+        c.lost_again = false;
         for (r.fb_scratch.items) |k| _ = r.fb_inflight.remove(k);
         r.fb_scratch.clearRetainingCapacity();
         std.debug.assert(r.fb_conns[ci].fd < 0 and r.fb_conns[ci].inflight == 0);
         std.debug.print("a fallback host connection closed; {d} step(s) were on it\n", .{on_conn});
+    }
+
+    /// The steps of connection `ci` that can go again as new steps wait for a
+    /// connection (`fb_waitq`). All of them or none: the queue has a fixed
+    /// size, and a step that finds no room follows the rules of `lostFallback`.
+    fn sendAgain(r: *Runner, ci: u8) void {
+        std.debug.assert(r.fb_waitq.items.len <= r.fb_waitq.capacity);
+        // Without a wait, a step cannot wait for a connection (`waitFrame`).
+        if (r.opts.fallback_wait_ms <= 0) return;
+        var fresh: usize = 0;
+        var it0 = r.fb_inflight.valueIterator();
+        while (it0.next()) |e| {
+            if (e.conn == ci and e.canGoAgain()) fresh += 1;
+        }
+        if (fresh == 0 or fresh > r.fb_waitq.capacity - r.fb_waitq.items.len) return;
+        // The same wait for each step, so arrival order stays deadline order (`expireWaiting`).
+        const wait_till = sys.nowMs() + r.opts.fallback_wait_ms;
+        var it = r.fb_inflight.iterator();
+        while (it.next()) |kv| {
+            const e = kv.value_ptr;
+            if (e.conn != ci or !e.canGoAgain()) continue;
+            e.conn = fb_waiting;
+            e.again = true;
+            e.wait_till = wait_till;
+            // The step runs again: its calls get the same ids.
+            e.calls = 0;
+            r.fb_waitq.appendAssumeCapacity(kv.key_ptr.*);
+        }
+        std.debug.assert(r.fb_waitq.items.len <= r.fb_waitq.capacity);
     }
 
     /// Opens the connections that are missing, up to `fb_target`, each
@@ -3232,6 +3284,7 @@ pub const Runner = struct {
             .service => |id| r.hostService(ci, id, frame),
             .worker_lost => |reason| {
                 c.lost_seen = true;
+                c.lost_again = fbf.lostAgain(frame);
                 // The message waits in the connection until its failure is
                 // in the event queue; a message still in use stays.
                 if (reason.len > 0 and c.lost_refs == 0) {
@@ -4178,6 +4231,43 @@ test "fallback: several steps on a lost connection go again, each alone on an id
     r.events.clearRetainingCapacity();
     r.serviceFallback(sys.nowMs());
     try std.testing.expectEqualStrings("The step stopped its host worker: it ran out of memory", (findEvent(r, 7, second) orelse return error.NoEvent).payload);
+    try std.testing.expectEqual(@as(u32, 0), r.fb_inflight.count());
+}
+
+test "fallback: after worker_lost with again, each step goes again once as a new step" {
+    var t: TestRunner = .{ .arena = undefined, .fallback = no_host };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.fb_version = 2;
+    r.fb_target = 2;
+    const h0 = try fakeHostConn(r, 0);
+    const h1 = try fakeHostConn(r, 1);
+    defer sys.close(h1);
+    // One step alone on the connection: without `again` it is the cause.
+    fakeHostStep(r, 0, 7, 1);
+    try hostWrite(h0, "{\"worker_lost\":{\"reason\":\"a step blocks it\",\"again\":true}}");
+    sys.close(h0);
+    r.readFallback(0);
+    const key: FbKey = .{ .exec_id = 7, .seq = 1, .send = false };
+    try std.testing.expectEqual(@as(usize, 0), r.fb_failq.items.len);
+    try std.testing.expectEqual(@as(usize, 0), r.fb_aloneq.items.len);
+    try std.testing.expectEqual(@as(usize, 1), r.fb_waitq.items.len);
+    try std.testing.expect(r.fb_inflight.get(key).?.again);
+    try std.testing.expect(!r.fb_conns[0].lost_again);
+    // It goes out as a new step: the connection is not reserved for it.
+    r.sendWaiting();
+    try std.testing.expectEqual(@as(usize, 0), r.fb_waitq.items.len);
+    try std.testing.expectEqual(@as(u8, 1), r.fb_inflight.get(key).?.conn);
+    try std.testing.expect(!r.fb_conns[1].alone);
+    var buf: [512]u8 = undefined;
+    try std.testing.expectEqual(@as(u32, 1), try frameSeq(try hostRead(h1, &buf)));
+    // Lost a second time, also with `again`: now it is the cause.
+    try hostWrite(h1, "{\"worker_lost\":{\"reason\":\"a step blocks it\",\"again\":true}}");
+    r.readFallback(1);
+    r.events.clearRetainingCapacity();
+    r.serviceFallback(sys.nowMs());
+    try std.testing.expectEqualStrings("The step stopped its host worker: a step blocks it", (findEvent(r, 7, 1) orelse return error.NoEvent).payload);
     try std.testing.expectEqual(@as(u32, 0), r.fb_inflight.count());
 }
 

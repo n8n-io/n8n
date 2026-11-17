@@ -112,6 +112,7 @@ export async function startTestHost(
 
 	const runner = pool
 		? new WorkerPool({
+				...pool,
 				script: join(TEST_BUILD_DIR, 'step-worker.js'),
 				size: pool.size ?? 2,
 				workerData: { credentialsFile: credentialsPath, codeTimeoutMs },
@@ -159,6 +160,8 @@ interface RuntimeStep {
 	resolve: (response: StepResponse) => void;
 	/** This run is the second, alone on its own connection. */
 	alone: boolean;
+	/** The step went again after `worker_lost` with `again`. */
+	again?: boolean;
 }
 
 interface RuntimeConn {
@@ -171,6 +174,8 @@ interface RuntimeConn {
 	reserved: boolean;
 	/** The reason of `worker_lost`, when the host sent one. */
 	lostReason?: string;
+	/** `worker_lost` with `again`: the host moved the steps to its slow lane. */
+	lostAgain?: boolean;
 }
 
 /**
@@ -186,7 +191,8 @@ interface RuntimeConn {
  *   that was alone there fails with `The step stopped its host worker:
  *   <reason>`. Without `worker_lost` (the host stopped), that step fails as
  *   retryable. Each step of a connection with more steps goes again, alone
- *   on an idle connection.
+ *   on an idle connection. After `worker_lost` with `again`, each step goes
+ *   again once as a new step, on any connection.
  * - It answers the service calls of the steps with `onService`.
  */
 export class RuntimeClient {
@@ -324,6 +330,7 @@ export class RuntimeClient {
 			const reason = frame.worker_lost.reason;
 			conn.lostReason = typeof reason === 'string' ? reason : 'no reason';
 			this.lostReasons.push(conn.lostReason);
+			conn.lostAgain = frame.worker_lost.again === true;
 			return;
 		}
 		if (frame.type === 'service') {
@@ -371,8 +378,14 @@ export class RuntimeClient {
 	private onClose(conn: RuntimeConn): void {
 		conn.state = 'closed';
 		this.remove(conn);
-		const steps = [...conn.steps.values()];
+		const all = [...conn.steps.values()];
 		conn.steps.clear();
+		// After `again`, the host runs the cause in its slow lane: each step goes again as
+		// a new step, once. A step that was there before follows the blame rule.
+		const fresh = conn.lostAgain ? all.filter((s) => !s.again && !s.alone) : [];
+		for (const step of fresh) this.waiting.push({ ...step, again: true });
+		if (fresh.length > 0) this.pump();
+		const steps = all.filter((s) => !fresh.includes(s));
 		const sole = steps.length === 1 || steps.some((s) => s.alone);
 		for (const step of steps) {
 			if (sole && conn.lostReason !== undefined) {

@@ -36,6 +36,8 @@ export interface StepRequest {
 	execution?: JsonObject;
 	/** The run clock offset of the step (CLOCK-OFFSET), on every step frame when it is not 0. */
 	clockOffsetMs?: number;
+	/** The workflow of the step. With `step`, it is the key of the lanes (`lanes.ts`). */
+	workflowId?: string;
 }
 
 export interface FrameCredential {
@@ -206,5 +208,6 @@ export function parseRequest(body: Buffer): StepRequest {
 	const clock = parsed.clockOffsetMs;
 	if (typeof clock === 'number' && Number.isInteger(clock) && clock !== 0)
 		request.clockOffsetMs = clock;
+	if (typeof parsed.workflowId === 'string') request.workflowId = parsed.workflowId;
 	return request;
 }

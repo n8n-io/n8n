@@ -18,10 +18,18 @@
  *   WF_FALLBACK_CODE_ALLOW_MODULES  modules that `require` in JavaScript code steps may load
  *   WF_FALLBACK_PYTHON          Python executable for Python code steps (default python3)
  *   WF_FALLBACK_PYTHON_STDLIB_ALLOW / WF_FALLBACK_PYTHON_EXTERNAL_ALLOW  Python import allowlists
- *   WF_FALLBACK_CODE_TIMEOUT_MS longest run of one code step (default 5000)
+ *   WF_FALLBACK_CODE_TIMEOUT_MS longest run of one code step (default: the step time limit with
+ *                               workers, as n8n's task timeout; 5000 with `--workers 0`)
  *   WF_FALLBACK_BLOCK_ENV_ACCESS  `true` blocks `$env` in code steps, as n8n's N8N_BLOCK_ENV_ACCESS_IN_NODE
  *   WF_FALLBACK_STEP_TIMEOUT_MS longest wall-clock time of one step (default 300000)
- *   WF_FALLBACK_BLOCKED_MS      a worker that does not answer for this time is stopped (default 30000)
+ *   WF_FALLBACK_BLOCKED_MS      a worker of the normal lane that does not answer for this time is
+ *                               stopped, and its steps run again in the slow lane (default 5000)
+ *   WF_FALLBACK_LAG_MS          a step that holds the event loop for this time moves its key
+ *                               (workflow and step name) to the slow lane (default 100)
+ *   WF_FALLBACK_SLOW_WORKERS    workers of the slow lane (default: a quarter of `--workers`, 2 to 4)
+ *   WF_FALLBACK_SLOW_QUEUE      steps that can wait for the slow lane (default 256)
+ *   WF_FALLBACK_STATS_MS        how often the host logs the counters of the lanes when they
+ *                               changed (default 60000); `kill -USR2` logs them at once
  *   WF_FALLBACK_WORKER_MEMORY_MB  heap limit of each worker process (default 4096)
  *   WF_FALLBACK_RECYCLE_STEPS   a worker is replaced after this many steps (default 20000)
  *   WF_FALLBACK_RECYCLE_RSS_MB  a worker is replaced above this resident memory (default 1536)
@@ -43,6 +51,8 @@ import { keepRunningOnUnhandledRejection } from './process-guard';
 import { createFallbackServer } from './server';
 import {
 	DEFAULT_BLOCKED_MS,
+	DEFAULT_LAG_MS,
+	DEFAULT_SLOW_QUEUE,
 	DEFAULT_RECYCLE_RSS_MB,
 	DEFAULT_RECYCLE_STEPS,
 	DEFAULT_STEP_TIMEOUT_MS,
@@ -96,7 +106,14 @@ function envNumber(name: string, fallback: number): number {
 }
 
 function startServer(config: HostConfig): void {
-	const codeTimeoutMs = envNumber('WF_FALLBACK_CODE_TIMEOUT_MS', DEFAULT_CODE_TIMEOUT_MS);
+	const stepTimeoutMs = envNumber('WF_FALLBACK_STEP_TIMEOUT_MS', DEFAULT_STEP_TIMEOUT_MS);
+	// With workers, code that runs long delays no other workflow (the slow lane), so it gets
+	// the time that n8n's task runner gives it. Without workers it holds the whole host.
+	const codeTimeoutMs = envNumber(
+		'WF_FALLBACK_CODE_TIMEOUT_MS',
+		config.workers > 0 ? stepTimeoutMs : DEFAULT_CODE_TIMEOUT_MS,
+	);
+	const slowWorkers = Number(process.env.WF_FALLBACK_SLOW_WORKERS);
 	const pool =
 		config.workers > 0
 			? new WorkerPool({
@@ -105,10 +122,13 @@ function startServer(config: HostConfig): void {
 					workerData: {
 						credentialsFile: process.env.WF_FALLBACK_CREDENTIALS,
 						codeTimeoutMs,
-						stepTimeoutMs: envNumber('WF_FALLBACK_STEP_TIMEOUT_MS', DEFAULT_STEP_TIMEOUT_MS),
+						stepTimeoutMs,
 					},
-					stepTimeoutMs: envNumber('WF_FALLBACK_STEP_TIMEOUT_MS', DEFAULT_STEP_TIMEOUT_MS),
+					stepTimeoutMs,
 					blockedMs: envNumber('WF_FALLBACK_BLOCKED_MS', DEFAULT_BLOCKED_MS),
+					lagMs: envNumber('WF_FALLBACK_LAG_MS', DEFAULT_LAG_MS),
+					slowSize: Number.isInteger(slowWorkers) && slowWorkers > 0 ? slowWorkers : undefined,
+					slowQueueMax: envNumber('WF_FALLBACK_SLOW_QUEUE', DEFAULT_SLOW_QUEUE),
 					memoryMb: envNumber('WF_FALLBACK_WORKER_MEMORY_MB', DEFAULT_WORKER_MEMORY_MB),
 					recycleSteps: envNumber('WF_FALLBACK_RECYCLE_STEPS', DEFAULT_RECYCLE_STEPS),
 					recycleRssMb: envNumber('WF_FALLBACK_RECYCLE_RSS_MB', DEFAULT_RECYCLE_RSS_MB),
@@ -125,6 +145,7 @@ function startServer(config: HostConfig): void {
 	// Node.js reports a connection hand-over that failed only as a warning.
 	process.on('warning', (warning) => log(`Warning: ${warning.name}: ${warning.message}`));
 	server.listen(config.socketPath, () => log(`Listening on ${config.socketPath}`));
+	if (pool) logLaneStats(pool);
 
 	const stop = () => {
 		server.close();
@@ -132,6 +153,20 @@ function startServer(config: HostConfig): void {
 	};
 	process.on('SIGTERM', stop);
 	process.on('SIGINT', stop);
+}
+
+/** Logs the counters of the lanes when they changed, and on SIGUSR2. */
+function logLaneStats(pool: WorkerPool): void {
+	let last = '';
+	const write = (always: boolean) => {
+		const { normalInFlight, slowInFlight, slowWaiting, ...counters } = pool.stats();
+		const text = JSON.stringify(counters);
+		if (!always && text === last) return;
+		last = text;
+		log(`Lanes: ${JSON.stringify({ normalInFlight, slowInFlight, slowWaiting, ...counters })}`);
+	};
+	setInterval(() => write(false), envNumber('WF_FALLBACK_STATS_MS', 60_000)).unref();
+	process.on('SIGUSR2', () => write(true));
 }
 
 /**
