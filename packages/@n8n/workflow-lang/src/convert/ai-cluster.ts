@@ -273,6 +273,28 @@ function anthropicVendorParameters(
 	return version === 1 ? p : { ...p, anthropicHost: true };
 }
 
+/**
+ * The parameters of the Google Gemini vendor node. An empty `builtInTools` is the default of
+ * the parameter; the adapter drops it. Several candidates under "continue (using error
+ * output)" get the marker `geminiHost`: the error output pairs the items by position.
+ */
+function geminiVendorParameters(
+	p: Record<string, unknown>,
+	_version: number,
+	onError?: string,
+): Record<string, unknown> {
+	const out: Record<string, unknown> = { ...p };
+	if (isRecord(p.builtInTools) && Object.keys(p.builtInTools).length === 0) delete out.builtInTools;
+	if (
+		isRecord(p.options) &&
+		p.options.candidateCount !== undefined &&
+		onError === 'continueErrorOutput'
+	) {
+		out.geminiHost = true;
+	}
+	return out;
+}
+
 type VendorAdapter = (
 	p: Record<string, unknown>,
 	version: number,
@@ -291,4 +313,5 @@ export const VENDOR_NODES: Record<
 > = {
 	[`${LC}openAi`]: { adapt: openAiVendorParameters, resource: 'text', operation: 'response' },
 	[`${LC}anthropic`]: { adapt: anthropicVendorParameters, resource: 'text', operation: 'message' },
+	[`${LC}googleGemini`]: { adapt: geminiVendorParameters, resource: 'text', operation: 'message' },
 };

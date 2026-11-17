@@ -8731,6 +8731,1083 @@
 		"accepts": ["application/json"],
 		"error": "The service failed to process your request"
 	},
+	"googleGemini text.message defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Hi"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"text": "Hi"
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"text": "Again"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"frequencyPenalty": 0.1,
+						"maxOutputTokens": 200,
+						"candidateCount": 2,
+						"presencePenalty": 0.2,
+						"temperature": 0.3,
+						"topP": 0.9,
+						"topK": 5,
+						"responseMimeType": "application/json",
+						"thinkingConfig": {
+							"thinkingBudget": 0
+						}
+					},
+					"systemInstruction": {
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Hi "
+						},
+						{
+							"thought": true
+						},
+						{
+							"text": "there"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0,
+				"mergedResponse": "Hi there"
+			},
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Second"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 1,
+				"mergedResponse": "Second"
+			}
+		]
+	},
+	"googleGemini text.message version 1 raw output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"candidates": [
+					{
+						"content": {
+							"parts": [
+								{
+									"text": "Hi"
+								}
+							],
+							"role": "model"
+						},
+						"finishReason": "STOP",
+						"index": 0
+					}
+				],
+				"usageMetadata": {
+					"promptTokenCount": 3,
+					"candidatesTokenCount": 2
+				},
+				"modelVersion": "gemini-2.5-flash"
+			}
+		]
+	},
+	"googleGemini text.message function call without tools": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"functionCall": {
+										"id": "c1",
+										"name": "x",
+										"args": {}
+									}
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"functionResponse": {
+										"id": "c1",
+										"name": "x",
+										"response": {}
+									}
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"functionCall": {
+										"id": "c1",
+										"name": "x",
+										"args": {}
+									}
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"functionResponse": {
+										"id": "c1",
+										"name": "x",
+										"response": {}
+									}
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"functionCall": {
+										"name": "y",
+										"args": {}
+									}
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"functionResponse": {
+										"name": "y",
+										"response": {}
+									}
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "done"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message function call at the iteration limit": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"functionCall": {
+								"id": "c1",
+								"name": "x",
+								"args": {}
+							}
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message gemma answers as another model": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Google returned a different model"
+	},
+	"googleGemini text.message answer without candidates": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Cannot read properties of undefined (reading 'flatMap')"
+	},
+	"googleGemini text.message empty prompt": {
+		"requests": [],
+		"accepts": [],
+		"error": "A non-empty prompt is required."
+	},
+	"googleGemini text.message status 401, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Hi"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Bad request - please check your parameters"
+	},
+	"googleGemini text.message status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"googleGemini text.message status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The resource you are requesting could not be found"
+	},
+	"googleGemini text.message status 418": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"googleGemini text.message status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service is receiving too many requests from you"
+	},
+	"googleGemini text.message status 500": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service was not able to process your request"
+	},
+	"googleGemini text.message status 503": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+	},
+	"googleGemini text.message status 599": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service failed to process your request"
+	},
+	"googleGemini text.message stop, wrong option type": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"outputs": [],
+		"paired": [],
+		"error": "Parameter \"temperature\" does not match any of the expected types: number"
+	},
+	"googleGemini text.message continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"outputs": [
+			[
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "a"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				},
+				{
+					"error": "Parameter \"temperature\" does not match any of the expected types: number"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"googleGemini text.message error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "two"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.2
+					}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "b"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				}
+			],
+			[
+				{
+					"q": "one",
+					"t": 0.1,
+					"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"googleGemini text.message retry continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "two"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.2
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "two"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.2
+					}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "b"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				},
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "c"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
 	"anthropic text.message stop": {
 		"requests": [
 			{

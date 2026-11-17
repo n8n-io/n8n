@@ -298,6 +298,7 @@ const LOCATOR_TYPES = new Set([
 	'n8n-nodes-base.microsoftTeams',
 	'@n8n/n8n-nodes-langchain.openAi',
 	'@n8n/n8n-nodes-langchain.anthropic',
+	'@n8n/n8n-nodes-langchain.googleGemini',
 ]);
 
 /** The oldest version of a node type that its library node runs; older ones run in the host. */

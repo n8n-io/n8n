@@ -441,6 +441,202 @@ export const ANTHROPIC_CASES: EquivalenceCase[] = [
 	),
 ];
 
+/** An answer of the Gemini generateContent API. */
+const gemini = (...candidates: unknown[][]) => ({
+	body: {
+		candidates: candidates.map((parts, index) => ({
+			content: { parts, role: 'model' },
+			finishReason: 'STOP',
+			index,
+		})),
+		usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 2 },
+		modelVersion: 'gemini-2.5-flash',
+	},
+});
+const google = { type: 'googlePalmApi', data: { apiKey: 'fake-google-key' } };
+
+function geminiMessage(
+	name: string,
+	responses: EquivalenceCase['responses'],
+	parameters: Record<string, unknown> = {},
+	extra: Partial<EquivalenceCase> = {},
+): EquivalenceCase {
+	return {
+		name: `googleGemini text.message ${name}`,
+		type: `${LC}googleGemini`,
+		typeVersion: 1.2,
+		parameters: {
+			modelId: { __rl: true, mode: 'list', value: 'models/gemini-2.5-flash' },
+			messages: { values: [{ content: 'Hello' }] },
+			...parameters,
+		},
+		credential: google,
+		responses,
+		...extra,
+	};
+}
+
+export const GEMINI_CASES: EquivalenceCase[] = [
+	geminiMessage('defaults', [gemini([{ text: 'Hi' }])]),
+	geminiMessage(
+		'options',
+		[gemini([{ text: 'Hi ' }, { thought: true }, { text: 'there' }], [{ text: 'Second' }])],
+		{
+			resource: 'text',
+			operation: 'message',
+			messages: {
+				values: [
+					{ content: 'Hello', role: 'user' },
+					{ content: '  ' },
+					{ content: 'Hi', role: 'model' },
+					{ content: 'Again' },
+				],
+			},
+			jsonOutput: true,
+			builtInTools: {},
+			options: {
+				includeMergedResponse: true,
+				systemMessage: 'Be brief',
+				frequencyPenalty: 0.1,
+				maxOutputTokens: 200,
+				candidateCount: 2,
+				presencePenalty: 0.2,
+				temperature: 0.3,
+				topP: 0.9,
+				topK: 5,
+				thinkingBudget: 0,
+				maxToolsIterations: 3,
+			},
+		},
+		{
+			typeVersion: 1.1,
+			credential: {
+				type: 'googlePalmApi',
+				data: { apiKey: 'fake-google-key', host: 'https://proxy.example.com' },
+			},
+		},
+	),
+	geminiMessage(
+		'version 1 raw output',
+		[gemini([{ text: 'Hi' }])],
+		{
+			modelId: { __rl: true, mode: 'id', value: 'models/gemini-2.0-flash' },
+			simplify: false,
+			options: { codeExecution: false },
+		},
+		{ typeVersion: 1 },
+	),
+	geminiMessage(
+		'function call without tools',
+		[
+			gemini([{ functionCall: { id: 'c1', name: 'x', args: {} } }]),
+			gemini([{ functionCall: { name: 'y', args: {} } }]),
+			gemini([{ text: 'done' }]),
+		],
+		{ options: { maxToolsIterations: 5 } },
+	),
+	geminiMessage(
+		'function call at the iteration limit',
+		[gemini([{ functionCall: { id: 'c1', name: 'x', args: {} } }])],
+		{ options: { maxToolsIterations: 1 } },
+	),
+	geminiMessage(
+		'gemma answers as another model',
+		[gemini([{ text: 'Hi' }])],
+		{
+			modelId: { __rl: true, mode: 'list', value: 'models/gemma-3-27b-it' },
+		},
+		{ expectedError: 'Google returned a different model' },
+	),
+	geminiMessage(
+		'answer without candidates',
+		[{ body: { promptFeedback: {} } }],
+		{},
+		{
+			expectedError: "Cannot read properties of undefined (reading 'flatMap')",
+		},
+	),
+	geminiMessage(
+		'empty prompt',
+		[gemini([{ text: 'never' }])],
+		{
+			messages: { values: [{ content: ' ' }] },
+		},
+		{ expectedError: 'A non-empty prompt is required.' },
+	),
+	geminiMessage('status 401, then answer', [failed(401), gemini([{ text: 'Hi' }])]),
+	...[400, 401, 404, 418, 429, 500, 503, 599].map((status) =>
+		geminiMessage(
+			`status ${status}`,
+			[failed(status)],
+			{},
+			{
+				expectedError: STATUS_ERRORS[status],
+			},
+		),
+	),
+];
+
+const twoGeminiPrompts = {
+	parameters: {
+		modelId: { __rl: true, mode: 'list', value: 'models/gemini-2.5-flash' },
+		messages: { values: [{ content: '={{ $json.q }}' }] },
+		options: { temperature: '={{ $json.t }}' },
+	},
+	items: [
+		{ q: 'one', t: 0.1 },
+		{ q: 'two', t: 'warm' },
+	],
+};
+
+export const GEMINI_ENGINE_CASES: EquivalenceCase[] = [
+	geminiMessage(
+		'stop, wrong option type',
+		[gemini([{ text: 'a' }])],
+		{},
+		{
+			...twoGeminiPrompts,
+			settings: {},
+			expectedError: 'Parameter "temperature" does not match any of the expected types: number',
+		},
+	),
+	geminiMessage(
+		'continue',
+		[gemini([{ text: 'a' }])],
+		{},
+		{
+			...twoGeminiPrompts,
+			settings: { onError: 'continueRegularOutput' },
+		},
+	),
+	geminiMessage(
+		'error output',
+		[failed(503), gemini([{ text: 'b' }])],
+		{},
+		{
+			...twoGeminiPrompts,
+			items: [
+				{ q: 'one', t: 0.1 },
+				{ q: 'two', t: 0.2 },
+			],
+			settings: { onError: 'continueErrorOutput' },
+		},
+	),
+	geminiMessage(
+		'retry continue',
+		[failed(500), gemini([{ text: 'a' }]), gemini([{ text: 'b' }]), gemini([{ text: 'c' }])],
+		{},
+		{
+			...twoGeminiPrompts,
+			items: [
+				{ q: 'one', t: 0.1 },
+				{ q: 'two', t: 0.2 },
+			],
+			settings: { ...retry, onError: 'continueRegularOutput' },
+		},
+	),
+];
+
 const twoPrompts = {
 	parameters: {
 		modelId: { __rl: true, mode: 'list', value: 'claude-sonnet-4-5' },
@@ -450,6 +646,7 @@ const twoPrompts = {
 };
 
 export const AI_ENGINE_CASES: EquivalenceCase[] = [
+	...GEMINI_ENGINE_CASES,
 	// Anthropic vendor node under the error settings of n8n's engine
 	anthropicMessage(
 		'stop',
