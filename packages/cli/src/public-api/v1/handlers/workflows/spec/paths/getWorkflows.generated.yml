@@ -238,6 +238,10 @@ responses:
                         type: string
                         example: VzqKEW0ShTXA5vPj
                         description: The ID of the workflow that contains the error trigger node.
+                      errorWorkflowIncludeTriggerData:
+                        type: boolean
+                        example: false
+                        description: Controls whether the error workflow receives the JSON of the first item that the trigger node of the failed execution produced, as `execution.triggerData`. Defaults to false. The data is not sent when the failed execution is redacted.
                       timezone:
                         type: string
                         example: America/New_York

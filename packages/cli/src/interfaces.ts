@@ -12,6 +12,7 @@ import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
+	IDataObject,
 	IExecuteResponsePromiseData,
 	IRun,
 	ITelemetryTrackProperties,
@@ -214,6 +215,11 @@ export interface IWorkflowErrorData {
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
 		executionContext?: IExecutionContext;
+		/**
+		 * JSON of the first item that the trigger node produced. Only set when the
+		 * failed workflow turns on `errorWorkflowIncludeTriggerData`.
+		 */
+		triggerData?: IDataObject;
 	};
 	trigger?: {
 		error: ExecutionError;

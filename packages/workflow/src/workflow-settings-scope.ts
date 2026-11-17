@@ -22,6 +22,7 @@ const WORKFLOW_SETTINGS_SCOPE = {
 	customTelemetryTags: 'live',
 	engineType: 'version',
 	errorWorkflow: 'live',
+	errorWorkflowIncludeTriggerData: 'live',
 	executionOrder: 'live',
 	executionTimeout: 'live',
 	redactCallerExecutions: 'live',

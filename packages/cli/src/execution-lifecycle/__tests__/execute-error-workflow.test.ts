@@ -338,4 +338,104 @@ describe('executeErrorWorkflow', () => {
 			});
 		});
 	});
+
+	describe('errorWorkflowIncludeTriggerData setting', () => {
+		const triggerItem = {
+			headers: { 'x-correlation-id': 'corr-1' },
+			query: {},
+			body: { hello: 'world' },
+		};
+
+		const runFailedWorkflow = async ({
+			settings,
+			redactProduction = false,
+			triggerNodeName = 'Webhook',
+		}: {
+			settings: IWorkflowBase['settings'];
+			redactProduction?: boolean;
+			triggerNodeName?: string;
+		}) => {
+			// A plain object: a mock answers every missing setting with a truthy function.
+			const workflowData = {
+				id: 'workflow-123',
+				name: 'Failing workflow',
+				settings: { errorWorkflow: 'error-workflow-456', ...settings },
+				nodes: [],
+			} as unknown as IWorkflowBase;
+			const data = createRunExecutionData({
+				resultData: {
+					error: new NodeOperationError(
+						mockNode,
+						'Test error',
+					) as IRun['data']['resultData']['error'],
+					lastNodeExecuted: 'TestNode',
+					runData: {
+						Webhook: [
+							{
+								startTime: 0,
+								executionIndex: 0,
+								executionTime: 0,
+								source: [],
+								data: { main: [[{ json: triggerItem }]] },
+							},
+						],
+					},
+				},
+				executionData: { nodeExecutionStack: [] },
+			});
+			data.executionData!.runtimeData = {
+				version: 1,
+				establishedAt: 2000000000,
+				source: 'webhook',
+				triggerNode: { name: triggerNodeName, type: 'n8n-nodes-base.webhook' },
+				redaction: { version: 2, production: redactProduction, manual: false },
+			};
+
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'project-1' } as never);
+
+			executeErrorWorkflow(
+				workflowData,
+				{ data, mode: 'webhook', startedAt: new Date(), storedAt: 'db', status: 'error' },
+				'webhook',
+				'execution-1',
+			);
+			await new Promise(process.nextTick);
+
+			const [, workflowErrorData] =
+				workflowExecutionService.executeErrorWorkflow.mock.calls.at(0) ?? [];
+			return workflowErrorData!.execution!;
+		};
+
+		it('passes the first trigger item when the setting is on', async () => {
+			const execution = await runFailedWorkflow({
+				settings: { errorWorkflowIncludeTriggerData: true },
+			});
+
+			expect(execution.triggerData).toEqual(triggerItem);
+		});
+
+		it('passes no trigger data when the setting is not set', async () => {
+			const execution = await runFailedWorkflow({ settings: {} });
+
+			expect(execution.triggerData).toBeUndefined();
+		});
+
+		it('passes no trigger data when the run redacts production data', async () => {
+			const execution = await runFailedWorkflow({
+				settings: { errorWorkflowIncludeTriggerData: true },
+				redactProduction: true,
+			});
+
+			expect(execution.triggerData).toBeUndefined();
+		});
+
+		it('passes no trigger data when the trigger node has no run data', async () => {
+			const execution = await runFailedWorkflow({
+				settings: { errorWorkflowIncludeTriggerData: true },
+				triggerNodeName: 'Other trigger',
+			});
+
+			expect(execution.triggerData).toBeUndefined();
+		});
+	});
 });

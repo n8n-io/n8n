@@ -40,6 +40,13 @@ export const workflowSettingsFieldDocs = {
 		example: 'VzqKEW0ShTXA5vPj',
 		description: 'The ID of the workflow that contains the error trigger node.',
 	},
+	errorWorkflowIncludeTriggerData: {
+		example: false,
+		description:
+			'Controls whether the error workflow receives the JSON of the first item that the ' +
+			'trigger node of the failed execution produced, as `execution.triggerData`. Defaults ' +
+			'to false. The data is not sent when the failed execution is redacted.',
+	},
 	timezone: { example: 'America/New_York' },
 	executionOrder: { example: 'v1' },
 	binaryMode: {
@@ -250,6 +257,10 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 		saveDataSuccessExecution: { type: 'string', enum: ['DEFAULT', 'all', 'none'] },
 		executionTimeout: { type: 'number', ...workflowSettingsFieldDocs.executionTimeout },
 		errorWorkflow: { type: 'string', ...workflowSettingsFieldDocs.errorWorkflow },
+		errorWorkflowIncludeTriggerData: {
+			type: 'boolean',
+			...workflowSettingsFieldDocs.errorWorkflowIncludeTriggerData,
+		},
 		timezone: { type: 'string', ...workflowSettingsFieldDocs.timezone },
 		executionOrder: { type: 'string', ...workflowSettingsFieldDocs.executionOrder },
 		binaryMode: {

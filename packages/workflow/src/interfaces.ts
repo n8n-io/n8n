@@ -4239,6 +4239,11 @@ export type WorkflowEngineType = (typeof WORKFLOW_ENGINE_TYPES)[number];
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
 	errorWorkflow?: 'DEFAULT' | string;
+	/**
+	 * Whether the error workflow receives the JSON of the first item that the
+	 * trigger node of the failed execution produced. When not set, it is off.
+	 */
+	errorWorkflowIncludeTriggerData?: boolean;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
