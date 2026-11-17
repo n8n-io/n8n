@@ -507,7 +507,6 @@ async function main() {
 			calls: [{ body: {} }],
 			compiledNodes: ['Discourse'],
 			check: (run) => run.calls[0]?.status === 'success' && run.calls[0]?.mode === 'manual',
-			open: 'the finished event can come before the trace events: the run data of a node can be missing',
 		},
 		{
 			key: 'g',

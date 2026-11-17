@@ -65,6 +65,14 @@ export class CompiledEngineService implements CompiledEngineProvider {
 	/** The events of one shard are handled in seq order, one at a time. */
 	private readonly eventChains = new Map<string, Promise<void>>();
 
+	/**
+	 * The last event of each execution that waits or runs. The events of an execution come
+	 * with and without an outbox position, so they are in different chains: each one also
+	 * waits for the earlier events of its execution, and the run data is complete when
+	 * `finished` is handled. An entry goes when its event is handled.
+	 */
+	private readonly executionTails = new Map<string, Promise<void>>();
+
 	private handledSinceAck = 0;
 
 	private ackTimer?: NodeJS.Timeout;
@@ -202,12 +210,19 @@ export class CompiledEngineService implements CompiledEngineProvider {
 	private acceptEvent(event: WfrtEvent) {
 		const key = isSequencedEvent(event) ? String(event.shard) : UNSEQUENCED;
 		const previous = this.eventChains.get(key) ?? Promise.resolve();
-		const next = previous.then(async () => await this.handleEvent(event));
+		const executionId = 'executionId' in event ? event.executionId : undefined;
+		const earlier = executionId === undefined ? undefined : this.executionTails.get(executionId);
+		// `handleEvent` does not reject, so the two waits end.
+		const next = Promise.all([previous, earlier]).then(async () => await this.handleEvent(event));
 		this.eventChains.set(key, next);
+		if (executionId !== undefined) this.executionTails.set(executionId, next);
 		void next
 			.catch(() => {})
 			.then(() => {
 				if (this.eventChains.get(key) === next) this.eventChains.delete(key);
+				if (executionId !== undefined && this.executionTails.get(executionId) === next) {
+					this.executionTails.delete(executionId);
+				}
 			});
 	}
 
@@ -325,6 +340,10 @@ export class CompiledEngineService implements CompiledEngineProvider {
 
 	async activate(workflow: WorkflowEntity) {
 		await this.sync.activate(workflow);
+	}
+
+	async compileError(workflow: WorkflowEntity) {
+		return await this.sync.compileError(workflow);
 	}
 
 	async deactivate(workflowId: string) {
