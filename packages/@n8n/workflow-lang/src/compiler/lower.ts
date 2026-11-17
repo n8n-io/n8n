@@ -965,16 +965,18 @@ class FnLowering {
 			(s): s is ts.FunctionDeclaration =>
 				ts.isFunctionDeclaration(s) && s.name !== undefined && s.body !== undefined,
 		);
-		if (decls.length === 0) return;
 		const fb = this.fb;
 		// A hoisted function can capture a `let` or `const` of the block before the declaration
-		// runs. The cell must exist when the closure is made, so the block makes it first.
+		// runs. The cell must exist when the closure is made, so the block makes it first. In a
+		// block without a function declaration, only a variable that an arrow function or a
+		// function expression captures before its declaration needs that.
 		for (const st of statements) {
 			if (!ts.isVariableStatement(st)) continue;
 			for (const d of st.declarationList.declarations) {
 				for (const sym of bindingSymbols(d.name, this.checker)) {
 					const b = this.resolve(sym, d);
 					if (b.kind !== 'reg' || !b.cell) continue;
+					if (decls.length === 0 && !this.linker.scope.isCapturedEarly(sym)) continue;
 					const u = fb.temp();
 					fb.emit(Op.LOADUNDEF, u);
 					fb.emit(Op.NEWCELL, b.reg, u);
@@ -982,6 +984,7 @@ class FnLowering {
 				}
 			}
 		}
+		if (decls.length === 0) return;
 		const named = decls.flatMap((d) => (d.name ? [{ d, sym: this.symbolOf(d.name) }] : []));
 		// Cells first, so that functions can capture each other.
 		for (const { d, sym } of named) {
