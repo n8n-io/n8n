@@ -548,7 +548,9 @@ describe('regex subset check', () => {
 
 	it.each([
 		['(?<=a)b', ''],
-		['\\p{L}', 'u'],
+		// A script has no name without `sc=`: the runtime has no such property.
+		['\\p{Latin}', 'u'],
+		['\\p{L}', 'v'],
 		['a', 'iu'],
 		['\\07', ''],
 		['a', 'd'],
