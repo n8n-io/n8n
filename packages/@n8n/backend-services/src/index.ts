@@ -59,6 +59,8 @@ export { WorkflowProjectService } from './services/workflow-project.service';
 export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
+	type UserDeletionActor,
+	type UserDeletionContext,
 } from './services/ownership-transfer-handler.registry';
 export {
 	WorkflowSharingService,
