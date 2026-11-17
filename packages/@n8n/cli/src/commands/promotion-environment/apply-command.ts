@@ -3,6 +3,7 @@ import type {
 	ApplyPackageResult,
 	PromotionApplyCheck,
 	PromotionEnvironmentSelectionProject,
+	PromotionMoveProject,
 	PromotionProjectDeletion,
 	PromotionSelection,
 } from '../../client';
@@ -30,13 +31,24 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		}
 
 		if (result.status === 'applied') {
-			const warnings =
-				result.warnings.length > 0 ? ` with ${result.warnings.length} warning(s)` : '';
+			const moves = result.moves ?? [];
+			const unpublished = moves.filter((move) => move.unpublished);
+			const warningCount = result.warnings.length + unpublished.length;
+			const warnings = warningCount > 0 ? ` with ${warningCount} warning(s)` : '';
+			const moved = moves.length > 0 ? ` Moved ${moves.length} item(s) between projects.` : '';
 			this.succeed(
-				`Applied ${result.git.branchName} at commit ${result.git.commitSha} to the instance${warnings}.`,
+				`Applied ${result.git.branchName} at commit ${result.git.commitSha} to the instance${warnings}.${moved}`,
 				flags,
 				result,
 			);
+			// The only case where an Apply unpublishes: the new project refused the published version.
+			if (!flags.quiet) {
+				for (const { name, id, unpublished: reason } of unpublished) {
+					this.logToStderr(
+						`Warning: the move unpublished workflow ${name} (${id}): ${reason?.reason ?? ''}`,
+					);
+				}
+			}
 			return;
 		}
 
@@ -87,6 +99,9 @@ function blockedMessage(
 	const bindings = (kind: 'credential' | 'variable') =>
 		check.missingBindings.filter((binding) => binding.kind === kind).length;
 	const projectDeletions = check.conflicts.filter(isProjectDeletion);
+	const plannedMoves = check.plannedMoves ?? [];
+	const unconfirmedMoves = plannedMoves.filter(({ needsConfirmation }) => needsConfirmation);
+	const project = ({ id, name }: PromotionMoveProject) => (name ? `${name} (${id})` : id);
 
 	return [
 		'Apply is blocked. Nothing was imported.',
@@ -101,6 +116,15 @@ function blockedMessage(
 					...projectDeletions.map(({ project }) => `  ${project.name} (${project.id})`),
 				]
 			: []),
+		...(plannedMoves.length > 0
+			? [
+					'Apply moves these items between projects. A moved workflow loses its shares:',
+					...plannedMoves.map(
+						({ kind, name, id, fromProject, toProject }) =>
+							`  ${kind} ${name} (${id}): ${project(fromProject)} -> ${project(toProject)}`,
+					),
+				]
+			: []),
 		'Run with --json for the details. After you resolve them, run:',
 		`  ${continueCommand(result)}`,
 		...(check.conflicts.some(({ code }) => code === 'destructive-change')
@@ -111,6 +135,11 @@ function blockedMessage(
 		...(projectDeletions.length > 0
 			? [
 					"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
+				]
+			: []),
+		...(unconfirmedMoves.length > 0
+			? [
+					`To also move ${unconfirmedMoves.length} item(s) out of a project that the branch does not hold, add --confirm-destructive-changes.`,
 				]
 			: []),
 	].join('\n');

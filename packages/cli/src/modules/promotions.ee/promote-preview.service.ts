@@ -5,7 +5,7 @@ import type {
 	PromotionProjectBlocker,
 	PromotionResource,
 } from '@n8n/api-types';
-import { SharedWorkflowRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@n8n/errors';
@@ -13,10 +13,9 @@ import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service'
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { projectHolding } from './branch-placement';
 import { PACKAGE_SUBFOLDER } from './constants';
-import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { exportInstancePackage } from './instance-package';
+import { PromotionMovesService } from './promotion-moves.service';
 import {
 	blobsByPath,
 	buildPreview,
@@ -37,7 +36,7 @@ import type { BranchPackage, PromotionOperationInput } from './promotions.types'
 export class PromotePreviewService {
 	constructor(
 		private readonly packagesService: N8nPackagesService,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly movesService: PromotionMovesService,
 		private readonly reviewGate: PromotionReviewGateService,
 		private readonly dependencyGate: PromotionDependencyGate,
 	) {}
@@ -87,8 +86,16 @@ export class PromotePreviewService {
 				desired: { manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
 			});
 			dependencies = compared.dependencies;
+			// A workflow or folder that moved between two team projects is one moved row. The row
+			// names the other project only when the user can read it.
 			const marked = promoteBase
-				? await this.markMovesAcrossProjects(compared.resources, promoteBase, projects)
+				? await this.movesService.markPromoteMoves({
+						user,
+						resources: compared.resources,
+						branch: promoteBase,
+						desired: instance.manifest,
+						projectIds: comparedIds,
+					})
 				: compared.resources;
 			const operable = new Set(projects.filter(({ canOperate }) => canOperate).map(({ id }) => id));
 			resources = marked.map((resource) => ({
@@ -132,47 +139,6 @@ export class PromotePreviewService {
 		return projectIds.flatMap((projectId) => {
 			const blocker = found.get(projectId);
 			return blocker ? [{ ...blocker, projectId }] : [];
-		});
-	}
-
-	/**
-	 * Marks a workflow that moved between a listed project and a project outside the view, like
-	 * {@link markCrossProjectMoves}. The other project is named only when the user can read it.
-	 */
-	private async markMovesAcrossProjects(
-		resources: PromotionResource[],
-		branchManifest: PackageManifest,
-		projects: readonly PromotionEnvironmentChangesProject[],
-	): Promise<PromotionResource[]> {
-		const visible = new Set(projects.map(({ id }) => id));
-		const deletedIds = resources
-			.filter(({ type, change }) => type === 'workflow' && change === 'deleted')
-			.map(({ id }) => id);
-		const owners =
-			deletedIds.length > 0
-				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(deletedIds)
-				: new Map<string, InstanceProject>();
-		const branchTargets = new Map(
-			(branchManifest.workflows ?? []).map(({ id, target }) => [id, target]),
-		);
-
-		return resources.map((resource) => {
-			if (resource.type !== 'workflow') return resource;
-			if (resource.change === 'deleted') {
-				const owner = owners.get(resource.id);
-				if (!owner || owner.id === resource.projectId) return resource;
-				const { id, name } = toInstanceProject(owner);
-				return { ...resource, movedToProject: visible.has(id) ? { id, name } : { id } };
-			}
-			if (resource.change !== 'added') return resource;
-			const target = branchTargets.get(resource.id);
-			const branchProject =
-				target === undefined ? undefined : projectHolding(branchManifest.projects, target);
-			return branchProject &&
-				branchProject.id !== resource.projectId &&
-				visible.has(branchProject.id)
-				? { ...resource, movedFromProject: { id: branchProject.id, name: branchProject.name } }
-				: resource;
 		});
 	}
 
@@ -227,8 +193,16 @@ export class PromotePreviewService {
 			},
 			desired: { manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
 		});
+		// The moved row is on the page of each of the two projects. The Promote from either page
+		// writes both sides.
 		const resources = promoteBase
-			? await this.markCrossProjectMoves(projectId, compared, promoteBase)
+			? await this.movesService.markPromoteMoves({
+					user,
+					resources: compared,
+					branch: promoteBase,
+					desired: instance.manifest,
+					projectIds: [projectId],
+				})
 			: compared;
 		const source = { environmentId: branch.environmentId, branchName: branch.branchName };
 		return {
@@ -238,47 +212,6 @@ export class PromotePreviewService {
 			dependencies,
 			revision: previewRevision({ source, resources }),
 		};
-	}
-
-	/**
-	 * A project promote refuses a workflow that moved between projects, so the preview names the
-	 * other project on both sides of the move:
-	 * - a deleted workflow that another project owns now on this instance moved out;
-	 * - an added workflow that the branch holds under another project moved in.
-	 */
-	private async markCrossProjectMoves(
-		projectId: string,
-		resources: PromotionResource[],
-		branchManifest: PackageManifest,
-	): Promise<PromotionResource[]> {
-		const deletedIds = resources
-			.filter(({ type, change }) => type === 'workflow' && change === 'deleted')
-			.map(({ id }) => id);
-		const owners =
-			deletedIds.length > 0
-				? await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(deletedIds)
-				: new Map<string, InstanceProject>();
-		const branchTargets = new Map(
-			(branchManifest.workflows ?? []).map(({ id, target }) => [id, target]),
-		);
-		const elsewhere = <P extends { id: string }>(project: P | undefined) =>
-			project && project.id !== projectId ? project : undefined;
-		const branchProjectOf = (id: string) => {
-			const target = branchTargets.get(id);
-			return target === undefined ? undefined : projectHolding(branchManifest.projects, target);
-		};
-
-		return resources.map((resource) => {
-			if (resource.type !== 'workflow') return resource;
-			const owner = resource.change === 'deleted' ? elsewhere(owners.get(resource.id)) : undefined;
-			if (owner) return { ...resource, movedToProject: toInstanceProject(owner) };
-			// The branch holds team projects only, so its project name is safe to show.
-			const branchProject =
-				resource.change === 'added' ? elsewhere(branchProjectOf(resource.id)) : undefined;
-			return branchProject
-				? { ...resource, movedFromProject: { id: branchProject.id, name: branchProject.name } }
-				: resource;
-		});
 	}
 }
 

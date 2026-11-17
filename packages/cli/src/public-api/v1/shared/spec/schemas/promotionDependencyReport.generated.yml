@@ -251,6 +251,13 @@ properties:
           type: boolean
         allowed:
           type: boolean
+        blockedReason:
+          type: string
+          enum:
+            - no-move-right
+            - missing-create-right
+            - managed
+            - end-user
       required:
         - credential
         - toProject
@@ -329,6 +336,9 @@ properties:
         - name
         - projectId
         - referencedBy
+  hiddenKeptWorkflowCount:
+    type: integer
+    minimum: 0
   credentialHomeChoices:
     type: array
     items:

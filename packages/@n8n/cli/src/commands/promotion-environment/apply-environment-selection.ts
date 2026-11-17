@@ -30,7 +30,7 @@ export default class PromotionEnvironmentApplyEnvironmentSelection extends Promo
 		...expectedPreviewRevisionFlag,
 		confirmDestructiveChanges: Flags.boolean({
 			description:
-				'Also apply data table changes that remove or retype columns. The values in those columns are removed.',
+				'Also apply data table changes that remove or retype columns, and move the selected workflows and folders out of a project that the branch does not hold. The values in those columns are removed.',
 			aliases: ['confirm-destructive-changes'],
 		}),
 		confirmGap: Flags.string({
