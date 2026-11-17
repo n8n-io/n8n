@@ -17,6 +17,21 @@
 		"POST /agents": {
 			"status": "gap"
 		},
+		"GET /skills": {
+			"status": "gap"
+		},
+		"GET /skills/{skillId}": {
+			"status": "gap"
+		},
+		"POST /skills": {
+			"status": "gap"
+		},
+		"PATCH /skills/{skillId}": {
+			"status": "gap"
+		},
+		"DELETE /skills/{skillId}": {
+			"status": "gap"
+		},
 		"GET /roles": {
 			"status": "gap"
 		},

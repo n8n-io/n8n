@@ -10,7 +10,7 @@ import {
 import type { SkillSyncedFrom, SkillSyncState } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
 import type { ProjectIcon, ProjectType } from '../schemas/project.schema';
-import { paginationSchema } from '../dto/pagination/pagination.dto';
+import { paginationSchema, publicApiPaginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
@@ -295,4 +295,71 @@ export class SaveSkillDto extends Z.class({
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
 	availableToMCP: z.boolean().optional(),
+}) {}
+
+const skillContentPublicSchema = z
+	.object({
+		name: skillNameSchema,
+		description: agentSkillShape.description,
+		instructions: agentSkillShape.instructions,
+		references: agentSkillShape.references,
+	})
+	.strict();
+
+export class CreateSkillPublicDto extends Z.class(
+	{
+		scope: skillScopeSchema,
+		projectId: z.string().max(36).optional(),
+		skill: skillContentPublicSchema,
+		availableToAssistant: z.boolean().optional(),
+		availableToMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
+export class UpdateSkillPublicDto extends Z.class(
+	{
+		baseSkillHash: z.string().min(1),
+		name: skillNameSchema.optional(),
+		description: agentSkillShape.description.optional(),
+		instructions: agentSkillShape.instructions.optional(),
+		references: agentSkillShape.references.optional(),
+		scope: skillScopeSchema.optional(),
+		projectId: z.string().max(36).optional(),
+		availableToAssistant: z.boolean().optional(),
+		availableToMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
+export class ListSkillsPublicQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: publicApiPaginationSchema.limit,
+	projectId: z.string().min(1).optional(),
+}) {}
+
+const skillListPublicItemShape = {
+	id: z.string(),
+	name: z.string(),
+	description: z.string(),
+	scope: skillScopeSchema,
+	projectId: z.string().nullable(),
+	source: z.string(),
+	latestVersion: z.number(),
+	availableToAssistant: z.boolean(),
+	availableToMCP: z.boolean(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+};
+
+export class SkillListPublicDto extends Z.class({
+	data: z.array(z.object(skillListPublicItemShape)),
+	nextCursor: z.string().nullable(),
+}) {}
+
+export class SkillPublicDto extends Z.class({
+	...skillListPublicItemShape,
+	instructions: z.string(),
+	references: z.array(z.object({ path: z.string(), content: z.string() })),
+	skillHash: z.string(),
 }) {}

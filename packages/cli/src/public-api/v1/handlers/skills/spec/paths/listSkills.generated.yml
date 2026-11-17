@@ -1,0 +1,85 @@
+operationId: listSkills
+tags:
+  - Skill
+summary: List skills
+description: |-
+  List the skills you can read: instance skills and the skills of your projects. The response is one cursor page: read the next page with the cursor query parameter. Narrow the list to one project with projectId.
+
+  Requires the `skill:list` API key scope.
+x-required-scope: skill:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - schema:
+      type: string
+      minLength: 1
+    required: false
+    name: projectId
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  scope:
+                    type: string
+                    enum:
+                      - project
+                      - instance
+                  projectId:
+                    type: string
+                    nullable: true
+                  source:
+                    type: string
+                  latestVersion:
+                    type: number
+                  availableToAssistant:
+                    type: boolean
+                  availableToMCP:
+                    type: boolean
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - description
+                  - scope
+                  - projectId
+                  - source
+                  - latestVersion
+                  - availableToAssistant
+                  - availableToMCP
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

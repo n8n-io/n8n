@@ -141,7 +141,7 @@ export const API_KEY_RESOURCES = {
 		'unpublish',
 		'delete',
 	] as const,
-	skill: ['create', 'update'] as const,
+	skill: ['read', 'list', 'create', 'update', 'delete'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,

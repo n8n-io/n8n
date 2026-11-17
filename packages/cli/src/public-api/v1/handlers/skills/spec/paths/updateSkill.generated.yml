@@ -1,0 +1,91 @@
+operationId: updateSkill
+tags:
+  - Skill
+summary: Update a skill
+description: |-
+  Save the changes as the next version of the skill. Fields you leave out keep their value. Send the skillHash of the version you read as baseSkillHash: a save based on an older version fails with 409. Set scope and projectId to move the skill.
+
+  Requires the `skill:update` API key scope.
+x-required-scope: skill:update
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the skill.
+    name: skillId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          baseSkillHash:
+            type: string
+            minLength: 1
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          description:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          instructions:
+            type: string
+            maxLength: 65536
+          references:
+            type: array
+            items:
+              type: object
+              properties:
+                path:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 65536
+              required:
+                - path
+                - content
+              additionalProperties: false
+            maxItems: 20
+          scope:
+            type: string
+            enum:
+              - project
+              - instance
+          projectId:
+            type: string
+            maxLength: 36
+          availableToAssistant:
+            type: boolean
+          availableToMCP:
+            type: boolean
+        required:
+          - baseSkillHash
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/skillPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

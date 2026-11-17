@@ -120,6 +120,10 @@ tags:
     x-displayName: Settings SSO SAML
     x-parent: InstanceSettings
     description: Operations about SAML SSO settings
+  - name: Skill
+    x-displayName: Skills
+    x-parent: BuildAndRun
+    description: Operations about skills
   - name: SourceControl
     x-displayName: Source Control
     x-parent: InstanceOperations
