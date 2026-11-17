@@ -3944,6 +3944,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"output": [
@@ -4012,6 +4013,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "resp_2",
@@ -4075,6 +4077,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"output": [
@@ -7276,6 +7279,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"index": 0,
@@ -7323,6 +7327,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "chatcmpl-2",
@@ -7356,7 +7361,42 @@
 	},
 	"openAi text.message empty prompt": {
 		"requests": [],
+		"accepts": [],
 		"error": "A non-empty prompt is required."
+	},
+	"openAi text.message custom header": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"x-custom": "v1",
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"index": 0,
+				"message": {
+					"role": "assistant",
+					"content": "Hi"
+				},
+				"finish_reason": "stop"
+			}
+		]
 	},
 	"openAi text.response 2.1 no built-in tools": {
 		"requests": [
@@ -7387,6 +7427,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"output": [
@@ -7436,6 +7477,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"output": [
 			{
 				"id": "resp_1",
@@ -7492,6 +7534,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Bad request - please check your parameters"
 	},
 	"openAi text.response status 400": {
@@ -7523,6 +7566,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Bad request - please check your parameters"
 	},
 	"openAi text.message status 401": {
@@ -7546,6 +7590,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Authorization failed - please check your credentials"
 	},
 	"openAi text.response status 401": {
@@ -7577,6 +7622,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Authorization failed - please check your credentials"
 	},
 	"openAi text.message status 404": {
@@ -7600,6 +7646,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The resource you are requesting could not be found"
 	},
 	"openAi text.response status 404": {
@@ -7631,6 +7678,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The resource you are requesting could not be found"
 	},
 	"openAi text.message status 418": {
@@ -7654,6 +7702,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Your request is invalid or could not be processed by the service"
 	},
 	"openAi text.response status 418": {
@@ -7685,6 +7734,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Your request is invalid or could not be processed by the service"
 	},
 	"openAi text.message status 429": {
@@ -7708,6 +7758,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The service is receiving too many requests from you"
 	},
 	"openAi text.response status 429": {
@@ -7739,6 +7790,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The service is receiving too many requests from you"
 	},
 	"openAi text.message status 500": {
@@ -7762,6 +7814,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The service was not able to process your request"
 	},
 	"openAi text.response status 500": {
@@ -7793,6 +7846,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The service was not able to process your request"
 	},
 	"openAi text.message status 503": {
@@ -7816,6 +7870,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
 	},
 	"openAi text.response status 503": {
@@ -7847,6 +7902,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
 	},
 	"openAi text.message status 599": {
@@ -7870,6 +7926,7 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The service failed to process your request"
 	},
 	"openAi text.response status 599": {
@@ -7901,7 +7958,3412 @@
 				"qsFormat": "brackets"
 			}
 		],
+		"accepts": ["application/json"],
 		"error": "The service failed to process your request"
+	},
+	"anthropic text.message defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-custom": "v1",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-opus-4",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"content": "Hi",
+							"role": "assistant"
+						},
+						{
+							"content": "Again",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 300,
+					"system": "Be brief",
+					"temperature": 0.2,
+					"top_p": 0.8,
+					"top_k": 4,
+					"cache_control": {
+						"type": "ephemeral",
+						"ttl": "1h"
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi "
+					},
+					{
+						"type": "thinking",
+						"thinking": "hm"
+					},
+					{
+						"type": "text",
+						"text": "there"
+					}
+				],
+				"merged_response": "Hi there"
+			}
+		]
+	},
+	"anthropic text.message status 401, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message raw output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"id": "msg_1",
+				"type": "message",
+				"role": "assistant",
+				"model": "claude-x",
+				"content": [
+					{
+						"type": "text",
+						"text": "Hi"
+					}
+				],
+				"stop_reason": "end_turn",
+				"usage": {
+					"input_tokens": 5,
+					"output_tokens": 2
+				},
+				"merged_response": "Hi"
+			}
+		]
+	},
+	"anthropic text.message paused turns": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "two"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "one"
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "two"
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "three"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "four"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message tool use without tools": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "I call"
+								},
+								{
+									"type": "tool_use",
+									"id": "tu_1",
+									"name": "x",
+									"input": {}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "tool_result",
+									"tool_use_id": "tu_1",
+									"content": ""
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "I call"
+								},
+								{
+									"type": "tool_use",
+									"id": "tu_1",
+									"name": "x",
+									"input": {}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "tool_result",
+									"tool_use_id": "tu_1",
+									"content": ""
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "no tool calls"
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "text",
+						"text": "done"
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message tool use at the iteration limit": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "tool_use",
+									"id": "tu_1",
+									"name": "x",
+									"input": {}
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "tool_result",
+									"tool_use_id": "tu_1",
+									"content": ""
+								}
+							]
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "tu_1",
+						"name": "x",
+						"input": {}
+					}
+				]
+			}
+		]
+	},
+	"anthropic text.message empty prompt": {
+		"requests": [],
+		"accepts": [],
+		"error": "A non-empty prompt is required."
+	},
+	"anthropic text.message status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Bad request - please check your parameters"
+	},
+	"anthropic text.message status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"anthropic text.message status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The resource you are requesting could not be found"
+	},
+	"anthropic text.message status 418": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"anthropic text.message status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service is receiving too many requests from you"
+	},
+	"anthropic text.message status 500": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service was not able to process your request"
+	},
+	"anthropic text.message status 503": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+	},
+	"anthropic text.message status 599": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "Hello",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service failed to process your request"
+	},
+	"googleGemini text.message defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Hi"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"text": "Hi"
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"text": "Again"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"frequencyPenalty": 0.1,
+						"maxOutputTokens": 200,
+						"candidateCount": 2,
+						"presencePenalty": 0.2,
+						"temperature": 0.3,
+						"topP": 0.9,
+						"topK": 5,
+						"responseMimeType": "application/json",
+						"thinkingConfig": {
+							"thinkingBudget": 0
+						}
+					},
+					"systemInstruction": {
+						"parts": [
+							{
+								"text": "Be brief"
+							}
+						]
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Hi "
+						},
+						{
+							"thought": true
+						},
+						{
+							"text": "there"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0,
+				"mergedResponse": "Hi there"
+			},
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Second"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 1,
+				"mergedResponse": "Second"
+			}
+		]
+	},
+	"googleGemini text.message version 1 raw output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"candidates": [
+					{
+						"content": {
+							"parts": [
+								{
+									"text": "Hi"
+								}
+							],
+							"role": "model"
+						},
+						"finishReason": "STOP",
+						"index": 0
+					}
+				],
+				"usageMetadata": {
+					"promptTokenCount": 3,
+					"candidatesTokenCount": 2
+				},
+				"modelVersion": "gemini-2.5-flash"
+			}
+		]
+	},
+	"googleGemini text.message function call without tools": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"functionCall": {
+										"id": "c1",
+										"name": "x",
+										"args": {}
+									}
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"functionResponse": {
+										"id": "c1",
+										"name": "x",
+										"response": {}
+									}
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"functionCall": {
+										"id": "c1",
+										"name": "x",
+										"args": {}
+									}
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"functionResponse": {
+										"id": "c1",
+										"name": "x",
+										"response": {}
+									}
+								}
+							],
+							"role": "user"
+						},
+						{
+							"parts": [
+								{
+									"functionCall": {
+										"name": "y",
+										"args": {}
+									}
+								}
+							],
+							"role": "model"
+						},
+						{
+							"parts": [
+								{
+									"functionResponse": {
+										"name": "y",
+										"response": {}
+									}
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "done"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message function call at the iteration limit": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"functionCall": {
+								"id": "c1",
+								"name": "x",
+								"args": {}
+							}
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message gemma answers as another model": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Google returned a different model"
+	},
+	"googleGemini text.message answer without candidates": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Cannot read properties of undefined (reading 'flatMap')"
+	},
+	"googleGemini text.message empty prompt": {
+		"requests": [],
+		"accepts": [],
+		"error": "A non-empty prompt is required."
+	},
+	"googleGemini text.message status 401, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"content": {
+					"parts": [
+						{
+							"text": "Hi"
+						}
+					],
+					"role": "model"
+				},
+				"finishReason": "STOP",
+				"index": 0
+			}
+		]
+	},
+	"googleGemini text.message status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Bad request - please check your parameters"
+	},
+	"googleGemini text.message status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"googleGemini text.message status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The resource you are requesting could not be found"
+	},
+	"googleGemini text.message status 418": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Your request is invalid or could not be processed by the service"
+	},
+	"googleGemini text.message status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service is receiving too many requests from you"
+	},
+	"googleGemini text.message status 500": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service was not able to process your request"
+	},
+	"googleGemini text.message status 503": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+	},
+	"googleGemini text.message status 599": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "Hello"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"error": "The service failed to process your request"
+	},
+	"googleGemini text.message stop, wrong option type": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"outputs": [],
+		"paired": [],
+		"error": "Parameter \"temperature\" does not match any of the expected types: number"
+	},
+	"googleGemini text.message continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			}
+		],
+		"accepts": ["application/json"],
+		"outputs": [
+			[
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "a"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				},
+				{
+					"error": "Parameter \"temperature\" does not match any of the expected types: number"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"googleGemini text.message error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "two"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.2
+					}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "b"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				}
+			],
+			[
+				{
+					"q": "one",
+					"t": 0.1,
+					"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"googleGemini text.message retry continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "two"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.2
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "one"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.1
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+				"qs": {
+					"key": "fake-google-key"
+				},
+				"headers": {},
+				"body": {
+					"tools": [],
+					"contents": [
+						{
+							"parts": [
+								{
+									"text": "two"
+								}
+							],
+							"role": "user"
+						}
+					],
+					"generationConfig": {
+						"temperature": 0.2
+					}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "b"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				},
+				{
+					"content": {
+						"parts": [
+							{
+								"text": "c"
+							}
+						],
+						"role": "model"
+					},
+					"finishReason": "STOP",
+					"index": 0
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"anthropic text.message stop": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"anthropic text.message continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "b"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"anthropic text.message error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "a"
+						}
+					]
+				}
+			],
+			[
+				{
+					"q": "two",
+					"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			],
+			[
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"anthropic text.message retry continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "b"
+						}
+					]
+				},
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "c"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"anthropic text.message retry then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.anthropic.com/v1/messages",
+				"qs": {},
+				"headers": {
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "files-api-2025-04-14",
+					"x-api-key": "sk-ant-fake"
+				},
+				"body": {
+					"model": "claude-sonnet-4-5",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					],
+					"tools": [],
+					"max_tokens": 1024
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "b"
+						}
+					]
+				},
+				{
+					"content": [
+						{
+							"type": "text",
+							"text": "c"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message stop": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"openAi text.message continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "b"
+					},
+					"finish_reason": "stop"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message continue (old setting)": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "a"
+					},
+					"finish_reason": "stop"
+				},
+				{
+					"error": "The service is receiving too many requests from you"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "b"
+					},
+					"finish_reason": "stop"
+				}
+			],
+			[
+				{
+					"q": "one",
+					"error": "Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message error output all fail": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[],
+			[
+				{
+					"q": "one",
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"q": "two",
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[],
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message retry then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "a"
+					},
+					"finish_reason": "stop"
+				},
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "b"
+					},
+					"finish_reason": "stop"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message retry continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "b"
+					},
+					"finish_reason": "stop"
+				},
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "c"
+					},
+					"finish_reason": "stop"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message retry error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "b"
+					},
+					"finish_reason": "stop"
+				},
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "c"
+					},
+					"finish_reason": "stop"
+				}
+			],
+			[]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			],
+			[]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.message always output data": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "two",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [[{}]],
+		"paired": [
+			[
+				[
+					{
+						"item": 0,
+						"input": 0
+					},
+					{
+						"item": 1,
+						"input": 0
+					}
+				]
+			]
+		],
+		"nodePaired": []
+	},
+	"openAi text.message execute once": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"content": "one",
+							"role": "user"
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json"],
+		"outputs": [
+			[
+				{
+					"index": 0,
+					"message": {
+						"role": "assistant",
+						"content": "a"
+					},
+					"finish_reason": "stop"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"openAi text.response continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "one"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "two"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"output": [
+						{
+							"type": "message",
+							"id": "msg_1",
+							"status": "completed",
+							"role": "assistant",
+							"content": [
+								{
+									"type": "output_text",
+									"text": "b",
+									"annotations": []
+								}
+							]
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.response error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "one"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "two"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"output": [
+						{
+							"type": "message",
+							"id": "msg_1",
+							"status": "completed",
+							"role": "assistant",
+							"content": [
+								{
+									"type": "output_text",
+									"text": "a",
+									"annotations": []
+								}
+							]
+						}
+					]
+				}
+			],
+			[
+				{
+					"q": "two",
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			],
+			[
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"openAi text.response retry error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "one"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "two"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "one"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "two"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"outputs": [
+			[
+				{
+					"output": [
+						{
+							"type": "message",
+							"id": "msg_1",
+							"status": "completed",
+							"role": "assistant",
+							"content": [
+								{
+									"type": "output_text",
+									"text": "b",
+									"annotations": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"output": [
+						{
+							"type": "message",
+							"id": "msg_1",
+							"status": "completed",
+							"role": "assistant",
+							"content": [
+								{
+									"type": "output_text",
+									"text": "c",
+									"annotations": []
+								}
+							]
+						}
+					]
+				}
+			],
+			[]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			],
+			[]
+		],
+		"nodePaired": [true, true]
 	},
 	"chainLlm openAi completions": {
 		"requests": [
@@ -7946,6 +11408,7 @@
 				}
 			}
 		],
+		"accepts": [null],
 		"output": [
 			{
 				"text": "Hi there"
@@ -8014,6 +11477,7 @@
 				}
 			}
 		],
+		"accepts": [null],
 		"output": [
 			{
 				"text": "Hi"
@@ -8064,6 +11528,7 @@
 				}
 			}
 		],
+		"accepts": [null],
 		"output": [
 			{
 				"text": ""
@@ -8108,7 +11573,7 @@
 					"messages": [
 						{
 							"role": "user",
-							"content": "Old prompt"
+							"content": "Old prompt 1"
 						}
 					]
 				}
@@ -8127,12 +11592,13 @@
 					"messages": [
 						{
 							"role": "user",
-							"content": "Old prompt"
+							"content": "Old prompt 2"
 						}
 					]
 				}
 			}
 		],
+		"accepts": [null, null],
 		"output": [
 			{
 				"text": "one"
@@ -8195,6 +11661,7 @@
 				}
 			}
 		],
+		"accepts": [null],
 		"output": [
 			{
 				"text": "Hi"
@@ -8223,6 +11690,90 @@
 		],
 		"nodePaired": [false]
 	},
+	"chainLlm openAi model from the item": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"temperature": 0.1,
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "one"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"temperature": 0.1,
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "two"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"text": "a"
+			},
+			{
+				"text": "b"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				},
+				{
+					"text": "b"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
+	},
 	"chainLlm openAi completions no choices": {
 		"requests": [
 			{
@@ -8245,9 +11796,166 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Received empty response from chat model call (no choices). Response body: {\"id\":\"x\",\"choices\":[],\"usage\":{}}"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "Received empty response from chat model call (no choices). Response body: {\"id\":\"x\",\"choices\":[],\"usage\":{}}"
+	},
+	"chainLlm prompt without a value": {
+		"requests": [],
+		"accepts": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified"
+	},
+	"chainLlm prompt from a path without a value": {
+		"requests": [],
+		"accepts": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified"
+	},
+	"chainLlm prompt null": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "null"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm prompt number and object": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "5"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "{\"a\":[1]}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"text": "a"
+			},
+			{
+				"text": "b"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				},
+				{
+					"text": "b"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
 	},
 	"chainLlm openAi responses": {
 		"requests": [
@@ -8296,6 +12004,7 @@
 				}
 			}
 		],
+		"accepts": [null],
 		"output": [
 			{
 				"text": "Hi!"
@@ -8349,6 +12058,7 @@
 				}
 			}
 		],
+		"accepts": [null],
 		"output": [
 			{
 				"text": "Hi"
@@ -8401,6 +12111,7 @@
 				}
 			}
 		],
+		"accepts": [null],
 		"output": [
 			{
 				"text": ""
@@ -8453,11 +12164,55 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "boom"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "boom"
 	},
-	"chainLlm openAi status 409": {
+	"chainLlm openAi responses part without annotations": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4o",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Cannot read properties of undefined (reading 'map')"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Cannot read properties of undefined (reading 'map')"
+	},
+	"chainLlm credential with a custom header": {
 		"requests": [
 			{
 				"method": "POST",
@@ -8465,7 +12220,8 @@
 				"qs": {},
 				"headers": {
 					"authorization": "Bearer sk-fake",
-					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ",
+					"x-custom": "v1"
 				},
 				"body": {
 					"model": "gpt-4o",
@@ -8479,9 +12235,87 @@
 				}
 			}
 		],
-		"outputs": [],
-		"paired": [],
-		"error": "Your request is invalid or could not be processed by the service"
+		"accepts": [null],
+		"output": [
+			{
+				"text": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm credential with a custom header that is off": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "gpt-4o",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
 	},
 	"chainLlm openAi status 400": {
 		"requests": [
@@ -8507,6 +12341,14 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "Bad request - please check your parameters"
@@ -8533,6 +12375,14 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Authorization failed - please check your credentials"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "Authorization failed - please check your credentials"
@@ -8559,6 +12409,14 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Forbidden - perhaps check your credentials?"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "Forbidden - perhaps check your credentials?"
@@ -8585,9 +12443,51 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "The resource you are requesting could not be found"
+	},
+	"chainLlm openAi status 409": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Your request is invalid or could not be processed by the service"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Your request is invalid or could not be processed by the service"
 	},
 	"chainLlm openAi status 429": {
 		"requests": [
@@ -8611,6 +12511,14 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "OpenAI: Rate limit reached"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "OpenAI: Rate limit reached"
@@ -8637,6 +12545,14 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Insufficient quota detected. <a href=\"https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/common-issues/#insufficient-quota\" target=\"_blank\">Learn more</a> about resolving this issue"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "Insufficient quota detected. <a href=\"https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/common-issues/#insufficient-quota\" target=\"_blank\">Learn more</a> about resolving this issue"
@@ -8663,6 +12579,14 @@
 				}
 			}
 		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "500 bad thing"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "500 bad thing"
@@ -8708,6 +12632,7 @@
 				}
 			}
 		],
+		"accepts": [null, null],
 		"output": [
 			{
 				"text": "late"
@@ -8781,9 +12706,4522 @@
 				}
 			}
 		],
+		"accepts": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "503 {\"detail\":\"down\"}"
+				}
+			]
+		},
 		"outputs": [],
 		"paired": [],
 		"error": "503 {\"detail\":\"down\"}"
+	},
+	"chainLlm batch of two, first fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm batch of two, second fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm batch size 1, first fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm version 1.5, first fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm delay between batches": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null],
+		"output": [
+			{
+				"text": "a"
+			},
+			{
+				"text": "b"
+			},
+			{
+				"text": "c"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				},
+				{
+					"text": "b"
+				},
+				{
+					"text": "c"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [false, false, false]
+	},
+	"chainLlm continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"chainLlm continue, prompt without a value": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "x"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"error": "No prompt specified"
+			},
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "No prompt specified"
+				},
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"chainLlm error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"text": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "ok"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"chainLlm retry, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm retry, all fail": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm retry continue, first item fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null, null],
+		"output": [
+			{
+				"text": "ok2"
+			},
+			{
+				"text": "ok3"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "ok2"
+				},
+				{
+					"text": "ok3"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
+	},
+	"chainLlm retry continue, second item fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"text": "ok"
+			},
+			{
+				"error": "Bad request - please check your parameters"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "ok"
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, true]
+	},
+	"chainLlm retry error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null, null],
+		"output": [
+			{
+				"text": "ok2"
+			},
+			{
+				"text": "ok3"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "ok2"
+				},
+				{
+					"text": "ok3"
+				}
+			],
+			[]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			],
+			[]
+		],
+		"nodePaired": [false, false]
+	},
+	"chainLlm execute once": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm always output data": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent version 2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be {brief}"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": " Hi there "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi there "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent version 2.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be {brief}"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": " Hi there "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi there "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be {brief}"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": " Hi there "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi there "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent version 3": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be {brief}"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": " Hi there "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi there "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent version 3.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be {brief}"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": " Hi there "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi there "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent responses, no system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					],
+					"model": "gpt-5",
+					"stream": false,
+					"text": {}
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "Hi!"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hi!"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent responses, reasoning model with system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "developer",
+							"content": "Be brief"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					],
+					"model": "gpt-5-mini",
+					"stream": false,
+					"text": {},
+					"max_output_tokens": 40
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent completions, reasoning model": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "o3-mini",
+					"temperature": 0.4,
+					"stream": false,
+					"messages": [
+						{
+							"role": "developer",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent intermediate steps": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "Hi",
+				"intermediateSteps": []
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hi",
+					"intermediateSteps": []
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent intermediate steps, version 2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "Hi",
+				"intermediateSteps": []
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hi",
+					"intermediateSteps": []
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent empty answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent answer without content": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent no choices": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Received empty response from chat model call (no choices). Response body: {\"id\":\"x\",\"choices\":[]}"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Received empty response from chat model call (no choices). Response body: {\"id\":\"x\",\"choices\":[]}"
+	},
+	"agent prompt without a value": {
+		"requests": [],
+		"accepts": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified"
+	},
+	"agent empty prompt": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": ""
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent prompt null, number and object": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "null"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "5"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "{\"a\":[1]}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null],
+		"output": [
+			{
+				"output": "a"
+			},
+			{
+				"output": "a"
+			},
+			{
+				"output": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				},
+				{
+					"output": "a"
+				},
+				{
+					"output": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent prompt of the chat trigger": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "from chat"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent prompt of the chat trigger, missing": {
+		"requests": [],
+		"accepts": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified"
+	},
+	"agent system message from the item": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "from item"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "7"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null, null],
+		"output": [
+			{
+				"output": "x"
+			},
+			{
+				"output": "x"
+			},
+			{
+				"output": "x"
+			},
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				},
+				{
+					"output": "x"
+				},
+				{
+					"output": "x"
+				},
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				}
+			]
+		],
+		"nodePaired": [true, true, true, true]
+	},
+	"agent model from the item": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "a"
+			},
+			{
+				"output": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				},
+				{
+					"output": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent credential with an organization": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent credential with a custom header": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ",
+					"x-custom": "v1"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent first item fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"agent first item fails, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"agent batch of two, second fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"agent batch of two, first fails": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"agent delay between batches": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null],
+		"output": [
+			{
+				"output": "a"
+			},
+			{
+				"output": "b"
+			},
+			{
+				"output": "c"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				},
+				{
+					"output": "b"
+				},
+				{
+					"output": "c"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				}
+			]
+		],
+		"nodePaired": [true, true, true]
+	},
+	"agent delay between batches of one": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "a"
+			},
+			{
+				"output": "b"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				},
+				{
+					"output": "b"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"output": "ok"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent continue, version 2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			},
+			{
+				"error": "OpenAI: Rate limit reached"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "OpenAI: Rate limit reached"
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				},
+				{
+					"error": "OpenAI: Rate limit reached"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent retry, then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent retry, all fail": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"agent retry continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null, null],
+		"output": [
+			{
+				"output": "ok2"
+			},
+			{
+				"output": "ok3"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok2"
+				},
+				{
+					"output": "ok3"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent retry error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null, null, null],
+		"output": [
+			{
+				"output": "ok2"
+			},
+			{
+				"output": "ok3"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok2"
+				},
+				{
+					"output": "ok3"
+				}
+			],
+			[]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			],
+			[]
+		],
+		"nodePaired": [true, true]
+	},
+	"agent status 500 then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent execute once": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent always output data": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "a"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "a"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"chainLlm prompt of the chat trigger": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "from chat"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm prompt of the chat trigger, missing": {
+		"requests": [],
+		"accepts": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified"
+	},
+	"chainLlm prompt of the guardrails node": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "checked"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent prompt of the guardrails node": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "checked"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"chainLlm openRouter options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "openai/gpt-4.1-mini",
+					"temperature": 0.3,
+					"top_p": 0.9,
+					"frequency_penalty": 0.1,
+					"presence_penalty": 0.2,
+					"stream": false,
+					"max_tokens": 50,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "system",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter defaults": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter reasoning model with a vendor prefix": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "openai/o3-mini",
+					"stream": false,
+					"max_tokens": 5,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "system",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter reasoning model without a prefix": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "o3-mini",
+					"stream": false,
+					"max_completion_tokens": 5,
+					"messages": [
+						{
+							"role": "developer",
+							"content": "Answer {briefly}"
+						},
+						{
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"role": "developer",
+							"content": ""
+						},
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter model that prefers responses": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"input": [
+						{
+							"type": "message",
+							"role": "system",
+							"content": "Answer {briefly}"
+						},
+						{
+							"type": "message",
+							"role": "assistant",
+							"content": "ok"
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "first }{ question"
+						},
+						{
+							"type": "message",
+							"role": "system",
+							"content": ""
+						},
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					],
+					"model": "openai/gpt-5.1-codex",
+					"stream": false,
+					"text": {},
+					"max_output_tokens": 5
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "Hi"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "Hi"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter another url": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer k"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"text": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter error in the body": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Received empty response from chat model call (no choices). Response body: {\"error\":{\"message\":\"provider down\",\"code\":502}}"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Received empty response from chat model call (no choices). Response body: {\"error\":{\"message\":\"provider down\",\"code\":502}}"
+	},
+	"chainLlm openRouter status 400": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters"
+	},
+	"chainLlm openRouter status 401": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Authorization failed - please check your credentials"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Authorization failed - please check your credentials"
+	},
+	"chainLlm openRouter status 404": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "The resource you are requesting could not be found"
+	},
+	"chainLlm openRouter status 429": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "OpenAI: Rate limit reached"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "OpenAI: Rate limit reached"
+	},
+	"chainLlm openRouter status 500 then answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "m",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "m",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"chainLlm openRouter continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Say hi to {name}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"text": "late"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"text": "late"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"agent openRouter": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null],
+		"output": [
+			{
+				"output": " Hi "
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": " Hi "
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent openRouter, version 2.2, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": false,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"accepts": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			],
+			[
+				{
+					"a": 1,
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 1
+				}
+			],
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true, true]
 	},
 	"chainLlm openAi responses effort": {
 		"requests": [

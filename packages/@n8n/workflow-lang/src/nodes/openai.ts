@@ -62,6 +62,10 @@ interface OpenAiParameters {
 	hideTools?: string;
 	simplify?: boolean;
 	options?: OpenAiOptions & Record<string, unknown>;
+	/** The parameters of each input item (the converter writes them). */
+	batch?: OpenAiParameters[];
+	/** True under a "continue" error setting. */
+	continueOnFail?: boolean;
 }
 
 interface OutputItem {
@@ -125,6 +129,8 @@ export default defineNode<OpenAiParameters>({
 		operation: { text: 'response' },
 		operations: {
 			'text.response': [
+				'batch',
+				'continueOnFail',
 				'modelId',
 				'responses',
 				'simplify',
@@ -150,6 +156,8 @@ export default defineNode<OpenAiParameters>({
 				'options.maxToolsIterations',
 			],
 			'text.message': [
+				'batch',
+				'continueOnFail',
 				'modelId',
 				'messages',
 				'simplify',
@@ -166,203 +174,224 @@ export default defineNode<OpenAiParameters>({
 			],
 		},
 	},
-	async run(ctx, parameters, items, credential) {
-		const resource = parameters.resource ?? 'text';
-		const operation = parameters.operation ?? 'response';
-		if (resource !== 'text' || (operation !== 'response' && operation !== 'message')) {
-			throw new Error(`OpenAI: ${resource}.${operation} is not in the compiled library`);
+	async run(ctx, call, _items, credential) {
+		// The converter gives the parameters of each input item in `batch`. The node runs once
+		// for all items, as the router of the v1 node does: under "continue on fail" an item
+		// that fails gives `{ error }`, and else the first failure stops the node.
+		const out: Item[] = [];
+		for (const parameters of call.batch ?? [call]) {
+			try {
+				for (const item of await one(parameters)) out.push(item);
+			} catch (error) {
+				if (call.continueOnFail !== true) throw error;
+				out.push({
+					error:
+						isObject(error) && typeof error.message === 'string' ? error.message : String(error),
+				});
+			}
 		}
-		const model =
-			typeof parameters.modelId === 'string'
-				? parameters.modelId
-				: (parameters.modelId?.value ?? '');
-		if (operation === 'message') {
-			// execute of v1/actions/text/message.operation.ts, without connected tools.
+		return out;
+
+		async function one(parameters: OpenAiParameters): Promise<Item[]> {
+			const items = [{}];
+			const resource = parameters.resource ?? 'text';
+			const operation = parameters.operation ?? 'response';
+			if (resource !== 'text' || (operation !== 'response' && operation !== 'message')) {
+				throw new Error(`OpenAI: ${resource}.${operation} is not in the compiled library`);
+			}
+			const model =
+				typeof parameters.modelId === 'string'
+					? parameters.modelId
+					: (parameters.modelId?.value ?? '');
+			if (operation === 'message') {
+				// execute of v1/actions/text/message.operation.ts, without connected tools.
+				const out: Item[] = [];
+				for (const _item of items ?? [{}]) {
+					// n8n fills the defaults of the members of a message.
+					let messages = (parameters.messages?.values ?? [{}]).map((m) => ({
+						...m,
+						role: m.role ?? 'user',
+						content: m.content ?? '',
+					}));
+					if (!messages.some((m) => typeof m.content === 'string' && m.content.trim() !== '')) {
+						throw new Error('A non-empty prompt is required.');
+					}
+					const {
+						maxToolsIterations: _iterations,
+						maxTokens,
+						topP,
+						...rest
+					} = parameters.options ?? {};
+					const body: Record<string, unknown> = { model, messages, ...rest };
+					if (maxTokens !== undefined) body.max_completion_tokens = maxTokens;
+					if (topP !== undefined) body.top_p = topP;
+					const json = parameters.jsonOutput ?? false;
+					if (json) {
+						body.response_format = { type: 'json_object' };
+						messages = [
+							{ role: 'system', content: 'You are a helpful assistant designed to output JSON.' },
+							...messages,
+						];
+						body.messages = messages;
+					}
+					const response = await ctx.http<Record<string, unknown> | null>({
+						method: 'POST',
+						url: '{{$credentials.url}}/chat/completions',
+						headers: {},
+						qs: {},
+						body,
+						credential,
+					});
+					if (response.status >= 400) throw new Error(statusMessage(response.status));
+					const result = response.body;
+					if (!isObject(result)) continue;
+					if (result.error === null) result.error = undefined;
+					const choices: Array<Record<string, unknown>> = [];
+					if (Array.isArray(result.choices)) {
+						for (const entry of result.choices) if (isObject(entry)) choices.push(entry);
+					}
+					if (json) {
+						for (const choice of choices) {
+							const message = choice.message;
+							if (!isObject(message)) continue;
+							try {
+								message.content = JSON.parse(String(message.content));
+							} catch {
+								// The v1 node keeps the text when it is not JSON.
+							}
+						}
+					}
+					if (parameters.simplify ?? true) {
+						for (const choice of choices) out.push(choice);
+					} else {
+						out.push(result);
+					}
+				}
+				return out;
+			}
+			const messages = parameters.responses?.values ?? [{ type: 'text' }];
+			const options = parameters.options ?? {};
 			const out: Item[] = [];
 			for (const _item of items ?? [{}]) {
-				// n8n fills the defaults of the members of a message.
-				let messages = (parameters.messages?.values ?? [{}]).map((m) => ({
-					...m,
-					role: m.role ?? 'user',
-					content: m.content ?? '',
-				}));
-				if (!messages.some((m) => typeof m.content === 'string' && m.content.trim() !== '')) {
-					throw new Error('A non-empty prompt is required.');
+				const hasText = messages.some(
+					(m) =>
+						(m.type === 'text' || !m.type) &&
+						typeof m.content === 'string' &&
+						m.content.trim() !== '',
+				);
+				if (!hasText) throw new Error('A non-empty prompt is required.');
+				// formatInputMessages of the v1 node, for text messages.
+				let input: unknown[] = messages.map((m) => {
+					if (m.type !== undefined && m.type !== 'text') {
+						throw new Error(`OpenAI: messages of type "${m.type}" are not in the compiled library`);
+					}
+					const role = m.role ?? 'user';
+					const content =
+						role === 'assistant'
+							? [{ type: 'output_text', text: m.content, annotations: [] }]
+							: [{ type: 'input_text', text: m.content }];
+					return { role, content };
+				});
+				// createRequest of the v1 node.
+				const body: Record<string, unknown> = {
+					model,
+					input,
+					parallel_tool_calls: options.parallelToolCalls ?? true,
+					store: options.store ?? true,
+					instructions: options.instructions,
+					max_output_tokens: options.maxTokens,
+					previous_response_id: options.previousResponseId,
+					prompt_cache_key: options.promptCacheKey,
+					safety_identifier: options.safetyIdentifier,
+					service_tier: options.serviceTier,
+					temperature: options.temperature,
+					top_p: options.topP,
+					top_logprobs: options.topLogprobs,
+					tools: undefined,
+					max_tool_calls: options.maxToolCalls,
+					background: false,
+				};
+				if (options.truncation !== undefined)
+					body.truncation = options.truncation ? 'auto' : 'disabled';
+				if (options.conversationId) body.conversation = options.conversationId;
+				if (Array.isArray(options.include) && options.include.length > 0)
+					body.include = options.include;
+				if (options.metadata)
+					body.metadata = parseJson(options.metadata, 'Failed to parse metadata');
+				if (options.reasoning) {
+					const reasoning = options.reasoning.reasoningOptions ?? {};
+					const summary = reasoning.summary ?? 'auto';
+					body.reasoning = removeEmpty({
+						effort: reasoning.effort ?? 'medium',
+						summary: summary && summary !== 'none' ? summary : undefined,
+					});
 				}
-				const {
-					maxToolsIterations: _iterations,
-					maxTokens,
-					topP,
-					...rest
-				} = parameters.options ?? {};
-				const body: Record<string, unknown> = { model, messages, ...rest };
-				if (maxTokens !== undefined) body.max_completion_tokens = maxTokens;
-				if (topP !== undefined) body.top_p = topP;
-				const json = parameters.jsonOutput ?? false;
-				if (json) {
-					body.response_format = { type: 'json_object' };
-					messages = [
-						{ role: 'system', content: 'You are a helpful assistant designed to output JSON.' },
-						...messages,
-					];
-					body.messages = messages;
+				if (options.textFormat) {
+					const text = options.textFormat.textOptions ?? {};
+					const config: Record<string, unknown> = { verbosity: text.verbosity ?? 'medium' };
+					const type = text.type ?? '';
+					if (type === 'json_schema') {
+						config.format = removeEmpty({
+							type,
+							name: text.name ?? 'my_schema',
+							schema: parseJson(text.schema ?? '{}', 'Failed to parse schema'),
+						});
+					} else if (type === 'json_object') {
+						config.format = { type };
+						input = [
+							{
+								role: 'system',
+								content: [
+									{
+										type: 'input_text',
+										text: 'You are a helpful assistant designed to output JSON.',
+									},
+								],
+							},
+							...input,
+						];
+						body.input = input;
+					} else if (type === 'text') {
+						config.format = { type };
+					}
+					body.text = config;
 				}
-				const response = await ctx.http<Record<string, unknown> | null>({
+				const response = await ctx.http<Record<string, unknown>>({
 					method: 'POST',
-					url: '{{$credentials.url}}/chat/completions',
+					url: '{{$credentials.url}}/responses',
 					headers: {},
 					qs: {},
-					body,
+					body: removeEmpty(body),
 					credential,
 				});
 				if (response.status >= 400) throw new Error(statusMessage(response.status));
 				const result = response.body;
-				if (!isObject(result)) continue;
 				if (result.error === null) result.error = undefined;
-				const choices: Array<Record<string, unknown>> = [];
-				if (Array.isArray(result.choices)) {
-					for (const entry of result.choices) if (isObject(entry)) choices.push(entry);
+				const output: OutputItem[] = [];
+				if (Array.isArray(result.output)) {
+					for (const entry of result.output) if (isObject(entry)) output.push(entry);
 				}
-				if (json) {
-					for (const choice of choices) {
-						const message = choice.message;
-						if (!isObject(message)) continue;
-						try {
-							message.content = JSON.parse(String(message.content));
-						} catch {
-							// The v1 node keeps the text when it is not JSON.
+				const format =
+					isObject(body.text) && isObject(body.text.format) ? body.text.format.type : undefined;
+				if (format === 'json_object' || format === 'json_schema') {
+					try {
+						for (const entry of output) {
+							if (entry.type !== 'message') continue;
+							for (const part of entry.content ?? []) {
+								if (part.type === 'output_text') part.text = JSON.parse(String(part.text));
+							}
 						}
+					} catch {
+						// The v1 node keeps the text when it is not JSON.
 					}
 				}
 				if (parameters.simplify ?? true) {
-					for (const choice of choices) out.push(choice);
+					out.push({ output: output.filter((entry) => entry.type === 'message') });
 				} else {
 					out.push(result);
 				}
 			}
 			return out;
 		}
-		const messages = parameters.responses?.values ?? [{ type: 'text' }];
-		const options = parameters.options ?? {};
-		const out: Item[] = [];
-		for (const _item of items ?? [{}]) {
-			const hasText = messages.some(
-				(m) =>
-					(m.type === 'text' || !m.type) &&
-					typeof m.content === 'string' &&
-					m.content.trim() !== '',
-			);
-			if (!hasText) throw new Error('A non-empty prompt is required.');
-			// formatInputMessages of the v1 node, for text messages.
-			let input: unknown[] = messages.map((m) => {
-				if (m.type !== undefined && m.type !== 'text') {
-					throw new Error(`OpenAI: messages of type "${m.type}" are not in the compiled library`);
-				}
-				const role = m.role ?? 'user';
-				const content =
-					role === 'assistant'
-						? [{ type: 'output_text', text: m.content, annotations: [] }]
-						: [{ type: 'input_text', text: m.content }];
-				return { role, content };
-			});
-			// createRequest of the v1 node.
-			const body: Record<string, unknown> = {
-				model,
-				input,
-				parallel_tool_calls: options.parallelToolCalls ?? true,
-				store: options.store ?? true,
-				instructions: options.instructions,
-				max_output_tokens: options.maxTokens,
-				previous_response_id: options.previousResponseId,
-				prompt_cache_key: options.promptCacheKey,
-				safety_identifier: options.safetyIdentifier,
-				service_tier: options.serviceTier,
-				temperature: options.temperature,
-				top_p: options.topP,
-				top_logprobs: options.topLogprobs,
-				tools: undefined,
-				max_tool_calls: options.maxToolCalls,
-				background: false,
-			};
-			if (options.truncation !== undefined)
-				body.truncation = options.truncation ? 'auto' : 'disabled';
-			if (options.conversationId) body.conversation = options.conversationId;
-			if (Array.isArray(options.include) && options.include.length > 0)
-				body.include = options.include;
-			if (options.metadata) body.metadata = parseJson(options.metadata, 'Failed to parse metadata');
-			if (options.reasoning) {
-				const reasoning = options.reasoning.reasoningOptions ?? {};
-				const summary = reasoning.summary ?? 'auto';
-				body.reasoning = removeEmpty({
-					effort: reasoning.effort ?? 'medium',
-					summary: summary && summary !== 'none' ? summary : undefined,
-				});
-			}
-			if (options.textFormat) {
-				const text = options.textFormat.textOptions ?? {};
-				const config: Record<string, unknown> = { verbosity: text.verbosity ?? 'medium' };
-				const type = text.type ?? '';
-				if (type === 'json_schema') {
-					config.format = removeEmpty({
-						type,
-						name: text.name ?? 'my_schema',
-						schema: parseJson(text.schema ?? '{}', 'Failed to parse schema'),
-					});
-				} else if (type === 'json_object') {
-					config.format = { type };
-					input = [
-						{
-							role: 'system',
-							content: [
-								{
-									type: 'input_text',
-									text: 'You are a helpful assistant designed to output JSON.',
-								},
-							],
-						},
-						...input,
-					];
-					body.input = input;
-				} else if (type === 'text') {
-					config.format = { type };
-				}
-				body.text = config;
-			}
-			const response = await ctx.http<Record<string, unknown>>({
-				method: 'POST',
-				url: '{{$credentials.url}}/responses',
-				headers: {},
-				qs: {},
-				body: removeEmpty(body),
-				credential,
-			});
-			if (response.status >= 400) throw new Error(statusMessage(response.status));
-			const result = response.body;
-			if (result.error === null) result.error = undefined;
-			const output: OutputItem[] = [];
-			if (Array.isArray(result.output)) {
-				for (const entry of result.output) if (isObject(entry)) output.push(entry);
-			}
-			const format =
-				isObject(body.text) && isObject(body.text.format) ? body.text.format.type : undefined;
-			if (format === 'json_object' || format === 'json_schema') {
-				try {
-					for (const entry of output) {
-						if (entry.type !== 'message') continue;
-						for (const part of entry.content ?? []) {
-							if (part.type === 'output_text') part.text = JSON.parse(String(part.text));
-						}
-					}
-				} catch {
-					// The v1 node keeps the text when it is not JSON.
-				}
-			}
-			if (parameters.simplify ?? true) {
-				out.push({ output: output.filter((entry) => entry.type === 'message') });
-			} else {
-				out.push(result);
-			}
-		}
-		return out;
 	},
 });

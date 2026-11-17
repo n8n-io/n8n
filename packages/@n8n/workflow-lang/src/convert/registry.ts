@@ -4,7 +4,7 @@
  */
 import { lowerCode } from './code-node.ts';
 import type { Lowerer, NodeContext } from './context.ts';
-import { libraryNodeTypes, lowerHttpRequest, lowerLibrary } from './library.ts';
+import { libraryNodeTypes, lowerHttpRequest, lowerLibrary, NATIVE_ROOTS } from './library.ts';
 import { lowerSplitInBatches } from './loops.ts';
 import {
 	lowerAggregate,
@@ -114,7 +114,7 @@ export function lowererOf(node: N8nNode): Lowerer | string {
 	const native = NATIVE[node.type];
 	if (native) return native;
 	if (isSendAndWait(node)) return lowerSendAndWait;
-	if (libraryNodeTypes().has(node.type)) return lowerLibrary;
+	if (libraryNodeTypes().has(node.type) || NATIVE_ROOTS.has(node.type)) return lowerLibrary;
 	if (HOST_UNSUPPORTED[node.type]) return HOST_UNSUPPORTED[node.type];
 	if (node.type === TEST_DATA_TYPE) return lowerTestData;
 	if (node.type.startsWith(LANGCHAIN_PREFIX)) return lowerAiNode;

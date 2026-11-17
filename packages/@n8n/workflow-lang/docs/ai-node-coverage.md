@@ -1,83 +1,200 @@
 # AI node coverage (census of the 74k set)
 
-Source: the 77,424 "fully covered" workflows of the 147,671 real workflows
-(aggregate counts only). 12,112 of them have one or more enabled nodes of
-`@n8n/n8n-nodes-langchain`. All counts are numbers of workflows. A row shows only when 10 or
-more workflows have it. Disabled nodes are not counted.
+Source: the 77,424 "fully covered" workflows of the 147,671 real workflows (aggregate counts
+only). 12,112 of them have one or more enabled nodes of `@n8n/n8n-nodes-langchain`. All counts
+are numbers of workflows. Disabled nodes are not counted.
 
 ## What is native now
 
-| Node | Shape | Proven against v1 |
-|---|---|---|
-| `openAi` versions 2 to 2.3 | `text.response` without tools | yes (equivalence cases) |
-| `openAi` versions 1 to 1.8 | `text.message` without tools | yes (equivalence cases) |
-| `chainLlm` versions 1 to 1.9 with `lmChatOpenAi` versions 1 to 1.3 | text prompt, text messages, no parser, no fallback model, "stop" error setting | yes (equivalence cases with the real sub-node) |
-
-Counts of the 74k set after this work (the count of nodes is by the parameter check of the
-converter; an expression that does not translate can still send a node to the host):
+"Native" means: the converter writes the node as a library node (`src/nodes/`), and the
+equivalence cases prove that shape against the v1 node in n8n's engine (`ai-cluster.test.ts`,
+`equivalence.test.ts`). The counts come from the parameter check of the converter on each
+workflow; an expression that does not translate can still send a node to the host.
 
 | Measure | Workflows |
 |---|---|
-| Workflows with a `chainLlm` that is native | 317 (428 of 2514 nodes) |
-| Workflows with an `openAi` node that is native | 2593 (3945 of 4710 nodes) |
-| The same before this work (only `text.response`, and not with the empty `builtInTools` that the editor writes) | 51 (59 nodes) |
-| Workflows with one or more native AI root nodes | 2905 |
-| Workflows where every AI root node is native | 2442 |
+| Workflows with AI nodes | 12112 |
+| Workflows where every AI root node is native, before this work | 186 |
+| Workflows where every AI root node is native, now | 4988 |
+| Workflows with one or more native AI root nodes, now | 5505 |
 
-Why a `chainLlm` is not native (first reason for each node, workflows):
-`sub-nodes` means: not exactly one chat model (an output parser, a second model, or no model).
-`error setting` means: a "continue" setting on the chain.
+A root node is an AI node that is not a sub-node and not a trigger. A workflow with only a
+chat trigger or with unconnected sub-nodes has no root node, and counts as native in both rows.
 
-| Reason | Workflows |
+| Library node | v1 node and shape | Proof |
+|---|---|---|
+| `openai.ts` | `openAi` 2 to 2.3 `text.response`; 1 to 1.8 `text.message`; no tools | cases against the node and the engine |
+| `anthropic.ts` | `anthropic` 1 `text.message`; no attachments, no tools | cases against the node and the engine |
+| `google-gemini.ts` | `googleGemini` 1 to 1.2 `text.message`; no built-in tools | cases against the node and the engine |
+| `chain-llm.ts` | `chainLlm` 1 to 1.9 with `lmChatOpenAi` 1 to 1.3 or `lmChatOpenRouter`; text prompt and messages; all error settings; batches | cases against the engine with the real sub-node |
+| `chain-llm.ts` (`kind: 'agent'`) | `agent` 2 to 3.1 (Tools Agent) with the same models; no tool, memory or parser | cases against the engine with the real sub-node |
+
+### Root node types: workflows, and workflows where the node is native
+
+| Root node type | Workflows | Native now |
+|---|---|---|
+| `agent` | 5233 | 1028 |
+| `openAi` | 3014 | 2593 |
+| `chainLlm` | 1805 | 506 |
+| `anthropic` | 1246 | 1088 |
+| `googleGemini` | 668 | 385 |
+| `informationExtractor` | 350 | 0 |
+| `textClassifier` | 275 | 0 |
+| `vectorStoreSupabase` | 190 | 0 |
+| `vectorStoreInMemory` | 45 | 0 |
+| `memoryManager` | 30 | 0 |
+| `guardrails` | 29 | 0 |
+| `chainSummarization` | 28 | 0 |
+| `sentimentAnalysis` | 15 | 0 |
+| `lmChatOpenAi` | 15 | 0 |
+| `outputParserStructured` | 13 | 0 |
+| `mcpClient` | 12 | 0 |
+
+### Shapes: workflows, and workflows where the shape is native
+
+For `chainLlm` and `agent`: the chat model, the memory, tools (yes or none) and the output
+parser. For a vendor node: the resource and the operation (in brackets: the default).
+
+| Shape | Workflows | Native now |
+|---|---|---|
+| openAi · text.(response) | 1568 | 1470 |
+| openAi · text.message | 1093 | 1058 |
+| agent · lm=lmChatOpenAi · mem=- · tools=- · parser=- | 1090 | 836 |
+| anthropic · text.(message) | 944 | 894 |
+| agent · lm=lmChatOpenAi · mem=- · tools=- · parser=outputParserStructured | 718 | 0 |
+| chainLlm · lm=lmChatOpenAi · mem=- · tools=- · parser=- | 462 | 366 |
+| agent · lm=lmChatOpenAi · mem=- · tools=yes · parser=- | 456 | 0 |
+| agent · lm=lmChatAnthropic · mem=- · tools=- · parser=- | 454 | 0 |
+| googleGemini · text.(message) | 410 | 371 |
+| chainLlm · lm=lmChatAnthropic · mem=- · tools=- · parser=- | 371 | 0 |
+| informationExtractor | 350 | 0 |
+| agent · lm=lmChatAnthropic · mem=- · tools=- · parser=outputParserStructured | 282 | 0 |
+| agent · lm=lmChatGoogleGemini · mem=- · tools=- · parser=- | 281 | 0 |
+| textClassifier | 275 | 0 |
+| agent · lm=lmChatOpenAi · mem=memoryBufferWindow · tools=yes · parser=- | 273 | 0 |
+| agent · lm=lmChatOpenRouter · mem=- · tools=- · parser=- | 233 | 192 |
+| anthropic · text.message | 221 | 194 |
+| chainLlm · lm=lmChatGoogleGemini · mem=- · tools=- · parser=- | 192 | 0 |
+| vectorStoreSupabase | 190 | 0 |
+| chainLlm · lm=lmChatOpenAi · mem=- · tools=- · parser=outputParserStructured | 181 | 0 |
+| chainLlm · lm=lmChatOpenRouter · mem=- · tools=- · parser=- | 168 | 140 |
+| openAi · image.analyze | 150 | 0 |
+| agent · lm=lmChatOpenAi · mem=- · tools=yes · parser=outputParserStructured | 141 | 0 |
+| openAi · audio.transcribe | 134 | 0 |
+| agent · lm=lmChatAnthropic · mem=- · tools=yes · parser=- | 134 | 0 |
+| chainLlm · lm=lmChatAnthropic · mem=- · tools=- · parser=outputParserStructured | 130 | 0 |
+| agent · lm=lmChatOpenAi · mem=memoryBufferWindow · tools=- · parser=- | 128 | 0 |
+| googleGemini · document.(message) | 114 | 0 |
+| agent · lm=lmChatOpenRouter · mem=- · tools=- · parser=outputParserStructured | 111 | 0 |
+| agent · lm=lmChatGoogleGemini · mem=- · tools=- · parser=outputParserStructured | 101 | 0 |
+| openAi · text.response | 98 | 96 |
+| chainLlm · lm=lmChatOpenRouter · mem=- · tools=- · parser=outputParserStructured | 97 | 0 |
+| agent · lm=lmChatAnthropic · mem=memoryBufferWindow · tools=yes · parser=- | 83 | 0 |
+| chainLlm · lm=lmChatGoogleGemini · mem=- · tools=- · parser=outputParserStructured | 66 | 0 |
+| googleGemini · image.analyze | 59 | 0 |
+| agent · lm=lmChatOpenRouter · mem=- · tools=yes · parser=- | 57 | 0 |
+| anthropic · document.(message) | 53 | 0 |
+| agent · lm=lmChatGoogleGemini · mem=- · tools=yes · parser=- | 53 | 0 |
+| openAi · image.(response) | 49 | 0 |
+| agent · lm=lmChatOpenAi · mem=memoryPostgresChat · tools=yes · parser=- | 49 | 0 |
+| vectorStoreInMemory | 45 | 0 |
+| agent · lm=lmChatGoogleVertex · mem=- · tools=- · parser=- | 45 | 0 |
+| agent · lm=lmChatGoogleGemini · mem=memoryBufferWindow · tools=yes · parser=- | 43 | 0 |
+| agent · lm=lmChatAzureOpenAi · mem=- · tools=- · parser=- | 42 | 0 |
+| agent · lm=lmChatOpenAi · mem=memoryBufferWindow · tools=- · parser=outputParserStructured | 41 | 0 |
+| agent · lm=lmChatAnthropic · mem=memoryBufferWindow · tools=- · parser=- | 39 | 0 |
+| agent · lm=lmChatAnthropic · mem=- · tools=yes · parser=outputParserStructured | 39 | 0 |
+| agent · lm=lmChatAzureOpenAi · mem=- · tools=- · parser=outputParserStructured | 36 | 0 |
+| googleGemini · image.(message) | 35 | 0 |
+| chainLlm · lm=lmChatAzureOpenAi · mem=- · tools=- · parser=- | 34 | 0 |
+| anthropic · image.(message) | 34 | 0 |
+| openAi · assistant.(response) | 33 | 0 |
+| agent · lm=- · mem=- · tools=- · parser=- | 31 | 0 |
+| memoryManager | 30 | 0 |
+| agent · lm=lmChatGoogleGemini · mem=memoryBufferWindow · tools=- · parser=- | 30 | 0 |
+| guardrails | 29 | 0 |
+| chainSummarization | 28 | 0 |
+| googleGemini · text.message | 26 | 14 |
+| openAi · file.(response) | 26 | 0 |
+| agent · lm=lmChatAnthropic · mem=memoryBufferWindow · tools=yes · parser=outputParserStructured | 26 | 0 |
+| agent · lm=lmChatOpenRouter · mem=memoryBufferWindow · tools=yes · parser=- | 25 | 0 |
+| agent · lm=lmChatAwsBedrock · mem=- · tools=- · parser=- | 22 | 0 |
+| agent · lm=lmChatOpenRouter · mem=- · tools=yes · parser=outputParserStructured | 22 | 0 |
+| agent · lm=lmChatOpenAi · mem=memoryBufferWindow · tools=yes · parser=outputParserStructured | 21 | 0 |
+| agent · lm=lmChatMistralCloud · mem=- · tools=- · parser=- | 20 | 0 |
+| agent · lm=lmChatGroq · mem=- · tools=- · parser=- | 20 | 0 |
+
+### Why a node is not native (first reason for each node)
+
+`sub-nodes` means: more than the one chat model (a tool, a memory, an output parser, a
+second model), or no model.
+
+| Node and reason | Workflows |
 |---|---|
-| sub-nodes | 462 |
-| model lmChatAnthropic | 340 |
-| (native) | 317 |
-| error setting | 280 |
-| model lmChatGoogleGemini | 154 |
-| model lmChatOpenRouter | 143 |
-| model option responseFormat | 34 |
-| output parser | 32 |
-| model lmChatAzureOpenAi | 28 |
-| model lmChatDeepSeek | 15 |
-| model lmChatGoogleVertex | 12 |
-| model lmChatMistralCloud | 12 |
-| model lmChatAwsBedrock | 12 |
-| model lmChatGroq | 10 |
-| model option textFormat | 10 |
-| model option reasoningEffort | 8 |
-| model lmChatXAiGrok | 7 |
-| built-in tools | 3 |
-| image message | 2 |
-| prompt type | 2 |
-| model lmChatVercelAiGateway | 1 |
-| model lmOllama | 1 |
-| delay between batches | 1 |
+| agent · sub-nodes | 2716 |
+| chainLlm · sub-nodes | 586 |
+| agent · model lmChatAnthropic | 397 |
+| agent · agent version 1.7 | 396 |
+| chainLlm · model lmChatAnthropic | 371 |
+| agent · model lmChatGoogleGemini | 241 |
+| agent · agent version 1.9 | 222 |
+| chainLlm · model lmChatGoogleGemini | 180 |
+| openAi · image.analyze · operation or parameter | 150 |
+| agent · agent version 1.8 | 138 |
+| openAi · audio.transcribe · operation or parameter | 134 |
+| googleGemini · document.(message) · operation or parameter | 114 |
+| openAi · text.(response) · operation or parameter | 90 |
+| googleGemini · image.analyze · operation or parameter | 59 |
+| chainLlm · model option responseFormat | 56 |
+| anthropic · text.(message) · operation or parameter | 56 |
+| anthropic · document.(message) · operation or parameter | 52 |
+| agent · agent version 1.6 | 51 |
+| openAi · image.(response) · operation or parameter | 49 |
+| agent · output parser | 49 |
+| agent · built-in tools | 45 |
+| googleGemini · text.(message) · operation or parameter | 40 |
+| openAi · text.(response) · has sub-nodes | 39 |
+| openAi · text.message · has sub-nodes | 37 |
+| agent · model lmChatGoogleVertex | 37 |
+| googleGemini · image.(message) · operation or parameter | 35 |
+| chainLlm · output parser | 34 |
+| anthropic · image.(message) · operation or parameter | 34 |
+| agent · model lmChatAzureOpenAi | 33 |
+| chainLlm · model lmChatAzureOpenAi | 31 |
+| openAi · assistant.(response) · operation or parameter | 31 |
+| anthropic · text.message · operation or parameter | 30 |
+| openAi · file.(response) · operation or parameter | 26 |
+| agent · model lmChatAwsBedrock | 21 |
+| agent · model lmChatGroq | 18 |
+| agent · model option responseFormat | 18 |
+| chainLlm · model lmChatAwsBedrock | 17 |
+| openAi · audio.(response) · operation or parameter | 17 |
+| googleGemini · video.analyze · operation or parameter | 16 |
+| agent · model lmChatMistralCloud | 16 |
+| agent · model lmChatDeepSeek | 16 |
+| chainLlm · model lmChatDeepSeek | 15 |
+| chainLlm · model lmChatGoogleVertex | 14 |
+| googleGemini · image.edit · operation or parameter | 13 |
+| chainLlm · model lmChatMistralCloud | 13 |
+| googleGemini · text.message · operation or parameter | 12 |
+| openAi · text.message · operation or parameter | 12 |
+| chainLlm · model option textFormat | 11 |
+| chainLlm · model lmChatGroq | 10 |
+| googleGemini · audio.(message) · operation or parameter | 10 |
+| agent · model option reasoningEffort | 10 |
 
-The `openAi` vendor node by version family and operation:
+### Cost of the native nodes
 
-| Family, operation, result | Workflows |
+Executed bytecode instructions of the library node for one input item (a converted workflow
+of a webhook and the node, less the 24 instructions of the webhook alone):
+
+| Shape | Instructions |
 |---|---|
-| v2 text.default NATIVE | 1470 |
-| v1 text.message NATIVE | 1058 |
-| v2 text.default host | 128 |
-| v2 image.analyze host | 102 |
-| v2 text.response NATIVE | 96 |
-| v1 audio.transcribe host | 70 |
-| v2 audio.transcribe host | 64 |
-| v1 text.message host | 48 |
-| v1 image.analyze host | 48 |
-| v2 image.default host | 39 |
-| v1 assistant.default host | 33 |
-| v2 file.default host | 20 |
-| v1 image.default host | 10 |
-| v1 audio.default host | 9 |
-| v2 audio.default host | 8 |
-| v2 image.edit host | 6 |
-| v1 file.default host | 6 |
-| v2 image.generate host | 6 |
-| v2 file.deleteFile host | 5 |
-
+| `openAi` `text.response` (version 2.1) | 703 |
+| `openAi` `text.message` (version 1.8) | 332 |
+| `anthropic` `text.message` | 278 |
+| `agent` 3.1 with `lmChatOpenAi`, no tools | 534 |
+| `chainLlm` 1.9 with `lmChatOpenAi` | 504 |
 
 ## Node types
 

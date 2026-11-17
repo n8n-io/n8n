@@ -165,15 +165,34 @@ describe('AI clusters', () => {
 			expect(source).toMatch(/provider: 'openAi',\s*responses: true,/);
 		});
 
-		it('traces one run of the model for each item when the source traces all nodes', () => {
+		it('traces the runs of the model that the library node gives', () => {
 			const r = convertWorkflow(chain(prompt, model), { trace: 'all' });
-			expect(r.source).toMatch(/ctx\.trace\('Model', \{ \$subRuns: \w+\.map\(/);
+			expect(r.source).toContain("ctx.trace('Model', { $subRuns: run.runs });");
+			expect(r.source).toContain(
+				"ctx.trace('Chain', { $error: { message: run.error, description: '' } });",
+			);
+		});
+
+		it('gives the parameters of each item, and the model for the first item', () => {
+			const { source } = converted(chain(prompt, model));
+			expect(source).toMatch(/batch: \w+\.map\(\(\$json: Json, \w+: number\) => \(/);
+			expect(source).toMatch(/\w+\.slice\(0, 1\)\.map\(/);
+		});
+
+		it.each([
+			['a delay between batches', { ...prompt, batching: { delayBetweenBatches: 100 } }, {}],
+			['"continue"', prompt, { onError: 'continueRegularOutput' }],
+			['"continue (using error output)"', prompt, { onError: 'continueErrorOutput' }],
+			['"retry on fail"', prompt, { retryOnFail: true, maxTries: 3 }],
+		])('links the library node with %s', (_name, chainParameters, extra) => {
+			const { source, fallbackNodes } = converted(chain(chainParameters, model, extra));
+			expect(fallbackNodes).not.toContain('Chain');
+			expect(compile(source).diagnostics).toEqual([]);
 		});
 
 		it.each([
 			['an output parser', { ...prompt, hasOutputParser: true }, model, {}],
 			['a fallback model', { ...prompt, needsFallback: true }, model, {}],
-			['the prompt of the chat trigger', { promptType: 'auto' }, model, {}],
 			[
 				'an image message',
 				{
@@ -185,14 +204,12 @@ describe('AI clusters', () => {
 				model,
 				{},
 			],
-			['a delay between batches', { ...prompt, batching: { delayBetweenBatches: 100 } }, model, {}],
 			[
 				'the JSON response format',
 				prompt,
 				{ ...model, options: { responseFormat: 'json_object' } },
 				{},
 			],
-			['a "continue" setting', prompt, model, { onError: 'continueRegularOutput' }],
 		])(
 			'keeps the cluster in the host with %s',
 			(_name, chainParameters, modelParameters, extra) => {
@@ -212,6 +229,89 @@ describe('AI clusters', () => {
 			const { source, fallbackNodes } = converted({ ...workflow, nodes });
 			expect(fallbackNodes).toContain('Chain');
 			expect(source).toContain('subNodes: [');
+		});
+	});
+
+	describe('a Tools Agent with an OpenAI chat model and no other sub-node', () => {
+		const agentWorkflow = (
+			version: number,
+			agentParameters: Record<string, unknown>,
+			extraNodes: unknown[] = [],
+			extraConnections: Record<string, unknown> = {},
+			trigger: unknown = webhookNode(),
+		) =>
+			wf(
+				[
+					trigger,
+					{ ...ai('Agent', 'agent', [200, 0], agentParameters), typeVersion: version },
+					{
+						...ai(
+							'Model',
+							'lmChatOpenAi',
+							[200, 200],
+							{ model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' }, options: {} },
+							{ credentials: { openAiApi: { id: '1', name: 'OpenAI account' } } },
+						),
+						typeVersion: 1.2,
+					},
+					...extraNodes,
+				],
+				{
+					...connect([['Webhook', 0, 'Agent', 0]]),
+					Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+					...extraConnections,
+				},
+			);
+		const prompt = { promptType: 'define', text: '={{ $json.body.q }}', options: {} };
+
+		it('links the library node of the single model call', () => {
+			const { source, fallbackNodes } = converted(
+				agentWorkflow(3.1, { ...prompt, options: { systemMessage: 'Be brief' } }),
+			);
+			expect(fallbackNodes).not.toContain('Agent');
+			expect(source).not.toContain('subNodes: [');
+			expect(source).toContain("name: 'Agent'");
+			expect(source).toContain("kind: 'agent'");
+			expect(source).toContain("systemMessage: 'Be brief'");
+			expect(compile(source).diagnostics).toEqual([]);
+		});
+
+		it.each([
+			['version 1.7, which asks the model for a stream', 1.7, prompt, [], {}],
+			['an output parser', 3.1, { ...prompt, hasOutputParser: true }, [], {}],
+			['binary images', 3.1, { ...prompt, options: { passthroughBinaryImages: true } }, [], {}],
+			[
+				'a tool',
+				3.1,
+				prompt,
+				[ai('Calculator', 'toolCalculator', [300, 200])],
+				{ Calculator: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] } },
+			],
+			[
+				'a memory',
+				3.1,
+				prompt,
+				[ai('Memory', 'memoryBufferWindow', [300, 200])],
+				{ Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] } },
+			],
+		])(
+			'keeps the cluster in the host with %s',
+			(_name, version, parameters, nodes, connections) => {
+				const { source, fallbackNodes } = converted(
+					agentWorkflow(version, parameters, nodes, connections),
+				);
+				expect(fallbackNodes).toContain('Agent');
+				expect(source).toContain('subNodes: [');
+			},
+		);
+
+		it('keeps the cluster in the host when the trigger streams the answer', () => {
+			const trigger = {
+				...webhookNode(),
+				parameters: { path: 'hook', httpMethod: 'POST', responseMode: 'streaming' },
+			};
+			const r = convertWorkflow(agentWorkflow(3.1, prompt, [], {}, trigger));
+			expect(r.fallbackNodes).toContain('Agent');
 		});
 	});
 
