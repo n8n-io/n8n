@@ -837,6 +837,9 @@ export class ExecutionPersistence {
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
+		// Check every target before the first batch commits, so a retained execution
+		// does not stop the deletion part way through.
+		await this.retention.assertCanDelete(refs.map((ref) => ref.executionId));
 
 		// Batches keep each row delete under the SQLite expression-depth limit.
 		// Each batch deletes binaries, then the payload, then the rows.
@@ -856,6 +859,12 @@ export class ExecutionPersistence {
 	 * instead of looping forever.
 	 */
 	async hardDeleteByWorkflowId(workflowId: string) {
+		// Check before the first batch commits. Each batch checks again for work that
+		// starts during the deletion.
+		await this.retention.assertNoneRetained(
+			async (retainedIds) =>
+				await this.executionRepository.hasWorkflowExecutionAmong(workflowId, retainedIds),
+		);
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {

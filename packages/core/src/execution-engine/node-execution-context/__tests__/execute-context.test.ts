@@ -24,8 +24,9 @@ import {
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
 	createRunExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
-import { UnexpectedError } from '@n8n/errors';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -519,6 +520,71 @@ describe('ExecuteContext', () => {
 			await nextRun.executeAgent({ agentId: 'agent' }, 'new input', 'parent', 0);
 			expect(runAgent).toHaveBeenCalledTimes(5);
 			expect(runAgent.mock.calls[4][3]).not.toBe(runAgent.mock.calls[0][3]);
+		});
+
+		it.each([
+			{
+				label: 'user error',
+				error: new UserError('Bad input', { description: 'Check the prompt' }),
+				type: UserError,
+				httpCode: undefined,
+			},
+			{
+				label: 'operational error',
+				error: new OperationalError('Model failed', { description: 'Try again later' }),
+				type: OperationalError,
+				httpCode: undefined,
+			},
+			{
+				label: 'API error',
+				error: new NodeApiError(
+					node,
+					{ message: 'Rate limited', httpCode: '429' },
+					{ message: 'Rate limited', description: 'Wait before you retry', httpCode: '429' },
+				),
+				type: NodeApiError,
+				httpCode: '429',
+			},
+		])('replays a failed invocation with its details after a resume ($label)', async (scenario) => {
+			const agentNode: INode = { ...node, type: 'n8n-nodes-base.messageAnAgent', typeVersion: 4 };
+			const invocationData: IExecuteData = {
+				node: agentNode,
+				metadata: {},
+				data: inputData,
+				source: null,
+			};
+			const state = createRunExecutionData();
+			const runAgent = vi.fn().mockRejectedValue(scenario.error);
+			const extra = mock<IWorkflowExecuteAdditionalData>({ executeAgent: runAgent });
+			const createContext = (data: IExecuteData, executionState: IRunExecutionData) =>
+				new ExecuteContext(
+					workflow,
+					agentNode,
+					extra,
+					mode,
+					executionState,
+					runIndex,
+					connectionInputData,
+					inputData,
+					data,
+					[closeFn],
+				);
+
+			await expect(
+				createContext(invocationData, state).executeAgent({ agentId: 'agent' }, 'hi', 'parent', 0),
+			).rejects.toBe(scenario.error);
+
+			const resumed = createContext(structuredClone(invocationData), structuredClone(state));
+			const replayed = await resumed
+				.executeAgent({ agentId: 'agent' }, 'hi', 'parent', 0)
+				.catch((error: unknown) => error);
+			expect(runAgent).toHaveBeenCalledOnce();
+			expect(replayed).toBeInstanceOf(scenario.type);
+			expect(replayed).toMatchObject({
+				message: scenario.error.message,
+				description: scenario.error.description,
+				...(scenario.httpCode ? { httpCode: scenario.httpCode } : {}),
+			});
 		});
 
 		const webhookNode: INode = {

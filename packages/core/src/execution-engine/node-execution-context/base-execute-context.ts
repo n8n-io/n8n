@@ -45,8 +45,9 @@ import {
 	isExecutionOutputRedacted,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 	AI_EVENT_REDACTED_MESSAGE,
+	NodeApiError,
 } from 'n8n-workflow';
-import { UnexpectedError, OperationalError } from '@n8n/errors';
+import { UnexpectedError, OperationalError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
@@ -54,13 +55,41 @@ import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
 
+/** The parts of an Agent error that the node shows. Node context stores only JSON. */
+interface StoredAgentError {
+	message: string;
+	description?: string;
+	httpCode?: string;
+	userError?: boolean;
+}
+
 interface AgentInvocationState {
 	runIndex: number;
 	items: Array<{
 		threadId: string;
 		result?: ExecuteAgentData;
-		error?: string;
+		error?: StoredAgentError;
 	}>;
+}
+
+function storeAgentError(error: unknown): StoredAgentError {
+	if (!(error instanceof Error)) return { message: String(error) };
+	const stored: StoredAgentError = { message: error.message };
+	if ('description' in error && typeof error.description === 'string')
+		stored.description = error.description;
+	if ('httpCode' in error && typeof error.httpCode === 'string') stored.httpCode = error.httpCode;
+	if (error instanceof UserError) stored.userError = true;
+	return stored;
+}
+
+/** Rebuild an Agent error after a resume, so the node shows the same details as before. */
+function restoreAgentError(node: INode, stored: StoredAgentError): Error {
+	const { message, description, httpCode } = stored;
+	if (httpCode)
+		return new NodeApiError(node, { message, httpCode }, { message, description, httpCode });
+	return stored.userError
+		? new UserError(message, { description })
+		: new OperationalError(message, { description });
 }
 
 export class BaseExecuteContext extends NodeExecutionContext {
@@ -258,7 +287,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.setMetadata({ resumeMode: 'reexecute' });
 		}
 		const previous = invocations?.items[itemIndex];
-		if (previous?.error) throw new OperationalError(previous.error);
+		if (previous?.error) throw restoreAgentError(this.node, previous.error);
 		const threadId = previous?.threadId ?? (callerSessionId || randomUUID());
 		if (invocations) {
 			invocations.items[itemIndex] = { ...previous, threadId };
@@ -368,10 +397,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			result = await run();
 		} catch (error) {
 			if (invocations) {
-				invocations.items[itemIndex] = {
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				};
+				invocations.items[itemIndex] = { threadId, error: storeAgentError(error) };
 			}
 			throw error;
 		}

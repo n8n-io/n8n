@@ -18,8 +18,21 @@ export class ExecutionRetentionService {
 	}
 
 	async assertCanDelete(executionIds: string[]): Promise<void> {
-		const retained = new Set(await this.getRetainedExecutionIds());
-		if (executionIds.some((id) => retained.has(id)))
+		await this.assertNoneRetained(async (retained) => {
+			const retainedIds = new Set(retained);
+			return executionIds.some((id) => retainedIds.has(id));
+		});
+	}
+
+	/**
+	 * Throw when `isAnyRetained` finds a retained execution among the deletion targets.
+	 * Callers that find their targets in batches use it to check once before they delete.
+	 */
+	async assertNoneRetained(
+		isAnyRetained: (retainedIds: string[]) => Promise<boolean>,
+	): Promise<void> {
+		const retainedIds = await this.getRetainedExecutionIds();
+		if (retainedIds.length > 0 && (await isAnyRetained(retainedIds)))
 			throw new ConflictError(
 				'This execution is required by pending work. Cancel that work before deleting it.',
 			);

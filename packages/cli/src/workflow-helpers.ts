@@ -468,6 +468,13 @@ export async function updateParentExecutionWithChildResults(
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
 	const executionPersistence = Container.get(ExecutionPersistence);
+	const hasResult = Boolean(subworkflowError || lastExecutedNodeData?.data);
+	// Only a parent in re-execute mode takes a child without a result, and only its stack
+	// tells. Read the cheap status first, so a parent that is not waiting skips the full load.
+	if (!hasResult) {
+		const rows = await executionPersistence.findStatusesByIds([parentExecutionId]);
+		if (rows.find(({ id }) => id === parentExecutionId)?.status !== 'waiting') return false;
+	}
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
 		unflattenData: true,
@@ -486,7 +493,7 @@ export async function updateParentExecutionWithChildResults(
 		return false;
 	}
 	const reexecute = nodeExecutionStack[0].metadata?.resumeMode === 'reexecute';
-	if (!reexecute && !subworkflowError && !lastExecutedNodeData?.data) return false;
+	if (!reexecute && !hasResult) return false;
 
 	// The parent may have moved on to a later wait since this child was spawned, and that wait
 	// belongs to whichever children it parked on. A child left over from an earlier wait would

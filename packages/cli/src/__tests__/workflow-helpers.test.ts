@@ -1092,6 +1092,36 @@ describe('updateParentExecutionWithChildResults', () => {
 		});
 	});
 
+	it('skips the full parent load for a child without a result when the parent is not waiting', async () => {
+		const persistence = mockInstance(ExecutionPersistence);
+		persistence.findStatusesByIds.mockResolvedValue([{ id: PARENT_ID, status: 'running' }]);
+
+		const patched = await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun('success', 'Done', {}),
+		);
+
+		expect(patched).toBe(false);
+		expect(persistence.findStatusesByIds).toHaveBeenCalledWith([PARENT_ID]);
+		expect(persistence.findSingleExecution).not.toHaveBeenCalled();
+	});
+
+	it('resumes a waiting parent in re-execute mode for a child without a result', async () => {
+		const persistence = mockInstance(ExecutionPersistence);
+		const parent = waitingParent();
+		parent.data.executionData!.nodeExecutionStack[0].metadata = { resumeMode: 'reexecute' };
+		persistence.findStatusesByIds.mockResolvedValue([{ id: PARENT_ID, status: 'waiting' }]);
+		persistence.findSingleExecution.mockResolvedValue(parent);
+
+		const patched = await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun('success', 'Done', {}),
+		);
+
+		expect(patched).toBe(true);
+		expect(persistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
+
 	type StackEntry = {
 		data?: unknown;
 		metadata?: {

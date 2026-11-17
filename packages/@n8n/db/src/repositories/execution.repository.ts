@@ -735,6 +735,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}));
 	}
 
+	/** Whether any of `executionIds`, deleted or not, belongs to `workflowId`. */
+	async hasWorkflowExecutionAmong(workflowId: string, executionIds: string[]): Promise<boolean> {
+		for (const ids of chunkIds(executionIds)) {
+			const match = await this.createQueryBuilder('execution')
+				.withDeleted()
+				.select('execution.id')
+				.where('execution.workflowId = :workflowId', { workflowId })
+				.andWhere('execution.id IN (:...ids)', { ids })
+				.getOne();
+			if (match) return true;
+		}
+		return false;
+	}
+
 	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,

@@ -130,6 +130,44 @@ describe('ExecutionPersistence', () => {
 		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 	});
 
+	it('checks retention for every target before the first batch of a criteria delete', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['exec-2']);
+		const service = createPersistenceService('db', 'postgresdb', disabledLedger, retention);
+		const { hardDeletionBatchSize } = executionRepository;
+		Object.assign(executionRepository, { hardDeletionBatchSize: 1 });
+		onTestFinished(() => {
+			Object.assign(executionRepository, { hardDeletionBatchSize });
+		});
+		executionRepository.findExecutionsToDelete.mockResolvedValue([
+			{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' },
+			{ workflowId: 'wf-1', executionId: 'exec-2', storedAt: 'db' },
+		]);
+
+		await expect(
+			service.hardDeleteBy({
+				filters: {},
+				accessibleWorkflowIds: ['wf-1'],
+				deleteConditions: { ids: ['exec-1', 'exec-2'] },
+			}),
+		).rejects.toThrow('required by pending work');
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
+	it('checks retention for the workflow before the first batch of a workflow delete', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['exec-2']);
+		const service = createPersistenceService('db', 'postgresdb', disabledLedger, retention);
+		executionRepository.hasWorkflowExecutionAmong.mockResolvedValue(true);
+
+		await expect(service.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
+			'required by pending work',
+		);
+		expect(executionRepository.hasWorkflowExecutionAmong).toHaveBeenCalledWith('wf-1', ['exec-2']);
+		expect(executionRepository.findForDeletionByWorkflowId).not.toHaveBeenCalled();
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
 	describe('create', () => {
 		const createPayload: CreateExecutionPayload = {
 			data: runData,
