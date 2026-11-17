@@ -5,6 +5,7 @@ export interface Lookup {
 
 const MAX_LABELS = 2;
 const MAX_PEOPLE = 4;
+const MAX_TEAMS = 2;
 // Keys of a real result that name a person.
 const PERSON_KEYS: ReadonlySet<string> = new Set([
 	'assignee',
@@ -44,6 +45,25 @@ function peopleIn(result: unknown): string[] {
 	return [...found].slice(0, MAX_PEOPLE);
 }
 
+// The teams that a real result names. An issue shows its team as a name.
+function teamsIn(result: unknown): string[] {
+	const found = new Set<string>();
+	const visit = (value: unknown, depth: number) => {
+		if (depth > 6 || found.size >= MAX_TEAMS) return;
+		if (Array.isArray(value)) {
+			for (const item of value.slice(0, 50)) visit(item, depth + 1);
+		} else if (isRecord(value)) {
+			for (const [key, item] of Object.entries(value)) {
+				const name = key === 'team' ? text(item) : undefined;
+				if (name) found.add(name);
+				else visit(item, depth + 1);
+			}
+		}
+	};
+	visit(result, 0);
+	return [...found].slice(0, MAX_TEAMS);
+}
+
 /**
  * Real reads for the objects that a Linear call needs in the gym, before the model plans: the team
  * (with its states), the project, the user of the connection, the labels, the parent issue and the
@@ -76,6 +96,11 @@ export function linearLookups(
 		.slice(0, MAX_LABELS);
 	for (const name of labels)
 		found.push({ tool: 'list_issue_labels', args: team ? { name, team } : { name } });
+	// The team of an issue in the result, with its states. The gym team has the default state only.
+	for (const name of teamsIn(result)) {
+		found.push({ tool: 'get_team', args: { query: name } });
+		found.push({ tool: 'list_issue_statuses', args: { team: name } });
+	}
 	for (const query of peopleIn(result)) found.push({ tool: 'get_user', args: { query } });
 	// The call itself already is the real read of its own object. A repeat is read once.
 	const seen = new Set<string>();

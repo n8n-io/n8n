@@ -500,6 +500,16 @@ describe('notionLookups', () => {
 	});
 });
 
+describe('linearLookups of the teams in a result', () => {
+	it('reads the team and the states of each team that an issue names', () => {
+		const result = { issues: [{ team: 'AI Trust' }, { team: 'AI Trust' }, { team: 'Ops' }] };
+		const found = linearLookups('list_issues', { project: 'P' }, result);
+		expect(found).toContainEqual({ tool: 'list_issue_statuses', args: { team: 'AI Trust' } });
+		expect(found).toContainEqual({ tool: 'get_team', args: { query: 'Ops' } });
+		expect(found.filter((l) => l.tool === 'list_issue_statuses')).toHaveLength(2);
+	});
+});
+
 describe('linearLookups', () => {
 	it('names a read for each object of the args, and the user of the connection', () => {
 		expect(
