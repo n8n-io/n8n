@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_a88340529c4722::t_3fa6f2b0775ab3 27
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_a88340529c4722::t_12f82f409f4041 137-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "767e4e14d83d8aca44091f43913f8141c86f9442",
+  "prompts": {},
+  "sessions": {
+    "s_a88340529c4722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f32cad09-c2ae-42bb-971a-14c0acd9e1ec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
