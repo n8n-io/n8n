@@ -62,6 +62,9 @@ pub const Site = enum(u8) {
     str_new,
     str_append,
     obj_find,
+    /// An entry of an object with its entries beside it, at a known index:
+    /// the address comes from the object value, not from a load.
+    obj_slot,
     obj_set,
     obj_grow,
     arr_push,
@@ -314,7 +317,7 @@ pub fn profileNamed(name: []const u8) ?Profile {
 /// True when the address of an access at `site` comes from a load.
 pub fn dependent(site: Site) bool {
     return switch (site) {
-        .interp_fetch, .interp_reg, .interp_const, .region_alloc, .exec_at, .vals_fill, .str_new, .str_append, .json_decode, .json_build, .json_encode, .core_row, .core_emit, .core_copy, .shell_buf => false,
+        .interp_fetch, .interp_reg, .interp_const, .region_alloc, .exec_at, .vals_fill, .str_new, .str_append, .json_decode, .json_build, .json_encode, .core_row, .core_emit, .core_copy, .shell_buf, .obj_slot => false,
         .interp_frame, .region_at, .region_span, .vals_at, .vals_walk, .str_bytes, .obj_find, .obj_set, .obj_grow, .arr_push, .arr_grow, .const_str, .core_map => true,
     };
 }
@@ -324,7 +327,7 @@ pub fn dependent(site: Site) bool {
 pub fn ranged(site: Site) bool {
     return switch (site) {
         .region_span, .vals_walk, .vals_fill, .str_bytes, .str_new, .str_append, .obj_grow, .arr_grow, .const_str, .json_decode, .json_build, .json_encode, .core_copy, .shell_buf => true,
-        .interp_fetch, .interp_reg, .interp_const, .interp_frame, .region_alloc, .region_at, .exec_at, .vals_at, .obj_find, .obj_set, .arr_push, .core_row, .core_map, .core_emit => false,
+        .interp_fetch, .interp_reg, .interp_const, .interp_frame, .region_alloc, .region_at, .exec_at, .vals_at, .obj_find, .obj_set, .arr_push, .core_row, .core_map, .core_emit, .obj_slot => false,
     };
 }
 

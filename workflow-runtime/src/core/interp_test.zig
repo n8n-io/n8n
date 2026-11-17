@@ -237,3 +237,54 @@ test "a string constant keeps a leading U+FEFF" {
     try std.testing.expect(out == .done);
     try std.testing.expectEqualStrings("{\"\xEF\xBB\xBFk\":1}", try h.encode(h.region.exec().result));
 }
+
+test "a property is found by its bytes when the module repeats a string, and by its value when it does not" {
+    // Two constants with the same bytes name one property. The search may
+    // skip the bytes of two constants only in a module without a repeat.
+    for ([_]bool{ true, false }) |repeat| {
+        var a: Asm = .{ .gpa = std.testing.allocator };
+        defer a.deinit();
+        const s_k = try a.str("k");
+        const s_other = try a.str("other");
+        var s_k2 = s_k;
+        if (repeat) {
+            try a.strings.append(a.gpa, "k");
+            s_k2 = @intCast(a.strings.items.len - 1);
+        }
+        const names = [_][]const u8{ "p0", "p1", "p2", "p3", "p4", "p5" };
+        a.beginFunc();
+        try a.emit(.newobj, 0, 2, 0, 0);
+        // More than four properties: the entries move away from the header.
+        for (names, 0..) |name, i| {
+            try a.emitBc(.loadi, 3, @intCast(i));
+            try a.emit(.setprop, 0, 2, try a.str(name), 3);
+        }
+        try a.emitBc(.loadi, 3, 41);
+        try a.emit(.setprop, 0, 2, s_k, 3);
+        try a.emitBc(.loadi, 3, 42);
+        try a.emit(.setprop, 0, 2, s_k2, 3);
+        try a.emit(.newarr, 0, 4, 0, 0);
+        try a.emit(.getprop, 0, 5, 2, s_k2);
+        try a.emit(.push, 0, 4, 5, 0);
+        try a.emit(.getprop, 0, 5, 2, try a.str("p5"));
+        try a.emit(.push, 0, 4, 5, 0);
+        try a.emit(.getprop, 0, 5, 2, s_other);
+        try a.emit(.push, 0, 4, 5, 0);
+        // A key that the JSON decoder made, read by a constant.
+        try a.emit(.getprop, 0, 5, 0, s_k);
+        try a.emit(.push, 0, 4, 5, 0);
+        try a.emit(.push, 0, 4, 2, 0);
+        try a.emit(.ret, 0, 4, 0, 0);
+        try a.endFunc("run", 1, 6, 0);
+        const bytes = try a.finish();
+        defer std.testing.allocator.free(bytes);
+
+        var h: Harness = .{};
+        try h.init(bytes, "{\"a\":1,\"k\":7}");
+        try std.testing.expectEqual(!repeat, h.m.strs_unique);
+        var fuel: u64 = 1_000;
+        const out = interp.run(&h.vm, 0, &fuel, .{ .aot = false });
+        try std.testing.expect(out == .done);
+        try std.testing.expectEqualStrings("[42,5,null,7,{\"p0\":0,\"p1\":1,\"p2\":2,\"p3\":3,\"p4\":4,\"p5\":5,\"k\":42}]", try h.encode(h.region.exec().result));
+    }
+}

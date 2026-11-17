@@ -181,7 +181,7 @@ pub inline fn getprop(cx: *Cx, R: [*]Value, a: u16, b: u16, key: u16, pc: u32) b
     if (value.kindOf(o) != .object) return slowOp(cx, .getprop, pc);
     const off = value.payload(o);
     const vm = cx.vm;
-    R[a] = if (vm.objFindValue(off, value.constString(key))) |i| vm.r.objEntries(off)[i * 2 + 1] else value.undef;
+    R[a] = vm.objGetValue(off, value.constString(key));
     return true;
 }
 

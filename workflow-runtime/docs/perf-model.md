@@ -310,7 +310,7 @@ writes: they are stack memory without a call to `mem.zig`. A search of the relea
 | Function | Bytes | When |
 |---|---|---|
 | `core.step` (`fireTimers`, the deferred timers) | 1,536 | Each batch. Removed: the array is now in scratch, taken at the first deferred timer |
-| `core.applyEvent` (`findRoute`, the path segments) | 1,024 | A request that matches no static route |
+| `core.applyEvent` (`findRoute`, the path segments) | 1,024 | A request that matches no static route. Removed: the match reads the segments from the path |
 | `core.webhookTrigger` | 768 and 16,384 | Not checked: read which branches reach them |
 | `shard.tickSome` | Two fills, size not read | Not checked |
 | `lib.callMethod`, `lib.callNative` | 29 and 4 places | The native that owns the buffer |
@@ -338,3 +338,40 @@ execution (`/usr/bin/time -l`, Apple M-series host); it runs the compiled forms,
 For w3, 7,500 of the modelled cycles are the system calls of a batch of one, which a server batch shares. After
 these changes the interpreter has no bail left, and the reads of the execution root for one w3 run went from 61
 to 32: the rest are in `core.zig` (the phases of a run), which is the next place to look.
+
+## 14. Property access (2026-11-17)
+
+An object had its entries block before its header, 64 bytes or more apart, and each key of a search was a
+load at an address from the header. Two changes:
+
+- `heap.Region.newObject` takes the header and the entries block in one allocation, the entries after the
+  header. The bytes and the two block headers are the same as before. While the entries are beside the header
+  (`objBeside`: the object did not grow and no compacting copy moved it), the address of an entry comes from the
+  offset of the object. The model counts these reads at the site `obj_slot`, which is not dependent.
+- The key search (`ops.Vm.findKey`) reads the bytes of the key only for an entry that is not the same value,
+  and it does not read the lengths of two different constants when the module has no repeated string
+  (`Module.strs_unique`, set by the loader).
+
+| Case | Reads | Writes | Dependent loads | Modelled cycles | `bench-node` instructions |
+|---|---|---|---|---|---|
+| w3 | 201 to 174 | 96 | 79 to 65 | 11,177 to 11,117 | 17,756 to 16,956 |
+| 02-loops | 1,592 to 1,407 | 545 | 600 to 437 | 54,371 to 53,734 | 250,782 to 246,718 |
+| 14-json | 996 to 867 | 346 | 428 to 393 | 16,607 to 16,453 | 96,041 to 92,180 |
+| 18-library-http | 3,584 to 2,852 | 1,019 | 1,238 to 959 | 51,009 to 49,737 | 160,618 to 145,816 |
+| 19-library-slack-perplexity | 3,950 to 3,224 | 1,063 | 1,321 to 1,036 | 41,561 to 40,275 | 167,201 to 151,255 |
+| 32-luxon-expression | 122,284 to 108,276 | 36,002 | 29,443 to 24,695 | 901,206 to 878,274 | 4,147,884 to 3,809,511 |
+| A compiled Telegram node | 928 to 796 | 363 | 366 to 319 | 15,961 to 15,748 | 67,362 to 64,111 |
+
+Measured and dropped:
+
+- A slot hint for each `getprop` and `setprop` site (one byte for each instruction, in the loader's buffer).
+  It added one read for each access, writes at sites that see two layouts, and up to 43 lines for one run
+  (32-luxon-expression), so the gate failed. With the entries beside the header it can save a dependent load
+  only for an object that grew.
+- The entries after their object in the compacting copy. In 15-object-keys it saved 31 dependent loads and
+  cost 7 lines: the breadth-first copy puts the headers of sibling objects in the same lines.
+
+Open: an object with more than four properties grows, and its entries leave the header. The bytecode compiler
+knows the count of a literal and can give it to `newobj`; that changes the capacity, so the region bytes and the
+fuel of a native that allocates. Not checked: that the x86-64 code of `objGetValue` takes the entry address from
+the offset and not from the `entries` field (read the disassembly on the benchmark machine).
