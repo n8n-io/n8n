@@ -288,7 +288,7 @@ const PROTOCOLS: Array<[RegExp, string]> = [
 ];
 const FILES: Array<[RegExp, string]> = [
 	[/^(xlsx|@e965\/xlsx)$/, 'spreadsheet'],
-	[/^(node:)?(stream|stream\/promises)$/, 'binary stream'],
+	[/^(node:)?(stream|stream\/promises)$|^form-data$/, 'binary stream'],
 	[/^(node:)?crypto$/, 'hash, HMAC and signature'],
 	[/^(pdfjs-dist|pdfjs-dist\/.*|pdf-parse)$/, 'PDF'],
 	[/^(fflate|node:zlib|zlib)$/, 'compression'],
@@ -345,7 +345,7 @@ const SURFACE: Record<string, string> = {
 	'file type':
 		'The file type from the first bytes of binary data (`file-type`), for the MIME type of an upload.',
 	'binary stream':
-		'An upload of binary data in parts with a known length (resumable upload): the runtime sends a stored file in ranges.',
+		'An upload of binary data in parts with a known length (resumable upload): the runtime sends a stored file in ranges of 2 MB with `Content-Range`. Google Drive `file.upload` (the largest use of route b by count) also needs a `multipart/related` body with a JSON part and the bytes of a stored file as the second part, with the part headers of the `form-data` package.',
 	'hash, HMAC and signature':
 		'`crypto` of Node: digests (MD5, SHA-1, SHA-2, SHA-3, RIPEMD-160, Whirlpool), HMAC with the same list, RSA and ECDSA signatures with a PEM key, random bytes and UUIDs, output as hex or base64, input as text or binary data. Keys are secrets: a signature with a credential key belongs to the credential layer.',
 };

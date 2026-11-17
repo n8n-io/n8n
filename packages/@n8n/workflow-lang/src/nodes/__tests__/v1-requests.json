@@ -3291,6 +3291,227 @@
 			}
 		]
 	},
+	"googleDrive file.createFromText in the root": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "404",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f1",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "root"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "notes.txt",
+					"mimeType": "text/plain"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "404",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"notes.txt\",\"parents\":[\"root\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nLine one\nLine two\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f1",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "root"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "notes.txt",
+					"mimeType": "text/plain"
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json", "application/json", "application/json"],
+		"output": [
+			{
+				"id": "f1"
+			},
+			{
+				"id": "f1"
+			}
+		]
+	},
+	"googleDrive file.createFromText in a folder with properties": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "475",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"Untitled\",\"parents\":[\"folder-9\"],\"mimeType\":\"text/plain\",\"properties\":{\"team\":\"ops\"},\"appProperties\":{\"run\":\"7\"}}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\nGrüße 😀\r\n-- end \"quoted\"\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f2",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"keepRevisionForever": "true",
+					"ocrLanguage": "de",
+					"useContentAsIndexableText": "true",
+					"addParents": "folder-9"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Untitled",
+					"mimeType": "text/plain",
+					"properties": {
+						"team": "ops"
+					},
+					"appProperties": {
+						"run": "7"
+					}
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "f2"
+			}
+		]
+	},
+	"googleDrive file.createFromText in a shared drive, no content": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/upload/drive/v3/files",
+				"qs": {
+					"uploadType": "multipart",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"content-type": "multipart/related; boundary=<boundary>",
+					"content-length": "390",
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": "--<boundary>\r\nContent-Disposition: form-data; name=\"metadata\"\r\nContent-Type: application/json\r\n\r\n{\"name\":\"empty.txt\",\"parents\":[\"drive-3\"],\"mimeType\":\"text/plain\"}\r\n--<boundary>\r\nContent-Disposition: form-data; name=\"data\"\r\nContent-Type: text/plain\r\n\r\n\r\n--<boundary>--\r\n"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/f3",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "drive-3"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "empty.txt",
+					"mimeType": "text/plain"
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "f3"
+			}
+		]
+	},
+	"googleDrive file.createFromText as a Google document": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Doc",
+					"parents": ["folder-9"],
+					"mimeType": "application/vnd.google-apps.document",
+					"properties": {
+						"team": "ops"
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://docs.googleapis.com/v1/documents/d1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"insertText": {
+								"text": "Hello document",
+								"endOfSegmentLocation": {
+									"segmentId": ""
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"accepts": ["application/json", "application/json"],
+		"output": [
+			{
+				"id": "d1"
+			}
+		]
+	},
 	"googleDrive file.copy with the cached name": {
 		"requests": [
 			{

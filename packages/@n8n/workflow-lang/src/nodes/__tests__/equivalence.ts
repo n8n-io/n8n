@@ -209,6 +209,19 @@ export function normalizeRequest(raw: RawRequest): NormalRequest {
 		headers,
 	};
 	let body = withoutInstanceId(jsonCopy(raw.body));
+	// A `multipart/related` body that the node wrote itself (the `form-data` package with a
+	// random boundary): the text of the body, with a mark in place of the boundary.
+	const related = /^multipart\/related; boundary=(.+)$/.exec(headers['content-type'] ?? '');
+	if (related) {
+		const bytes =
+			isRecord(body) && body.type === 'Buffer' && Array.isArray(body.data)
+				? Buffer.from(body.data.filter((b): b is number => typeof b === 'number')).toString('utf8')
+				: body;
+		if (typeof bytes === 'string' && bytes.includes(related[1])) {
+			body = bytes.split(related[1]).join('<boundary>');
+			headers['content-type'] = 'multipart/related; boundary=<boundary>';
+		}
+	}
 	if (isRecord(body) && Object.keys(body).length === 0) body = undefined;
 	if (body === '') body = undefined;
 	if (body !== undefined) out.body = body;
