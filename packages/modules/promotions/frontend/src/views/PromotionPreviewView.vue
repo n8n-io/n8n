@@ -508,7 +508,7 @@ const treeResizer = useResizablePanel({
 		</template>
 
 		<PromoteSelectionDialog
-			v-if="promoteDialogOpen && source"
+			v-if="promoteDialogOpen && direction === 'promote' && source"
 			v-model:open="promoteDialogOpen"
 			v-model:commit-message="promoteCommitMessage"
 			:change-count="includedChanges"
