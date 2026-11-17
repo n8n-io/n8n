@@ -657,15 +657,21 @@ export class UserService {
 	 * Deletes the service account of an agent that is being deleted, so it skips
 	 * the check that an agent acts as the account. Only
 	 * `ServiceAccountService.remove` calls this.
+	 *
+	 * `beforeAccountDelete` runs after the work of the account moved or was
+	 * deleted, and before the account row goes. The agent row must go there,
+	 * because the account cannot be deleted while its agent exists.
 	 */
 	async deleteServiceAccount(
 		actor: User | SystemDeletionActor,
 		idToDelete: string,
-		transferId?: string,
-		ctx: OperationContext = {},
+		transferId: string | undefined,
+		ctx: OperationContext,
+		beforeAccountDelete: () => Promise<void>,
 	) {
 		return await this.deleteAccount(actor, idToDelete, transferId, false, ctx, {
 			allowAgentAccount: true,
+			beforeAccountDelete,
 		});
 	}
 
@@ -675,7 +681,10 @@ export class UserService {
 		transferId: string | undefined,
 		publicApi: PublicApiCaller,
 		ctx: OperationContext,
-		{ allowAgentAccount }: { allowAgentAccount: boolean },
+		{
+			allowAgentAccount,
+			beforeAccountDelete,
+		}: { allowAgentAccount: boolean; beforeAccountDelete?: () => Promise<void> },
 	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
@@ -788,6 +797,8 @@ export class UserService {
 			transferId,
 			ctx,
 		});
+
+		await beforeAccountDelete?.();
 
 		await this.txRunner.run({}, async (ctx) => {
 			await ownershipTransferService.finalizeUserDeletion(

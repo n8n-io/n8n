@@ -174,7 +174,10 @@ function makeService() {
 	const folderService = mock<FolderService>();
 	const licenseState = mock<LicenseState>();
 	licenseState.isFoldersLicensed.mockReturnValue(true);
-
+	// The real service removes the agent inside this call, before the account row goes.
+	agentServiceAccount.deleteForAgent.mockImplementation(
+		async (_agent, _actor, _transferId, _ctx, deleteAgent) => await deleteAgent(),
+	);
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
@@ -1321,7 +1324,7 @@ describe('AgentsService', () => {
 		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 
-	it('removes the service account into the agent project before any cleanup', async () => {
+	it('moves the work of the service account into the agent project before any cleanup', async () => {
 		const { service, agentRepository, agentKnowledgeService, agentServiceAccount } = makeService();
 		const agent = makeAgent({ identityId: 'sa-1' });
 		agentRepository.findById.mockResolvedValue(agent);
@@ -1330,7 +1333,13 @@ describe('AgentsService', () => {
 
 		await service.delete(agentId, user, undefined, {}, ctx);
 
-		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(agent, user, projectId, ctx);
+		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(
+			agent,
+			user,
+			projectId,
+			ctx,
+			expect.any(Function),
+		);
 		expect(agentServiceAccount.deleteForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0],
 		);

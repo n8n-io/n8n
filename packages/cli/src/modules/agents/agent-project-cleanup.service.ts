@@ -66,16 +66,24 @@ export class AgentProjectCleanupService {
 
 			await agentKnowledgeService.destroyKnowledgeSandbox(projectId, agent.id);
 			await agentTestChatService.clearAllTestChatMessages(agent.id);
+		}
+		// These find their work through rows that go with the agent rows, so they run first.
+		await agentExecutionService.deleteExecutionLogsForProject(projectId);
+		await agentExecutionService.deleteMemoryThreadsForProject(projectId);
+		await agentChatAttachmentService.deleteByProject(projectId);
+
+		// The account of an agent goes after the agent row, because every agent needs one.
+		for (const agent of agents) {
 			await this.agentServiceAccount.deleteForAgent(
 				agent,
 				deletion.actor,
 				deletion.transferId,
-				deletion.ctx,
+				deletion.ctx ?? {},
+				async () => {
+					await agentRepository.remove(agent);
+				},
 			);
 		}
-		await agentExecutionService.deleteExecutionLogsForProject(projectId);
-		await agentExecutionService.deleteMemoryThreadsForProject(projectId);
-		await agentChatAttachmentService.deleteByProject(projectId);
 	}
 
 	async completeProjectDeletion(projectId: string, ctx: OperationContext): Promise<void> {

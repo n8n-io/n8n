@@ -66,6 +66,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { createAgent } from '@test-integration/db/agents';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -1364,7 +1365,11 @@ it('keeps strict creation when a planned ID becomes occupied', async () => {
 	input.manifest.agents.splice(1);
 	const plan = await planFor(input);
 	const id = plan.agentPlan!.items[0].sourceAgentId;
-	await agents.save({ id, name: 'Concurrent Agent', projectId: project.id });
+	await createAgent({
+		id,
+		name: 'Concurrent Agent',
+		projectId: project.id,
+	});
 	const before = await agents.findById(id);
 	await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ConflictError);
 	expect(await agents.findById(id)).toEqual(before);

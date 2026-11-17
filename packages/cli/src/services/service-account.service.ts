@@ -33,17 +33,29 @@ export class ServiceAccountService {
 	 * cleanup runs for it too. `actor` is the person who caused the removal, for
 	 * the audit event. With `transferId`, the work of the personal project moves
 	 * to that project. Without it, the work is deleted with the account.
-	 * Does nothing when no service account has this id.
+	 *
+	 * `beforeAccountDelete` runs after the work moved and before the account row
+	 * goes. It also runs when no service account has this id.
 	 */
 	async remove(
 		serviceAccountId: string,
 		actor: User | SystemDeletionActor,
-		transferId?: string,
-		ctx: OperationContext = {},
+		transferId: string | undefined,
+		ctx: OperationContext,
+		beforeAccountDelete: () => Promise<void>,
 	) {
 		const serviceAccount = await this.serviceAccountRepository.findById(serviceAccountId);
-		if (!serviceAccount) return;
+		if (!serviceAccount) {
+			await beforeAccountDelete();
+			return;
+		}
 
-		await this.userService.deleteServiceAccount(actor, serviceAccountId, transferId, ctx);
+		await this.userService.deleteServiceAccount(
+			actor,
+			serviceAccountId,
+			transferId,
+			ctx,
+			beforeAccountDelete,
+		);
 	}
 }
