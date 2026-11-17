@@ -135,10 +135,8 @@ export const importPackageRequestFieldDocs = {
 			'`workflow:delete` scope. When it removes a folder, it needs `folder:delete`. ' +
 			'It is rejected against a `projectConflictPolicy` other than `overwrite`, and blocks ' +
 			'up front if the caller cannot delete something it would remove. ' +
-			'A project package needs the `folder:create` scope only when the import creates a ' +
-			'folder, and a folders-enabled license only when it creates, changes or removes a ' +
-			'folder. A workflow package with folders always needs `folder:create`, ' +
-			'`folder:update` and that license.',
+			'The import needs the `folder:create` scope only when it creates a folder, and a ' +
+			'folders-enabled license only when it creates, changes or removes a folder.',
 	},
 	overwriteDeletionPolicy: {
 		description:
