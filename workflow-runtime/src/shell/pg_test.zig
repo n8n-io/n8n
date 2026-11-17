@@ -194,6 +194,10 @@ test "pg live: arrays, interval, point and circle have the JSON of node-postgres
     try h.expectError("db", "\"statements\":[{\"text\":\"select array['1 day'::interval] as i\"}]", "(limit: sql-type)");
     try h.expectPart("db", "\"statements\":[{\"text\":\"set intervalstyle = 'postgres'\"}]", "\"command\":\"SET\"");
     try h.expectPart("db", "\"statements\":[{\"text\":\"select '1 day'::interval as i\"}]", "{\"i\":{\"days\":1}}");
+    // The escape format of bytea, checked with postgres-bytea 1.0.0.
+    try h.expectPart("db", "\"statements\":[{\"text\":\"set bytea_output = 'escape'\"}]", "\"command\":\"SET\"");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"select '\\\\x00ff5c41207e7f80'::bytea as b, ''::bytea as e\"}]", "{\"b\":{\"type\":\"Buffer\",\"data\":[0,255,92,65,32,126,127,128]},\"e\":{\"type\":\"Buffer\",\"data\":[]}}");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"set bytea_output = 'hex'\"}]", "\"command\":\"SET\"");
     try std.testing.expectEqual(@as(u64, 1), h.client.counters.connects);
 }
 
@@ -231,6 +235,27 @@ test "pg live: the three modes commit and roll back as the v1 node does" {
     , "{\"rows\":[{\"x\":5}],\"command\":\"INSERT\",\"rowCount\":1}");
     // A syntax error is the error of its statement.
     try h.expectPart("db", "\"statements\":[{\"text\":\"selec 1\"}]", "\"message\":\"syntax error at or near \\\"selec\\\"\",\"position\":\"1\"");
+    // independently: a statement that fails in a transaction of its own does not end the call.
+    const after = try h.call("db",
+        \\"mode":"independently","statements":[{"text":"insert into wfrt_pg_t values ($1, $2) returning id","values":[2,"dup"]},{"text":"insert into wfrt_pg_t values ($1, $2) returning id","values":[9,"y"]}]
+    );
+    try std.testing.expect(after.ok and std.mem.startsWith(u8, after.text, "{\"results\":[{\"error\":{\"length\":"));
+    try std.testing.expect(std.mem.endsWith(u8, after.text, "}},{\"rows\":[{\"id\":9}],\"command\":\"INSERT\",\"rowCount\":1}]}"));
+    // A deferred constraint fails at the commit. For a statement that runs alone, the statement failed.
+    try h.expectPart("db",
+        \\"mode":"independently","statements":[{"text":"drop table if exists wfrt_pg_d"},{"text":"create table wfrt_pg_d (id int unique deferrable initially deferred)"},{"text":"insert into wfrt_pg_d values (1)"}]
+    , "{\"rows\":[],\"command\":\"INSERT\",\"rowCount\":1}]}");
+    const deferred = try h.call("db",
+        \\"mode":"independently","statements":[{"text":"insert into wfrt_pg_d values ($1)","values":[1]},{"text":"insert into wfrt_pg_d values ($1) returning id","values":[1]},{"text":"select count(*)::int4 as n from wfrt_pg_d"}]
+    );
+    try std.testing.expect(deferred.ok and std.mem.startsWith(u8, deferred.text, "{\"results\":[{\"error\":{\"length\":"));
+    try std.testing.expectEqual(@as(usize, 2), std.mem.count(u8, deferred.text, "\"code\":\"23505\""));
+    try std.testing.expectEqual(@as(usize, 2), std.mem.count(u8, deferred.text, "{\"error\":{"));
+    try std.testing.expect(std.mem.endsWith(u8, deferred.text, "}},{\"rows\":[{\"n\":1}],\"command\":\"SELECT\",\"rowCount\":1}]}"));
+    try h.expectPart("db", "\"statements\":[{\"text\":\"insert into wfrt_pg_d values ($1) returning id\",\"values\":[1]}]", "{\"results\":[{\"error\":{\"length\":");
+    // In the mode `transaction` the failure of COMMIT is one more entry.
+    try h.expectPart("db", "\"mode\":\"transaction\",\"statements\":[{\"text\":\"insert into wfrt_pg_d values ($1)\",\"values\":[1]}]", "{\"results\":[{\"rows\":[],\"command\":\"INSERT\",\"rowCount\":1},{\"error\":{\"length\":");
+    try h.expectPart("db", "\"statements\":[{\"text\":\"drop table wfrt_pg_d\"}]", "\"command\":\"DROP\"");
 }
 
 test "pg live: a call without an exact native form ends with a marker and commits nothing" {
@@ -685,4 +710,95 @@ test "pg fake: arrays, interval, point and circle columns, and the styles of the
     try other.expectError("\"statements\":[{\"text\":\"insert into t values (1) returning i\"}]", "(limit: sql-type)");
     try other.expectError("\"statements\":[{\"text\":\"select stamps\"}]", "(limit: sql-type)");
     try std.testing.expect(std.mem.indexOf(u8, other.server.logText(), "run ") == null);
+}
+
+const id_col = [_]fake.Col{.{ .name = "id", .oid = int4 }};
+const big_col = [_]fake.Col{.{ .name = "big", .oid = text_oid }};
+const alone_rules = [_]fake.Rule{
+    .{ .text = "select 42 as x", .cols = &.{.{ .name = "x", .oid = int4 }}, .rows = &.{&.{"42"}}, .tag = "SELECT 1" },
+    .{ .text = "select big", .cols = &big_col, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "SELECT 50" },
+    .{ .text = "insert into t values ($1)", .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values ($1) -- twice", .run_fail = .{ .code = "23505", .message = "duplicate key value" } },
+    .{ .text = "insert into t values ($1) returning id", .cols = &id_col, .rows = &.{&.{"1"}}, .tag = "INSERT 0 1" },
+    .{ .text = "insert into t values ($1) returning id -- twice", .cols = &id_col, .run_fail = .{ .code = "23505", .message = "duplicate key value" } },
+    .{ .text = "insert into t values ($1) returning big", .cols = &big_col, .rows = &.{&.{&hundred}}, .repeat = 50, .tag = "INSERT 0 50" },
+    .{ .text = "select x into t2 from t", .tag = "SELECT 3" },
+};
+
+test "pg fake: independently, a statement that fails in its own transaction does not end the call" {
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    h.server.rules = &alone_rules;
+    const failure = "{\"error\":{\"length\":47,\"severity\":\"ERROR\",\"code\":\"23505\",\"message\":\"duplicate key value\"}}";
+    try h.expectResult(
+        \\"mode":"independently","statements":[{"text":"insert into t values ($1) returning id -- twice","values":[1]},{"text":"insert into t values ($1) returning id","values":[2]},{"text":"insert into t values ($1)","values":[3]}]
+    , "{\"results\":[" ++ failure ++ ",{\"rows\":[{\"id\":1}],\"command\":\"INSERT\",\"rowCount\":1},{\"rows\":[],\"command\":\"INSERT\",\"rowCount\":1}]}");
+    try std.testing.expectEqual(@as(u32, 2), h.server.count("BEGIN"));
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("ROLLBACK"));
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("COMMIT"));
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("run insert into t values ($1)"));
+}
+
+test "pg fake: independently, a marker is given while no statement with an effect is committed" {
+    const h = try FakeHarness.create(.{ .max_result = 2048 }, .trust);
+    defer h.destroy();
+    h.server.rules = &alone_rules;
+    const head = "\"mode\":\"independently\",\"statements\":[";
+    const select = "{\"text\":\"select 42 as x\"}";
+    const big = "{\"text\":\"select big\"}";
+    const insert = "{\"text\":\"insert into t values ($1)\",\"values\":[1]}";
+    const dup = "{\"text\":\"insert into t values ($1) -- twice\",\"values\":[1]}";
+    // Statements that only read commit nothing: the host can run the call again.
+    try h.expectError(head ++ select ++ "," ++ select ++ "," ++ big ++ "]", "(limit: sql-max-result)");
+    // A statement that failed has no effect.
+    try h.expectError(head ++ dup ++ "," ++ big ++ "]", "(limit: sql-max-result)");
+    // A statement in its own transaction is rolled back at the limit.
+    _ = try h.takeLog();
+    try h.expectError(head ++ select ++ ",{\"text\":\"insert into t values ($1) returning big\",\"values\":[1]}," ++ insert ++ "]", "(limit: sql-max-result)");
+    try std.testing.expectEqual(@as(u32, 1), h.server.count("ROLLBACK"));
+    try std.testing.expectEqual(@as(u32, 0), h.server.count("COMMIT"));
+    try std.testing.expectEqual(@as(u32, 0), h.server.count("run insert into t values ($1)"));
+    try std.testing.expectEqual(@as(u64, 3), h.client.counters.to_host);
+    // After a statement with an effect, the call cannot run again: a limit error without a marker,
+    // and the statements after the one at the limit do not run.
+    const cases = [_][]const u8{
+        "{\"credential\":\"db\",\"dialect\":\"postgres\"," ++ head ++ insert ++ "," ++ big ++ "," ++ select ++ "]}",
+        "{\"credential\":\"db\",\"dialect\":\"postgres\"," ++ head ++ "{\"text\":\"select x into t2 from t\"}," ++ big ++ "," ++ select ++ "]}",
+        "{\"credential\":\"db\",\"dialect\":\"postgres\"," ++ head ++ "{\"text\":\"insert into t values ($1) returning id\",\"values\":[1]}," ++ select ++ "," ++ big ++ "]}",
+    };
+    for (cases) |args| {
+        var seq: u32 = 0;
+        _ = try h.begin(args);
+        const a = try h.wait(&seq);
+        try std.testing.expect(!a.ok);
+        try std.testing.expectEqualStrings("sql: the result is larger than 2 KB (--sql-max-result-kb) (limit)", a.text);
+    }
+    try std.testing.expectEqual(@as(u64, 3), h.client.counters.to_host);
+    try std.testing.expect(!h.server.failed);
+}
+
+const deferred_fail: fake.Fail = .{ .code = "23505", .message = "duplicate key value" };
+const deferred_rules = [_]fake.Rule{
+    .{ .text = "select 42 as x", .cols = &.{.{ .name = "x", .oid = int4 }}, .rows = &.{&.{"42"}}, .tag = "SELECT 1" },
+    .{ .text = "insert into d values ($1)", .tag = "INSERT 0 1", .commit_fail = deferred_fail },
+    .{ .text = "insert into d values ($1) returning id", .cols = &id_col, .rows = &.{&.{"1"}}, .tag = "INSERT 0 1", .commit_fail = deferred_fail },
+};
+
+test "pg fake: a commit that fails is the failure of a statement that runs alone, and one more entry in a transaction" {
+    const h = try FakeHarness.create(.{}, .trust);
+    defer h.destroy();
+    h.server.rules = &deferred_rules;
+    const failure = "{\"error\":{\"length\":47,\"severity\":\"ERROR\",\"code\":\"23505\",\"message\":\"duplicate key value\"}}";
+    const insert = "{\"rows\":[],\"command\":\"INSERT\",\"rowCount\":1}";
+    const plain = "{\"text\":\"insert into d values ($1)\",\"values\":[1]}";
+    const returning = "{\"text\":\"insert into d values ($1) returning id\",\"values\":[1]}";
+    // independently: one entry for each statement, in statement order.
+    try h.expectResult("\"mode\":\"independently\",\"statements\":[" ++ plain ++ "," ++ returning ++ ",{\"text\":\"select 42 as x\"}]", "{\"results\":[" ++ failure ++ "," ++ failure ++ ",{\"rows\":[{\"x\":42}],\"command\":\"SELECT\",\"rowCount\":1}]}");
+    // single with one statement: the statement runs alone, with or without the transaction of the client.
+    try h.expectResult("\"statements\":[" ++ plain ++ "]", "{\"results\":[" ++ failure ++ "]}");
+    try h.expectResult("\"statements\":[" ++ returning ++ "]", "{\"results\":[" ++ failure ++ "]}");
+    // A transaction of the mode: the entries of the statements, then the failure of COMMIT.
+    try h.expectResult("\"mode\":\"transaction\",\"statements\":[" ++ plain ++ "]", "{\"results\":[" ++ insert ++ "," ++ failure ++ "]}");
+    try h.expectResult("\"statements\":[" ++ plain ++ "," ++ plain ++ "]", "{\"results\":[" ++ insert ++ "," ++ insert ++ "," ++ failure ++ "]}");
+    try std.testing.expect(!h.server.failed);
 }

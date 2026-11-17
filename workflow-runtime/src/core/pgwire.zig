@@ -939,7 +939,8 @@ fn jsonShape(text: []const u8) bool {
 
 /// A bytea in the hex format becomes the JSON of a Node.js `Buffer`.
 fn writeBytea(o: *Out, text: []const u8) ValueError!void {
-    if (!std.mem.startsWith(u8, text, "\\x") or text.len % 2 != 0) return error.Unsupported;
+    if (!std.mem.startsWith(u8, text, "\\x")) return writeByteaEscape(o, text);
+    if (text.len % 2 != 0) return error.Unsupported;
     try o.put("{\"type\":\"Buffer\",\"data\":[");
     var i: usize = 2;
     while (i < text.len) : (i += 2) {
@@ -949,6 +950,44 @@ fn writeBytea(o: *Out, text: []const u8) ValueError!void {
         try putDecimal(o, @as(u64, hi) * 16 + lo, 1);
     }
     try o.put("]}");
+}
+
+/// A bytea in the escape format (`bytea_output = escape`), as
+/// `postgres-bytea` 1.0.0 reads it: a printable ASCII byte is itself, `\\`
+/// is one backslash, and `\ooo` is the byte with that octal number. The
+/// server writes every other byte as an octal number.
+fn writeByteaEscape(o: *Out, text: []const u8) ValueError!void {
+    try o.put("{\"type\":\"Buffer\",\"data\":[");
+    var i: usize = 0;
+    // Each pass takes one byte or more of the text.
+    for (0..text.len) |_| {
+        if (i >= text.len) break;
+        const b = try escapedByte(text[i..]);
+        if (i > 0) try o.byte(',');
+        try putDecimal(o, b.value, 1);
+        i += b.size;
+    }
+    std.debug.assert(i == text.len);
+    try o.put("]}");
+}
+
+const EscapedByte = struct { value: u8, size: usize };
+
+/// The byte at the start of a bytea text in the escape format.
+fn escapedByte(s: []const u8) ValueError!EscapedByte {
+    std.debug.assert(s.len > 0);
+    if (s[0] != '\\') {
+        if (s[0] < 0x20 or s[0] > 0x7e) return error.Unsupported;
+        return .{ .value = s[0], .size = 1 };
+    }
+    if (s.len >= 2 and s[1] == '\\') return .{ .value = '\\', .size = 2 };
+    if (s.len < 4) return error.Unsupported;
+    var v: u32 = 0;
+    for (s[1..4]) |c| {
+        if (c < '0' or c > '7') return error.Unsupported;
+        v = v * 8 + (c - '0');
+    }
+    return .{ .value = std.math.cast(u8, v) orelse return error.Unsupported, .size = 4 };
 }
 
 /// `new Date(text).toISOString()` for the ISO output of the server
@@ -1528,7 +1567,13 @@ test "pgwire: column values become the JSON of node-postgres" {
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .json, "1},{\"x\":2", .{}));
     try std.testing.expectError(error.Unsupported, jsonOf(&jb, .json, "1,2", .{}));
     try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[0,255,16]}", try jsonOf(&jb, .bytea, "\\x00ff10", .{}));
-    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .bytea, "abc", .{}));
+    try std.testing.expectError(error.Unsupported, jsonOf(&jb, .bytea, "\\x0", .{}));
+    // The escape format (`bytea_output = escape`), checked with postgres-bytea 1.0.0.
+    try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[0,255,92,65,32,126,127,128]}", try jsonOf(&jb, .bytea, "\\000\\377\\\\A ~\\177\\200", .{}));
+    try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[]}", try jsonOf(&jb, .bytea, "", .{}));
+    try std.testing.expectEqualStrings("{\"type\":\"Buffer\",\"data\":[97,98,99]}", try jsonOf(&jb, .bytea, "abc", .{}));
+    const bad_bytes = [_][]const u8{ "\\", "\\1", "\\12", "\\128", "\\400", "\\a", "a\x80", "a\nb" };
+    for (bad_bytes) |text| try std.testing.expectError(error.Unsupported, jsonOf(&jb, .bytea, text, .{}));
     try std.testing.expectEqualStrings("\"a\\\"b\\\\c\\u000a\"", try jsonOf(&jb, .text, "a\"b\\c\n", .{}));
     try std.testing.expectEqual(Class.unsupported, classOf(1001, .{}));
     try std.testing.expectEqual(Class.unsupported, classOf(1114, .{}));

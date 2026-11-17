@@ -1768,7 +1768,11 @@ await ctx.sql({
 
   In the modes `single` and `transaction`, `results` ends with the first
   failure. A failure of `COMMIT` (a deferred constraint) is one more
-  failure entry after the entries of the statements. A text without a
+  failure entry after the entries of the statements. For a statement that
+  runs alone (each statement in the mode `independently`, and one
+  statement in the mode `single`), a failure at its commit is the failure
+  entry of the statement, so `results` has one entry for each statement
+  that ran. A text without a
   command gives `command: null`. A row is an object with a key for each
   column, in column order. `SqlError` has `message` and the fields of
   the error response of the server with the names of node-postgres
@@ -1818,7 +1822,7 @@ await ctx.sql({
   | Marker | Cause |
   |---|---|
   | `(limit: sql-max-result)` | the result is larger than `--sql-max-result-kb` |
-  | `(limit: sql-type)` | a column type without an exact native form: `bytea[]`; `date`, `date[]`, `timestamp[]` and `timestamptz[]` with `dates: 'legacy'`; `timestamp` and `timestamp[]` without `--sql-timestamp-zone utc`; or a value without one (a timestamp before the year 1000, a `bytea` in the escape format) |
+  | `(limit: sql-type)` | a column type without an exact native form: `bytea[]`; `date`, `date[]`, `timestamp[]` and `timestamptz[]` with `dates: 'legacy'`; `timestamp` and `timestamp[]` without `--sql-timestamp-zone utc`; or a value without one (a timestamp before the year 1000) |
   | `(limit: sql-statement)` | the text is not one command with bind values: more than one command, a parameter whose type the server cannot find where a literal has one (`42P18`), a parameter where the command takes none (`42P02`), a syntax error at a `$n` |
   | `(limit: sql-credential)` | the credential uses the SSH tunnel, or a CA or client certificate |
   | `(limit: sql-host)` | thrown by a library node, before it sends a statement, for an input that it cannot send with bind values |
@@ -1836,8 +1840,11 @@ await ctx.sql({
   therefore runs a statement that gives rows and does not start with
   `SELECT` between `BEGIN` and `COMMIT`, and does `ROLLBACK` before it
   gives the marker. A `SELECT` runs again in the host. One case has no
-  marker: in the mode `independently`, after a statement of the call is
-  committed, such a failure of a later statement is a plain limit error.
+  marker: in the mode `independently`, after a statement with an effect is
+  committed (a statement that ended without an error and is not a `SELECT`
+  that gives rows), such a failure of a later statement is a plain limit
+  error, and the statements after it do not run. A call whose statements
+  before the failure only read, or failed, still ends with the marker.
 
   Other effect errors have no marker: arguments that are not valid, a slot
   that is not there, no free call slot (`(limit)`), the total timeout (the

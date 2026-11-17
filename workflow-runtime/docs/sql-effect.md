@@ -48,6 +48,16 @@ stateDiagram-v2
   timestamp before the year 1000, a text that is not in the form that the server writes), shows only in the rows.
   A statement that gives rows and does not start with `SELECT` therefore runs between `BEGIN` and `COMMIT`, so the
   client can roll it back and give the marker. A `SELECT` runs again in the host.
+- **When a marker is allowed.** The call keeps one fact: a statement that can have changed the database is
+  committed. A statement counts when it ended without an error and it is not a `SELECT` that gives rows
+  (`SELECT ... INTO` gives no rows, so it counts). While the fact is false, the host can run the whole call again,
+  so the call can end with a marker. In the modes `single` and `transaction` the fact is always false at a
+  failure, because the failure rolls the transaction back. In the mode `independently` each statement commits
+  alone, so the fact becomes true after the first statement with an effect. After that, a later statement at a
+  limit ends the call with a plain limit error (`(limit)`, no marker), and the statements after it do not run.
+- **One entry for each statement.** A deferred constraint fails when the statement commits, after its rows and its
+  tag. For a statement that runs alone (also in a transaction that the client put around it), the failure takes
+  the place of the entry, as in v1. For a transaction of the mode, the failure of `COMMIT` is one more entry.
 
 ## Column types
 
@@ -104,15 +114,25 @@ gives the marker `sql-credential`: that workflow stays in the fallback host.
 
 ## Known differences and what is not built
 
-- A call in `independently` mode that already committed a statement cannot run again in the host. A later result
-  over the limit then fails the step with a plain limit error.
+- A call in `independently` mode that committed a statement with an effect cannot run again in the host. A later
+  statement then fails the step with a plain limit error in three cases: its result makes the call larger than
+  `--sql-max-result-kb`; a value has no native form (a timestamp before the year 1000 or with an offset in
+  seconds, an interval after a `SET intervalstyle` of the same call); or the statement could not be prepared
+  before the call ran (its table is made by a statement of the call) and a column has a type without a native
+  form. The checks that can run before the first statement do run there (Parse, Describe, the styles of the
+  session), so only these cases stay. Rejected: one transaction with a savepoint for each statement. It lets the
+  client roll back everything, but `now()`, deferred constraints, locks and what other sessions see differ from
+  v1. Proposed, not built: a marker that says how many statements are done (with their results), so that the
+  library node gives only the other items to the host. It needs a change of the effect contract in
+  `packages/@n8n/workflow-lang`.
 - A `SELECT` that calls a function with side effects, and whose result is over the limit, runs again in the host.
+  In `independently` mode the same holds for each `SELECT` before the statement at the limit.
 - `single` with more than one statement uses `BEGIN`. The v1 node sends one multi-command text. A command that
   cannot run in a transaction block (`VACUUM`, `CREATE DATABASE`) fails with another message.
 - When the connection closes while a statement runs, the step fails. The v1 node gives an error of the query.
 - TLS verification errors have the text of OpenSSL, not of Node.js.
 - Not built: `bytea[]` columns (node-postgres gives the bytes of the hex text, not of the value); arrays of dates
-  and timestamps with `dates: legacy`; the escape format of `bytea`; SSH tunnels; CA and client
+  and timestamps with `dates: legacy`; SSH tunnels; CA and client
   certificates; the simple query protocol for a text with more than one command; a retry on a connection that the
   server closed while idle.
 

@@ -35,6 +35,9 @@ pub const Rule = struct {
     params: ?u16 = null,
     /// What Execute does.
     act: Act = .answer,
+    /// The commit of the statement fails (a deferred constraint): at COMMIT,
+    /// or at Sync when the statement runs outside a transaction block.
+    commit_fail: ?Fail = null,
 };
 
 const max_conns = 8;
@@ -109,6 +112,8 @@ const Conn = struct {
     skip: bool = false,
     stmts: [stmt_slots]Prepared = @splat(.{}),
     portal: ?u16 = null,
+    /// A statement of the open transaction has `commit_fail`.
+    commit_fail: ?Fail = null,
     user: [64]u8 = @splat(0),
     user_len: usize = 0,
     /// The SCRAM messages that the signatures cover.
@@ -527,6 +532,8 @@ pub const Server = struct {
         switch (m.tag) {
             'S' => {
                 cn.skip = false;
+                // Outside a transaction block, Sync commits the statement.
+                if (cn.tx == .idle) commitNow(cn);
                 return sendReady(cn);
             },
             'Q' => return s.onQuery(cn, m.body),
@@ -569,7 +576,13 @@ pub const Server = struct {
         } else if (std.mem.eql(u8, text, "COMMIT") or std.mem.eql(u8, text, "ROLLBACK")) {
             // COMMIT of a failed transaction rolls back, as PostgreSQL does.
             if (cn.tx == .failed) tag = "ROLLBACK";
+            const commits = cn.tx == .open and text[0] == 'C';
             cn.tx = .idle;
+            if (commits and cn.commit_fail != null) {
+                commitNow(cn);
+                return sendReady(cn);
+            }
+            cn.commit_fail = null;
         } else return error.Malformed;
         cn.out.open('C');
         cn.out.cstr(tag);
@@ -671,11 +684,19 @@ pub const Server = struct {
         for (0..rule.repeat) |_| {
             for (rule.rows) |row| sendRow(&cn.out, row);
         }
+        if (rule.commit_fail) |f| cn.commit_fail = f;
         cn.out.open('C');
         cn.out.cstr(rule.tag);
         cn.out.close();
     }
 };
+
+/// The commit of a statement with `commit_fail` gives its error.
+fn commitNow(cn: *Conn) void {
+    const f = cn.commit_fail orelse return;
+    sendError(&cn.out, "ERROR", f);
+    cn.commit_fail = null;
+}
 
 fn sendReady(cn: *Conn) void {
     cn.out.open('Z');
