@@ -1483,6 +1483,33 @@ function utf8Text(b: number[]): string {
 	return out;
 }`,
 	},
+	codePointText: {
+		uses: ['fromCharCodes'],
+		source: `/** \`String.fromCodePoint(...points)\`, with the RangeError of V8. */
+function codePointText(points: Json[]): string {
+	let out = '';
+	for (const p of points) {
+		const n = Number(p);
+		if (!(n >= 0 && n <= 0x10ffff && Math.floor(n) === n)) throw new RangeError('Invalid code point ' + String(n));
+		if (n < 0x10000) out += fromCharCodes([n]);
+		else out += fromCharCodes([0xd800 + Math.floor((n - 0x10000) / 0x400), 0xdc00 + ((n - 0x10000) % 0x400)]);
+	}
+	return out;
+}`,
+	},
+	applyList: {
+		uses: [],
+		source: `/** The arguments of \`f.apply(thisArg, list)\`: a list, nothing, or the members of an object with a length. */
+function applyList(list: Json): Json[] {
+	if (list === undefined || list === null) return [];
+	if (Array.isArray(list)) return list;
+	if (typeof list !== 'object') throw new TypeError('CreateListFromArrayLike called on non-object');
+	const out: Json[] = [];
+	const length = Math.min(Math.max(Math.trunc(Number(list.length)) || 0, 0), 4294967295);
+	for (let k = 0; k < length; k++) out.push(list[String(k)]);
+	return out;
+}`,
+	},
 	promiseAll: {
 		uses: [],
 		source: `/** \`await Promise.all(list)\` of values that are no promises: a copy of the list, or the TypeError of V8. */

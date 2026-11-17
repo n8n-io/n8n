@@ -197,10 +197,15 @@ function isHttpHelper(e: ts.Expression): boolean {
 export function httpRequestOptions(
 	n: ts.AwaitExpression,
 	isRequest: (callee: ts.Expression) => boolean = isHttpHelper,
+	constantOf: (id: ts.Identifier) => ts.Expression | null = () => null,
 ): ts.ObjectLiteralExpression | string | null {
 	const call = stripParens(n.expression);
 	if (!ts.isCallExpression(call) || !isRequest(stripParens(call.expression))) return null;
-	const options = call.arguments.length === 1 ? stripParens(call.arguments[0]) : undefined;
+	let options = call.arguments.length === 1 ? stripParens(call.arguments[0]) : undefined;
+	// The options in a constant that the code uses only for requests.
+	if (options !== undefined && ts.isIdentifier(options)) {
+		options = constantOf(options) ?? options;
+	}
 	if (options === undefined || !ts.isObjectLiteralExpression(options)) {
 		return 'options that are not an object literal';
 	}
@@ -1027,7 +1032,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const member = p.name.text;
 		const call = ts.isCallExpression(p.parent) && p.parent.expression === p ? p.parent : null;
 		if (list === null) return;
-		if (call && call.arguments.length === 0) {
+		// \`$input.all\` of v1 takes no arguments and reads none.
+		const noArguments =
+			call !== null &&
+			(call.arguments.length === 0 ||
+				(own && member === 'all' && call.arguments.every((x) => ts.isNumericLiteral(x))));
+		if (call && noArguments) {
 			if (member === 'all') {
 				replace(base.getStart(sf), call.getEnd(), list);
 				return;
@@ -1416,6 +1426,51 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	};
 	const isRequest = (callee: ts.Expression): boolean => requestKind(callee) === 'request';
 	/**
+	 * The object literal of a constant that holds the options of requests, or null. Each use of
+	 * the constant is the one argument of an awaited request, so no code changes the object.
+	 */
+	const optionsConstant = (id: ts.Identifier): ts.Expression | null => {
+		const sym = checker.getSymbolAtLocation(id);
+		const declarations = sym?.declarations ?? [];
+		const d = declarations.length === 1 ? declarations[0] : undefined;
+		if (
+			d === undefined ||
+			!ts.isVariableDeclaration(d) ||
+			!ts.isVariableDeclarationList(d.parent) ||
+			(d.parent.flags & ts.NodeFlags.Const) === 0 ||
+			d.initializer === undefined
+		) {
+			return null;
+		}
+		const literal = stripParens(d.initializer);
+		if (!ts.isObjectLiteralExpression(literal)) return null;
+		let only = true;
+		const scan = (x: ts.Node): void => {
+			if (!only) return;
+			if (
+				ts.isIdentifier(x) &&
+				x !== d.name &&
+				!isNameOf(x) &&
+				checker.getSymbolAtLocation(x) === sym
+			) {
+				let call: ts.Node = x.parent;
+				while (ts.isParenthesizedExpression(call)) call = call.parent;
+				let wait: ts.Node = call.parent;
+				while (ts.isParenthesizedExpression(wait)) wait = wait.parent;
+				const request =
+					ts.isCallExpression(call) &&
+					call.arguments.length === 1 &&
+					stripParens(call.arguments[0]) === x &&
+					isRequest(stripParens(call.expression)) &&
+					ts.isAwaitExpression(wait);
+				if (!request) only = false;
+			}
+			ts.forEachChild(x, scan);
+		};
+		scan(root);
+		return only ? literal : null;
+	};
+	/**
 	 * The full response (\`returnFullResponse: true\`) also has the headers and the status text
 	 * of the transport, which native code does not give as v1 does. So the code must read only
 	 * \`body\` and \`statusCode\` of it: from a constant that holds the response, or in a
@@ -1585,7 +1640,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	 */
 	const awaited = (n: ts.AwaitExpression): 'http' | 'call' | null => {
 		if (!usesHttp) return null;
-		if (httpRequestOptions(n, isRequest) !== null) return 'http';
+		if (httpRequestOptions(n, isRequest, optionsConstant) !== null) return 'http';
 		const call = stripParens(n.expression);
 		if (!ts.isCallExpression(call)) return null;
 		const callee = stripParens(call.expression);
@@ -2501,8 +2556,57 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		return true;
 	};
 
+	/**
+	 * \`Math.max.apply(null, list)\` (also \`min\`) becomes \`mathMaxOf(applyList(list))\`, and
+	 * \`String.fromCodePoint(a, b)\` becomes \`codePointText([a, b])\`. True when it wrote the call.
+	 */
+	const staticCall = (n: ts.CallExpression): boolean => {
+		const callee = stripParens(n.expression);
+		if (!ts.isPropertyAccessExpression(callee) || callee.questionDotToken) return false;
+		const target = stripParens(callee.expression);
+		const isStatic = (e: ts.Expression, object: string, names: string[]): boolean =>
+			ts.isPropertyAccessExpression(e) &&
+			ts.isIdentifier(e.expression) &&
+			e.expression.text === object &&
+			isFree(e.expression) &&
+			names.includes(e.name.text);
+		if (isStatic(callee, 'String', ['fromCodePoint'])) {
+			helpers.add('codePointText');
+			const o = seq;
+			replace(n.getStart(sf), n.arguments.pos, 'codePointText([');
+			closing(n.arguments.end, n.getEnd(), '])', o);
+			for (const a of n.arguments) visit(a);
+			return true;
+		}
+		if (
+			callee.name.text === 'apply' &&
+			isStatic(target, 'Math', ['max', 'min']) &&
+			n.arguments.length === 2
+		) {
+			const self = stripParens(n.arguments[0]);
+			const plain =
+				self.kind === ts.SyntaxKind.NullKeyword ||
+				(ts.isIdentifier(self) &&
+					(self.text === 'undefined' || self.text === 'Math') &&
+					isFree(self));
+			if (!plain) return false;
+			helpers.add('applyList');
+			const list =
+				ts.isPropertyAccessExpression(target) && target.name.text === 'max'
+					? 'mathMaxOf'
+					: 'mathMinOf';
+			helpers.add(list);
+			const o = seq;
+			replace(n.getStart(sf), n.arguments[1].getStart(sf), `${list}(applyList(`);
+			closing(n.arguments[1].getEnd(), n.getEnd(), '))', o);
+			visit(n.arguments[1]);
+			return true;
+		}
+		return false;
+	};
+
 	const visit = (n: ts.Node): void => {
-		if (ts.isCallExpression(n) && promiseCall(n)) return;
+		if (ts.isCallExpression(n) && (promiseCall(n) || staticCall(n))) return;
 		if (cryptoDeclarations.has(n) && !cryptoMisuse) {
 			replaceNode(n, '');
 			return;
@@ -2593,9 +2697,26 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		}
 
 		if (ts.isFunctionExpression(n) && n.name) {
-			// The compiler does not bind the name of a function expression inside it.
-			block('named function expression', 'A named function expression has no native form.');
-			return;
+			// The compiler does not bind the name of a function expression inside it. The name goes
+			// when the function does not use it and is the value of a declaration: there, V8 also
+			// names the function after the variable, so the line of an error stays the same.
+			const own = checker.getSymbolAtLocation(n.name);
+			const fnName = n.name;
+			const usesName = (x: ts.Node): boolean =>
+				(ts.isIdentifier(x) && x !== fnName && checker.getSymbolAtLocation(x) === own) ||
+				(ts.forEachChild(x, usesName) ?? false);
+			let holder: ts.Node = n.parent;
+			while (ts.isParenthesizedExpression(holder)) holder = holder.parent;
+			if (
+				own === undefined ||
+				usesName(n) ||
+				!ts.isVariableDeclaration(holder) ||
+				!ts.isIdentifier(holder.name)
+			) {
+				block('named function expression', 'A named function expression has no native form.');
+				return;
+			}
+			replaceNode(fnName, '');
 		}
 		if (isFunctionNode(n) && n !== root) {
 			if (n.asteriskToken) block('generator', 'Generators have no native form.');
@@ -2614,7 +2735,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (ts.isAwaitExpression(n) && !input.nodeCode) {
 			const kind = awaited(n);
 			if (kind === 'http') {
-				const options = httpRequestOptions(n, isRequest);
+				const options = httpRequestOptions(n, isRequest, optionsConstant);
 				if (requestNameMisuse) {
 					block(
 						'this.helpers.httpRequest',
@@ -2648,7 +2769,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				if (ts.isCallExpression(call)) {
 					replace(call.expression.getStart(sf), call.expression.getEnd(), HTTP);
 				}
-				for (const p of options.properties) visit(p);
+				// Options in a constant: the walk writes them at the declaration.
+				const inline = ts.isCallExpression(call) && stripParens(call.arguments[0]) === options;
+				if (inline) for (const p of options.properties) visit(p);
 				return;
 			}
 			if (kind === null) {

@@ -592,6 +592,15 @@ const call = async (url) => {
 return [{ json: { ok: await call(items[0].json.base + '/echo'), bad: await call(items[0].json.base + '/status/409') } }];`,
 		],
 		[
+			'options in a constant',
+			`const first = { method: 'POST', url: items[0].json.base + '/echo', body: { a: 1 }, json: true };
+const second = { url: items[0].json.base + '/json', json: true };
+const out = [];
+for (let k = 0; k < 2; k++) out.push({ json: await this.helpers.httpRequest(second) });
+out.push({ json: await this.helpers.httpRequest(first) });
+return out;`,
+		],
+		[
 			'the global helpers',
 			"return [{ json: await helpers.httpRequest({ url: items[0].json.base + '/text-json' }) }];",
 		],
@@ -631,6 +640,14 @@ return out;`,
 		[
 			'a full response that the code does not keep in a constant',
 			"return [{ json: (await this.helpers.httpRequest({ url: 'http://localhost/x', returnFullResponse: true })).body }];",
+		],
+		[
+			'options in a constant that the code changes',
+			"const o = { url: 'http://localhost/x' }; o.headers = { a: '1' }; return [{ json: await this.helpers.httpRequest(o) }];",
+		],
+		[
+			'options in a variable',
+			"let o = { url: 'http://localhost/x' }; return [{ json: await this.helpers.httpRequest(o) }];",
 		],
 		[
 			'a constant of the helpers with another use',

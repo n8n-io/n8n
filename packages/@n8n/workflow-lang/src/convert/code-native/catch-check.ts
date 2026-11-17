@@ -53,7 +53,7 @@ const SAFE_STATICS: Record<string, Set<string> | 'all'> = {
 		'parseInt',
 	]),
 	Date: new Set(['now', 'UTC', 'parse']),
-	['String']: new Set(['fromCharCode']),
+	['String']: new Set(['fromCharCode', 'fromCodePoint']),
 	console: 'all',
 };
 

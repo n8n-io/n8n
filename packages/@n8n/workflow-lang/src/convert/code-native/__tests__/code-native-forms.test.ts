@@ -473,3 +473,38 @@ return items.map((i) => {
 		expect(blockersOf(code).join()).toMatch(/instanceof|catch reads the error/);
 	});
 });
+
+describe('Math.max.apply, Math.min.apply and String.fromCodePoint', () => {
+	it('gives the results and the errors of JavaScript', () => {
+		const code = `return items.map((i) => {
+	let t;
+	try { t = String.fromCodePoint(i.json.p, 65); } catch (e) { t = e.message; }
+	let m;
+	try { m = [Math.max.apply(null, i.json.l), Math.min.apply(Math, i.json.l)]; } catch (e) { m = e.message; }
+	return { json: { t, m, e: String.fromCodePoint() } };
+});`;
+		const input = [
+			{ p: 128512, l: [3, 9, -2] },
+			{ p: -1, l: null },
+			{ p: '66', l: 5 },
+			{ p: 1.5, l: { length: 2, 0: 3, 1: 9 } },
+			{ p: [67], l: [] },
+			{ p: null, l: ['4', 'x'] },
+		];
+		expect(same(code, 'all', input).ok).toBe(true);
+	});
+
+	it('gives the items of $input.all with arguments, which v1 does not read', () => {
+		expect(same('return $input.all(0).map((i) => ({ json: { id: i.json.id } }));').ok).toBe(true);
+	});
+
+	it.each([
+		[
+			'a name that the function uses',
+			'const f = function g(n) { return n > 0 ? g(n - 1) : 0; }; return [{ json: { a: f(2) } }];',
+		],
+		['a callback with a name', 'return items.map(function each(i) { return i; });'],
+	])('keeps a named function expression with %s in the host', (_, code) => {
+		expect(blockersOf(code)).toContain('named function expression');
+	});
+});
