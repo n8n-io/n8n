@@ -592,3 +592,17 @@ pub fn parseIp4(host: []const u8) ?[4]u8 {
     }
     return if (i == 4) out else null;
 }
+
+/// The permission bits of a file or dir. Linux has no `stat` in the C layer of the standard
+/// library, so it uses `statx` there.
+pub fn fileMode(path: [*:0]const u8) error{Stat}!c_uint {
+    if (@import("builtin").os.tag == .linux) {
+        const lx = std.os.linux;
+        var sx = std.mem.zeroes(lx.Statx);
+        if (lx.statx(lx.AT.FDCWD, path, 0, .{ .MODE = true }, &sx) != 0) return error.Stat;
+        return @intCast(sx.mode & 0o777);
+    }
+    var st = std.mem.zeroes(std.c.Stat);
+    if (std.c.stat(path, &st) != 0) return error.Stat;
+    return @intCast(st.mode & 0o777);
+}
