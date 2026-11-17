@@ -7,8 +7,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetExecutionTool } from '../tools/get-execution.tool';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 describe('get-execution MCP tool', () => {
@@ -16,7 +15,7 @@ describe('get-execution MCP tool', () => {
 	let executionRepository: ExecutionRepository;
 	let executionPersistence: ExecutionPersistence;
 	let workflowFinderService: WorkflowFinderService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let executionRedactionServiceProxy: ExecutionRedactionServiceProxy;
 
 	const mockWorkflow = {
@@ -30,7 +29,7 @@ describe('get-execution MCP tool', () => {
 		executionRepository = mockInstance(ExecutionRepository);
 		executionPersistence = mockInstance(ExecutionPersistence);
 		workflowFinderService = mockInstance(WorkflowFinderService);
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);

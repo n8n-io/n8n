@@ -14,7 +14,7 @@ export const assistantRuntimeSchema = z
 	);
 
 export const publicApiClientSchema = z
-	.enum(['editor_ui', 'other'])
+	.enum(['editor_ui', 'n8n_node', 'other'])
 	.describe(
-		'Set when public_api is true. editor_ui when the n8n editor called the route, other for any other client.',
+		'Set when public_api is true. Identifies the client that made the request. "other" is the default catch-all value.',
 	);

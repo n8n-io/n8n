@@ -353,6 +353,7 @@ describe('ScimService', () => {
 				user: createdUser,
 				userType: 'saml',
 				wasDisabledLdapUser: false,
+				source: 'scim',
 			});
 		});
 
@@ -421,6 +422,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
+				source: 'scim',
 			});
 		});
 
@@ -574,6 +576,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['firstName'],
+				source: 'scim',
 			});
 		});
 	});
@@ -602,6 +605,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: expect.arrayContaining(['email', 'firstName', 'lastName', 'disabled']),
+				source: 'scim',
 			});
 		});
 
@@ -616,6 +620,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: expect.not.arrayContaining(['disabled']),
+				source: 'scim',
 			});
 		});
 
@@ -774,6 +779,7 @@ describe('ScimService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user,
 				fieldsChanged: ['disabled'],
+				source: 'scim',
 			});
 		});
 

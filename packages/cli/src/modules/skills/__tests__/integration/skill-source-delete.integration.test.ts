@@ -1,5 +1,5 @@
 import { SKILL_SYNC_FLAG, type SkillSourceDeleteBlock } from '@n8n/api-types';
-import { PostHogClient } from '@n8n/backend-services';
+import { PostHogClient, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -16,7 +16,6 @@ import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { Telemetry } from '@/telemetry';
 
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
@@ -43,7 +42,7 @@ beforeAll(async () => {
 describe('Delete a skill source', () => {
 	const server = setupTestServer({ endpointGroups: ['ai'] });
 	const postHog = mockInstance(PostHogClient);
-	const telemetry = mockInstance(Telemetry);
+	const telemetry = mockInstance(TelemetryProxy);
 	let ownerUser: User;
 	let owner: SuperAgentTest;
 	let editor: SuperAgentTest;
