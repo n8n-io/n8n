@@ -7,6 +7,7 @@ import {
 	type ProtectedResource,
 	type ResourcePrincipal,
 } from '@n8n/inbound-auth';
+import type { ResourceGrant } from '@n8n/permissions';
 
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
@@ -50,9 +51,14 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 		};
 	}
 
-	/** A grant cannot express app access, so a sealed run re-checks only the user. */
-	grantFor(app: Pick<App, 'id' | 'namespace'>) {
-		return { audiences: [this.hosts.callbackUrl(app)] };
+	/**
+	 * Mirrors `canAccess`, so a sealed run re-checks project access. The grant keeps the
+	 * visibility of the moment it is sealed. It does not re-check that the app is still published.
+	 */
+	grantFor(app: Pick<App, 'id' | 'namespace' | 'projectId' | 'visibility'>): ResourceGrant {
+		const audiences = [this.hosts.callbackUrl(app)];
+		if (app.visibility === 'instance') return { audiences };
+		return { audiences, projectAccess: { projectId: app.projectId, scopes: ['app:read'] } };
 	}
 
 	async canAccess(app: App, user: ResourcePrincipal): Promise<boolean> {

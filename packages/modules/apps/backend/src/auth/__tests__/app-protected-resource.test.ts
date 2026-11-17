@@ -140,8 +140,18 @@ describe('AppProtectedResource', () => {
 		expect(await resource.canRead(app, user)).toBe(false);
 	});
 
-	it('offers a grant for the app audience without a workflow requirement', async () => {
+	it('offers a grant that requires app:read in the project of a project app', async () => {
 		const { resource, app } = setup();
+
+		expect(resource.forApp(app).getGrant?.()).toEqual({
+			audiences: [url],
+			projectAccess: { projectId: 'project', scopes: ['app:read'] },
+		});
+	});
+
+	it('offers a grant without a project requirement for an instance app', async () => {
+		const { resource, app } = setup();
+		app.visibility = 'instance';
 
 		expect(resource.forApp(app).getGrant?.()).toEqual({ audiences: [url] });
 	});
