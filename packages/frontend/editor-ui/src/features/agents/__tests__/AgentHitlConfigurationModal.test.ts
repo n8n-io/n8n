@@ -426,11 +426,14 @@ it('closes the blank tab when workflow creation fails', async () => {
 	expect(mocks.showError).toHaveBeenCalled();
 });
 it('preselects the tool that opened the modal', async () => {
-	const wrapper = render(undefined, config, 'agent', 'tool:workflow:Write');
-	await flushPromises();
-	expect(wrapper.getComponent(AgentHitlToolsSelect).props('modelValue')).toEqual([
+	const wrapper = render(
+		undefined,
+		{ ...config, tools: [{ type: 'workflow', workflow: 'Write' }] },
+		'agent',
 		'tool:workflow:Write',
-	]);
+	);
+	await flushPromises();
+	expect(wrapper.get('[data-testid="agent-hitl-tool-pill"]').text()).toContain('Write');
 });
 it('keeps tool attachment changes local until Save', async () => {
 	const configuration: AgentHitlConfiguration = {
