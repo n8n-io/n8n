@@ -9473,6 +9473,7 @@
 	"agents.builder.chat.newChat.ariaLabel": "Start a new session",
 	"agents.builder.chat.newChat.label": "New session",
 	"agents.chat.loadHistory.error": "Could not load chat history",
+	"agents.chat.loadOlder.error": "Couldn't load earlier messages",
 	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.chat.stop.error": "Couldn't stop the agent. Try again.",
 	"chat.messageQueue.title": "{count} queued message | {count} queued messages",
