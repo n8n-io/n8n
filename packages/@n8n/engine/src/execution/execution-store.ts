@@ -93,6 +93,14 @@ export class ParentExecutionEndedError extends Error {
 }
 
 /**
+ * Whether `error` says that execution `executionId` has no row. The retention
+ * sweep deletes an ended execution, and a queue message can outlive it.
+ */
+export function isMissingExecution(error: unknown, executionId: string): boolean {
+	return error instanceof ExecutionNotFoundError && error.executionId === executionId;
+}
+
+/**
  * Persistence interface for executions.
  *
  * A write that makes an execution `queued` also records when the engine treats
