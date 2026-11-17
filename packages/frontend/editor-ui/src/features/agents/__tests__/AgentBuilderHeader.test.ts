@@ -1,10 +1,20 @@
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isFoldersFeatureEnabled: true }),
+}));
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
+import type { PathItem } from '@n8n/design-system';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
+
+const folderBreadcrumbs = ref<PathItem[]>([]);
+
+vi.mock('../composables/useAgentFolderBreadcrumb', () => ({
+	useAgentFolderBreadcrumb: () => folderBreadcrumbs,
+}));
 
 const trackClickedNewAgentMock = vi.fn();
 vi.mock('../composables/useAgentTelemetry', () => ({
@@ -35,6 +45,7 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
+	useRoute: () => ({ query: {} }),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
@@ -176,6 +187,7 @@ function mountHeader(
 
 describe('AgentBuilderHeader', () => {
 	beforeEach(() => {
+		folderBreadcrumbs.value = [];
 		ensureLoadedMock.mockReset();
 		routerPush.mockReset();
 		routerResolve.mockClear();
@@ -269,6 +281,23 @@ describe('AgentBuilderHeader', () => {
 		}>;
 
 		expect(items[0].icon).toEqual(projectIcon);
+	});
+
+	it('shows folder breadcrumbs and opens the selected folder', () => {
+		folderBreadcrumbs.value = [
+			{ id: 'folder-1', label: 'Support', href: '/projects/p1/agents?folderId=folder-1' },
+		];
+		const wrapper = mountHeader();
+		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+
+		expect(breadcrumbs.props('items')).toEqual(expect.arrayContaining(folderBreadcrumbs.value));
+		breadcrumbs.vm.$emit('itemSelected', folderBreadcrumbs.value[0]);
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'ProjectAgents',
+			params: { projectId: 'p1' },
+			query: { folderId: 'folder-1' },
+		});
 	});
 
 	it('links the project breadcrumb to the project agents page', () => {

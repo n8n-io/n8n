@@ -29,6 +29,7 @@ export type {
 	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
+	LegacyCallConverter,
 	CheckpointStore,
 	StreamChunk,
 	Provider,

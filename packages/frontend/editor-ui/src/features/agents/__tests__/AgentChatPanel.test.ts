@@ -379,6 +379,9 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
 			isLoadingHistory: isLoadingHistoryMock,
+			hasOlderMessages: ref(false),
+			loadOlderMessages: vi.fn(),
+			getFullHistory: async () => messagesMock.value,
 			queuedMessages: queuedMessagesMock,
 			removingQueueIds: ref(new Set()),
 			steeringQueueIds: steeringQueueIdsMock,
@@ -3163,7 +3166,7 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
-	it('formats conversation markdown in message order with speaker labels', function formatsConversation() {
+	it('formats conversation markdown in message order with speaker labels', async function formatsConversation() {
 		messagesMock.value = [
 			{ id: 'user-1', role: 'user', content: '  Hello  ', status: 'success' },
 			{ id: 'assistant-1', role: 'assistant', content: '\n**Welcome**\n', status: 'success' },
@@ -3172,25 +3175,25 @@ describe('AgentChatPanel', () => {
 		];
 		const wrapper = mountPanel();
 
-		expect(wrapper.vm.getConversationMarkdown()).toBe(
+		await expect(wrapper.vm.getConversationMarkdown()).resolves.toBe(
 			'**User:**\n\nHello\n\n---\n\n**Agent:**\n\n**Welcome**\n\n---\n\n**User:**\n\nNext question',
 		);
 	});
 
-	it('returns empty markdown without messages', function formatsEmptyConversation() {
+	it('returns empty markdown without messages', async function formatsEmptyConversation() {
 		const wrapper = mountPanel();
 
-		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+		await expect(wrapper.vm.getConversationMarkdown()).resolves.toBe('');
 	});
 
-	it('returns empty markdown when messages contain only whitespace', function skipsBlankMessages() {
+	it('returns empty markdown when messages contain only whitespace', async function skipsBlankMessages() {
 		messagesMock.value = [
 			{ id: 'user-1', role: 'user', content: ' \n\t ', status: 'success' },
 			{ id: 'assistant-1', role: 'assistant', content: '', status: 'success' },
 		];
 		const wrapper = mountPanel();
 
-		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+		await expect(wrapper.vm.getConversationMarkdown()).resolves.toBe('');
 	});
 
 	it('uses the live agent name in the normal chat placeholder', async () => {

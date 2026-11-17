@@ -2322,6 +2322,9 @@ importers:
 
   packages/@n8n/code-runtime-js:
     dependencies:
+      '@n8n/code-task-contract':
+        specifier: workspace:*
+        version: link:../code-task-contract
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -7862,6 +7865,9 @@ importers:
 
   packages/modules/execution-limits/backend:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants

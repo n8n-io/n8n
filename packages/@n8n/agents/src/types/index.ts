@@ -81,6 +81,7 @@ export type {
 	ToolSuspendOptions,
 	BuiltTool,
 	ToolDispatch,
+	LegacyCallConverter,
 	BuiltProviderTool,
 } from './sdk/tool';
 
