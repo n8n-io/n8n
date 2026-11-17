@@ -255,11 +255,9 @@ export function getExecutionEngine(executionId: string): WorkflowEngineType {
 	return isEngineV2ExecutionId(executionId) ? 'v2' : 'v1';
 }
 
-/** The label of the engine that ran an execution, such as "Engine v2". */
-export function getExecutionEngineLabel(executionId: string): string {
-	return getExecutionEngine(executionId) === 'v2'
-		? i18n.baseText('executionsList.engine.v2')
-		: i18n.baseText('executionsList.engine.v1');
+/** The label of an engine, such as "Engine v2". */
+export function getExecutionEngineLabel(engine: WorkflowEngineType): string {
+	return i18n.baseText('executionsList.engine', { interpolate: { engine } });
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):

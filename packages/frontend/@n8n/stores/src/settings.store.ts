@@ -203,6 +203,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
+	const isEngineV2Enabled = computed(() => isModuleActive('engine-v2') === true);
+
 	const isChatFeatureEnabled = computed(
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled === true,
 	);
@@ -598,6 +600,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAppsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
+		isEngineV2Enabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
 		isWorkerPoolsEnabled,

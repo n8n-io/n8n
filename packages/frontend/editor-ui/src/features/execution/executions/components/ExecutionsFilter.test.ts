@@ -198,7 +198,7 @@ describe('ExecutionsFilter', () => {
 
 	describe('engine', () => {
 		test('filters by engine with the engine-v2 module active', async () => {
-			settingsStore.isModuleActive.mockImplementation((name) => name === 'engine-v2');
+			settingsStore.isEngineV2Enabled = true;
 			const { getByTestId, emitted } = renderComponent();
 
 			await userEvent.click(getByTestId('executions-filter-button'));
@@ -223,7 +223,7 @@ describe('ExecutionsFilter', () => {
 		});
 
 		test('hides the engine filter with the engine-v2 module inactive', async () => {
-			settingsStore.isModuleActive.mockReturnValue(false);
+			settingsStore.isEngineV2Enabled = false;
 			const { getByTestId, queryByTestId } = renderComponent();
 
 			await userEvent.click(getByTestId('executions-filter-button'));

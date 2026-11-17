@@ -58,10 +58,14 @@ vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	i18n: {
-		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
+		baseText: (
+			key: string,
+			options?: { interpolate?: { error?: string; details?: string; engine?: string } },
+		) => {
 			const texts: { [key: string]: string } = {
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
 				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
+				'executionsList.engine': `Engine ${options?.interpolate?.engine}`,
 			};
 			return texts[key] || key;
 		},
@@ -943,11 +947,10 @@ describe('getExecutionEngine', () => {
 });
 
 describe('getExecutionEngineLabel', () => {
-	// `i18n` is mocked above to return the key.
 	it.each([
-		['executionsList.engine.v1', '123'],
-		['executionsList.engine.v2', '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b'],
-	])('returns %s for execution %s', (key, executionId) => {
-		expect(getExecutionEngineLabel(executionId)).toBe(key);
+		['v1', 'Engine v1'],
+		['v2', 'Engine v2'],
+	] as const)('labels engine %s as %s', (engine, label) => {
+		expect(getExecutionEngineLabel(engine)).toBe(label);
 	});
 });

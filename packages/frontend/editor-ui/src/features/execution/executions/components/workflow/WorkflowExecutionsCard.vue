@@ -12,7 +12,7 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
-import ExecutionEngineBadge from '../ExecutionEngineBadge.vue';
+import ExecutionEngineBadge from '@/features/execution/executions/components/ExecutionEngineBadge.vue';
 import {
 	N8nActionDropdown,
 	N8nIcon,

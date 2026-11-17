@@ -40,7 +40,7 @@ describe('GlobalExecutionsListItem', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isModuleActive.mockReturnValue(false);
+		settingsStore.isEngineV2Enabled = false;
 	});
 
 	it('should render the status text for an execution', () => {
@@ -239,7 +239,7 @@ describe('GlobalExecutionsListItem', () => {
 
 		describe('with the engine-v2 module active', () => {
 			beforeEach(() => {
-				settingsStore.isModuleActive.mockImplementation((name) => name === 'engine-v2');
+				settingsStore.isEngineV2Enabled = true;
 			});
 
 			it.each([

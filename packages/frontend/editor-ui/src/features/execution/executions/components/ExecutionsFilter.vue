@@ -6,7 +6,8 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
-import type { WorkflowEngineType } from 'n8n-workflow';
+import { WORKFLOW_ENGINE_TYPES, type WorkflowEngineType } from 'n8n-workflow';
+import { getExecutionEngineLabel } from '@/features/execution/executions/executions.utils';
 import { i18n as locale } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -66,8 +67,6 @@ const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 const isAnnotationFiltersEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
-// The engine select in the workflow settings uses the same gate.
-const isEngineV2Active = computed(() => settingsStore.isModuleActive('engine-v2'));
 
 const getDefaultFilter = (): ExecutionFilterType => ({
 	status: 'all',
@@ -153,8 +152,10 @@ const statuses = computed(() => [
 const engineFilterOptions = computed<Array<{ id: 'all' | WorkflowEngineType; name: string }>>(
 	() => [
 		{ id: 'all', name: locale.baseText('executionsFilter.engine.all') },
-		{ id: 'v1', name: locale.baseText('executionsList.engine.v1') },
-		{ id: 'v2', name: locale.baseText('executionsList.engine.v2') },
+		...WORKFLOW_ENGINE_TYPES.map((engine) => ({
+			id: engine,
+			name: getExecutionEngineLabel(engine),
+		})),
 	],
 );
 
@@ -303,7 +304,7 @@ onBeforeMount(() => {
 						/>
 					</N8nSelect>
 				</div>
-				<div v-if="isEngineV2Active" :class="$style.group">
+				<div v-if="settingsStore.isEngineV2Enabled" :class="$style.group">
 					<label for="execution-filter-engine">{{
 						locale.baseText('executionsFilter.engine')
 					}}</label>
