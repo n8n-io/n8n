@@ -8,6 +8,7 @@ import { Network } from 'testcontainers';
 
 import {
 	createElapsedLogger,
+	normalizeStackBasePath,
 	pollContainerHttpEndpoint,
 	waitForContainerLogMessages,
 } from './helpers/utils';
@@ -85,7 +86,9 @@ export interface N8NStack {
 	internalMainUrls: string[];
 	/**
 	 * Direct host-mapped URL of every n8n process (mains, workers, webhook procs),
-	 * for per-process diagnostics such as `/metrics` and `/rest/e2e/internals`.
+	 * for per-process diagnostics such as `/rest/e2e/internals`. Main and webhook
+	 * URLs include the base path; worker URLs do not. `/metrics` is always served
+	 * at the origin root, so do not append it to these URLs under a base path.
 	 */
 	processUrls: N8NProcessUrl[];
 	startupDiagnostics: N8NStartupDiagnostics;
@@ -366,7 +369,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
 		const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
-		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
+		// When n8n is hosted under a base path, expose it as part of `baseUrl`
+		// so Playwright's `request.newContext({ baseURL })`, page navigations
+		// and helpers all resolve relative paths against the prefixed origin.
+		const basePath = normalizeStackBasePath(env.N8N_BASE_PATH);
+		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}${basePath}`;
 
 		const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
 			const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
@@ -438,7 +445,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			try {
 				await pollContainerHttpEndpoint(
 					lbResult.container,
-					'/healthz/readiness',
+					`${basePath}/healthz/readiness`,
 					startupDeadline.remainingMs,
 					startupDeadline.signal,
 				);
@@ -501,8 +508,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			const mainContainer = containers.find((c) => c.getName().endsWith(mainNameSuffix));
 			if (mainContainer) {
 				const mainPort = mainContainer.getMappedPort(5678);
-				mainUrls.push(`http://localhost:${mainPort}`);
-				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678`);
+				mainUrls.push(`http://localhost:${mainPort}${basePath}`);
+				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678${basePath}`);
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
@@ -512,7 +519,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			const name = container.getName().replace(/^\//, '');
 			const role = n8nProcessRole(name);
 			if (role) {
-				processUrls.push({ role, name, url: `http://localhost:${container.getMappedPort(5678)}` });
+				// Workers serve their routes at the root; mains and webhook processes mount under the base path.
+				const processBasePath = role === 'worker' ? '' : basePath;
+				processUrls.push({
+					role,
+					name,
+					url: `http://localhost:${container.getMappedPort(5678)}${processBasePath}`,
+				});
 			}
 		}
 

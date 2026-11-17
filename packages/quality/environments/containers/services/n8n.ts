@@ -8,6 +8,7 @@ import {
 	createElapsedLogger,
 	createReadinessProbe,
 	createSilentLogConsumer,
+	normalizeStackBasePath,
 } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import type { StartupDeadline } from '../startup-deadline';
@@ -261,12 +262,16 @@ async function createContainer(
 		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
+	// When n8n is hosted under a custom base path, the readiness endpoint moves with
+	// it; worker health routes stay bare because workers are reached directly.
+	const basePath = normalizeStackBasePath(environment.N8N_BASE_PATH);
+	const readinessBasePath = role === 'worker' ? '' : basePath;
 	// The engine serves no REST API; its health route lives on the engine port,
 	// over TLS in `container` mode.
 	const readiness =
 		role === 'engine'
 			? { path: '/healthz', port: ENGINE_PORT, tls: true }
-			: { path: '/healthz/readiness', port: N8N_READINESS_PORT, tls: false };
+			: { path: `${readinessBasePath}/healthz/readiness`, port: N8N_READINESS_PORT, tls: false };
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		readiness.path,
 		readiness.port,

@@ -43,6 +43,9 @@ vi.mock('@/mfa/helpers', () => ({
 const MOUNTS = ['without a frontend service', 'with a frontend service'] as const;
 type Mount = (typeof MOUNTS)[number];
 
+const PRESET_CREDENTIALS_ENDPOINT = 'credentials-overwrite';
+const PRESET_CREDENTIALS_TOKEN = 'preset-credentials-token';
+
 const ICON_MARKER = 'node-icon-marker';
 const SCHEMA_MARKER = 'node-schema-marker';
 const BROWSER_ID = 'test-browser-id';
@@ -143,7 +146,14 @@ describe('Server static assets', () => {
 		mockInstance(ControllerRegistry);
 		mockInstance(MessageEventBus);
 		mockInstance(LogStreamingEventRelay);
-		mockInstance(CredentialsOverwrites);
+		const credentialsOverwrites = mockInstance(CredentialsOverwrites);
+		credentialsOverwrites.getOverwriteEndpointMiddleware.mockReturnValue((req, res, next) => {
+			if (req.headers.authorization === `Bearer ${PRESET_CREDENTIALS_TOKEN}`) {
+				next();
+				return;
+			}
+			res.status(401).end();
+		});
 		mockInstance(MfaService);
 		const externalHooks = mockInstance(ExternalHooks);
 
@@ -177,6 +187,9 @@ describe('Server static assets', () => {
 				Reflect.set(server, 'externalHooks', externalHooks);
 				Reflect.set(server, 'frontendService', frontendService);
 			}
+
+			// Set by `start()`, which the test does not run
+			Reflect.set(server, 'endpointPresetCredentials', PRESET_CREDENTIALS_ENDPOINT);
 
 			await server.configure();
 
@@ -465,6 +478,42 @@ describe('Server static assets', () => {
 			} else {
 				expect(response.body).toBe('public');
 			}
+		});
+
+		describe('preset credentials endpoint', () => {
+			test('requires the token at the root base path', async () => {
+				const { statusCode } = await request(
+					'POST',
+					`/${PRESET_CREDENTIALS_ENDPOINT}`,
+					ports[mount],
+				);
+
+				expect(statusCode).toBe(401);
+			});
+
+			test('reaches the handler with the token', async () => {
+				const { statusCode } = await request(
+					'POST',
+					`/${PRESET_CREDENTIALS_ENDPOINT}`,
+					ports[mount],
+					{
+						authorization: `Bearer ${PRESET_CREDENTIALS_TOKEN}`,
+					},
+				);
+
+				expect(statusCode).not.toBe(401);
+				expect(statusCode).not.toBe(404);
+			});
+
+			test('does not answer a double-slash path without the token', async () => {
+				const { statusCode } = await request(
+					'POST',
+					`//${PRESET_CREDENTIALS_ENDPOINT}`,
+					ports[mount],
+				);
+
+				expect(statusCode).toBe(404);
+			});
 		});
 
 		describe('embedded settings', () => {

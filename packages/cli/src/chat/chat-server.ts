@@ -1,3 +1,4 @@
+import { PathResolvingService } from '@n8n/backend-services';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Application } from 'express';
@@ -18,21 +19,27 @@ interface ExpressApplication extends Application {
 export class ChatServer {
 	private readonly wsServer = new WebSocketServer({ noServer: true });
 
-	constructor(private readonly chatService: ChatService) {}
+	constructor(
+		private readonly chatService: ChatService,
+		private readonly pathResolvingService: PathResolvingService,
+	) {}
 
 	setup(server: HttpServer, app: Application) {
+		const chatPath = this.pathResolvingService.resolveEndpoint('chat');
+
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
 			// oxlint-disable-next-line typescript/no-deprecated
 			const parsedUrl = parseUrl(req.url ?? '');
 
-			if (parsedUrl.pathname?.startsWith('/chat')) {
+			const pathname = parsedUrl.pathname;
+			if (pathname === chatPath || pathname?.startsWith(`${chatPath}/`)) {
 				this.wsServer.handleUpgrade(req, socket, head, (ws) => {
 					this.attachToApp(req, ws, app as ExpressApplication);
 				});
 			}
 		});
 
-		app.use('/chat', async (req: ChatRequest) => {
+		app.use(chatPath, async (req: ChatRequest) => {
 			await this.chatService.startSession(req);
 		});
 	}

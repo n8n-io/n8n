@@ -1,3 +1,4 @@
+import type { PathResolvingService } from '@n8n/backend-services';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server as HttpServer, IncomingMessage } from 'http';
@@ -21,6 +22,7 @@ describe('ChatServer', () => {
 	};
 	mockApp.handle = vi.fn();
 	const mockHttpServer = mock<HttpServer>();
+	const pathResolvingService = mock<PathResolvingService>();
 
 	let chatServer: ChatServer;
 
@@ -29,8 +31,10 @@ describe('ChatServer', () => {
 		mockReset(mockWsServer);
 		mockReset(mockApp);
 		mockReset(mockHttpServer);
+		mockReset(pathResolvingService);
+		pathResolvingService.resolveEndpoint.mockReturnValue('/chat');
 
-		chatServer = new ChatServer(mockChatService);
+		chatServer = new ChatServer(mockChatService, pathResolvingService);
 
 		(chatServer as any).wsServer = mockWsServer;
 	});
@@ -82,6 +86,37 @@ describe('ChatServer', () => {
 		expect(mockApp.handle).toHaveBeenCalledWith(
 			expect.objectContaining({ ws }),
 			expect.any(ServerResponse),
+		);
+	});
+
+	it('handles WebSocket upgrade and HTTP requests under the base path', () => {
+		pathResolvingService.resolveEndpoint.mockReturnValue('/n8n/chat');
+		chatServer.setup(mockHttpServer, mockApp);
+
+		expect(pathResolvingService.resolveEndpoint).toHaveBeenCalledWith('chat');
+		expect(mockApp.use).toHaveBeenCalledWith('/n8n/chat', expect.any(Function));
+
+		const upgradeHandler = mockHttpServer.on.mock.calls[0][1];
+		const socket = {} as any;
+		const head = {} as any;
+
+		upgradeHandler(
+			{ url: '/chat?sessionId=123&executionId=456', socket: {} } as ChatRequest,
+			socket,
+			head,
+		);
+		expect(mockWsServer.handleUpgrade).not.toHaveBeenCalled();
+
+		upgradeHandler({ url: '/n8n/chatty?sessionId=123', socket: {} } as ChatRequest, socket, head);
+		expect(mockWsServer.handleUpgrade).not.toHaveBeenCalled();
+
+		const req = { url: '/n8n/chat?sessionId=123&executionId=456', socket: {} } as ChatRequest;
+		upgradeHandler(req, socket, head);
+		expect(mockWsServer.handleUpgrade).toHaveBeenCalledWith(
+			req,
+			socket,
+			head,
+			expect.any(Function),
 		);
 	});
 });

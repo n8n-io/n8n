@@ -1,5 +1,6 @@
 import { inDevelopment, inTest, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AppsHostingService } from '@n8n/backend-module-apps/hosting';
+import { PathResolvingService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -28,8 +29,6 @@ import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
-import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
-
 @Service()
 export abstract class AbstractServer {
 	/**
@@ -54,29 +53,12 @@ export abstract class AbstractServer {
 
 	private databaseIndependentRoutes = Container.get(DatabaseIndependentRoutes);
 
+	/** Single source of truth for all path resolution */
+	protected pathResolvingService = Container.get(PathResolvingService);
+
 	protected sslKey: string;
 
 	protected sslCert: string;
-
-	protected restEndpoint: string;
-
-	protected endpointForm: string;
-
-	protected endpointFormTest: string;
-
-	protected endpointFormWaiting: string;
-
-	protected endpointWebhook: string;
-
-	protected endpointWebhookTest: string;
-
-	protected endpointWebhookWaiting: string;
-
-	protected endpointMcp: string;
-
-	protected endpointMcpTest: string;
-
-	protected endpointHealth: string;
 
 	protected webhooksEnabled = true;
 
@@ -97,22 +79,6 @@ export abstract class AbstractServer {
 
 		this.sslKey = this.globalConfig.ssl_key;
 		this.sslCert = this.globalConfig.ssl_cert;
-
-		const { endpoints } = this.globalConfig;
-		this.restEndpoint = endpoints.rest;
-
-		this.endpointForm = endpoints.form;
-		this.endpointFormTest = endpoints.formTest;
-		this.endpointFormWaiting = endpoints.formWaiting;
-
-		this.endpointWebhook = endpoints.webhook;
-		this.endpointWebhookTest = endpoints.webhookTest;
-		this.endpointWebhookWaiting = endpoints.webhookWaiting;
-
-		this.endpointMcp = endpoints.mcp;
-		this.endpointMcpTest = endpoints.mcpTest;
-
-		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
 
 		this.logger = Container.get(Logger);
 	}
@@ -149,26 +115,31 @@ export abstract class AbstractServer {
 	}
 
 	private setupHealthCheck() {
-		const healthPath = this.endpointHealth;
-		const readinessPath = `${healthPath}/readiness`;
-
 		const healthMiddlewares = inDevelopment ? [corsMiddleware] : [];
 
 		// main health check should not care about DB connections
-		this.app.get(healthPath, ...healthMiddlewares, (_req, res) => {
-			res.send({ status: 'ok' });
-		});
+		this.app.get(
+			this.pathResolvingService.resolveHealthzEndpoint(),
+			...healthMiddlewares,
+			(_req, res) => {
+				res.send({ status: 'ok' });
+			},
+		);
 
 		const { connectionState } = this.dbConnection;
 
-		this.app.get(readinessPath, ...healthMiddlewares, (_req, res) => {
-			const { connected, migrated } = connectionState;
-			if (connected && migrated && this.fullyReady) {
-				res.status(200).send({ status: 'ok' });
-			} else {
-				res.status(503).send({ status: 'error' });
-			}
-		});
+		this.app.get(
+			this.pathResolvingService.resolveHealthzEndpoint('readiness'),
+			...healthMiddlewares,
+			(_req, res) => {
+				const { connected, migrated } = connectionState;
+				if (connected && migrated && this.fullyReady) {
+					res.status(200).send({ status: 'ok' });
+				} else {
+					res.status(503).send({ status: 'error' });
+				}
+			},
+		);
 
 		this.app.use((req, res, next) => {
 			if (this.isServedWithoutDatabase(req)) {
@@ -292,30 +263,33 @@ export abstract class AbstractServer {
 			const liveWebhooks = Container.get(LiveWebhooks);
 
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, createWebhookHandlerFor(liveWebhooks, 'form'));
+			this.app.all(
+				`${this.pathResolvingService.resolveFormEndpoint()}/*path`,
+				createWebhookHandlerFor(liveWebhooks, 'form'),
+			);
 
 			// Register a handler for live webhooks
 			this.app.all(
-				`/${this.endpointWebhook}/*path`,
+				`${this.pathResolvingService.resolveWebhookEndpoint()}/*path`,
 				createWebhookHandlerFor(liveWebhooks, 'webhook'),
 			);
 
 			// Register a handler for waiting forms (excluded from metrics to avoid double-counting)
 			this.app.all(
-				`/${this.endpointFormWaiting}/:path{/:suffix}`,
+				`${this.pathResolvingService.resolveFormWaitingEndpoint()}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingForms), undefined, 'form'),
 			);
 
 			// Register a handler for waiting webhooks (excluded from metrics to avoid double-counting)
 			this.app.all(
-				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
+				`${this.pathResolvingService.resolveWebhookWaitingEndpoint()}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 
 			// Slack posts all button clicks to one fixed URL, so the ids travel in the button
 			// value instead of the path.
 			this.app.all(
-				`/${this.endpointWebhookWaiting}${SLACK_HITL_WEBHOOK_SUFFIX}`,
+				`${this.pathResolvingService.resolveWebhookWaitingEndpoint()}${SLACK_HITL_WEBHOOK_SUFFIX}`,
 				createWebhookHandlerFor(Container.get(SlackInteractionWebhooks)),
 			);
 
@@ -324,28 +298,34 @@ export abstract class AbstractServer {
 			// instead of the URL, since Telegram delivers every registered bot's updates to
 			// one fixed webhook URL.
 			this.app.all(
-				`/${this.endpointWebhookWaiting}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`,
+				`${this.pathResolvingService.resolveWebhookWaitingEndpoint()}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`,
 				createWebhookHandlerFor(Container.get(TelegramInteractionWebhooks)),
 			);
 
 			// Register a handler for live MCP servers
-			this.app.all(`/${this.endpointMcp}/*path`, createWebhookHandlerFor(liveWebhooks, 'mcp'));
+			this.app.all(
+				`${this.pathResolvingService.resolveMcpEndpoint()}/*path`,
+				createWebhookHandlerFor(liveWebhooks, 'mcp'),
+			);
 		}
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);
 
 			this.app.all(
-				`/${this.endpointFormTest}/*path`,
+				`${this.pathResolvingService.resolveFormTestEndpoint()}/*path`,
 				createWebhookHandlerFor(testWebhooks, 'form'),
 			);
 			this.app.all(
-				`/${this.endpointWebhookTest}/*path`,
+				`${this.pathResolvingService.resolveWebhookTestEndpoint()}/*path`,
 				createWebhookHandlerFor(testWebhooks, 'webhook'),
 			);
 
 			// Register a handler for test MCP servers
-			this.app.all(`/${this.endpointMcpTest}/*path`, createWebhookHandlerFor(testWebhooks, 'mcp'));
+			this.app.all(
+				`${this.pathResolvingService.resolveMcpTestEndpoint()}/*path`,
+				createWebhookHandlerFor(testWebhooks, 'mcp'),
+			);
 		}
 
 		// Block bots from scanning the application.

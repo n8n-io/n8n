@@ -59,6 +59,7 @@ describe('OidcController', () => {
 
 		// Mock URL service
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
+		oidcService.getCallbackUrl.mockReturnValue('http://localhost:5678/rest/sso/oidc/callback');
 	});
 
 	describe('callbackHandler', () => {
@@ -69,7 +70,7 @@ describe('OidcController', () => {
 
 		test('Should issue cookie with MFA flag set to true on successful OIDC login', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -79,7 +80,7 @@ describe('OidcController', () => {
 			const res = mock<Response>();
 
 			const expectedCallbackUrl = new URL(
-				'http://localhost:5678/sso/oidc/callback?code=auth_code&state=state_value',
+				'http://localhost:5678/rest/sso/oidc/callback?code=auth_code&state=state_value',
 			);
 
 			// Mock successful OIDC login
@@ -102,12 +103,12 @@ describe('OidcController', () => {
 			});
 
 			// Verify redirect to home page
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should redirect to the destination stored in the state after login', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -123,12 +124,12 @@ describe('OidcController', () => {
 
 			await controller.callbackHandler(req, res);
 
-			expect(res.redirect).toHaveBeenCalledWith('/workflow/abc?tab=1');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/workflow/abc?tab=1');
 		});
 
 		test('Should fall back to the home page when the stored destination is not a local path', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -144,13 +145,13 @@ describe('OidcController', () => {
 
 			await controller.callbackHandler(req, res);
 
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should handle callback URL with different query parameters', async () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl:
-					'/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
+					'/rest/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -160,7 +161,7 @@ describe('OidcController', () => {
 			const res = mock<Response>();
 
 			const expectedCallbackUrl = new URL(
-				'http://localhost:5678/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
+				'http://localhost:5678/rest/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
 			);
 
 			oidcService.loginUser.mockResolvedValueOnce({ user: person });
@@ -173,12 +174,63 @@ describe('OidcController', () => {
 				'nonce_value',
 			);
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, req.browserId);
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
+		});
+
+		test('Should not repeat the base path in the callback URL', async () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678/n8n');
+			oidcService.getCallbackUrl.mockReturnValue(
+				'http://localhost:5678/n8n/rest/sso/oidc/callback',
+			);
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/n8n/rest/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
+
+			await controller.callbackHandler(req, res);
+
+			expect(oidcService.loginUser).toHaveBeenCalledWith(
+				new URL(
+					'http://localhost:5678/n8n/rest/sso/oidc/callback?code=auth_code&state=state_value',
+				),
+				'state_value',
+				'nonce_value',
+			);
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/n8n/');
+		});
+
+		test('Should redirect to the stored destination under the base path', async () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678/n8n');
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/n8n/rest/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+			oidcService.verifyState.mockReturnValue({
+				state: 'n8n_state:uuid',
+				redirectUrl: '/home/workflows',
+			});
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/n8n/home/workflows');
 		});
 
 		test('Should handle callback URL with no query parameters', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback',
+				originalUrl: '/rest/sso/oidc/callback',
 				browserId: undefined,
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -187,7 +239,7 @@ describe('OidcController', () => {
 			});
 			const res = mock<Response>();
 
-			const expectedCallbackUrl = new URL('http://localhost:5678/sso/oidc/callback');
+			const expectedCallbackUrl = new URL('http://localhost:5678/rest/sso/oidc/callback');
 
 			oidcService.loginUser.mockResolvedValueOnce({ user: person });
 
@@ -199,12 +251,12 @@ describe('OidcController', () => {
 				'nonce_value',
 			);
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, undefined);
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should redirect a failed OIDC login to the sign-in page', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
@@ -231,7 +283,7 @@ describe('OidcController', () => {
 		test('Should record the provider error code in the failed-login reason', async () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl:
-					'/sso/oidc/callback?error=access_denied&error_description=nope&state=state_value',
+					'/rest/sso/oidc/callback?error=access_denied&error_description=nope&state=state_value',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
@@ -258,7 +310,7 @@ describe('OidcController', () => {
 
 		test('Should redirect to the sign-in page when the state cookie is missing', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?error=access_denied&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?error=access_denied&state=state_value',
 				cookies: {
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
 				},
@@ -276,7 +328,7 @@ describe('OidcController', () => {
 
 		test('Should redirect to the sign-in page when the nonce cookie is missing', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?error=access_denied&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?error=access_denied&state=state_value',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
 				},
@@ -294,7 +346,7 @@ describe('OidcController', () => {
 
 		test('Should not issue a session when OIDC is disabled during the login flow', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -324,7 +376,7 @@ describe('OidcController', () => {
 
 		test('Should store the encrypted ID token in a cookie for RP-initiated logout', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -353,7 +405,7 @@ describe('OidcController', () => {
 
 		test('Should not store an oversized ID token in a cookie', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -375,12 +427,12 @@ describe('OidcController', () => {
 			expect(logger.warn).toHaveBeenCalled();
 			// Login itself must still succeed
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, req.browserId);
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should still complete login when storing the ID token throws', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
@@ -405,12 +457,12 @@ describe('OidcController', () => {
 				user: person,
 				authenticationMethod: 'oidc',
 			});
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should redirect a login denied by role mapping to the sign-in page', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
@@ -435,7 +487,7 @@ describe('OidcController', () => {
 
 		test('Should render success page in test mode without creating session', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
@@ -474,7 +526,7 @@ describe('OidcController', () => {
 
 		test('Should render failure page in test mode when processTestCallback throws', async () => {
 			const req = mock<AuthlessRequest>({
-				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				originalUrl: '/rest/sso/oidc/callback?code=auth_code&state=state_value',
 				cookies: {
 					[OIDC_STATE_COOKIE_NAME]: 'state_value',
 					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',

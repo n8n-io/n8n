@@ -3,6 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import {
 	resolveBackendHealthEndpointPath,
 	resolveFrontendHealthEndpointPath,
+	resolveMainHealthEndpointPath,
 } from '@/utils/health-endpoint.util';
 
 describe('resolveBackendHealthEndpointPath', () => {
@@ -23,6 +24,24 @@ describe('resolveBackendHealthEndpointPath', () => {
 
 		expect(resolveBackendHealthEndpointPath(mockGlobalConfig)).toBe('/custom/health');
 	});
+});
+
+describe('resolveMainHealthEndpointPath', () => {
+	it.each([
+		{ basePath: '', path: '/', health: '/healthz', expected: '/healthz' },
+		{ basePath: '/', path: '/', health: '/healthz', expected: '/healthz' },
+		{ basePath: '/n8n', path: '/', health: '/healthz', expected: '/n8n/healthz' },
+		{ basePath: 'n8n/', path: '/', health: 'healthz', expected: '/n8n/healthz' },
+		{ basePath: '/n8n', path: '/', health: '/custom/health', expected: '/n8n/custom/health' },
+		{ basePath: '', path: '/legacy', health: '/healthz', expected: '/healthz' },
+	])(
+		'returns $expected for basePath `$basePath`, path `$path` and health `$health`',
+		({ basePath, path, health, expected }) => {
+			const mockGlobalConfig = { basePath, path, endpoints: { health } } as GlobalConfig;
+
+			expect(resolveMainHealthEndpointPath(mockGlobalConfig)).toBe(expected);
+		},
+	);
 });
 
 describe('resolveFrontendHealthEndpointPath', () => {
@@ -68,12 +87,24 @@ describe('resolveFrontendHealthEndpointPath', () => {
 
 	it('should prioritize N8N_ENDPOINT_HEALTH over N8N_PATH', () => {
 		const mockGlobalConfig = {
+			basePath: '',
 			path: '/n8n',
 			endpoints: { health: '/custom/health' },
 		} as GlobalConfig;
 		process.env.N8N_ENDPOINT_HEALTH = '/custom/health';
 
 		expect(resolveFrontendHealthEndpointPath(mockGlobalConfig)).toBe('/custom/health');
+	});
+
+	it('should combine N8N_BASE_PATH with custom health endpoint', () => {
+		const mockGlobalConfig = {
+			basePath: '/n8n',
+			path: '/',
+			endpoints: { health: '/custom/health' },
+		} as GlobalConfig;
+		process.env.N8N_ENDPOINT_HEALTH = '/custom/health';
+
+		expect(resolveFrontendHealthEndpointPath(mockGlobalConfig)).toBe('/n8n/custom/health');
 	});
 
 	it('should use N8N_ENDPOINT_HEALTH even when it is the default value', () => {

@@ -83,6 +83,9 @@ beforeEach(() => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
+			path: '/',
+			basePath: '',
+			endpoints: { health: 'healthz' },
 			taskRunners: {},
 			codeExecution: { backend: 'task-runners' },
 			nodes: {},

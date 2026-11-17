@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { EndpointsConfig } from '@n8n/config';
+import { EventService, PathResolvingService } from '@n8n/backend-services';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExecutionSnapshot, ResumeTargetResponse } from '@n8n/engine';
@@ -123,7 +122,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
-		private readonly endpointsConfig: EndpointsConfig,
+		private readonly pathResolvingService: PathResolvingService,
 		protected readonly dataPlane: EngineDataPlaneProxyService,
 		private readonly executionReader: EngineV2ExecutionReader,
 	) {}
@@ -230,10 +229,20 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * Redirecting in that case would loop back to this same handler forever.
 	 */
 	private redirectToFormWaiting(req: WaitingWebhookRequest, res: express.Response): boolean {
-		const location = req.originalUrl.replace(
-			`/${this.endpointsConfig.webhookWaiting}/`,
-			`/${this.endpointsConfig.formWaiting}/`,
-		);
+		const webhookWaitingPrefix = this.pathResolvingService.resolveWebhookWaitingEndpoint();
+		const formWaitingPrefix = this.pathResolvingService.resolveFormWaitingEndpoint();
+		const suffix =
+			req.originalUrl === webhookWaitingPrefix
+				? ''
+				: req.originalUrl.startsWith(`${webhookWaitingPrefix}/`)
+					? req.originalUrl.slice(webhookWaitingPrefix.length)
+					: undefined;
+
+		if (suffix === undefined) {
+			return false;
+		}
+
+		const location = `${formWaitingPrefix}${suffix}`;
 		if (location === req.originalUrl) {
 			return false;
 		}

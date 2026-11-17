@@ -333,8 +333,26 @@ const innerBootstrapScript = `
 				})();
 			</script>`;
 
+/**
+ * Returns only the path of the instance base URL, with a trailing slash. The host of
+ * `getInstanceBaseUrl()` can be an internal address behind a reverse proxy, so the page
+ * must request URLs relative to its own origin.
+ */
+export function getInstanceBasePath(instanceBaseUrl: string): string {
+	let pathname: string;
+	try {
+		pathname = new URL(instanceBaseUrl, 'http://localhost').pathname;
+	} catch {
+		return '/';
+	}
+	// Collapse leading slashes so the result cannot become a protocol-relative URL.
+	pathname = pathname.replace(/^\/+/, '/');
+	return pathname.endsWith('/') ? pathname : `${pathname}/`;
+}
+
 export function createPage({
 	instanceId,
+	instanceBaseUrl = '/',
 	webhookUrl,
 	showWelcomeScreen,
 	loadPreviousSession,
@@ -348,6 +366,7 @@ export function createPage({
 	frameIdentity,
 }: {
 	instanceId: string;
+	instanceBaseUrl?: string;
 	webhookUrl?: string;
 	showWelcomeScreen?: boolean;
 	loadPreviousSession?: LoadPreviousSessionChatOption;
@@ -398,6 +417,10 @@ export function createPage({
 
 	const shellInner = frameIdentity !== undefined;
 
+	const instanceBasePath = getInstanceBasePath(instanceBaseUrl);
+	const loginUrl = escapeForScriptContext(`${instanceBasePath}rest/login`);
+	const signInRedirectBaseUrl = escapeForScriptContext(`${instanceBasePath}signin?redirect=`);
+
 	// How the page learns who the visitor is. The `/rest/login` bootstrap can only work on
 	// the real origin: from the frame's opaque origin the request carries no cookie, and the
 	// `/signin` it falls back to would render editor-ui inside the sandbox. So the inner
@@ -413,7 +436,7 @@ export function createPage({
 						metadata = { user: injectedVisitor };
 					} else if (authentication === 'n8nUserAuth') {
 						try {
-							const response = await fetch('/rest/login', {
+							const response = await fetch(${loginUrl}, {
 									method: 'GET',
 									headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
 							});
@@ -432,7 +455,7 @@ export function createPage({
 								},
 							};
 						} catch (error) {
-							window.location.href = '/signin?redirect=' + window.location.href;
+							window.location.href = ${signInRedirectBaseUrl} + encodeURIComponent(window.location.href);
 							return;
 						}
 					}`

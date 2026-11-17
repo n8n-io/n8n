@@ -49,6 +49,16 @@ describe('buildDiscoverResponse', () => {
 		expect(result.specUrl).toBe('/api/v1/openapi.yml');
 	});
 
+	it('should prefix specUrl and endpoint paths with the API version path', async () => {
+		const result = await buildDiscoverResponse(['tag:list'] as ApiKeyScope[], {
+			apiVersionPath: '/n8n/api/v1',
+		});
+
+		expect(result.specUrl).toBe('/n8n/api/v1/openapi.yml');
+		const tagsEndpoint = result.resources.tags?.endpoints.find((e) => e.operationId === 'getTags');
+		expect(tagsEndpoint?.path).toBe('/n8n/api/v1/tags');
+	});
+
 	it('should include filters with available resource and operation values', async () => {
 		const result = await buildDiscoverResponse(['tag:list', 'workflow:read'] as ApiKeyScope[]);
 

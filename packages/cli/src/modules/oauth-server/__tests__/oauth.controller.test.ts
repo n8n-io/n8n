@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@n8n/backend-services';
+import type { PathResolvingService, UrlService } from '@n8n/backend-services';
 import type { AuthenticationService } from '@n8n/inbound-auth';
 import type { ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
@@ -28,6 +28,7 @@ const urlService = mock<UrlService>();
 const registry = mock<ProtectedResourceRegistry>();
 const localServer = mock<OAuthServerLocalAuthorizationServer>();
 const authenticationService = mock<AuthenticationService>();
+const pathResolvingService = mock<PathResolvingService>();
 let controller: OAuthControllerClass;
 
 const makeRes = () => {
@@ -68,7 +69,14 @@ beforeEach(() => {
 		authorizationServers: ['https://n8n.test'],
 		challenges: [],
 	});
-	controller = new OAuthController(urlService, registry, localServer, authenticationService);
+	pathResolvingService.getBasePath.mockReturnValue('/');
+	controller = new OAuthController(
+		urlService,
+		registry,
+		localServer,
+		authenticationService,
+		pathResolvingService,
+	);
 });
 
 describe('OAuthController', () => {
@@ -82,6 +90,59 @@ describe('OAuthController', () => {
 
 			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 			expect(res.json).toHaveBeenCalledWith(document);
+		});
+	});
+
+	describe('pathInsertedMetadata', () => {
+		const makeIssuerReq = (issuerPath: string[]): Request =>
+			({ params: { issuerPath } }) as unknown as Request;
+
+		test('returns the metadata when the path matches the issuer path', async () => {
+			const document = { issuer: 'https://n8n.test/n8n', jwks_uri: 'https://n8n.test/n8n/jwks' };
+			localServer.getMetadata.mockResolvedValue(document);
+			const res = makeRes();
+
+			await controller.pathInsertedMetadata(makeIssuerReq(['n8n']), res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.json).toHaveBeenCalledWith(document);
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		test('accepts a single terminating slash on the issuer path', async () => {
+			const document = { issuer: 'https://n8n.test/n8n', jwks_uri: 'https://n8n.test/n8n/jwks' };
+			localServer.getMetadata.mockResolvedValue(document);
+			const res = makeRes();
+
+			await controller.pathInsertedMetadata(makeIssuerReq(['n8n', '']), res);
+
+			expect(res.json).toHaveBeenCalledWith(document);
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		test('returns a JSON 404 for an issuer path with several terminating slashes', async () => {
+			localServer.getMetadata.mockResolvedValue({
+				issuer: 'https://n8n.test/n8n',
+				jwks_uri: 'https://n8n.test/n8n/jwks',
+			});
+			const res = makeRes();
+
+			await controller.pathInsertedMetadata(makeIssuerReq(['n8n', '', '', '']), res);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+		});
+
+		test('returns a JSON 404 for any other issuer path', async () => {
+			localServer.getMetadata.mockResolvedValue({
+				issuer: 'https://n8n.test',
+				jwks_uri: 'https://n8n.test/jwks',
+			});
+			const res = makeRes();
+
+			await controller.pathInsertedMetadata(makeIssuerReq(['mcp', 'some-trigger']), res);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({ message: 'Unknown authorization server' });
 		});
 	});
 
@@ -123,6 +184,60 @@ describe('OAuthController', () => {
 			);
 
 			expect(registry.getByResourcePath).toHaveBeenCalledWith('/webhook/orders?method=GET');
+		});
+
+		describe('under a base path', () => {
+			beforeEach(() => {
+				pathResolvingService.getBasePath.mockReturnValue('/n8n');
+			});
+
+			test('resolves a static resource by its full path first', async () => {
+				registry.getByResourcePath.mockResolvedValue(resource([]));
+
+				await controller.protectedResourceMetadata(
+					makeReq(['n8n', 'mcp-server', 'http']),
+					makeRes(),
+				);
+
+				expect(registry.getByResourcePath).toHaveBeenCalledTimes(1);
+				expect(registry.getByResourcePath).toHaveBeenCalledWith('/n8n/mcp-server/http');
+			});
+
+			test('retries a miss with the path relative to the base path', async () => {
+				const trigger = { ...resource([]), surface: 'trigger' as const };
+				registry.getByResourcePath.mockResolvedValueOnce(undefined).mockResolvedValueOnce(trigger);
+				const res = makeRes();
+
+				await controller.protectedResourceMetadata(
+					makeReq(
+						['n8n', 'webhook', 'orders'],
+						'/n8n/.well-known/oauth-protected-resource/n8n/webhook/orders?method=GET',
+					),
+					res,
+				);
+
+				expect(registry.getByResourcePath).toHaveBeenNthCalledWith(
+					1,
+					'/n8n/webhook/orders?method=GET',
+				);
+				expect(registry.getByResourcePath).toHaveBeenNthCalledWith(2, '/webhook/orders?method=GET');
+				expect(res.json).toHaveBeenCalledWith(
+					expect.objectContaining({ resource: 'https://n8n.test/mcp-server/http' }),
+				);
+			});
+
+			test.each(['n8nx/webhook/orders', 'webhook/orders'])(
+				'does not retry %s, which is outside the base path',
+				async (path) => {
+					registry.getByResourcePath.mockResolvedValue(undefined);
+					const res = makeRes();
+
+					await controller.protectedResourceMetadata(makeReq(path), res);
+
+					expect(registry.getByResourcePath).toHaveBeenCalledTimes(1);
+					expect(res.status).toHaveBeenCalledWith(404);
+				},
+			);
 		});
 
 		test('returns the RFC 9728 metadata document for a surface outside the pipeline', async () => {

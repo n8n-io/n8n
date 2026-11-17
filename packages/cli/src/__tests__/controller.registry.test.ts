@@ -6,7 +6,6 @@ vi.mock('@n8n/backend-common', async () => {
 });
 
 import { Z } from '@n8n/api-types';
-import type { GlobalConfig } from '@n8n/config';
 import {
 	ControllerRegistryMetadata,
 	Param,
@@ -33,14 +32,19 @@ import { ControllerRegistry } from '@/controller.registry';
 import { ForbiddenError } from '@n8n/errors';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
+import type { PathResolvingService } from '@n8n/backend-services';
 import { RateLimitService } from '@/services/rate-limit.service';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
-	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
+	const pathResolvingService = mock<PathResolvingService>({
+		getBasePath: () => '/',
+		resolveEndpoint: (path: string) => (path.startsWith('/') ? path : `/${path}`),
+		resolveRestEndpoint: (path: string) => `/rest${path ? `/${path}` : ''}`,
+	});
 	let app: express.Express;
 	const authMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => next());
 
@@ -52,10 +56,10 @@ describe('ControllerRegistry', () => {
 		new ControllerRegistry(
 			license,
 			authService,
-			globalConfig,
 			metadata,
 			lastActiveAtService,
 			new RateLimitService(),
+			pathResolvingService,
 		).activate(app);
 	});
 
@@ -111,10 +115,10 @@ describe('ControllerRegistry', () => {
 			new ControllerRegistry(
 				license,
 				authService,
-				globalConfig,
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
+				pathResolvingService,
 			).activate(target);
 			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
 		});
@@ -130,10 +134,10 @@ describe('ControllerRegistry', () => {
 			new ControllerRegistry(
 				license,
 				authService,
-				globalConfig,
 				metadata,
 				lastActiveAtService,
 				new RateLimitService(),
+				pathResolvingService,
 			).activate(target, { surface: 'apps' });
 
 			await request(target).get('/apps-only').expect(401);
@@ -142,6 +146,24 @@ describe('ControllerRegistry', () => {
 			expect(rejectUnauthenticated).toHaveBeenCalledOnce();
 			expect(authService.createAuthMiddleware).not.toHaveBeenCalled();
 			expect(read).not.toHaveBeenCalled();
+		});
+
+		it('does not apply the base path to apps controllers', () => {
+			const target = mock<express.Application>();
+			const prefixedPathResolvingService = mock<PathResolvingService>({
+				resolveEndpoint: (path: string) => `/n8n/${path.replace(/^\//, '')}`,
+				resolveRestEndpoint: (path: string) => `/n8n/rest/${path}`,
+			});
+			new ControllerRegistry(
+				license,
+				authService,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+				prefixedPathResolvingService,
+			).activate(target, { surface: 'apps' });
+
+			expect(target.use.mock.calls.map(([prefix]) => prefix)).toEqual(['/apps-only']);
 		});
 	});
 

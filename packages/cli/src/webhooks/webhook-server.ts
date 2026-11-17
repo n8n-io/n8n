@@ -16,7 +16,10 @@ export class WebhookServer extends AbstractServer {
 		// Webhook procs have no REST controllers, so the test-only diagnostics routes live here.
 		if (inE2ETests) {
 			const { createE2EDiagnosticsRouter } = await import('@/services/e2e-diagnostics.router.js');
-			this.app.use(`/${this.restEndpoint}/e2e`, createE2EDiagnosticsRouter());
+			this.app.use(
+				this.pathResolvingService.resolveRestEndpoint('e2e'),
+				createE2EDiagnosticsRouter(),
+			);
 		}
 	}
 

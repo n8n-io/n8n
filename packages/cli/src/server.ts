@@ -26,6 +26,7 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
+import { createWellKnownBasePathMiddleware } from '@/middlewares/well-known-base-path';
 import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
@@ -193,6 +194,9 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
+		const { app, pathResolvingService } = this;
+		const basePath = pathResolvingService.getBasePath();
+
 		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 			Container.get(PrometheusMetricsService).init(this.app);
@@ -211,8 +215,6 @@ export class Server extends AbstractServer {
 		await this.postHogClient.init();
 		this.postHogClient.setupExpressSessionContext(this.app);
 
-		const publicApiEndpoint = this.globalConfig.publicApi.path;
-
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that does not abstain wins.
 		// API key auth is registered first so existing behavior is preserved.
@@ -230,7 +232,10 @@ export class Server extends AbstractServer {
 
 		// Extract BrowserId from headers
 		this.app.use((req: APIRequest, _, next) => {
-			req.browserId = req.headers['browser-id'] as string;
+			const browserId = req.headers['browser-id'];
+			if (typeof browserId === 'string') {
+				req.browserId = browserId;
+			}
 			next();
 		});
 
@@ -255,16 +260,18 @@ export class Server extends AbstractServer {
 		// Public API
 		// ----------------------------------------
 
-		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
+		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(
+			this.globalConfig.publicApi.path,
+			basePath,
+		);
 		this.app.use(...apiRouters);
 		if (frontendService) {
 			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 		}
 
-		const { restEndpoint, app } = this;
-
+		const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
 		const push = Container.get(Push);
-		push.setupPushHandler(restEndpoint, app);
+		push.setupPushHandler(pushEndpoint, app);
 
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service.js');
@@ -289,11 +296,16 @@ export class Server extends AbstractServer {
 		// Reinitialize the PubSubRegistry
 		Container.get(PubSubRegistry).init();
 
+		app.use(createWellKnownBasePathMiddleware(basePath));
+
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
 
 		// The agent webhook keeps the OpenAI error shape for unknown routes and unparsable bodies.
-		app.use(`/${this.globalConfig.endpoints.agentWebhook}`, ...responsesApiFallback);
+		app.use(
+			pathResolvingService.resolveEndpoint(this.globalConfig.endpoints.agentWebhook),
+			...responsesApiFallback,
+		);
 
 		// ----------------------------------------
 		// Options
@@ -301,7 +313,7 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+		this.app.get(pathResolvingService.resolveRestEndpoint('options/timezones'), (_, res) =>
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
@@ -320,59 +332,58 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		await this.initializeWorkflowIndexing();
 
-		if (this.endpointPresetCredentials !== '') {
+		if (this.endpointPresetCredentials) {
 			// POST endpoint to set preset credentials
 			const overwriteEndpointMiddleware =
 				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
 
+			// The guard and the handler must use the same path, or the guard does not run.
+			const presetCredentialsPath = pathResolvingService.resolveEndpoint(
+				this.endpointPresetCredentials,
+			);
+
 			if (overwriteEndpointMiddleware) {
-				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+				this.app.use(presetCredentialsPath, overwriteEndpointMiddleware);
 			}
 
 			const authenticationEnforced = overwriteEndpointMiddleware !== null;
-			this.app.post(
-				`/${this.endpointPresetCredentials}`,
-				async (req: express.Request, res: express.Response) => {
-					try {
-						// If authentication is enforced we can allow multiple overwrites
-						if (!this.presetCredentialsLoaded || authenticationEnforced) {
-							const body = req.body as ICredentialsOverwrite;
+			this.app.post(presetCredentialsPath, async (req: express.Request, res: express.Response) => {
+				try {
+					// If authentication is enforced we can allow multiple overwrites
+					if (!this.presetCredentialsLoaded || authenticationEnforced) {
+						const body = req.body as ICredentialsOverwrite;
 
-							if (req.contentType !== 'application/json') {
-								ResponseHelper.sendErrorResponse(
-									res,
-									new Error(
-										'Body must be a valid JSON, make sure the content-type is application/json',
-									),
-								);
-								return;
-							}
-
-							await Container.get(CredentialsOverwrites).setData(body, true, true);
-
-							this.presetCredentialsLoaded = true;
-
-							// Send push event to notify frontend to refetch types
-							Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
-
-							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-						} else {
+						if (req.contentType !== 'application/json') {
 							ResponseHelper.sendErrorResponse(
 								res,
-								new Error('Preset credentials can be set once'),
+								new Error(
+									'Body must be a valid JSON, make sure the content-type is application/json',
+								),
 							);
+							return;
 						}
-					} catch (error) {
-						this.logger.error('Error handling credentials overwrite', { error });
-						ResponseHelper.sendErrorResponse(
-							res,
-							new Error(
-								'An error occurred while handling credentials overwrite, please check the logs for more details',
-							),
-						);
+
+						await Container.get(CredentialsOverwrites).setData(body, true, true);
+
+						this.presetCredentialsLoaded = true;
+
+						// Send push event to notify frontend to refetch types
+						Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+
+						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+					} else {
+						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
 					}
-				},
-			);
+				} catch (error) {
+					this.logger.error('Error handling credentials overwrite', { error });
+					ResponseHelper.sendErrorResponse(
+						res,
+						new Error(
+							'An error occurred while handling credentials overwrite, please check the logs for more details',
+						),
+					);
+				}
+			});
 		}
 
 		const maxAge = Time.days.toMilliseconds;
@@ -400,14 +411,18 @@ export class Server extends AbstractServer {
 
 			registerAuthenticatedRoutes(
 				[
-					'/icons/{@:scope/}:packageName/*path/*file.svg',
-					'/icons/{@:scope/}:packageName/*path/*file.png',
+					pathResolvingService.resolveIconsEndpoint('{@:scope/}:packageName/*path/*file.svg'),
+					pathResolvingService.resolveIconsEndpoint('{@:scope/}:packageName/*path/*file.png'),
 				],
 				async (req, res) => {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(
+						basePath,
+						packageName,
+						req.originalUrl,
+					);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
@@ -436,7 +451,11 @@ export class Server extends AbstractServer {
 				res.sendStatus(404);
 			};
 			registerAuthenticatedRoutes(
-				['/schemas/:node/:version{/:resource}{/:operation}.json'],
+				[
+					pathResolvingService.resolveSchemasEndpoint(
+						':node/:version{/:resource}{/:operation}.json',
+					),
+				],
 				serveSchemas,
 			);
 
@@ -469,17 +488,23 @@ export class Server extends AbstractServer {
 				},
 			});
 
-			// Route all UI urls to index.html to support history-api
+			// Route all UI urls to index.html to support history-api.
+			// Entries are matched against the path *relative* to `basePath`
+			// because the static middleware below is mounted at `basePath`.
+			// When the public API is disabled we still want to exclude its
+			// path from the SPA fallback, so HTML requests to `/api/*` do
+			// not silently serve `index.html`.
 			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
 				'static',
 				'types',
 				'\\.well-known',
-				this.endpointHealth,
+				this.globalConfig.endpoints.health,
 				'metrics',
 				'e2e',
-				this.restEndpoint,
+				this.globalConfig.endpoints.rest,
+				this.globalConfig.publicApi.path,
 				this.endpointPresetCredentials,
 				// This path may contain `.`, which the route pattern must match literally.
 				escapeRegExp(this.globalConfig.endpoints.agentWebhook),
@@ -556,13 +581,13 @@ export class Server extends AbstractServer {
 				}
 			};
 			this.app.use(
-				'/',
+				basePath,
 				historyApiHandler,
 				express.static(staticCacheDir, cacheOptions),
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
-			this.app.use('/', express.static(staticCacheDir, cacheOptions));
+			this.app.use(basePath, express.static(staticCacheDir, cacheOptions));
 		}
 	}
 
@@ -575,34 +600,45 @@ export class Server extends AbstractServer {
 
 		// Match exact urls. We always expect them in this form, and only a matched route
 		// path can skip AuthService's browser-id check, which the editor's fetch needs.
-		const typeFiles = ['/types/nodes.json', '/types/credentials.json', '/types/node-versions.json'];
+		// Resolved against the configured base path so the mount and the skip-list
+		// entries stay in sync under N8N_BASE_PATH.
+		const typeFiles = ['types/nodes.json', 'types/credentials.json', 'types/node-versions.json'];
 		typeFiles.forEach((typeFile) => {
-			this.app.get(typeFile, authMiddleware, async (_, res: express.Response) => {
-				res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-				res.sendFile(typeFile.substring(1), { root: staticCacheDir });
-			});
+			this.app.get(
+				this.pathResolvingService.resolveEndpoint(typeFile),
+				authMiddleware,
+				async (_, res: express.Response) => {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+					res.sendFile(typeFile, { root: staticCacheDir });
+				},
+			);
 		});
 
 		// Deny any request that can reach /types/* that isn't caught above, rather than
 		// authenticating it: no client asks for those forms, and authenticating here would
 		// clear the session cookie of a signed-in caller, since this matches no route.
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (requestPath.mayReachDirectory(req.path, 'types')) {
-				res.status(401).end();
-				return;
-			}
-			next();
-		});
+		// Mount it on the base path, like the static middleware, so both check the same
+		// mount-relative path.
+		this.app.use(
+			this.pathResolvingService.getBasePath(),
+			(req: express.Request, res: express.Response, next: express.NextFunction) => {
+				if (requestPath.mayReachDirectory(req.path, 'types')) {
+					res.status(401).end();
+					return;
+				}
+				next();
+			},
+		);
 	}
 
 	private configureSettingsRoute() {
-		const { frontendService } = this;
+		const { frontendService, pathResolvingService } = this;
 		const authService = Container.get(AuthService);
 
 		if (frontendService) {
 			// Returns the current settings for the UI
 			this.app.get(
-				`/${this.restEndpoint}/settings`,
+				pathResolvingService.resolveRestEndpoint('settings'),
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
 				ResponseHelper.send(async (req: AuthenticatedRequest) => {
 					return req.user
@@ -621,8 +657,9 @@ export class Server extends AbstractServer {
 	}
 
 	protected setupPushServer(): void {
-		const { restEndpoint, server, app } = this;
-		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		const { server, app, pathResolvingService } = this;
+		const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
+		Container.get(Push).setupPushServer(pushEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
 		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
 			Container.get(BrowserUseServer).setup(server, app);
