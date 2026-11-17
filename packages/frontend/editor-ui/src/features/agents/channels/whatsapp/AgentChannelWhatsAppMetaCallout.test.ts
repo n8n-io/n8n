@@ -60,7 +60,7 @@ describe('AgentChannelWhatsAppMetaCallout', () => {
 		expect(getByTestId('whatsapp-meta-callout')).toBeInTheDocument();
 	});
 
-	it.each(['numberDeleted', 'numberMigrated', 'numberNotFound'] as const)(
+	it.each(['numberMigrated', 'numberNotFound'] as const)(
 		'shows a set up again button for %s that asks to start the setup',
 		async (state) => {
 			const { getByTestId, queryByTestId, emitted } = renderComponent({
@@ -76,7 +76,7 @@ describe('AgentChannelWhatsAppMetaCallout', () => {
 
 	it('hides the set up again button without credential create permission', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
-			props: { status: { state: 'numberDeleted', displayPhoneNumber: '+1 555' }, canSetup: false },
+			props: { status: { state: 'numberMigrated', displayPhoneNumber: '+1 555' }, canSetup: false },
 		});
 
 		expect(getByTestId('whatsapp-meta-callout')).toBeInTheDocument();

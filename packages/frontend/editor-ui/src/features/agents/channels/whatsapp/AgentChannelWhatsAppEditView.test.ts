@@ -122,7 +122,7 @@ describe('AgentChannelWhatsAppEditView', () => {
 
 	it('keeps the channel when the user cancels setting up again', async () => {
 		confirm.mockResolvedValue('cancel');
-		metaStatus.value = { state: 'numberDeleted' };
+		metaStatus.value = { state: 'numberMigrated' };
 		const wrapper = mountView();
 		await flushPromises();
 

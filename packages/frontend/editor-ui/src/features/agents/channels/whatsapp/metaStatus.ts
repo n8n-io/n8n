@@ -40,16 +40,6 @@ const presentations: Record<
 			url: WHATSAPP_MANAGER_URL,
 		},
 	},
-	numberDeleted: {
-		theme: 'danger',
-		titleKey: 'agents.channels.whatsapp.meta.numberDeleted.title',
-		fallbackTitle: {
-			needs: 'number',
-			key: 'agents.channels.whatsapp.meta.numberDeleted.titleNoNumber',
-		},
-		descriptionKey: 'agents.channels.whatsapp.meta.numberDeleted.description',
-		setupAction: { labelKey: 'agents.channels.whatsapp.meta.action.setUpAgain' },
-	},
 	numberMigrated: {
 		theme: 'danger',
 		titleKey: 'agents.channels.whatsapp.meta.numberMigrated.title',
