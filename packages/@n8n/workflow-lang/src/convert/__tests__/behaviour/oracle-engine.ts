@@ -17,6 +17,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createContext, Script } from 'node:vm';
 
+import { installNetworkGuard } from '../../../nodes/__tests__/no-network.ts';
+
+// Code of v1 nodes runs in this process: no connection may leave the machine.
+installNetworkGuard();
+
 const here = dirname(fileURLToPath(import.meta.url));
 const hostPackage = join(here, '../../../../../workflow-fallback-host/package.json');
 const req = createRequire(hostPackage);
