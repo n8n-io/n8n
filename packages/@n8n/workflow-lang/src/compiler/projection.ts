@@ -545,6 +545,13 @@ class CanvasBuilder {
 				type = 'n8n-nodes-base.respondToWebhook';
 				parameters = { respondWith: 'json', ...params };
 				break;
+			case 'service':
+				// A call to the deduplication history is the Remove Duplicates node (version 2).
+				if (params.service === 'deduplication') {
+					type = 'n8n-nodes-base.removeDuplicates';
+					typeVersion = 2;
+				}
+				break;
 			default:
 				break;
 		}

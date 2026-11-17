@@ -210,6 +210,61 @@ export interface OracleOptions {
 	withBinary?: boolean;
 	/** The execution id of the main run (`$execution.id`, resume URLs). Default: a counter. */
 	executionId?: string;
+	/**
+	 * The deduplication store of n8n (Remove Duplicates across executions): the answer of each
+	 * call of a node. `args` has the form of a `deduplication` service call (spec 9.9).
+	 */
+	deduplication?: (call: ServiceCall) => unknown;
+}
+
+/** A call of a v1 node to a store of n8n, in the form of a `ctx.service` call. */
+export interface ServiceCall {
+	step: string;
+	service: string;
+	op: string;
+	args: Record<string, unknown>;
+}
+
+let deduplication: ((call: ServiceCall) => unknown) | undefined;
+let deduplicatorReady = false;
+
+/** Gives n8n-core a deduplicator that asks the handler of the run that is active. */
+async function initDeduplicator(): Promise<void> {
+	if (deduplicatorReady) return;
+	deduplicatorReady = true;
+	const { core } = modules();
+	type Context = { node?: { id: string; name: string } };
+	const call = (
+		op: string,
+		scope: string,
+		context: Context,
+		options: unknown,
+		items?: unknown[],
+	) => {
+		if (!deduplication) throw new Error('The oracle run has no deduplication store');
+		return deduplication({
+			step: context.node?.name ?? '',
+			service: 'deduplication',
+			op,
+			args: {
+				...(items ? { items } : {}),
+				scope,
+				...(context.node ? { node: { id: context.node.id } } : {}),
+				options: options ?? {},
+			},
+		});
+	};
+	const service = core.DataDeduplicationService as unknown as { init(d: unknown): Promise<void> };
+	await service.init({
+		checkProcessedAndRecord: async (items: unknown[], scope: string, c: Context, o: unknown) =>
+			call('checkProcessedAndRecord', scope, c, o, items),
+		removeProcessed: async (items: unknown[], scope: string, c: Context, o: unknown) =>
+			call('removeProcessed', scope, c, o, items),
+		clearAllProcessedItems: async (scope: string, c: Context, o: unknown) =>
+			call('clearAllProcessedItems', scope, c, o),
+		getProcessedDataCount: async (scope: string, c: Context, o: unknown) =>
+			call('getProcessedDataCount', scope, c, o),
+	});
 }
 
 export interface OracleResult {
@@ -364,6 +419,8 @@ export async function runOracle(
 ): Promise<OracleResult> {
 	const order: string[] = [];
 	const responses: unknown[] = [];
+	if (options.deduplication) await initDeduplicator();
+	deduplication = options.deduplication;
 	const run = await execute(
 		workflowJson,
 		options.start,

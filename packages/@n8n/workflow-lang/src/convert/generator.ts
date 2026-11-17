@@ -37,7 +37,7 @@ import {
 	isStepLowerer,
 	lowererOf,
 	ONE_TO_ONE,
-	PURE,
+	isPure,
 } from './registry.ts';
 import {
 	clusterMembers,
@@ -1012,7 +1012,7 @@ export class ModuleGenerator {
 		};
 		const effectful = (name: string) => {
 			const n = b.graph.nodes.get(name);
-			return n !== undefined && !n.disabled && !PURE.has(n.type);
+			return n !== undefined && !n.disabled && !isPure(n);
 		};
 		for (const name of b.scope) {
 			const incoming = b.graph.incoming(name).filter((e) => b.scope.has(e.from));

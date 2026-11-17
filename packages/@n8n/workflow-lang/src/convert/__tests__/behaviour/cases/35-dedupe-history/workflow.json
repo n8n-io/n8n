@@ -1,0 +1,164 @@
+{
+	"name": "Deduplication history",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "dedupe",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.rows",
+				"options": {}
+			}
+		},
+		{
+			"id": "seen",
+			"name": "Seen",
+			"type": "n8n-nodes-base.removeDuplicates",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"parameters": {
+				"operation": "removeItemsSeenInPreviousExecutions",
+				"logic": "removeItemsWithAlreadySeenKeyValues",
+				"dedupeValue": "={{ $json.id }}",
+				"options": {
+					"scope": "workflow",
+					"historySize": 500
+				}
+			}
+		},
+		{
+			"id": "discarded",
+			"name": "Discarded",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"parameters": {}
+		},
+		{
+			"id": "newer",
+			"name": "Newer",
+			"type": "n8n-nodes-base.removeDuplicates",
+			"typeVersion": 2,
+			"position": [600, 0],
+			"parameters": {
+				"operation": "removeItemsSeenInPreviousExecutions",
+				"logic": "removeItemsUpToStoredIncrementalKey",
+				"incrementalDedupeValue": "={{ $json.n }}",
+				"options": {}
+			}
+		},
+		{
+			"id": "fresh",
+			"name": "Fresh",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [800, 0],
+			"parameters": {}
+		},
+		{
+			"id": "clear",
+			"name": "Clear",
+			"type": "n8n-nodes-base.removeDuplicates",
+			"typeVersion": 2,
+			"position": [800, 0],
+			"parameters": {
+				"operation": "clearDeduplicationHistory",
+				"mode": "cleanDatabase",
+				"options": {}
+			}
+		},
+		{
+			"id": "done",
+			"name": "Done",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1000, 0],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Seen",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Seen": {
+			"main": [
+				[
+					{
+						"node": "Newer",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Discarded",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Newer": {
+			"main": [
+				[
+					{
+						"node": "Fresh",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Clear",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clear": {
+			"main": [
+				[
+					{
+						"node": "Done",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

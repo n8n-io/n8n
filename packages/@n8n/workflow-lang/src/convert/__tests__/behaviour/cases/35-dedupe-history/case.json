@@ -1,0 +1,54 @@
+{
+	"description": "Remove Duplicates across executions: key values, an incremental key, and a cleared history",
+	"trigger": {
+		"body": {
+			"rows": [
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"id": 10,
+					"n": "7"
+				},
+				{
+					"id": 2,
+					"n": 3
+				},
+				{
+					"id": "b",
+					"n": 5
+				},
+				{
+					"id": 2,
+					"n": 9
+				},
+				{
+					"id": "01",
+					"n": 1
+				},
+				{
+					"n": 2
+				}
+			]
+		}
+	},
+	"services": {
+		"Seen": [
+			3,
+			{
+				"new": ["10", "b", ""],
+				"processed": ["2", "01"]
+			},
+			8
+		],
+		"Newer": [
+			{
+				"new": ["7", "5"],
+				"processed": ["2"]
+			}
+		],
+		"Clear": [null]
+	},
+	"compare": ["Discarded", "Fresh", "Done"]
+}

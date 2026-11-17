@@ -110,6 +110,17 @@ export const PURE = new Set(
 		.concat(['n8n-nodes-testing.testData']),
 );
 
+/**
+ * True when the node becomes code without effects. Remove Duplicates across executions and
+ * its "clear history" call the deduplication service of n8n (`ctx.service`).
+ */
+export function isPure(node: N8nNode): boolean {
+	if (!PURE.has(node.type)) return false;
+	if (node.type !== `${BASE}removeDuplicates`) return true;
+	const operation = node.parameters?.operation ?? 'removeDuplicateInputItems';
+	return (node.typeVersion ?? 1) < 2 || operation === 'removeDuplicateInputItems';
+}
+
 /** The lowering of a node, or the reason why the node cannot convert. */
 export function lowererOf(node: N8nNode): Lowerer | string {
 	const native = NATIVE[node.type];
