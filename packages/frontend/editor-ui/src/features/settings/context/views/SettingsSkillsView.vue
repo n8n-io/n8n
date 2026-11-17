@@ -34,12 +34,13 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
+	N8nPopover,
 	N8nSelect,
-	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
-	N8nSettingsRowGroup,
+	N8nSwitch,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
@@ -1061,21 +1062,6 @@ onMounted(async () => {
 			</template>
 		</N8nSettingsPageHeader>
 
-		<N8nSettingsRowGroup v-if="canManageSkillSync" data-test-id="skill-sync-settings">
-			<N8nSettingsEnableRow
-				:title="i18n.baseText('settings.context.skills.skillSync.label')"
-				:description="
-					skillSyncManagedByEnv
-						? i18n.baseText('settings.context.skills.skillSync.managedByEnv')
-						: i18n.baseText('settings.context.skills.skillSync.description')
-				"
-				:enabled="skillSyncEnabled"
-				:disabled="skillSyncSaving || skillSyncManagedByEnv"
-				switch-test-id="skill-sync-enable-toggle"
-				@update:enabled="onSkillSyncEnabledChange"
-			/>
-		</N8nSettingsRowGroup>
-
 		<div
 			v-if="showRecommendedEmptyState"
 			:class="$style.empty"
@@ -1203,6 +1189,53 @@ onMounted(async () => {
 				</div>
 			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
+			<N8nPopover
+				v-if="canManageSkillSync"
+				align="end"
+				width="calc(var(--spacing--5xl) + var(--spacing--3xl))"
+			>
+				<template #trigger>
+					<span>
+						<N8nTooltip>
+							<template #content>
+								{{ i18n.baseText('settings.context.skills.settings') }}
+							</template>
+							<N8nButton
+								variant="outline"
+								icon="settings"
+								icon-only
+								size="medium"
+								:aria-label="i18n.baseText('settings.context.skills.settings')"
+								data-test-id="skill-sync-settings-button"
+							/>
+						</N8nTooltip>
+					</span>
+				</template>
+				<template #content>
+					<div :class="$style.skillSync" data-test-id="skill-sync-settings">
+						<div :class="$style.skillSyncHeader">
+							<N8nText bold size="medium" color="text-dark">
+								{{ i18n.baseText('settings.context.skills.skillSync.label') }}
+							</N8nText>
+							<N8nSwitch
+								size="small"
+								:model-value="skillSyncEnabled"
+								:disabled="skillSyncSaving || skillSyncManagedByEnv"
+								:aria-label="i18n.baseText('settings.context.skills.skillSync.label')"
+								data-test-id="skill-sync-enable-toggle"
+								@update:model-value="onSkillSyncEnabledChange"
+							/>
+						</div>
+						<N8nText size="small" color="text-light">
+							{{
+								skillSyncManagedByEnv
+									? i18n.baseText('settings.context.skills.skillSync.managedByEnv')
+									: i18n.baseText('settings.context.skills.skillSync.description')
+							}}
+						</N8nText>
+					</div>
+				</template>
+			</N8nPopover>
 			<N8nActionDropdown
 				v-if="scopeOptions.length > 0"
 				:items="createMenuItems"
@@ -1365,6 +1398,20 @@ onMounted(async () => {
 
 .search {
 	max-width: 20rem;
+}
+
+.skillSync {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--sm);
+}
+
+.skillSyncHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 }
 
 .filter {

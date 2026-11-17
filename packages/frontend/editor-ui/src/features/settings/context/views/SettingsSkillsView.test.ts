@@ -1570,6 +1570,11 @@ describe('SettingsSkillsView', () => {
 			};
 		}
 
+		async function openSkillSyncSettings(view: ReturnType<typeof renderView>) {
+			await userEvent.click(view.getByTestId('skill-sync-settings-button'));
+			return await view.findByTestId('skill-sync-settings');
+		}
+
 		function allowSkillSyncManage(allowed = true) {
 			mockedStore(useRBACStore).hasScope.mockImplementation(
 				(scope) => allowed && scope === 'skill:manage',
@@ -1604,7 +1609,15 @@ describe('SettingsSkillsView', () => {
 				const view = renderWithDialogStub();
 				await new Promise(process.nextTick);
 
-				expect(view.getByTestId('skill-sync-settings')).toBeInTheDocument();
+				expect(view.getByTestId('skill-sync-settings-button')).toHaveAttribute(
+					'aria-label',
+					'Skill settings',
+				);
+				expect(view.queryByTestId('skill-sync-settings')).not.toBeInTheDocument();
+
+				const settings = await openSkillSyncSettings(view);
+
+				expect(settings).toHaveTextContent('Skill Sync');
 				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
 			});
 
@@ -1614,7 +1627,7 @@ describe('SettingsSkillsView', () => {
 				const view = renderWithDialogStub();
 				await new Promise(process.nextTick);
 
-				expect(view.queryByTestId('skill-sync-settings')).not.toBeInTheDocument();
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
 			});
 
 			it('hides the switch while the flag is off', async () => {
@@ -1625,7 +1638,7 @@ describe('SettingsSkillsView', () => {
 				const view = renderWithDialogStub();
 				await new Promise(process.nextTick);
 
-				expect(view.queryByTestId('skill-sync-settings')).not.toBeInTheDocument();
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
 			});
 
 			it('hides "Connect to GitHub" and the sources while the switch is off', async () => {
@@ -1650,6 +1663,7 @@ describe('SettingsSkillsView', () => {
 				const view = renderWithDialogStub();
 				await new Promise(process.nextTick);
 
+				await openSkillSyncSettings(view);
 				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
 
 				expect(skillsStore.setSkillSyncEnabled).toHaveBeenCalledWith(false);
@@ -1663,6 +1677,7 @@ describe('SettingsSkillsView', () => {
 				const view = renderWithDialogStub();
 				await new Promise(process.nextTick);
 
+				await openSkillSyncSettings(view);
 				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
 
 				await waitFor(() =>
@@ -1701,6 +1716,8 @@ describe('SettingsSkillsView', () => {
 				allowSkillSyncManage();
 				const view = renderWithDialogStub();
 				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
 
 				expect(view.getByTestId('skill-sync-enable-toggle')).toBeDisabled();
 				expect(view.getByText('Managed via environment variables')).toBeInTheDocument();
