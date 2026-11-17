@@ -1,4 +1,5 @@
 import type {
+	ProjectWorkflowReviewSettingsRepository,
 	SharedWorkflowRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestRepository,
@@ -10,17 +11,23 @@ import type { WorkflowReviewPolicyService } from '@/services/workflow-review-pol
 
 import type { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewPublishGuard } from '../workflow-review-publish-guard.service';
+import { WorkflowReviewRequirementService } from '../workflow-review-requirement.service';
 
 describe('WorkflowReviewPublishGuard', () => {
 	const featureGate = mock<WorkflowReviewFeatureGate>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const policyService = mock<WorkflowReviewPolicyService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const projectSettingsRepository = mock<ProjectWorkflowReviewSettingsRepository>();
 	const guard = new WorkflowReviewPublishGuard(
 		featureGate,
 		requestRepository,
-		policyService,
-		sharedWorkflowRepository,
+		new WorkflowReviewRequirementService(
+			featureGate,
+			policyService,
+			sharedWorkflowRepository,
+			projectSettingsRepository,
+		),
 	);
 	const target = { versionId: 'version-1' };
 
@@ -85,6 +92,15 @@ describe('WorkflowReviewPublishGuard', () => {
 			httpStatusCode: 409,
 			details: { reason: 'review_required', versionId: 'version-1' },
 		});
+	});
+
+	test('requires no review for a workflow with an unknown owner when approval is required only when configured', async () => {
+		featureGate.isAvailable.mockResolvedValue(true);
+		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(null);
+		policyService.get.mockResolvedValue({ enabled: true, alwaysRequired: false });
+		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
+
+		await expect(guard.assertCanPublish('workflow-1', target)).resolves.toBeUndefined();
 	});
 
 	test('treats an unfamiliar open-review decision as still waiting for review', async () => {
