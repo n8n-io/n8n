@@ -76,3 +76,5 @@ export const featureMaturity = {
 	string,
 	{ preview: boolean; limitedEnterpriseSupport: boolean; docsUrl?: string }
 >;
+
+export type FeatureMaturityId = keyof typeof featureMaturity;
