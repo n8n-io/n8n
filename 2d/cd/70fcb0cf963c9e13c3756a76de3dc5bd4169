@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-approval-response.test.ts
+  s_33852536738524::t_2c6da159be8ca6 11,29-30,104,142,184,189
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_33852536738524::t_9c19d60b1001dc 90,92
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_aac2e00427622b 101-106
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_baa1847f1d7f78 14,21-22,27,134,169,174,446-453,462-484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dcd70fcb0cf963c9e13c3756a76de3dc5bd4169",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
