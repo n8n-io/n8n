@@ -54,7 +54,9 @@ export interface WebhookChannelReply {
 
 export type ChatPageAccess = 'users' | 'public';
 export interface ChatPageUser {
-	id: string;
+	/** Principal key, part of the thread id: `user-<userId>` or `invite-<inviteId>`. */
+	key: string;
+	kind: 'n8n-user' | 'invite';
 	name: string;
 }
 
@@ -180,7 +182,7 @@ export class WebhookChannelService {
 			if (!message) throw new WebhookChannelError(400, 'invalid_request', 'message is required');
 			const requested = typeof body.conversationId === 'string' ? body.conversationId : undefined;
 			const conversationId = requested ?? randomUUID();
-			const identity = user ? `user-${user.id}` : 'anonymous';
+			const identity = user ? user.key : 'anonymous';
 			const threadId = `${agent.id}:${WEBHOOK_INTEGRATION_TYPE}:chat:${identity}:${conversationId}`;
 			const exists = !!requested && !!(await this.executionService.findThreadById(threadId));
 			if (requested && !exists) {
@@ -198,10 +200,10 @@ export class WebhookChannelService {
 				message,
 				memory: {
 					threadId,
-					// A user keeps one memory across conversations; a visitor only per conversation.
+					// A user or invite keeps one memory across conversations; a visitor only per conversation.
 					resourceId: integrationMemoryResourceId(
 						WEBHOOK_INTEGRATION_TYPE,
-						user ? `chat:user:${user.id}` : `chat:${conversationId}`,
+						user ? `chat:${user.key}` : `chat:${conversationId}`,
 					),
 				},
 				integrationType: WEBHOOK_INTEGRATION_TYPE,

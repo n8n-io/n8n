@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 
-import { fetchConfig, loginWithPopup, sendMessage, type ChatConfig } from './api';
+import {
+	endSession,
+	exchangeInvite,
+	fetchConfig,
+	loginWithPopup,
+	sendMessage,
+	type ChatConfig,
+} from './api';
 import { renderMarkdown } from './markdown';
 
 const props = defineProps<{
@@ -72,7 +79,38 @@ async function loadConfig() {
 		loadError.value = (error as Error).message;
 	}
 }
-onMounted(loadConfig);
+// Magic link (hosted page only): the token comes in the URL fragment, which never reaches a server.
+// Take it out of the address bar at once, so it does not stay in history.
+const inviteToken = sameOrigin
+	? /(?:^#|&)invite=([A-Za-z0-9_-]+)/.exec(location.hash)?.[1]
+	: undefined;
+if (inviteToken) history.replaceState(null, '', location.pathname + location.search);
+// A link opened in a tab that already shows this page changes only the fragment: load it as new.
+if (sameOrigin) {
+	window.addEventListener('hashchange', () => {
+		if (location.hash.includes('invite=')) location.reload();
+	});
+}
+const pendingSwitch = ref<{ current: string; label: string }>();
+
+async function redeemInvite(replace: boolean) {
+	if (!inviteToken) return;
+	const result = await exchangeInvite(props.base, inviteToken, replace);
+	pendingSwitch.value = undefined;
+	if (result.ok) {
+		newChat();
+	} else if (result.code === 'session_exists') {
+		// Another session is active: ask before replacing it (login CSRF guard).
+		pendingSwitch.value = { current: result.current ?? '', label: result.label ?? '' };
+	} else {
+		loadError.value = result.message ?? 'This link does not work.';
+	}
+	await loadConfig();
+}
+onMounted(async () => {
+	if (inviteToken) await redeemInvite(false);
+	else await loadConfig();
+});
 
 async function signIn() {
 	if (!config.value) return;
@@ -97,7 +135,13 @@ async function signIn() {
 	}
 }
 
-function signOut() {
+async function signOut() {
+	if (config.value?.user?.kind === 'invite') {
+		await endSession(props.base);
+		newChat();
+		await loadConfig();
+		return;
+	}
 	token.value = undefined;
 	userName.value = undefined;
 	writeSession();
@@ -205,6 +249,19 @@ function onKeydown(event: KeyboardEvent) {
 					class="agent-chat__message agent-chat__message--agent"
 					v-html="renderMarkdown(welcome)"
 				/>
+				<div v-if="pendingSwitch" class="agent-chat__signin" data-testid="agent-chat-switch">
+					<p>
+						You are chatting as <strong>{{ pendingSwitch.current }}</strong
+						>. This link is for <strong>{{ pendingSwitch.label }}</strong
+						>.
+					</p>
+					<button class="agent-chat__send" type="button" @click="redeemInvite(true)">
+						Switch to {{ pendingSwitch.label }}
+					</button>
+					<button class="agent-chat__link" type="button" @click="pendingSwitch = undefined">
+						Keep chatting as {{ pendingSwitch.current }}
+					</button>
+				</div>
 				<div v-if="needsLogin" class="agent-chat__signin" data-testid="agent-chat-signin">
 					<p>Sign in with your n8n account to chat with {{ title }}.</p>
 					<button class="agent-chat__send" type="button" :disabled="signingIn" @click="signIn">
@@ -237,8 +294,13 @@ function onKeydown(event: KeyboardEvent) {
 				class="agent-chat__identity"
 				data-testid="agent-chat-identity"
 			>
-				Signed in as {{ signedInAs }}
-				<button v-if="token" class="agent-chat__link" type="button" @click="signOut">
+				Chatting as {{ signedInAs }}
+				<button
+					v-if="token || config?.user?.kind === 'invite'"
+					class="agent-chat__link"
+					type="button"
+					@click="signOut"
+				>
 					Sign out
 				</button>
 			</div>

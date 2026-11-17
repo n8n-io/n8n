@@ -27,13 +27,14 @@ export interface ChatConfig {
 	name: string;
 	welcomeMessage?: string;
 	access: 'users' | 'public';
-	user: { name: string } | null;
+	user: { name: string; kind?: 'n8n-user' | 'invite' } | null;
 	signInUrl: string;
 	loginUrl: string;
 }
 
+// The chat header marks the widget's own calls: the server honours cookies only with it, same-origin.
 const auth = (token?: string): Record<string, string> =>
-	token ? { Authorization: `Bearer ${token}` } : {};
+	token ? { 'X-N8n-Chat': '1', Authorization: `Bearer ${token}` } : { 'X-N8n-Chat': '1' };
 
 export async function fetchConfig(base: string, token?: string): Promise<ChatConfig> {
 	const res = await fetch(`${base}/config`, { headers: auth(token) });
@@ -101,4 +102,28 @@ export async function loginWithPopup(
 		}
 	}
 	throw new Error('Sign-in timed out. Try again.');
+}
+
+export type InviteResult =
+	| { ok: true; user: { name: string } }
+	| { ok: false; code: string; message?: string; current?: string; label?: string };
+
+/** Hosted page: exchanges a magic link token for a recipient session (an HttpOnly cookie). */
+export async function exchangeInvite(
+	base: string,
+	token: string,
+	replace = false,
+): Promise<InviteResult> {
+	const res = await fetch(`${base}/invite`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...auth() },
+		body: JSON.stringify({ token, replace }),
+	});
+	const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+	if (res.ok) return { ok: true, user: body.user as { name: string } };
+	return { ok: false, ...(body as { code: string }) };
+}
+
+export async function endSession(base: string) {
+	await fetch(`${base}/logout`, { method: 'POST', headers: auth() });
 }

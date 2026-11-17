@@ -9,12 +9,18 @@ import path from 'node:path';
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
+import { ChatPageInviteService } from './chat-page-invites.service';
 import { WebhookChannelService, type ChatPageUser } from './webhook-channel.service';
 
 const agentsConfig = Container.get(AgentsConfig);
+const globalConfig = Container.get(GlobalConfig);
 
 // SPIKE (agent-chat-embed): any origin; the widget sends its chat token as a bearer header.
-const CHAT_CORS = { allowedHeaders: ['Origin', 'Content-Type', 'Accept', 'Authorization'] };
+const CHAT_CORS = {
+	allowedHeaders: ['Origin', 'Content-Type', 'Accept', 'Authorization', 'X-N8n-Chat'],
+};
+// Opaque session of a magic-link recipient (hosted page only).
+const SESSION_COOKIE = 'n8n-chat-session';
 const REQUEST_ID = /^[A-Za-z0-9_-]{20,100}$/;
 const TOKEN_TTL = 60 * 60 * 1000;
 const REQUEST_TTL = 3 * 60 * 1000;
@@ -25,12 +31,13 @@ const loginRequests = new Map<string, { token: string; user: ChatPageUser; expir
  * The public endpoint of the webhook channel. It is a root-level controller, so
  * only mains serve it: webhook processes never activate controllers.
  */
-@RootLevelController(`/${Container.get(GlobalConfig).endpoints.agentWebhook}`)
+@RootLevelController(`/${globalConfig.endpoints.agentWebhook}`)
 export class WebhookChannelController {
 	constructor(
 		private readonly webhookChannel: WebhookChannelService,
 		private readonly authService: AuthService,
 		private readonly urlService: UrlService,
+		private readonly invites: ChatPageInviteService,
 	) {}
 
 	// Public routes: do not add a scope decorator. The caller is not an n8n user,
@@ -103,7 +110,7 @@ export class WebhookChannelController {
 		res.json({
 			name: page.agent.name,
 			access: page.access,
-			user: user ? { name: user.name } : null,
+			user: user ? { name: user.name, kind: user.kind } : null,
 			// Hosted page: same origin, so the n8n cookie works after a normal sign-in.
 			signInUrl: this.signInUrl(chatUrl),
 			// Embed: a popup signs in on the instance, the widget polls for a token.
@@ -205,7 +212,72 @@ export class WebhookChannelController {
 		res.json({ token: entry.token, user: { name: entry.user.name } });
 	}
 
-	/** The chat user: a widget token first, then the n8n cookie (hosted page, same origin). */
+	/**
+	 * SPIKE: exchanges a magic link token (from the URL fragment) for a recipient
+	 * session. If the browser already chats as someone else, it answers 409 and the
+	 * page asks before it replaces that session.
+	 */
+	@Post('/:agentId/chat/invite', {
+		ipRateLimit: createIpRateLimit(agentsConfig.webhookChannelRateLimit),
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+	})
+	async chatInvite(req: Request<{ agentId: string }>, res: Response) {
+		const { agentId } = req.params;
+		if (!isSameOriginChatCall(req)) {
+			res.status(403).json({ code: 'forbidden', message: 'Open the link in the chat page.' });
+			return;
+		}
+		const body = (req.body ?? {}) as { token?: unknown; replace?: unknown };
+		const token = typeof body.token === 'string' ? body.token : '';
+		if (!(await this.webhookChannel.chatPage(agentId))) {
+			res.status(404).json({ code: 'agent_not_found', message: 'This agent has no chat page.' });
+			return;
+		}
+		const checked = await this.invites.check(agentId, token);
+		if (typeof checked === 'string') {
+			res.status(checked === 'invite_invalid' ? 404 : 410).json(inviteError(checked));
+			return;
+		}
+		const current = await this.chatUser(req);
+		if (current && current.key !== `invite-${checked.id}` && body.replace !== true) {
+			res.status(409).json({ code: 'session_exists', current: current.name, label: checked.label });
+			return;
+		}
+		const result = await this.invites.exchange(agentId, token);
+		if (typeof result === 'string') {
+			res.status(410).json(inviteError(result));
+			return;
+		}
+		res.cookie(SESSION_COOKIE, result.session, {
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: globalConfig.auth.cookie.secure,
+			path: chatCookiePath(agentId),
+			maxAge: Date.parse(result.invite.expiresAt) - Date.now(),
+		});
+		res.json({ user: { name: result.invite.label, kind: 'invite' } });
+	}
+
+	/** SPIKE: ends a magic-link session on this browser. */
+	@Post('/:agentId/chat/logout', { skipAuth: true, allowBots: true, usesTemplates: true })
+	async chatLogout(req: Request<{ agentId: string }>, res: Response) {
+		if (!isSameOriginChatCall(req)) {
+			res.status(403).end();
+			return;
+		}
+		const session = readCookie(req, SESSION_COOKIE);
+		if (session) await this.invites.endSession(session);
+		res.clearCookie(SESSION_COOKIE, { path: chatCookiePath(req.params.agentId) });
+		res.status(204).end();
+	}
+
+	/**
+	 * The chat user: a widget token first (embed), then cookies (hosted page).
+	 * Cookies count only on same-origin calls with the chat header, so a page on
+	 * another site cannot ride on them (security proposal [H2]).
+	 */
 	private async chatUser(req: Request<{ agentId: string }>): Promise<ChatPageUser | undefined> {
 		const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
 		if (bearer) {
@@ -214,16 +286,22 @@ export class WebhookChannelController {
 				return entry.user;
 			return undefined;
 		}
+		if (!isSameOriginChatCall(req)) return undefined;
+		const session = readCookie(req, SESSION_COOKIE);
+		if (session) {
+			const invited = await this.invites.sessionUser(req.params.agentId, session);
+			if (invited) return invited;
+		}
 		return await this.cookieUser(req);
 	}
 
 	private async cookieUser(req: Request): Promise<ChatPageUser | undefined> {
-		const cookie = (req.cookies as Record<string, string> | undefined)?.[AUTH_COOKIE_NAME];
+		const cookie = readCookie(req, AUTH_COOKIE_NAME);
 		if (!cookie) return undefined;
 		try {
 			const person = await this.authService.authenticateUserByCookie(cookie);
 			const name = `${person.firstName ?? ''} ${person.lastName ?? ''}`.trim() || person.email;
-			return { id: person.id, name };
+			return { key: `user-${person.id}`, kind: 'n8n-user', name };
 		} catch {
 			return undefined;
 		}
@@ -252,6 +330,26 @@ export class WebhookChannelController {
 		if (!res.headersSent) res.status(reply.status).json(reply.body);
 	}
 }
+
+function readCookie(req: Request, name: string): string | undefined {
+	return (req.cookies as Record<string, string> | undefined)?.[name];
+}
+
+/** The widget's own calls: chat header set, and same-origin when the browser says so. */
+function isSameOriginChatCall(req: Request) {
+	const site = req.headers['sec-fetch-site'];
+	return req.headers['x-n8n-chat'] === '1' && (site === undefined || site === 'same-origin');
+}
+
+const chatCookiePath = (agentId: string) =>
+	`/${globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}/chat`;
+
+const INVITE_ERRORS = {
+	invite_invalid: 'This link is not valid. Ask the owner for a new one.',
+	invite_expired: 'This link has expired. Ask the owner for a new one.',
+	invite_revoked: 'This link was revoked. Ask the owner for a new one.',
+};
+const inviteError = (code: keyof typeof INVITE_ERRORS) => ({ code, message: INVITE_ERRORS[code] });
 
 /** A client that disconnects stops the run. */
 function abortOnClose(res: Response) {
