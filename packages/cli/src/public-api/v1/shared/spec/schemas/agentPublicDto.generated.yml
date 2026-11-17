@@ -89,6 +89,29 @@ properties:
     required:
       - versionId
       - integrations
+  parentFolder:
+    type: object
+    nullable: true
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      parentFolderId:
+        type: string
+        nullable: true
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+    required:
+      - id
+      - name
+      - parentFolderId
+      - createdAt
+      - updatedAt
 required:
   - id
   - name
@@ -104,3 +127,4 @@ required:
   - configHash
   - tools
   - activeVersion
+  - parentFolder

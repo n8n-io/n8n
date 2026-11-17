@@ -468,7 +468,11 @@ describe('AgentsPublicController updateAgent', () => {
 			req.user,
 			{ baseConfigHash: 'hash-1', modifiedBy: 'user' },
 		);
-		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(agentEntity, 'project-1', req.user);
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			agentEntity,
+			'project-1',
+			req.user,
+		);
 		expect(result).toEqual({
 			id: 'agent-1',
 			name: 'My Agent',
@@ -516,12 +520,13 @@ describe('AgentsPublicController updateAgent', () => {
 	});
 
 	it('treats a null config as a no-op for an agent without a configuration', async () => {
-		agentsService.findById.mockResolvedValue({
+		const noConfigAgent = {
 			id: 'agent-1',
 			projectId: 'project-1',
 			schema: null,
-		} as unknown as Awaited<ReturnType<AgentsService['findById']>>);
-		agentResponseMapper.toAgentDto.mockResolvedValue(fullAgentDto);
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>;
+		agentsService.findById.mockResolvedValue(noConfigAgent);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
 
 		const result = await controller.updateAgent(req, res, 'agent-1', {
 			config: null,
@@ -529,8 +534,8 @@ describe('AgentsPublicController updateAgent', () => {
 		});
 
 		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
-		expect(agentResponseMapper.toAgentDto).toHaveBeenCalledWith(
-			{ id: 'agent-1', projectId: 'project-1', schema: null },
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			noConfigAgent,
 			'project-1',
 			req.user,
 		);
@@ -539,6 +544,7 @@ describe('AgentsPublicController updateAgent', () => {
 			name: 'My Agent',
 			projectId: 'project-1',
 			project: null,
+			parentFolder: null,
 			availableInMCP: false,
 			isArchived: false,
 			versionId: 'version-1',

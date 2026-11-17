@@ -606,12 +606,12 @@ export class UpdateAgentDto implements UpdateAgent {
 
 /**
  * Response fields a PUT body may carry but must not write. Derived from the
- * agent response shapes, so the strict schema cannot drift from them: a new
- * response field is accepted-and-ignored here without a list to maintain.
+ * agent response DTO schemas, so the strict schema cannot drift from them: a
+ * new response field is accepted-and-ignored here without a list to maintain.
  * `config` and `configHash` are real inputs of this DTO, not managed fields.
  */
 const serverManagedAgentResponseFields: ZodRawShape = Object.fromEntries(
-	[...Object.keys(agentPublicShape), ...Object.keys(agentBuilderStateShape), 'adopted']
+	[...Object.keys(AgentPublicDto.schema.shape), ...Object.keys(AgentDto.schema.shape), 'adopted']
 		.filter((field) => field !== 'config' && field !== 'configHash')
 		.map((field) => [field, strippedAgentField]),
 );

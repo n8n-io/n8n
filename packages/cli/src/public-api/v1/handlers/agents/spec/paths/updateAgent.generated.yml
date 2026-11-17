@@ -42,6 +42,8 @@ requestBody:
           updatedAt: {}
           tools: {}
           activeVersion: {}
+          parentFolder: {}
+          parentFolderId: {}
           isRunnable: {}
           hasPublishHistory: {}
           hasVersionHistory: {}

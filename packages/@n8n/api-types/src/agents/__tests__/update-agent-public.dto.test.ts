@@ -8,6 +8,7 @@ const roundTrippedGetBody = {
 	name: 'Agent',
 	projectId: 'project-1',
 	project: null,
+	parentFolder: null,
 	availableInMCP: false,
 	isArchived: false,
 	versionId: 'version-1',

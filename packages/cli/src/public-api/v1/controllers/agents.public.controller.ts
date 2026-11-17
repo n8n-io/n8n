@@ -183,9 +183,7 @@ export class AgentsPublicController {
 					'Provide the configuration document: the update endpoint cannot remove it.',
 				);
 			}
-			return toAgentPublicDto(
-				await this.agentResponseMapper.toAgentDto(agent, agent.projectId, req.user),
-			);
+			return await this.agentResponseMapper.toPublicDto(agent, agent.projectId, req.user);
 		}
 
 		// The Public API has no push channel, so no client write lock is
