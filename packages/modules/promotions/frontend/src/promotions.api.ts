@@ -9,7 +9,6 @@ import type {
 	PromoteSelectionResultDto,
 	PromotionDirection,
 	PromotionEnvironmentChanges,
-	PromotionInstanceApplyPreview,
 	PromotionOwnerRequestResult,
 	PromotionPreview,
 	PromotionProjectEnvironments,
