@@ -385,3 +385,112 @@ A selection never removes a project from the branch and never deletes a
 project on the instance. Only the whole-instance Promote and Apply do that. A
 credential file without a consumer on the branch stays through selection
 Promotes, and a whole-instance Promote removes it.
+
+## Decisions of the stream "backend integration"
+
+### G1. One gate, and the report of a preview
+
+`PromotionDependencyGate` is the only caller of the check engine. An operation
+gives it the selection that it writes. A preview has no selection, so its report
+is the report of "every change that the user can operate": the added and the
+changed workflows of each operable project, and the deleted ones. A client that
+shows the report of another selection calls
+`POST /promotions/environments/:id/changes/:direction/dependency-report` with
+that selection. The route writes nothing. A preview catches a failure of the
+check and returns no report. An operation does not catch it.
+
+### G2. A selected folder is not a selected workflow
+
+A selected folder writes the folder and not the workflows inside it, on Promote
+and on Apply. So the gate does not give `folderIds` to the check.
+
+### G3. The whole-instance Promote route
+
+The result of `POST /environments/:id/promote` has no status. When the Promote
+must stop, the route answers 409 and the message lists the gaps. The check uses
+the selection "every workflow and every project credential of every team
+project". The route accepts `confirmedGapIds`, and its result carries
+`dependencyReport`.
+
+### G4. Which status an Apply returns when it stops
+
+- `gaps-changed`, before any write and before any grant: the gaps differ from
+  `confirmedGapIds`, the environment is strict and gaps exist, the report has a
+  hard block, or `deletionCallers` is not empty and `confirmDeletionCallers` is
+  not set.
+- `blocked`, with `check`, `dependencyReport` and the grants given so far: a
+  needed grant is not confirmed (`accessRequirements`), a top-level credential
+  has no home (`unknown-owner`), a credential that the Apply writes is missing
+  (`missingBindings`), or any other conflict of the plan.
+
+The order is: check, compare the confirmations, give the confirmed grants,
+plan, compare the plan. So a confirmed grant stays when the Apply then returns
+`blocked`.
+
+### G5. One row for one reference
+
+`reconcileApplyCheck` removes from `check` each credential row that the report
+describes: a gap, a warning, a hard block or a grant. `accessRequirements` then
+holds exactly the grants of the report that the user did not confirm. A
+`missingBindings` row stays for a credential that the Apply writes for its
+owner project. `unknown-owner` stays for a top-level credential without a home.
+With a home, it becomes a `missingBindings` row in the home project: a person
+creates the credential there. The preview revision is computed before this
+step, so it does not depend on the report.
+
+### G6. What the import gets from the check
+
+- `credentialOwnerPolicy: 'follow-package'` is in every Apply request, also in
+  the previews, so a move is a change row of the credential.
+- `placeholderCredentialIds`: the credentials of the placeholders of the check.
+  The check gives them only on an environment that allows incomplete applies,
+  and the operation reaches the import only after the user confirmed the gaps.
+  A gap with the exit "include" that the user confirmed instead also gets a
+  placeholder: without one the workflow has no credential to bind.
+- `allowedUnresolvedCredentialIds`: each other credential gap, and each
+  credential reference that is broken on the source.
+- `credentialGrants`: the confirmed grants that the report lists. The gate gives
+  them before the plan. A grant that the report does not list is ignored.
+- `credentialHomes`: only the homes that the check accepted.
+- `ownedCredentialIds` is not sent. The default of the import (D19) is the rule
+  of the check.
+- `retainedWorkflowIds` (new, promotion-only): the workflows that reconciliation
+  keeps, in any project of the import.
+
+The import plan is the second opinion on a placeholder: a placeholder that the
+plan may not create (`placeholderForbidden`) becomes the hard block
+`placeholder-create-forbidden`, and the Apply returns `gaps-changed`.
+
+### G7. The API key scope of a grant
+
+A grant through an API key needs the key scope `credential:update`. Without
+it, the route drops `confirmedGrantIds`, so the Apply shares nothing and
+returns `blocked` on the access.
+
+### G8. A project that an instance Apply keeps
+
+The report has the new optional fields `keptProjects` and
+`hiddenKeptProjectCount`. A kept project is not in the `project-deletion`
+conflicts, so the Apply does not delete it. The preview still lists the content
+of a kept project as deleted.
+
+### G9. Texts for clients without their own texts
+
+The `applied` result has the new optional field `dependencyMessages`: one
+English sentence for each placeholder, each credential that did not move, and
+each kept workflow or project. The CLI prints them. The editor writes its own
+texts from the structured lists.
+
+### G10. Owner requests and a Promote into a review
+
+A Promote that pushes to a review branch does not close an "Ask the owner"
+request. The request closes when the review merges and the inbox reads the base
+branch. A Promote to the base branch and an Apply close the requests at once.
+
+### G11. Not connected
+
+- The review link of a gap has no URL: the review row does not store one.
+- "Who can grant access" is not computed.
+- "Create project" and "Apply the owner project first" are not exits of a gap.
+  A missing owner project gives "include" for a global admin and "ask the
+  owner" for any other user.

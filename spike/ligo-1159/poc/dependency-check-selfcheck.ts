@@ -7,7 +7,9 @@
  *   ./node_modules/.pnpm/node_modules/.bin/tsx spike/ligo-1159/poc/dependency-check-selfcheck.ts
  * Add `--verbose` to print each report as JSON.
  */
-import type { PromotionDependencyReport } from '@n8n/api-types';
+import type { PromotionApplyCheck, PromotionDependencyReport } from '@n8n/api-types';
+
+import { reconcileApplyCheck } from '../../../packages/cli/src/modules/promotions.ee/apply-check-reconcile';
 
 import {
 	computeApplyOutcome,
@@ -31,6 +33,21 @@ import {
 import { computePromoteReport } from '../../../packages/cli/src/modules/promotions.ee/dependency-check/promote-report';
 
 const verbose = process.argv.includes('--verbose');
+
+/** A report with nothing in it. The script cannot load the helper of `@n8n/api-types`. */
+const emptyPromotionDependencyReport = (allowIncomplete: boolean): PromotionDependencyReport => ({
+	allowIncomplete,
+	blocked: false,
+	gaps: [],
+	warnings: [],
+	notes: [],
+	grants: [],
+	credentialMoves: [],
+	deletionCallers: [],
+	keptWorkflows: [],
+	credentialHomeChoices: [],
+	hardBlocks: [],
+});
 let failures = 0;
 
 // --- The cast of the specification.
@@ -959,6 +976,118 @@ console.log('\n=== Apply ===');
 	);
 	scenario('the user selected the home', chosen, [
 		['no choice left, not blocked', chosen.credentialHomeChoices.length === 0 && !chosen.blocked],
+	]);
+}
+
+// --- The Apply check of the plan and the report describe one reference one time.
+{
+	const crm = { id: 'cred-crm', name: 'CRM key', type: 'crmApi' };
+	const consumers = [
+		{
+			project: { id: SALES.id, name: SALES.name },
+			workflows: [{ id: 'wf-sync', name: 'Sync orders' }],
+		},
+	];
+	const emptyCheck: PromotionApplyCheck = {
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+	};
+
+	const withGrant: PromotionDependencyReport = {
+		...emptyPromotionDependencyReport(false),
+		grants: [
+			{
+				id: 'cred-crm|p-sales',
+				credential: crm,
+				project: { id: SALES.id, name: SALES.name },
+				consumers: [{ id: 'wf-sync', name: 'Sync orders' }],
+			},
+		],
+	};
+	// A user without the right to read every credential gets a plain "missing" from the plan.
+	const planCheck: PromotionApplyCheck = {
+		...emptyCheck,
+		missingBindings: [
+			{
+				kind: 'credential',
+				sourceId: crm.id,
+				name: crm.name,
+				credentialType: crm.type,
+				consumers,
+				ownerProject: { id: PLATFORM.id, name: PLATFORM.name },
+			},
+		],
+	};
+	const open = reconcileApplyCheck(planCheck, withGrant);
+	const confirmed = reconcileApplyCheck(planCheck, withGrant, {
+		confirmedGrantIds: ['cred-crm|p-sales'],
+	});
+	scenario('check and report: a grant is one access requirement until it is confirmed', withGrant, [
+		[
+			'the missing binding is gone, and the access requirement names Sales',
+			open.missingBindings.length === 0 &&
+				open.accessRequirements.length === 1 &&
+				open.accessRequirements[0].consumers[0].project.name === 'Sales',
+		],
+		[
+			'a confirmed grant blocks nothing',
+			confirmed.accessRequirements.length === 0 && confirmed.missingBindings.length === 0,
+		],
+	]);
+
+	const unknownOwner: PromotionApplyCheck = {
+		...emptyCheck,
+		conflicts: [
+			{
+				kind: 'credential',
+				code: 'unknown-owner',
+				sourceId: crm.id,
+				name: crm.name,
+				expectedTypes: [crm.type],
+				referenceFiles: ['projects/sales/workflows/sync/workflow.json'],
+				consumers,
+			},
+		],
+	};
+	const needsHome: PromotionDependencyReport = {
+		...emptyPromotionDependencyReport(true),
+		blocked: true,
+		credentialHomeChoices: [{ credential: crm, candidateProjects: [SALES] }],
+	};
+	const noHome = reconcileApplyCheck(unknownOwner, needsHome);
+	const home = reconcileApplyCheck(unknownOwner, emptyPromotionDependencyReport(true), {
+		homes: new Map([[crm.id, { id: SALES.id, name: SALES.name }]]),
+	});
+	const notOnBranch = reconcileApplyCheck(unknownOwner, {
+		...emptyPromotionDependencyReport(false),
+		blocked: true,
+		gaps: [
+			{
+				id: 'wf-sync|credential|cred-crm',
+				consumer: { kind: 'workflow', ...syncOrders },
+				target: { kind: 'credential', id: crm.id, name: crm.name },
+				usage: 'credential',
+				group: 'not-on-branch',
+				exits: [],
+			},
+		],
+	});
+	scenario('check and report: the conflict "unknown-owner" of an existing branch', needsHome, [
+		[
+			'without a home, the conflict stays for a client of an earlier version',
+			noHome.conflicts.length === 1,
+		],
+		[
+			'with a home, a person creates the credential in the home project',
+			home.conflicts.length === 0 &&
+				home.missingBindings.length === 1 &&
+				home.missingBindings[0].kind === 'credential' &&
+				home.missingBindings[0].ownerProject.name === 'Sales',
+		],
+		['a credential that is not on the branch is only a gap', notOnBranch.conflicts.length === 0],
 	]);
 }
 
