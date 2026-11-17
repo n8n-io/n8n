@@ -89,7 +89,7 @@ pub const Vm = struct {
             const bytes = vm.m.str(p - value.const_handle_base);
             if (mem.enabled) {
                 if (mem.enabled) mem.rd(vm.r.probe, .const_strings, .interp_const, vm.m.str_offsets.ptr + (p - value.const_handle_base), 8);
-                if (mem.enabled) mem.rdSlice(vm.r.probe, .const_strings, .const_str, bytes);
+                if (mem.enabled) mem.rd(vm.r.probe, .const_strings, .const_str, bytes.ptr, @min(bytes.len, mem.bytes_seen));
             }
             return bytes;
         }

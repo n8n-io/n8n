@@ -60,14 +60,17 @@ All counts are one table, `perf.Counts`: an array of `u64` with one range for ea
 | `misc` | - | Branch misses, working set, TLB misses for both page sizes, dependent loads |
 
 The recorder keeps three tables: the current execution, the first execution (cold), and the sum. A report gives
-the mean of the executions after the first. Accesses between two instructions belong to the earlier instruction:
-`suspend` has the encode of the effect arguments and the decode of the result. Accesses before the first
-instruction (the decode of the trigger) have their own line.
+the mean of the executions after the first. Work outside the interpreter belongs to a phase (`mem.phase`):
+`batch`, `start`, `run`, `effect_out`, `effect_result`, `finish`, `snapshot`, `other_event` in `core.zig`, and
+`shell_batch` in the shard. An instruction ends the phase. The group `phase_count`, `phase_cycles` has them, and
+`syscalls` has the system calls that the shell makes for the batch (`mem.syscall`).
 
 Structures: `exec_root`, `fibre_table`, `frames`, `registers`, `obj_header`, `obj_entries`, `arr_header`,
 `arr_items`, `str_header`, `str_bytes`, `closure_cell`, `bytes_block`, `module_code`, `const_numbers`,
-`const_strings`, `json_in`, `json_out`. To add later: the slot and event tables of `core.zig`, the scratch arena,
-the action and log buffers of the shell.
+`const_strings`, `json_in`, `json_out`, `scratch`, and for the core and the shell: `slot_table` (the slot columns,
+the free list, the ready list), `exec_index` (the maps by execution id), `module_table`, `region_pool`,
+`event_buf`, `action_buf`, `log_buf`, `snapshot`. `core.zig` states them in small functions at its end
+(`noteSlotStart`, `noteRun`, `noteResult`, `noteSlotEnd`, `noteRelease`, `noteSnapshot`).
 
 Sites: a site is a place in the code, and it has two properties in `perf.zig`. `dependent`: the address comes from
 another load (a pointer hop). `range`: the access is a pass over bytes or values, and a loop cost covers it.
@@ -155,39 +158,42 @@ machine, and the generic x86-64 baseline (SSE2 only) in a cross build. Build ben
 
 ## 6. The report
 
-`wfrt perf-model <module.wfm> <fixture.json> [N] [--json] [--profile NAME] [--no-prefetch] [--l1-kb K] [--l2-kb K]
-[--l3-kb K]`. N is 100 by default. The text report has these parts, in this order:
+`wfrt perf-model <module.wfm> <fixture.json> [N] [--json] [--gate CASE] [--profile NAME] [--no-prefetch]
+[--l1-kb K] [--l2-kb K] [--l3-kb K]`. N is 100 by default. The text report has these parts, in this order:
 
 1. The profile, the caches and the TLBs.
 2. SUMMARY: instructions, reads, writes, bytes, dependent loads, branch misses, working set (lines and pages),
    modelled cycles, each for the steady and the first execution. Then the BUDGET line: the modelled cycles against
    22,500.
 3. TLB: first-level misses, walks and cycles for 4 KiB and for 2 MiB pages.
-4. CYCLES BY CAUSE.
+4. CYCLES BY CAUSE, then PHASES OUTSIDE THE INTERPRETER and SYSTEM CALLS.
 5. INSTRUCTIONS BY OPCODE: count, bails, cycles, share. Then NATIVE CALLS.
 6. MEMORY BY STRUCTURE and MEMORY BY SITE: hits for each level, cycles.
 7. LOOPS OVER BYTES AND VALUES: calls, elements, form, cycles, and what vector code saves.
 8. TOP CANDIDATES: at most 10 changes with the most cycles that each can save, and its layer (converter,
    bytecode compiler, interpreter, runtime, data layout, shell). The savings are upper limits and they overlap.
 
-`--json` gives one object with the same numbers: `steady`, `first`, `tlb`, `causes`, `ops`, `natives`,
+`--json` gives one object with the same numbers: `steady`, `first`, `tlb`, `phases`, `syscalls`, `causes`, `ops`, `natives`,
 `structures`, `sites`, `loops`, `candidates`, and `budget_cycles`.
 
 ## 7. What the model cannot see, and the tools that can
 
-- The kernel: system calls, `fsync`, socket sends, page faults. The model has a cost for a system call, but
-  version 1 runs the core only.
+- The kernel: the inside of a system call, `fsync` on the device, page faults.
 - OpenSSL, c-ares and libc: the inside of `memcpy` and `memset` is one loop cost.
-- The work of `core.zig` around an execution (start, slot tables, events, actions, snapshots) and the bodies of
-  native functions that walk a slice they got from `arrItems` or `vm.str`: they have no calls to `mem.zig` yet.
-  Section 8 shows how large this part is.
+- The compute of a phase is `perf.phaseWork`, a placeholder for each phase until cachegrind gives the count.
+  The place of an entry in the table of pending effects is an estimate. Route lookup, timers and static data
+  have no calls to `mem.zig` yet, and neither have native functions that walk a slice from `arrItems` or `vm.str`.
+- `wfrt perf-model` runs a shard with a batch of one execution: the log write and the sends are not shared, as
+  they are in a server batch. Sockets are a count of system calls only (one send for a reply, one send and one
+  receive for an effect), and `fsync` has the cost of a system call, not of the device.
 - Version 1 has no field-level records, no system calls and no false-sharing table (the plan: one recorder for
   each shard and a shared set of written lines; a line that two shards write is a candidate). A caller of
-  `arrItems`, `objEntries` or `strBytes` counts as a reader of all the items or bytes.
+  `arrItems` or `objEntries` counts as a reader of all the items; a caller of `strBytes` or `vm.str` as a reader
+  of the first 64 bytes (`mem.bytes_seen`).
 
 | Tool | Use | Command |
 |---|---|---|
-| cachegrind (callgrind for the call graph) | Instructions and D1/LL misses for each function, on the benchmark machine | `valgrind --tool=cachegrind --cache-sim=yes --D1=32768,8,64 --LL=16777216,16,64 wfrt bench-node --arena-mb 256 m.wfm f.json N` |
+| cachegrind (callgrind for the call graph) | Instructions and D1/LL misses for each function, on the benchmark machine | Section 8 |
 | `perf stat`, `perf record` | Real cycles, misses, branch misses | Needs a VM type with a PMU: the benchmark VM has none |
 | llvm-mca | Port pressure and the dependency chain of one hot function | below |
 | DynamoRIO (`drcachesim`), Intel SDE | A full address trace when Valgrind is too slow | - |
@@ -203,32 +209,33 @@ llvm-mca -mtriple=x86_64-linux-gnu -mcpu=znver2 -timeline f.s
 
 ## 8. Validation
 
-The plan: run the same module and fixture under cachegrind (command above) and under `wfrt perf-model
---no-prefetch --l2-kb 32` (cachegrind has two levels). Compare, for one execution: instructions (cachegrind `Ir`)
-against the model's compute instructions, data reads and writes, and D1 and LL misses. Then replace `opWork` with
-the measured `Ir` for each opcode, and set the cost of one instruction from the measured time. A model number
-that differs by more than 20% from cachegrind is a defect of the model.
+The plan, on the benchmark machine (x86-64 Linux), for one module `m.wfm` and fixture `f.json`:
+
+```
+zig build -Drelease=true -Dcpu=znver2 --prefix out/normal
+zig build -Drelease=true -Dcpu=znver2 -Dperf-model=true --prefix out/perf
+for n in 1 1001; do valgrind --tool=cachegrind --cache-sim=yes --D1=32768,8,64 --LL=16777216,16,64 \
+  --cachegrind-out-file=cg.$n out/normal/bin/wfrt bench-node --arena-mb 256 m.wfm f.json $n; done
+cg_annotate cg.1001 | head -60                      # instructions and misses for each function
+out/perf/bin/wfrt perf-model m.wfm f.json 1001 --no-prefetch --l2-kb 32
+```
+
+For one execution, (totals of n=1001 minus totals of n=1) / 1000 gives `I refs`, `D refs` (reads and writes),
+`D1 misses` and `LLd misses`. Compare them with the model: compute cycles / 0.35 (instructions), SUMMARY reads
+and writes, the L2+L3+mem columns (D1 misses; `--l2-kb 32` makes L2 a copy of L1) and the mem column (LL
+misses). `bench-node` runs the core without a shard, so the model has `shell_batch`, the log and the system
+calls in addition. Then set `opWork` and `phaseWork` from the `Ir` of each function, and the cost of one
+instruction from the measured time. A model number more than 20% from cachegrind is a defect of the model.
 
 Done on 2026-11-17 on the development host (Apple M-series, so cycles are not Zen 2 cycles; the counters are
 those of `/usr/bin/time -l`). cachegrind did not run there: `mmap` failed under Valgrind in an aarch64 musl
 container. Run it on the benchmark machine.
 
-| Workload | Bytecode instructions | Modelled cycles (Zen 2) | Measured instructions | Measured cycles (host) |
-|---|---|---|---|---|
-| w3 (hand-assembled) | 15 | 883 | 18,750 | 3,351 |
-| 02-loops | 265 | 9,565 | 260,768 | 66,086 |
-| 14-json | 104 | 6,809 | 100,150 | 19,757 |
-| 18-library-http | 667 | 27,396 | 178,857 | 36,702 |
-| 19-library-slack-perplexity | 704 | 30,016 | 170,612 | 30,482 |
-| 32-luxon-expression | 33,012 | 1,175,624 | 4,460,524 | 821,490 |
-| Telegram sendMessage (compiled node) | 153 | 6,569 | 70,816 | 13,488 |
-
-The measured numbers include the bench runner. The model sees the interpreter, the heap and the JSON codec. For
-w3 the model has 883 cycles for 15 bytecode instructions, and the host needs 18,750 instructions: most of the
-work of a small workflow is in code without calls to `mem.zig` (section 7), and that code is the next thing to
-cover. For the large case the model is above the host, so the cost of a dependent load and the branch model are
-too high or the host is faster. The absolute cycles of version 1 are not validated. Use the counts and the
-shares inside the model today.
+The first version saw only the interpreter, the heap and the JSON codec. For w3 it had 883 cycles for 15
+bytecode instructions against 18,750 measured instructions (host counters, with the bench runner), so the phases
+of `core.zig` and the shard were added. For 32-luxon-expression it had 1,175,624 cycles against 821,490 on the
+host: the cost of a dependent load and the branch model are too high, or the host is faster. The absolute cycles
+are not validated. Use the counts and the shares inside the model today.
 
 ## 9. The method for one workflow
 
@@ -242,8 +249,9 @@ shares inside the model today.
 
 ## 10. The regression gate
 
-`docs/perf-record` (to add with the gate) has one line for each corpus case and each compiled node module:
-`case bytecode_instructions memory_accesses line_misses modelled_cycles`, from `wfrt perf-model --json` with the
-default profile. The gate fails when a number of a case rises, and also when it falls: lower the line in the
-same change, as with `lint-ratchet` and the cost record of the node compiler. The numbers are counts, so the gate
-gives the same result on each machine. `ci.sh merge` runs it with the instrumented build.
+`perf-record` has one line for each corpus case: `case instructions reads writes dependent_loads lines`, the
+counts of one execution from `wfrt perf-model <module> <fixture> 5 --gate <case>`. `bench/perf-gate.sh` runs each
+case and fails when a count is above its record; `--update` writes the record. `lines` has a tolerance of 4,
+because the alignment of a buffer can move it. The counts do not use the cost table, so they are the same on each
+machine. A change that lowers a count updates the record in the same commit, as with `lint-ratchet` and the cost
+record of the node compiler. `ci.sh` does not run the gate yet.

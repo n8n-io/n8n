@@ -706,6 +706,7 @@ pub fn step(s: *State, now_ms: i64, events: []const Event, scratch: *Arena) Step
     // Time never moves backwards inside the core.
     s.now_ms = @max(s.now_ms, now_ms);
     if (events.len > s.log_modes.len) return error.TooManyEvents;
+    if (mem.enabled) noteBatch(s, events);
     debugCheckRoots(s, "the start of the batch");
     for (events, 0..) |ev, i| {
         s.cur_event = @intCast(i);
@@ -740,11 +741,13 @@ fn nextWake(s: *const State) ?i64 {
 
 fn emit(s: *State, a: Action) StepError!void {
     if (s.nactions == s.actions.len) return error.ActionsFull;
+    if (mem.enabled) mem.wr(s.cfg.probe, .action_buf, .core_emit, &s.actions[s.nactions], @sizeOf(Action));
     s.actions[s.nactions] = a;
     s.nactions += 1;
 }
 
 fn applyEvent(s: *State, ev: Event, scratch: *Arena) StepError!void {
+    if (mem.enabled) mem.phase(s.cfg.probe, phaseOfEvent(ev.kind));
     switch (ev.kind) {
         .load_module => loadModule(s, ev.payload),
         .add_route => addRoute(s, ev.payload),
@@ -1725,6 +1728,7 @@ fn durOf(s: *const State, slot: SlotId) Durability {
 fn takeRegion(s: *State, class: u8) ?struct { idx: u32, region: heap.Region } {
     if (s.pool_nfree[class] == 0) return null;
     s.pool_nfree[class] -= 1;
+    if (mem.enabled) mem.rd(s.cfg.probe, .region_pool, .core_row, &s.pool_free[class][s.pool_nfree[class]], 4);
     const idx = s.pool_free[class][s.pool_nfree[class]];
     if (std.debug.runtime_safety) {
         std.debug.assert(!s.pool_owned[class][idx]);
@@ -1754,6 +1758,7 @@ fn giveRegion(s: *State, class: u8, idx: u32, used: u32, owner: SlotId) void {
         const size = s.cfg.region_sizes[class];
         @memset(s.pools[class][@as(usize, idx) * size ..][0..@min(used, size)], 0xAA);
     }
+    if (mem.enabled) noteRelease(s, class, idx, used);
     // Last in, first out: the next execution reuses memory still in cache.
     s.pool_free[class][s.pool_nfree[class]] = idx;
     s.pool_nfree[class] += 1;
@@ -1773,6 +1778,7 @@ fn classFor(s: *const State, used: u32) u8 {
 }
 
 fn releaseSlot(s: *State, slot: SlotId) void {
+    if (mem.enabled) noteSlotEnd(s, slot);
     s.modules[s.slot_module[slot]].start_class = classFor(s, s.regions[slot].used);
     giveRegion(s, s.slot_class[slot], s.slot_region_idx[slot], s.regions[slot].used, slot);
     s.map_removals += 1;
@@ -1913,6 +1919,7 @@ fn startExecution(s: *State, mod: u16, trigger: []const u8, conn: u64, route: u1
     s.slot_state[slot] = .parked;
     s.by_exec.putAssumeCapacity(exec_id, slot);
     s.counters.started += 1;
+    if (mem.enabled) noteSlotStart(s, slot, mod);
     markReady(s, slot);
     return true;
 }
@@ -2005,6 +2012,7 @@ fn debugCheckRoots(s: *const State, where: []const u8) void {
 
 fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
     if (s.slot_state[slot] == .free) return;
+    if (mem.enabled) noteRun(s, slot);
     if (std.debug.runtime_safety) {
         // Not `exec()`: it asserts the magic before this can report it.
         const e = s.regions[slot].at(heap.Exec, 0);
@@ -2020,6 +2028,7 @@ fn runOne(s: *State, slot: SlotId, scratch: *Arena) StepError!void {
         var vm = vmFor(s, slot, scratch);
         const t = scratch.begin();
         const out = interp.run(&vm, @floatFromInt(clockNow(s, slot)), &fuel, s.cfg.limits);
+        if (mem.enabled) mem.phase(s.cfg.probe, if (out == .effect) .effect_out else if (out == .done or out == .failed or out == .limit) .finish else .run);
         switch (out) {
             .effect => |req| {
                 fulls = 0;
@@ -2102,6 +2111,7 @@ fn handleEffect(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.EffectReq, scr
     }
     const payload = try withStatic(vm, try encodeJson(vm, req.args, scratch), req.kind, scratch);
     s.pending.putAssumeCapacity(.{ .exec_id = exec_id, .seq = req.seq }, .{ .attempt = 0, .step = req.step, .occurrence = req.occurrence, .kind = req.kind });
+    if (mem.enabled) notePending(s, exec_id, req.seq, true);
     if (req.kind == .approval) s.slot_long_wait[slot] = true;
     var a: Action = .{
         .kind = .dispatch,
@@ -2376,6 +2386,7 @@ fn dropPending(s: *State, exec_id: u64, next_effect: u32) void {
 // ---- effect results ---------------------------------------------------------------
 
 fn effectResult(s: *State, ev: Event, scratch: *Arena) StepError!void {
+    if (mem.enabled) noteResult(s, ev);
     const slot = s.by_exec.get(ev.exec_id) orelse return;
     if (s.modules[s.slot_module[slot]].durability == .none) s.log_modes[s.cur_event] = .skip;
     const key: EffectKey = .{ .exec_id = ev.exec_id, .seq = ev.seq };
@@ -2762,6 +2773,7 @@ fn evict(s: *State, slot: SlotId, attention: bool, scratch: *Arena) StepError!vo
     const body: []align(8) u8 = @alignCast(out[@sizeOf(SnapHeader)..][0..src.used]);
     var dst = heap.Region.init(body);
     heap.compact(src, &dst) catch unreachable; // A compacting copy never needs more space than the source used.
+    if (mem.enabled) noteSnapshot(s, src.buf[0..src.used], body[0..dst.used]);
     const lm = &s.modules[s.slot_module[slot]];
     const h: SnapHeader = .{
         .magic = snap_magic,
@@ -2942,6 +2954,103 @@ fn resolveInDoubt(s: *State, scratch: *Arena) StepError!void {
 }
 
 // ---- invariants -------------------------------------------------------------------
+
+// ---- the performance model (docs/perf-model.md) ---------------------------------------
+// These functions state the accesses of the core's tables to the recorder.
+// Only the instrumented build calls them.
+
+const slot_columns = .{ "slot_state", "slot_exec", "slot_module", "slot_route", "slot_class", "slot_region_idx", "slot_conn", "slot_responded", "slot_subscribed", "slot_long_wait", "regions" };
+
+fn phaseOfEvent(kind: EventKind) @import("perf.zig").Phase {
+    return switch (kind) {
+        .start, .http_request, .schedule, .manual => .start,
+        .effect_ok, .effect_err => .effect_result,
+        .restore => .snapshot,
+        .load_module, .add_route, .operator, .cancel, .subscribe, .recover, .timezone, .load_workflow, .unload_workflow, .set_vars, .secret, .static_data, .reserve_none, .credential_flags => .other_event,
+    };
+}
+
+/// A batch starts: the core reads its events and sets a log mode for each.
+fn noteBatch(s: *const State, events: []const Event) void {
+    std.debug.assert(events.len <= s.log_modes.len);
+    mem.phase(s.cfg.probe, .batch);
+    mem.rdSlice(s.cfg.probe, .event_buf, .core_row, events);
+    mem.wrSlice(s.cfg.probe, .event_buf, .core_row, s.log_modes[0..events.len]);
+}
+
+/// One element of each column in `cols` for `slot`.
+fn noteSlot(s: *const State, slot: SlotId, comptime write: bool, comptime cols: anytype) void {
+    std.debug.assert(slot < s.slot_state.len);
+    inline for (cols) |name| {
+        const p = &@field(s, name)[slot];
+        if (write) mem.wr(s.cfg.probe, .slot_table, .core_row, p, @sizeOf(@TypeOf(p.*))) else mem.rd(s.cfg.probe, .slot_table, .core_row, p, @sizeOf(@TypeOf(p.*)));
+    }
+}
+
+/// One entry of the execution index: the key and the slot.
+fn noteExecIndex(s: *const State, exec_id: u64, comptime write: bool) void {
+    if (s.by_exec.keys.len == 0) return;
+    // The home of the id, as `exec_index.zig` computes it; most entries are at home.
+    const i: usize = @intCast((exec_id ^ (exec_id >> 40)) & (s.by_exec.keys.len - 1));
+    mem.rd(s.cfg.probe, .exec_index, .core_map, &s.by_exec.keys[i], 8);
+    if (write) mem.wr(s.cfg.probe, .exec_index, .core_map, &s.by_exec.vals[i], @sizeOf(SlotId)) else mem.rd(s.cfg.probe, .exec_index, .core_map, &s.by_exec.vals[i], @sizeOf(SlotId));
+}
+
+/// One entry of the table of effects in flight: a byte of metadata and
+/// the entry. The place in the table is an estimate.
+fn notePending(s: *const State, exec_id: u64, seq: u32, comptime write: bool) void {
+    const meta = s.pending.metadata orelse return;
+    const cap: usize = s.pending.capacity();
+    const i: usize = @intCast(((exec_id *% 0x9E3779B97F4A7C15) +% seq) % cap);
+    const entry = @sizeOf(EffectKey) + @sizeOf(Pending);
+    mem.rd(s.cfg.probe, .exec_index, .core_map, meta + i, 1);
+    if (write) mem.wr(s.cfg.probe, .exec_index, .core_map, meta + cap + i * entry, entry) else mem.rd(s.cfg.probe, .exec_index, .core_map, meta + cap + i * entry, entry);
+}
+
+fn noteSlotStart(s: *const State, slot: SlotId, mod: u16) void {
+    mem.rd(s.cfg.probe, .slot_table, .core_row, &s.free_slots[s.nfree_slots], @sizeOf(SlotId));
+    mem.rd(s.cfg.probe, .module_table, .core_row, &s.modules[mod], @min(@sizeOf(LoadedModule), 128));
+    noteSlot(s, slot, true, slot_columns);
+    noteExecIndex(s, s.slot_exec[slot], true);
+    mem.wr(s.cfg.probe, .slot_table, .core_row, &s.ready[s.nready], @sizeOf(SlotId));
+}
+
+fn noteRun(s: *const State, slot: SlotId) void {
+    mem.phase(s.cfg.probe, .run);
+    noteSlot(s, slot, false, .{ "slot_state", "slot_exec", "slot_module", "regions" });
+    mem.rd(s.cfg.probe, .module_table, .core_row, &s.modules[s.slot_module[slot]], @min(@sizeOf(LoadedModule), 128));
+}
+
+fn noteResult(s: *const State, ev: Event) void {
+    noteExecIndex(s, ev.exec_id, false);
+    notePending(s, ev.exec_id, ev.seq, true);
+    if (s.by_exec.get(ev.exec_id)) |slot| noteSlot(s, slot, false, .{ "slot_module", "regions" });
+}
+
+fn noteSlotEnd(s: *const State, slot: SlotId) void {
+    noteSlot(s, slot, false, .{ "slot_module", "slot_class", "slot_region_idx", "slot_exec", "slot_route" });
+    noteSlot(s, slot, true, .{"slot_state"});
+    noteExecIndex(s, s.slot_exec[slot], true);
+    mem.wr(s.cfg.probe, .slot_table, .core_row, &s.free_slots[s.nfree_slots], @sizeOf(SlotId));
+}
+
+/// A region goes back to its pool: a safe build fills its used bytes.
+fn noteRelease(s: *const State, class: u8, idx: u32, used: u32) void {
+    const size = s.cfg.region_sizes[class];
+    mem.wr(s.cfg.probe, .region_pool, .core_row, &s.pool_free[class][s.pool_nfree[class]], 4);
+    const mode = @import("builtin").mode;
+    if (mode != .debug and mode != .safe) return;
+    mem.wrSlice(s.cfg.probe, .region_pool, .core_copy, s.pools[class][@as(usize, idx) * size ..][0..@min(used, size)]);
+    mem.scan(s.cfg.probe, .byte_fill, @min(used, size));
+}
+
+/// A snapshot: the compacting copy reads the region and writes the copy.
+fn noteSnapshot(s: *const State, src: []const u8, dst: []const u8) void {
+    mem.phase(s.cfg.probe, .snapshot);
+    mem.rdSlice(s.cfg.probe, .snapshot, .core_copy, src);
+    mem.wrSlice(s.cfg.probe, .snapshot, .core_copy, dst);
+    mem.scan(s.cfg.probe, .byte_copy, dst.len);
+}
 
 /// Checked by the simulation after every batch.
 pub fn checkInvariants(s: *const State) !void {

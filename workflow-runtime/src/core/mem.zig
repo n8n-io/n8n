@@ -20,6 +20,11 @@ pub const Probe = if (enabled) ?*perf.Recorder else void;
 
 pub const none: Probe = if (enabled) null else {};
 
+/// A function that gives the bytes of a string does not know how many of
+/// them its caller reads (a length test reads none, a compare all). The
+/// recorder takes one cache line: more would make an append loop quadratic.
+pub const bytes_seen: usize = 64;
+
 comptime {
     // The normal build pays nothing for the layer.
     if (!enabled) std.debug.assert(@sizeOf(Probe) == 0);
@@ -91,6 +96,16 @@ pub inline fn instr(p: Probe, m: *const module.Module, ins: module.Instr, code: 
 /// The fast loop gave the last instruction to the slow path, which runs it again.
 pub inline fn bail(p: Probe) void {
     if (enabled) if (p) |rec| rec.bail();
+}
+
+/// The core or the shell starts a phase of its work outside the interpreter.
+pub inline fn phase(p: Probe, ph: perf.Phase) void {
+    if (enabled) if (p) |rec| rec.phase(ph);
+}
+
+/// The shell makes one system call.
+pub inline fn syscall(p: Probe, kind: perf.Syscall) void {
+    if (enabled) if (p) |rec| rec.syscall(kind);
 }
 
 /// A new object of `size` bytes.

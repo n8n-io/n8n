@@ -25,7 +25,21 @@ pub const Structure = enum(u8) {
     const_strings,
     json_in,
     json_out,
+    /// The step-lived arena of a batch.
     scratch,
+    /// The columns of the execution slots, the free list and the ready list.
+    slot_table,
+    /// The maps from an execution id to its slot and to its pending effects.
+    exec_index,
+    module_table,
+    /// The free lists of the region pools, and the bytes of a released region.
+    region_pool,
+    /// The input events of a batch.
+    event_buf,
+    action_buf,
+    /// The log record of a batch in the shell.
+    log_buf,
+    snapshot,
 };
 
 /// The place in the core that makes an access.
@@ -57,12 +71,28 @@ pub const Site = enum(u8) {
     /// The decoder copies the items of an array or an object into the region.
     json_build,
     json_encode,
+    /// One element of a table of the core, by its index.
+    core_row,
+    /// A lookup in a hash map of the core.
+    core_map,
+    core_emit,
+    /// A copy or a fill in the core: scratch copies, snapshots, released regions.
+    core_copy,
+    /// A buffer of the shell: batch events, the log record, the scratch reset.
+    shell_buf,
 };
 
 /// A loop over bytes or values.
-pub const Loop = enum(u8) { utf16_len, key_probe, key_bytes, str_eql, json_scan, json_emit, value_fill, value_copy, byte_copy };
+pub const Loop = enum(u8) { utf16_len, key_probe, key_bytes, str_eql, json_scan, json_emit, value_fill, value_copy, byte_copy, byte_fill };
 
-pub const Cause = enum(u8) { compute, load_l1, load_l1_dep, load_l2, load_l3, load_mem, store, store_miss, tlb, mispredict, loops };
+/// What the core does outside the interpreter. Accesses and cycles outside
+/// an instruction belong to the phase.
+pub const Phase = enum(u8) { interp, batch, start, run, effect_out, effect_result, finish, snapshot, other_event, shell_batch };
+
+/// The system calls that the shell makes for a batch.
+pub const Syscall = enum(u8) { log_write, log_sync, reply_send, effect_send, effect_recv };
+
+pub const Cause = enum(u8) { compute, load_l1, load_l1_dep, load_l2, load_l3, load_mem, store, store_miss, tlb, mispredict, loops, syscall };
 
 pub const Misc = enum(u8) {
     dispatch_miss,
@@ -85,6 +115,7 @@ const n_structures = std.enums.values(Structure).len;
 const n_sites = std.enums.values(Site).len;
 const n_loops = std.enums.values(Loop).len;
 pub const n_causes = std.enums.values(Cause).len;
+const n_phases = std.enums.values(Phase).len;
 const n_ops = 256;
 /// Accesses before the first instruction of an execution have this opcode.
 pub const op_start: u8 = 255;
@@ -114,13 +145,17 @@ pub const Field = enum(u8) {
     loop_calls,
     loop_elems,
     cause,
+    phase_count,
+    phase_cycles,
+    syscalls,
     misc,
 };
 
 const field_len = [_]u32{
     n_ops,                 n_ops,      n_ops,        n_natives,           n_natives, n_structures, n_structures, n_structures,
     n_structures,          n_structures * levels, n_structures, n_structures, n_sites * levels, n_sites, n_structures, n_structures,
-    n_loops,               n_loops,    n_causes,     std.enums.values(Misc).len,
+    n_loops,               n_loops,    n_causes,     n_phases, n_phases, std.enums.values(Syscall).len,
+    std.enums.values(Misc).len,
 };
 
 pub fn lenOf(comptime f: Field) u32 {
@@ -151,7 +186,7 @@ comptime {
 pub const Counts = struct {
     v: [n_counters]u64 = @splat(0),
 
-    pub inline fn bump(c: *Counts, comptime f: Field, i: usize, n: u64) void {
+    inline fn bump(c: *Counts, comptime f: Field, i: usize, n: u64) void {
         std.debug.assert(i < lenOf(f));
         c.v[baseOf(f) + i] += n;
     }
@@ -279,8 +314,8 @@ pub fn profileNamed(name: []const u8) ?Profile {
 /// True when the address of an access at `site` comes from a load.
 pub fn dependent(site: Site) bool {
     return switch (site) {
-        .interp_fetch, .interp_reg, .interp_const, .region_alloc, .exec_at, .vals_fill, .str_new, .str_append, .json_decode, .json_build, .json_encode => false,
-        .interp_frame, .region_at, .region_span, .vals_at, .vals_walk, .str_bytes, .obj_find, .obj_set, .obj_grow, .arr_push, .arr_grow, .const_str => true,
+        .interp_fetch, .interp_reg, .interp_const, .region_alloc, .exec_at, .vals_fill, .str_new, .str_append, .json_decode, .json_build, .json_encode, .core_row, .core_emit, .core_copy, .shell_buf => false,
+        .interp_frame, .region_at, .region_span, .vals_at, .vals_walk, .str_bytes, .obj_find, .obj_set, .obj_grow, .arr_push, .arr_grow, .const_str, .core_map => true,
     };
 }
 
@@ -288,8 +323,8 @@ pub fn dependent(site: Site) bool {
 /// its bytes; the model then adds only the misses.
 pub fn ranged(site: Site) bool {
     return switch (site) {
-        .region_span, .vals_walk, .vals_fill, .str_bytes, .str_new, .str_append, .obj_grow, .arr_grow, .const_str, .json_decode, .json_build, .json_encode => true,
-        .interp_fetch, .interp_reg, .interp_const, .interp_frame, .region_alloc, .region_at, .exec_at, .vals_at, .obj_find, .obj_set, .arr_push => false,
+        .region_span, .vals_walk, .vals_fill, .str_bytes, .str_new, .str_append, .obj_grow, .arr_grow, .const_str, .json_decode, .json_build, .json_encode, .core_copy, .shell_buf => true,
+        .interp_fetch, .interp_reg, .interp_const, .interp_frame, .region_alloc, .region_at, .exec_at, .vals_at, .obj_find, .obj_set, .arr_push, .core_row, .core_map, .core_emit => false,
     };
 }
 
@@ -308,12 +343,31 @@ pub fn loopCost(loop: Loop) LoopCost {
         .value_fill => .{ .scalar = 50, .vector = 13, .is_vector = true },
         .value_copy => .{ .scalar = 100, .vector = 25, .is_vector = true },
         .byte_copy => .{ .scalar = 50, .vector = 4, .is_vector = true },
+        .byte_fill => .{ .scalar = 50, .vector = 3, .is_vector = true },
     };
 }
 
 pub fn loopCycles(loop: Loop, elems: u64) u64 {
     const lc = loopCost(loop);
     return elems * if (lc.is_vector) lc.vector else lc.scalar;
+}
+
+/// An estimate of the native instructions of one phase of the core, without
+/// its loops and without the interpreter. A placeholder: the validation
+/// plan replaces it with the counts of cachegrind for each function.
+fn phaseWork(phase: Phase) u32 {
+    return switch (phase) {
+        .interp => 0,
+        .batch => 400,
+        .start => 1500,
+        .run => 300,
+        .effect_out => 900,
+        .effect_result => 1200,
+        .finish => 1200,
+        .snapshot => 800,
+        .other_event => 500,
+        .shell_batch => 600,
+    };
 }
 
 /// The registers that an instruction reads and writes.
@@ -527,6 +581,7 @@ pub const Recorder = struct {
     ws_pages_max: u32 = 0,
     cur_op: u8 = op_start,
     cur_native: u16 = n_natives,
+    cur_phase: Phase = .batch,
     prev_op: u8 = op_start,
     prev2_op: u8 = op_start,
     prev_addr: usize = 0,
@@ -584,6 +639,22 @@ pub const Recorder = struct {
         rec.ws_page_count = 0;
         rec.cur_op = op_start;
         rec.cur_native = n_natives;
+        rec.cur_phase = .batch;
+    }
+
+    /// The core or the shell starts a phase.
+    pub fn phase(rec: *Recorder, ph: Phase) void {
+        const work = @as(u64, phaseWork(ph)) * rec.costs.instr;
+        rec.cur_phase = ph;
+        rec.cur_native = n_natives;
+        rec.cur.bump(.phase_count, @backingInt(ph), 1);
+        rec.cur.bump(.phase_cycles, @backingInt(ph), work);
+        rec.cur.bump(.cause, @backingInt(Cause.compute), work);
+    }
+
+    pub fn syscall(rec: *Recorder, kind: Syscall) void {
+        rec.cur.bump(.syscalls, @backingInt(kind), 1);
+        rec.cur.bump(.cause, @backingInt(Cause.syscall), rec.costs.syscall);
     }
 
     pub fn access(rec: *Recorder, st: Structure, site: Site, kind: Access, addr: usize, len: usize) void {
@@ -669,6 +740,7 @@ pub const Recorder = struct {
     }
 
     fn charge(rec: *Recorder, cost: u64) void {
+        if (rec.cur_phase != .interp) return rec.cur.bump(.phase_cycles, @backingInt(rec.cur_phase), cost);
         rec.cur.bump(.op_cycles, rec.cur_op, cost);
         if (rec.cur_native < n_natives) rec.cur.bump(.native_cycles, rec.cur_native, cost);
     }
@@ -681,6 +753,7 @@ pub const Recorder = struct {
         const sh = shapeOf(op);
         rec.predict(ins.op, code_addr, sh.branch);
         rec.cur_op = ins.op;
+        rec.cur_phase = .interp;
         rec.cur_native = n_natives;
         c.bump(.instr, ins.op, 1);
         c.bump(.op_cycles, ins.op, @as(u64, opWork(op)) * rec.costs.instr);
@@ -893,4 +966,23 @@ test "TLB model: a hand-computed trace with small and huge pages" {
     // One huge page holds all four: one walk, then hits.
     try std.testing.expectEqual(@as(u64, 1), r.cur.get(.misc, @backingInt(Misc.huge_walk)));
     try std.testing.expectEqual(@as(u64, 1), r.cur.get(.misc, @backingInt(Misc.huge_l1_miss)));
+}
+
+test "recorder: a phase takes the accesses outside the interpreter, and system calls are a cause of their own" {
+    var words: [test_words]u64 = @splat(0);
+    var rec = testRecorder(&words, false);
+    const r = &rec;
+    r.phase(.start);
+    r.access(.slot_table, .core_row, .write, 0x5000, 8);
+    r.syscall(.log_write);
+    const start = @backingInt(Phase.start);
+    try std.testing.expectEqual(@as(u64, 1), r.cur.get(.phase_count, start));
+    // The work of the phase, one page walk and one store that misses to memory.
+    try std.testing.expectEqual(@as(u64, 1500 * 35 + 5500 + 18800 + 100), r.cur.get(.phase_cycles, start));
+    try std.testing.expectEqual(@as(u64, 0), r.cur.total(.op_cycles));
+    try std.testing.expectEqual(@as(u64, 1), r.cur.get(.syscalls, @backingInt(Syscall.log_write)));
+    try std.testing.expectEqual(@as(u64, 150000), r.cur.get(.cause, @backingInt(Cause.syscall)));
+    // An instruction ends the phase.
+    r.instr(.{ .op = @backingInt(Op.nop), .x = 0, .a = 0, .b = 0, .c = 0 }, 0x8000, 0x9000, 0xA000);
+    try std.testing.expect(r.cur.get(.op_cycles, @backingInt(Op.nop)) > 0);
 }
