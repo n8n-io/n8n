@@ -37,7 +37,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace $getPairedItem usages',
 				description:
-					"Replace each $getPairedItem call. Use $('Node').item for the item paired with the current item. Use $('Node').pairedItem(n) or $('Node').itemMatching(n) for the item paired with input item n of this node. Node is the name of the node that produced the item.",
+					"Use $('Node').item for the item paired with the current item. Use $('Node').pairedItem(n) or $('Node').itemMatching(n) for the item paired with input item n of this node. Node is the name of the node that produced the item.",
 			},
 		];
 	}
