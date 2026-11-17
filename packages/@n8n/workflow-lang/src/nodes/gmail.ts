@@ -1,6 +1,7 @@
 /**
  * Compiled library node: a hand port of `n8n-nodes-base.gmail` version 2.2,
- * operations `message.send`, `message.getAll` and `message.get` with
+ * operations `message.send`, `message.reply`, `thread.reply`, `draft.create`,
+ * `message.getAll` and `message.get` with
  * `simple` on (the other mode parses the raw MIME message in the fallback
  * host), and `message.addLabels`, `removeLabels`, `markAsRead`,
  * `markAsUnread` and `delete`.
@@ -11,8 +12,18 @@
  * random Message-ID and a Date header; Gmail adds both when they are missing),
  * so the equivalence test compares the parsed messages.
  *
- * Limits: attachments, the service account authentication and
- * `replyToSenderOnly` are not supported. Address display names must be ASCII.
+ * The builder writes a base64 body and one encoded word for a subject or a
+ * display name that is not ASCII, with the native codec: MailComposer chooses
+ * 7bit, quoted-printable or base64 and folds long headers. A reader decodes
+ * both forms to the same message. The same bytes need a native
+ * quoted-printable encoder in the runtime: a loop for each byte of the body in
+ * the bytecode costs more than the whole node.
+ *
+ * A reply reads the addresses of the message with a port of the
+ * `addressparser` of nodemailer for the usual forms (names, quoted names,
+ * comments, lists, groups).
+ *
+ * Limits: attachments and the service account authentication are not supported.
  * The attribution link has no instance id: a compiled workflow does not know
  * the n8n instance.
  */
@@ -24,6 +35,33 @@ interface GmailOptions {
 	ccList?: string;
 	senderName?: string;
 	replyTo?: string;
+	sendTo?: string;
+	fromAlias?: string;
+	threadId?: unknown;
+	replyToSenderOnly?: boolean;
+	replyToRecipientsOnly?: boolean;
+}
+
+interface Address {
+	name: string;
+	address: string;
+}
+
+interface Email {
+	from: string;
+	to: string;
+	cc: string;
+	bcc: string;
+	replyTo: string;
+	inReplyTo: string;
+	subject: string;
+	type: string;
+	text: string;
+}
+
+interface MessageHeader {
+	name?: string;
+	value?: string;
 }
 
 interface GmailFilters {
@@ -52,6 +90,10 @@ interface GmailParameters {
 	emailType?: string;
 	message?: string;
 	options?: GmailOptions;
+	/** From version 2.2 a reply goes to the `Reply-To` address of the message when it has one. */
+	replyToHeader?: boolean;
+	/** The index of the item in the input, for the messages of v1. */
+	itemIndex?: number;
 }
 
 /** Base64 of the UTF-8 bytes of a string, with the native codec (spec section 4.3). */
@@ -65,21 +107,147 @@ function isAscii(text: string): boolean {
 	return Ascii.isPrintable(text.includes('\t') ? text.split('\t').join(' ') : text);
 }
 
+/** A header value on one line: MailComposer writes a space for each line break. */
+function oneLine(text: string): string {
+	if (!text.includes('\n') && !text.includes('\r')) return text;
+	return text.split('\r\n').join(' ').split('\n').join(' ').split('\r').join(' ');
+}
+
+/**
+ * The addresses of a header value, as the `addressparser` of nodemailer reads them with
+ * `flatten`: `Name <a@b>`, `"Quoted, name" <a@b>`, `a@b`, `a@b (Name)`, lists with `,` or
+ * `;`, and the members of a group.
+ */
+function parseAddresses(input: string): Address[] {
+	const out: Address[] = [];
+	let words: string[] = [];
+	let word = '';
+	let comment = '';
+	let address = '';
+	let state = '';
+	const endWord = () => {
+		if (word !== '') words.push(word);
+		word = '';
+	};
+	const endEntry = () => {
+		endWord();
+		let found = address.trim();
+		if (found === '') {
+			// Without angle brackets the last word with an `@` is the address.
+			for (let k = words.length - 1; k >= 0; k--) {
+				if (RegExp.exec('^[^@\\s]+@[^@\\s]+$', '', words[k], 0) !== null) {
+					found = words[k];
+					words = words.slice(0, k).concat(words.slice(k + 1));
+					break;
+				}
+			}
+		}
+		const name = words.join(' ').trim();
+		if (found !== '') out.push({ name: name !== '' ? name : comment.trim(), address: found });
+		words = [];
+		comment = '';
+		address = '';
+	};
+	for (let k = 0; k < input.length; k++) {
+		const ch = input.charAt(k);
+		if (state === '"') {
+			if (ch === '\\' && k + 1 < input.length) {
+				word += input.charAt(k + 1);
+				k++;
+			} else if (ch === '"') {
+				state = '';
+				if (word === '') words.push('');
+			} else {
+				word += ch;
+			}
+		} else if (state === '(') {
+			if (ch === ')') state = '';
+			else comment += ch;
+		} else if (state === '<') {
+			if (ch === '>') state = '';
+			else address += ch;
+		} else if (ch === '"' || ch === '(' || ch === '<') {
+			if (ch !== '"') endWord();
+			state = ch;
+		} else if (ch === ',' || ch === ';') {
+			endEntry();
+		} else if (ch === ':') {
+			// The name of a group: `flatten` gives only its members.
+			word = '';
+			words = [];
+		} else if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') {
+			endWord();
+		} else {
+			word += ch;
+		}
+	}
+	endEntry();
+	return out;
+}
+
+/** One address as MailComposer writes it: a plain name, a quoted name or an encoded word. */
+function headerAddress(entry: Address): string {
+	const address = oneLine(entry.address);
+	const name = oneLine(entry.name);
+	if (name === '') return `<${address}>`;
+	if (RegExp.exec('^[A-Za-z0-9_ ]*$', '', name, 0) !== null) return `${name} <${address}>`;
+	if (Ascii.isPrintable(name)) {
+		return `"${name.split('\\').join('\\\\').split('"').join('\\"')}" <${address}>`;
+	}
+	return `=?UTF-8?B?${base64Utf8(name)}?= <${address}>`;
+}
+
+function headerAddresses(list: Address[]): string {
+	return list.map((entry) => headerAddress(entry)).join(', ');
+}
+
 /** prepareEmailsInput of the v1 node, as a header value. */
-function addresses(input: string, field: string): string {
+function addresses(input: string, index: number): string {
 	const out: string[] = [];
 	for (const entry of String(input).split(',')) {
 		const email = entry.trim();
 		if (!email.includes('@')) {
-			throw new Error(
-				`Invalid email address: the email address '${email}' in the '${field}' field isn't valid`,
-			);
+			// The loop of the v1 node adds the index of the item to each message.
+			throw new Error(`Invalid email address (item ${index})`);
 		}
-		if (!isAscii(email))
-			throw new Error('Gmail: non-ASCII addresses are not in the compiled library');
 		out.push(email.includes('<') && email.includes('>') ? email : `<${email}>`);
 	}
-	return out.join(', ');
+	return headerAddresses(parseAddresses(out.join(', ')));
+}
+
+/** The display name of a reply address, as formatDisplayName of the v1 node quotes it. */
+function replyName(name: string): string {
+	if (RegExp.exec('["(),:;<>@[\\]\\\\]', '', name, 0) === null) return name;
+	return `"${name.split('\\').join('\\\\').split('"').join('\\"')}"`;
+}
+
+/** The MIME message of an email, as base64url without padding (encodeEmail of the v1 node). */
+function encodeEmail(email: Email): string {
+	const lines: string[] = [];
+	if (email.from) lines.push(`From: ${email.from}`);
+	if (email.to) lines.push(`To: ${email.to}`);
+	if (email.cc) lines.push(`Cc: ${email.cc}`);
+	if (email.bcc) lines.push(`Bcc: ${email.bcc}`);
+	if (email.replyTo) lines.push(`Reply-To: ${email.replyTo}`);
+	if (email.inReplyTo) {
+		let id = oneLine(email.inReplyTo);
+		if (!id.startsWith('<')) id = `<${id}`;
+		if (!id.endsWith('>')) id = `${id}>`;
+		lines.push(`In-Reply-To: ${id}`);
+		lines.push(`References: ${id}`);
+	}
+	const subject = oneLine(email.subject);
+	if (subject) {
+		lines.push(`Subject: ${isAscii(subject) ? subject : `=?UTF-8?B?${base64Utf8(subject)}?=`}`);
+	}
+	lines.push('MIME-Version: 1.0');
+	const html = email.type === 'html';
+	lines.push(`Content-Type: ${html ? 'text/html' : 'text/plain'}; charset=utf-8`);
+	lines.push('Content-Transfer-Encoding: base64');
+	const mime = `${lines.join('\r\n')}\r\n\r\n${wrap(base64Utf8(email.text), 76)}`;
+	let raw = base64Utf8(mime).replaceAll('+', '-').replaceAll('/', '_');
+	while (raw.endsWith('=')) raw = raw.slice(0, -1);
+	return raw;
 }
 
 /** prepareEmailBody of the v1 node. */
@@ -192,6 +360,48 @@ export default defineNode<GmailParameters>({
 			'message.markAsRead': ['authentication', 'messageId'],
 			'message.markAsUnread': ['authentication', 'messageId'],
 			'message.delete': ['authentication', 'messageId'],
+			'message.reply': [
+				'authentication',
+				'messageId',
+				'emailType',
+				'message',
+				'options',
+				'options.bccList',
+				'options.ccList',
+				'options.senderName',
+				'options.replyToSenderOnly',
+				'replyToHeader',
+				'itemIndex',
+			],
+			'thread.reply': [
+				'authentication',
+				'threadId',
+				'messageId',
+				'emailType',
+				'message',
+				'options',
+				'options.bccList',
+				'options.ccList',
+				'options.senderName',
+				'options.replyToSenderOnly',
+				'options.replyToRecipientsOnly',
+				'replyToHeader',
+				'itemIndex',
+			],
+			'draft.create': [
+				'authentication',
+				'subject',
+				'emailType',
+				'message',
+				'options',
+				'options.bccList',
+				'options.ccList',
+				'options.fromAlias',
+				'options.replyTo',
+				'options.threadId',
+				'options.sendTo',
+				'itemIndex',
+			],
 			'message.send': [
 				'authentication',
 				'sendTo',
@@ -205,6 +415,7 @@ export default defineNode<GmailParameters>({
 				'options.ccList',
 				'options.senderName',
 				'options.replyTo',
+				'itemIndex',
 			],
 		},
 	},
@@ -213,7 +424,10 @@ export default defineNode<GmailParameters>({
 		const operation = parameters.operation ?? 'send';
 		const modify = ['addLabels', 'removeLabels', 'markAsRead', 'markAsUnread'];
 		const known = ['send', 'get', 'getAll', 'delete'].concat(modify);
-		if (resource !== 'message' || !known.includes(operation)) {
+		const composed =
+			(resource === 'draft' && operation === 'create') ||
+			(resource === 'thread' && operation === 'reply');
+		if (!composed && (resource !== 'message' || !known.concat(['reply']).includes(operation))) {
 			throw new Error(`Gmail: ${resource}.${operation} is not in the compiled library`);
 		}
 		if ((parameters.authentication ?? 'oAuth2') !== 'oAuth2') {
@@ -333,56 +547,149 @@ export default defineNode<GmailParameters>({
 			return out;
 		}
 		const options = parameters.options ?? {};
-		const out: Item[] = [];
-		for (const _item of items ?? [{}]) {
-			const lines: string[] = [];
-			if (options.senderName) {
-				const profile = await ctx.http<{ emailAddress?: string }>({
-					acceptAs: 'legacy',
-					json: true,
-					method: 'GET',
-					url: 'https://www.googleapis.com/gmail/v1/users/me/profile',
-					headers,
-					qs: {},
-					body: undefined,
-					credential,
-				});
-				if (profile.status >= 400) throw new Error(`Gmail: HTTP status ${profile.status}`);
-				lines.push(`From: ${options.senderName} <${String(profile.body.emailAddress)}>`);
-			}
-			lines.push(`To: ${addresses(parameters.sendTo ?? '', 'To')}`);
-			if (options.ccList) lines.push(`Cc: ${addresses(options.ccList, 'CC')}`);
-			if (options.bccList) lines.push(`Bcc: ${addresses(options.bccList, 'BCC')}`);
-			if (options.replyTo) lines.push(`Reply-To: ${addresses(options.replyTo, 'ReplyTo')}`);
-			const subject = parameters.subject ?? '';
-			lines.push(`Subject: ${isAscii(subject) ? subject : `=?UTF-8?B?${base64Utf8(subject)}?=`}`);
-			lines.push('MIME-Version: 1.0');
-			const type = parameters.emailType ?? 'html';
-			const message = String(parameters.message ?? '').trim();
-			const text = emailBody(
-				type,
-				message,
-				options.appendAttribution ?? true,
-				parameters.instanceId,
-			);
-			lines.push(`Content-Type: ${type === 'html' ? 'text/html' : 'text/plain'}; charset=utf-8`);
-			lines.push('Content-Transfer-Encoding: base64');
-			const mime = `${lines.join('\r\n')}\r\n\r\n${wrap(base64Utf8(text), 76)}`;
-			// base64url without padding, as the v1 node encodes `raw`.
-			let raw = base64Utf8(mime).replaceAll('+', '-').replaceAll('/', '_');
-			while (raw.endsWith('=')) raw = raw.slice(0, -1);
+		const post = async (url: string, qs: Record<string, unknown>, body: unknown): Promise<Item> => {
 			const response = await ctx.http<Item>({
 				acceptAs: 'legacy',
 				json: true,
 				method: 'POST',
-				url: 'https://www.googleapis.com/gmail/v1/users/me/messages/send',
+				url,
 				headers,
-				qs: {},
-				body: { raw },
+				qs,
+				body,
 				credential,
 			});
 			if (response.status >= 400) throw new Error(`Gmail: HTTP status ${response.status}`);
-			out.push(response.body);
+			return response.body;
+		};
+		const index = parameters.itemIndex ?? 0;
+		const type = parameters.emailType ?? (resource === 'message' ? 'html' : 'text');
+		const message = String(parameters.message ?? '').trim();
+		const out: Item[] = [];
+		for (const _item of items ?? [{}]) {
+			if (operation === 'reply') {
+				// replyToEmail of the v1 node.
+				if (options.replyToSenderOnly && options.replyToRecipientsOnly) {
+					throw new Error(
+						`Both "Reply to Sender Only" and "Reply to Recipient Only" cannot be enabled at the same time. Please select only one option. (item ${index})`,
+					);
+				}
+				const cc = options.ccList ? addresses(options.ccList, index) : '';
+				const bcc = options.bccList ? addresses(options.bccList, index) : '';
+				const original = await get<{
+					payload?: { headers?: MessageHeader[] };
+					threadId?: unknown;
+				}>(`${api}/messages/${String(parameters.messageId)}`, { format: 'metadata' });
+				const list = original.payload?.headers ?? [];
+				const valueOf = (name: string): string => {
+					for (const header of list) {
+						if ((header.name ?? '').toLowerCase() === name) return header.value || '';
+					}
+					return '';
+				};
+				const profile = await get<{ emailAddress?: string }>(`${api}/profile`, {});
+				const self = String(profile.emailAddress);
+				let sender = 'from';
+				if (parameters.replyToHeader === true) {
+					for (const header of list) {
+						if ((header.name ?? '').toLowerCase() === 'reply-to') sender = 'reply-to';
+					}
+				}
+				// The recipients without the repeats, as `uniq` of the text that v1 writes.
+				const seen: string[] = [];
+				const to: Address[] = [];
+				const add = (value: string, excludeSelf: boolean) => {
+					for (const entry of parseAddresses(value)) {
+						if (excludeSelf && entry.address.toLowerCase() === self.toLowerCase()) continue;
+						const text = entry.name
+							? `${replyName(entry.name)} <${entry.address}>`
+							: `<${entry.address}>`;
+						if (seen.includes(text)) continue;
+						seen.push(text);
+						to.push(entry);
+					}
+				};
+				for (const header of list) {
+					const name = (header.name || '').toLowerCase();
+					if (name === sender && !options.replyToRecipientsOnly) add(header.value ?? '', false);
+					if (name === 'to' && !options.replyToSenderOnly) add(header.value ?? '', true);
+				}
+				const raw = encodeEmail({
+					from: options.senderName
+						? headerAddresses(parseAddresses(`${options.senderName} <${self}>`))
+						: '',
+					to: headerAddresses(to),
+					cc,
+					bcc,
+					replyTo: '',
+					inReplyTo: valueOf('message-id'),
+					subject: valueOf('subject'),
+					type,
+					text: message,
+				});
+				out.push(
+					await post(
+						`${api}/messages/send`,
+						{ format: 'metadata' },
+						{ raw, threadId: original.threadId },
+					),
+				);
+				continue;
+			}
+			if (resource === 'draft') {
+				const threadId =
+					options.threadId && typeof options.threadId === 'string' ? options.threadId : '';
+				const email: Email = {
+					from: options.fromAlias ? headerAddresses(parseAddresses(options.fromAlias)) : '',
+					to: options.sendTo ? addresses(options.sendTo, index) : '',
+					cc: options.ccList ? addresses(options.ccList, index) : '',
+					bcc: options.bccList ? addresses(options.bccList, index) : '',
+					replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+					inReplyTo: '',
+					subject: parameters.subject ?? '',
+					type,
+					text: message,
+				};
+				if (threadId) {
+					// addThreadHeadersToEmail of the v1 node: the id of the last message of the thread.
+					const thread = await get<{ messages?: Array<{ payload: { headers: MessageHeader[] } }> }>(
+						`${api}/threads/${threadId}`,
+						{ format: 'metadata', metadataHeaders: ['Message-ID'] },
+					);
+					const messages = thread.messages;
+					if (messages) {
+						for (const header of messages[messages.length - 1].payload.headers) {
+							const name = (header.name ?? '').toLowerCase();
+							if (name.includes('message') && name.includes('id')) {
+								email.inReplyTo = header.value ?? '';
+								break;
+							}
+						}
+					}
+				}
+				const draft: Record<string, unknown> = { raw: encodeEmail(email) };
+				if (threadId) draft.threadId = threadId;
+				out.push(await post(`${api}/drafts`, {}, { message: draft }));
+				continue;
+			}
+			let from = '';
+			if (options.senderName) {
+				const profile = await get<{ emailAddress?: string }>(`${api}/profile`, {});
+				from = headerAddresses(
+					parseAddresses(`${options.senderName} <${String(profile.emailAddress)}>`),
+				);
+			}
+			const raw = encodeEmail({
+				from,
+				to: addresses(parameters.sendTo ?? '', index),
+				cc: options.ccList ? addresses(options.ccList, index) : '',
+				bcc: options.bccList ? addresses(options.bccList, index) : '',
+				replyTo: options.replyTo ? addresses(options.replyTo, index) : '',
+				inReplyTo: '',
+				subject: parameters.subject ?? '',
+				type,
+				text: emailBody(type, message, options.appendAttribution ?? true, parameters.instanceId),
+			});
+			out.push(await post(`${api}/messages/send`, {}, { raw }));
 		}
 		return out;
 	},

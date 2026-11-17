@@ -213,6 +213,23 @@ const ADAPTERS: Record<string, Adapter> = {
 		if (isRecord(p.mentions) && none) delete out.mentions;
 		return out;
 	},
+	// A message that the node writes gets the index of the item for v1's error messages. From
+	// version 2.2 a reply goes to the `Reply-To` address of the message when it has one.
+	'n8n-nodes-base.gmail': (p, version) => {
+		const resource = p.resource ?? 'message';
+		const operation = p.operation ?? 'send';
+		const written =
+			(resource === 'message' && (operation === 'send' || operation === 'reply')) ||
+			(resource === 'thread' && operation === 'reply') ||
+			(resource === 'draft' && operation === 'create');
+		if (!written || version < 2) return p;
+		if (operation !== 'reply') return { ...p, itemIndex: '={{ $itemIndex }}' };
+		return {
+			...p,
+			itemIndex: '={{ $itemIndex }}',
+			...(version >= 2.2 ? { replyToHeader: true } : {}),
+		};
+	},
 	'n8n-nodes-base.slack': (p, version) => {
 		const out: Record<string, unknown> = { ...p };
 		const other = isRecord(p.otherOptions) ? p.otherOptions : {};
