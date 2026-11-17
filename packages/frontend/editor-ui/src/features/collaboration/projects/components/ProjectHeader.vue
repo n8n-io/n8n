@@ -682,7 +682,8 @@ const onSelect = (action: string, source: CreateSource) => {
 	}
 }
 
-.listToolbarInHeader {
+// The tab row pads the toolbar to sit above its hairline; next to the main button it needs none.
+.listToolbar.listToolbarInHeader {
 	padding-bottom: 0;
 }
 
