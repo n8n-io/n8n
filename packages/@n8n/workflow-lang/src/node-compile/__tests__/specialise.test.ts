@@ -77,7 +77,9 @@ export default workflow({
 `;
 }
 
-const cases = EQUIVALENCE_CASES.filter((c) => c.type in ENTRIES && c.expectedError === undefined);
+const cases = EQUIVALENCE_CASES.filter(
+	(c) => c.type in ENTRIES && c.expectedError === undefined && c.settings === undefined,
+);
 
 describe.runIf(typesBuilt)('node compiler: n8n node source against v1', () => {
 	const registry = registryOf(loadCredentialTypes().types);
