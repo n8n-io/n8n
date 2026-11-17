@@ -299,13 +299,11 @@ onBeforeUnmount(() => {
 			<div :class="$style.footer">
 				<N8nButton
 					variant="outline"
-					size="large"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="import-csv-cancel"
 					@click="onClose"
 				/>
 				<N8nButton
-					size="large"
 					:label="i18n.baseText('dataTable.importCsv.importButton')"
 					:disabled="!canImport"
 					:loading="isImporting"
