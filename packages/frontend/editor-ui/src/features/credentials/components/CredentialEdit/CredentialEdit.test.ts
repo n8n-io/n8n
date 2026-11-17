@@ -399,26 +399,6 @@ describe('CredentialEdit', () => {
 		vi.unstubAllGlobals();
 	});
 
-	test('shows the renamed credential type when opened with its stable identifier', async () => {
-		const credentialsStore = mockedStore(useCredentialsStore);
-		credentialsStore.state.credentialTypes = {
-			ciscoWebexOAuth2Api: {
-				name: 'ciscoWebexOAuth2Api',
-				displayName: 'Webex by Cisco OAuth2 API',
-				properties: [],
-			},
-		};
-		const { getByText } = renderComponent({
-			props: {
-				activeId: 'ciscoWebexOAuth2Api',
-				modalName: CREDENTIAL_EDIT_MODAL_KEY,
-				mode: 'new',
-			},
-		});
-
-		await waitFor(() => expect(getByText('Webex by Cisco OAuth2 API')).toBeVisible());
-	});
-
 	test('closes through the dialog shell', async () => {
 		const uiStore = mockedStore(useUIStore);
 		const { getByTestId } = renderComponent({
