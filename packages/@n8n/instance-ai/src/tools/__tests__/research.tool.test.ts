@@ -1007,7 +1007,10 @@ describe('research tool', () => {
 
 			expect(result.savedTo).toBe('/home/user/workspace/research/pricing.md');
 			expect(result.content).toMatch(/^<untrusted_data source="https:\/\/example\.com\/pricing">/);
-			expect(result.content.length).toBeLessThan(1_000);
+			const preview = result.content
+				.replace(/^<untrusted_data[^>]*>\n?/, '')
+				.replace(/\n?<\/untrusted_data>$/, '');
+			expect(preview).toBe(fullContent.slice(0, 500));
 			expect(result.contentLength).toBe(fullContent.length);
 			expect(result.nextOffset).toBeUndefined();
 		});
