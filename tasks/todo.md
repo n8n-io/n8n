@@ -1,0 +1,44 @@
+# Tasks: Reuse n8n execution orchestration in @n8n/test
+
+See [plan.md](plan.md) for decisions, acceptance criteria, files, and verification. The unreleased test API can change. Use asynchronous production interfaces directly. No Linear issues are created. Completed items use the prepared-engine boundary recorded in the plan. Application state loading and persistent execution lifecycle remain outside that boundary.
+
+- [x] 1. Map production paths and add missing order-sensitive characterization cases.
+  - Depends on: none.
+  - Verify: real entry paths, modes, effect boundaries, and required ordering are recorded.
+- [x] 2. Share configured engine startup within the CLI.
+  - Depends on: 1.
+  - Verify: production uses it; import is isolated; a causal behavior test detects a missing await.
+- [x] 3. Connect the adapter to the shared prepared-run operation.
+  - Depends on: 2.
+  - Verify: root run behavior, modes, import effects, and dependency graph.
+- [x] Checkpoint: build both packages and compare a root workflow through actual application and adapter entries.
+- [x] 4. Share complete credential preparation operations.
+  - Depends on: 3.
+  - Verify: production defaults, expressions, authentication, policy boundaries, and causal ordering.
+- [x] 5. Replace the adapter credential implementation.
+  - Depends on: 4.
+  - Verify: preparation finishes before HTTP dispatch; failures prevent dispatch; redaction is covered.
+- [x] 6. Share code-task preparation and completion in production order.
+  - Depends on: 3.
+  - Verify: following nodes see state changes; runner failures and cleanup are covered.
+- [x] 7. Share child startup, context inheritance, and output policy with a test workflow source.
+  - Depends on: 3.
+  - Verify: root mode, preparation failures, output rules, awaited children, and detached children.
+- [x] Checkpoint: compare combined credential, Code, and child behavior through application and adapter paths.
+- [x] 8. Share webhook response orchestration and asynchronous operations.
+  - Depends on: 3.
+  - Verify: immediate capture precedes later mutation or failure; last-node and response-node modes match production.
+- [x] 9. Make package loading asynchronous and reuse production readers and validation order.
+  - Depends on: 3.
+  - Verify: directory and archive inputs, limits, invalid packages, and deletion of the separate reader.
+- [x] 10. Reuse production variable scanning and declarative node rules.
+  - Depends on: 3.
+  - Verify: one implementation per rule; production and adapter behavior tests pass.
+- [x] 11. Complete caller updates and application-versus-adapter comparisons.
+  - Depends on: 5, 6, 7, 8, 9, 10.
+  - Verify: API examples, observable effects, and causal ordering; a removed required await is detected.
+  - Update affected callers with earlier tasks so each task remains runnable.
+- [x] 12. Verify installed archives and report dependency costs.
+  - Depends on: 11.
+  - Verify: CommonJS, ESM, declarations, no workspace aliases, no server or database, and the full adapter suite.
+- [x] Final checkpoint: production operations own supported sequencing; duplicate implementations are removed; substitutions and unsupported paths are explicit.
