@@ -71,6 +71,8 @@ export type InstanceApplyScope = {
 	revision: string;
 	/** The team projects that the branch does not hold. The Apply deletes them. */
 	deletedProjects: Array<{ id: string; name: string }>;
+	/** The dependency report of that Apply. Only it lists the workflows and projects that stay. */
+	report: PromotionDependencyReport | null;
 };
 
 /**
@@ -177,12 +179,13 @@ export function usePromotionPreview(
 	 */
 	async function loadInstanceApply(environmentId: string): Promise<InstanceApplyScope | null> {
 		try {
-			const { revision, check } = await getPromotionInstanceApplyPreview(
+			const { revision, check, dependencyReport } = await getPromotionInstanceApplyPreview(
 				rootStore.publicApiContext,
 				environmentId,
 			);
 			return {
 				revision,
+				report: dependencyReport ?? null,
 				deletedProjects: check.conflicts.flatMap((conflict) =>
 					conflict.code === 'project-deletion' ? [conflict.project] : [],
 				),

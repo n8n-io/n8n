@@ -129,12 +129,22 @@ export function usePromotionPreviewLabels() {
 		type: keyof typeof MOVED_DETAIL,
 		move: ApplyCheckResult['movedWorkflows'][number],
 	): string {
+		const interpolate = {
+			project: move.project.name,
+			instanceProject:
+				move.instanceProject.name ??
+				i18n.baseText(
+					move.blockedBy === 'personal-project'
+						? 'promotions.preview.personalProject'
+						: 'promotions.preview.anotherProject',
+				),
+		};
+		// The server says why it cannot do the move. An older server gives no reason.
+		if (move.blockedBy) {
+			return i18n.baseText(`promotions.preview.blockers.moved.${move.blockedBy}`, { interpolate });
+		}
 		return i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
-			interpolate: {
-				project: move.project.name,
-				instanceProject:
-					move.instanceProject.name ?? i18n.baseText('promotions.preview.personalProject'),
-			},
+			interpolate,
 		});
 	}
 

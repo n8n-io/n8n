@@ -3,6 +3,7 @@ import { computed, ref, watch, type Ref } from 'vue';
 
 import {
 	dependencyIssueCount,
+	gapGroupOf,
 	noConfirmations,
 	pendingConfirmations,
 	scopeDependencyReport,
@@ -15,6 +16,7 @@ import type { ResourceKey, SelectionGraph } from '../promotionPreview.selection'
 export type DependencyStop =
 	| 'hardBlocks'
 	| 'strictGaps'
+	| 'unknownGaps'
 	| 'grants'
 	| 'deletionCallers'
 	| 'credentialHomes';
@@ -33,9 +35,9 @@ export function usePromotionDependencies({
 	/** The report of the preview. It covers every change that the preview lists. */
 	source: Ref<PromotionDependencyReport | null>;
 	/**
-	 * The report of an operation that stopped on changed gaps, or of the page that handed its
-	 * selection over. The server computed it for a selection, so it knows more than the preview
-	 * and wins until the next refresh.
+	 * The last report that the server computed for a selection: the dry run of the current
+	 * selection, an operation that stopped, or the page that handed its selection over. It wins
+	 * over the preview.
 	 */
 	operationReport: Ref<PromotionDependencyReport | null>;
 	graph: Ref<SelectionGraph | null>;
@@ -54,8 +56,8 @@ export function usePromotionDependencies({
 	);
 
 	const report = computed((): PromotionDependencyReport | null => {
-		// Both reports follow the selection: a gap leaves when the user includes its target or
-		// clears its consumer. Only the operation finds a gap that a cleared target opens.
+		// The filter is the instant view while the report of a new selection is on its way: a gap
+		// leaves when the user includes its target or clears its consumer.
 		const base = operationReport.value ?? source.value;
 		if (!base || !graph.value) return null;
 		return scopeDependencyReport(base, {
@@ -75,6 +77,8 @@ export function usePromotionDependencies({
 		if (!report.value) return undefined;
 		if (report.value.hardBlocks.length > 0) return 'hardBlocks';
 		if (gapCount.value > 0 && !report.value.allowIncomplete) return 'strictGaps';
+		// A gap of a group that this client does not know cannot be confirmed here.
+		if (report.value.gaps.some((gap) => gapGroupOf(gap) === 'unknown')) return 'unknownGaps';
 		return pending.value[0];
 	});
 	/**
@@ -82,7 +86,11 @@ export function usePromotionDependencies({
 	 * confirmation of the report can still be pending.
 	 */
 	const needsGapConfirmation = computed(
-		() => gapCount.value > 0 && stop.value !== 'hardBlocks' && stop.value !== 'strictGaps',
+		() =>
+			gapCount.value > 0 &&
+			stop.value !== 'hardBlocks' &&
+			stop.value !== 'strictGaps' &&
+			stop.value !== 'unknownGaps',
 	);
 	const payload = computed(() =>
 		toConfirmationPayload(report.value, confirmations.value, direction.value),

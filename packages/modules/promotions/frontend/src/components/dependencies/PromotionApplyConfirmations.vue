@@ -47,6 +47,8 @@ const i18n = useI18n();
 const { credentialTypeName } = useCredentialTypeNames();
 const { credentialNotMovedText } = usePromotionDependencyLabels();
 const hiddenKept = computed(() => props.report.hiddenKeptWorkflowCount ?? 0);
+const keptProjects = computed(() => props.report.keptProjects ?? []);
+const hiddenKeptProjects = computed(() => props.report.hiddenKeptProjectCount ?? 0);
 
 const workflowLinks = (workflows: ReadonlyArray<{ id: string; name: string }>) =>
 	workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name }));
@@ -307,6 +309,37 @@ const placeholders = computed(() =>
 						i18n.baseText('promotions.dependencies.kept.hidden', {
 							adjustToNumber: hiddenKept,
 							interpolate: { count: String(hiddenKept) },
+						})
+					}}
+				</N8nText>
+			</li>
+		</PromotionDependencySection>
+
+		<PromotionDependencySection
+			v-if="keptProjects.length > 0 || hiddenKeptProjects > 0"
+			:title="i18n.baseText('promotions.dependencies.keptProjects.title')"
+			:description="i18n.baseText('promotions.dependencies.keptProjects.description')"
+			tone="quiet"
+			data-test-id="promotion-dependency-kept-projects"
+		>
+			<li v-for="kept in keptProjects" :key="kept.project.id" :class="$style.row">
+				<N8nText step="xs" color="text-dark">
+					{{
+						i18n.baseText('promotions.dependencies.keptProjects.row', {
+							interpolate: {
+								project: kept.project.name,
+								credentials: kept.credentials.map(({ name }) => name).join(', '),
+							},
+						})
+					}}
+				</N8nText>
+			</li>
+			<li v-if="hiddenKeptProjects > 0" :class="$style.row">
+				<N8nText step="2xs" color="text-base">
+					{{
+						i18n.baseText('promotions.dependencies.keptProjects.hidden', {
+							adjustToNumber: hiddenKeptProjects,
+							interpolate: { count: String(hiddenKeptProjects) },
 						})
 					}}
 				</N8nText>

@@ -41,7 +41,7 @@ const { credentialTypeName } = useCredentialTypeNames();
 const { credentialNotMovedText } = usePromotionDependencyLabels();
 
 const outcome = computed(() => applyOutcome(props.result));
-const unpublished = computed(() => outcome.value.moves.filter((move) => move.unpublished));
+const unpublished = computed(() => outcome.value.moves.filter((move) => !!move.unpublished));
 const intro = computed(() => i18n.baseText('promotions.applyResult.intro'));
 
 // The credential opens in a new tab, so the result stays on this page. A new tab needs a URL.
@@ -186,9 +186,7 @@ const credentialHref = (projectId: string, credentialId: string) =>
 									interpolate: {
 										name: move.name,
 										project:
-											move.toProjectName ??
-											(move.toProjectId ? projectNames.get(move.toProjectId) : undefined) ??
-											i18n.baseText('promotions.preview.anotherProject'),
+											move.toProject.name ?? i18n.baseText('promotions.preview.anotherProject'),
 									},
 								})
 							}}
@@ -210,6 +208,27 @@ const credentialHref = (projectId: string, credentialId: string) =>
 									interpolate: {
 										name: workflow.name,
 										callers: workflow.referencedBy.map(({ name }) => name).join(', '),
+									},
+								})
+							}}
+						</N8nText>
+					</li>
+				</PromotionDependencySection>
+
+				<PromotionDependencySection
+					v-if="outcome.keptProjects.length > 0"
+					:title="i18n.baseText('promotions.dependencies.keptProjects.title')"
+					:description="i18n.baseText('promotions.applyResult.keptProjects.description')"
+					compact
+					data-test-id="promotion-apply-result-kept-projects"
+				>
+					<li v-for="kept in outcome.keptProjects" :key="kept.project.id" :class="$style.row">
+						<N8nText step="xs" color="text-dark">
+							{{
+								i18n.baseText('promotions.dependencies.keptProjects.row', {
+									interpolate: {
+										project: kept.project.name,
+										credentials: kept.credentials.map(({ name }) => name).join(', '),
 									},
 								})
 							}}

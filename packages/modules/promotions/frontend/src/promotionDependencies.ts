@@ -161,6 +161,7 @@ export function isEmptyReport(report: PromotionDependencyReport) {
 		report.credentialMoves.length === 0 &&
 		report.deletionCallers.length === 0 &&
 		report.keptWorkflows.length === 0 &&
+		(report.keptProjects?.length ?? 0) === 0 &&
 		report.credentialHomeChoices.length === 0
 	);
 }

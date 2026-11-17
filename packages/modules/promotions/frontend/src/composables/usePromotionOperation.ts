@@ -128,8 +128,8 @@ export function usePromotionOperation(
 	const notice = ref<OperationNotice | null>(null);
 	const error = shallowRef<OperationError | null>(null);
 	/**
-	 * The report of an operation that stopped because the gaps changed. It describes the exact
-	 * selection of that request, so the page shows it until the selection changes.
+	 * The last dependency report that the server computed for a selection: the dry run of the
+	 * page, or an operation that stopped because the gaps changed.
 	 */
 	const gapsReport = shallowRef<PromotionDependencyReport | null>(null);
 	/**
@@ -405,7 +405,6 @@ export function usePromotionOperation(
 			phase.value = 'running';
 			notice.value = null;
 			error.value = null;
-			gapsReport.value = null;
 			if (direction.value === 'promote') await promote(request);
 			else if (source) await apply(request, source);
 		} catch (cause) {

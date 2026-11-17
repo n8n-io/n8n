@@ -46,6 +46,10 @@ import { usePromotionOwnerRequest } from '../composables/usePromotionOwnerReques
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection, type SelectionSeed } from '../composables/usePromotionSelection';
+import {
+	usePromotionSelectionReport,
+	type ReportSelection,
+} from '../composables/usePromotionSelectionReport';
 import type { GapTargetRow, PromotionOwnerRequester } from '../promotionDependencies';
 import { loadPromotionFixture, promotionFixtureName } from '../promotionFixtures';
 import { changedProjectsOf, scopePlannedMoves } from '../promotionMoves';
@@ -140,7 +144,10 @@ const promoteEnvironment = computed(() =>
 // A project page shows and enforces only the blockers of the workflows it lists.
 const scopedCheck = computed(() => {
 	if (!check.value || !graph.value) return null;
-	return isEnvironment.value ? check.value : scopeCheck(check.value, graph.value);
+	const scoped = isEnvironment.value ? check.value : scopeCheck(check.value, graph.value);
+	// With a dependency report, its grants are the grant step. The check only mirrors them for
+	// older clients.
+	return dependencyReport.value ? { ...scoped, accessRequirements: [] } : scoped;
 });
 // A project-wide conflict blocks all of them, so it also stops a selection without workflows.
 const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
@@ -242,8 +249,13 @@ const unlistedIncluded = computed(() =>
 		})),
 );
 const dependencies = usePromotionDependencies({
-	source: dependencyReport,
-	operationReport: operation.gapsReport,
+	// The Apply of the whole instance has its own report: only it lists what reconciliation keeps.
+	source: computed(() =>
+		wholeInstance.value
+			? (instanceApply.value?.report ?? dependencyReport.value)
+			: dependencyReport.value,
+	),
+	operationReport: computed(() => (wholeInstance.value ? null : operation.gapsReport.value)),
 	graph,
 	included: inOperation,
 	direction,
@@ -259,7 +271,12 @@ const plannedMoves = computed(() =>
 			})
 		: [],
 );
-const changedProjects = computed(() => changedProjectsOf(plannedMoves.value));
+// The server lists the projects of every planned move. A selection with fewer moves counts its own.
+const changedProjects = computed(() =>
+	plannedMoves.value.length === (check.value?.plannedMoves?.length ?? 0)
+		? (check.value?.changedProjects ?? changedProjectsOf(plannedMoves.value))
+		: changedProjectsOf(plannedMoves.value),
+);
 // Only the changes view can confirm a move out of a project that the branch does not hold.
 const movesOutOfOperation = computed(() =>
 	isEnvironment.value
@@ -499,6 +516,34 @@ const request = computed((): OperationRequest => {
 		confirmations,
 	};
 });
+/**
+ * What the page asks the server to check: the selection of the operation. `null` when there is
+ * nothing to ask. The whole-instance Apply reads the report of its own preview instead.
+ */
+const reportSelection = computed((): ReportSelection | null => {
+	const environmentId = environment.value?.id;
+	if (!graph.value || !environmentId || fixture.value || wholeInstance.value) return null;
+	if (state.value !== 'ready' || !dependencyReport.value) return null;
+	if (selection.selected.value.size === 0 && selection.extra.value.size === 0) return null;
+	const { projects: selected, workflowIds, folderIds } = request.value;
+	const selectedProjects =
+		props.projectId === undefined
+			? (selected ?? [])
+			: [{ projectId: props.projectId, workflowIds, folderIds }];
+	if (selectedProjects.length === 0) return null;
+	return {
+		environmentId,
+		projects: selectedProjects,
+		credentialHomes: dependencies.confirmations.value.credentialHomes,
+		revision: preview.value?.revision,
+	};
+});
+const { checking: checkingDependencies } = usePromotionSelectionReport({
+	selection: reportSelection,
+	direction,
+	report: operation.gapsReport,
+});
+
 const isDestructive = computed(
 	() =>
 		request.value.confirmDestructiveChanges ||
@@ -548,6 +593,8 @@ const canSubmit = computed(
 		state.value === 'ready' &&
 		!refreshing.value &&
 		!operation.isBusy.value &&
+		// The button follows the report of the current selection, so it waits for it.
+		!checkingDependencies.value &&
 		!submitBlockedReason.value &&
 		!dependencies.stop.value &&
 		actionableChanges.value > 0 &&
@@ -630,19 +677,6 @@ const reportOrEmpty = computed(
 			hardBlocks: [],
 		},
 );
-/**
- * The preview checks every change that it lists. With another selection, a cleared item can
- * open a gap that only the operation finds, so the tab says that the check runs again.
- */
-const selectionNote = computed(() => {
-	if (!graph.value || !dependencies.report.value || operation.gapsReport.value) return undefined;
-	const everything = selectableResourceKeys.value.every(
-		(key) => selection.selected.value.has(key) || disabledKeys.value.has(key),
-	);
-	return everything
-		? undefined
-		: i18n.baseText(`promotions.dependencies.selectionNote.${props.direction}`);
-});
 watch([showBlockersTab, showDependenciesTab], ([blockersTab, dependenciesTab]) => {
 	if (
 		(activeTab.value === 'blockers' && !blockersTab) ||
@@ -762,9 +796,8 @@ const cardHeading = computed(() => {
 	};
 });
 
-/** A manual refresh starts from the preview again. The report of an older request goes. */
+/** A new preview has a new revision, so the page asks for the report of the selection again. */
 async function onRefresh() {
-	operation.gapsReport.value = null;
 	await refresh();
 }
 
@@ -1143,7 +1176,7 @@ const treeResizer = useResizablePanel({
 				:class="$style.dependencies"
 				:report="reportOrEmpty"
 				:unchecked="!dependencies.report.value"
-				:selection-note="selectionNote"
+				:checking="checkingDependencies"
 				:is-request-sent="ownerRequest.isSent"
 				:direction="direction"
 				:confirmations="dependencies.confirmations.value"

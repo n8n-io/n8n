@@ -7,6 +7,8 @@ import type {
 	PromoteEnvironmentSelectionRequestDto,
 	PromoteSelectionRequestDto,
 	PromoteSelectionResultDto,
+	PromotionDependencyReport,
+	PromotionDependencyReportRequestDto,
 	PromotionDirection,
 	PromotionEnvironmentChanges,
 	PromotionInstanceApplyPreview,
@@ -65,6 +67,8 @@ const environmentPaths = {
 		`/promotions/environments/${environmentId}/changes/${direction}`,
 	details: (environmentId: string, direction: PromotionDirection) =>
 		`/promotions/environments/${environmentId}/changes/${direction}/details`,
+	dependencyReport: (environmentId: string, direction: PromotionDirection) =>
+		`/promotions/environments/${environmentId}/changes/${direction}/dependency-report`,
 	promote: (environmentId: string) => `/promotions/environments/${environmentId}/promote-selection`,
 	apply: (environmentId: string) => `/promotions/environments/${environmentId}/apply-selection`,
 	instanceApplyPreview: (environmentId: string) =>
@@ -120,6 +124,24 @@ export async function getPromotionEnvironmentDetails(
 		context,
 		'POST',
 		environmentPaths.details(environmentId, direction),
+		payload,
+	);
+}
+
+/**
+ * The dependency report of one selection, from the same check as the operation. It writes
+ * nothing. The selection of a project page is one entry in `projects`.
+ */
+export async function getPromotionDependencyReport(
+	context: PublicApiContext,
+	environmentId: string,
+	direction: PromotionDirection,
+	payload: PromotionDependencyReportRequestDto,
+): Promise<PromotionDependencyReport> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		environmentPaths.dependencyReport(environmentId, direction),
 		payload,
 	);
 }

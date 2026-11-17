@@ -39,8 +39,8 @@ const props = defineProps<{
 	isRequestSent?: (gap: PromotionGap) => boolean;
 	/** True when the server sent no report. The page then shows only what it knows without one. */
 	unchecked?: boolean;
-	/** Says that the list covers the preview, when the selection differs from it. */
-	selectionNote?: string;
+	/** True while the server checks a new selection. The list then shows the page's own view. */
+	checking?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -289,15 +289,16 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 
 		<div :class="$style.footnotes">
 			<N8nText
-				v-if="selectionNote"
+				v-if="checking"
 				tag="p"
 				step="2xs"
 				color="text-light"
 				:class="$style.footnote"
-				data-test-id="promotion-dependency-selection-note"
+				role="status"
+				data-test-id="promotion-dependency-checking"
 			>
-				<N8nIcon icon="info" size="small" />
-				{{ selectionNote }}
+				<N8nIcon icon="refresh-cw" size="small" />
+				{{ i18n.baseText('promotions.dependencies.checking') }}
 			</N8nText>
 			<N8nText
 				tag="p"

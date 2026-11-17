@@ -706,3 +706,19 @@ selection routes; the import plans a confirmed grant as given). The previews and
 workflow counts in its new project: a credential of the old project that the new project
 cannot use is a grant or a gap, also when only the published version uses it. The check does
 not model data tables and project variables, so their warning after a move is not built.
+
+### J10. The report of the selection comes from the server (replaces the limit of J2)
+
+The page asks `POST .../changes/:direction/dependency-report` for the report of
+the current selection, after a pause of 300 ms, on the changes view and on a
+project page. The answer goes to the slot of the last server report. The
+client-side filter of E1 is only the view while the request runs, and the
+submit button waits for the answer. A request that fails leaves the filtered
+view; the operation checks again. The Apply of the whole instance (J1) reads
+the report of its own preview instead, because only that report lists the
+workflows and projects that reconciliation keeps.
+
+### J11. A gap of an unknown group cannot be confirmed
+
+The page disables the operation, also on an environment that allows
+incomplete operations, and says to update n8n or close the gap.
