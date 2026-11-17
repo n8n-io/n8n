@@ -36,9 +36,23 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Adjust Gmail Trigger nodes on versions below 1.4',
+				action: 'Replace the node with Gmail Trigger 1.4',
 				description:
-					'Replace each affected node with a new Gmail Trigger node, which uses version 1.4, and keep its name and connections. "Max Emails per Poll" exists only on version 1.4. If a poll can return more than 10 emails and the workflow must process them at once, raise "Max Emails per Poll". If the workflow must run on drafts, enable "Include Drafts" in Filters. If it must run on sent or scheduled emails, use a Schedule Trigger with a Gmail "Get Many messages" operation instead, for example with the search "in:sent" or "in:scheduled". Add a Remove Duplicates node set to "Remove Items Processed in Previous Executions" on the message ID, so that later runs skip messages the workflow already processed. It marks a message as processed when the message passes the node, so place it just before the steps that must not repeat. If the version 1.4 behavior is acceptable as it is, set the finding to Won\'t fix.',
+					"Add a new Gmail Trigger node with the same name and connections. If the version 1.4 behavior works for this workflow, set the finding to Won't fix instead.",
+			},
+			{
+				action: 'Raise "Max Emails per Poll"',
+				description:
+					'If a poll can return more than 10 emails and the workflow must process them at once, raise this limit on the new node.',
+			},
+			{
+				action: 'Enable "Include Drafts"',
+				description: 'If the workflow must run on drafts, enable "Include Drafts" in Filters.',
+			},
+			{
+				action: 'Poll sent or scheduled emails on a schedule',
+				description:
+					'If the workflow must run on sent or scheduled emails, use a Schedule Trigger and a Gmail "Get Many messages" operation with the search "in:sent" or "in:scheduled". Add a Remove Duplicates node set to "Remove Items Processed in Previous Executions" on the message ID, just before the steps that must not repeat.',
 			},
 		];
 	}

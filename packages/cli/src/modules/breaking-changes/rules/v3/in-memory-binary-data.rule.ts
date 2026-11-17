@@ -43,9 +43,19 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 			],
 			recommendations: [
 				{
-					action: 'Switch the binary data mode',
+					action: 'Switch to `database` mode',
 					description:
-						'Set N8N_DEFAULT_BINARY_DATA_MODE to `filesystem`, `s3` or `database` before updating, and make sure the chosen storage has enough capacity. `s3` needs a license that includes it and an S3 bucket configuration. With `filesystem` in queue mode or multi-main mode, every n8n process must read and write the same shared directory.',
+						'Set N8N_DEFAULT_BINARY_DATA_MODE=database before updating. A separate engine process cannot use this mode.',
+				},
+				{
+					action: 'Switch to `filesystem` mode',
+					description:
+						'Set N8N_DEFAULT_BINARY_DATA_MODE=filesystem before updating, and make sure the disk has enough capacity. In queue mode or multi-main mode, every n8n process must read and write the same shared directory.',
+				},
+				{
+					action: 'Switch to `s3` mode',
+					description:
+						'Set N8N_DEFAULT_BINARY_DATA_MODE=s3 before updating. This mode needs a license that includes it and an S3 bucket configuration.',
 				},
 			],
 		};
