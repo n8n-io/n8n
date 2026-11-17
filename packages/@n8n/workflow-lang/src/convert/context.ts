@@ -107,6 +107,11 @@ export interface NodeContext {
 	sql?: boolean;
 	/** Records a time zone that the node's native code formats dates in (META \`zones\`). */
 	useZone?(zone: string): void;
+	/**
+	 * The variable that a Respond to Webhook node sets to true after it sends the response.
+	 * It is undefined when the run has no webhook request that waits for that node.
+	 */
+	responded?: string;
 	/** True when output `index` of the node has a connection. */
 	connected(index: number): boolean;
 	/** Names of the nodes that run before this one, which a code step may read. */

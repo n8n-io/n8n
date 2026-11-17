@@ -1079,6 +1079,7 @@ export function lowerRespond(c: NodeContext): void {
 	const call: Code = { kind: 'object', entries: fields };
 	if (responseOutput === null) {
 		w.block(`await ctx.respond(${c.print(call, 'await ctx.respond(')});`);
+		if (c.responded !== undefined) w.line(`${c.responded} = true;`);
 		w.close();
 		w.line(`const ${c.output(0)}: Json[] = ${c.input};`);
 		return;
@@ -1115,6 +1116,7 @@ export function lowerRespond(c: NodeContext): void {
 	response.push(['statusCode', raw(status ?? '200')]);
 	const literalCall: Code = { kind: 'object', entries: literalFields };
 	w.block(`await ctx.respond(${c.print(literalCall, 'await ctx.respond(')});`);
+	if (c.responded !== undefined) w.line(`${c.responded} = true;`);
 	const item: Code = {
 		kind: 'object',
 		entries: [['response', { kind: 'object', entries: response }]],

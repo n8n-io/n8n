@@ -13,6 +13,7 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { getChildNodes } from 'n8n-workflow';
 
 import type { CompiledEngineProvider } from '@/services/compiled-engine-bridge.service';
 import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
@@ -49,17 +50,41 @@ const UNSEQUENCED = 'unsequenced';
 /** The options of the Webhook node that `wfrt` reads when it takes the request. */
 const RUNTIME_WEBHOOK_OPTIONS = new Set(['binaryPropertyName', 'rawBody', 'binaryData']);
 
+const RESPOND_TO_WEBHOOK = 'n8n-nodes-base.respondToWebhook';
+
+/**
+ * True when `wfrt` gives the response of v1 for this Webhook node. `wfrt` answers a request
+ * at a Respond to Webhook step, or at the end of the run. It does not read the response mode
+ * of the node. Thus it serves only the mode `responseNode`, and only when a Respond to
+ * Webhook node comes after the Webhook node: without one, v1 refuses the request.
+ */
+function runtimeGivesWebhookResponse(
+	node: INode,
+	workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>,
+): boolean {
+	if (node.parameters.responseMode !== 'responseNode') return false;
+	const after = new Set(getChildNodes(workflow.connections, node.name));
+	return workflow.nodes.some(
+		(other) => other.type === RESPOND_TO_WEBHOOK && !other.disabled && after.has(other.name),
+	);
+}
+
 /**
  * True when `wfrt` can serve the requests of this Webhook node itself. `wfrt` does not
  * check who sends a request and does not read the other options of the node (the allowed
- * addresses, the allowed origins, the response headers). For such a node the Webhook node
- * of n8n takes the request, as for a trigger of an app, and its item starts the run in
- * `wfrt`: the item then has what the v1 node gives, for example `jwtPayload`.
+ * addresses, the allowed origins, the response headers). It also does not make the response
+ * of each response mode. For such a node the Webhook node of n8n takes the request, as for
+ * a trigger of an app, and its item starts the run in `wfrt`: the item then has what the v1
+ * node gives, for example `jwtPayload`, and n8n makes the response as for a v1 run.
  */
-export function runtimeServesWebhookNode(node: INode): boolean {
+export function runtimeServesWebhookNode(
+	node: INode,
+	workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>,
+): boolean {
 	if (node.type !== 'n8n-nodes-base.webhook') return false;
 	const authentication = node.parameters.authentication;
 	if (authentication !== undefined && authentication !== 'none') return false;
+	if (!runtimeGivesWebhookResponse(node, workflow)) return false;
 	const options = node.parameters.options;
 	if (options === undefined) return true;
 	if (typeof options !== 'object' || options === null || Array.isArray(options)) return false;
@@ -398,7 +423,7 @@ export class CompiledEngineService implements CompiledEngineProvider {
 
 	servesWebhook(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>, nodeName: string): boolean {
 		const kept = findTriggerNode(workflow);
-		return kept?.name === nodeName && runtimeServesWebhookNode(kept);
+		return kept?.name === nodeName && runtimeServesWebhookNode(kept, workflow);
 	}
 
 	async forwardWebhook({
