@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /** No unique index or foreign key may cover `lease.leaseSessionId`, `lease.fencingToken` or `lease.revokedAt`: updates to them then do not conflict with the `FOR KEY SHARE` lock of a fence check. */
-export class CreateLeaseTables1794818156000 implements ReversibleMigration {
+export class CreateLeaseTables1794906454000 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { createTable, createIndex, column },
 		escape,

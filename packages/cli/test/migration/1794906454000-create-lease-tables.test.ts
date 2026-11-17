@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 
 import { indexColumnsInOrder } from './shared/index-columns';
 
-const MIGRATION_NAME = 'CreateLeaseTables1794818156000';
+const MIGRATION_NAME = 'CreateLeaseTables1794906454000';
 
 const TABLES = ['lease_kind', 'lease_session', 'lease'];
 
