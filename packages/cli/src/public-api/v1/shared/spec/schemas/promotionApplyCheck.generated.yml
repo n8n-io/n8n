@@ -1335,6 +1335,63 @@ properties:
         - name
         - scope
         - consumers
+  plannedMoves:
+    type: array
+    items:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - workflow
+            - folder
+        id:
+          type: string
+        name:
+          type: string
+        fromProject:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+        toProject:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+        needsConfirmation:
+          type: boolean
+        losesShares:
+          type: boolean
+      required:
+        - kind
+        - id
+        - name
+        - fromProject
+        - toProject
+        - needsConfirmation
+  changedProjects:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+      required:
+        - id
 required:
   - missingProjects
   - missingBindings

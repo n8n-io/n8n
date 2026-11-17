@@ -181,6 +181,13 @@ export class ApplyCheckFactsService {
 			knownProjects,
 			assumedProjects: Object.entries(branch.projects).map(([id, { name }]) => ({ id, name })),
 		});
+		// The Apply creates a project that the destination lacks, and the user becomes its admin.
+		const existingBranchProjects = new Set(
+			await this.projectRepository.findExistingIds(Object.keys(branch.projects)),
+		);
+		const createdProjectIds = accessFacts.operableProjectIds.filter(
+			(id) => id in branch.projects && !existingBranchProjects.has(id),
+		);
 		const credentialRights: AccessFact['credentials'] = {};
 		for (const id of credentials.keys()) {
 			credentialRights[id] = { canShare: shareable.has(id), canMove: movable.has(id) };
@@ -198,7 +205,7 @@ export class ApplyCheckFactsService {
 			access: {
 				...accessFacts,
 				credentials: credentialRights,
-				createCredentialProjectIds: createProjects.map(({ id }) => id),
+				createCredentialProjectIds: [...createProjects.map(({ id }) => id), ...createdProjectIds],
 				sharingLicensed: this.licenseState.isSharingLicensed(),
 				// An Apply shows no review.
 				canReadReviews: false,

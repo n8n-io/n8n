@@ -15,6 +15,8 @@ import {
 	type PromotionApplyCheck,
 	type PromotionBindingConflict,
 	type PromotionCheckoutPublicDto,
+	type PromotionDependencyReport,
+	type PromotionDependencyReportRequestDto,
 	type PromotionDirection,
 	type PromotionEnvironmentChanges,
 	type PromotionEnvironmentSelectionProject,
@@ -34,7 +36,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -77,7 +79,11 @@ import {
 	toImportSelection,
 } from './apply-preview.service';
 import { LocalPackageEntities } from './local-package-entities.service';
-import { PromotionDependencyGate } from './promotion-dependency-gate.service';
+import {
+	PromotionDependencyGate,
+	type ApplyConfirmations,
+	type ApplyDependencyDecision,
+} from './promotion-dependency-gate.service';
 import { PromotionEnvironmentProjectsService } from './promotion-environment-projects.service';
 import { PromotePreviewService } from './promote-preview.service';
 import { GitCommitPackageReader } from './git-commit-package-reader';
@@ -141,6 +147,8 @@ type MissingCredentialBinding = Extract<
 >;
 
 type PreviewChangedResult = Extract<ApplyPackageResultDto, { status: 'preview-changed' }>;
+
+type ContinuedApply = Extract<ApplyDependencyDecision, { status: 'continue' }>;
 
 const NO_APPLY_PACKAGE_MESSAGE =
 	'The remote branch has no exported package to import. Promote to it first.';
@@ -292,6 +300,14 @@ export class PromotionsService {
 		// their own environment. Personal projects stay out of scope.
 		const projectIds = await this.projectRepository.findTeamProjectIds();
 
+		// The result of this route has no status, so a Promote that must stop throws (409).
+		const dependencyReport = await this.dependencyGate.promoteReport({
+			user: actor,
+			input,
+			selection: await this.dependencyGate.instancePromoteSelection(projectIds),
+		});
+		this.dependencyGate.assertCanPromote(dependencyReport, request.confirmedGapIds);
+
 		this.logger.info('Exporting projects for a promotion', {
 			environmentId: input.environmentId,
 			projectCount: projectIds.length,
@@ -301,6 +317,8 @@ export class PromotionsService {
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 
 		let pushed: PushedPromotion;
+		let reviewMessage: string | undefined;
+		let written: Array<{ kind: 'credential' | 'workflow'; id: string }> = [];
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				instancePromotionExportRequest({
@@ -310,6 +328,18 @@ export class PromotionsService {
 				}),
 				{ targetDir: stagingFolder },
 			);
+
+			// The export does not know why a target is not in the package. Apply reads the reason.
+			const withReasons = this.dependencyGate.withRequirementReasons(
+				exportResult.manifest,
+				dependencyReport,
+			);
+			if (withReasons !== exportResult.manifest) {
+				await writeFile(
+					path.join(stagingFolder, MANIFEST_FILE),
+					JSON.stringify(withReasons, null, '\t'),
+				);
+			}
 
 			// Replace the managed package only after the new one is complete.
 			await rm(packageFolder, { recursive: true, force: true });
@@ -323,12 +353,27 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
-			const commitMessage =
+			const baseMessage =
 				request.commitMessage ??
 				buildInstancePromotionCommitMessage({
 					projectCount: projectIds.length,
 					workflowCount: exportResult.counts.workflows,
 				});
+			const commitMessage = this.dependencyGate.commitMessageWithGaps(
+				baseMessage,
+				dependencyReport,
+			);
+			reviewMessage = this.dependencyGate.reviewMessageWithGaps(baseMessage, dependencyReport);
+			written = [
+				...(exportResult.manifest.workflows ?? []).map(({ id }) => ({
+					kind: 'workflow' as const,
+					id,
+				})),
+				...(exportResult.manifest.credentials ?? []).map(({ id }) => ({
+					kind: 'credential' as const,
+					id,
+				})),
+			];
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -351,6 +396,9 @@ export class PromotionsService {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
 
+		// A Promote into a review branch closes a request when the review merges (the inbox checks).
+		if (!targetBranchName) await this.dependencyGate.closeOwnerRequests(input, written);
+
 		return {
 			environmentId: input.environmentId,
 			counts: pushed.counts,
@@ -359,8 +407,10 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				commitMessage: pushed.commitMessage,
+				...(reviewMessage ? { reviewMessage } : {}),
 				promotionRunContents: { projectIds },
 			})),
+			dependencyReport,
 		};
 	}
 
@@ -372,6 +422,8 @@ export class PromotionsService {
 			promotionBranchName: string | undefined;
 			commitSha: string;
 			commitMessage: string;
+			/** The text of the review when it differs from the commit message: the gaps as Markdown. */
+			reviewMessage?: string;
 			promotionRunContents: PromotionRunContents;
 		},
 	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
@@ -396,7 +448,7 @@ export class PromotionsService {
 		}
 		if (!push.promotionBranchName) return {};
 		// The first line becomes the merge request title, the rest its description.
-		const lines = push.commitMessage.split('\n');
+		const lines = (push.reviewMessage ?? push.commitMessage).split('\n');
 		const titleIndex = lines.findIndex((line) => line.trim() !== '');
 		if (titleIndex === -1) {
 			return {
@@ -497,17 +549,9 @@ export class PromotionsService {
 		const dependencyReport = await this.dependencyGate.promoteReport({
 			user: actor,
 			input,
-			projects: selections.map(({ projectId }) => ({
-				id: projectId,
-				name: projects.get(projectId)?.name ?? projectId,
-				canOperate: true,
-			})),
 			selection: selections,
 		});
-		if (
-			dependencyReport &&
-			this.dependencyGate.mustStop(dependencyReport, request.confirmedGapIds)
-		) {
+		if (this.dependencyGate.mustStop(dependencyReport, request.confirmedGapIds)) {
 			this.logger.info('Promote stopped because the gaps changed', {
 				status: 'gaps-changed',
 				environmentId: input.environmentId,
@@ -558,6 +602,8 @@ export class PromotionsService {
 		let keepPrePushBackup = false;
 
 		let pushed: PushedPromotion;
+		let reviewMessage: string | undefined;
+		let written: Array<{ kind: 'credential' | 'workflow'; id: string }> = [];
 		try {
 			if (packageExisted) {
 				await rm(prePushBackup, { recursive: true, force: true });
@@ -588,10 +634,14 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 			assertSelectedCredentialsExported(exported.manifest, selections);
-			const staging = await this.workingCopy.dropUnselectedCredentials(
-				stagingFolder,
-				exported.manifest,
-				selections,
+			// Each requirement row records why its target is not on the branch: Apply reads it.
+			const staging = this.dependencyGate.withRequirementReasons(
+				await this.workingCopy.dropUnselectedCredentials(
+					stagingFolder,
+					exported.manifest,
+					selections,
+				),
+				dependencyReport,
 			);
 			const counts = { ...exported.counts, credentials: staging.credentials?.length ?? 0 };
 
@@ -612,9 +662,19 @@ export class PromotionsService {
 				await this.workingDirectory.invalidateDescriptor(input.environmentId);
 			}
 
-			const commitMessage =
+			const baseMessage =
 				request.commitMessage ??
 				this.defaultSelectionCommitMessage(projects, selections, staging, branch);
+			// An incomplete Promote lists its gaps for the reviewer.
+			const commitMessage = this.dependencyGate.commitMessageWithGaps(
+				baseMessage,
+				dependencyReport,
+			);
+			reviewMessage = this.dependencyGate.reviewMessageWithGaps(baseMessage, dependencyReport);
+			written = [
+				...(staging.workflows ?? []).map(({ id }) => ({ kind: 'workflow' as const, id })),
+				...(staging.credentials ?? []).map(({ id }) => ({ kind: 'credential' as const, id })),
+			];
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -672,6 +732,9 @@ export class PromotionsService {
 			});
 		}
 
+		// A Promote into a review branch closes a request when the review merges (the inbox checks).
+		if (!targetBranchName) await this.dependencyGate.closeOwnerRequests(input, written);
+
 		return {
 			status: 'promoted',
 			environmentId: input.environmentId,
@@ -682,9 +745,10 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				commitMessage: pushed.commitMessage,
+				...(reviewMessage ? { reviewMessage } : {}),
 				promotionRunContents: { projectIds },
 			})),
-			...(dependencyReport ? { dependencyReport } : {}),
+			dependencyReport,
 		};
 	}
 
@@ -752,6 +816,7 @@ export class PromotionsService {
 								input: current,
 								readBranch: async () =>
 									await this.readBranchPackageResolved(current, projectId, 'promoting'),
+								skipDependencyReport: true,
 							});
 							if (preview.revision !== request.expectedPreviewRevision) {
 								this.logger.info('Promote stopped because the preview changed', {
@@ -794,6 +859,7 @@ export class PromotionsService {
 		user: User,
 		input: PromotionOperationInput,
 		action = 'listing branch files',
+		skipDependencyReport = false,
 	): Promise<PromotionEnvironmentChanges> {
 		const { projects, exportableProjectIds } = await this.environmentProjects.forView(
 			user,
@@ -807,6 +873,7 @@ export class PromotionsService {
 			exportableProjectIds,
 			readBranch: async (projectIds) =>
 				await this.readBranchPackageResolved(input, projectIds, action),
+			skipDependencyReport,
 		});
 	}
 
@@ -819,6 +886,7 @@ export class PromotionsService {
 		user: User,
 		input: PromotionOperationInput,
 		files: ReadonlyMap<string, Buffer>,
+		skipDependencyReport = false,
 	) {
 		const preview = await this.applyPreviewService.buildForProjects({
 			user,
@@ -826,18 +894,89 @@ export class PromotionsService {
 			resolveProjects: async (branchProjects) =>
 				await this.environmentProjects.forView(user, input, 'apply', branchProjects),
 		});
-		// Seam for the dependency check: the report of the Apply preview is computed here.
-		const dependencyReport =
-			preview.plan && preview.selection
-				? await this.dependencyGate.applyReport({
-						user,
-						input,
-						plan: preview.plan,
-						inventory: preview.inventory,
-						selection: preview.selection,
-					})
-				: undefined;
-		return { ...preview, dependencyReport };
+		if (skipDependencyReport || !preview.selection) {
+			return { ...preview, dependencyReport: undefined };
+		}
+		// The report of the Apply of every change that the user can apply. The revision keeps the
+		// check of the plan, so the Apply can compare it without the report.
+		const { check, dependencyReport } = await this.dependencyGate.applyPreviewReport(
+			{
+				user,
+				input,
+				files,
+				selection: this.dependencyGate.toCheckSelection(preview.selection),
+			},
+			preview.check,
+		);
+		return { ...preview, check, dependencyReport };
+	}
+
+	/**
+	 * The dependency report of a selection across projects, as the Promote or the Apply of that
+	 * selection computes it. It writes nothing, so a client can show the report while the user
+	 * changes the selection.
+	 */
+	async dependencyReportForSelection(
+		environmentId: string,
+		actor: User,
+		direction: PromotionDirection,
+		request: PromotionDependencyReportRequestDto,
+	): Promise<PromotionDependencyReport> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, direction);
+		const projectIds = request.projects.map(({ projectId }) => projectId);
+		await this.assertCheckoutReady(input, 'checking dependencies');
+		await this.environmentProjects.assertCanOperate(actor, input, direction, projectIds);
+
+		if (direction === 'promote') {
+			const selections: SelectivePushOptions[] = [];
+			for (const project of request.projects) {
+				const { selection } = await this.classifySelection(
+					project.projectId,
+					project.workflowIds ?? [],
+					project.folderIds ?? [],
+				);
+				selections.push({
+					...selection,
+					...(project.credentialIds?.length ? { credentialIds: project.credentialIds } : {}),
+				});
+			}
+			return await this.dependencyGate.promoteReport({
+				user: actor,
+				input,
+				selection: selections,
+			});
+		}
+
+		const { files } = await this.readApplyTip(input, undefined);
+		const inventory = await this.inventoryReader.read(new GitCommitPackageReader(files));
+		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
+		const movedWorkflowIds = new Set(moves.workflows.map(({ id }) => id));
+		const projectSelections: ImportProjectSelection[] = [];
+		for (const project of request.projects) {
+			projectSelections.push(
+				await this.classifyApplySelection(
+					inventory,
+					project.projectId,
+					{ workflowIds: project.workflowIds ?? [], folderIds: project.folderIds ?? [] },
+					movedWorkflowIds,
+				),
+			);
+		}
+		const selection = toImportSelection(projectSelections);
+		if (!selection) throw new BadRequestError('The selection holds no project.');
+		const { report } = await this.dependencyGate.applyOutcome({
+			user: actor,
+			input,
+			files,
+			selection: this.dependencyGate.toCheckSelection(
+				selection,
+				new Map(
+					request.projects.map((project) => [project.projectId, project.credentialIds ?? []]),
+				),
+			),
+			...(request.credentialHomes ? { credentialHomes: request.credentialHomes } : {}),
+		});
+		return report;
 	}
 
 	/** The package at the tip of the Apply branch of an environment of any scope. */
@@ -903,6 +1042,7 @@ export class PromotionsService {
 								actor,
 								current,
 								'promoting',
+								true,
 							);
 							if (preview.revision !== request.expectedPreviewRevision) {
 								this.logger.info('Promote stopped because the preview changed', {
@@ -999,7 +1139,7 @@ export class PromotionsService {
 		const previewChanged = await this.previewChanged(
 			identity,
 			request.expectedPreviewRevision,
-			async () => await this.buildApplyEnvironmentPreview(actor, input, files),
+			async () => await this.buildApplyEnvironmentPreview(actor, input, files, true),
 		);
 		if (previewChanged) return previewChanged;
 
@@ -1039,25 +1179,53 @@ export class PromotionsService {
 		const selection = toImportSelection(projectSelections);
 		if (!selection) throw new BadRequestError('The selection holds no project.');
 
+		// The dependency check runs before the plan: it decides what the import may leave
+		// unresolved, and it gives the confirmed grants so that the plan finds them in place.
+		const decision = await this.dependencyGate.decideApply(
+			{
+				user: actor,
+				input,
+				files,
+				selection: this.dependencyGate.toCheckSelection(
+					selection,
+					new Map(
+						request.projects.map((project) => [project.projectId, project.credentialIds ?? []]),
+					),
+				),
+			},
+			request,
+		);
+		if (decision.status === 'stop') return this.gapsChanged(identity, decision.report);
+
 		// One plan for every project. The import resolves a workflow reference against all of them
 		// and writes the content of every project before it publishes.
 		const plan = await this.n8nPackagesService.planPackageSelection(
-			{ ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+			{
+				...applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
+				...decision.importOptions,
+				ctx,
+			},
 			reader,
 			selection,
 			'enforce',
 		);
+		if (this.dependencyGate.addPlanBlocks(decision.report, plan)) {
+			return this.gapsChanged(identity, decision.report);
+		}
 		// Seam for cross-project moves: a selected workflow, or a folder of a selected project,
 		// that this instance holds in another project becomes a `moved` conflict here.
 		const requestedWorkflowIds = new Set(
 			request.projects.flatMap(({ workflowIds }) => workflowIds ?? []),
 		);
 		const selectedProjectIds = new Set(requestedProjectIds);
-		const check = blockingCheck(
-			this.applyPreviewService.check(plan, inventory, selection, {
-				workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
-				folders: moves.folders.filter(({ project }) => selectedProjectIds.has(project.id)),
-			}),
+		const check = this.dependencyGate.reconcileCheck(
+			blockingCheck(
+				this.applyPreviewService.check(plan, inventory, selection, {
+					workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
+					folders: moves.folders.filter(({ project }) => selectedProjectIds.has(project.id)),
+				}),
+			),
+			decision,
 		);
 		// A selected credential that this instance lacks needs the binding step, like a credential
 		// that a selected workflow uses.
@@ -1070,32 +1238,8 @@ export class PromotionsService {
 			...missingCredentials.filter(({ sourceId }) => !listed.has(sourceId)),
 		);
 
-		// Seam for the dependency check: the gaps of the plan are computed and compared with
-		// `confirmedGapIds` here, before the import writes.
-		const dependencyReport = await this.dependencyGate.applyReport({
-			user: actor,
-			input,
-			plan,
-			inventory,
-			selection,
-		});
-		if (
-			dependencyReport &&
-			this.dependencyGate.mustStop(dependencyReport, request.confirmedGapIds)
-		) {
-			this.logger.info('Apply stopped because the gaps changed', {
-				status: 'gaps-changed',
-				...identity,
-			});
-			return { status: 'gaps-changed', ...identity, dependencyReport };
-		}
 		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
-			return {
-				status: 'blocked',
-				...identity,
-				check,
-				...(dependencyReport ? { dependencyReport } : {}),
-			};
+			return this.blockedResult(identity, check, decision);
 		}
 
 		this.logger.info('Importing a package selection across projects', {
@@ -1106,6 +1250,7 @@ export class PromotionsService {
 		});
 		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
+		await this.closeAppliedOwnerRequests(input, result);
 
 		return {
 			status: 'applied',
@@ -1115,8 +1260,50 @@ export class PromotionsService {
 				projectReconciliation: { deletedProjectIds: [] },
 			}),
 			warnings: check.warnings,
-			...(dependencyReport ? { dependencyReport } : {}),
+			...this.dependencyGate.applyResult(decision, result),
+			dependencyReport: decision.report,
 		};
+	}
+
+	/** The Apply wrote nothing: the gaps, a hard block or a deletion need the user first. */
+	private gapsChanged(
+		identity: ApplyHead['identity'],
+		dependencyReport: PromotionDependencyReport,
+	): Extract<ApplyPackageResultDto, { status: 'gaps-changed' }> {
+		this.logger.info('Apply stopped because the gaps changed', {
+			status: 'gaps-changed',
+			...identity,
+		});
+		return { status: 'gaps-changed', ...identity, dependencyReport };
+	}
+
+	/** A blocked Apply lists the grants that it gave before it stopped. */
+	private blockedResult(
+		identity: ApplyHead['identity'],
+		check: PromotionApplyCheck,
+		decision: ContinuedApply,
+	): Extract<ApplyPackageResultDto, { status: 'blocked' }> {
+		return {
+			status: 'blocked',
+			...identity,
+			check,
+			dependencyReport: decision.report,
+			...(decision.grants.length > 0 ? { grants: decision.grants } : {}),
+		};
+	}
+
+	/** Closes the "Ask the owner" requests for the workflows and the credentials of an Apply. */
+	private async closeAppliedOwnerRequests(
+		input: PromotionOperationInput,
+		result: ImportResult,
+	): Promise<void> {
+		await this.dependencyGate.closeOwnerRequests(input, [
+			...result.workflows.map(({ localId }) => ({ kind: 'workflow' as const, id: localId })),
+			...[...result.credentials.matched, ...result.credentials.updated].map((id) => ({
+				kind: 'credential' as const,
+				id,
+			})),
+		]);
 	}
 
 	/**
@@ -1349,6 +1536,7 @@ export class PromotionsService {
 				publicApi,
 				expectedSource: request.expectedSource,
 				expectedPreviewRevision: request.expectedPreviewRevision,
+				confirmations: request,
 			},
 			ctx,
 		);
@@ -1370,6 +1558,7 @@ export class PromotionsService {
 				expectedSource: request.expectedSource,
 				expectedPreviewRevision: request.expectedPreviewRevision,
 				confirmDestructiveChanges: request.confirmDestructiveChanges === true,
+				confirmations: request,
 			},
 			ctx,
 		);
@@ -1462,11 +1651,13 @@ export class PromotionsService {
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
+			confirmations = {},
 		}: {
 			publicApi: PublicApiCaller;
 			expectedSource?: ApplySelectionDto['expectedSource'];
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
+			confirmations?: ApplyConfirmations;
 		},
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -1491,6 +1682,7 @@ export class PromotionsService {
 							signal,
 							expectedPreviewRevision,
 							ctx,
+							confirmations,
 						),
 				),
 		);
@@ -1507,6 +1699,7 @@ export class PromotionsService {
 		signal: AbortSignal,
 		expectedPreviewRevision?: string,
 		ctx: OperationContext = {},
+		confirmations: ApplyConfirmations = {},
 	): Promise<ApplyPackageResultDto> {
 		await this.assertCheckoutReady(input, 'applying');
 
@@ -1536,23 +1729,44 @@ export class PromotionsService {
 			requested,
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
+		const decision = await this.dependencyGate.decideApply(
+			{
+				user: actor,
+				input,
+				files,
+				selection: this.dependencyGate.toCheckSelection(selection),
+			},
+			confirmations,
+		);
+		if (decision.status === 'stop') return this.gapsChanged(identity, decision.report);
+
 		const plan = await this.n8nPackagesService.planPackageSelection(
-			{ ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+			{
+				...applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
+				...decision.importOptions,
+				ctx,
+			},
 			reader,
 			selection,
 			'enforce',
 		);
+		if (this.dependencyGate.addPlanBlocks(decision.report, plan)) {
+			return this.gapsChanged(identity, decision.report);
+		}
 		// A folder the package holds under this project but this instance holds elsewhere blocks
 		// every selection, so the user moves it back first.
 		const requestedWorkflowIds = new Set(requested.workflowIds);
-		const check = blockingCheck(
-			this.applyPreviewService.check(plan, inventory, selection, {
-				...moves,
-				workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
-			}),
+		const check = this.dependencyGate.reconcileCheck(
+			blockingCheck(
+				this.applyPreviewService.check(plan, inventory, selection, {
+					...moves,
+					workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
+				}),
+			),
+			decision,
 		);
 		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
-			return { status: 'blocked', ...identity, check };
+			return this.blockedResult(identity, check, decision);
 		}
 
 		this.logger.info('Importing a package selection', {
@@ -1564,6 +1778,7 @@ export class PromotionsService {
 		});
 		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
+		await this.closeAppliedOwnerRequests(input, result);
 
 		return {
 			status: 'applied',
@@ -1573,6 +1788,8 @@ export class PromotionsService {
 				projectReconciliation: { deletedProjectIds: [] },
 			}),
 			warnings: check.warnings,
+			...this.dependencyGate.applyResult(decision, result),
+			dependencyReport: decision.report,
 		};
 	}
 
@@ -1606,6 +1823,7 @@ export class PromotionsService {
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
+			...confirmations
 		}: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
 		signal: AbortSignal,
 		ctx: OperationContext = {},
@@ -1628,17 +1846,34 @@ export class PromotionsService {
 		const reader = new GitCommitPackageReader(files);
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
+		const decision = await this.dependencyGate.decideApply(
+			{ user: actor, input, files, selection: 'instance' },
+			confirmations,
+		);
+		if (decision.status === 'stop') return this.gapsChanged(identity, decision.report);
+
 		const plan = await this.n8nPackagesService.planPackage(
-			{ ...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+			{
+				...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges),
+				...decision.importOptions,
+				ctx,
+			},
 			reader,
 			'enforce',
 		);
-		const check = blockingCheck(
-			this.applyPreviewService.check(plan, inventory, undefined, moves),
-			await this.applyPreviewService.projectDeletions(inventory),
+		if (this.dependencyGate.addPlanBlocks(decision.report, plan)) {
+			return this.gapsChanged(identity, decision.report);
+		}
+		// A project that the Apply keeps for its credential is not in the deletions.
+		const check = this.dependencyGate.reconcileCheck(
+			blockingCheck(
+				this.applyPreviewService.check(plan, inventory, undefined, moves),
+				await this.applyPreviewService.projectDeletions(inventory),
+			),
+			decision,
 		);
 		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
-			return { status: 'blocked', ...identity, check };
+			return this.blockedResult(identity, check, decision);
 		}
 
 		this.logger.info('Importing a package', {
@@ -1658,12 +1893,15 @@ export class PromotionsService {
 			confirmedProjectIds,
 			ctx,
 		);
+		await this.closeAppliedOwnerRequests(input, result);
 
 		return {
 			status: 'applied',
 			...identity,
 			counts: this.toApplyCounts({ importResult: result, projectReconciliation }),
 			warnings: check.warnings,
+			...this.dependencyGate.applyResult(decision, result, projectReconciliation.deletedProjectIds),
+			dependencyReport: decision.report,
 		};
 	}
 

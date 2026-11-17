@@ -70,6 +70,13 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 				...(targetName !== name ? { previousName: targetName } : {}),
 			});
 		}
+		// An owner mismatch alone is a change of the credential, also with the same name and values.
+		for (const { credentialId, status } of scope.credentialPlan.moves ?? []) {
+			const key = resourceKey('credential', credentialId);
+			if (status === 'allowed' && changes.get(key)?.change !== 'modified') {
+				changes.set(key, { change: 'modified' });
+			}
+		}
 		for (const { reason, sourceId } of scope.credentialPlan.failures) {
 			if (reason === 'access-required' || reason === 'incompatible-usage-scope') {
 				changes.set(resourceKey('credential', sourceId), { change: 'unchanged' });

@@ -43,6 +43,7 @@ import {
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionAccessService } from './promotion-access.service';
+import { PromotionDependencyGate } from './promotion-dependency-gate.service';
 import { PromotionEnvironmentProjectsService } from './promotion-environment-projects.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { ApplyPreviewService } from './apply-preview.service';
@@ -73,6 +74,7 @@ export class PromotionChangeService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly accessService: PromotionAccessService,
 		private readonly environmentProjects: PromotionEnvironmentProjectsService,
+		private readonly dependencyGate: PromotionDependencyGate,
 	) {}
 
 	/**
@@ -152,10 +154,18 @@ export class PromotionChangeService {
 			exportInstancePackage(this.packagesService, user, [projectId]),
 		]);
 		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
+		// The revision keeps the check of the plan. The report replaces the rows that it describes.
+		const input = await this.environmentResolver.resolveForProject(projectId, 'apply');
+		const { check, dependencyReport } = await this.dependencyGate.projectApplyPreviewReport(
+			{ user, input, files, projectId },
+			preview.check,
+		);
 		return {
 			commitSha: branch.commitSha,
 			source: { environmentId: branch.environmentId, branchName: branch.branchName },
 			...preview,
+			check,
+			...(dependencyReport ? { dependencyReport } : {}),
 		};
 	}
 
@@ -170,7 +180,18 @@ export class PromotionChangeService {
 		const { commitSha, source, files } =
 			await this.promotionsService.readInstanceApplyPackage(environmentId);
 		const preview = await this.applyPreviewService.buildInstance({ user, files });
-		return { commitSha, source, ...preview };
+		const input = await this.environmentResolver.resolveForEnvironment(environmentId, 'apply');
+		const { check, dependencyReport } = await this.dependencyGate.applyPreviewReport(
+			{ user, input, files, selection: 'instance' },
+			preview.check,
+		);
+		return {
+			commitSha,
+			source,
+			...preview,
+			check,
+			...(dependencyReport ? { dependencyReport } : {}),
+		};
 	}
 
 	/**

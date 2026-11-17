@@ -24,6 +24,7 @@ import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import {
 	CredentialConflictPolicy,
+	CredentialOwnerPolicy,
 	CredentialPersonalRoute,
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
@@ -96,6 +97,9 @@ export function applySelectionRequest(
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
 		credentialPersonalRoute: CredentialPersonalRoute.Exclude,
+		// The owner on the destination follows the branch. The Apply operation adds what the
+		// dependency check decided for the other credentials.
+		credentialDependencies: { credentialOwnerPolicy: CredentialOwnerPolicy.FollowPackage },
 	};
 }
 

@@ -397,6 +397,13 @@ oneOf:
               type: boolean
             allowed:
               type: boolean
+            blockedReason:
+              type: string
+              enum:
+                - no-move-right
+                - missing-create-right
+                - managed
+                - end-user
           required:
             - credential
             - toProject
@@ -433,6 +440,42 @@ oneOf:
             - name
             - projectId
             - referencedBy
+      keptProjects:
+        type: array
+        items:
+          type: object
+          properties:
+            project:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+              required:
+                - id
+                - name
+            credentials:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+          required:
+            - project
+            - credentials
+      dependencyMessages:
+        type: array
+        items:
+          type: string
       dependencyReport:
         $ref: promotionDependencyReport.generated.yml
     required:

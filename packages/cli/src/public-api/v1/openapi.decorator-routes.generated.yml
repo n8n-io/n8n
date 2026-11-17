@@ -335,6 +335,9 @@ paths:
   /promotions/environments/{promotionEnvironmentId}/changes/{direction}/details:
     post:
       $ref: ./handlers/promotions/spec/paths/getPromotionEnvironmentChangeDetails.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/changes/{direction}/dependency-report:
+    post:
+      $ref: ./handlers/promotions/spec/paths/getPromotionDependencyReport.generated.yml
   /promotions/environments/{promotionEnvironmentId}/promote-selection:
     post:
       $ref: ./handlers/promotions/spec/paths/promoteEnvironmentSelection.generated.yml

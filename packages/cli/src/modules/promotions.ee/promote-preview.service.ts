@@ -55,12 +55,15 @@ export class PromotePreviewService {
 		projects,
 		exportableProjectIds,
 		readBranch,
+		skipDependencyReport = false,
 	}: {
 		user: User;
 		input: PromotionOperationInput;
 		projects: PromotionEnvironmentChangesProject[];
 		exportableProjectIds: ReadonlySet<string>;
 		readBranch: (projectIds: readonly string[]) => Promise<BranchPackage>;
+		/** The Promote operation only compares the revision, and it checks the dependencies itself. */
+		skipDependencyReport?: boolean;
 	}): Promise<PromotionEnvironmentChanges> {
 		const blockers = await this.findBlockers(
 			input,
@@ -100,8 +103,18 @@ export class PromotePreviewService {
 			}));
 		}
 
-		// Seam for the dependency check: the report of the Promote preview is computed here.
-		const dependencyReport = await this.dependencyGate.promoteReport({ user, input, projects });
+		// The report of the Promote of every change that the user can promote.
+		const dependencyReport =
+			resources.length > 0 && !skipDependencyReport
+				? await this.dependencyGate.promotePreviewReport({
+						user,
+						input,
+						resources,
+						operableProjectIds: new Set(
+							projects.filter(({ canOperate }) => canOperate).map(({ id }) => id),
+						),
+					})
+				: undefined;
 		return {
 			direction: 'promote',
 			commitSha: branch.commitSha,
@@ -182,11 +195,14 @@ export class PromotePreviewService {
 		projectId,
 		input,
 		readBranch,
+		skipDependencyReport = false,
 	}: {
 		user: User;
 		projectId: string;
 		input: PromotionOperationInput;
 		readBranch: () => Promise<BranchPackage>;
+		/** The Promote operation only compares the revision, and it checks the dependencies itself. */
+		skipDependencyReport?: boolean;
 	}): Promise<PromotionPreview> {
 		// Only a branched promote opens a review. A direct push has nothing to wait for, even
 		// when an older review of the environment is still open.
@@ -231,11 +247,22 @@ export class PromotePreviewService {
 			? await this.markCrossProjectMoves(projectId, compared, promoteBase)
 			: compared;
 		const source = { environmentId: branch.environmentId, branchName: branch.branchName };
+		// The caller already checked that the user can promote the project.
+		const dependencyReport = skipDependencyReport
+			? undefined
+			: await this.dependencyGate.promotePreviewReport({
+					user,
+					input,
+					resources,
+					operableProjectIds: new Set([projectId]),
+					defaultProjectId: projectId,
+				});
 		return {
 			commitSha: branch.commitSha,
 			source,
 			resources,
 			dependencies,
+			...(dependencyReport ? { dependencyReport } : {}),
 			revision: previewRevision({ source, resources }),
 		};
 	}
