@@ -3,6 +3,7 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 import { bigintStringToNumber } from '../utils/transformers';
 
+/** One lease that should exist in a kind, and its current holder, if any. */
 @Entity({ name: 'lease' })
 @Index(['leaseKind', 'leaseSessionId'])
 export class Lease extends WithTimestamps {

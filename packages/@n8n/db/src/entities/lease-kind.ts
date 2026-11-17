@@ -3,6 +3,7 @@ import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 import { DateTimeColumn, WithTimestamps } from './abstract-entity';
 import { bigintStringToNumber } from '../utils/transformers';
 
+/** One row for each kind of lease. It holds the fencing-token counter and the sync lock of the kind. */
 @Entity({ name: 'lease_kind' })
 export class LeaseKind extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 24 })
