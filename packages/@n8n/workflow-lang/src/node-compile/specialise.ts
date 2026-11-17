@@ -728,16 +728,13 @@ const HELPERS: Record<string, string> = {
 		}
 	}
 	let fields: any = files;
-	const made: any = files !== null && typeof files === 'object' && !Array.isArray(files) && Array.isArray(files.$formData) ? files.$formData : undefined;
 	if (typeof type === 'string' && type.includes('multipart/form-data')) {
-		if (made !== undefined) return made;
 		const body: any = options.body;
 		if (body !== undefined && body !== null && (typeof body !== 'object' || Array.isArray(body) || body.$bytes === true)) throw new Error('a multipart body from a value that is not an object has no compiled form');
 		fields = __assign(__assign({}, body ?? {}), files);
 	} else if (options.form !== undefined && options.body === undefined) {
 		return undefined;
 	}
-	if (made !== undefined) return made;
 	if (fields === null || typeof fields !== 'object' || Array.isArray(fields)) throw new Error('a multipart body from a value that is not an object has no compiled form');
 	const parts: any[] = [];
 	for (const [name, field] of Object.entries(fields)) {
@@ -1786,6 +1783,16 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 	const table = PACKAGE_HELPERS[pkg];
 	return table && Object.hasOwn(table, name) ? table[name] : undefined;
 }
+
+const FORM_TYPED = "\tif (typeof type === 'string' && type.includes('multipart/form-data')) {\n";
+const FORM_FIELDS =
+	"\tif (fields === null || typeof fields !== 'object' || Array.isArray(fields)) throw";
+const FORM_PARTS_OF_FORM = HELPERS.__formParts
+	.replace(
+		FORM_TYPED,
+		`\tconst made: any = files !== null && typeof files === 'object' && !Array.isArray(files) && Array.isArray(files.$formData) ? files.$formData : undefined;\n${FORM_TYPED}\t\tif (made !== undefined) return made;\n`,
+	)
+	.replace(FORM_FIELDS, `\tif (made !== undefined) return made;\n${FORM_FIELDS}`);
 
 const HELPER_USES: Record<string, string[]> = {
 	__randomIntOf: ['__randomInt'],
@@ -8176,6 +8183,7 @@ class Specialiser {
 			__plain: plain,
 			[PLAIN_LIST]: t.usesCollections ? PLAIN_LIST_COLLECTIONS : PLAIN_LIST_SAME,
 			...(this.marksFileLimit ? { __isLimit: HELPERS.__isLimitOrHost } : {}),
+			...(this.helpers.has('__formNew') ? { __formParts: FORM_PARTS_OF_FORM } : {}),
 			...(makesBytes
 				? {
 						__sendBody: HELPERS.__sendBodyChecked,
