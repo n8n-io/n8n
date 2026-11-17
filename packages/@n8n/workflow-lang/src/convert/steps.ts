@@ -18,7 +18,7 @@ import {
 	pairsAsV1,
 	errorItemsByPosition,
 	flagGuard,
-	isVerified,
+	unverifiedConditions,
 	valueAtPath,
 	verifiedFlagKeys,
 } from '../node-compile/convert.ts';
@@ -469,10 +469,11 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	// The reference of a compiled node is the v1 node. An operation that was not compared with
 	// it runs in the host. A parameter with an expression needs its own check: the v1 node
 	// with that parameter as an expression, for several items.
-	if (!isVerified(c.nodeSources, c.node.type, c.version, compiled)) {
+	const unverified = unverifiedConditions(c.nodeSources, c.node.type, c.version, compiled);
+	if (unverified.length > 0) {
 		c.info(
 			'node-compile',
-			'The node source compiles, and this operation or one of its parameters is not checked against the v1 node.',
+			`The node source compiles, and this operation or one of its parameters is not checked against the v1 node. Conditions without a check: ${unverified.join(', ')}`,
 		);
 		return false;
 	}

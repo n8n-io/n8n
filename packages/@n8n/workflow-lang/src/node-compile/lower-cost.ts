@@ -431,7 +431,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 		qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'},
 		body: ${parts ? `parts !== undefined ? undefined : ${encoded}` : encoded},
 		multipart: ${parts ? 'parts' : 'undefined'},
-		acceptAs: ${flags.legacy ? "'legacy'" : "'request'"},${flags.json === 'undefined' ? '' : `\n\t\tjson: ${flags.json},`}
+		acceptAs: ${flags.legacy ? "'legacy'" : "'request'"},${(flags.constants.json ?? flags.json) === 'undefined' ? '' : `\n\t\tjson: ${flags.constants.json ?? flags.json},`}
 		responseBinary: undefined,
 		basicAuth: ${has('auth') ? "auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined" : 'undefined'},
 		inject: ${flags.wrapped},
@@ -459,7 +459,7 @@ interface RequestFlags {
 	constants: RequestConstants;
 }
 
-type RequestConstants = Partial<Record<'method' | 'uri' | 'url' | 'headers', string>>;
+type RequestConstants = Partial<Record<'method' | 'uri' | 'url' | 'headers' | 'json', string>>;
 const FORM_READS = new Set<string>([
 	...REQUEST_KEYS,
 	'encoding',
@@ -467,6 +467,7 @@ const FORM_READS = new Set<string>([
 	'resolveWithFullResponse',
 	'ignoreHttpStatusErrors',
 	'returnFullResponse',
+	'json',
 ]);
 
 function isPlainLiteral(e: ts.Expression): boolean {
@@ -518,6 +519,9 @@ function requestTemplate(
 			dead.push(p);
 		} else if (key === 'headers' && isConstantHeaders(value)) {
 			constants.headers = text;
+			dead.push(p);
+		} else if (key === 'json' && isPlainLiteral(value)) {
+			constants.json = text;
 			dead.push(p);
 		} else if (!FORM_READS.has(key) && isPlainLiteral(value)) dead.push(p);
 	}

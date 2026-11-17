@@ -20,6 +20,7 @@ import type {
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
+import { resolveCredentialData } from '../../../scripts/gym/v1-credentials.ts';
 import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
 import { libraryNodeTypes } from '../../library/node-sources.ts';
@@ -76,8 +77,32 @@ export function credentialsOf(
 ): Record<string, PublicCredential> {
 	if (!c.credential) return {};
 	return {
-		[c.credential.type]: publicCredential(registry.get(c.credential.type), c.credential.data),
+		[c.credential.type]: publicCredential(
+			registry.get(c.credential.type),
+			credentialAsGiven(c.credential.type, c.credential.data),
+		),
 	};
+}
+
+const MAX_GIVEN = 256;
+const given = new Map<string, Record<string, unknown>>();
+
+export function credentialAsGiven(
+	type: string,
+	data: Record<string, unknown>,
+): Record<string, unknown> {
+	const key = JSON.stringify([type, data]);
+	const known = given.get(key);
+	if (known) return known;
+	let resolved: Record<string, unknown>;
+	try {
+		resolved = resolveCredentialData(type, data);
+	} catch {
+		resolved = data;
+	}
+	if (given.size >= MAX_GIVEN) given.clear();
+	given.set(key, resolved);
+	return resolved;
 }
 
 const escaped = (text: string) =>

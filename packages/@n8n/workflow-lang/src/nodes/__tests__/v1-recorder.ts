@@ -17,6 +17,7 @@ import {
 	renameSync,
 	rmSync,
 	statSync,
+	utimesSync,
 	writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -856,7 +857,9 @@ async function recordNode(
 }
 
 const CACHE_DIR = join(here, '../../../node_modules/.cache/v1-recordings');
-const CACHE_MAX_ENTRIES = 50_000;
+const CACHE_MAX_ENTRIES = 400_000;
+/** The share of the entries that a full cache removes: the ones that were read or written longest ago. */
+const CACHE_EVICT_SHARE = 0.1;
 function buildFiles(): string[] {
 	const hostRequire = createRequire(join(FALLBACK_HOST_DIR, 'package.json'));
 	const built = ['n8n-workflow', 'n8n-core', '@n8n/node-engine-compatibility'].map((name) => {
@@ -902,7 +905,10 @@ function identityOfBuild(): string {
 
 let cacheEntries: number | undefined;
 
-/** Counts the entries once; when the cache is full it removes the older half. */
+/**
+ * Counts the entries once. A full cache removes the entries that were used longest ago: a read
+ * sets the time of an entry (`storedRecording`), so the order is the order of the last use.
+ */
 function entriesInCache(): number {
 	if (cacheEntries !== undefined) return cacheEntries;
 	mkdirSync(CACHE_DIR, { recursive: true });
@@ -918,7 +924,7 @@ function entriesInCache(): number {
 				}
 			})
 			.sort((a, b) => a.time - b.time);
-		const old = byAge.slice(0, Math.ceil(names.length / 2));
+		const old = byAge.slice(0, Math.ceil(names.length * CACHE_EVICT_SHARE));
 		for (const { name } of old) rmSync(join(CACHE_DIR, name), { force: true });
 		cacheEntries = names.length - old.length;
 	}
@@ -937,7 +943,10 @@ function isRecording(value: unknown): value is Recording {
 function storedRecording(file: string): Recording | undefined {
 	try {
 		const stored: unknown = JSON.parse(readFileSync(file, 'utf8'));
-		return isRecording(stored) ? stored : undefined;
+		if (!isRecording(stored)) return undefined;
+		const now = new Date();
+		utimesSync(file, now, now);
+		return stored;
 	} catch {
 		return undefined;
 	}
@@ -964,11 +973,12 @@ export async function recordV1Cached(testCase: EquivalenceCase): Promise<Recordi
 		CACHE_DIR,
 		`${digest(`${RECORDING_FORM}\n${identityOfBuild()}\n${JSON.stringify(testCase)}`)}.json`,
 	);
-	const count = entriesInCache();
 	const stored = storedRecording(file);
 	if (stored !== undefined) return stored;
 	const recording = await recordV1(testCase);
-	if (count < CACHE_MAX_ENTRIES && store(file, recording)) cacheEntries = count + 1;
+	// This process filled the cache: count again, which removes the entries used longest ago.
+	if (entriesInCache() >= CACHE_MAX_ENTRIES) cacheEntries = undefined;
+	if (store(file, recording)) cacheEntries = entriesInCache() + 1;
 	return recording;
 }
 

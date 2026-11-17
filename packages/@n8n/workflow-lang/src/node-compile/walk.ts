@@ -4,12 +4,23 @@ import type { CredentialTypeRegistry } from '../credentials/types.ts';
 
 export type Json = Record<string, unknown>;
 
+export interface WalkMember {
+	name?: string;
+	value?: unknown;
+	type?: string;
+	default?: unknown;
+	options?: WalkMember[];
+	values?: WalkMember[];
+	typeOptions?: { multipleValues?: boolean };
+}
+
 export interface WalkProperty {
 	name: string;
 	type: string;
 	default?: unknown;
-	options?: Array<{ name?: string; value?: unknown; type?: string; default?: unknown }>;
+	options?: WalkMember[];
 	displayOptions?: { show?: Record<string, unknown[]> };
+	typeOptions?: { multipleValues?: boolean };
 }
 
 export interface WalkNode {
@@ -94,6 +105,7 @@ export function fakeCredentialData(
 	if (/oauth2/i.test(type)) {
 		data.oauthTokenData = {
 			access_token: 'fake-token',
+			token_type: 'Bearer',
 			instance_url: 'https://instance.example.test',
 			api_domain: 'https://api.example.test',
 			...(type === 'quickBooksOAuth2Api' ? { callbackQueryString: { realmId: 'fake-realm' } } : {}),
