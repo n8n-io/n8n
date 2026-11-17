@@ -31,6 +31,7 @@ import {
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { alsoNullable } from '../dto/openapi-nullable';
+import { workflowParentFolderPublicSchema } from '../dto/workflows/workflow-public.dto';
 import {
 	AGENT_MEMORY_FILTER_SOURCES,
 	AGENT_MEMORY_SOURCE_FACETS,
@@ -110,6 +111,8 @@ const agentListFilterSchema = z
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 		includeArchived: z.boolean().optional(),
+		parentFolderId: z.string().min(1).max(36).nullable().optional(),
+		includeDescendants: z.boolean().optional(),
 		active: z.boolean().optional(),
 		projectId: z.string().min(1).optional(),
 	})
@@ -247,6 +250,7 @@ const createAgentToolEntrySchema = z.object({
 
 const createAgentShape = {
 	name: z.string().trim().min(1).max(128),
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	id: clientMintedAgentIdSchema.optional(),
 	config: AgentJsonConfigSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
@@ -265,6 +269,8 @@ const createAgentSchema = z
 type CreateAgent = z.infer<typeof createAgentSchema>;
 
 export class CreateAgentDto implements CreateAgent {
+	declare parentFolderId?: CreateAgent['parentFolderId'];
+
 	declare name: CreateAgent['name'];
 
 	declare id?: CreateAgent['id'];
@@ -320,6 +326,10 @@ export class CreateAgentPublicDto extends Z.class(
 	},
 	{ strict: true },
 ) {}
+
+export class MoveAgentDto extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable(),
+}) {}
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
@@ -431,10 +441,17 @@ const agentBuilderStateShape = {
 };
 
 /** Fields a later public GET and PUT share. Builder-only state stays off this shape. */
-export class AgentPublicDto extends Z.class(agentPublicShape) {}
+export class AgentPublicDto extends Z.class({
+	...agentPublicShape,
+	parentFolder: workflowParentFolderPublicSchema.nullable(),
+}) {}
 
 /** Single-agent response. `config` is the document `PUT` writes back. */
-export class AgentDto extends AgentPublicDto.extend(agentBuilderStateShape) {}
+export class AgentDto extends Z.class({
+	...agentPublicShape,
+	parentFolderId: z.string().nullable().optional(),
+	...agentBuilderStateShape,
+}) {}
 
 /**
  * Response of the Public API `DELETE /agents/:agentId`. Metadata of the
@@ -489,6 +506,8 @@ const agentListItemShape = {
 	id: z.string(),
 	name: z.string(),
 	projectId: z.string(),
+	parentFolderId: z.string().nullable().optional(),
+	folderPath: z.array(z.string()).optional(),
 	project: agentProjectResponseSchema,
 	availableInMCP: z.boolean(),
 	isArchived: z.boolean(),
@@ -522,6 +541,7 @@ const updateAgentObjectSchema = z
 		id: strippedAgentField,
 		name: strippedAgentField,
 		projectId: strippedAgentField,
+		parentFolderId: strippedAgentField,
 		project: strippedAgentField,
 		availableInMCP: strippedAgentField,
 		isArchived: strippedAgentField,

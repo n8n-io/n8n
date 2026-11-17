@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
 import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
-import type { AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
+import { toAgentPublicDto, type AgentResponseMapper } from '@/modules/agents/agent-response.mapper';
 import type { AgentsService, DeletedAgentSnapshot } from '@/modules/agents/agents.service';
 
 import { AgentsPublicController } from '../agents.public.controller';
@@ -128,7 +128,7 @@ describe('AgentsPublicController createAgent', () => {
 	function mockSuccessfulCreate() {
 		agentsService.resolveOwningProjectId.mockResolvedValue('project-1');
 		agentsService.createOrAdopt.mockResolvedValue({ agent: {} } as never);
-		agentResponseMapper.toAgentDto.mockResolvedValue(fullAgentDto);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
 	}
 
 	it('creates the agent in the resolved project and returns the public DTO', async () => {
@@ -146,12 +146,13 @@ describe('AgentsPublicController createAgent', () => {
 				createdBy: 'user',
 			}),
 		);
-		expect(agentResponseMapper.toAgentDto).toHaveBeenCalledWith({}, 'project-1', req.user);
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith({}, 'project-1', req.user);
 		expect(result).toEqual({
 			id: 'agent-1',
 			name: 'My Agent',
 			projectId: 'project-1',
 			project: null,
+			parentFolder: null,
 			availableInMCP: false,
 			isArchived: false,
 			versionId: 'version-1',
@@ -267,12 +268,12 @@ describe('AgentsPublicController getAgent', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as unknown as Awaited<ReturnType<AgentsService['findById']>>);
-		agentResponseMapper.toAgentDto.mockResolvedValue(fullAgentDto);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
 
 		const result = await controller.getAgent(req, res, 'agent-1');
 
 		expect(agentsService.findById).toHaveBeenCalledWith('agent-1');
-		expect(agentResponseMapper.toAgentDto).toHaveBeenCalledWith(
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
 			{ id: 'agent-1', projectId: 'project-1' },
 			'project-1',
 			req.user,
@@ -282,6 +283,7 @@ describe('AgentsPublicController getAgent', () => {
 			name: 'My Agent',
 			projectId: 'project-1',
 			project: null,
+			parentFolder: null,
 			availableInMCP: false,
 			isArchived: false,
 			versionId: 'version-1',

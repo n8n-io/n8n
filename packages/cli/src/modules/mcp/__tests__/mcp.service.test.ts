@@ -31,7 +31,6 @@ import {
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
-	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	GLOBAL_OWNER_ROLE,
@@ -159,7 +158,6 @@ describe('McpService', () => {
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
-			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
 			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),
@@ -219,7 +217,6 @@ describe('McpService', () => {
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
-				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
 				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
@@ -433,7 +430,6 @@ describe('McpService', () => {
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
-				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
 				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
@@ -1550,7 +1546,6 @@ describe('McpService', () => {
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
-				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
 				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
@@ -1612,7 +1607,6 @@ describe('McpService', () => {
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
-				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
 				mockInstance(ExecutionListService),
 				mockInstance(DataTableProxyService),
@@ -1699,7 +1693,6 @@ describe('McpService', () => {
 					mockInstance(ProjectRepository),
 					mockInstance(FolderFinderService),
 					mockInstance(SharedWorkflowRepository),
-					mockInstance(ExecutionRepository),
 					mockInstance(ExecutionService),
 					mockInstance(ExecutionListService),
 					mockInstance(DataTableProxyService),

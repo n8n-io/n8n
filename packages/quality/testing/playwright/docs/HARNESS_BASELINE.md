@@ -1,5 +1,10 @@
 # Harness baseline
 
+> DEVP-1067 removed the harness contract suite described below (`tests/framework/`,
+> `test:harness`). The product specs now exercise the fixtures directly, and pure
+> fixture logic has Vitest unit tests next to the code. This file stays as the
+> DEVP-1064 record.
+
 This reference records the fixture contracts and remaining evidence for [DEVP-1064](https://linear.app/n8n/issue/DEVP-1064).
 The source baseline is `33eb5c196e0ce3a2c71525929a4ef861cb94b168`.
 The parent plan is [DEVP-1063](https://linear.app/n8n/issue/DEVP-1063).

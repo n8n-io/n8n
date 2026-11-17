@@ -32,7 +32,6 @@ import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default
 import {
 	AgentResponseMapper,
 	mapAgentListPublicItem,
-	toAgentPublicDto,
 } from '@/modules/agents/agent-response.mapper';
 import type { DeletedAgentSnapshot } from '@/modules/agents/agents.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -87,7 +86,7 @@ export class AgentsPublicController {
 			...(defaultModel ? { defaultModel } : {}),
 		});
 
-		return toAgentPublicDto(await this.agentResponseMapper.toAgentDto(agent, projectId, req.user));
+		return await this.agentResponseMapper.toPublicDto(agent, projectId, req.user);
 	}
 
 	@Get('/:agentId')
@@ -114,9 +113,7 @@ export class AgentsPublicController {
 			throw new NotFoundError('Not Found');
 		}
 
-		return toAgentPublicDto(
-			await this.agentResponseMapper.toAgentDto(agent, agent.projectId ?? '', req.user),
-		);
+		return await this.agentResponseMapper.toPublicDto(agent, agent.projectId ?? '', req.user);
 	}
 
 	@Get('/')

@@ -46,6 +46,7 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
@@ -193,6 +194,98 @@ function changedResources({ resources }: { resources: PromotionResource[] }) {
 function changedWorkflows(preview: { resources: PromotionResource[] }) {
 	return changedResources(preview).filter(({ type }) => type === 'workflow');
 }
+
+it.each(['whole', 'selection'] as const)(
+	'%s workflow Promotions preserve Agent folders and definitions',
+	async (mode) => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Support', owner);
+		const workflowFolder = await createFolder(project, { name: 'Workflows' });
+		const agentFolder = await createFolder(project, { name: 'Agents', resourceType: 'agent' });
+		const nested = await createFolder(project, {
+			name: 'Research',
+			resourceType: 'agent',
+			parentFolder: agentFolder,
+		});
+		const empty = await createFolder(project, { name: 'Empty', resourceType: 'agent' });
+		const workflow = await createWorkflow(
+			{ name: 'Support workflow', nodes: [], parentFolder: workflowFolder },
+			project,
+		);
+		const agents = Container.get(AgentRepository);
+		await agents.save([
+			{
+				id: 'active-agent',
+				name: 'Active Agent',
+				projectId: project.id,
+				parentFolderId: nested.id,
+			},
+			{
+				id: 'archived-agent',
+				name: 'Archived Agent',
+				projectId: project.id,
+				parentFolderId: agentFolder.id,
+				isArchived: true,
+			},
+		]);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		const service = Container.get(PromotionsService);
+		const options = { commitMessage: 'Workflow changes', canExportVariableValues: true };
+
+		if (mode === 'whole') {
+			await service.promote(environments.promote.id, owner, options);
+		} else {
+			await service.promoteProjectSelection(project.id, owner, {
+				...options,
+				workflowIds: [workflow.id],
+				folderIds: [workflowFolder.id],
+			});
+		}
+
+		const manifest = packageManifestSchema.parse(
+			JSON.parse(await createFixtureGit(remoteFolder).raw(['show', 'main:n8n/manifest.json'])),
+		);
+
+		expect(manifest.agents ?? []).toEqual([]);
+		expect(manifest.folders?.map(({ id }) => id)).toEqual([workflowFolder.id]);
+		const folders = Container.get(FolderRepository);
+		await folders.update(nested.id, { name: 'Local research' });
+		await agents.update('active-agent', { name: 'Local Agent' });
+		const agentBefore = await agents.findById('active-agent');
+		const archivedBefore = await agents.findById('archived-agent');
+		const foldersBefore = await Promise.all(
+			[agentFolder, nested, empty].map(async ({ id }) => await folders.findOneByOrFail({ id })),
+		);
+		const client = server.publicApiAgentWithCookie(owner);
+		const preview = await client
+			.get(`/promotions/projects/${project.id}/changes/promote`)
+			.expect(200);
+
+		expect(changedResources(preview.body)).toEqual([]);
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Local workflow' });
+		const result =
+			mode === 'whole'
+				? await service.apply(environments.apply.id, owner)
+				: await service.applyProjectSelection(project.id, owner, {
+						workflowIds: [workflow.id],
+						folderIds: [workflowFolder.id],
+					});
+
+		expect(result.status).toBe('applied');
+		expect(
+			await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id }),
+		).toMatchObject({
+			name: 'Support workflow',
+		});
+		expect(await agents.findById('active-agent')).toEqual(agentBefore);
+		expect(await agents.findById('archived-agent')).toEqual(archivedBefore);
+
+		for (const folder of foldersBefore) {
+			expect(await folders.findOneByOrFail({ id: folder.id })).toEqual(folder);
+		}
+	},
+	60_000,
+);
 
 it("previews against the project's environment, not the instance one", async () => {
 	const owner = await createOwner();

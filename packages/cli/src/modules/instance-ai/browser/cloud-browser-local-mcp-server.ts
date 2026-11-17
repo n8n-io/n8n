@@ -87,6 +87,9 @@ type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
 
 const RELEASED_MESSAGE = 'The browser task has ended. No browser tools can run.';
 
+const OTHER_TAB_MESSAGE =
+	'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.';
+
 const NO_HOST_MESSAGE = 'This browser action only works on websites. Use a website address.';
 
 const START_SESSION_HINT = 'Call browser_start_session with a URL to open a session.';
@@ -283,6 +286,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			return browserErrorResult(`Unknown browser tool: ${toolName}`);
 		}
 
+		// The agent works in the session's active tab: the live view shows it, and site approvals
+		// check its host. Other tabs are not supported.
+		if (args.pageId !== undefined && args.pageId !== activePageIdOf(session)) {
+			return browserErrorResult(OTHER_TAB_MESSAGE);
+		}
+
 		// The check runs here, after the session lock, so it reads the session the tool runs on.
 		// If `getAffectedResources` throws, the helper returns an error and the tool does not run.
 		return await executeBrowserTool(
@@ -435,4 +444,13 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
  */
 function isNoHostResource(resource: AffectedResource): boolean {
 	return resource.kind === 'host' && resource.resource === 'browser';
+}
+
+/** The tab the session's tools act on by default, or `undefined` when the connection is gone. */
+function activePageIdOf(session: ActiveSession): string | undefined {
+	try {
+		return session.connection.getConnection().activePageId;
+	} catch {
+		return undefined;
+	}
 }
