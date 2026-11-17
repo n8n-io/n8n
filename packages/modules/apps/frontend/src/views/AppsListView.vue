@@ -8,7 +8,7 @@ import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { listApps } from '../apps.api';
@@ -29,8 +29,6 @@ const projectPermissions = capabilityRegistry.use(capabilities.projectPermission
 const ResourcesListLayout = computed(() => componentRegistry.get('resources-list-layout'));
 const ProjectHeader = computed(() => componentRegistry.get('project-header'));
 const InsightsSummary = computed(() => componentRegistry.get('insights-summary'));
-// The layout keeps its own page state; changing the page through it keeps its pagination in sync.
-const layout = useTemplateRef<{ setCurrentPage: (page: number) => Promise<void> }>('layout');
 
 const projectId = computed(() =>
 	typeof route.params.projectId === 'string' ? route.params.projectId : undefined,
@@ -50,8 +48,11 @@ const totalApps = ref(0);
 const loading = ref(true);
 const hasApps = ref(false);
 const filters = ref({ search: '', homeProject: '' });
-const currentPage = ref(1);
-const pageSize = ref(APPS_PAGE_SIZE);
+// The list loads in batches as the user scrolls. A reload fetches every loaded batch again.
+const batchCount = ref(1);
+const isLoadingMore = ref(false);
+// Changes when a reload starts, so a load-more that started before it is dropped.
+let listGeneration = 0;
 const currentSort = ref<AppsSortBy>('updatedAt:desc');
 
 function isSortKey(key: string): key is keyof typeof APPS_SORT_MAP {
@@ -59,6 +60,7 @@ function isSortKey(key: string): key is keyof typeof APPS_SORT_MAP {
 }
 
 async function fetchApps() {
+	listGeneration++;
 	const isLatest = latestFetch.next();
 	const search = filters.value.search;
 	// Keep the shown list during a fast reload; the loading rows would only flicker.
@@ -72,8 +74,8 @@ async function fetchApps() {
 	}
 	try {
 		const { data, count } = await listApps(rootStore.restApiContext, projectId.value, {
-			skip: (currentPage.value - 1) * pageSize.value,
-			take: pageSize.value,
+			skip: 0,
+			take: APPS_PAGE_SIZE * batchCount.value,
 			sortBy: currentSort.value,
 			name: search || undefined,
 		});
@@ -99,6 +101,7 @@ const fetchAppsDebounced = debounce(fetchApps, {
 // Invalidate now, not when the debounced fetch starts: a response that is still in flight
 // must not overwrite the list while the new request waits.
 async function scheduleFetch() {
+	listGeneration++;
 	latestFetch.invalidate();
 	await fetchAppsDebounced();
 }
@@ -109,21 +112,44 @@ async function initialize() {
 	await fetchApps();
 }
 
+async function loadMoreApps() {
+	if (isLoadingMore.value || loading.value || apps.value.length >= totalApps.value) return;
+
+	const startedAt = listGeneration;
+	isLoadingMore.value = true;
+	try {
+		// Start after the loaded apps, so a deleted app does not make the batch skip one.
+		const { data, count } = await listApps(rootStore.restApiContext, projectId.value, {
+			skip: apps.value.length,
+			take: APPS_PAGE_SIZE,
+			sortBy: currentSort.value,
+			name: filters.value.search || undefined,
+		});
+		if (startedAt !== listGeneration) return;
+		totalApps.value = count;
+		// An app can move between batches if it changed since the last request.
+		const loadedIds = new Set(apps.value.map(({ id }) => id));
+		const newApps = data.filter(({ id }) => !loadedIds.has(id));
+		if (newApps.length > 0) apps.value = [...apps.value, ...newApps];
+		batchCount.value++;
+	} catch (error) {
+		if (startedAt !== listGeneration) return;
+		toast.showError(error, i18n.baseText('apps.list.error'));
+	} finally {
+		isLoadingMore.value = false;
+	}
+}
+
 async function onSearchUpdated(value: string) {
 	filters.value = { ...filters.value, search: value };
-	currentPage.value = 1;
+	batchCount.value = 1;
 	await scheduleFetch();
 }
 
-async function onPaginationAndSortUpdated(payload: {
-	page?: number;
-	pageSize?: number;
-	sort?: string;
-}) {
-	if (payload.page) currentPage.value = payload.page;
-	if (payload.pageSize) pageSize.value = payload.pageSize;
+async function onPaginationAndSortUpdated(payload: { sort?: string }) {
 	if (payload.sort && isSortKey(payload.sort)) {
 		currentSort.value = APPS_SORT_MAP[payload.sort];
+		batchCount.value = 1;
 	}
 	await scheduleFetch();
 }
@@ -135,15 +161,6 @@ function removeApp(appId: string) {
 }
 
 async function onAppDeleted(appId: string) {
-	const isOnlyAppOnPage = apps.value.length === 1 && apps.value[0].id === appId;
-	if (isOnlyAppOnPage && currentPage.value > 1 && layout.value) {
-		// Keep the card until the previous page loads, so the empty state does not flash.
-		await layout.value.setCurrentPage(currentPage.value - 1);
-		await initialize();
-		// The reload can fail and keep the old page.
-		removeApp(appId);
-		return;
-	}
 	removeApp(appId);
 	await fetchApps();
 }
@@ -153,7 +170,6 @@ async function onAppDeleted(appId: string) {
 	<component
 		:is="ResourcesListLayout"
 		v-if="ResourcesListLayout"
-		ref="layout"
 		v-model:filters="filters"
 		resource-key="apps"
 		type="list-paginated"
@@ -173,6 +189,7 @@ async function onAppDeleted(appId: string) {
 		:ui-config="{ searchEnabled: true, showFiltersDropdown: false, sortEnabled: true }"
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="onPaginationAndSortUpdated"
+		@load-more="loadMoreApps"
 	>
 		<template #header>
 			<component :is="ProjectHeader" v-if="ProjectHeader" main-button="app">
@@ -191,7 +208,7 @@ async function onAppDeleted(appId: string) {
 			/>
 		</template>
 		<template #item="{ item }">
-			<AppCard class="mb-2xs" :app="item" @deleted="onAppDeleted" />
+			<AppCard :app="item" @deleted="onAppDeleted" />
 		</template>
 	</component>
 </template>

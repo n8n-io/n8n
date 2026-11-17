@@ -12,12 +12,11 @@ vi.mock('../apps.api');
 
 const route = vi.hoisted(() => ({ params: {} as Record<string, string> }));
 const createApp = vi.hoisted(() => vi.fn());
-const setCurrentPage = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => route,
 }));
-// Like the real layout: it emits the saved pagination preferences, then calls `initialize`.
+// Like the real layout: it emits the saved sort and page size, then calls `initialize`.
 const ResourcesListLayoutStub = defineComponent({
 	props: {
 		resources: { type: Array, required: true },
@@ -25,13 +24,7 @@ const ResourcesListLayoutStub = defineComponent({
 		hasEmptyState: { type: Boolean, default: true },
 		resourcesRefreshing: { type: Boolean, default: false },
 	},
-	emits: ['update:search', 'update:pagination-and-sort'],
-	methods: {
-		async setCurrentPage(page: number) {
-			setCurrentPage(page);
-			this.$emit('update:pagination-and-sort', { page });
-		},
-	},
+	emits: ['update:search', 'update:pagination-and-sort', 'load-more'],
 	mounted() {
 		this.$emit('update:pagination-and-sort', { pageSize: 50 });
 		void this.initialize();
@@ -39,7 +32,8 @@ const ResourcesListLayoutStub = defineComponent({
 	template: `<div>
 		<button data-test-id="search" @click="$emit('update:search', 'expense')" />
 		<button data-test-id="clear-search" @click="$emit('update:search', '')" />
-		<button data-test-id="sort" @click="$emit('update:pagination-and-sort', { sort: 'nameAsc', page: 2 })" />
+		<button data-test-id="sort" @click="$emit('update:pagination-and-sort', { sort: 'nameAsc' })" />
+		<button data-test-id="load-more" @click="$emit('load-more')" />
 		<button data-test-id="sort-inherited" @click="$emit('update:pagination-and-sort', { sort: 'constructor' })" />
 		<button data-test-id="switch-project" @click="$emit('update:filters', { search: '', homeProject: '' }); initialize()" />
 		<div v-if="resourcesRefreshing" data-test-id="refreshing" />
@@ -203,9 +197,12 @@ describe('AppsListView', () => {
 		expect(await findByTestId('refreshing')).toBeInTheDocument();
 	});
 
-	it('searches by name from the first page', async () => {
+	it('searches by name from the first batch', async () => {
+		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 60 });
 		const { getByTestId } = renderComponent();
 		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(1));
+		await userEvent.click(getByTestId('load-more'));
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(2));
 
 		await userEvent.click(getByTestId('sort'));
 		await userEvent.click(getByTestId('search'));
@@ -266,36 +263,6 @@ describe('AppsListView', () => {
 		expect(await findAllByTestId('app-card')).toHaveLength(1);
 	});
 
-	it('moves the layout to the previous page when a delete empties the page', async () => {
-		vi.mocked(listApps).mockResolvedValue({ data: [app('51')], count: 51 });
-		const { findAllByTestId, getByTestId, queryByTestId } = renderComponent();
-		await findAllByTestId('app-card');
-		await userEvent.click(getByTestId('sort'));
-		await waitFor(() =>
-			expect(listApps).toHaveBeenLastCalledWith(
-				expect.anything(),
-				undefined,
-				expect.objectContaining({ skip: 50 }),
-			),
-		);
-		let resolvePrevious: (value: { data: AppResponse[]; count: number }) => void = () => {};
-		vi.mocked(listApps).mockImplementationOnce(
-			async () => await new Promise((resolve) => (resolvePrevious = resolve)),
-		);
-
-		await userEvent.click(getByTestId('delete-51'));
-
-		expect(setCurrentPage).toHaveBeenCalledWith(1);
-		expect(listApps).toHaveBeenLastCalledWith(
-			expect.anything(),
-			undefined,
-			expect.objectContaining({ skip: 0 }),
-		);
-		expect(queryByTestId('apps-empty-state')).not.toBeInTheDocument();
-		resolvePrevious({ data: [app('1'), app('2')], count: 50 });
-		await waitFor(() => expect(getByTestId('delete-2')).toBeInTheDocument());
-	});
-
 	it('drops a response that is still in flight when a new fetch is scheduled', async () => {
 		sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
 		let resolveFirst: (value: { data: AppResponse[]; count: number }) => void = () => {};
@@ -313,42 +280,86 @@ describe('AppsListView', () => {
 		expect(listApps).toHaveBeenCalledTimes(2);
 	});
 
-	it('removes the deleted card when loading the previous page fails', async () => {
-		vi.mocked(listApps).mockResolvedValue({ data: [app('51')], count: 51 });
-		const { findAllByTestId, getByTestId, queryByTestId } = renderComponent();
-		await findAllByTestId('app-card');
-		await userEvent.click(getByTestId('sort'));
-		await waitFor(() =>
-			expect(listApps).toHaveBeenLastCalledWith(
-				expect.anything(),
-				undefined,
-				expect.objectContaining({ skip: 50 }),
-			),
-		);
-		vi.mocked(listApps).mockRejectedValueOnce(new Error('Network error'));
-
-		await userEvent.click(getByTestId('delete-51'));
-
-		await waitFor(() => expect(queryByTestId('delete-51')).not.toBeInTheDocument());
-	});
-
-	it('stays on the page when the deleted app is not the only card shown', async () => {
-		vi.mocked(listApps).mockResolvedValue({ data: [app('52')], count: 52 });
+	it('appends the next batch after the loaded apps on load-more', async () => {
+		vi.mocked(listApps)
+			.mockResolvedValueOnce({ data: [app('1'), app('2')], count: 3 })
+			.mockResolvedValueOnce({ data: [app('2'), app('3')], count: 3 });
 		const { findAllByTestId, getByTestId } = renderComponent();
 		await findAllByTestId('app-card');
-		await userEvent.click(getByTestId('sort'));
+
+		await userEvent.click(getByTestId('load-more'));
+
+		// A repeated app is not added twice
+		await waitFor(async () => expect(await findAllByTestId('app-card')).toHaveLength(3));
+		expect(listApps).toHaveBeenLastCalledWith(expect.anything(), undefined, {
+			skip: 2,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+			name: undefined,
+		});
+	});
+
+	it('does not load more when every app is loaded', async () => {
+		const { findAllByTestId, getByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+
+		await userEvent.click(getByTestId('load-more'));
+
+		expect(listApps).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads every loaded batch after a delete', async () => {
+		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 60 });
+		const { findAllByTestId, getByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		await userEvent.click(getByTestId('load-more'));
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(2));
+
+		await userEvent.click(getByTestId('delete-1'));
+
 		await waitFor(() =>
 			expect(listApps).toHaveBeenLastCalledWith(
 				expect.anything(),
 				undefined,
-				expect.objectContaining({ skip: 50 }),
+				expect.objectContaining({ skip: 0, take: 100 }),
 			),
 		);
+	});
 
-		await userEvent.click(getByTestId('delete-other-52'));
+	it('starts from the first batch when the sort changes', async () => {
+		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 60 });
+		const { findAllByTestId, getByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		await userEvent.click(getByTestId('load-more'));
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(2));
 
-		expect(setCurrentPage).not.toHaveBeenCalled();
-		expect(getByTestId('delete-52')).toBeInTheDocument();
+		await userEvent.click(getByTestId('sort'));
+
+		await waitFor(() =>
+			expect(listApps).toHaveBeenLastCalledWith(
+				expect.anything(),
+				undefined,
+				expect.objectContaining({ skip: 0, take: 50, sortBy: 'name:asc' }),
+			),
+		);
+	});
+
+	it('drops a load-more response when the list reloads meanwhile', async () => {
+		let resolveMore: (value: { data: AppResponse[]; count: number }) => void = () => {};
+		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 60 });
+		const { findAllByTestId, getByTestId } = renderComponent();
+		await findAllByTestId('app-card');
+		vi.mocked(listApps).mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveMore = resolve)),
+		);
+
+		await userEvent.click(getByTestId('load-more'));
+		await userEvent.click(getByTestId('search'));
+		await waitFor(() => expect(listApps).toHaveBeenCalledTimes(3));
+		resolveMore({ data: [app('3'), app('4')], count: 60 });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(await findAllByTestId('app-card')).toHaveLength(2);
 	});
 
 	it('removes a deleted app and reloads the list', async () => {
