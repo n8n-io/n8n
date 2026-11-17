@@ -1,6 +1,8 @@
 import type { InterruptibleToolContext, ToolApprovalContext } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import {
 	encodeIntegrationMessageContext,
@@ -1443,10 +1445,91 @@ describe('integration tools', () => {
 				makeInterruptibleCtx({ persistence: taskPersistence }),
 			);
 
-			expect(messageContextStore.bindSession).toHaveBeenCalledWith('agent-1:slack:D2:2.2', {
-				threadId: 'task-1-uuid',
-				resourceId: 'task:task-1',
-			});
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:D2:2.2',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				{ recipientId: 'slack:cred-a:user:U2', outboundText: 'hi' },
+			);
+		});
+
+		it('passes the card title and message as the outbound text when there is no text', async () => {
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_dm',
+					input: {
+						userId: 'U2',
+						message: {
+							card: {
+								title: 'Order 42',
+								message: 'Ships Friday',
+								components: [{ type: 'divider' }],
+							},
+						},
+					},
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:D2:2.2',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				{ recipientId: 'slack:cred-a:user:U2', outboundText: 'Order 42\nShips Friday' },
+			);
+		});
+
+		it('renders card components into the outbound text for a card with no text', async () => {
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_dm',
+					input: {
+						userId: 'U2',
+						message: {
+							card: {
+								components: [
+									{ type: 'section', text: 'Order #42 ships Friday' },
+									{ type: 'fields', fields: [{ label: 'Item', value: 'Desk' }] },
+									{ type: 'divider' },
+									{
+										type: 'select',
+										label: 'Reschedule',
+										options: [{ label: 'Monday', value: 'mon' }],
+									},
+								],
+							},
+						},
+					},
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:D2:2.2',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				{
+					recipientId: 'slack:cred-a:user:U2',
+					outboundText: 'Order #42 ships Friday\nItem: Desk\nReschedule\n- Monday',
+				},
+			);
 		});
 
 		it('binds the outbound thread for send_channel_message too', async () => {
@@ -1472,10 +1555,49 @@ describe('integration tools', () => {
 				makeInterruptibleCtx({ persistence: taskPersistence }),
 			);
 
-			expect(messageContextStore.bindSession).toHaveBeenCalledWith('agent-1:slack:C1:1.1', {
-				threadId: 'task-1-uuid',
-				resourceId: 'task:task-1',
-			});
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:C1:1.1',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				{ recipientId: 'slack:cred-a:channel:slack:C1', outboundText: 'hi' },
+			);
+		});
+
+		it('reports a send as successful when the session writes after it fail', async () => {
+			const logger = mockInstance(Logger);
+			const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-w' };
+			const sentWhatsAppContext = {
+				integrationConnectionId: 'whatsapp:cred-w',
+				platform: 'whatsapp',
+				target: {
+					type: 'dm' as const,
+					userId: '447700900123',
+					threadId: 'whatsapp:111:447700900123',
+				},
+				messageId: 'wamid.1',
+				updatedAt: '2026-08-20T10:00:00.000Z',
+			};
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			messageContextStore.bindSession.mockRejectedValue(new Error('db unavailable'));
+			messageContextStore.recordSentMessage.mockRejectedValue(new Error('db unavailable'));
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentWhatsAppContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1')[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			const result = await tool.handler!(
+				{ action: 'send_dm', input: { userId: '447700900123', message: { text: 'hi' } } },
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			// A failed result would make the agent send the message again.
+			expect(result).toMatchObject({ ok: true });
+			expect(messageContextStore.bindSession).toHaveBeenCalled();
+			expect(messageContextStore.recordSentMessage).toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledTimes(2);
 		});
 
 		it('binds the outbound thread for send_template too', async () => {
@@ -1514,6 +1636,59 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:whatsapp:111:447700900123',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				{
+					recipientId: 'whatsapp:cred-w:user:447700900123',
+					outboundText: 'Template message: order_update',
+				},
+			);
+		});
+
+		it('summarizes the template parameters as the outbound text for send_template', async () => {
+			const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-w' };
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({
+				ok: true,
+				messageContext: {
+					integrationConnectionId: 'whatsapp:cred-w',
+					platform: 'whatsapp',
+					target: {
+						type: 'dm' as const,
+						userId: '447700900123',
+						threadId: 'whatsapp:111:447700900123',
+					},
+					messageId: 'wamid.1',
+					updatedAt: '2026-08-20T10:00:00.000Z',
+				},
+			});
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1', () => ({
+					actions: ['send_template'],
+				}))[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_template',
+					input: {
+						userId: '447700900123',
+						templateName: 'order_update',
+						language: 'en_US',
+						parameters: { '1': 'Ana', '2': 'Friday' },
+					},
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:whatsapp:111:447700900123',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				expect.objectContaining({
+					outboundText: 'Template message: order_update\n1: Ana\n2: Friday',
+				}),
 			);
 		});
 
