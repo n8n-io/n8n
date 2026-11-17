@@ -96,6 +96,21 @@ describe('CompiledEngineSync: minted tokens', () => {
 		expect(client.putWorkflow).toHaveBeenCalledTimes(1);
 	});
 
+	it('does not keep a workflow whose module wfrt refuses, so its webhooks run on v1', async () => {
+		compiler.compile.mockResolvedValue(artifact(undefined));
+		credentials.buildDocument.mockResolvedValue({});
+		client.putWorkflow.mockRejectedValueOnce(new Error('wfrt has no room for one more module'));
+
+		await expect(sync.activate(workflow)).rejects.toThrow('wfrt has no room for one more module');
+		expect(sync.findLoaded('wf1')).toBeUndefined();
+		expect(sync.isServing('wf1')).toBe(false);
+
+		await sync.activate(workflow);
+		expect(sync.isServing('wf1')).toBe(true);
+		sync.onDisconnected();
+		expect(sync.isServing('wf1')).toBe(false);
+	});
+
 	it('tries again after a minute when n8n could not make the token', async () => {
 		compiler.compile.mockResolvedValue(artifact(mints));
 		credentials.buildDocument.mockResolvedValue({});

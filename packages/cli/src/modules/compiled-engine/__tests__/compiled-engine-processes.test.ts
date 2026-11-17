@@ -2,7 +2,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { BinaryDataConfig } from 'n8n-core';
 
-import { CompiledEngineProcesses } from '../compiled-engine-processes';
+import { CompiledEngineProcesses, wfrtUserAgent } from '../compiled-engine-processes';
 
 type BinaryEnv = {
 	binaryData(pathVariable: string): Record<string, string>;
@@ -62,5 +62,20 @@ describe('CompiledEngineProcesses', () => {
 			if (original === undefined) delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
 			else process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = original;
 		}
+	});
+});
+
+describe('wfrtUserAgent', () => {
+	it('passes the user agent of n8n to wfrt', () => {
+		expect(wfrtUserAgent('n8n')).toBe('n8n');
+		expect(wfrtUserAgent('Mozilla/5.0 (compatible; n8n/2.48.0; +https://n8n.io/)')).toBe(
+			'Mozilla/5.0 (compatible; n8n/2.48.0; +https://n8n.io/)',
+		);
+	});
+
+	it('keeps the default of wfrt for a value that cannot be a header value', () => {
+		expect(wfrtUserAgent('')).toBeUndefined();
+		expect(wfrtUserAgent('a\r\nx: y')).toBeUndefined();
+		expect(wfrtUserAgent('a'.repeat(257))).toBeUndefined();
 	});
 });

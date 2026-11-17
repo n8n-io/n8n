@@ -7,6 +7,7 @@ import { Service } from '@n8n/di';
 import { OperationalError, UserError } from '@n8n/errors';
 import type { IDataObject, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
+import { CompiledEngineUnavailableError } from '@/services/compiled-engine-bridge.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { getVariables } from '@/workflow-helpers';
 
@@ -38,6 +39,8 @@ export interface LoadedWorkflow {
 	workflowData: IWorkflowBase;
 	artifact: CompiledArtifact;
 	active: boolean;
+	/** Why `wfrt` does not have the module, when the last load after a connect failed. */
+	loadError?: string;
 }
 
 /** The first error diagnostics, as one line for an error message. */
@@ -123,16 +126,20 @@ export class CompiledEngineSync {
 	}
 
 	/**
-	 * Why the published version does not compile, or `undefined` when it compiles. The
-	 * compiler keeps the result, so `activate` does not compile again.
+	 * True when `wfrt` is connected and has the published module of the workflow. Otherwise
+	 * n8n serves a production webhook request of the workflow on v1.
 	 */
-	async compileError(workflow: WorkflowEntity): Promise<string | undefined> {
-		const artifact = await this.compile(this.publishedData(workflow));
-		if (artifact.ok) return undefined;
-		return `The workflow cannot run on the compiled engine. ${describeErrors(artifact)}`;
+	isServing(workflowId: string): boolean {
+		const entry = this.loaded.get(workflowId);
+		return this.connected && entry !== undefined && entry.active && entry.loadError === undefined;
 	}
 
-	/** Compiles the published version of a workflow and loads it with its triggers on. */
+	/**
+	 * Compiles the published version of a workflow and loads it with its triggers on. It
+	 * throws when the version does not compile or when `wfrt` refuses the module (a limit of
+	 * the runtime, such as the module count or the module size): the caller then runs the
+	 * workflow on v1.
+	 */
 	async activate(workflow: WorkflowEntity) {
 		const workflowData = this.publishedData(workflow);
 		const artifact = await this.compile(workflowData);
@@ -149,7 +156,13 @@ export class CompiledEngineSync {
 			);
 			return;
 		}
-		await this.push(entry);
+		try {
+			await this.push(entry);
+		} catch (error) {
+			// `wfrt` does not have this version: the workflow is not a loaded workflow.
+			if (this.loaded.get(entry.wfrtId) === entry) this.loaded.delete(entry.wfrtId);
+			throw error;
+		}
 	}
 
 	async deactivate(workflowId: string) {
@@ -164,13 +177,14 @@ export class CompiledEngineSync {
 	/** Compiles the given workflow and loads it, with no triggers, for one manual run. */
 	async prepareManualRun(workflowData: IWorkflowBase, trigger?: string): Promise<LoadedWorkflow> {
 		const artifact = await this.compile(workflowData, trigger);
+		// The caller starts the run on v1 for these two reasons: no execution exists yet.
 		if (!artifact.ok) {
-			throw new UserError(
+			throw new CompiledEngineUnavailableError(
 				`The workflow cannot run on the compiled engine. ${describeErrors(artifact)}`,
 			);
 		}
 		if (!this.connected) {
-			throw new OperationalError(
+			throw new CompiledEngineUnavailableError(
 				'The compiled engine is not running. Check the n8n logs for wfrt errors.',
 			);
 		}
@@ -233,9 +247,12 @@ export class CompiledEngineSync {
 		for (const entry of this.loaded.values()) {
 			try {
 				await this.push(entry);
+				entry.loadError = undefined;
 			} catch (error) {
+				// n8n serves the webhooks of this workflow on v1 until a load succeeds.
+				entry.loadError = error instanceof Error ? error.message : String(error);
 				this.logger.error(`Could not load workflow ${entry.wfrtId} into wfrt`, {
-					error: error instanceof Error ? error.message : String(error),
+					error: entry.loadError,
 				});
 			}
 		}

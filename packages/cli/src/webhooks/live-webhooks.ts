@@ -122,7 +122,12 @@ export class LiveWebhooks implements IWebhookManager {
 		const compiledEngine = Container.get(CompiledEngineBridge);
 		if (
 			compiledEngine.handles(workflowData) &&
-			compiledEngine.get().servesWebhook(workflowData, webhook.node)
+			compiledEngine.get().servesWebhook(workflowData, webhook.node) &&
+			// `wfrt` is not connected, or it does not have the module: the request runs on v1
+			// below, with the Webhook node of n8n.
+			compiledEngine
+				.get()
+				.isServing(webhook.workflowId)
 		) {
 			// `wfrt` serves the Webhook node of a compiled workflow and writes the response. The
 			// webhook of another node (a trigger of an app) runs that node below; the run that it
