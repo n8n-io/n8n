@@ -199,6 +199,7 @@ function makeService() {
 		setupCompletion,
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
+		mock(),
 		globalConfig,
 		tagService,
 		folderService,
@@ -1230,9 +1231,9 @@ describe('AgentsService', () => {
 
 		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
 		);
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId);
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
 			type: 'slack',
 			credentialId: 'slack-1',
@@ -1260,7 +1261,7 @@ describe('AgentsService', () => {
 
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 		expect(eventService.emit.mock.invocationCallOrder[0]).toBeGreaterThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
 		);
 	});
 
@@ -1274,7 +1275,7 @@ describe('AgentsService', () => {
 			projectId,
 		});
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId);
 	});
 
 	it('does not emit agent-deleted when the agent is missing', async () => {
@@ -1294,7 +1295,7 @@ describe('AgentsService', () => {
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
 		await expect(service.delete(agentId, user, projectId)).resolves.toMatchObject({ id: agentId });
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId);
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
@@ -1305,7 +1306,7 @@ describe('AgentsService', () => {
 		await expect(
 			service.delete(agentId, user, projectId, { requireArchived: true }),
 		).rejects.toThrow('Agent must be archived before it can be deleted.');
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
 		await expect(
@@ -1318,7 +1319,7 @@ describe('AgentsService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
 		await expect(service.delete(agentId, user, projectId)).resolves.toBeNull();
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
 	it('removes the service account into the agent project before any cleanup', async () => {
@@ -1343,7 +1344,7 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, user, projectId)).rejects.toThrow('transfer blocked');
 		expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
 	it('does not remove a service account when the delete needs an archived agent', async () => {

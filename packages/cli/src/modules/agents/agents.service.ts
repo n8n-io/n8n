@@ -1,3 +1,4 @@
+import { AgentApprovalCleanupService } from './approval/agent-approval-cleanup.service';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -188,6 +189,7 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
+		private readonly approvalCleanup: AgentApprovalCleanupService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly folderService: FolderService,
@@ -1043,6 +1045,7 @@ export class AgentsService {
 		// removal fails, for example because a policy blocks the transfer of its
 		// work, the agent stays as it was.
 		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
+		await this.approvalCleanup.cleanupAgent(agentId, agentProjectId, agent.approvalWorkflowId);
 
 		await this.deleteKnowledgeFiles(agentProjectId, agentId);
 
@@ -1059,7 +1062,7 @@ export class AgentsService {
 
 		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
 
-		await this.agentRepository.remove(agent);
+		await this.agentRepository.removeAfterApprovalCleanup(agentId, agentProjectId);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 

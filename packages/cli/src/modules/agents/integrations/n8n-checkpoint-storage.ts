@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	stripHydratedFileData,
 	type CheckpointStore,
@@ -62,10 +63,28 @@ export class N8NCheckpointStorage {
 		this.logger = this.logger.scoped('agents');
 	}
 
-	getStorage(agentId: string): CheckpointStore {
+	getStorage(agentId: string, expectedApprovalDefinition?: string): CheckpointStore {
 		return {
 			save: async (key, state) => await this.save(key, state, agentId),
-			load: async (key) => await this.load(key, agentId),
+			load: async (key) => {
+				const state = await this.load(key, agentId);
+				if (state && expectedApprovalDefinition) {
+					for (const call of Object.values(state.pendingToolCalls)) {
+						if (
+							call.suspended &&
+							isRecord(call.continuation) &&
+							call.continuation.__agentDecisionWorkflow === true &&
+							call.continuation.definitionHash !== expectedApprovalDefinition
+						) {
+							await this.delete(key, agentId);
+							throw new UserError(
+								'The Agent configuration changed while approval was pending. Start a new request.',
+							);
+						}
+					}
+				}
+				return state;
+			},
 			claimForResume: async (key: string, state: SerializableAgentState) =>
 				await this.claimForResume(key, state, agentId),
 			delete: async (key, state) => {
@@ -168,7 +187,8 @@ export class N8NCheckpointStorage {
 		if (
 			checkpoint.expired ||
 			checkpoint.state === null ||
-			checkpoint.updatedAt < this.expiryCutoff()
+			(checkpoint.updatedAt < this.expiryCutoff() &&
+				!(await this.agentCheckpointRepository.isRetainedForApproval(key)))
 		) {
 			throw new UserError('This action has expired and cannot be resumed');
 		}
@@ -192,7 +212,9 @@ export class N8NCheckpointStorage {
 			agentId,
 			JSON.stringify(state),
 			JSON.stringify({ ...state, status: 'running' }),
-			this.expiryCutoff(),
+			(await this.agentCheckpointRepository.isRetainedForApproval(key))
+				? undefined
+				: this.expiryCutoff(),
 		);
 	}
 
@@ -389,7 +411,11 @@ export class N8NCheckpointStorage {
 		if (!checkpoint) return { status: 'not-found' };
 		if (checkpoint.state === null) return { status: 'expired' };
 		const state = jsonParse<SerializableAgentState>(checkpoint.state);
-		if (checkpoint.expired || checkpoint.updatedAt < this.expiryCutoff())
+		if (
+			checkpoint.expired ||
+			(checkpoint.updatedAt < this.expiryCutoff() &&
+				!(await this.agentCheckpointRepository.isRetainedForApproval(key)))
+		)
 			return { status: 'expired', checkpoint: state };
 		return { status: 'active', checkpoint: state };
 	}

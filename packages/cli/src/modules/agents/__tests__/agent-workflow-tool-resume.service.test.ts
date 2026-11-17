@@ -510,6 +510,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			'exec-1',
 			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
 			ctx.runData.data.resultData.runData,
+			ctx.workflow.connections,
 		);
 	});
 
@@ -534,6 +535,7 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 			'exec-1',
 			{ status: 'failed', result: null, error: 'boom' },
 			ctx.runData.data.resultData.runData,
+			ctx.workflow.connections,
 		);
 	});
 
@@ -563,5 +565,92 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
 
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
+	});
+});
+
+describe('expired workflow approval continuation', () => {
+	it('resumes only while the original Agent is suspended', async () => {
+		const { service, checkpointStorage } = setup();
+		const resume = vi.spyOn(service, 'resume').mockResolvedValue();
+		await service.resumeIfSuspended(previewRun, 'canceled');
+		expect(resume).toHaveBeenCalledOnce();
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'not-found' });
+		await service.resumeIfSuspended(previewRun, 'canceled');
+		expect(resume).toHaveBeenCalledOnce();
+	});
+});
+
+describe('AgentWorkflowToolResumeService tasks', () => {
+	it.each([true, false])(
+		'resumes a task in its original session (published=%s)',
+		async (published) => {
+			const {
+				service,
+				checkpointStorage,
+				orchestratorService,
+				chatIntegrationService,
+				userRepository,
+			} = setup();
+			const taskRun = {
+				...agentRun,
+				integrationType: 'task',
+				published,
+				userId: published ? undefined : 'user-1',
+			};
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					status: 'suspended',
+					persistence: { threadId: agentRun.threadId, resourceId: 'task:task-1' },
+				},
+			} as never);
+			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+			orchestratorService.resumeForChat.mockImplementation(async function* () {});
+			await service.resume(taskRun, 'success');
+			expect(orchestratorService.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					usePublishedVersion: published,
+					integrationType: 'task',
+					source: 'task',
+					allowBackgroundTasks: false,
+					expectedMemory: { threadId: agentRun.threadId, resourceId: 'task:task-1' },
+				}),
+			);
+			expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
+		},
+	);
+	it.each(['other-thread', 'integration:channel'])(
+		'rejects a task checkpoint outside its scope: %s',
+		async (invalid) => {
+			const { service, checkpointStorage, orchestratorService } = setup();
+			checkpointStorage.getStatus.mockResolvedValue({
+				status: 'active',
+				checkpoint: {
+					status: 'suspended',
+					persistence: {
+						threadId: invalid === 'other-thread' ? invalid : agentRun.threadId,
+						resourceId: invalid === 'other-thread' ? 'task:task-1' : invalid,
+					},
+				},
+			} as never);
+			await service.resume({ ...agentRun, integrationType: 'task', published: true }, 'success');
+			expect(orchestratorService.resumeForChat).not.toHaveBeenCalled();
+		},
+	);
+	it('retains a draft task when its initiating user is unavailable', async () => {
+		const { service, checkpointStorage, orchestratorService, userRepository } = setup();
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: {
+				status: 'suspended',
+				persistence: { threadId: agentRun.threadId, resourceId: 'task:task-1' },
+			},
+		} as never);
+		userRepository.findOneBy.mockResolvedValue(null);
+		await service.resume(
+			{ ...agentRun, integrationType: 'task', published: false, userId: 'missing' },
+			'success',
+		);
+		expect(orchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});
 });

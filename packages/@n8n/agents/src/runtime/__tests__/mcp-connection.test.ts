@@ -465,6 +465,23 @@ describe('McpConnection — tool filtering', () => {
 		expect(tools[1]?.suspendSchema).toBeUndefined();
 	});
 
+	it('routes only the tools that need approval through the host wrapper', async () => {
+		const wrapApproval = vi.fn((tool) => ({ ...tool, description: 'External review' }));
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			requireApproval: ['echo'],
+			wrapApproval,
+		});
+		await conn.connect();
+		const tools = await conn.listTools();
+		expect(wrapApproval).toHaveBeenCalledOnce();
+		expect(wrapApproval).toHaveBeenCalledWith(expect.objectContaining({ name: 's1_echo' }));
+		expect(tools[0].description).toBe('External review');
+		expect(tools[1].description).not.toBe('External review');
+	});
+
 	it('keeps model-facing names unique when tool names normalize identically', async () => {
 		const onToolCallSettled = vi.fn();
 		const rawTools = [

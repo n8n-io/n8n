@@ -1,3 +1,4 @@
+import { AgentApprovalCleanupService } from './approval/agent-approval-cleanup.service';
 import type { OperationContext } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import type { UserDeletionContext } from '@n8n/backend-services';
@@ -29,6 +30,7 @@ export class AgentProjectCleanupService {
 		private readonly sessions: AgentSessionStopService,
 		private readonly executions: AgentExecutionRepository,
 		private readonly agentServiceAccount: AgentServiceAccountService,
+		private readonly approvalCleanup: AgentApprovalCleanupService,
 	) {}
 
 	/**
@@ -54,6 +56,7 @@ export class AgentProjectCleanupService {
 		} = this;
 		const agents = await agentRepository.findByProjectId(projectId);
 		for (const agent of agents) {
+			await this.approvalCleanup.cleanupAgent(agent.id, projectId, agent.approvalWorkflowId);
 			try {
 				await agentKnowledgeService.deleteAllFilesForAgent(projectId, agent.id);
 			} catch (error) {

@@ -94,6 +94,36 @@ describe('AgentWorkflowDependencyRepository', () => {
 		]);
 	});
 
+	it('tracks decision workflows in the draft and published definition', async () => {
+		const agent = makeAgent();
+		const published = makePublishedVersion();
+		agent.schema!.hitlConfigurations = [
+			{
+				id: 'draft-review',
+				name: 'Draft review',
+				method: 'workflow',
+				workflowId: 'decision-draft',
+			},
+		];
+		published.schema!.hitlConfigurations = [
+			{
+				id: 'published-review',
+				name: 'Published review',
+				method: 'workflow',
+				workflowId: 'decision-published',
+			},
+		];
+		entityManager.findOne.mockImplementation(async (entity) =>
+			entity === Agent ? agent : published,
+		);
+		entityManager.find.mockResolvedValue(workflows('decision-draft', 'decision-published'));
+		await repository.refreshForAgent(agent.id);
+		expect(entityManager.insert).toHaveBeenCalledWith(AgentWorkflowDependency, [
+			{ agentId: agent.id, workflowId: 'decision-draft' },
+			{ agentId: agent.id, workflowId: 'decision-published' },
+		]);
+	});
+
 	it('only inserts rows for workflows that resolve inside the agent project', async () => {
 		const agent = makeAgent();
 		agent.activeVersionId = null;

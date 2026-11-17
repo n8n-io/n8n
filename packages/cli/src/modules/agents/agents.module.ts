@@ -8,10 +8,8 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
-		const { FolderContentService } = await import('@/services/folder-content.service.js');
-		const { AgentFolderService } = await import('./agent-folder.service.js');
-		Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
-
+		const { registerApprovalRuntime } = await import('./approval/register-approval-runtime.js');
+		registerApprovalRuntime();
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
@@ -45,6 +43,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-chat.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./approval/agent-hitl-channels.controller.js');
 		await import('./integrations/platforms/webhook/webhook-channel.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');

@@ -12,7 +12,6 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -26,6 +25,7 @@ import type {
 	INodeExecutionData,
 	IPinData,
 	IRun,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	RelatedAgentRun,
 	WorkflowExecuteMode,
@@ -37,7 +37,7 @@ import {
 	TimeoutExecutionCancelledError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -76,6 +76,7 @@ import {
 	settlementStatusForExecution,
 } from '../background/agent-background-job.service';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
+import { readWorkflowCaller } from '../approval/workflow-caller';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -213,7 +214,7 @@ export function getFixedWorkflowToolInputs(
 	inputs: WorkflowToolInputsConfig | undefined,
 ): Record<string, unknown> {
 	if (!inputs) return {};
-	const fixed: Array<[string, unknown]> = [];
+	const fixed: [string, unknown][] = [];
 	for (const [name, binding] of Object.entries(inputs)) {
 		if (binding.mode === 'fixed') {
 			fixed.push([name, binding.value]);
@@ -301,10 +302,20 @@ async function resolveWorkflowToolInput(
 // ---------------------------------------------------------------------------
 
 export async function executeWorkflow(
-	workflow: WorkflowEntity,
+	workflow: IWorkflowBase,
 	triggerNode: INode,
 	inputData: Record<string, unknown>,
-	context: WorkflowToolRunContext,
+	context: Pick<
+		WorkflowToolRunContext,
+		| 'workflowRunner'
+		| 'subworkflowPolicyChecker'
+		| 'activeExecutions'
+		| 'projectId'
+		| 'executionMode'
+		| 'agentRun'
+		| 'abortSignal'
+		| 'instrumentToolAdditionalData'
+	> & { executionProjectId?: string },
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
@@ -326,6 +337,7 @@ export async function executeWorkflow(
 
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
+		...(context.executionProjectId ? { projectId: context.executionProjectId } : {}),
 		executionMode: context.executionMode,
 		workflowData,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
@@ -562,11 +574,15 @@ function agentRunOf(
 
 	return {
 		agentId: context.agentId,
+		workflowCaller: readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller),
 		projectId: context.projectId,
 		threadId,
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
+		...(context.integrationType === 'task'
+			? { published: context.usePublishedWorkflowVersion === true }
+			: {}),
 		...(context.userId ? { userId: context.userId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
 		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
@@ -1040,6 +1056,14 @@ function assembleWorkflowTool(
 				inputFiles = new Map(Object.entries(pending.data.inputFiles ?? {}));
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
+				if (
+					isRecord(ctx.continuation) &&
+					typeof ctx.continuation.__agentApprovalWorkflowVersion === 'string' &&
+					ctx.continuation.__agentApprovalWorkflowVersion !== current.workflow.versionId
+				)
+					throw new UserError(
+						'The tool workflow changed while approval was pending. Request approval again.',
+					);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
 				const { files, ...rest } = input;
 				const modelInput = acceptsFiles ? rest : input;

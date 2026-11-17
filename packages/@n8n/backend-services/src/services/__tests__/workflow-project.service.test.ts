@@ -17,19 +17,16 @@ describe('WorkflowProjectService', () => {
 		const project = await service.getWorkflowProjectCached('workflow-1');
 
 		expect(project.id).toBe('project-1');
-		expect(sharedWorkflowRepository.findOneOrFail).not.toHaveBeenCalled();
+		expect(sharedWorkflowRepository.getWorkflowOwningProject).not.toHaveBeenCalled();
 	});
 
 	it('loads and caches the owner project after a cache miss', async () => {
 		const project = { id: 'project-1', name: 'Project' } as Project;
 		cacheService.getHashValue.mockResolvedValue(undefined);
-		sharedWorkflowRepository.findOneOrFail.mockResolvedValue({ project } as never);
+		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(project);
 
 		await expect(service.getWorkflowProjectCached('workflow-1')).resolves.toBe(project);
-		expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalledWith({
-			where: { workflowId: 'workflow-1', role: 'workflow:owner' },
-			relations: ['project'],
-		});
+		expect(sharedWorkflowRepository.getWorkflowOwningProject).toHaveBeenCalledWith('workflow-1');
 		expect(cacheService.setHash).toHaveBeenCalledWith('workflow-project', {
 			'workflow-1': project,
 		});
@@ -40,10 +37,10 @@ describe('WorkflowProjectService', () => {
 		async (cached) => {
 			const project = { id: 'project-1' } as Project;
 			cacheService.getHashValue.mockResolvedValue(cached as never);
-			sharedWorkflowRepository.findOneOrFail.mockResolvedValue({ project } as never);
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(project);
 
 			await expect(service.getWorkflowProjectCached('workflow-1')).resolves.toBe(project);
-			expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalledOnce();
+			expect(sharedWorkflowRepository.getWorkflowOwningProject).toHaveBeenCalledOnce();
 		},
 	);
 
@@ -70,4 +67,20 @@ describe('WorkflowProjectService', () => {
 		expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', 'workflow-1');
 		expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', 'workflow-2');
 	});
+});
+
+it('resolves private execution owners without adding a shared workflow cache entry', async () => {
+	const cache = mock<CacheService>();
+	const shares = mock<SharedWorkflowRepository>();
+	const service = new WorkflowProjectService(cache, shares);
+	shares.getWorkflowOwningProject.mockResolvedValue(undefined);
+	const project = mock<Project>({ id: 'private-project' });
+	service.registerPrivateOwner('test', async (workflowId) =>
+		workflowId === 'private' ? project : undefined,
+	);
+	await expect(service.getWorkflowProjectCached('private')).resolves.toBe(project);
+	expect(cache.setHash).not.toHaveBeenCalled();
+	await expect(service.getWorkflowProjectCached('missing')).rejects.toThrow(
+		'Workflow project not found',
+	);
 });
