@@ -11,10 +11,7 @@ function themed(value: Themed<string> | undefined, theme: AppliedTheme): string 
 	return typeof value === 'object' ? value[theme] : value;
 }
 
-/**
- * Follows the editor's `CredentialIcon`: the type's own icon file or icon name first, then the icon
- * of the first type it extends that has one.
- */
+/** Follows the editor's `CredentialIcon`, which a module cannot import. */
 export function credentialTypeIcon(
 	types: ReadonlyMap<string, CredentialTypeSummary>,
 	name: string,

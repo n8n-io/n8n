@@ -70,7 +70,6 @@ export async function fetchInstanceAccess(
 	return await makeRestApiRequest(context, 'GET', `${INSTANCE_POLICY_ENDPOINT[kind]}/access`);
 }
 
-/** What the admin pages show of a credential type. */
 export type CredentialTypeSummary = {
 	displayName: string;
 	icon?: Themed<string>;

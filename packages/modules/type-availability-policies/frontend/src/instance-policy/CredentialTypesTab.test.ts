@@ -90,11 +90,17 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('shows the type name when the display names do not load', async () => {
-		mocks.fetchCredentialTypeSummaries.mockRejectedValue(new Error('offline'));
+		const summaries = createDeferredPromise<Map<string, unknown>>();
+		mocks.fetchCredentialTypeSummaries.mockReturnValue(summaries.promise);
+		const { findByText, getByText } = await setup();
+		await findByText('bitlyApi');
 
-		const { findByText } = await setup();
+		summaries.reject(new Error('offline'));
+		await summaries.promise.catch(() => {});
+		await new Promise((resolve) => setTimeout(resolve, 0));
 
-		expect(await findByText('bitlyApi')).toBeInTheDocument();
+		expect(getByText('bitlyApi')).toBeInTheDocument();
+		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
 	it('saves a rule for only the changed credential type', async () => {

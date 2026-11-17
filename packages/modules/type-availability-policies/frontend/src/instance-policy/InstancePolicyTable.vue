@@ -37,7 +37,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	change: [name: string, access: PolicyAction];
-	/** A click on a row, outside its Access menu. */
 	open: [name: string];
 }>();
 

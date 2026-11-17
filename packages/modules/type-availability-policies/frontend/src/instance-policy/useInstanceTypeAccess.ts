@@ -25,11 +25,7 @@ export type SetTypeAccess<K extends RestrictedTypeKind> = (
 
 type PendingChange = { access: PolicyAction; savedVersion?: number };
 
-/**
- * The access of every type of one kind under the instance policy, for a tab of the admin page.
- * It keeps the access list on the policy version that the next save edits, and shows a change
- * from the moment the admin makes it until the server confirms it or refuses it.
- */
+/** The access of every type of one kind under the instance policy, for a tab of the admin page. */
 export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 	kind: K,
 	setTypeAccess: SetTypeAccess<K>,
