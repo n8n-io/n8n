@@ -29,8 +29,7 @@ pub const Rpc = struct { name: []const u8, sql: []const u8, values: []const Valu
 /// The statement and the values of each `rpc_` vector. The kinds are `s`
 /// (string, UTF-8), `n` (number, the bytes of the double), `b` (boolean) and `z` (null).
 pub const rpcs = [_]Rpc{
-    .{ .name = "rpc_none", .sql = "select 1", .values = &.{
-    } },
+    .{ .name = "rpc_none", .sql = "select 1", .values = &.{} },
     .{ .name = "rpc_all", .sql = "select @p6, @p5, @p4, @p3, @p2, @p1", .values = &.{
         .{ .name = "p6", .kind = 's', .hex = "61c3a9f09f9880" },
         .{ .name = "p5", .kind = 'n', .hex = "0000000000001c40" },

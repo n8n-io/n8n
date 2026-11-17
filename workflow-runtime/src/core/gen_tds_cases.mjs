@@ -934,6 +934,10 @@ const lines = [
 	'pub const rpcs = [_]Rpc{',
 ];
 for (const [name, sql, values] of rpcInputs) {
+	if (values.length === 0) {
+		lines.push(`    .{ .name = "${name}", .sql = "${sql}", .values = &.{} },`);
+		continue;
+	}
 	lines.push(`    .{ .name = "${name}", .sql = "${sql}", .values = &.{`);
 	for (const [param, value] of values) {
 		const [kind, bytes] =
