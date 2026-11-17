@@ -8,6 +8,8 @@ import { isNativeDateTime, lowerDateTime } from './date-time.ts';
 import { libraryNodeTypes, lowerHttpRequest, lowerLibrary, NATIVE_ROOTS } from './library.ts';
 import { lowerSplitInBatches } from './loops.ts';
 import {
+	isNativeExecutionData,
+	isNativeTimeSaved,
 	lowerAggregate,
 	lowerExecutionData,
 	lowerFilter,
@@ -59,8 +61,6 @@ export const NATIVE: Record<string, Lowerer> = {
 	[`${BASE}httpRequest`]: lowerHttpRequest,
 	[`${BASE}splitInBatches`]: lowerSplitInBatches,
 	[`${BASE}executeWorkflow`]: lowerExecuteWorkflow,
-	[`${BASE}executionData`]: lowerExecutionData,
-	[`${BASE}timeSaved`]: lowerTimeSaved,
 };
 
 /** Native nodes with one output that the fallback host can run when their expressions do not translate. */
@@ -138,6 +138,12 @@ export function lowererOf(node: N8nNode): Lowerer | string {
 	// Date & Time has a native form for some calls only (`date-time.ts`). The other calls are
 	// node code: the node compiler or the fallback host (`lowerFallback`).
 	if (node.type === `${BASE}dateTime` && isNativeDateTime(node)) return lowerDateTime;
+	// Execution Data and Time Saved save their data with a service call of n8n (`native.ts`)
+	// for the calls that are exact. The other calls keep the form of `lowerFallback`.
+	if (node.type === `${BASE}executionData` && isNativeExecutionData(node)) {
+		return lowerExecutionData;
+	}
+	if (node.type === `${BASE}timeSaved` && isNativeTimeSaved(node)) return lowerTimeSaved;
 	return lowerFallback;
 }
 

@@ -24,6 +24,7 @@ import type { TranslatedValue } from './expression.ts';
 import { constantText, INDEX, ITEM, isExpression, jsonLiteral, segments } from './expression.ts';
 import { camelIdentifier } from './naming.ts';
 import { lowerFallback } from './steps.ts';
+import type { N8nNode } from './types.ts';
 import { isRecord, text } from './types.ts';
 
 function flat(code: Code): string {
@@ -892,10 +893,35 @@ export function lowerAggregate(c: NodeContext): void {
 /** The service of n8n that keeps data of the execution that runs (spec 9.9). */
 const EXECUTION_SERVICE = 'execution';
 
-function requireServices(c: NodeContext, code: string): void {
-	if (c.services === false) {
-		throw new NodeFailure(code, 'The runtime of the caller has no service calls.', 'operation');
+/** True when the node stops the workflow on an error and does not try again. */
+function stopsOnError(node: N8nNode): boolean {
+	return (
+		!node.continueOnFail &&
+		!node.retryOnFail &&
+		(node.onError === undefined || node.onError === 'stopWorkflow')
+	);
+}
+
+/** The `key` and `value` entries of an Execution Data node, or null when they are no list. */
+function customDataEntries(node: N8nNode): Array<Record<string, unknown>> | null {
+	const data = node.parameters?.dataToSave;
+	if (data === undefined) return [];
+	if (!isRecord(data)) return null;
+	const list = data.values === undefined ? [] : data.values;
+	return Array.isArray(list) && list.every(isRecord) ? list : null;
+}
+
+/**
+ * True when the Execution Data node has a native form (`lowerExecutionData`): a fixed
+ * operation, a list of data to save, and no "continue on fail" or "retry on fail" (v1 gives
+ * an error item for a failed item there). Every other node keeps the form of `lowerFallback`.
+ */
+export function isNativeExecutionData(node: N8nNode): boolean {
+	const operation = node.parameters?.operation;
+	if (operation !== undefined && (typeof operation !== 'string' || operation.startsWith('='))) {
+		return false;
 	}
+	return stopsOnError(node) && customDataEntries(node) !== null;
 }
 
 /**
@@ -903,50 +929,34 @@ function requireServices(c: NodeContext, code: string): void {
  * rules of v1 (`setAllWorkflowExecutionMetadata`): the node sends the values of each item,
  * in the order of the items. When an expression of an item fails, the node first sends the
  * values of the items before it, as v1 saves them before it fails.
+ *
+ * `lowererOf` gives this lowering only to a node that `isNativeExecutionData` accepts. A
+ * runtime without service calls, or an expression that does not translate, keeps the form
+ * of `lowerFallback`.
  */
 export function lowerExecutionData(c: NodeContext): void {
-	const p = c.parameters;
 	const { w } = c;
-	const operation = p.operation === undefined ? 'save' : p.operation;
-	if (typeof operation !== 'string' || operation.startsWith('=')) {
-		throw new NodeFailure(
-			'execution-data',
-			'The operation of the node is an expression.',
-			'operation',
+	const list = customDataEntries(c.node) ?? [];
+	const saves = (c.parameters.operation ?? 'save') === 'save' && list.length > 0;
+	if (!saves) {
+		w.line(`const ${c.output(0)}: Json[] = ${c.input};`);
+		return;
+	}
+	let pairs: TranslatedValue;
+	try {
+		if (c.services === false) throw new NodeFailure('execution-data', 'No service calls.');
+		// v1 reads the collection: a DateTime inside it is its text.
+		pairs = c.compiled(
+			list.map((entry) => [entry.key, entry.value]),
+			'dataToSave.values',
+			{ luxonValue: 'text' },
 		);
+	} catch (e) {
+		if (!(e instanceof NodeFailure)) throw e;
+		lowerFallback(c);
+		return;
 	}
 	const out = c.output(0);
-	if (operation !== 'save') {
-		w.line(`const ${out}: Json[] = ${c.input};`);
-		return;
-	}
-	requireServices(c, 'execution-data');
-	if (
-		c.node.continueOnFail ||
-		c.node.retryOnFail ||
-		(c.node.onError !== undefined && c.node.onError !== 'stopWorkflow')
-	) {
-		throw new NodeFailure(
-			'execution-data',
-			'Custom data with "continue on fail" or "retry on fail" is not supported.',
-			'onError',
-		);
-	}
-	const data = p.dataToSave === undefined ? {} : p.dataToSave;
-	const list = isRecord(data) ? (data.values === undefined ? [] : data.values) : undefined;
-	if (!Array.isArray(list) || !list.every(isRecord)) {
-		throw new NodeFailure('execution-data', 'The data to save is not a list.', 'dataToSave');
-	}
-	if (list.length === 0) {
-		w.line(`const ${out}: Json[] = ${c.input};`);
-		return;
-	}
-	// v1 reads the collection: a DateTime inside it is its text.
-	const pairs = c.compiled(
-		list.map((entry) => [entry.key, entry.value]),
-		'dataToSave.values',
-		{ luxonValue: 'text' },
-	);
 	const sets = c.local('Sets');
 	const failed = c.local('Failed');
 	const error = c.local('Error');
@@ -976,25 +986,37 @@ export function lowerExecutionData(c: NodeContext): void {
 }
 
 /**
- * Time Saved: the node records the minutes on its own run (`setMetadata` of v1) and gives
- * its items on. n8n keeps the run data, so the node sends the minutes to n8n.
+ * True when the Time Saved node has a native form (`lowerTimeSaved`): a fixed mode, and
+ * minutes that are a fixed number of zero or more (v1 fails for another value).
  */
-export function lowerTimeSaved(c: NodeContext): void {
-	const p = c.parameters;
-	requireServices(c, 'time-saved');
+export function isNativeTimeSaved(node: N8nNode): boolean {
+	const p = node.parameters ?? {};
 	const mode = p.mode === undefined ? 'once' : p.mode;
 	const minutes = p.minutesSaved === undefined ? 0 : p.minutesSaved;
-	if (typeof mode !== 'string' || mode.startsWith('=')) {
-		throw new NodeFailure('time-saved', 'The mode of the node is an expression.', 'mode');
+	return (
+		stopsOnError(node) &&
+		typeof mode === 'string' &&
+		!mode.startsWith('=') &&
+		typeof minutes === 'number' &&
+		Number.isFinite(minutes) &&
+		minutes >= 0
+	);
+}
+
+/**
+ * Time Saved: the node records the minutes on its own run (`setMetadata` of v1) and gives
+ * its items on. n8n keeps the run data, so the node sends the minutes to n8n.
+ *
+ * `lowererOf` gives this lowering only to a node that `isNativeTimeSaved` accepts.
+ */
+export function lowerTimeSaved(c: NodeContext): void {
+	if (c.services === false) {
+		lowerFallback(c);
+		return;
 	}
-	if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 0) {
-		throw new NodeFailure(
-			'time-saved',
-			'The minutes saved are not a fixed number that is zero or more.',
-			'minutesSaved',
-		);
-	}
-	const total = mode === 'perItem' ? `${c.input}.length * ${String(minutes)}` : String(minutes);
+	const p = c.parameters;
+	const minutes = typeof p.minutesSaved === 'number' ? p.minutesSaved : 0;
+	const total = p.mode === 'perItem' ? `${c.input}.length * ${String(minutes)}` : String(minutes);
 	c.w.line(
 		`if (${c.input}.length > 0) await ctx.service({ name: ${str(c.node.name)}, service: '${EXECUTION_SERVICE}', op: 'setTimeSaved', args: { minutes: ${total} } });`,
 	);
