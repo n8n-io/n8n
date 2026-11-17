@@ -13,7 +13,7 @@ import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import { DbConnection, DeploymentKeyRepository, SettingsRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import type { SystemTaskClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -47,6 +47,7 @@ import { ExpressionObservabilityProvider } from '@/expression-observability/expr
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { POLICY_MODULES } from '@/policy/policy-modules';
@@ -168,6 +169,7 @@ export abstract class BaseCommand<F = never> {
 			try {
 				await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository), {
 					canSeed: this.seedsInstanceIdentity,
+					keepDerivedInstanceId: !this.seedsInstanceIdentity || (await this.hasLicenseCert()),
 				});
 			} catch (error) {
 				if (this.seedsInstanceIdentity) throw error;
@@ -309,6 +311,29 @@ export abstract class BaseCommand<F = never> {
 		// Imported here so one-off CLI commands do not load the runner's scheduler graph.
 		const { SystemTaskRunner } = await import('@/scheduling/system-tasks/system-task-runner.js');
 		await Container.get(SystemTaskRunner).init();
+	}
+
+	/**
+	 * Whether a licence certificate exists, from `N8N_LICENSE_CERT` or the DB.
+	 * The certificate is bound to the instance ID, so its install must keep the derived ID.
+	 */
+	protected async hasLicenseCert(): Promise<boolean> {
+		try {
+			if (this.globalConfig.license.cert) return true;
+			const row = await Container.get(SettingsRepository).findOneBy({
+				key: SETTINGS_LICENSE_CERT_KEY,
+			});
+			return Boolean(row?.value);
+		} catch (error) {
+			// A wrong "no" would cost the install its licence, so treat an unreadable row as present.
+			this.logger.warn(
+				'Could not check for a licence certificate, keeping the derived instance ID',
+				{
+					error: ensureError(error),
+				},
+			);
+			return true;
+		}
 	}
 
 	/**
