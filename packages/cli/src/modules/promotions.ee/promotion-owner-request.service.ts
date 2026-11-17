@@ -35,6 +35,7 @@ import {
 	type OwnerRequestRecipientScope,
 	type OwnerRequestResource,
 } from './database/repositories/promotion-owner-request.repository';
+import { TargetLookupService } from './dependency-check/target-lookup.service';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { PromotionAccessService } from './promotion-access.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
@@ -92,6 +93,7 @@ export class PromotionOwnerRequestService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly targetLookup: TargetLookupService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -273,13 +275,30 @@ export class PromotionOwnerRequestService {
 	private async satisfiedOnInstance(requests: PromotionOwnerRequest[]): Promise<string[]> {
 		const idsOf = (kind: OwnerRequestResource['kind']) =>
 			requests.filter((r) => r.resourceKind === kind).map((r) => r.resourceId);
-		// An owner row exists for each credential and workflow that this instance holds.
-		const [credentials, workflows] = await Promise.all([
-			this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(idsOf('credential')),
+		// An owner row exists for each workflow that this instance holds.
+		const [credentials, workflows, consumers] = await Promise.all([
+			this.targetLookup.credentials(idsOf('credential')),
 			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(idsOf('workflow')),
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+				requests.filter((r) => r.resourceKind === 'credential').map((r) => r.consumerWorkflowId),
+			),
 		]);
+		// A credential that the instance holds can still be out of reach of the consumer project.
+		// The request then stays open: the owner must apply the credential or share it.
+		const credentialSatisfied = (request: PromotionOwnerRequest) => {
+			const credential = credentials.get(request.resourceId);
+			if (!credential) return false;
+			const consumerProjectId = consumers.get(request.consumerWorkflowId)?.id;
+			return (
+				consumerProjectId === undefined ||
+				credential.isGlobal ||
+				credential.projectIds.includes(consumerProjectId)
+			);
+		};
 		return requests
-			.filter((r) => (r.resourceKind === 'credential' ? credentials : workflows).has(r.resourceId))
+			.filter((r) =>
+				r.resourceKind === 'credential' ? credentialSatisfied(r) : workflows.has(r.resourceId),
+			)
 			.map(({ id }) => id);
 	}
 
