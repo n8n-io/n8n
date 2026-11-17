@@ -123,7 +123,7 @@ describe('AiPreferenceSettingsService', () => {
 				.getHandlers()
 				.filter(
 					({ eventName: name, eventHandlerClass }) =>
-						name === eventName && eventHandlerClass === AiPreferenceSettingsService,
+						name === eventName && eventHandlerClass.name === 'AiPreferenceSettingsService',
 				);
 
 			expect(handlers.map(({ methodName }) => methodName)).toEqual(['reload']);
