@@ -14,6 +14,25 @@ Update this file after each census.
 
 The numbers are aggregates by node type, class and diagnostic. They contain no workflow content.
 
+## Measured after each release
+
+| When | Tree | Fully compiled (sample of 4,876) | Verified operations |
+|---|---|---|---|
+| 2026-11-17, before batch 1 | `7f769577d53` | 46.3% | 3,377 |
+| 2026-11-17, release 1 (`ce-r1`, batch 1) | `1e68bc650fc` | 51.1% | 3,386 |
+| 2026-11-17, tip with batches 1 to 3 and the first cards of round 4 | `66a2976a111` | 57.1% | 3,423 |
+
+The first projection for batch 1 was about 70%. It was wrong: each item is a group of many small blockers, and one
+card closes the top few. Do not use the Total column of the list below as a forecast. The census is the measure.
+
+The tip figure includes two changes that lower it and are correct: Code nodes that hold a Date in a place that
+loses its kind run in the fallback host (the native form gave wrong results), and node code that reads a credential
+field outside a request does not compile.
+
+The largest group on the tip is "compiles, not verified" (12.6% of the sample). Its causes are limits of the
+verifier (a wait in v1, paging that does not end with the generated answers) and operations that compiled after
+the last verification.
+
 ## Columns
 
 - Touches: share of workflows that the item blocks, alone or with other items.
