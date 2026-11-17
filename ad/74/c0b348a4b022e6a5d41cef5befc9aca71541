@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_e699bd9ecf9116::t_76f202dda994d7 404
+  s_e699bd9ecf9116::t_1b4616b31547bc 54,71,249-260,698-732
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_e699bd9ecf9116::t_45113b98287844 43,369,373-374,898-906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad74c0b348a4b022e6a5d41cef5befc9aca71541",
+  "prompts": {},
+  "sessions": {
+    "s_e699bd9ecf9116": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01820465-6651-4c4f-9606-03e4e678a77e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
