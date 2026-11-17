@@ -54,7 +54,7 @@ import type {
 	V1Execution,
 	V1NodeStepConfig,
 } from './types';
-import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
+import { emptyRun, incomingEdgesByNodeId, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 export function toV1Execution(
 	graph: WorkflowGraph,
@@ -161,7 +161,7 @@ export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData
 	const namesById = nodeNamesById(graph);
 
 	const sourcesByNodeId = new Map<string, Array<ISourceData | null>>();
-	for (const [nodeId, edges] of forwardEdgesByTarget(graph)) {
+	for (const [nodeId, edges] of incomingEdgesByNodeId(graph)) {
 		sourcesByNodeId.set(nodeId, toSourceSlots(edges, namesById));
 	}
 	return sourcesByNodeId;
