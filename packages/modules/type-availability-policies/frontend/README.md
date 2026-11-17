@@ -38,7 +38,9 @@ to the new rules and default action. Saves of one kind run in order, and each on
 that the previous one returned. When the server answers 409 and the policy has a new version, the
 page loads the new policy, saves nothing and tells the admin. Saves queued behind it are dropped.
 A 409 with no new version means the server refuses to edit the policy in place, because it has
-several attached documents or shares one. The save returns `notEditable`, and the page says so.
+several attached documents or shares one. The save returns `notEditable`, the page says so once,
+and the store sets `notEditable` for that kind. Later saves of that kind are not sent until a load
+finds a newer version.
 
 ```bash
 pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies

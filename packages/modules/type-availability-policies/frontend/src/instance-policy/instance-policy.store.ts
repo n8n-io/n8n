@@ -20,15 +20,15 @@ export type InstancePolicyLoadState = 'idle' | 'loading' | 'loaded' | 'failed';
 
 export type InstancePolicySaveResult =
 	| { status: 'saved'; warnings: PolicyRuleWarnings }
-	/** The policy changed after it was loaded. The store now holds the new policy, and nothing was saved. */
+	/** The store now holds the newer policy, and nothing was saved. */
 	| { status: 'changed' }
 	/** Queued before a `changed` save of the same kind, so it was not sent. */
 	| { status: 'dropped' }
 	/**
-	 * The server refuses to edit this policy in place, because the scope has several attached
-	 * documents or shares its document with another scope. Only the attachments API can fix it.
+	 * The server edits a policy in place only when it has one document of its own. `sent` is false
+	 * when the store already knew this and did not send the save.
 	 */
-	| { status: 'notEditable'; error: unknown }
+	| { status: 'notEditable'; sent: boolean }
 	| { status: 'failed'; error: unknown };
 
 type PolicyByKind = { [K in RestrictedTypeKind]: InstancePolicy<K> | null };
@@ -36,10 +36,6 @@ type PolicyByKind = { [K in RestrictedTypeKind]: InstancePolicy<K> | null };
 const isConflict = (error: unknown) =>
 	error instanceof ResponseError && error.httpStatusCode === 409;
 
-/**
- * The instance policy for each kind, for the admin pages. The kinds are independent: each has its
- * own version, load state and save queue.
- */
 export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () => {
 	const rootStore = useRootStore();
 	const typeAvailabilityStore = useTypeAvailabilityPoliciesStore();
@@ -49,6 +45,10 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	const loadStates = shallowReactive<Record<RestrictedTypeKind, InstancePolicyLoadState>>({
 		node: 'idle',
 		credential: 'idle',
+	});
+	const notEditable = shallowReactive<Record<RestrictedTypeKind, boolean>>({
+		node: false,
+		credential: false,
 	});
 
 	// Saves of one kind run one at a time, so each sends the version that the previous save returned.
@@ -67,8 +67,11 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		if (current && policy.version < current.version) return;
 
 		policies[kind] = policy;
-		// The builder surfaces in this tab show the restrictions of the instance policy too.
-		if (current && policy.version > current.version) void typeAvailabilityStore.reload();
+		if (current && policy.version > current.version) {
+			// A new version may come from a fix to the policy documents, so the next save tries again.
+			notEditable[kind] = false;
+			void typeAvailabilityStore.reload();
+		}
 	}
 
 	async function loadKind<K extends RestrictedTypeKind>(kind: K): Promise<unknown> {
@@ -89,7 +92,6 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		}
 	}
 
-	/** Loads the policy of each kind. Returns the errors of the kinds that failed to load. */
 	async function load(kinds: readonly RestrictedTypeKind[]): Promise<unknown[]> {
 		const errors = await Promise.all(kinds.map(async (kind) => await loadKind(kind)));
 		return errors.filter((error) => error !== null);
@@ -105,7 +107,8 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	): Promise<InstancePolicySaveResult> {
 		const generation = generations[kind];
 		const run = saveQueues[kind].then(async () => await runSave(kind, update, generation));
-		saveQueues[kind] = run;
+		// A rejected save must not block the saves after it.
+		saveQueues[kind] = run.catch(() => undefined);
 		return await run;
 	}
 
@@ -115,6 +118,7 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		generation: number,
 	): Promise<InstancePolicySaveResult> {
 		if (generation !== generations[kind]) return { status: 'dropped' };
+		if (notEditable[kind]) return { status: 'notEditable', sent: false };
 
 		const current = policies[kind];
 		if (!current) {
@@ -149,12 +153,15 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 
 		// Only a new version means that the policy changed. A 409 at the same version is the server
 		// refusing the in-place edit, which a load does not fix.
-		if (latest.version === sentVersion) return { status: 'notEditable', error };
+		if (latest.version === sentVersion) {
+			notEditable[kind] = true;
+			return { status: 'notEditable', sent: true };
+		}
 
 		generations[kind]++;
 		accept(kind, latest);
 		return { status: 'changed' };
 	}
 
-	return { policies, loadStates, load, save };
+	return { policies, loadStates, notEditable, load, save };
 });
