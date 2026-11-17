@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_0356cd250cb1f3::t_ea1f63e87c9636 904-906
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_0356cd250cb1f3::t_ea1f63e87c9636 262-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c986514e039f52f996be053bebf596fd2115c75c",
+  "prompts": {},
+  "sessions": {
+    "s_0356cd250cb1f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "454afcfb-e073-4118-b4b9-fe81402b424d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
