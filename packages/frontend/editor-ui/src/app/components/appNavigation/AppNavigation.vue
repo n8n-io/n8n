@@ -339,6 +339,8 @@ $panel-width: 240px;
 
 .navigation {
 	position: relative;
+	// The rail color shows behind the rounded corners of the docked panel, on every layout.
+	background-color: var(--app-shell--rail--color--background);
 	display: flex;
 	height: 100%;
 }

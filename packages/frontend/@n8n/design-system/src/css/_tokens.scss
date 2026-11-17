@@ -634,7 +634,8 @@
 	--menu--color--background--active: var(--color--neutral-200);
 
 	// App shell: the frame around the main content panel, and the panel itself
-	--app-shell--color--background: var(--menu--color--background);
+	// The frame shows around the raised surface's corners, so it matches the rail.
+	--app-shell--color--background: var(--app-shell--rail--color--background);
 	--app-shell--panel--color--background: var(--background--surface);
 	--app-shell--panel--border-color: var(--color--neutral-250);
 	// A soft drop plus a tight contact shadow. No primitive has these low alphas.
