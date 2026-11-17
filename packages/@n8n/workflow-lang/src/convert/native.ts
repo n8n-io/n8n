@@ -1167,13 +1167,19 @@ export function lowerRespond(c: NodeContext): void {
 export function lowerStopAndError(c: NodeContext): void {
 	const p = c.parameters;
 	let message: string;
+	let usesIndex: boolean;
 	if (p.errorType === 'errorObject') {
 		const t = c.compiled(p.errorObject ?? '{}', 'errorObject');
 		message = `JSON.stringify(${flat(t.code)})`;
+		usesIndex = t.usage.index;
 	} else {
-		message = flat(c.compiled(p.errorMessage ?? '', 'errorMessage').code);
+		const t = c.compiled(p.errorMessage ?? '', 'errorMessage');
+		message = flat(t.code);
+		usesIndex = t.usage.index;
 	}
 	c.w.open(`if (${c.input}.length > 0) {`);
+	// v1 reads the parameter for the first item, so the index of the item is 0.
+	if (usesIndex) c.w.line(`const ${INDEX} = 0;`);
 	if (message.includes(ITEM)) c.w.line(`const ${ITEM} = ${c.input}[0];`);
 	c.w.line(`throw new Error(${message});`);
 	c.w.close();

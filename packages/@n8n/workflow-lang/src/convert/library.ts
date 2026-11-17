@@ -890,10 +890,14 @@ export function lowerLibrary(c: NodeContext): void {
 	// A caller that does not make tokens for a service account runs the node in the host.
 	const noToken = account !== undefined && c.addCredentialMints === undefined;
 	const unsupported = (support && !librarySupports(support, adapted)) || older || noToken;
+	// The caller says that the node runs in the host (`NodeSources.runsInHost`): a limit of
+	// the runtime, or a token for a service account that the caller does not make. Without
+	// this, a workflow with such a library node had no conversion with the node compiler.
+	const moved = c.nodeSources?.runsInHost?.(c.node.name) === true;
 	// The library node comes first. An operation that it does not have is compiled from the
 	// source of the v1 node when that compiles, and else runs in the host.
-	if (unsupported && !service && tryCompiledNode(c)) return;
-	if (unsupported || (attribution && !c.instance) || service) {
+	if (unsupported && !service && !moved && tryCompiledNode(c)) return;
+	if (unsupported || (attribution && !c.instance) || service || moved) {
 		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
 		return;
 	}
@@ -1145,6 +1149,11 @@ function keyValues(list: unknown): Array<{ name: unknown; value: unknown }> {
  * host (`host: 'fallback'`) with all its items, as in v1.
  */
 export function lowerHttpRequest(c: NodeContext): void {
+	// The caller says that the node runs in the host (`NodeSources.runsInHost`).
+	if (c.nodeSources?.runsInHost?.(c.node.name) === true) {
+		lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
+		return;
+	}
 	try {
 		lowerHttpLibrary(c);
 	} catch (error) {

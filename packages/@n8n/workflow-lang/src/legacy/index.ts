@@ -196,6 +196,28 @@ export function parsesAsExpression(body: string): boolean {
 }
 
 /**
+ * The text of the expression that v1 evaluates for a body, or `undefined` when v1 gives a
+ * syntax error. v1 puts a body that starts with `{` in parentheses, parses the body as a
+ * program, and evaluates the first statement, which must be an expression statement
+ * (`@n8n/tournament`, `getExpressionCode`). It ignores the statements after the first one,
+ * so `$json.a;` is `$json.a`. A declaration after the first statement can change the names
+ * of the first statement, so such a body has no text here.
+ */
+export function firstExpressionOf(body: string): string | undefined {
+	const text = body.trimStart().startsWith('{') ? `(${body}\n)` : `${body}\n`;
+	const out = ts.transpileModule(text, {
+		reportDiagnostics: true,
+		compilerOptions: { target: ts.ScriptTarget.ES2022 },
+	});
+	if ((out.diagnostics ?? []).length > 0) return undefined;
+	const sf = ts.createSourceFile('e.ts', text, ts.ScriptTarget.ES2022, true);
+	const [first, ...rest] = sf.statements;
+	if (first === undefined || !ts.isExpressionStatement(first)) return undefined;
+	if (!rest.every((s) => ts.isExpressionStatement(s) || ts.isEmptyStatement(s))) return undefined;
+	return first.expression.getText(sf);
+}
+
+/**
  * Compiles one expression body (the text between `{{` and `}}`). The module
  * takes `{ json, nodes }` as its trigger body and returns the value.
  */

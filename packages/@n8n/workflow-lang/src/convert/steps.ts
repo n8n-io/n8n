@@ -396,6 +396,26 @@ export function nodeCall(
  */
 export function tryCompiledNode(c: NodeContext): boolean {
 	if (!c.nodeSources || !c.addNode) return false;
+	const lines = c.w.length;
+	const depth = c.w.depth;
+	try {
+		return compiledNode(c);
+	} catch (error) {
+		// A failure of the lowering (an expression that does not translate) is for the caller.
+		if (error instanceof NodeFailure) throw error;
+		// An error of the node compiler is the error of this node only: the node runs in the
+		// host, and the other nodes of the workflow keep their compiled forms.
+		c.w.truncate(lines, depth);
+		c.info(
+			'node-compile',
+			`The node source does not compile: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return false;
+	}
+}
+
+function compiledNode(c: NodeContext): boolean {
+	if (!c.nodeSources || !c.addNode) return false;
 	// A core node that has a native form reaches the host only when that form does not fit
 	// (an expression that does not translate). Its source is not a better form.
 	if (CORE_NODE_TYPES.has(c.node.type)) return false;
