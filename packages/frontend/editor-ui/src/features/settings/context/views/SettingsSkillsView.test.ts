@@ -181,7 +181,7 @@ describe('SettingsSkillsView', () => {
 		}
 		const select = await view.findByTestId(testId);
 		await userEvent.click(within(select).getAllByRole('combobox')[0]);
-		await userEvent.click(await screen.findByRole('option', { name: optionText, exact: true }));
+		await userEvent.click(await screen.findByRole('option', { name: optionText }));
 	}
 
 	it('loads the first page of 10 skills on mount', async () => {
