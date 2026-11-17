@@ -136,6 +136,7 @@ describe('ImportService', () => {
 			mockSharedWorkflowRepository,
 			mockWorkflowRepository,
 			mock(),
+			mock(),
 		);
 	});
 

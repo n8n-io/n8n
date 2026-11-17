@@ -11,6 +11,7 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { Telemetry } from '@/telemetry';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import {
@@ -46,6 +47,7 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // nodeTypes
 			mock(), // credentialsPermissionChecker
 			mock(), // workflowHistoryRepository
+			Container.get(ResourceOwnerService), // resourceOwnerService
 		);
 	});
 

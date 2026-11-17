@@ -41,6 +41,7 @@ import { validate as uuidValidate } from 'uuid';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
+import { ResourceOwnerService } from './resource-owner.service';
 import { ServiceAccountUsageProxy } from './service-account-usage-proxy.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -99,6 +100,7 @@ export class UserService {
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly txRunner: TransactionRunner,
 		private readonly serviceAccountUsage: ServiceAccountUsageProxy,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -407,7 +409,7 @@ export class UserService {
 			);
 		}
 
-		await this.userRepository.manager.transaction(async (trx) => {
+		await this.userRepository.runInTransaction({}, async (trx, ctx) => {
 			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const isAdminRole = (roleName: string) => {
@@ -447,6 +449,15 @@ export class UserService {
 						userId: user.id,
 						projectId: relation.projectId,
 					});
+					await this.resourceOwnerService.reassignOwnedBy(
+						{
+							userId: user.id,
+							projectId: relation.projectId,
+							actor: undefined,
+							reason: 'member-removed',
+						},
+						ctx,
+					);
 				}
 
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -793,6 +804,10 @@ export class UserService {
 			await ownershipTransferService.finalizeUserDeletion(
 				userToDelete.id,
 				personalProjectToDelete.id,
+				ctx,
+			);
+			await this.resourceOwnerService.reassignOwnedBy(
+				{ userId: userToDelete.id, actor: actorUser ?? undefined, reason: 'user-deleted' },
 				ctx,
 			);
 			await this.userRepository.deleteAccount(userToDelete.id, personalProjectToDelete.id, ctx);

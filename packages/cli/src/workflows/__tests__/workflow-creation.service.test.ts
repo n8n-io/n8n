@@ -141,6 +141,7 @@ describe('WorkflowCreationService', () => {
 			nodeGroupRulesFlagGateMock,
 			mock(),
 			new WorkflowEngineDefaults(engineConfig, moduleRegistry),
+			mock(),
 		);
 	});
 

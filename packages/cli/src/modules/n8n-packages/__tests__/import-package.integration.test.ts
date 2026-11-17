@@ -364,6 +364,7 @@ describe('Package import routing matrix', () => {
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
+		expect(workflow.ownerUserId).toBe(owner.id);
 	});
 
 	it('lands in the requested folder of the team project when both projectId and folderId are given', async () => {
