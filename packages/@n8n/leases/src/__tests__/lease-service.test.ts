@@ -68,6 +68,8 @@ describe('LeaseService', () => {
 			await service.registerKind(makeKind());
 
 			await expect(service.registerKind(makeKind())).rejects.toThrow(DuplicateLeaseKindError);
+			expect(provider.registerSource).toHaveBeenCalledTimes(1);
+			expect(provider.registerHolder).toHaveBeenCalledTimes(1);
 		});
 
 		it('merges kind options over the defaults', async () => {
@@ -129,7 +131,6 @@ describe('LeaseService', () => {
 			await service.changed('kind-name');
 
 			expect(provider.sync.mock.calls[0]).toEqual(['kind-name']);
-			expect(provider.sync.mock.calls[0]).toHaveLength(1);
 		});
 	});
 
@@ -178,6 +179,9 @@ describe('LeaseService', () => {
 
 describe('package exports', () => {
 	it('exports the error classes as Error subclasses', () => {
+		expect(leases.InvalidLeaseKindError).toBe(InvalidLeaseKindError);
+		expect(leases.DuplicateLeaseKindError).toBe(DuplicateLeaseKindError);
+		expect(leases.UnknownLeaseKindError).toBe(UnknownLeaseKindError);
 		expect(new leases.InvalidLeaseKindError('x')).toBeInstanceOf(Error);
 		expect(new leases.DuplicateLeaseKindError('x')).toBeInstanceOf(Error);
 		expect(new leases.UnknownLeaseKindError('x')).toBeInstanceOf(Error);
@@ -187,6 +191,7 @@ describe('package exports', () => {
 	it('exports the constants', () => {
 		expect(leases.MAX_LEASE_KIND_LENGTH).toBe(24);
 		expect(MAX_LEASE_KIND_LENGTH).toBe(24);
+		expect(leases.DEFAULT_LEASE_KIND_OPTIONS).toBe(DEFAULT_LEASE_KIND_OPTIONS);
 		expect(leases.DEFAULT_LEASE_KIND_OPTIONS).toEqual({
 			startTimeoutSeconds: 60,
 			maxFailedStarts: 5,
