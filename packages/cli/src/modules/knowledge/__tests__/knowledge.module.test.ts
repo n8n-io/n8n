@@ -1,11 +1,10 @@
 import type { FrontendModuleSettings } from '@n8n/api-types';
+import { ExecutionDataJsonStore } from '@n8n/backend-services';
 import { S3ByteStore } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
-
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 
 import { KnowledgeFile } from '../entities/knowledge-file.entity';
 import { KnowledgeFileStore } from '../files/knowledge-file-store';

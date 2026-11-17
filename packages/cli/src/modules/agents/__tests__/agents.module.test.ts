@@ -6,8 +6,11 @@ import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { AgentProjectLookupProxy, FavoriteResourceResolverRegistry } from '@n8n/backend-services';
+import {
+	AgentProjectLookupProxy,
+	FavoriteResourceResolverRegistry,
+	ExecutionDataJsonStore,
+} from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 import { KnowledgeSandboxProviderRegistry } from '@/modules/knowledge/knowledge-sandbox-provider-registry';

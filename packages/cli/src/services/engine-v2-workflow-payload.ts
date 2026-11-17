@@ -1,7 +1,6 @@
+import { toWorkflowDocument } from '@n8n/backend-services';
 import type { TriggerOutputs, WorkflowDocument, WorkflowGraph } from '@n8n/engine';
 import type { INodeExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
-
-import { toWorkflowDocument } from '@/executions/execution-data/types';
 
 /** The part of an engine start that describes the workflow to run. */
 export interface EngineWorkflowPayload {

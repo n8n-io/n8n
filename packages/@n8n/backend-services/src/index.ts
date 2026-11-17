@@ -125,6 +125,21 @@ export {
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
 export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';
+export { ExecutionDataJsonStore } from './executions/execution-data/execution-data-json-store';
+export { CorruptedExecutionDataError } from './executions/execution-data/corrupted-execution-data.error';
+export { ExecutionDataWriteError } from './executions/execution-data/execution-data-write.error';
+export {
+	createExecutionRef,
+	isExecutionDataPayload,
+	toWorkflowDocument,
+	toWorkflowSnapshot,
+	type BlobStorageLocation,
+	type BundleWorkflowSnapshot,
+	type ExecutionDataPayload,
+	type ExecutionRef,
+	type WorkflowRunDocument,
+	type WorkflowSnapshot,
+} from './executions/execution-data/types';
 export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {

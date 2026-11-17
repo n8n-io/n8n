@@ -1968,6 +1968,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
+      '@n8n/blob-storage':
+        specifier: workspace:*
+        version: link:../blob-storage
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -1983,6 +1986,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/engine':
+        specifier: workspace:*
+        version: link:../engine
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
