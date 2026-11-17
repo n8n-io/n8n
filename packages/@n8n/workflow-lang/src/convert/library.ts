@@ -44,13 +44,18 @@ import {
 } from './node-parameters.ts';
 import type { HostForm, StepCall } from './steps.ts';
 import {
+	checkRawFailures,
 	emitStep,
 	emitWithHostForm,
 	replayOf,
 	errorRetry,
 	hostFormOf,
+	hostOwnParameters,
+	hostParameters,
+	HOST_STEP,
 	nodeCall,
 	errorItemIsExact,
+	settingsField,
 	tryCompiledNode,
 } from './steps.ts';
 import type { N8nNode } from './types.ts';
@@ -90,7 +95,7 @@ function driveQuery(p: Record<string, unknown>): Record<string, unknown> {
 type Adapter = (
 	p: Record<string, unknown>,
 	version: number,
-	node?: { onError?: string },
+	node?: { onError?: string; continueOnFail?: boolean },
 ) => Record<string, unknown>;
 
 /**
@@ -412,6 +417,34 @@ export const ADAPTERS: Record<string, Adapter> = {
 		replacement.texts = texts;
 		return out;
 	},
+	// The Send Email library node gets the node version, the default of each parameter that
+	// the node does not have (the default of `emailFormat` is `html` from version 2.1), the
+	// index of the item for the error texts of `assertBinaryData`, and `continues` under a
+	// continue setting. Options that are not a collection get a marker that is not in the
+	// `supports` list, so the node runs in the host.
+	'n8n-nodes-base.emailSend': (p, version, node) => {
+		if ((p.operation ?? 'send') !== 'send') return p;
+		const options = p.options;
+		if (options !== undefined && !isRecord(options)) return { ...p, emailSendHost: true };
+		// A parameter that the description of the node does not have (a parameter of version
+		// 1 that the workflow kept) is not read by v1, and not by the library node.
+		const out: Record<string, unknown> = {
+			...pick(p, ['resource', 'operation', 'options']),
+			fromEmail: p.fromEmail ?? '',
+			toEmail: p.toEmail ?? '',
+			subject: p.subject ?? '',
+			emailFormat: p.emailFormat ?? (version >= 2.1 ? 'html' : 'text'),
+			text: p.text ?? '',
+			html: p.html ?? '',
+			nodeVersion: version,
+		};
+		if (options?.attachments !== undefined || options?.fileAttachments !== undefined) {
+			out.itemIndex = '={{ $itemIndex }}';
+		}
+		const onError = node?.onError ?? (node?.continueOnFail ? 'continueRegularOutput' : undefined);
+		if (onError !== undefined && onError !== 'stopWorkflow') out.continues = true;
+		return out;
+	},
 	// The MySQL library node (spec 9.11) gets the node version, the values of the `{{ }}`
 	// parts of the query text in `queryParts`, and the entries of the raw text of the query
 	// parameters, as v1 reads them (`resolveQueryReplacementSegments`): the raw text of an
@@ -635,6 +668,8 @@ export const MIN_VERSIONS: Record<string, number> = {
 	// Version 2 is the node on the shared Microsoft Graph transport; the node compiler takes
 	// versions 1 and 1.1.
 	'n8n-nodes-base.microsoftTeams': 2,
+	// Version 2 is the node with the operation `send`; version 1 is another node.
+	'n8n-nodes-base.emailSend': 2,
 	// Version 2 is the node with the operations in `actions/`; version 1 is another node.
 	'n8n-nodes-base.mySql': 2,
 	// Version 2.1 gave the node its own readers for time columns.
@@ -1180,8 +1215,17 @@ export function lowerLibrary(c: NodeContext): void {
 	// (`ConvertOptions.instance`); without it the message runs in the host, because the
 	// link changes how Telegram parses the Markdown of the message.
 	const fields = isRecord(c.parameters.additionalFields) ? c.parameters.additionalFields : {};
-	const attribution =
+	const telegramLink =
 		type === 'n8n-nodes-base.telegram' && c.version >= 1.1 && fields.appendAttribution !== false;
+	// The attribution link of a Send Email message ends with the instance id too. An option
+	// that is an expression can be true, so only a literal `false` needs no link.
+	const mailOptions = isRecord(c.parameters.options) ? c.parameters.options : {};
+	const mailLink =
+		type === EMAIL_SEND &&
+		(mailOptions.appendAttribution === undefined
+			? c.version >= 2.1
+			: mailOptions.appendAttribution !== false);
+	const attribution = telegramLink || mailLink;
 	if (attribution && c.instance) adapted.instanceId = c.instance.id;
 	// The Data Table node handles "continue on fail" itself, as v1's router does. The gym
 	// replays show it for version 1.1; version 1 gives the usual `{ error }` item.
@@ -1199,7 +1243,8 @@ export function lowerLibrary(c: NodeContext): void {
 	const service =
 		(type === 'n8n-nodes-base.dataTable' && c.services === false) ||
 		postgresInHost(c) ||
-		mysqlInHost(c);
+		mysqlInHost(c) ||
+		emailSendInHost(c);
 	// A caller that does not make tokens for a service account runs the node in the host.
 	const noToken = account !== undefined && c.addCredentialMints === undefined;
 	// A Gmail read without "simplify" parses the raw message. The library node parses the
@@ -1362,11 +1407,71 @@ export function lowerLibrary(c: NodeContext): void {
 		);
 		return;
 	}
+	// The library node sends one message for each item. When the runtime cannot send the
+	// message of an item as nodemailer does, the host sends the message of that item.
+	if (type === EMAIL_SEND) {
+		const call = nodeCall(c, type, parameters, c.credential(), true);
+		const hostItem = emailSendHostItem(c);
+		if (hostItem === null) return lowerHostNode(c, 1, [['host', raw("'fallback'")]]);
+		emitStep(c, {
+			...call,
+			usesIndex: call.usesIndex || hostItem.usesIndex,
+			hostItem: hostItem.code,
+		});
+		return;
+	}
 	// v1 runs the node once for each item, so the library node runs once for each item too.
 	emitStep(c, {
 		...nodeCall(c, type, parameters, c.credential(), true),
 		pairsByCall: PAIRS_BY_CALL.has(type),
 	});
+}
+
+const EMAIL_SEND = 'n8n-nodes-base.emailSend';
+
+/**
+ * True when the Send Email node runs in the fallback host: the runtime has no native SMTP
+ * client (`ConvertOptions.smtp`), or the node has a setting whose v1 behaviour the library
+ * call does not have. With "retry on fail", v1 runs the node again for all items, so it
+ * sends the messages of the items before the failure again. With the error output, the
+ * error item of an item that the host sends has no form here.
+ */
+function emailSendInHost(c: NodeContext): boolean {
+	if (c.node.type !== EMAIL_SEND) return false;
+	if (c.smtp !== true) return true;
+	return c.node.retryOnFail === true || c.node.onError === 'continueErrorOutput';
+}
+
+/**
+ * The options of the fallback-host call of a Send Email node for one item
+ * (`StepCall.hostItem`), with the parameters of the v1 node. Null when the host form has
+ * no code here.
+ */
+function emailSendHostItem(c: NodeContext): { code: Code; usesIndex: boolean } | null {
+	let parameters: TranslatedValue;
+	try {
+		parameters = hostParameters(c, hostOwnParameters(c), '');
+		checkRawFailures(c, parameters.failures, true);
+	} catch (error) {
+		if (error instanceof NodeFailure) return null;
+		throw error;
+	}
+	const entries: Array<[string, Code]> = [
+		// A step name is unique in a module. n8n reads this name as a step of the node.
+		['name', raw(str(`${c.node.name}${HOST_STEP}`))],
+		['type', raw(str(c.node.type))],
+		['typeVersion', literal(c.version)],
+		['parameters', parameters.code],
+	];
+	const credential = c.credential();
+	if (credential !== undefined) entries.push(['credential', raw(str(credential))]);
+	entries.push(...settingsField(c), ['host', raw("'fallback'")]);
+	// The v1 node handles `continueRegularOutput` itself, for the item.
+	if (c.node.onError === 'continueRegularOutput' || (!c.node.onError && c.node.continueOnFail)) {
+		entries.push(['onError', raw(str('continueRegularOutput'))]);
+	}
+	entries.push(['items', raw(`[${ITEM}]`)]);
+	return { code: { kind: 'object', entries }, usesIndex: parameters.usage.index };
 }
 
 /**

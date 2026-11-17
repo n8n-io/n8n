@@ -82,6 +82,15 @@ export class CompiledEngineConfig {
 	sqlMssql: boolean = false;
 
 	/**
+	 * Whether the compiled engine sends the messages of the Send Email node
+	 * over SMTP in `wfrt`. When `false`, every Send Email node runs in the
+	 * fallback host. This applies only when n8n starts `wfrt`. If you start
+	 * `wfrt` yourself, also start it with `--smtp-native`.
+	 */
+	@Env('N8N_COMPILED_ENGINE_SMTP_NATIVE')
+	smtpNative: boolean = false;
+
+	/**
 	 * Whether n8n starts `wfrt` and the fallback host as child processes and
 	 * restarts them when they stop. Set to `false` to connect to a `wfrt` that
 	 * you start yourself.

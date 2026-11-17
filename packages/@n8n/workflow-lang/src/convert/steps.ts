@@ -75,6 +75,14 @@ export interface StepCall {
 	 * of each item of output 0, for `$('Node').item` in a later node.
 	 */
 	pairsByCall?: boolean;
+	/**
+	 * The options of a fallback-host call for one item (`[ITEM]`), for a library node that the
+	 * converter calls once for each item and that sends what v1 sends once (a message). When
+	 * the call for an item ends with the mark of `RUNS_IN_HOST`, nothing went out for that
+	 * item, and the host runs the v1 node for that item only. The items before it are not
+	 * sent again. The step has no "retry on fail".
+	 */
+	hostItem?: Code;
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -294,7 +302,19 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.open(`for (const ${ITEM} of ${input}) {`);
 	}
 	const opts = options(c, call, `[${ITEM}]`);
-	if (onError === 'stopWorkflow' && c.traceAll) {
+	if (call.hostItem !== undefined) {
+		// The call for the item, and the host call for the same item after the mark.
+		if (onError !== 'stopWorkflow' || c.traceAll) w.open('try {');
+		emitItemWithHost(c, fn, opts, call.hostItem);
+		w.line(`for (const r of result) ${push('r')}`);
+		if (onError === 'stopWorkflow' && c.traceAll) failTrace(c);
+		if (onError !== 'stopWorkflow') {
+			w.close('} catch (error) {');
+			w.depth++;
+			w.line(errors ? errorOutputPush(c, errors, ITEM, push('{}')) : push(errorItem(c)));
+			w.close();
+		}
+	} else if (onError === 'stopWorkflow' && c.traceAll) {
 		w.open('try {');
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
 		w.line(`for (const r of result) ${push('r')}`);
@@ -340,6 +360,28 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		w.close();
 	}
 	w.close();
+}
+
+/**
+ * Emits the call of a library node for one item (`let result`), and the fallback-host call
+ * for the same item when the library call ends with the mark of `RUNS_IN_HOST`
+ * (`StepCall.hostItem`). The host call is outside the catch block.
+ */
+function emitItemWithHost(c: NodeContext, fn: string, opts: Code, host: Code): void {
+	const { w } = c;
+	c.helper('fileLimitInHost');
+	w.line('let result: Json[] = [];');
+	w.line('let itemInHost = false;');
+	w.open('try {');
+	w.block(`result = await ${fn}(${c.print(opts, `result = await ${fn}(`)});`);
+	w.close('} catch (error) {');
+	w.depth++;
+	w.line('if (!fileLimitInHost(error)) throw error;');
+	w.line('itemInHost = true;');
+	w.close();
+	w.block(
+		`if (itemInHost) result = await ctx.node(${c.print(host, 'if (itemInHost) result = await ctx.node(')});`,
+	);
 }
 
 /** The text of the error item of a v1 node: the code that reads it from the caught error. */

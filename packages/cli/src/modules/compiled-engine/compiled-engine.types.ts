@@ -377,6 +377,8 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
  * committed: a result larger than `--sql-max-result-kb`, a column type or a value without a
  * native form, a text that is not one command with bind values, a credential with an SSH
  * tunnel or a certificate, and an input that the library node cannot send with bind values.
+ * `(limit: smtp-host)`: the `smtp` effect cannot send a message as nodemailer sends it. It
+ * ends the call before it writes the MAIL command.
  */
 const HOST_LIMIT_MARKERS = [
 	'(limit: binary-max-file)',
@@ -385,6 +387,7 @@ const HOST_LIMIT_MARKERS = [
 	'(limit: sql-statement)',
 	'(limit: sql-credential)',
 	'(limit: sql-host)',
+	'(limit: smtp-host)',
 ];
 
 /**

@@ -93,11 +93,13 @@ describe('the listen address of wfrt', () => {
 		sqlMysql = false,
 		workloadClasses = '',
 		sqlMssql = false,
+		smtpNative = false,
 	) => {
 		const config = mock<CompiledEngineConfig>({
 			listenAddress,
 			sqlMysql,
 			sqlMssql,
+			smtpNative,
 			workloadClasses,
 			workloadClassSlots: 'background=64',
 			workloadClassHostSteps: '',
@@ -145,6 +147,13 @@ describe('the listen address of wfrt', () => {
 		expect(argsWith('127.0.0.1')).not.toContain('--sql-mssql');
 		expect(argsWith('127.0.0.1', true)).not.toContain('--sql-mssql');
 		expect(argsWith('127.0.0.1', false, '', true)).toContain('--sql-mssql');
+	});
+
+	it('starts wfrt with the SMTP client only with the setting', () => {
+		expect(new CompiledEngineConfig().smtpNative).toBe(false);
+		expect(argsWith('127.0.0.1')).not.toContain('--smtp-native');
+		expect(argsWith('127.0.0.1', true, '', true)).not.toContain('--smtp-native');
+		expect(argsWith('127.0.0.1', false, '', false, true)).toContain('--smtp-native');
 	});
 
 	it('starts wfrt with workload classes only with the setting', () => {

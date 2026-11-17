@@ -194,6 +194,13 @@ export interface ConvertOptions {
 	 * `src/nodes/shared/mssql-format.ts`.
 	 */
 	mssql?: boolean;
+	/**
+	 * The runtime has the native SMTP client (`wfrt serve --smtp-native`). The default is
+	 * false: the Send Email node runs in the fallback host. With true, the operation `send`
+	 * runs as a library node on the `smtp` effect, and the Gmail library node gets its
+	 * messages from the mail builder of the runtime.
+	 */
+	smtp?: boolean;
 }
 
 export interface InstanceInfo {
@@ -911,6 +918,7 @@ export class ModuleGenerator {
 			mysql: this.options.mysql,
 			mysqlRecordFirst: this.options.mysqlRecordFirst,
 			mssql: this.options.mssql,
+			smtp: this.options.smtp,
 			codeNodes:
 				this.options.codeNodes === 'host' || this.options.hostCodeNodes?.includes(node.name)
 					? 'host'

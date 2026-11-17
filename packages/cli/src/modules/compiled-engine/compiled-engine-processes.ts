@@ -223,6 +223,8 @@ export class CompiledEngineProcesses {
 		if (this.config.sqlMysql) args.push('--sql-mysql');
 		// `N8N_COMPILED_ENGINE_SQL_MSSQL`: without the flag, `wfrt` gives a SQL Server call to the host.
 		if (this.config.sqlMssql) args.push('--sql-mssql');
+		// `N8N_COMPILED_ENGINE_SMTP_NATIVE`: without the flag, `wfrt` gives an `smtp` call to the host.
+		if (this.config.smtpNative) args.push('--smtp-native');
 		args.push(
 			...workloadClassArgs(parseWorkloadClasses(this.config.workloadClasses), {
 				slots: this.config.workloadClassSlots,
