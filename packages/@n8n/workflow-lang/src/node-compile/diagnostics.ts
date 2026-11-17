@@ -587,6 +587,10 @@ export const RULES: Rule[] = [
 					/^the parameter '[^']+' is the value of a resource mapper, and v1 changes or checks the type of its fields: this has no compiled form$/,
 				locate: parameterName,
 			},
+			{
+				pattern: /^v1 checks the type of the parameter '[^']+' when the node reads it, and .+$/,
+				locate: parameterName,
+			},
 			{ pattern: /^the list of the parameters for each item is used as a value$/ },
 		],
 	},

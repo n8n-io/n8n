@@ -214,7 +214,7 @@ function getPropertyValues(
 	return Array.isArray(value) ? value : [value];
 }
 
-function displayParameter(
+export function displayParameter(
 	nodeValues: Params,
 	parameter: NodeProperty,
 	version: number,

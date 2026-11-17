@@ -1,6 +1,6 @@
 import { compile } from '../compiler/index.ts';
 import { CREDENTIAL_FLAGS_PREFIX } from '../credentials/flags.ts';
-import { getNodeParameters } from '../convert/node-parameters.ts';
+import { displayParameter, getNodeParameters } from '../convert/node-parameters.ts';
 import type { PublicCredential } from '../credentials/public.ts';
 import type { NodeDescription } from '../convert/node-parameters.ts';
 import type {
@@ -12,6 +12,7 @@ import type {
 	UnitOrigin,
 } from './specialise.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
+import type { FieldCheck, ParameterValidation } from './validate.ts';
 import { VERIFIED } from './verified.generated.ts';
 
 export interface NodeSources {
@@ -404,6 +405,66 @@ export function parameterKindOf(
 	};
 }
 
+function fieldCheckOf(property: unknown): FieldCheck | undefined {
+	if (!isRecord(property) || property.ignoreValidationDuringExecution) return undefined;
+	if (typeof property.validateType !== 'string' || property.validateType === '') return undefined;
+	const choices =
+		property.validateType === 'options' && Array.isArray(property.options)
+			? property.options.map((option: unknown) => (isRecord(option) ? option.value : undefined))
+			: undefined;
+	return {
+		type: property.validateType,
+		label: String(property.displayName),
+		...(choices === undefined ? {} : { options: choices }),
+	};
+}
+
+function memberChecksOf(members: unknown): Record<string, FieldCheck> {
+	const checks: Record<string, FieldCheck> = {};
+	for (const member of Array.isArray(members) ? members : []) {
+		const check = fieldCheckOf(member);
+		if (check !== undefined && isRecord(member) && typeof member.name === 'string')
+			checks[member.name] = check;
+	}
+	return checks;
+}
+
+export function parameterValidationOf(
+	description: NodeDescription,
+	parameters: Record<string, unknown>,
+	version: number,
+	name: string,
+): ParameterValidation | undefined {
+	const shown: unknown = description.properties.find(
+		(property) =>
+			property.name === name &&
+			displayParameter(parameters, property, version, description, parameters),
+	);
+	if (!isRecord(shown) || typeof shown.type !== 'string') return undefined;
+	const rule: ParameterValidation = { type: shown.type, label: String(shown.displayName) };
+	const own = fieldCheckOf(shown);
+	if (own !== undefined) rule.own = own;
+	if (shown.type === 'collection') rule.members = memberChecksOf(shown.options);
+	if (shown.type === 'fixedCollection') {
+		rule.groups = {};
+		for (const group of Array.isArray(shown.options) ? shown.options : []) {
+			if (!isRecord(group) || typeof group.name !== 'string') continue;
+			if (!Object.hasOwn(rule.groups, group.name))
+				rule.groups[group.name] = memberChecksOf(group.values);
+		}
+	}
+	if (shown.type === 'resourceMapper') {
+		const options = isRecord(shown.typeOptions) ? shown.typeOptions.resourceMapper : undefined;
+		const mapper = isRecord(options) ? options : {};
+		rule.mapper = {
+			adds: mapper.mode === 'add',
+			conversions: Boolean(mapper.showTypeConversionOptions),
+			strings: Boolean(mapper.alwaysConvertFieldsToString),
+		};
+	}
+	return rule;
+}
+
 export function compileNodeInstance(
 	sources: NodeSources,
 	node: { type: string; version: number; parameters: Record<string, unknown> },
@@ -464,6 +525,8 @@ export function compileNodeInstance(
 		parameters,
 		aliases: sources.aliases,
 		parameterKind: (name: string) => parameterKindOf(description, name),
+		validation: (name: string) =>
+			parameterValidationOf(description, parameters, node.version, name),
 		evaluate: sources.evaluate,
 		credentialEntry: sources.credentialEntry,
 		timezone,

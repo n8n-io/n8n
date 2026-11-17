@@ -14,6 +14,7 @@ export interface Variant {
 	member?: string;
 	values: unknown[];
 	form?: { value: unknown; fields: Record<string, unknown[]> };
+	rejected?: { value: unknown; fields: Record<string, unknown[]> };
 }
 
 const MAX_CHOICES = 12;
@@ -56,6 +57,97 @@ function itemValuesOf(member: WalkMember, sample: unknown): unknown[] | undefine
 		return [sample, sample + 1, sample + 2];
 	if (member.type === 'dateTime') return DATES;
 	return undefined;
+}
+
+const CHECKED_SAMPLES: Record<string, { values: unknown[]; items: unknown[] }> = {
+	number: { values: [7, '8', 'x'], items: ['7', 8, 'x'] },
+	boolean: { values: [true, 'false', 'maybe'], items: ['true', false, 'maybe'] },
+	array: { values: [['a'], '["a","b"]', 'x'], items: ['["a"]', ['b'], 'x'] },
+	jwt: { values: ['a.b.c', 'x'], items: ['a.b.c', 'd.e.f', 'x'] },
+};
+
+export function checkedSamples(
+	member: WalkMember,
+): { values: unknown[]; items: unknown[] } | undefined {
+	if (member.validateType === undefined || member.ignoreValidationDuringExecution) return undefined;
+	if (member.validateType !== 'options') return CHECKED_SAMPLES[member.validateType];
+	const choices = choicesOf(member);
+	if (choices.length === 0) return undefined;
+	const wrong = 'not-a-choice';
+	return {
+		values: [choices[0], wrong],
+		items: [choices[0], choices[1] ?? choices[0], wrong],
+	};
+}
+
+const MAPPER_CHOICES = [
+	{ name: 'A', value: 'a' },
+	{ name: 'B', value: 'b' },
+];
+const MAPPER_FIELDS: Array<[string, string]> = [
+	['text', 'string'],
+	['count', 'number'],
+	['done', 'boolean'],
+	['at', 'time'],
+	['list', 'array'],
+	['kind', 'options'],
+];
+
+function mapperSchema(required: string[]): Json[] {
+	return MAPPER_FIELDS.map(([id, type]) => ({
+		id,
+		displayName: id,
+		required: required.includes(id),
+		defaultMatch: false,
+		display: true,
+		type,
+		canBeUsedToMatch: true,
+		removed: false,
+		...(type === 'options' ? { options: MAPPER_CHOICES } : {}),
+	}));
+}
+
+function mapperValue(value: Json, more: Json = {}): Json {
+	return {
+		mappingMode: 'defineBelow',
+		value,
+		matchingColumns: ['text'],
+		schema: mapperSchema([]),
+		attemptToConvertTypes: false,
+		convertFieldsToString: false,
+		...more,
+	};
+}
+
+export function mapperVariant(name: string, itemExpression: (field: string) => string): Variant {
+	const typed = { text: 't', count: 5, done: true, at: '10:30', list: ['a'], kind: 'a' };
+	const loose = { text: 5, count: '5', done: 'true', at: '10:30:00', list: '["a","b"]', kind: 'b' };
+	const converts = { attemptToConvertTypes: true, convertFieldsToString: true };
+	const text = fieldNameOf(`${name}_text`);
+	const count = fieldNameOf(`${name}_count`);
+	const perItem = mapperValue(
+		{ ...typed, text: itemExpression(text), count: itemExpression(count) },
+		{ attemptToConvertTypes: true },
+	);
+	return {
+		condition: name,
+		name,
+		values: [
+			mapperValue(typed),
+			mapperValue(loose, converts),
+			mapperValue(loose),
+			mapperValue(loose, { convertFieldsToString: true }),
+			mapperValue({ ...typed, count: null, list: null }),
+			mapperValue({ ...typed, count: 'x' }, converts),
+			mapperValue({ ...typed, done: 'maybe' }, converts),
+			mapperValue({ ...typed, at: '10h30' }),
+			mapperValue({ ...typed, list: 'x' }, converts),
+			mapperValue({ ...typed, kind: 'c' }),
+			mapperValue({ ...typed, text: null }, { schema: mapperSchema(['text']) }),
+		],
+		form: { value: perItem, fields: { [text]: ['t', 'tb', 'tc'], [count]: ['5', 6, '7'] } },
+		rejected: { value: perItem, fields: { [text]: ['t', 5, null], [count]: ['5', null, 'x'] } },
+	};
 }
 
 const MAX_GROUP_DEPTH = 2;
@@ -204,6 +296,7 @@ export function parameterVariants(
 		cases += variant.values.length;
 		variants.push(variant);
 	};
+	const mappers: Variant[] = [];
 	for (const [name, value] of Object.entries(resolveParameters(node, version, parameters))) {
 		if (name in fixed || FIXED_CHOICES.has(name)) continue;
 		const property = shownProperty(node, version, parameters, name);
@@ -244,7 +337,8 @@ export function parameterVariants(
 					});
 					continue;
 				}
-				const values = samplesOf(member, member.default);
+				const checked = checkedSamples(member);
+				const values = [...samplesOf(member, member.default), ...(checked?.values ?? [])];
 				const itemValues = itemValuesOf(member, values[0]);
 				const field = fieldNameOf(`${name}_${member.name}`);
 				take({
@@ -255,13 +349,19 @@ export function parameterVariants(
 					...(itemValues === undefined
 						? {}
 						: { form: { value: itemExpression(field), fields: { [field]: itemValues } } }),
+					...(checked === undefined
+						? {}
+						: { rejected: { value: itemExpression(field), fields: { [field]: checked.items } } }),
 				});
 			}
 		} else if (property.type === 'fixedCollection') {
 			for (const group of property.options ?? [])
 				take(groupVariant(property, group, itemExpression));
+		} else if (property.type === 'resourceMapper') {
+			mappers.push(mapperVariant(name, itemExpression));
 		} else {
-			const values = samplesOf(property, value);
+			const checked = checkedSamples(property);
+			const values = [...samplesOf(property, value), ...(checked?.values ?? [])];
 			const itemValues = itemValuesOf(property, values[0]);
 			const field = fieldNameOf(name);
 			take({
@@ -271,9 +371,13 @@ export function parameterVariants(
 				...(itemValues === undefined
 					? {}
 					: { form: { value: itemExpression(field), fields: { [field]: itemValues } } }),
+				...(checked === undefined
+					? {}
+					: { rejected: { value: itemExpression(field), fields: { [field]: checked.items } } }),
 			});
 		}
 	}
+	for (const mapper of mappers) take(mapper);
 	return variants;
 }
 
