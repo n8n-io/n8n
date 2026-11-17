@@ -160,7 +160,8 @@ export const importPackageRequestFieldDocs = {
 		description:
 			'Controls what happens when a referenced data table has no match in the target ' +
 			'project. `create` (default) creates it from the package schema, keeping the source ' +
-			'id, with no rows; requires the `dataTable:create` scope. `must-preexist` rejects the ' +
+			'id, with no rows. It requires the `dataTable:create` scope only when it creates a ' +
+			'table. A table that already exists needs no scope. `must-preexist` rejects the ' +
 			'import. `do-nothing` skips creation of missing tables. Under the `keep-existing`, ' +
 			'`fail`, and `overwrite-non-destructive` schema conflict policies, matched tables are ' +
 			'still validated for schema compatibility and can still block the import. The import ' +
