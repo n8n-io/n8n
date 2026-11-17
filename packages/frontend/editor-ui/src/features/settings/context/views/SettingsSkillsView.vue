@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
@@ -115,7 +116,13 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
-const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const settingsStore = useSettingsStore();
+const { isEnabled: assistantSkillsExperimentEnabled } = useAssistantSkillsExperiment();
+const assistantSkillsEnabled = computed(
+	() =>
+		assistantSkillsExperimentEnabled.value &&
+		settingsStore.moduleSettings['instance-ai']?.enabled === true,
+);
 const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();

@@ -13,6 +13,7 @@ import {
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
@@ -1114,13 +1115,17 @@ describe('SettingsSkillsView', () => {
 
 	describe('edit', () => {
 		it.each([
-			['instance', true, false, false],
-			['project', true, true, true],
-			['instance', false, true, undefined],
+			['instance', true, true, false, false],
+			['project', true, true, true, true],
+			['instance', false, true, true, undefined],
+			['project', true, false, true, undefined],
 		] as const)(
-			'shows availability in the table and modal behind the Assistant flag (%s, %s)',
-			async (scope, enabled, availableToAssistant, expected) => {
+			'shows availability in the table and modal behind the Assistant flag (%s, flag %s, Assistant on %s)',
+			async (scope, enabled, assistantOn, availableToAssistant, expected) => {
 				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+				mockedStore(useSettingsStore).moduleSettings = {
+					'instance-ai': { enabled: assistantOn },
+				} as never;
 				skillsStore.skills = [skill({ scope, availableToAssistant })];
 				skillsStore.count = 1;
 				skillsStore.fetchSkill.mockResolvedValue(detail({ scope, availableToAssistant }));
