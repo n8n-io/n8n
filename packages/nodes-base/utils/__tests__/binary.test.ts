@@ -1,14 +1,25 @@
 import { mock } from 'jest-mock-extended';
-import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	type IBinaryData,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+} from 'n8n-workflow';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
 
-import { convertJsonToSpreadsheetBinary } from '@utils/binary';
+import { convertJsonToSpreadsheetBinary, extractDataFromPDF } from '@utils/binary';
 
 jest.mock('xlsx', () => ({
 	utils: {
 		json_to_sheet: jest.fn(),
 	},
 	write: jest.fn(),
+}));
+
+jest.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+	getDocument: jest.fn(),
+	version: '6.4.299',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {
@@ -88,5 +99,35 @@ describe('convertJsonToSpreadsheetBinary', () => {
 			});
 			expect(helpers.prepareBinaryData).toHaveBeenCalledWith(mockBuffer, 'spreadsheet.csv');
 		});
+	});
+});
+
+describe('extractDataFromPDF', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const executeFunctions = mock<IExecuteFunctions>({ helpers });
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		helpers.assertBinaryData.mockReturnValue({
+			data: Buffer.from('fake pdf content').toString(BINARY_ENCODING),
+			mimeType: 'application/pdf',
+		});
+	});
+
+	it('should return custom document info entries as a plain object', async () => {
+		(getDocument as jest.Mock).mockReturnValue({
+			promise: Promise.resolve({
+				numPages: 0,
+				getMetadata: jest.fn().mockResolvedValue({
+					info: { Title: 'Report', Custom: new Map([['Department', 'Finance']]) },
+					metadata: null,
+				}),
+				getPage: jest.fn(),
+			}),
+		});
+
+		const result = await extractDataFromPDF.call(executeFunctions, 'data', undefined, 0);
+
+		expect(result.info).toEqual({ Title: 'Report', Custom: { Department: 'Finance' } });
 	});
 });
