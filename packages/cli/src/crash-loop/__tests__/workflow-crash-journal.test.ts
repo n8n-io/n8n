@@ -46,51 +46,88 @@ describe('WorkflowCrashJournal', () => {
 	});
 
 	describe('startSession after a crash', () => {
-		it('counts a crash for each workflow with a scheduled job in flight', () => {
-			crashWith(attempt('1', 'wf-a'), attempt('2', 'wf-b'));
+		it('counts a crash for the one workflow with a scheduled job in flight', () => {
+			crashWith(attempt('1', 'wf-a'));
 
-			const crashed = newSession().startSession(true, t0);
+			const suspect = newSession().startSession(true, t0);
 
-			expect(crashed).toEqual([
-				{ workflowId: 'wf-a', crashes: 1 },
-				{ workflowId: 'wf-b', crashes: 1 },
-			]);
-			expect(readJournal()).toEqual({ crashes: { 'wf-a': [t0], 'wf-b': [t0] }, inFlight: {} });
+			expect(suspect).toEqual({ workflowId: 'wf-a', crashes: 1 });
+			expect(readJournal()).toEqual({
+				streak: { workflowId: 'wf-a', crashedAt: [t0] },
+				inFlight: {},
+			});
 		});
 
-		it('counts a crash for each workflow with an execution that did not finish', () => {
-			const journal = newSession();
-			journal.noteUnfinishedExecutions(['wf-a', 'wf-b']);
-
-			const crashed = journal.startSession(true, t0);
-
-			expect(crashed).toEqual([
-				{ workflowId: 'wf-a', crashes: 1 },
-				{ workflowId: 'wf-b', crashes: 1 },
-			]);
-			expect(readJournal()).toEqual({ crashes: { 'wf-a': [t0], 'wf-b': [t0] }, inFlight: {} });
-		});
-
-		it('counts a workflow once per crash when several jobs and executions of it were in flight', () => {
-			crashWith(attempt('1', 'wf-a'), attempt('2', 'wf-a'));
+		it('counts a crash for the one workflow with an execution that did not finish', () => {
 			const journal = newSession();
 			journal.noteUnfinishedExecutions(['wf-a']);
 
-			const crashed = journal.startSession(true, t0);
+			const suspect = journal.startSession(true, t0);
 
-			expect(crashed).toEqual([{ workflowId: 'wf-a', crashes: 1 }]);
+			expect(suspect).toEqual({ workflowId: 'wf-a', crashes: 1 });
 		});
 
-		it('adds up the crashes within the window across sessions', () => {
+		it('counts the workflow once when several jobs and executions of it were in flight', () => {
+			crashWith(attempt('1', 'wf-a'), attempt('2', 'wf-a'));
+			const journal = newSession();
+			journal.noteUnfinishedExecutions(['wf-a', 'wf-a']);
+
+			const suspect = journal.startSession(true, t0);
+
+			expect(suspect).toEqual({ workflowId: 'wf-a', crashes: 1 });
+		});
+
+		it('names no suspect when two workflows were in flight', () => {
+			crashWith(attempt('1', 'wf-a'));
+			const journal = newSession();
+			journal.noteUnfinishedExecutions(['wf-b']);
+
+			const suspect = journal.startSession(true, t0);
+
+			expect(suspect).toBeUndefined();
+			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
+		});
+
+		it('names no suspect when nothing was in flight', () => {
+			crashWith();
+
+			expect(newSession().startSession(true, t0)).toBeUndefined();
+		});
+
+		it('adds up crashes in a row across sessions', () => {
 			crashWith(attempt('1', 'wf-a'));
 			newSession().startSession(true, t0);
 			crashWith(attempt('2', 'wf-a'));
 			newSession().startSession(true, t0 + HOUR);
 			crashWith(attempt('3', 'wf-a'));
 
-			const crashed = newSession().startSession(true, t0 + 2 * HOUR);
+			const suspect = newSession().startSession(true, t0 + 2 * HOUR);
 
-			expect(crashed).toEqual([{ workflowId: 'wf-a', crashes: 3 }]);
+			expect(suspect).toEqual({ workflowId: 'wf-a', crashes: 3 });
+		});
+
+		it('ends the streak when another workflow was alone in flight at the next crash', () => {
+			crashWith(attempt('1', 'wf-a'));
+			newSession().startSession(true, t0);
+			crashWith(attempt('2', 'wf-b'));
+			newSession().startSession(true, t0 + HOUR);
+			crashWith(attempt('3', 'wf-a'));
+
+			const suspect = newSession().startSession(true, t0 + 2 * HOUR);
+
+			expect(suspect).toEqual({ workflowId: 'wf-a', crashes: 1 });
+		});
+
+		it('ends the streak when the next crash names no suspect', () => {
+			crashWith(attempt('1', 'wf-a'));
+			newSession().startSession(true, t0);
+			crashWith(attempt('2', 'wf-a'), attempt('3', 'wf-b'));
+			newSession().startSession(true, t0 + HOUR);
+			crashWith(attempt('4', 'wf-a'));
+
+			const suspect = newSession().startSession(true, t0 + 2 * HOUR);
+
+			expect(suspect).toEqual({ workflowId: 'wf-a', crashes: 1 });
 		});
 
 		it('drops a crash older than the window', () => {
@@ -100,25 +137,11 @@ describe('WorkflowCrashJournal', () => {
 			newSession().startSession(true, t0 + HOUR);
 			crashWith(attempt('3', 'wf-a'));
 
-			const crashed = newSession().startSession(true, t0 + CRASH_WINDOW_MS);
+			const suspect = newSession().startSession(true, t0 + CRASH_WINDOW_MS);
 
-			expect(crashed).toEqual([{ workflowId: 'wf-a', crashes: 2 }]);
+			expect(suspect).toEqual({ workflowId: 'wf-a', crashes: 2 });
 			expect(readJournal()).toEqual({
-				crashes: { 'wf-a': [t0 + HOUR, t0 + CRASH_WINDOW_MS] },
-				inFlight: {},
-			});
-		});
-
-		it('keeps the crashes of a workflow that was not in flight at the latest crash', () => {
-			crashWith(attempt('1', 'wf-a'));
-			newSession().startSession(true, t0);
-			crashWith(attempt('2', 'wf-b'));
-
-			const crashed = newSession().startSession(true, t0 + HOUR);
-
-			expect(crashed).toEqual([{ workflowId: 'wf-b', crashes: 1 }]);
-			expect(readJournal()).toEqual({
-				crashes: { 'wf-a': [t0], 'wf-b': [t0 + HOUR] },
+				streak: { workflowId: 'wf-a', crashedAt: [t0 + HOUR, t0 + CRASH_WINDOW_MS] },
 				inFlight: {},
 			});
 		});
@@ -129,9 +152,7 @@ describe('WorkflowCrashJournal', () => {
 			journal.recordStart(attempt('1', 'wf-a'));
 			// The task completed, but the poll never settled before the crash.
 
-			const crashed = newSession().startSession(true, t0);
-
-			expect(crashed).toEqual([{ workflowId: 'wf-a', crashes: 1 }]);
+			expect(newSession().startSession(true, t0)).toEqual({ workflowId: 'wf-a', crashes: 1 });
 		});
 
 		it('does not count an attempt that settled before the crash', () => {
@@ -140,39 +161,38 @@ describe('WorkflowCrashJournal', () => {
 			const settle = journal.recordStart(attempt('1', 'wf-a'));
 			settle();
 
-			const crashed = newSession().startSession(true, t0);
-
-			expect(crashed).toEqual([]);
+			expect(newSession().startSession(true, t0)).toBeUndefined();
 		});
 
 		it('does not count a job again at a crash before any job of the new session started', () => {
 			crashWith(attempt('1', 'wf-a'));
 			newSession().startSession(true, t0);
 
-			const crashed = newSession().startSession(true, t0 + HOUR);
-
-			expect(crashed).toEqual([]);
+			expect(newSession().startSession(true, t0 + HOUR)).toBeUndefined();
 		});
 
 		it('starts over from a corrupt file', () => {
-			writeFileSync(journalPath(), '{"crashes":1}');
+			writeFileSync(journalPath(), '{"streak":1}');
 
-			expect(newSession().startSession(true, t0)).toEqual([]);
+			expect(newSession().startSession(true, t0)).toBeUndefined();
 		});
 	});
 
 	describe('startSession after a clean shutdown', () => {
-		it('keeps the recent crashes and forgets what was in flight', () => {
+		it('keeps the streak and forgets what was in flight', () => {
 			crashWith(attempt('1', 'wf-a'));
 			newSession().startSession(true, t0);
 			crashWith(attempt('2', 'wf-a'));
 			const journal = newSession();
 			journal.noteUnfinishedExecutions(['wf-b']);
 
-			const crashed = journal.startSession(false, t0 + HOUR);
+			const suspect = journal.startSession(false, t0 + HOUR);
 
-			expect(crashed).toEqual([]);
-			expect(readJournal()).toEqual({ crashes: { 'wf-a': [t0] }, inFlight: {} });
+			expect(suspect).toBeUndefined();
+			expect(readJournal()).toEqual({
+				streak: { workflowId: 'wf-a', crashedAt: [t0] },
+				inFlight: {},
+			});
 		});
 
 		it('drops the crashes older than the window', () => {
@@ -181,7 +201,7 @@ describe('WorkflowCrashJournal', () => {
 
 			newSession().startSession(false, t0 + CRASH_WINDOW_MS);
 
-			expect(readJournal()).toEqual({ crashes: {}, inFlight: {} });
+			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
 		});
 	});
 
@@ -192,9 +212,9 @@ describe('WorkflowCrashJournal', () => {
 
 			const settle = journal.recordStart(attempt('1', 'wf-a', 2));
 
-			expect(readJournal()).toEqual({ crashes: {}, inFlight: { '1:2': 'wf-a' } });
+			expect(readJournal()).toEqual({ streak: null, inFlight: { '1:2': 'wf-a' } });
 			settle();
-			expect(readJournal()).toEqual({ crashes: {}, inFlight: {} });
+			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
 		});
 
 		it('ignores an attempt whose payload names no workflow and node', () => {
@@ -203,18 +223,30 @@ describe('WorkflowCrashJournal', () => {
 
 			journal.recordStart({ id: '1', leaseEpoch: 1, payload: { kind: 'system' } });
 
-			expect(readJournal()).toEqual({ crashes: {}, inFlight: {} });
+			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
 		});
 	});
 
 	describe('clearWorkflow', () => {
-		it('forgets the crashes of the workflow', () => {
-			crashWith(attempt('1', 'wf-a'), attempt('2', 'wf-b'));
+		it('forgets the streak of the workflow', () => {
+			crashWith(attempt('1', 'wf-a'));
 			newSession().startSession(true, t0);
 
 			newSession().clearWorkflow('wf-a');
 
-			expect(readJournal()).toEqual({ crashes: { 'wf-b': [t0] }, inFlight: {} });
+			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
+		});
+
+		it('keeps the streak of another workflow', () => {
+			crashWith(attempt('1', 'wf-a'));
+			newSession().startSession(true, t0);
+
+			newSession().clearWorkflow('wf-b');
+
+			expect(readJournal()).toEqual({
+				streak: { workflowId: 'wf-a', crashedAt: [t0] },
+				inFlight: {},
+			});
 		});
 	});
 });

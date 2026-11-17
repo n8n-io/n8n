@@ -8,7 +8,7 @@ import { ExecutionRecoveryService } from '@/executions/execution-recovery.servic
 
 import { WorkflowCrashJournal } from './workflow-crash-journal';
 
-/** Deactivates a workflow that was in flight at N or more crashes within the window. */
+/** Deactivates the workflow that was alone in flight at each of the last N crashes. */
 @Service()
 export class CrashLoopRecovery {
 	constructor(
@@ -24,7 +24,7 @@ export class CrashLoopRecovery {
 	 */
 	async recover(): Promise<void> {
 		try {
-			await this.deactivateCrashingWorkflows();
+			await this.deactivateCrashingWorkflow();
 		} catch (error) {
 			this.logger.error('Failed to check workflows for crash loops', {
 				error: ensureError(error),
@@ -32,24 +32,20 @@ export class CrashLoopRecovery {
 		}
 	}
 
-	private async deactivateCrashingWorkflows() {
-		const crashed = this.journal.startSession(didLastSessionCrash());
-		for (const workflow of crashed) {
-			this.logger.warn('Workflow was in flight when the last session crashed', { ...workflow });
-		}
+	private async deactivateCrashingWorkflow() {
+		const suspect = this.journal.startSession(didLastSessionCrash());
+		if (!suspect) return;
+		this.logger.warn('Workflow was alone in flight when the last session crashed', { ...suspect });
 
 		const { workflowDeactivationEnabled, maxLastExecutions } = this.executionsConfig.recovery;
-		if (!workflowDeactivationEnabled) return;
-		for (const workflow of crashed) {
-			if (workflow.crashes < maxLastExecutions) continue;
-			this.logger.warn('Deactivating workflow that was in flight at too many crashes', {
-				...workflow,
-			});
-			await this.executionRecoveryService.autoDeactivateWorkflow(
-				workflow.workflowId,
-				'process-crashes',
-			);
-			this.journal.clearWorkflow(workflow.workflowId);
-		}
+		if (!workflowDeactivationEnabled || suspect.crashes < maxLastExecutions) return;
+		this.logger.warn('Deactivating workflow that was alone in flight at the last crashes', {
+			...suspect,
+		});
+		await this.executionRecoveryService.autoDeactivateWorkflow(
+			suspect.workflowId,
+			'process-crashes',
+		);
+		this.journal.clearWorkflow(suspect.workflowId);
 	}
 }

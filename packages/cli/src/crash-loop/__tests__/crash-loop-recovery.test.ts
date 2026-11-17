@@ -17,11 +17,11 @@ describe('CrashLoopRecovery', () => {
 	function setup({
 		crashed = true,
 		workflowDeactivationEnabled = true,
-		crashes = [] as WorkflowCrashes[],
+		suspect = undefined as WorkflowCrashes | undefined,
 	} = {}) {
 		crashJournal.crashed = crashed;
 		const journal = mock<WorkflowCrashJournal>();
-		journal.startSession.mockReturnValue(crashes);
+		journal.startSession.mockReturnValue(suspect);
 		const executionRecoveryService = mock<ExecutionRecoveryService>();
 		const logger = mockLogger();
 		const recovery = new CrashLoopRecovery(
@@ -43,28 +43,35 @@ describe('CrashLoopRecovery', () => {
 		expect(journal.startSession).toHaveBeenCalledWith(crashed);
 	});
 
-	it('deactivates a workflow that reached the crash threshold and clears its crashes', async () => {
+	it('deactivates the suspect that reached the crash threshold and clears its streak', async () => {
 		const { recovery, journal, executionRecoveryService } = setup({
-			crashes: [
-				{ workflowId: 'wf-a', crashes: 3 },
-				{ workflowId: 'wf-b', crashes: 2 },
-			],
+			suspect: { workflowId: 'wf-a', crashes: 3 },
 		});
 
 		await recovery.recover();
 
-		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledTimes(1);
-		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledWith(
+		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledExactlyOnceWith(
 			'wf-a',
 			'process-crashes',
 		);
 		expect(journal.clearWorkflow).toHaveBeenCalledExactlyOnceWith('wf-a');
 	});
 
+	it('does not deactivate a suspect below the crash threshold', async () => {
+		const { recovery, journal, executionRecoveryService } = setup({
+			suspect: { workflowId: 'wf-a', crashes: 2 },
+		});
+
+		await recovery.recover();
+
+		expect(executionRecoveryService.autoDeactivateWorkflow).not.toHaveBeenCalled();
+		expect(journal.clearWorkflow).not.toHaveBeenCalled();
+	});
+
 	it('counts but does not deactivate when auto deactivation is off', async () => {
 		const { recovery, journal, executionRecoveryService } = setup({
 			workflowDeactivationEnabled: false,
-			crashes: [{ workflowId: 'wf-a', crashes: 3 }],
+			suspect: { workflowId: 'wf-a', crashes: 3 },
 		});
 
 		await recovery.recover();
