@@ -172,10 +172,12 @@ export class WorkingCopyUpdater {
 				const target = staging.projects?.find(({ id }) => id === projectId)?.target;
 				return target !== undefined && isUnder(entry.target, target);
 			});
+			// A file outside every selected project is the fallback path of the exporter for a
+			// credential of a project that the selection does not hold. A Promote never writes it.
 			const selected =
-				owner === undefined ||
-				owner.credentialIds?.includes(entry.id) === true ||
-				(usedBy.get(entry.id) ?? []).some((id) => owner.workflowIds.includes(id));
+				owner !== undefined &&
+				(owner.credentialIds?.includes(entry.id) === true ||
+					(usedBy.get(entry.id) ?? []).some((id) => owner.workflowIds.includes(id)));
 			if (selected) {
 				kept.push(entry);
 				continue;

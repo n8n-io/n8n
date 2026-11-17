@@ -90,6 +90,12 @@ export class ApplyCheckFactsService {
 			references.push(...extracted.references);
 			expressionReferences.push(...extracted.expressionReferences);
 		}
+		// The exporter removes the credential name from the node. The requirement row of the
+		// consumer keeps it, so the report can still show what the workflow shows on the source.
+		for (const { target } of references) {
+			const row = branch.requirements[targetKey(target.kind, target.id)];
+			if (target.name === undefined && row?.name !== undefined) target.name = row.name;
+		}
 
 		// --- The destination now. The written workflows are read for their published version.
 		const idsOf = (kind: 'credential' | 'workflow', list: ReferenceFact[]) =>
