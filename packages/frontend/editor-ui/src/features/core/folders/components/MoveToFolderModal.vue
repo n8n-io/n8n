@@ -574,26 +574,20 @@ onMounted(async () => {
 					</N8nText>
 				</div>
 			</div>
-		</N8nDialogBody>
-		<template v-if="selectedProject && isFolderSelectable">
-			<N8nDialogBody>
-				<div :class="$style.block">
-					<N8nText color="text-dark">
-						{{ i18n.baseText('folders.move.modal.folder.label') }}
-					</N8nText>
-					<MoveToFolderDropdown
-						:selected-location="selectedFolder"
-						:selected-project-id="selectedProject.id"
-						:current-project-id="currentResourceProjectId"
-						:current-folder-id="currentFolder?.id"
-						:parent-folder-id="props.data.resource.parentFolderId"
-						:exclude-only-parent="props.data.resourceType === 'workflow'"
-						@location:selected="onFolderSelected"
-					/>
-				</div>
-			</N8nDialogBody>
-		</template>
-		<N8nDialogBody>
+			<div v-if="selectedProject && isFolderSelectable" :class="$style.block">
+				<N8nText color="text-dark">
+					{{ i18n.baseText('folders.move.modal.folder.label') }}
+				</N8nText>
+				<MoveToFolderDropdown
+					:selected-location="selectedFolder"
+					:selected-project-id="selectedProject.id"
+					:current-project-id="currentResourceProjectId"
+					:current-folder-id="currentFolder?.id"
+					:parent-folder-id="props.data.resource.parentFolderId"
+					:exclude-only-parent="props.data.resourceType === 'workflow'"
+					@location:selected="onFolderSelected"
+				/>
+			</div>
 			<N8nCheckbox
 				v-if="shareableCredentials.length"
 				v-model="shareUsedCredentials"
