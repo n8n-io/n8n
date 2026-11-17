@@ -412,6 +412,52 @@ file name with an extension and a `Content-Type`, and a file name without an ext
   Request node of the library never stores a response: a file response runs in the host
   (`http-binary`), so it does not reach the limit.
 
+**Built: the bytes of an item (file nodes, 2026-11-17).** `nodes/extract-from-file.ts`,
+`nodes/convert-to-file.ts`, `services/binary-data.ts`, `compiled-service-calls.ts` of the n8n module.
+
+- *The API.* Bytes are base64 text in the language. Two calls of the `binaryData` service
+  (`ctx.service`, spec 9.9) go to n8n: `read` (`{ id | data, as: 'text' | 'base64', encoding?, stripBOM?,
+  limit }`) gives `{ text }` or `{ data }`, and `store` (`{ data, fileName?, mimeType? }`) gives
+  `{ entry }`, the entry of n8n-core's `prepareBinaryData` (so the metadata and the place of the bytes
+  are those of v1). n8n reads only a file of the workflow of the execution. The runtime still answers
+  `metadata` itself. A call without an exact form gives `{ host: <reason> }`.
+- *Limit.* 262,144 bytes for one file (`BINARY_DATA_MAX_BYTES`): a call must fit `--service-call-kb`.
+  Above it the library node ends with the mark `RUNS_IN_HOST`, and the host form of the node runs the
+  v1 node for all items in the same run (`emitWithHostForm`). The nodes send no request, so a second
+  run changes nothing.
+- *Text.* An inline file of ASCII bytes without NUL and ESC is decoded in the module (`atob`): each
+  encoding that `chardet` can give for such bytes keeps ASCII. All other files go to `read`: n8n finds
+  the encoding with `chardet` when the node names none, and decodes UTF-8 and Latin-1. Each other
+  encoding of bytes above 0x7F goes to the host (n8n's `cli` package has no `iconv-lite`).
+- *Native operations.* Extract From File: `text`, `xml`, `fromJson`, `binaryToPropery`. Convert To
+  File: `toText`, `toBinary`, `toJson` with one file for each item. To the host at run time: a field
+  name or a key that lodash reads as a path, an encoding other than UTF-8 for a write, a data URI,
+  bytes as an array, and the workflow setting `binaryMode: combined` (at conversion).
+
+**Not built: the other file operations.**
+
+- *CSV (the default operation of both nodes).* Extract needs an exact port of `csv-parse` 5 as the v1
+  node sets it (`delimiter`, `from_line`, `to`, `bom`, `columns`, `relax_quotes`, `skip_empty_lines`,
+  `skip_records_with_error`, the `encoding` of the parser, and the two ways v1 feeds it: a stored file
+  as a stream with errors, inline data with errors only from version 1.1). It can be bytecode over the
+  text of `read`. Convert writes CSV with SheetJS (`json_to_sheet`, then `write` with `bookType: 'csv'`):
+  the header order of the union of keys, the cell text of numbers, dates and booleans, and the quoting
+  of SheetJS need a port of that path only.
+- *`html`, `rtf`, `xlsx`, `xls`, `ods`.* SheetJS reads and writes them. An exact native form is a
+  runtime primitive: a ZIP reader and writer (deflate), the XML of SpreadsheetML and ODS (shared
+  strings, styles, number formats, dates with the 1900 and 1904 systems), BIFF8 for `xls`, and
+  `sheet_to_json` with `range`, `header`, `defval` and `UTC`. A later card, format by format.
+- *`pdf`.* pdf.js extracts the text. No native form is planned; the node stays in the host.
+- *`fromIcs`, `iCal`.* `node-ical` and `ics`. Small text formats: bytecode over text, a later card.
+- *`toJson` with one file for all items.* It needs a call for all items, and v1 stops the workflow
+  under each "continue" setting after it adds an error item.
+- *FTP and SFTP.* A protocol client in the runtime, as for Postgres: for FTP the control connection
+  (USER, PASS, TYPE I, PASV or EPSV, LIST, RETR, STOR, RNFR and RNTO, DELE, MKD, RMD) with a second
+  data connection, explicit and implicit TLS, and the listing parser of `promise-ftp`; for SFTP the
+  SSH 2 transport (key exchange, host key, ciphers and MACs of `ssh2`), password and private key
+  authentication, and the SFTP version 3 packets (open, read, write, readdir, rename, remove, mkdir,
+  stat). Both stream to and from the binary data store (`sourcePeek`, `putBody`). Not built.
+
 **Not built.**
 
 - *A retry in the fallback host of the step that reached the limit.* A compiled node is code of the

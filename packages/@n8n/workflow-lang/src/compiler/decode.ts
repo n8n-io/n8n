@@ -91,7 +91,7 @@ export function decodeModule(bytes: Uint8Array): DecodedModule {
 		const offsets: number[] = [];
 		for (let i = 0; i <= n; i++) offsets.push(r.u32());
 		const area = r.pos;
-		const decoder = new TextDecoder('utf-8', { fatal: true });
+		const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 		for (let i = 0; i < n; i++) {
 			strings.push(decoder.decode(bytes.subarray(area + offsets[i], area + offsets[i + 1])));
 		}

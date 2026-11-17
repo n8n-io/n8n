@@ -92,7 +92,50 @@ type Adapter = (
 	node?: { onError?: string },
 ) => Record<string, unknown>;
 
+/**
+ * The file nodes that have a library node for some operations (`nodes/extract-from-file.ts`,
+ * `nodes/convert-to-file.ts`). The library node ends with the mark of `RUNS_IN_HOST` for a
+ * file that has no exact compiled form, so each call has a host form too.
+ */
+const FILE_NODES = new Set(['n8n-nodes-base.extractFromFile', 'n8n-nodes-base.convertToFile']);
+
+/** The parameters of `names` that the node has, so a stale parameter of another operation is not sent. */
+function pick(p: Record<string, unknown>, names: string[]): Record<string, unknown> {
+	return Object.fromEntries(names.filter((name) => p[name] !== undefined).map((n) => [n, p[n]]));
+}
+
 export const ADAPTERS: Record<string, Adapter> = {
+	// The defaults of the v1 node description, and the item index for the error texts of
+	// `assertBinaryData`. An operation without a library form keeps its parameters: the
+	// `supports` list refuses it.
+	'n8n-nodes-base.extractFromFile': (p) => {
+		const operation = p.operation ?? 'csv';
+		if (typeof operation !== 'string') return { ...p, operation };
+		if (!['text', 'xml', 'fromJson', 'binaryToPropery'].includes(operation)) {
+			return { ...p, operation };
+		}
+		return {
+			operation,
+			binaryPropertyName: p.binaryPropertyName ?? 'data',
+			destinationKey: p.destinationKey ?? 'data',
+			...pick(p, ['options']),
+			itemIndex: '={{ $itemIndex }}',
+		};
+	},
+	'n8n-nodes-base.convertToFile': (p, version) => {
+		const operation = p.operation ?? 'csv';
+		if (typeof operation !== 'string') return { ...p, operation };
+		if (!['toText', 'toBinary', 'toJson'].includes(operation)) return { ...p, operation };
+		return {
+			operation,
+			...(operation === 'toJson'
+				? { mode: p.mode ?? 'once' }
+				: { sourceProperty: p.sourceProperty ?? '' }),
+			binaryPropertyName: p.binaryPropertyName ?? 'data',
+			...pick(p, ['options']),
+			nodeVersion: version,
+		};
+	},
 	...Object.fromEntries(
 		Object.entries(VENDOR_NODES).map(([type, vendor]): [string, Adapter] => [
 			type,
@@ -1095,8 +1138,10 @@ export function lowerLibrary(c: NodeContext): void {
 		c.node.onError === 'continueErrorOutput' ||
 		(!c.node.onError && c.node.continueOnFail === true);
 	const inexact = continues && !errorItemIsExact(type, adapted);
+	// In the mode `combined` v1 keeps binary data in the JSON of the item.
+	const combined = FILE_NODES.has(type) && c.scope.binaryMode === 'combined';
 	const unsupported =
-		(support && !librarySupports(support, adapted)) || older || noToken || inexact;
+		(support && !librarySupports(support, adapted)) || older || noToken || inexact || combined;
 	// The caller says that the node runs in the host (`NodeSources.runsInHost`): a limit of
 	// the runtime, or a token for a service account that the caller does not make. Without
 	// this, a workflow with such a library node had no conversion with the node compiler.
@@ -1220,6 +1265,21 @@ export function lowerLibrary(c: NodeContext): void {
 			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
 			hostForm,
 			replay,
+		);
+		return;
+	}
+	// A file node hands a file without an exact compiled form over to the host. These nodes
+	// send no request, so the host form runs the v1 node for all items again.
+	if (FILE_NODES.has(type)) {
+		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
+		const hostForm = hostFormOf(c, inHost);
+		if (hostForm === null) return inHost(c);
+		const call = nodeCall(c, type, parameters, c.credential(), true);
+		emitWithHostForm(
+			c,
+			c.node.onError === 'continueErrorOutput',
+			(to, hostLimit) => emitStep(to, { ...call, hostLimit }),
+			hostForm,
 		);
 		return;
 	}

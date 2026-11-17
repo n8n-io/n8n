@@ -305,6 +305,7 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			fn,
 			opts,
 			call.reportError ? 'result[0]?.items?.[0]' : 'result[0]',
+			call.hostLimit,
 		);
 		if (call.reportError) {
 			w.line(`for (const r of result[0]?.items ?? []) ${out}.push(r);`);
@@ -314,6 +315,8 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		}
 		w.close('} catch (error) {');
 		w.depth++;
+		// The mark of `RUNS_IN_HOST` is not the error of an item: the host form runs the node.
+		if (call.hostLimit) w.line('if (fileLimitInHost(error)) throw error;');
 		if (WHOLE_NODE_ERRORS.has(c.node.type)) {
 			// The v1 node throws this error: n8n passes all input items on output 0.
 			w.open('if (error.wholeNode === true) {');

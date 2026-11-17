@@ -1,10 +1,18 @@
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
+import type { BinaryDataBackend } from '@n8n/workflow-lang';
+import {
+	BinaryDataConfig,
+	BinaryDataService,
+	detectBinaryEncoding,
+	prepareBinaryData,
+} from 'n8n-core';
 
 import { DeduplicationHelper } from '@/deduplication/deduplication-helper';
 
 import { dataTableCallSchema } from '../engine-v2/engine-data-tables.contract';
 import { EngineDataTablesService } from '../engine-v2/engine-data-tables.service';
+import { runtimeLocationId } from './compiled-binary-data';
 import { CompiledEngineCredentials } from './compiled-engine-credentials';
 import { CompiledEngineSync } from './compiled-engine-sync.service';
 import { CompiledEngineConfig } from './compiled-engine.config';
@@ -29,7 +37,9 @@ const ANSWER_TTL_MS = 10 * 60 * 1000;
  * `deduplication` call runs with n8n's `DeduplicationHelper` on the
  * `processed_data` table, always for the workflow of the execution. A
  * `chatMemory` call runs with the session store of the Simple Memory node: the
- * sessions are in the memory of this process only, as the v1 node keeps them.
+ * sessions are in the memory of this process only, as the v1 node keeps them. A
+ * `binaryData` call (`read`, `store`) runs with n8n-core's `BinaryDataService`, for
+ * the files of the workflow of the execution only.
  *
  * `wfrt` sends a waiting call again when the event stream opens again. Each
  * answer is kept by call id and attempt, so a write that ran already is not
@@ -119,6 +129,14 @@ export class CompiledServiceCalls {
 			const store = await this.chatMemoryStore();
 			return store.run({ service: event.service, op: event.op, args }, workflowId);
 		}
+		if (event.service === 'binaryData') {
+			const { runBinaryDataCall } = await loadWorkflowLang();
+			return await runBinaryDataCall(this.binaryDataBackend(event, workflowId), {
+				service: event.service,
+				op: event.op,
+				args,
+			});
+		}
 		if (event.service !== 'dataTable') {
 			return { ok: false, error: { message: `Unknown service "${event.service}"` } };
 		}
@@ -143,6 +161,42 @@ export class CompiledServiceCalls {
 				error: { message: error instanceof Error ? error.message : String(error) },
 			};
 		}
+	}
+
+	/**
+	 * The parts of n8n-core that the `binaryData` service needs. A file must be a file of
+	 * the workflow of the execution. A new file goes where the fallback host writes the
+	 * files of the run: under n8n's execution id for a manual run, and else under the
+	 * runtime id, from where the dispatcher moves it when n8n saves the run.
+	 */
+	private binaryDataBackend(event: WfrtServiceEvent, workflowId: string): BinaryDataBackend {
+		const service = Container.get(BinaryDataService);
+		const { mode } = Container.get(BinaryDataConfig);
+		const executionId = event.workflowId.endsWith(MANUAL_WORKFLOW_SUFFIX)
+			? event.executionId
+			: runtimeLocationId(event.executionId);
+		return {
+			read: async (id, limit) => {
+				if (!id.includes(`workflows/${workflowId}/`)) {
+					throw new Error('The file is not a file of the workflow of the execution');
+				}
+				const { fileSize } = await service.getMetadata(id);
+				if (fileSize > limit) return null;
+				return await service.getAsBuffer({ id, data: '', mimeType: '' });
+			},
+			detect: (bytes) => detectBinaryEncoding(Buffer.from(bytes)) ?? null,
+			store: async (bytes, fileName, mimeType) => {
+				// The dispatcher moves the files of a run in these two modes only.
+				if (mode !== 'default' && mode !== 'filesystem') return null;
+				return await prepareBinaryData(
+					Buffer.from(bytes),
+					executionId,
+					workflowId,
+					fileName,
+					mimeType,
+				);
+			},
+		};
 	}
 
 	/**
