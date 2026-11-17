@@ -10,23 +10,11 @@ import { UnexpectedError } from '@n8n/errors';
 const SETTINGS_KEY = 'features.executionLimits';
 
 function parseStoredValue(value: string): ExecutionLimitSettings {
-	let json: unknown;
 	try {
-		json = JSON.parse(value);
-	} catch (error) {
-		throw new UnexpectedError('The stored execution limit settings are not valid JSON', {
-			cause: error,
-		});
+		return executionLimitSettingsSchema.parse(JSON.parse(value));
+	} catch (cause) {
+		throw new UnexpectedError('The stored execution limit settings are not valid', { cause });
 	}
-
-	const result = executionLimitSettingsSchema.safeParse(json);
-	if (!result.success) {
-		throw new UnexpectedError('The stored execution limit settings have an unknown shape', {
-			cause: result.error,
-		});
-	}
-
-	return result.data;
 }
 
 /** The only reader and writer of the `features.executionLimits` settings row. */

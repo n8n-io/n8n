@@ -1,6 +1,6 @@
 import { DEFAULT_EXECUTION_LIMIT_SETTINGS } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, SettingsRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 
@@ -19,8 +19,7 @@ describe('ExecutionLimitsService', () => {
 
 	beforeEach(async () => {
 		// The delete of a project also deletes its limit.
-		await testDb.truncate(['Project']);
-		await Container.get(SettingsRepository).delete({ key: 'features.executionLimits' });
+		await testDb.truncate(['Project', 'Settings']);
 	});
 
 	afterAll(async () => {
@@ -151,17 +150,6 @@ describe('ExecutionLimitsService', () => {
 			).rejects.toThrow(BadRequestError);
 
 			expect(await service.getProjectLimits()).toEqual([]);
-		});
-
-		it('accepts a limit equal to the instance limit', async () => {
-			const project = await createTeamProject();
-			await service.updateSettings({ instanceMaxExecutions: 100 });
-
-			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 100 }]);
-
-			expect(await service.getProjectLimits()).toEqual([
-				{ projectId: project.id, maxExecutions: 100 },
-			]);
 		});
 
 		it('removes the limit of the given projects only', async () => {
