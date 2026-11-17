@@ -2375,6 +2375,110 @@ describe('SourceControlImportService', () => {
 				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
 				expect(workflowInDb).toBeNull();
 			});
+
+			describe('when the file has the published versionId and another engine', () => {
+				const createPublishedWorkflow = async (user: User, engineType: 'v1' | 'v2') => {
+					const { nodes, connections } = makeWorkflowImport();
+					const workflow = await createWorkflowWithHistory(
+						{ id: nanoid(), name: 'Test Workflow', versionId: nanoid(), nodes, connections },
+						user,
+					);
+					await workflowHistoryRepository.update(
+						{ workflowId: workflow.id, versionId: workflow.versionId },
+						{ settings: { engineType } },
+					);
+					await setActiveVersion(workflow.id, workflow.versionId);
+					return workflow;
+				};
+
+				// The shared cleanup truncates the history before the workflows
+				afterEach(async () => {
+					await workflowRepository
+						.createQueryBuilder()
+						.update()
+						.set({ activeVersionId: null })
+						.execute();
+				});
+
+				const pull = async (
+					workflow: WorkflowEntity,
+					settings: IWorkflowToImport['settings'],
+					userId: string,
+					autoPublish?: 'none' | 'published',
+				) => {
+					const file = putWorkflowFile(
+						workflow.id,
+						makeWorkflowImport({ id: workflow.id, versionId: workflow.versionId, settings }),
+					);
+					await service.importWorkflowFromWorkFolder(
+						[mock<SourceControlledFile>({ id: workflow.id, file })],
+						userId,
+						autoPublish,
+					);
+				};
+
+				it('should keep the published engine and put the pulled engine on a draft without auto-publish', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v2');
+
+					await pull(workflow, { engineType: 'v1' }, importingUser.id);
+
+					const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+					expect(stored.activeVersionId).toBe(workflow.versionId);
+					expect(stored.versionId).not.toBe(workflow.versionId);
+
+					const published = await workflowHistoryRepository.findOneByOrFail({
+						workflowId: workflow.id,
+						versionId: workflow.versionId,
+					});
+					expect(published.settings).toEqual({ engineType: 'v2' });
+
+					const draft = await workflowHistoryRepository.findOneByOrFail({
+						workflowId: workflow.id,
+						versionId: stored.versionId,
+					});
+					expect(draft.settings).toEqual({ engineType: 'v1' });
+				});
+
+				it('should not create another version when the same file is pulled again', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v2');
+
+					await pull(workflow, { engineType: 'v1' }, importingUser.id);
+					await pull(workflow, { engineType: 'v1' }, importingUser.id);
+
+					await expect(
+						workflowHistoryRepository.countBy({ workflowId: workflow.id }),
+					).resolves.toBe(2);
+				});
+
+				it('should update the published version with auto-publish "published"', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v2');
+
+					await pull(workflow, { engineType: 'v1' }, importingUser.id, 'published');
+
+					const versions = await workflowHistoryRepository.findBy({ workflowId: workflow.id });
+					expect(versions).toHaveLength(1);
+					expect(versions[0]).toMatchObject({
+						versionId: workflow.versionId,
+						settings: { engineType: 'v1' },
+					});
+				});
+
+				it('should not create a version when the file has no engine and the published engine is v1', async () => {
+					const importingUser = await getGlobalOwner();
+					const workflow = await createPublishedWorkflow(importingUser, 'v1');
+
+					await pull(workflow, { availableInMCP: true }, importingUser.id);
+
+					const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+					expect(stored.versionId).toBe(workflow.versionId);
+					await expect(
+						workflowHistoryRepository.countBy({ workflowId: workflow.id }),
+					).resolves.toBe(1);
+				});
+			});
 		});
 
 		describe('workflow dependency index', () => {
