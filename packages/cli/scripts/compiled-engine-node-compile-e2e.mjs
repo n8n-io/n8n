@@ -24,6 +24,7 @@
  * details. `ONLY=b,c` runs only the named cases.
  */
 import { writeFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { createServer } from 'node:http';
 import { parse } from 'flatted';
 
@@ -103,9 +104,7 @@ function comparable(requests) {
 		authorization: r.headers.authorization?.replace(/token-\d+/, 'token-N'),
 		stubKey: r.headers['x-stub-key'],
 		userAgent: r.headers['user-agent'],
-		// The `accept` header of a compiled node is a known difference: only the HTTP Request
-		// node of the case `p` is compared.
-		...(r.path.startsWith('/plain/') ? { accept: r.headers.accept } : {}),
+		accept: r.headers.accept,
 		contentType: r.headers['content-type'],
 	}));
 }
@@ -169,15 +168,29 @@ function runDataOf(execution) {
 
 // ---------------------------------------------------------------- workflows
 
-const webhook = (path) => ({
+/** `auth`: the authentication of the Webhook node and its credential. */
+const webhook = (path, auth = {}) => ({
 	id: 'w',
 	name: 'Webhook',
 	type: 'n8n-nodes-base.webhook',
 	typeVersion: 2,
 	position: [0, 0],
 	webhookId: path,
-	parameters: { path, httpMethod: 'POST', responseMode: 'responseNode' },
+	parameters: {
+		path,
+		httpMethod: 'POST',
+		responseMode: 'responseNode',
+		...(auth.authentication ? { authentication: auth.authentication } : {}),
+	},
+	...(auth.credentials ? { credentials: auth.credentials } : {}),
 });
+
+/** A token with the HS256 signature of `secret`, as the JWT authentication of the Webhook node reads it. */
+function signedToken(payload, secret) {
+	const part = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+	const text = `${part({ alg: 'HS256', typ: 'JWT' })}.${part(payload)}`;
+	return `${text}.${createHmac('sha256', secret).update(text).digest('base64url')}`;
+}
 
 const respond = {
 	id: 'r',
@@ -292,8 +305,8 @@ const oauthRequest = (credential) => ({
 	credentials: { oAuth2Api: credential },
 });
 
-function workflowBody(name, engine, path, nodes) {
-	const all = [webhook(path), ...nodes, respond];
+function workflowBody(name, engine, path, nodes, auth) {
+	const all = [webhook(path, auth), ...nodes, respond];
 	return {
 		name: `E2E ${name} ${engine} ${RUN}`,
 		settings: {
@@ -320,7 +333,7 @@ async function runOn(engine, spec) {
 		const workflow = await rest(
 			'POST',
 			'/workflows',
-			workflowBody(spec.key, engine, path, spec.nodes),
+			workflowBody(spec.key, engine, path, spec.nodes, spec.webhook),
 		);
 		out.workflowId = workflow.id;
 		if (engine === 'compiled') {
@@ -368,13 +381,18 @@ async function runOn(engine, spec) {
 		await rest('POST', `/workflows/${workflow.id}/activate`, { versionId: workflow.versionId });
 		out.published = true;
 		await sleep(700);
+		if (engine === 'compiled') {
+			// The reason, when the published version runs on the v1 engine.
+			const state = await rest('GET', `/compiled-engine/workflows/${workflow.id}/compile`);
+			out.runsOnV1 = state.runsOnV1;
+		}
 		for (const call of spec.calls) {
 			stub.requests = [];
 			stub.failWith = call.failWith ?? 0;
 			stub.unauthorizedOnce = call.unauthorizedOnce ?? false;
 			const response = await fetch(`${BASE}/webhook/${path}`, {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', ...(call.headers ?? {}) },
 				body: JSON.stringify(call.body),
 			});
 			// The path has the name of the engine: the two responses must not differ by it.
@@ -409,6 +427,7 @@ async function runOn(engine, spec) {
 }
 
 async function runCase(spec) {
+	if (spec.prepare) await spec.prepare();
 	const compiled = await runOn('compiled', spec);
 	const v1 = await runOn('v1', spec);
 	const same = (pick) =>
@@ -420,6 +439,8 @@ async function runCase(spec) {
 			([node, tier]) => compiled.tiers?.[node] === tier,
 		),
 		ranCompiled: (spec.compiledNodes ?? []).every((node) => compiled.compiledNodes?.includes(node)),
+		// The published version is on the compiled engine, or on v1 for the case that expects it.
+		engine: spec.onV1 ? compiled.runsOnV1 !== undefined : compiled.runsOnV1 === undefined,
 		sameResponse: same(spec.response ?? ((c) => [c.status, c.response])),
 		sameRequests: same((c) => c.requests),
 		sameExecutions: JSON.stringify(compiled.executions) === JSON.stringify(v1.executions),
@@ -456,6 +477,26 @@ async function main() {
 		clientSecret: 'stub-secret',
 		scope: '',
 		authentication: 'body',
+	});
+	const jwtCredential = await createCredential('Webhook token', 'jwtAuth', {
+		keyType: 'passphrase',
+		secret: 'e2e-secret',
+		algorithm: 'HS256',
+	});
+	const hookCredential = await createCredential('Webhook header', 'httpHeaderAuth', {
+		name: 'X-Hook-Key',
+		value: 'hook-secret',
+	});
+	const discourseData = { url: STUB, apiKey: 'stub-api-key', username: 'stub-user' };
+	const discourseListed = await createCredential('Discourse listed', 'discourseApi', {
+		...discourseData,
+		allowedHttpRequestDomains: 'domains',
+		allowedDomains: '127.0.0.1',
+	});
+	const discourseOther = await createCredential('Discourse other', 'discourseApi', {
+		...discourseData,
+		allowedHttpRequestDomains: 'domains',
+		allowedDomains: 'example.com',
 	});
 	const headerCredentials = [];
 	/** A header credential; the data is made when the cases run. */
@@ -550,7 +591,6 @@ async function main() {
 				},
 			],
 			calls: [{ body: {} }],
-			check: (run) => run.calls[0]?.requests[0]?.userAgent === 'n8n',
 		},
 		{
 			key: 'h',
@@ -594,9 +634,96 @@ async function main() {
 			title: 'HTTP Request 4.2, redirect to another host, Authorization header',
 			nodes: [headerRequest(header({}, 'Authorization'), 'redirect/open')],
 			calls: [{ body: {} }],
-			open: 'before node version 4.4, v1 sends the Authorization header to the other host',
+			// Before version 4.4 the v1 node sends the header to the other host.
+			check: (run) => run.calls[0]?.requests.at(-1)?.authorization === 'stub-header-value',
+		},
+		{
+			key: 'r',
+			title: 'HTTP Request 4.4, redirect to another host, credential header with another name',
+			nodes: [headerRequest(header({}), 'redirect/named', 4.4)],
+			calls: [{ body: {} }],
+			// The v1 node removes only the headers that authenticate: this header stays.
+			check: (run) => run.calls[0]?.requests.at(-1)?.stubKey === 'stub-header-value',
+		},
+		{
+			key: 's',
+			title:
+				'Webhook with JWT authentication: the payload in the item, and a request without a token',
+			webhook: { authentication: 'jwtAuth', credentials: { jwtAuth: jwtCredential } },
+			nodes: [],
+			calls: [
+				{
+					body: { name: 'Ada' },
+					headers: {
+						authorization: `Bearer ${signedToken({ sub: 'ada', role: 'admin' }, 'e2e-secret')}`,
+					},
+				},
+				{ body: { name: 'Ada' } },
+				{
+					body: { name: 'Ada' },
+					headers: { authorization: `Bearer ${signedToken({ sub: 'ada' }, 'other')}` },
+				},
+			],
+			check: (run) =>
+				run.calls[0]?.response?.[0]?.jwtPayload?.sub === 'ada' && run.calls[1]?.status >= 400,
+		},
+		{
+			key: 't',
+			title: 'Webhook with header authentication: the right header and a wrong header',
+			webhook: { authentication: 'headerAuth', credentials: { httpHeaderAuth: hookCredential } },
+			nodes: [setNode],
+			calls: [
+				{ body: { name: 'Ada', amount: 2 }, headers: { 'x-hook-key': 'hook-secret' } },
+				{ body: { name: 'Ada', amount: 2 }, headers: { 'x-hook-key': 'wrong' } },
+				{ body: { name: 'Ada', amount: 2 } },
+			],
+			check: (run) => run.calls[0]?.status === 200 && run.calls[1]?.status === 403,
+		},
+		{
+			key: 'u',
+			title: 'app node, credential with allowed domains that have the host',
+			nodes: [discourse(discourseListed, '7')],
+			calls: [{ body: {} }],
+			// A value other than `all` is not checked against v1: the node runs in the fallback host.
+			tiers: { Discourse: 'host' },
+			check: (run) => run.calls[0]?.requests.length === 1,
+		},
+		{
+			key: 'v',
+			title: 'app node, credential with allowed domains that do not have the host',
+			nodes: [discourse(discourseOther, '7')],
+			calls: [{ body: {} }],
+			tiers: { Discourse: 'host' },
+			// The v1 node does not read the allowed domains of an app node: the request goes out.
+			check: (run) => run.calls[0]?.requests.length === 1,
 		},
 	];
+	if (process.env.E2E_FILL_MODULES === '1') {
+		// `wfrt` has a limit for its loaded modules. This case loads workflows until `wfrt`
+		// refuses one. The next workflow must then run on v1, with the result of v1. After this
+		// case the instance has no room for another compiled workflow: use a test instance.
+		cases.push({
+			key: 'q',
+			title: 'a workflow that wfrt refuses (module limit) runs on v1',
+			onV1: true,
+			nodes: [setNode],
+			calls: [{ body: { name: 'Ada', amount: 21 } }],
+			check: (run) => /module/.test(run.runsOnV1 ?? ''),
+			prepare: async () => {
+				for (let k = 0; k < 400; k++) {
+					const body = workflowBody(`fill-${k}`, 'compiled', `e2e-fill-${k}-${RUN}`, [setNode]);
+					const workflow = await rest('POST', '/workflows', body);
+					await rest('POST', `/workflows/${workflow.id}/activate`, {
+						versionId: workflow.versionId,
+					});
+					await sleep(120);
+					const state = await rest('GET', `/compiled-engine/workflows/${workflow.id}/compile`);
+					if (state.runsOnV1 !== undefined) return;
+				}
+				throw new Error('wfrt refused no workflow');
+			},
+		});
+	}
 	for (const [index, { reference, data }] of headerCredentials.entries()) {
 		Object.assign(reference, await createCredential(`Header ${index}`, 'httpHeaderAuth', data));
 	}
