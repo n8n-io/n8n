@@ -15,9 +15,11 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
+import AgentHitlPanel from './AgentHitlPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
@@ -408,6 +410,15 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
+						<AgentHitlPanel
+							v-if="settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE)"
+							:agent-id="agentUnsaved ? '' : agentId"
+							:config="localConfig"
+							:custom-tools="agent?.tools"
+							:project-id="projectId"
+							:disabled="childrenDisabled"
+							@update:config="emit('update:config', $event)"
+						/>
 						<AgentBudgetPanel
 							:config="localConfig"
 							:project-id="projectId"

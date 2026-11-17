@@ -70,6 +70,9 @@ export interface TimelineItem {
 	hitlResponse?: unknown;
 	hitlResponseStatus?: HitlResponseStatus;
 	hitlToolDisplayName?: string;
+	/** Decision workflow execution. This differs from the gated tool execution. */
+	approvalWorkflowId?: string;
+	approvalWorkflowExecutionId?: string;
 	/**
 	 * Configured node parameters from the agent's JSON config (only set for
 	 * `kind: 'node'`). Surfaced in the IO viewer so the user can see the node's

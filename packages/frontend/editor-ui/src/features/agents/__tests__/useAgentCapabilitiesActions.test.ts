@@ -1,3 +1,4 @@
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { computed, ref, type Ref } from 'vue';
@@ -107,6 +108,7 @@ function setup(
 
 type ToolsModalData = {
 	supportsToolApproval?: boolean;
+	approvalContext?: AgentHitlContext;
 	onConfirm: (payload: {
 		tools?: AgentJsonConfig['tools'];
 		mcpServers?: AgentJsonMcpServerConfig[];
@@ -136,6 +138,42 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		modalData.onConfirm({ tools: [], mcpServers: [mcpServer] });
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [], mcpServers: [mcpServer] });
+	});
+
+	it('offers HITL configuration without an instance feature flag', () => {
+		const { uiStore, actions, localConfig } = setup({ agentId: ref('saved-agent') });
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		expect(modalData.approvalContext?.getConfig()).toBe(localConfig.value);
+	});
+
+	it('saves HITL tool attachments and keeps the open picker on the current tool config', () => {
+		const { uiStore, actions, localConfig, scheduleConfigUpdate } = setup({
+			agentId: ref('saved-agent'),
+		});
+		localConfig.value = makeConfig({ tools: [{ type: 'custom', id: 'send' }] });
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		const configuration = {
+			id: 'review',
+			name: 'Review',
+			method: 'workflow',
+			workflowId: 'wf',
+		} as const;
+		modalData.approvalContext?.saveConfiguration(configuration, ['tool:custom:send']);
+		const tools = [
+			{
+				type: 'custom',
+				id: 'send',
+				requireApproval: true,
+				approvalRoute: { type: 'configuration', configurationIds: ['review'] },
+			},
+		] as const;
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith(
+			expect.objectContaining({ hitlConfigurations: [configuration], tools }),
+		);
+		localConfig.value = makeConfig({ tools: [...tools] });
+		expect(modalData.tools).toEqual(tools);
 	});
 
 	it('forwards the host approval capability into the tools modal data', () => {

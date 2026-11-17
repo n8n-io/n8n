@@ -438,68 +438,75 @@ defineExpose({
 			</N8nText>
 		</div>
 
-		<slot name="commonSettings" />
-
-		<div :class="$style.field">
-			<button
-				type="button"
-				:class="$style.advancedTrigger"
-				:aria-expanded="advancedExpanded"
-				aria-controls="workflow-tool-advanced"
-				data-test-id="agent-workflow-tool-advanced"
-				@click="advancedExpanded = !advancedExpanded"
+		<div :class="$style.settingsGroup" data-test-id="agent-workflow-tool-settings">
+			<div
+				v-if="$slots.commonSettings"
+				:class="$style.commonSettings"
+				data-test-id="agent-workflow-tool-approval"
 			>
-				<N8nText size="small" bold>{{
-					i18n.baseText('agents.toolConfig.workflow.advanced')
-				}}</N8nText>
-				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
-			</button>
-			<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
-				<AgentFormSettingRow
-					control-id="agent-workflow-tool-all-outputs"
-					:title="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
-					:description="i18n.baseText('agents.toolConfig.workflow.allOutputs.hint')"
+				<slot name="commonSettings" />
+			</div>
+			<div :class="$style.advanced">
+				<button
+					type="button"
+					:class="$style.advancedTrigger"
+					:aria-expanded="advancedExpanded"
+					aria-controls="workflow-tool-advanced"
+					data-test-id="agent-workflow-tool-advanced"
+					@click="advancedExpanded = !advancedExpanded"
 				>
-					<N8nSwitch2
-						id="agent-workflow-tool-all-outputs"
-						:model-value="allOutputs"
-						:aria-label="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
-						data-test-id="agent-workflow-tool-all-outputs"
-						@update:model-value="allOutputs = $event"
-					/>
-				</AgentFormSettingRow>
+					<N8nText size="medium" bold>{{
+						i18n.baseText('agents.toolConfig.workflow.advanced')
+					}}</N8nText>
+					<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
+				</button>
+				<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
+					<AgentFormSettingRow
+						control-id="agent-workflow-tool-all-outputs"
+						:title="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
+						:description="i18n.baseText('agents.toolConfig.workflow.allOutputs.hint')"
+					>
+						<N8nSwitch2
+							id="agent-workflow-tool-all-outputs"
+							:model-value="allOutputs"
+							:aria-label="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
+							data-test-id="agent-workflow-tool-all-outputs"
+							@update:model-value="allOutputs = $event"
+						/>
+					</AgentFormSettingRow>
 
-				<N8nText size="small" bold>{{
-					i18n.baseText('agents.toolConfig.workflow.inputs')
-				}}</N8nText>
-				<N8nText v-if="isLoadingWorkflows" size="small" color="text-light" role="status">
-					{{ i18n.baseText('agents.toolConfig.workflow.inputs.loading') }}
-				</N8nText>
-				<template v-else-if="!workflowsLoaded">
-					<N8nText size="small" color="danger" role="alert">
-						{{ i18n.baseText('agents.toolConfig.workflow.inputs.loadError') }}
+					<N8nText size="medium" bold>{{
+						i18n.baseText('agents.toolConfig.workflow.inputs')
+					}}</N8nText>
+					<N8nText v-if="isLoadingWorkflows" size="small" color="text-light" role="status">
+						{{ i18n.baseText('agents.toolConfig.workflow.inputs.loading') }}
 					</N8nText>
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:label="i18n.baseText('generic.retry')"
-						@click="reloadWorkflows"
-					/>
-				</template>
-				<template v-else-if="inputSchemaLoaded">
-					<N8nText v-if="!declaredInputFields.length" size="xsmall" color="text-light">
-						{{ i18n.baseText('agents.toolConfig.workflow.inputs.empty') }}
-					</N8nText>
-					<WorkflowToolInputs
-						v-else
-						:key="targetWorkflowId"
-						v-model="inputs"
-						:fields="declaredInputFields"
-						:tool-name="name"
-						:submitted="(submitCount ?? 0) > 0"
-						@update:valid="inputsValid = $event"
-					/>
-				</template>
+					<template v-else-if="!workflowsLoaded">
+						<N8nText size="small" color="danger" role="alert">
+							{{ i18n.baseText('agents.toolConfig.workflow.inputs.loadError') }}
+						</N8nText>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:label="i18n.baseText('generic.retry')"
+							@click="reloadWorkflows"
+						/>
+					</template>
+					<template v-else-if="inputSchemaLoaded">
+						<N8nText v-if="!declaredInputFields.length" size="xsmall" color="text-light">
+							{{ i18n.baseText('agents.toolConfig.workflow.inputs.empty') }}
+						</N8nText>
+						<WorkflowToolInputs
+							v-else
+							:key="targetWorkflowId"
+							v-model="inputs"
+							:fields="declaredInputFields"
+							:tool-name="name"
+							:submitted="(submitCount ?? 0) > 0"
+							@update:valid="inputsValid = $event"
+						/>
+					</template>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -574,19 +581,45 @@ defineExpose({
 	text-overflow: ellipsis;
 }
 
+.settingsGroup {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
+.commonSettings {
+	padding: var(--spacing--sm) var(--spacing--md);
+	border-bottom: var(--border);
+}
+
+.advanced {
+	display: flex;
+	flex-direction: column;
+	border-radius: inherit;
+}
+
+.commonSettings + .advanced {
+	border-start-start-radius: 0;
+	border-start-end-radius: 0;
+}
+
 .advancedTrigger {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
+	padding: var(--spacing--sm) var(--spacing--md);
+	border: none;
+	border-radius: inherit;
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--background--hover);
+	}
+
+	&[aria-expanded='true'] {
+		border-end-start-radius: 0;
+		border-end-end-radius: 0;
 	}
 
 	&:focus-visible {
@@ -595,6 +628,8 @@ defineExpose({
 }
 
 .advancedContent {
+	padding: var(--spacing--sm) var(--spacing--md);
+	border-top: var(--border);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);

@@ -64,8 +64,9 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<button
-		type="button"
+	<component
+		:is="props.clickable ? 'button' : 'span'"
+		:type="props.clickable ? 'button' : undefined"
 		:class="[
 			$style.chip,
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
@@ -79,7 +80,7 @@ const emit = defineEmits<{
 				[$style.nonClickable]: !props.clickable,
 			},
 		]"
-		:disabled="props.disabled"
+		:disabled="props.clickable ? props.disabled : undefined"
 		:aria-description="
 			props.deactivated ? i18n.baseText('agents.builder.capabilities.deactivated') : undefined
 		"
@@ -132,7 +133,7 @@ const emit = defineEmits<{
 				<div v-for="reason in reasons" :key="reason">{{ reason }}</div>
 			</template>
 		</N8nTooltip>
-	</button>
+	</component>
 </template>
 
 <style module lang="scss">

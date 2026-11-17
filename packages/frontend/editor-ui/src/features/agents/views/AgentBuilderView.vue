@@ -2147,6 +2147,7 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	const unpublishedWorkflows = unpublishedWorkflowTools(
 		configValidation.value.issues,
 		localConfig.value?.tools ?? [],
+		localConfig.value?.hitlConfigurations ?? [],
 	);
 
 	if (unpublishedWorkflows.length > 0) {
