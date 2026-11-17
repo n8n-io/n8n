@@ -56,4 +56,10 @@ describe('Expression', () => {
 		expect(evaluator.execute(`{{ '${longLookalike}' }}`, {})).toBe(longLookalike);
 		expect(evaluator.execute(`{{ ['a\\\nb', '${lookalike}'] }}`, {})).toEqual(['ab', lookalike]);
 	});
+
+	test('Should keep a data node name that looks like the token for a multi-line string', () => {
+		const customEvaluator = new Tournament(() => {}, '__n8n_literal_text_0_0__');
+
+		expect(customEvaluator.execute("{{ x\n  ? 'a\\\nb'\n  : 'c' }}", { x: true })).toBe('ab');
+	});
 });

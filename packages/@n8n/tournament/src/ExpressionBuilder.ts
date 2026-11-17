@@ -283,6 +283,7 @@ export const getExpressionCode = (
 	const chunks = getParsedExpression(expr);
 	const literalText = createLiteralTextStore([
 		expr,
+		dataNodeName,
 		...chunks.flatMap((chunk) => (chunk.type === 'code' ? getDecodedTexts(chunk.parsed) : [])),
 	]);
 
