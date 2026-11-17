@@ -1,11 +1,20 @@
-import type { PromotionDirection, PromotionPreview, PromotionProviderType } from '@n8n/api-types';
+import type {
+	PromotionDependencyReport,
+	PromotionDirection,
+	PromotionEnvironmentChangesProject,
+	PromotionPreview,
+	PromotionProjectBlocker,
+	PromotionProviderType,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
 import { getPromotionEnvironmentChanges, getPromotionPreview } from '../promotions.api';
+import { loadPromotionFixture } from '../promotionFixtures';
 import type { ApplyCheckResult } from '../promotions.types';
+import { changesProjects, type ChangesProject } from '../promotionPreview.projects';
 import { buildSelectionGraph } from '../promotionPreview.selection';
 import { repositoryDisplayName } from '../promotionsSettings.utils';
 import { useInstancePromotionConnection } from './useInstancePromotionConnection';
@@ -38,14 +47,25 @@ type PromotionPreviewState =
 	| 'empty'
 	| 'ready';
 
+export type PromotionPreviewOptions = {
+	/**
+	 * Only for the changes view: the project page that the user came from. Its environment
+	 * serves the view, so a project admin needs no global promotion scope.
+	 */
+	origin?: Ref<string | undefined>;
+	/** Development only: the name of a fixture that replaces the server. */
+	fixture?: Ref<string | undefined>;
+};
+
 /**
  * Loads the preview of one project and direction for the preview page. Without a project, it
- * loads the Apply of the whole instance. On Apply, the preview also holds the blockers, so both
- * describe the same source.
+ * loads the changes view of the environment: the changes of every project that the user can
+ * access. On Apply, the preview also holds the blockers, so both describe the same source.
  */
 export function usePromotionPreview(
 	projectId: Ref<string | undefined>,
 	direction: Ref<PromotionDirection>,
+	{ origin, fixture }: PromotionPreviewOptions = {},
 ) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
@@ -64,6 +84,14 @@ export function usePromotionPreview(
 
 	const state = ref<PromotionPreviewState>('loading');
 	const preview = shallowRef<PromotionPreview | null>(null);
+	/** Only for the changes view: what the server says about its projects. */
+	const scope = shallowRef<{
+		projects?: PromotionEnvironmentChangesProject[];
+		blockers?: PromotionProjectBlocker[];
+	}>({});
+	const fixtureEnvironment = shallowRef<PromotionPreviewEnvironment | null>(null);
+	/** The project whose environment serves the page. */
+	const lookupProjectId = computed(() => projectId.value ?? origin?.value);
 	const refreshing = ref(false);
 	/** True when a refresh failed. The page keeps the last preview and says so. */
 	const refreshFailed = ref(false);
@@ -86,7 +114,8 @@ export function usePromotionPreview(
 		() => environments.value.find((candidate) => candidate.direction === direction.value) ?? null,
 	);
 	const environment = computed((): PromotionPreviewEnvironment | null => {
-		if (projectId.value !== undefined) {
+		if (fixtureEnvironment.value) return fixtureEnvironment.value;
+		if (lookupProjectId.value !== undefined) {
 			const found = projectEnvironments.value[direction.value];
 			if (!found) return null;
 			return {
@@ -116,25 +145,37 @@ export function usePromotionPreview(
 	});
 	/** Only the instance page knows the remote. The project lookup does not send it. */
 	const repositoryName = computed(() =>
-		projectId.value === undefined && instanceEnvironment.value
+		lookupProjectId.value === undefined && instanceEnvironment.value
 			? repositoryDisplayName(instanceEnvironment.value.remote)
 			: null,
 	);
 
+	const loadFixture = async (name: string) =>
+		await loadPromotionFixture(name, direction.value, lookupProjectId.value);
+
 	async function load() {
 		const isLatest = next();
-		const requested = { projectId: projectId.value, direction: direction.value };
+		const requested = {
+			projectId: projectId.value,
+			lookupProjectId: lookupProjectId.value,
+			direction: direction.value,
+			fixture: fixture?.value,
+		};
 		if (!preview.value) state.value = 'loading';
 		refreshing.value = true;
 		refreshFailed.value = false;
 
 		try {
-			let lookupFailed: boolean;
-			if (requested.projectId === undefined) {
+			let lookupFailed = false;
+			if (requested.fixture) {
+				fixtureEnvironment.value = (await loadFixture(requested.fixture)).environment;
+			} else if (requested.lookupProjectId === undefined) {
+				fixtureEnvironment.value = null;
 				await loadConnection();
 				lookupFailed = connectionFailed.value;
 			} else {
-				await loadProjectEnvironments(requested.projectId);
+				fixtureEnvironment.value = null;
+				await loadProjectEnvironments(requested.lookupProjectId);
 				lookupFailed = projectLookupFailed.value;
 				canOperate.value = projectEnvironments.value[requested.direction]?.canOperate !== false;
 			}
@@ -145,18 +186,41 @@ export function usePromotionPreview(
 				return;
 			}
 
-			const result: PromotionPreview =
-				requested.projectId === undefined
-					? await getPromotionEnvironmentChanges(rootStore.publicApiContext, environment.value.id)
+			let result: PromotionPreview;
+			let hasProjectBlocker = false;
+			if (requested.projectId === undefined) {
+				// The changes view as a preview. The projects and their blockers go to `scope`.
+				const {
+					projects: listedProjects,
+					blockers,
+					direction: _direction,
+					...changes
+				} = requested.fixture
+					? (await loadFixture(requested.fixture)).changes
+					: await getPromotionEnvironmentChanges(rootStore.publicApiContext, environment.value.id);
+				if (!isLatest()) return;
+				result = changes;
+				scope.value = { projects: listedProjects, blockers };
+				hasProjectBlocker = !!blockers?.length;
+			} else {
+				result = requested.fixture
+					? (await loadFixture(requested.fixture)).projectPreview(requested.projectId)
 					: await getPromotionPreview(
 							rootStore.publicApiContext,
 							requested.projectId,
 							requested.direction,
 						);
-			if (!isLatest()) return;
+				if (!isLatest()) return;
+				scope.value = {};
+			}
 			preview.value = result;
 			lastRefreshedAt.value = new Date();
-			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
+			// A changes view without rows is blocked when open reviews hold the changes of its projects.
+			if (result.blocker || (result.resources.length === 0 && hasProjectBlocker)) {
+				state.value = 'blocked';
+			} else {
+				state.value = result.resources.length === 0 ? 'empty' : 'ready';
+			}
 		} catch {
 			if (!isLatest()) return;
 			// Only the changes view shows the refresh warning. Other states show the error.
@@ -171,8 +235,18 @@ export function usePromotionPreview(
 		}
 	}
 
+	/** The projects of the changes view. Empty on a project page. */
+	const projects = computed((): ChangesProject[] =>
+		projectId.value === undefined && preview.value
+			? changesProjects(preview.value.resources, scope.value.projects, scope.value.blockers)
+			: [],
+	);
+	const dependencyReport = computed(
+		(): PromotionDependencyReport | null => preview.value?.dependencyReport ?? null,
+	);
+
 	watch(
-		[projectId, direction],
+		[projectId, direction, () => origin?.value, () => fixture?.value],
 		async () => {
 			preview.value = null;
 			lastRefreshedAt.value = null;
@@ -186,6 +260,8 @@ export function usePromotionPreview(
 		preview,
 		check,
 		graph,
+		projects,
+		dependencyReport,
 		environment,
 		canOperate,
 		repositoryName,

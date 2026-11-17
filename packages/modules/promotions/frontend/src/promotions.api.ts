@@ -1,11 +1,13 @@
 import type {
+	ApplyEnvironmentSelectionRequestDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
 	ContinueApplySelectionDto,
+	PromoteEnvironmentSelectionRequestDto,
 	PromoteSelectionRequestDto,
 	PromoteSelectionResultDto,
 	PromotionDirection,
-	PromotionInstanceApplyPreview,
+	PromotionEnvironmentChanges,
 	PromotionPreview,
 	PromotionProjectEnvironments,
 	PromotionResourceDetails,
@@ -54,16 +56,38 @@ export async function getPromotionResourceDetails(
 	);
 }
 
-/** The preview of a whole-instance Apply from an instance Apply environment. */
+/**
+ * The endpoints of the changes view of an environment, across projects. The paths are
+ * provisional. Change them here only.
+ */
+const environmentPaths = {
+	changes: (environmentId: string) => `/promotions/environments/${environmentId}/changes`,
+	details: (environmentId: string) => `/promotions/environments/${environmentId}/changes/details`,
+	promote: (environmentId: string) => `/promotions/environments/${environmentId}/promote-selection`,
+	apply: (environmentId: string) => `/promotions/environments/${environmentId}/apply-selection`,
+	continueApply: (environmentId: string) =>
+		`/promotions/environments/${environmentId}/apply-selection/continue`,
+};
+
+/**
+ * A server from before the changes view sends the Apply preview of the whole instance: the same
+ * rows, without the list of projects and without a direction.
+ */
+export type EnvironmentChangesResponse = Omit<
+	PromotionEnvironmentChanges,
+	'direction' | 'projects'
+> &
+	Partial<Pick<PromotionEnvironmentChanges, 'direction' | 'projects'>>;
+
+/**
+ * The changes of every project of the environment that the user can access, for the direction
+ * of the environment.
+ */
 export async function getPromotionEnvironmentChanges(
 	context: PublicApiContext,
 	environmentId: string,
-): Promise<PromotionInstanceApplyPreview> {
-	return await makePublicApiRequest(
-		context,
-		'GET',
-		`/promotions/environments/${environmentId}/changes`,
-	);
+): Promise<EnvironmentChangesResponse> {
+	return await makePublicApiRequest(context, 'GET', environmentPaths.changes(environmentId));
 }
 
 export async function getPromotionEnvironmentDetails(
@@ -74,7 +98,49 @@ export async function getPromotionEnvironmentDetails(
 	return await makePublicApiRequest(
 		context,
 		'POST',
-		`/promotions/environments/${environmentId}/changes/details`,
+		environmentPaths.details(environmentId),
+		payload,
+	);
+}
+
+/** Promotes a selection across projects. It writes one commit and opens at most one review. */
+export async function promoteEnvironmentSelection(
+	context: PublicApiContext,
+	environmentId: string,
+	payload: PromoteEnvironmentSelectionRequestDto,
+): Promise<PromoteSelectionResultDto> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		environmentPaths.promote(environmentId),
+		payload,
+	);
+}
+
+/** Applies a selection across projects. */
+export async function applyEnvironmentSelection(
+	context: PublicApiContext,
+	environmentId: string,
+	payload: ApplyEnvironmentSelectionRequestDto,
+): Promise<ApplyPackageResultDto> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		environmentPaths.apply(environmentId),
+		payload,
+	);
+}
+
+/** The same Apply, with the confirmation of its destructive changes. */
+export async function continueApplyEnvironmentSelection(
+	context: PublicApiContext,
+	environmentId: string,
+	payload: ApplyEnvironmentSelectionRequestDto,
+): Promise<ApplyPackageResultDto> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		environmentPaths.continueApply(environmentId),
 		payload,
 	);
 }

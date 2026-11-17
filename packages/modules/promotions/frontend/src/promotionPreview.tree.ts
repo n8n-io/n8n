@@ -16,8 +16,13 @@ export type PreviewTreeItem = {
 	id: string;
 	label: string;
 	icon?: IconName;
-	/** A section heading groups resources: workflows by project and folder, the others by type. */
-	kind: 'section' | 'resource';
+	/**
+	 * A section heading groups resources: workflows by project and folder, the others by type.
+	 * A project heads the changes of one project in the changes view of an environment.
+	 */
+	kind: 'section' | 'resource' | 'project';
+	/** Only for `project`. */
+	projectId?: string;
 	children?: PreviewTreeItem[];
 };
 
@@ -25,7 +30,7 @@ export type PreviewTreeItem = {
  * Sub-workflows come first, next to the workflows. The others follow the project tabs:
  * credentials, variables, data tables. Tags come last.
  */
-const GROUP_ORDER: readonly PreviewTreeGroup[] = [
+export const GROUP_ORDER: readonly PreviewTreeGroup[] = [
 	'subWorkflow',
 	'credential',
 	'variable',
@@ -57,7 +62,7 @@ function hasCard(resource: PromotionResource): boolean {
 }
 
 /** The dependency group of a resource, or `null` when it belongs to the project hierarchy. */
-function groupOf(resource: PromotionResource): PreviewTreeGroup | null {
+export function groupOf(resource: PromotionResource): PreviewTreeGroup | null {
 	switch (resource.type) {
 		case 'project':
 		case 'folder':
@@ -78,7 +83,7 @@ function byFolderThenName(a: PromotionResource, b: PromotionResource) {
 	);
 }
 
-function toItem(resource: PromotionResource, children?: PreviewTreeItem[]): PreviewTreeItem {
+export function toItem(resource: PromotionResource, children?: PreviewTreeItem[]): PreviewTreeItem {
 	return {
 		id: resource.key,
 		label: resource.name,
@@ -88,7 +93,7 @@ function toItem(resource: PromotionResource, children?: PreviewTreeItem[]): Prev
 	};
 }
 
-function hierarchyItems(resources: PromotionResource[]): PreviewTreeItem[] {
+export function hierarchyItems(resources: PromotionResource[]): PreviewTreeItem[] {
 	const keys = new Set(resources.map((resource) => resource.key));
 	const childrenOf = new Map<ResourceKey | null, PromotionResource[]>();
 	for (const resource of resources) {
@@ -156,14 +161,14 @@ export function cardOrder(
 		.map(({ item }) => item)
 		.filter((item) => {
 			const resource = resources.get(item.id);
-			return item.kind === 'resource' && resource !== undefined && hasCard(resource);
+			return item.kind !== 'section' && resource !== undefined && hasCard(resource);
 		})
 		.map((item) => item.id);
 }
 
 type PreviewTreeRow = {
 	item: PreviewTreeItem;
-	/** Nesting below projects and folders. Section and group headings do not indent. */
+	/** Nesting below projects and folders. A section or group heading does not indent its rows. */
 	indent: number;
 };
 
@@ -175,7 +180,7 @@ export function flattenPreviewTree(
 	return items.flatMap((item) => [
 		{ item, indent },
 		...(item.children
-			? flattenPreviewTree(item.children, item.kind === 'resource' ? indent + 1 : indent)
+			? flattenPreviewTree(item.children, item.kind === 'section' ? indent : indent + 1)
 			: []),
 	]);
 }
