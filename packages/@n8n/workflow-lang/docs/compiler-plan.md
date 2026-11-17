@@ -577,32 +577,78 @@ engine: for every case the test compares the method, the URL, the JSON body (key
 message order and each default) and the headers after the credential is applied. Headers that name the client
 library (`user-agent`, `x-stainless-*`, `accept`) are not compared; a compiled node does not send them.
 
-### Memory: the window buffer memory (built for the agent without tools)
+### Memory: the window buffer memory (off by default; the store is a service, not built)
 
-What v1 keeps and where: `memoryBufferWindow` keeps all messages of a session in the memory of the n8n
-process (a map with the key `<workflow id>__<session key>`). It gives the model the last `contextWindowLength`
-exchanges. At each use it drops every session that no agent used for more than one hour. Nothing survives a
-restart of n8n, and each n8n process has its own map. The agent reads the memory sub-node once for a run, with
-the first input item.
+**What v1 keeps and where.** `memoryBufferWindow` keeps all messages of a session in the memory of the n8n
+process that runs the node: a map with the key `<workflow id>__<session key>`. Nothing is in the database, and
+a restart of n8n forgets it. At each use of a memory node (`getMemory`) v1 first drops every session that no
+agent used for more than one hour, then makes the session when it is not there. The window
+(`contextWindowLength`) is fixed when the session is made. The agent reads the memory sub-node once for a run,
+with the first input item. For each item it reads the last `window` exchanges before the model call and adds
+one exchange (prompt, answer) after it. Two runs that use one session at the same time share the one object
+in the process: each reads at the start of its item and adds at its end, so the exchanges are in the order in
+which the answers come. v1 has no limit on the count of sessions.
 
-The native agent (`chain-llm.ts`, parameter `aiMemory`) keeps the sessions in the workflow static data, under
-the node name `@n8n/n8n-nodes-langchain.memoryBufferWindow` (all memory nodes of a workflow share it, as in v1).
-It stores only the window of each session, drops idle sessions after the same hour (the converter gives the
-time of the run), and gives the runs of the memory sub-node (`memoryRuns`: one for a read, one for a write).
-Order for one item: the prompt check, the read, the model, the write. Versions 3 and 3.1 do not write an empty
-answer; versions 2 to 2.2 do. A failed item writes nothing. An empty session key fails with
-"Error in sub-node <name>" and the description "Key parameter is empty".
+**The native form** (`chain-llm.ts`, parameter `aiMemory`) keeps nothing. It asks the service `chatMemory`
+(`ctx.service`, spec 9.9): `open { sessionKey, window }` once for a run, `load { sessionKey }` (gives
+`{ messages: [{ ai, text }] }`, the window) before the model call of an item, `save { sessionKey, input,
+output }` after it. The node gives the runs of the memory sub-node (`memoryRuns`). Order for one item: the
+prompt check, the read, the model, the write. Versions 3 and 3.1 do not write an empty answer; versions 2 to
+2.2 do. A failed item writes nothing. An empty session key fails before `open` with "Error in sub-node <name>"
+and the description "Key parameter is empty". The cases of `ai-cluster.test.ts` prove the requests, the
+outputs, the errors and the runs against v1 recordings, with a store of the test that has the rules above.
 
-Native: agent 2 to 3.1, memory versions 1 to 1.3 with a session key (`customKey`, or `sessionKey` before
-version 1.2), a window of 1 to 1000, batch size 1. In the host: the session of the chat trigger (`fromInput`:
-v1 reads the trigger and adds the node name), a window of 0 (all messages), a batch size above 1 (the order of
-the writes depends on the answers), a key expression with a retry or a "continue" setting (no proof of the
-memory error there), `maxTokensFromMemory`, and the database memories.
+**Switch.** `ConvertOptions.chatMemory` (default false). Without it the cluster runs in the fallback host,
+as before: nothing ships with a store that differs from v1. The first form of this node kept the window in
+the workflow static data (the database, kept over a restart, 1,024 sessions, last writer wins). It is gone.
 
-Differences from v1, by design: the static data survives a restart of n8n and is shared by all n8n processes;
-it holds the text of the window in the database of n8n; a workflow keeps 1,024 sessions at most (the session
-that was idle the longest goes first); v1 fixes the window when it makes the session, and the native node reads
-the parameter in each run. Two executions that use one session at the same time: the last one to end wins.
+**The store that the service needs (not built).** One session table in process memory, not in the log of the
+runtime and not in static data:
+
+- Key: workflow id (of the execution, never from the args) and session key. Value: the window of `open`, the
+  time of the last `open`, and all messages, as v1 (the count of messages of a live session has no limit in
+  v1; the table counts their bytes).
+- `open`: drop every session whose last `open` is more than one hour ago, then make or touch the session.
+  `load`: the last `2 * window` messages. `save`: add two messages. The table runs the calls in the order in
+  which they come: that is the overlap rule of v1.
+- A restart of the process that holds the table forgets it, as v1.
+- **Bound.** The table has a byte limit. v1 has none, so the table must not fail and must not drop a live
+  session. When the limit is reached, `open` of a session that is not in the table answers `{ host: true }`,
+  and that run of the cluster goes to the fallback host, where the v1 node keeps the session in the host
+  process. The table keeps one time: the last `open` that it sent to the host. It takes new sessions again
+  only when that time is more than one hour ago; then every session of the host is idle for more than one
+  hour, and v1 drops it at its next use. So no session has messages in two stores.
+- **The gate is the missing part of the converter.** `lowerNativeCluster` must write both forms, the library
+  call and the host call, and take the host call when `open` answers `{ host: true }`. Today it writes one
+  form. Until then, set `chatMemory` only for a store without a limit.
+- **Where.** Two choices; the first is the recommendation.
+  1. In the client that answers services (n8n: a service next to `engine-data-tables.service.ts` in
+     `packages/cli/src/modules/engine-v2/`; the test bed: the engine-test adapter). All shards of `wfrt`
+     reach the one table, because every `service` event goes to the one client. A restart of n8n forgets the
+     sessions, exactly as v1. `wfrt` needs no change: `startService` in
+     `workflow-runtime/src/shell/server.zig` carries the call.
+  2. In `wfrt` (the request of the project owner): a table in `workflow-runtime/src/shell/` that
+     `startService` answers itself for `chatMemory`, with no event. With several shards, the table must be
+     one for the process, behind a lock, or the call must go to the shard `hash(workflow id, session key) %
+     shards`; a workflow lives on one shard, but two workflows never share a session, so one table for each
+     shard is exact when the shard of a workflow does not change. A move of a workflow to another shard must
+     move its sessions or wait one hour. A restart of `wfrt` then forgets the sessions; v1 forgets at a
+     restart of n8n.
+- **The host must use the same store** when a workflow has one agent in the host and one native agent with
+  the same session key: v1 gives both the same session. The host can call a service
+  (`packages/@n8n/workflow-fallback-host/src/service-calls.ts`, `hostService` in `server.zig`). Until the
+  host does that, the converter must keep every agent of a workflow in the host when one memory cluster of
+  the workflow is there. This check is not built.
+- **Replay.** The result of a service call is in the log of the execution (`load` gives chat text: v1 has
+  the same text in the run data of the memory sub-node of a saved execution). After a crash, `open` and
+  `load` can go again (add them to the read-only list of spec 9.9); `save` cannot, and the execution ends with
+  `needs_attention`, as each write of a service.
+
+Native with the switch: agent 2 to 3.1, memory versions 1 to 1.3 with a session key (`customKey`, or
+`sessionKey` before version 1.2), a window of 1 to 1000, batch size 1. In the host: the session of the chat
+trigger (`fromInput`: v1 reads the trigger and adds the node name), a window of 0, a batch size above 1 (v1
+reads for all items of a batch before the first write), a key expression with a retry or a "continue" setting
+(no proof of the memory error there), `maxTokensFromMemory`, and the database memories.
 
 ### Known differences from v1 in the native nodes
 
@@ -632,14 +678,52 @@ call there is a step with LangChain objects in it.
    list of models that take no sampling parameters.
 2. Structured output parser: the JSON schema check, the format instructions, and the auto-fix call.
 3. Tools Agent versions 1.6 to 1.9: the answer is a stream (server-sent events).
-4. Tools Agent with tools. The tool runs must be steps of the converted source (version 3 gives each call to
-   the engine, which runs the tool node), so that a tool uses the compiled or library form of its node. Needs:
-   `$fromAI` in the expression translator, the function schema of each tool for each provider, the messages
-   of a call and its result, and the step data of `intermediateSteps`. The memory then also keeps the calls.
+4. Tools Agent with tools: see "Tools" below.
 5. `informationExtractor`, `textClassifier` (a chain with a fixed prompt and a parser).
 6. Other operations of the vendor nodes (image, audio, document, file).
 7. `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
 8. Vector stores, document loaders and text splitters.
+
+### Tools (plan; not built)
+
+Facts of v1 from recordings (`TOOL_PROBE_CASES` in `ai-cases.ts`; the recorder now loads the tool form of a
+node, `<type>Tool`, and gives the model and the tools one list of answers):
+
+- **Schema** (OpenAI Chat Completions): `tools: [{ type: 'function', function: { name, description,
+  parameters, strict: false } }]`. The name is the node name with `_` for each other character. The
+  description is `toolDescription`. `parameters` is the JSON schema of the `$fromAI` calls of the node:
+  `{ type: 'object', properties: { <key>: { type, description } }, required: [<keys without a default>],
+  additionalProperties: false, $schema: 'http://json-schema.org/draft-07/schema#' }`. The Code tool without
+  an input schema has `properties: { input: { type: 'string' } }` and no `required`.
+- **Order**: the model, each tool of the answer, the model again with the same `tools`.
+- **Messages of a call**: versions 2 to 2.2 send `{ role: 'assistant', content: '', tool_calls }`; versions 3
+  and 3.1 send `content: []`. `arguments` is the JSON text of the parsed arguments. The result is
+  `{ role: 'tool', content, tool_call_id }`; for the HTTP Request tool `content` is the JSON text of the
+  output items of the node.
+- **Steps** (3.1, `returnIntermediateSteps`): `{ action: { tool, toolInput, log: 'Calling <node name>',
+  messageLog: [<the AI message as LangChain writes it>], toolCallId, type: 'tool_call' }, observation }`.
+- **Runs**: one run of the tool sub-node for each call, with its error.
+
+Work, in order:
+
+1. **The loop in the converted source.** A library node cannot call a node. `lowerNativeCluster` must write the
+   loop: a call of the library node for one turn of the model (new parameters: `tools`, the schemas, and
+   `steps`, the calls and results so far, for each item), then one step for each tool call, then the next
+   turn. Version 3 runs all items again after the tools, and counts `maxIterations` for the node; version 2
+   loops for each item. `chain-llm.ts` must give the calls of a turn in place of `again`.
+2. **`$fromAI` in the expression translator** (`src/convert/expression.ts`): in a tool step, `$fromAI(key,
+   description, type, default)` reads `key` of the arguments of the call, or the default. The same parse gives
+   the schema. v1 gives the tool node one item with the arguments.
+3. **A tool as a step.** The tool node goes through its usual lowerer (library node, compiled node, native
+   Code node) with the arguments as its input item. A tool that only the host can run keeps the whole cluster
+   in the host.
+4. **Recorder.** The Code tool needs a task runner (`startRunnerTask` of the recorder is not there), so it
+   has no recording yet. The workflow tool needs `executeWorkflow`.
+5. **Other providers.** The Responses API (`function_call` items and `function_call_output`), Anthropic
+   (`tools` with `input_schema`, `tool_use` and `tool_result` blocks) and Gemini (`functionDeclarations`,
+   `functionCall` and `functionResponse` parts; its schema has no `additionalProperties` and no `$schema`
+   — to confirm with a recording). Each needs its probe case first.
+6. **Memory with tools.** v1 keeps the calls and results of a turn in the session (`saveToMemory` with steps).
 
 ## Phases
 

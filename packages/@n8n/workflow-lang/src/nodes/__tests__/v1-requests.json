@@ -36392,6 +36392,438 @@
 		],
 		"nodePaired": [true, true]
 	},
+	"agent tool probe http 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": ["url"],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://example.com/a",
+				"qs": {},
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": ["url"],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						},
+						{
+							"role": "assistant",
+							"content": "",
+							"tool_calls": [
+								{
+									"id": "call_1",
+									"type": "function",
+									"function": {
+										"name": "Fetch_page",
+										"arguments": "{\"url\":\"https://example.com/a\"}"
+									}
+								}
+							]
+						},
+						{
+							"role": "tool",
+							"content": "[{\"data\":\"{\\\"title\\\":\\\"A page\\\"}\"}]",
+							"tool_call_id": "call_1"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			{
+				"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7",
+				"userAgent": "n8n"
+			},
+			null
+		],
+		"output": [
+			{
+				"output": "The title is A page"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Fetch page": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "The title is A page"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
+	"agent tool probe http 3.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": ["url"],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://example.com/a",
+				"qs": {},
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": ["url"],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						},
+						{
+							"role": "assistant",
+							"content": [],
+							"tool_calls": [
+								{
+									"id": "call_1",
+									"type": "function",
+									"function": {
+										"name": "Fetch_page",
+										"arguments": "{\"url\":\"https://example.com/a\"}"
+									}
+								}
+							]
+						},
+						{
+							"role": "tool",
+							"content": "[{\"data\":\"{\\\"title\\\":\\\"A page\\\"}\"}]",
+							"tool_call_id": "call_1"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			{
+				"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7",
+				"userAgent": "n8n"
+			},
+			null
+		],
+		"output": [
+			{
+				"output": "The title is A page",
+				"intermediateSteps": [
+					{
+						"action": {
+							"tool": "Fetch_page",
+							"toolInput": {
+								"url": "https://example.com/a"
+							},
+							"log": "Calling Fetch page",
+							"messageLog": [
+								{
+									"lc_serializable": true,
+									"lc_kwargs": {
+										"content": [],
+										"tool_calls": [
+											{
+												"id": "call_1",
+												"name": "Fetch_page",
+												"args": {
+													"url": "https://example.com/a"
+												},
+												"type": "tool_call"
+											}
+										],
+										"invalid_tool_calls": [],
+										"additional_kwargs": {},
+										"response_metadata": {}
+									},
+									"lc_namespace": ["langchain_core", "messages"],
+									"content": [],
+									"additional_kwargs": {},
+									"response_metadata": {},
+									"type": "ai",
+									"tool_calls": [
+										{
+											"id": "call_1",
+											"name": "Fetch_page",
+											"args": {
+												"url": "https://example.com/a"
+											},
+											"type": "tool_call"
+										}
+									],
+									"invalid_tool_calls": []
+								}
+							],
+							"toolCallId": "call_1",
+							"type": "tool_call"
+						},
+						"observation": "[{\"data\":\"{\\\"title\\\":\\\"A page\\\"}\"}]"
+					}
+				]
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Fetch page": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "The title is A page",
+					"intermediateSteps": [
+						{
+							"action": {
+								"tool": "Fetch_page",
+								"toolInput": {
+									"url": "https://example.com/a"
+								},
+								"log": "Calling Fetch page",
+								"messageLog": [
+									{
+										"lc_serializable": true,
+										"lc_kwargs": {
+											"content": [],
+											"tool_calls": [
+												{
+													"id": "call_1",
+													"name": "Fetch_page",
+													"args": {
+														"url": "https://example.com/a"
+													},
+													"type": "tool_call"
+												}
+											],
+											"invalid_tool_calls": [],
+											"additional_kwargs": {},
+											"response_metadata": {}
+										},
+										"lc_namespace": ["langchain_core", "messages"],
+										"content": [],
+										"additional_kwargs": {},
+										"response_metadata": {},
+										"type": "ai",
+										"tool_calls": [
+											{
+												"id": "call_1",
+												"name": "Fetch_page",
+												"args": {
+													"url": "https://example.com/a"
+												},
+												"type": "tool_call"
+											}
+										],
+										"invalid_tool_calls": []
+									}
+								],
+								"toolCallId": "call_1",
+								"type": "tool_call"
+							},
+							"observation": "[{\"data\":\"{\\\"title\\\":\\\"A page\\\"}\"}]"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [true]
+	},
 	"googleSheets sheet.clear rows and keep the first row": {
 		"requests": [
 			{

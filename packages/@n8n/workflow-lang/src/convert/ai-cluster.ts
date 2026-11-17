@@ -458,7 +458,7 @@ function windowMemory(sub: ClusterSubNode): { node: string; key: string; window:
 }
 
 /**
- * The Tools Agent of versions 2 to 3.1 with one OpenAI chat model and nothing else. It is one
+ * The Tools Agent of versions 2 to 3.1 with one chat model, and a window buffer memory or nothing else. It is one
  * call of the model, so it runs as the library node of the chain with `kind: 'agent'`.
  * Versions before 2 ask the model for a stream; they stay in the host.
  */

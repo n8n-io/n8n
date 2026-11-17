@@ -128,8 +128,37 @@ class NodeTypes {
 		return instance;
 	}
 
+	/**
+	 * The tool form of a node (`<type>Tool`), as n8n's CLI makes it (`convertNodeToAiTool`):
+	 * the node of the base type with the description of a tool.
+	 */
+	private toolOf(type: string, version?: number): any {
+		const key = `${type}?version=${version ?? 'default'}`;
+		const found = this.cache.get(key);
+		if (found) return found;
+		const base = this.getByNameAndVersion(type.slice(0, -'Tool'.length), version);
+		const description = Object.create(base.description, {
+			properties: { value: Object.create(base.description.properties) },
+		});
+		const cloned = Object.create(base, { description: { value: description } });
+		const { convertNodeToAiTool } = createRequire(join(packagesDir, 'cli/package.json'))(
+			join(packagesDir, 'cli/dist/tool-generation/ai-tools.js'),
+		);
+		const tool = convertNodeToAiTool(cloned);
+		this.cache.set(key, tool);
+		return tool;
+	}
+
+	private isToolForm(type: string): boolean {
+		if (!type.endsWith('Tool') || this.cache.has(type)) return false;
+		const dot = type.lastIndexOf('.');
+		const packageDir = NODE_PACKAGES[type.slice(0, dot)];
+		return packageDir !== undefined && !(type.slice(dot + 1) in knownIndex(packageDir, 'nodes'));
+	}
+
 	getByNameAndVersion(type: string, version?: number): any {
 		const { workflow, core } = load();
+		if (this.isToolForm(type)) return this.toolOf(type, version);
 		const nodeType = workflow.NodeHelpers.getVersionedNodeType(this.getByName(type), version);
 		// As n8n's CLI does (`shouldAssignExecuteMethod`): a declarative node runs through RoutingNode.
 		const declarative = nodeType.description?.requestDefaults !== undefined;
@@ -462,15 +491,15 @@ function installFakeHttp(
 	responses: EquivalenceCase['responses'],
 	recorded: RawRequest[],
 	responseBytes: boolean,
+	cursor: { index: number } = { index: 0 },
 ) {
 	const { di, network } = load();
 	realHttp ??= di.Container.get(network.OutboundHttp);
-	let index = 0;
 	// A node that pages until an empty answer never stops on a repeated last answer.
 	const next = () => {
-		if (index >= MAX_FAKE_REQUESTS)
+		if (cursor.index >= MAX_FAKE_REQUESTS)
 			throw new Error(`the node sent more than ${MAX_FAKE_REQUESTS} requests`);
-		return responses[Math.min(index++, responses.length - 1)] ?? { body: {} };
+		return responses[Math.min(cursor.index++, responses.length - 1)] ?? { body: {} };
 	};
 	// A request that asks for bytes gets the body of the case as a Buffer, as the HTTP client gives it.
 	const answer = (
@@ -634,11 +663,14 @@ const CLIENT_HEADERS =
  * Anthropic and Google SDKs) send their requests with it. It records each request and answers
  * from the list of the case. Returns the function that restores the real `fetch`.
  */
-function installFakeFetch(responses: EquivalenceCase['responses'], recorded: RawRequest[]) {
+function installFakeFetch(
+	responses: EquivalenceCase['responses'],
+	recorded: RawRequest[],
+	cursor: { index: number } = { index: 0 },
+) {
 	const real = globalThis.fetch;
-	let index = 0;
 	globalThis.fetch = async (input: any, init?: any): Promise<Response> => {
-		if (index >= MAX_FAKE_REQUESTS)
+		if (cursor.index >= MAX_FAKE_REQUESTS)
 			throw new Error(`the node sent more than ${MAX_FAKE_REQUESTS} requests`);
 		const request = new Request(input, init);
 		const headers: Record<string, string> = {};
@@ -651,7 +683,7 @@ function installFakeFetch(responses: EquivalenceCase['responses'], recorded: Raw
 			body = JSON.parse(text);
 		} catch {}
 		recorded.push({ method: request.method, url: request.url, headers, body });
-		const r = responses[Math.min(index++, responses.length - 1)] ?? { body: {} };
+		const r = responses[Math.min(cursor.index++, responses.length - 1)] ?? { body: {} };
 		// The fetch of Node.js fails with a TypeError whose cause has the code.
 		if (r.networkError)
 			throw new TypeError('fetch failed', { cause: networkFailure(r.networkError) });
@@ -890,12 +922,16 @@ async function recordInEngine(
 		},
 	});
 	const recorded: RawRequest[] = [];
-	installFakeHttp(testCase.responses, recorded, testCase.responseBytes === true);
+	// A tool sub-node sends its requests between the requests of the model: with a tool, the
+	// answers of the case are one list for both, in the order of the requests.
+	const shared = subNodes.some((sub) => sub.connection === 'ai_tool') ? { index: 0 } : undefined;
+	installFakeHttp(testCase.responses, recorded, testCase.responseBytes === true, shared);
 	const engine = new core.WorkflowExecute(additionalData, 'trigger', runExecutionData);
 	// The check before the start refuses parameter values that are not real ids. The cases
 	// use made-up values, as the cases without settings do. The run itself is the engine's.
 	engine.checkReadyForExecution = () => null;
-	const restoreFetch = subNodes.length > 0 ? installFakeFetch(testCase.responses, recorded) : null;
+	const restoreFetch =
+		subNodes.length > 0 ? installFakeFetch(testCase.responses, recorded, shared) : null;
 	let run: AnyRecord;
 	try {
 		run = await engine.processRunExecutionData(graph);
