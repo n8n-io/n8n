@@ -70,9 +70,12 @@ export function usePromotionDependencyLabels() {
 			return i18n.baseText(`promotions.dependencies.fix.personal.${row.target.kind}`);
 		}
 		if (group === 'not-on-branch') {
-			return i18n.baseText('promotions.dependencies.fix.not-on-branch', {
-				interpolate: { name: targetName(row.target) },
-			});
+			// Without a name, the sentence names the kind: "This workflow is not on the branch."
+			return row.target.name
+				? i18n.baseText('promotions.dependencies.fix.not-on-branch', {
+						interpolate: { name: row.target.name },
+					})
+				: i18n.baseText(`promotions.dependencies.fix.not-on-branch.unnamed.${row.target.kind}`);
 		}
 		return undefined;
 	}

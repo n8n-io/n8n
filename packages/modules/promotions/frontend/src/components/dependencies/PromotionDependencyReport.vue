@@ -41,6 +41,8 @@ const props = defineProps<{
 	unchecked?: boolean;
 	/** True while the server checks a new selection. The list then shows the page's own view. */
 	checking?: boolean;
+	/** A confirmation that the operation still waits for, as a sentence. */
+	pending?: string;
 }>();
 
 const emit = defineEmits<{
@@ -65,17 +67,20 @@ type Status = {
 };
 const status = computed((): Status => {
 	if (props.report.hardBlocks.length > 0) return { theme: 'danger', key: 'hardBlocks' };
-	if (gapCount.value === 0) return { theme: 'success', key: 'none' };
+	if (gapCount.value === 0) return { theme: props.pending ? 'warning' : 'success', key: 'none' };
 	return props.report.allowIncomplete
 		? { theme: 'info', key: 'incomplete' }
 		: { theme: 'warning', key: 'strict' };
 });
-const statusText = computed(() =>
-	i18n.baseText(`promotions.dependencies.status.${status.value.key}.${props.direction}`, {
-		adjustToNumber: gapCount.value,
-		interpolate: { count: String(gapCount.value) },
-	}),
-);
+const statusText = computed(() => {
+	// Without a gap, a pending confirmation is the only thing that the user must read.
+	if (status.value.key === 'none' && props.pending) return props.pending;
+	const text = i18n.baseText(
+		`promotions.dependencies.status.${status.value.key}.${props.direction}`,
+		{ adjustToNumber: gapCount.value, interpolate: { count: String(gapCount.value) } },
+	);
+	return props.pending && status.value.key === 'incomplete' ? `${text} ${props.pending}` : text;
+});
 
 // The state of each request to an owner, by target. It lasts while the page is open. After a
 // refresh the report itself says that the request was sent.

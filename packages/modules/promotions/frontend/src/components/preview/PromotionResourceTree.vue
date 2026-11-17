@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import type { OwnerMoveNote } from '../../promotionMoves';
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import { projectSelectableKeys, type ChangesProject } from '../../promotionPreview.projects';
 import {
@@ -39,8 +40,15 @@ const props = withDefaults(
 		projects?: readonly ChangesProject[];
 		/** The rows that a gap of the dependency report names: referenced, and not in the operation. */
 		gapKeys?: ReadonlySet<ResourceKey>;
+		/** Apply: the credentials whose owner changes on this instance, with the sentence that says so. */
+		ownerMoves?: ReadonlyMap<ResourceKey, OwnerMoveNote>;
 	}>(),
-	{ selectable: true, projects: () => [], gapKeys: () => new Set<ResourceKey>() },
+	{
+		selectable: true,
+		projects: () => [],
+		gapKeys: () => new Set<ResourceKey>(),
+		ownerMoves: () => new Map<ResourceKey, OwnerMoveNote>(),
+	},
 );
 
 const emit = defineEmits<{
@@ -68,10 +76,13 @@ function markers(resource: PromotionResource) {
 	const gap = props.gapKeys.has(resource.key)
 		? i18n.baseText('promotions.preview.marker.gap')
 		: undefined;
+	const moves = props.ownerMoves.get(resource.key)?.allowed
+		? i18n.baseText('promotions.preview.marker.ownerMove')
+		: undefined;
 	const needed = resource.neededByBranch
 		? i18n.baseText('promotions.preview.marker.neededByBranch')
 		: undefined;
-	return { blocked, meta: blocked ? undefined : (gap ?? needed ?? meta), gap: !blocked && !!gap };
+	return { blocked, meta: blocked ? undefined : (gap ?? moves ?? needed ?? meta), gap: !blocked && !!gap };
 }
 
 /** The header of a project group: its select-all checkbox, and why users cannot select in it. */
@@ -81,11 +92,16 @@ function projectHeader(projectId: string | undefined) {
 	const keys = projectSelectableKeys(props.graph, project.id);
 	const state = keysCheckState(keys, props.selected, props.disabled);
 	const canAdd = keys.some((key) => !props.disabled.has(key));
+	// The header stands for the project, so the count holds the items inside it. A project
+	// whose only change is the project itself counts that one.
+	const inside = keys.filter((key) => key !== `project:${project.id}`);
+	const counted = inside.length > 0 ? inside : keys;
 	return {
 		project,
 		keys,
 		state,
-		selectedCount: keys.filter((key) => props.selected.has(key)).length,
+		total: counted.length,
+		selectedCount: counted.filter((key) => props.selected.has(key)).length,
 		disabled: props.locked || (!canAdd && state === 'unchecked'),
 		notice: !project.canOperate
 			? i18n.baseText(`promotions.preview.tree.project.readOnly.${props.direction}`)
@@ -219,7 +235,7 @@ function onToggle(resource: PromotionResource) {
 								: i18n.baseText('promotions.preview.tree.project.count', {
 										interpolate: {
 											selected: String(header.selectedCount),
-											total: String(header.keys.length),
+											total: String(header.total),
 										},
 									})
 						}}

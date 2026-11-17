@@ -16,9 +16,10 @@ import {
 	N8nText,
 	type BadgeVariant,
 } from '@n8n/design-system';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import type { InboxItemChange } from '../inbox.constants';
@@ -38,6 +39,19 @@ const i18n = useI18n();
 const router = useRouter();
 const rootStore = useRootStore();
 const { showError } = useToast();
+
+// The shell owns the credential types. Until the name arrives, the raw type name stands in.
+const credentialTypeName = ref<string>();
+watch(
+	() => props.item.resource.credentialType,
+	async (type) => {
+		credentialTypeName.value = undefined;
+		if (!type) return;
+		const editors = capabilityRegistry.use(capabilities.resourceEditors);
+		credentialTypeName.value = (await editors.credentialTypeName?.(type).catch(() => undefined)) ?? undefined;
+	},
+	{ immediate: true },
+);
 
 const outcomeBadge: Record<OwnerRequestOutcome, BadgeVariant> = {
 	open: 'info',
@@ -228,7 +242,7 @@ async function onDismiss() {
 						<N8nText size="small" color="text-light">
 							{{ kindLabel }}
 							<template v-if="item.resource.credentialType">
-								· {{ item.resource.credentialType }}
+								· {{ credentialTypeName ?? item.resource.credentialType }}
 							</template>
 						</N8nText>
 					</div>

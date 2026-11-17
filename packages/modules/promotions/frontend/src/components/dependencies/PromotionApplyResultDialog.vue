@@ -18,7 +18,7 @@ import { useRouter } from 'vue-router';
 
 import { useCredentialTypeNames } from '../../composables/useCredentialTypeNames';
 import { usePromotionDependencyLabels } from '../../composables/usePromotionDependencyLabels';
-import { applyOutcome } from '../../promotionApplyOutcome';
+import { applyOutcome, needsFollowUp } from '../../promotionApplyOutcome';
 import type { AppliedResult } from '../../promotions.types';
 import PromotionDependencySection from './PromotionDependencySection.vue';
 
@@ -42,7 +42,13 @@ const { credentialNotMovedText } = usePromotionDependencyLabels();
 
 const outcome = computed(() => applyOutcome(props.result));
 const unpublished = computed(() => outcome.value.moves.filter((move) => !!move.unpublished));
-const intro = computed(() => i18n.baseText('promotions.applyResult.intro'));
+const intro = computed(() =>
+	i18n.baseText(
+		needsFollowUp(outcome.value)
+			? 'promotions.applyResult.intro'
+			: 'promotions.applyResult.intro.done',
+	),
+);
 
 // The credential opens in a new tab, so the result stays on this page. A new tab needs a URL.
 const credentialHref = (projectId: string, credentialId: string) =>

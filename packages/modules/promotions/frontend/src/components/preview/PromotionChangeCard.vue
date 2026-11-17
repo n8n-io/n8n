@@ -14,7 +14,9 @@ import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui
 import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
+import { useCredentialTypeNames } from '../../composables/useCredentialTypeNames';
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
+import type { OwnerMoveNote } from '../../promotionMoves';
 import type { Blocker } from '../../promotionOperation';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import {
@@ -48,8 +50,10 @@ const props = withDefaults(
 		selectable?: boolean;
 		/** True when a gap of the dependency report names this resource. */
 		gap?: boolean;
+		/** Apply: this instance holds the credential in another project, and the Apply moves it. */
+		ownerMove?: OwnerMoveNote;
 	}>(),
-	{ selectable: true, gap: false },
+	{ selectable: true, gap: false, ownerMove: undefined },
 );
 
 const emit = defineEmits<{
@@ -63,6 +67,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { credentialTypeName } = useCredentialTypeNames();
 const nameOf = (key: string) => props.graph.resources.get(key)?.name ?? key;
 const { changeLabel, moveNote, blockerMessage, selectLabel } = usePromotionPreviewLabels();
 const blocker = computed(() => blockerMessage(props.resource, props.blockers));
@@ -117,7 +122,18 @@ const stale = computed(() => !!detail.value && isStaleDetail(detail.value, props
 const fieldChanges = computed(() => {
 	const context = { direction: props.direction, resource: props.resource, containerName: nameOf };
 	if (props.resource.type === 'workflow') return describeWorkflowFieldChanges(context);
-	return detail.value ? describeFieldChanges(detail.value, context) : [];
+	const changes = detail.value ? describeFieldChanges(detail.value, context) : [];
+	if (props.resource.type !== 'credential') return changes;
+	// The type of a credential shows as in the credential list: "Header Auth", not `httpHeaderAuth`.
+	return changes.map((change) =>
+		change.field === 'type'
+			? {
+					...change,
+					before: change.before && credentialTypeName(change.before),
+					after: change.after && credentialTypeName(change.after),
+				}
+			: change,
+	);
 });
 const dataTable = computed(() =>
 	detail.value?.type === 'dataTable'
@@ -173,7 +189,10 @@ const tagNote = computed(() => {
 						>
 							{{ resource.name }}
 						</N8nText>
-						<N8nText v-if="changeLabel(resource, direction)" step="xs" color="text-light">
+						<N8nText v-if="ownerMove?.allowed" step="xs" color="text-light">
+							{{ i18n.baseText('promotions.preview.marker.ownerMove') }}
+						</N8nText>
+						<N8nText v-else-if="changeLabel(resource, direction)" step="xs" color="text-light">
 							{{ changeLabel(resource, direction) }}
 						</N8nText>
 					</span>
@@ -211,6 +230,15 @@ const tagNote = computed(() => {
 								{{ i18n.baseText('promotions.dependencies.summary.view') }}
 							</N8nButton>
 						</template>
+					</N8nCallout>
+					<N8nCallout
+						v-if="ownerMove"
+						:theme="ownerMove.allowed ? 'info' : 'warning'"
+						slim
+						icon="arrow-left-right"
+						data-test-id="promotion-preview-card-owner-move"
+					>
+						{{ ownerMove.text }}
 					</N8nCallout>
 					<N8nCallout
 						v-if="resource.neededByBranch"
@@ -272,7 +300,7 @@ const tagNote = computed(() => {
 						:description="dataTable"
 					/>
 					<PromotionFieldChanges
-						v-else-if="fieldChanges.length > 0"
+						v-else-if="fieldChanges.length > 0 && !ownerMove?.allowed"
 						:changes="fieldChanges"
 						:direction="direction"
 						:absent-sides="absentSides"

@@ -1818,6 +1818,7 @@ const { width } = useElementSize(credNameRef);
 									v-if="isPlaceholder"
 									theme="warning"
 									icon="square-dashed"
+									:class="$style.placeholderCallout"
 									data-test-id="credential-placeholder-callout"
 								>
 									{{ i18n.baseText('credentials.placeholder.callout') }}
@@ -1934,6 +1935,11 @@ const { width } = useElementSize(credNameRef);
 </template>
 
 <style module lang="scss">
+/* The callout sits above the help box of the form, which has no space of its own. */
+.placeholderCallout {
+	margin-bottom: var(--spacing--xs);
+}
+
 .credentialDialog {
 	width: min(70dvw, calc(var(--spacing--5xl) * 4 + var(--spacing--4xl) + var(--spacing--2xl)));
 	flex: 1 1 auto;

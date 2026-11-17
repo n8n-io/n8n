@@ -4,6 +4,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
+import type { OwnerMoveNote } from '../../promotionMoves';
 import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import {
 	selectionCheck,
@@ -37,8 +38,15 @@ const props = withDefaults(
 		headingOf?: (resource: PromotionResource) => string | undefined;
 		/** The rows that a gap of the dependency report names. */
 		gapKeys?: ReadonlySet<ResourceKey>;
+		/** Apply: the credentials whose owner changes on this instance. */
+		ownerMoves?: ReadonlyMap<ResourceKey, OwnerMoveNote>;
 	}>(),
-	{ selectable: true, headingOf: undefined, gapKeys: () => new Set<ResourceKey>() },
+	{
+		selectable: true,
+		headingOf: undefined,
+		gapKeys: () => new Set<ResourceKey>(),
+		ownerMoves: () => new Map<ResourceKey, OwnerMoveNote>(),
+	},
 );
 
 const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
@@ -124,6 +132,7 @@ defineExpose({ scrollToCard });
 				:diff-active="activeWorkflow === resource.key"
 				:selectable="selectable"
 				:gap="gapKeys.has(resource.key)"
+				:owner-move="ownerMoves.get(resource.key)"
 				@view-dependencies="emit('viewDependencies')"
 				@activate-diff="activeWorkflow = resource.key"
 				@deactivate-diff="activeWorkflow = undefined"

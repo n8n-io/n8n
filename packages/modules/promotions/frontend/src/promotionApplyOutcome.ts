@@ -36,11 +36,23 @@ export function applyOutcome(result: AppliedResult): ApplyOutcome {
 		keptWorkflows: result.keptWorkflows ?? [],
 		keptProjects: result.keptProjects ?? [],
 		moves: result.moves ?? [],
-		unresolvedCount: result.dependencyReport?.gaps.length ?? 0,
+		// A reference to a credential that got a placeholder binds to the placeholder.
+		unresolvedCount: (result.dependencyReport?.gaps ?? []).filter(({ placeholder }) => !placeholder)
+			.length,
 	};
 }
 
 /** True when the result holds something that the toast of the Apply cannot say. */
+/** True when a person must still do something: enter values, or apply again with more rights. */
+export function needsFollowUp(outcome: ApplyOutcome): boolean {
+	return (
+		outcome.placeholders.length > 0 ||
+		outcome.credentialsNotMoved.length > 0 ||
+		outcome.unresolvedCount > 0 ||
+		outcome.moves.some((move) => !!move.unpublished)
+	);
+}
+
 export function hasApplyOutcome(result: AppliedResult): boolean {
 	const outcome = applyOutcome(result);
 	return (

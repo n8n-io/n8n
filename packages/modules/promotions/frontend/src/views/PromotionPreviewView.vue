@@ -40,6 +40,7 @@ import PromotionResourceTree from '../components/preview/PromotionResourceTree.v
 import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import PromoteSelectionDialog from '../components/PromoteSelectionDialog.vue';
 import { usePromotionDependencies } from '../composables/usePromotionDependencies';
+import { usePromotionDependencyLabels } from '../composables/usePromotionDependencyLabels';
 import { usePromotionMoveLabels } from '../composables/usePromotionMoveLabels';
 import { usePromotionOperation, type OperationRequest } from '../composables/usePromotionOperation';
 import { usePromotionOwnerRequest } from '../composables/usePromotionOwnerRequest';
@@ -56,7 +57,7 @@ import {
 	type PromotionOwnerRequester,
 } from '../promotionDependencies';
 import { loadPromotionFixture, promotionFixtureName } from '../promotionFixtures';
-import { changedProjectsOf, scopePlannedMoves } from '../promotionMoves';
+import { changedProjectsOf, scopePlannedMoves, type OwnerMoveNote } from '../promotionMoves';
 import { getPromotionEnvironmentDetails, getPromotionResourceDetails } from '../promotions.api';
 import {
 	PROMOTION_ENVIRONMENT_VIEWS,
@@ -273,6 +274,30 @@ const gapKeys = computed(
 	(): ReadonlySet<ResourceKey> =>
 		new Set((dependencies.report.value?.gaps ?? []).map(({ target }) => targetKey(target))),
 );
+
+/** Apply: the credentials whose owner follows the branch, with the sentence of the report. */
+const dependencyLabels = usePromotionDependencyLabels();
+const ownerMoves = computed((): ReadonlyMap<ResourceKey, OwnerMoveNote> => {
+	const notes = new Map<ResourceKey, OwnerMoveNote>();
+	for (const move of dependencies.report.value?.credentialMoves ?? []) {
+		notes.set(`credential:${move.credential.id}`, {
+			allowed: move.allowed,
+			text: move.allowed
+				? i18n.baseText('promotions.dependencies.moves.allowed', {
+						interpolate: { credential: move.credential.name, project: move.toProject.name },
+					})
+				: dependencyLabels.credentialNotMovedText(move),
+		});
+	}
+	return notes;
+});
+/** The confirmation that an Apply without gaps still waits for. */
+const pendingText = computed(() => {
+	const stop = dependencies.stop.value;
+	return stop === 'grants' || stop === 'deletionCallers' || stop === 'credentialHomes'
+		? i18n.baseText(`promotions.dependencies.stop.${stop}`)
+		: undefined;
+});
 
 // The moves between projects of the items in the operation.
 const moveLabels = usePromotionMoveLabels();
@@ -1007,6 +1032,7 @@ const treeResizer = useResizablePanel({
 						:blockers="blockers"
 						:projects="projects"
 						:gap-keys="gapKeys"
+						:owner-moves="ownerMoves"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
@@ -1148,6 +1174,7 @@ const treeResizer = useResizablePanel({
 						:blockers="blockers"
 						:heading-of="cardHeading"
 						:gap-keys="gapKeys"
+						:owner-moves="ownerMoves"
 						@view-dependencies="activeTab = 'dependencies'"
 						@retry="details.retry"
 						@refresh="refresh"
@@ -1177,6 +1204,7 @@ const treeResizer = useResizablePanel({
 				:report="reportOrEmpty"
 				:unchecked="!dependencies.report.value"
 				:checking="checkingDependencies"
+				:pending="pendingText"
 				:is-request-sent="ownerRequest.isSent"
 				:direction="direction"
 				:confirmations="dependencies.confirmations.value"

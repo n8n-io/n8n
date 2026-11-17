@@ -46,3 +46,6 @@ export function splitProjectNames(projects: readonly MoveProject[]) {
 	const names = projects.flatMap(({ name }) => (name === undefined ? [] : [name])).sort();
 	return { names, hidden: projects.length - names.length };
 }
+
+/** Apply: what happens to a credential that this instance holds in another project. */
+export type OwnerMoveNote = { text: string; allowed: boolean };
