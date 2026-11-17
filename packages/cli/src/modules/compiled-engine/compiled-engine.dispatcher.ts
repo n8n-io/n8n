@@ -36,7 +36,12 @@ import type {
 	WfrtStepEvent,
 	WfrtWaitingEvent,
 } from './compiled-engine.types';
-import { MANUAL_WORKFLOW_SUFFIX, needsFallbackHost } from './compiled-engine.types';
+import {
+	EXECUTION_SERVICE,
+	MANUAL_WORKFLOW_SUFFIX,
+	needsFallbackHost,
+} from './compiled-engine.types';
+import { runExecutionCall } from './compiled-execution-calls';
 import { CompiledExecutionStore, EFFECT_SEQ_KEY, WFRT_ID_KEY } from './compiled-execution.store';
 import { CompiledServiceCalls } from './compiled-service-calls';
 import type { NodeUpdate } from './compiled-run-recorder';
@@ -357,7 +362,7 @@ export class CompiledEngineDispatcher {
 			// A repeated event stores the same document, so the result does not change.
 			return await this.sync.saveStaticData(event.workflowId, event.staticData);
 		}
-		if (event.type === 'service') {
+		if (event.type === 'service' && event.service !== EXECUTION_SERVICE) {
 			// The call runs beside the run data of the execution: it has its own answer path.
 			void Container.get(CompiledServiceCalls).handle(event);
 			return;
@@ -562,6 +567,13 @@ export class CompiledEngineDispatcher {
 				return await this.send(state, state.recorder.onStep(event));
 			case 'trace':
 				return await this.send(state, state.recorder.onTrace(event));
+			case 'service':
+				// A call of the `execution` service changes the data of this execution, in the
+				// order of its events.
+				return await Container.get(CompiledServiceCalls).handle(
+					event,
+					async () => await Promise.resolve(runExecutionCall(state, event)),
+				);
 			case 'waiting':
 				return await this.wait(state, event);
 			case 'finished':

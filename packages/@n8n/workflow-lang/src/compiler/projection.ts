@@ -551,6 +551,13 @@ class CanvasBuilder {
 					type = 'n8n-nodes-base.removeDuplicates';
 					typeVersion = 2;
 				}
+				// A call that saves data of the execution is the node that saves it in v1.
+				if (params.service === 'execution' && params.op === 'setCustomData') {
+					type = 'n8n-nodes-base.executionData';
+				}
+				if (params.service === 'execution' && params.op === 'setTimeSaved') {
+					type = 'n8n-nodes-base.timeSaved';
+				}
 				break;
 			default:
 				break;

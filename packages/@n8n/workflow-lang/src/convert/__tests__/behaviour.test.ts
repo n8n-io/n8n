@@ -39,6 +39,54 @@ interface Expected {
 	responses: Array<{ body: unknown; statusCode: number }>;
 	/** The calls of the v1 nodes to the stores of n8n, as `ctx.service` calls. */
 	services?: Array<{ step: string; service: string; op: string; args: unknown }>;
+	/** The custom data that the v1 execution saved (the Execution Data node). */
+	customData?: Record<string, string>;
+	/** The metadata of the runs of each node (the Time Saved node). */
+	nodeMetadata?: Record<string, unknown[]>;
+}
+
+interface ServiceArgs {
+	service: string;
+	op: string;
+	args: { items?: Array<Record<string, unknown>>; minutes?: number };
+}
+
+/**
+ * The `execution` service as n8n runs it (`runExecutionCall` of the compiled engine in the
+ * cli): custom data goes through the function of n8n-core that v1 uses, and the minutes of
+ * a Time Saved node go to the run of its node. `error` is the error of the last call.
+ */
+function applyExecutionCalls(effects: EffectRecord[]) {
+	const core = createRequire(join(hostSource, '../package.json'))('n8n-core') as {
+		setWorkflowExecutionMetadata(data: unknown, key: string, value: unknown): void;
+	};
+	const data: { resultData: { metadata?: Record<string, string> } } = { resultData: {} };
+	const nodeMetadata: Record<string, unknown[]> = {};
+	let error: string | undefined;
+	for (const e of effects) {
+		const call = e.args as ServiceArgs;
+		if (e.kind !== 'service' || call.service !== 'execution') continue;
+		error = undefined;
+		if (call.op === 'setTimeSaved') {
+			(nodeMetadata[e.step] ??= []).push({ timeSaved: { minutes: call.args.minutes } });
+			continue;
+		}
+		for (const values of call.args.items ?? []) {
+			const errors: unknown[] = [];
+			for (const [key, value] of Object.entries(values)) {
+				try {
+					core.setWorkflowExecutionMetadata(data, key, value);
+				} catch (caught) {
+					errors.push(caught);
+				}
+			}
+			if (errors.length > 0) {
+				error = errors[0] instanceof Error ? errors[0].message : String(errors[0]);
+				break;
+			}
+		}
+	}
+	return { customData: data.resultData.metadata, nodeMetadata, error };
 }
 
 type RunCodeStep = (args: { name: string; code: string; items: unknown[] }) => Promise<unknown[]>;
@@ -133,6 +181,15 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 		for (const e of out.effects) {
 			const k = seen.get(e.step) ?? 0;
 			seen.set(e.step, k + 1);
+			if (e.kind === 'service' && (e.args as ServiceArgs).service === 'execution') {
+				const list = (effects[e.step] ??= []);
+				if (list[k] !== undefined) continue;
+				const upTo = out.effects.slice(0, out.effects.indexOf(e) + 1);
+				const { error } = applyExecutionCalls(upTo);
+				list[k] = error === undefined ? null : { $error: error };
+				added = true;
+				break;
+			}
 			if (e.kind === 'service') {
 				// The answers of the service calls of a node, in the order of the calls.
 				const node = serviceNode(e.step);
@@ -238,6 +295,11 @@ describe('converted workflows behave as in n8n', () => {
 					});
 				expect(calls).toEqual(expected.services);
 			}
+
+			// The same custom data of the execution, and the same metadata on the runs of the nodes.
+			const kept = applyExecutionCalls(out.effects);
+			expect(kept.customData).toEqual(expected.customData);
+			expect(kept.nodeMetadata).toEqual(expected.nodeMetadata ?? {});
 
 			// The same webhook responses.
 			const responses = out.effects

@@ -1609,6 +1609,18 @@ await ctx.service({ name, service: 'dataTable', op: 'getManyRowsAndCount', args:
     execution, never for a workflow that the args name. The backends:
     n8n's `DeduplicationHelper` on `processed_data`, and the fallback
     host's file store in the test bed (`runDeduplicationCall`).
+  * `execution`: data that n8n keeps for the execution that runs. A step of the
+    workflow calls it, with the node name as the step name.
+    `setCustomData` (`items`: a list with one object of keys and values for
+    each item) is the Execution Data node: n8n applies each object with the
+    code of v1 (`customData.setAll`: at most 10 keys; a key has letters,
+    digits and `_` and is cut at 50 characters; a value is cut at 512
+    characters; a value that is not a text, a number or a boolean gives the
+    error of v1) and saves the result with the execution.
+    `setTimeSaved` (`minutes`) is the Time Saved node: n8n puts the minutes in
+    the metadata of the run of the node. n8n answers in the order of the
+    events of the execution. The fallback host has no backend for this
+    service.
   * `credentials`: the OAuth2 token that n8n owns.
     `updateOauthTokenData` (`credentialId`, `oauthTokenData`) saves the token
     data that a v1 node in the fallback host refreshed. `refreshOAuth2`

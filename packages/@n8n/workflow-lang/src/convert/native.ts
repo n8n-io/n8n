@@ -889,6 +889,118 @@ export function lowerAggregate(c: NodeContext): void {
 	);
 }
 
+/** The service of n8n that keeps data of the execution that runs (spec 9.9). */
+const EXECUTION_SERVICE = 'execution';
+
+function requireServices(c: NodeContext, code: string): void {
+	if (c.services === false) {
+		throw new NodeFailure(code, 'The runtime of the caller has no service calls.', 'operation');
+	}
+}
+
+/**
+ * Execution Data: saves custom data of the execution. n8n keeps the data and applies the
+ * rules of v1 (`setAllWorkflowExecutionMetadata`): the node sends the values of each item,
+ * in the order of the items. When an expression of an item fails, the node first sends the
+ * values of the items before it, as v1 saves them before it fails.
+ */
+export function lowerExecutionData(c: NodeContext): void {
+	const p = c.parameters;
+	const { w } = c;
+	const operation = p.operation === undefined ? 'save' : p.operation;
+	if (typeof operation !== 'string' || operation.startsWith('=')) {
+		throw new NodeFailure(
+			'execution-data',
+			'The operation of the node is an expression.',
+			'operation',
+		);
+	}
+	const out = c.output(0);
+	if (operation !== 'save') {
+		w.line(`const ${out}: Json[] = ${c.input};`);
+		return;
+	}
+	requireServices(c, 'execution-data');
+	if (
+		c.node.continueOnFail ||
+		c.node.retryOnFail ||
+		(c.node.onError !== undefined && c.node.onError !== 'stopWorkflow')
+	) {
+		throw new NodeFailure(
+			'execution-data',
+			'Custom data with "continue on fail" or "retry on fail" is not supported.',
+			'onError',
+		);
+	}
+	const data = p.dataToSave === undefined ? {} : p.dataToSave;
+	const list = isRecord(data) ? (data.values === undefined ? [] : data.values) : undefined;
+	if (!Array.isArray(list) || !list.every(isRecord)) {
+		throw new NodeFailure('execution-data', 'The data to save is not a list.', 'dataToSave');
+	}
+	if (list.length === 0) {
+		w.line(`const ${out}: Json[] = ${c.input};`);
+		return;
+	}
+	// v1 reads the collection: a DateTime inside it is its text.
+	const pairs = c.compiled(
+		list.map((entry) => [entry.key, entry.value]),
+		'dataToSave.values',
+		{ luxonValue: 'text' },
+	);
+	const sets = c.local('Sets');
+	const failed = c.local('Failed');
+	const error = c.local('Error');
+	c.helper('customDataValues');
+	w.open(`if (${c.input}.length > 0) {`);
+	w.line(`const ${sets}: Json[] = [];`);
+	w.line(`let ${failed} = false;`);
+	w.line(`let ${error}: Json = null;`);
+	w.open('try {');
+	w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
+	w.line(`const ${ITEM}: Json = ${c.input}[${INDEX}];`);
+	w.line(`${sets}.push(customDataValues(${c.print(pairs.code)}, ${String(c.version >= 1.1)}));`);
+	w.close();
+	w.depth--;
+	w.open('} catch (caught) {');
+	w.line(`${failed} = true;`);
+	w.line(`${error} = caught;`);
+	w.close();
+	w.open(`if (${sets}.length > 0) {`);
+	w.line(
+		`await ctx.service({ name: ${str(c.node.name)}, service: '${EXECUTION_SERVICE}', op: 'setCustomData', args: { items: ${sets} } });`,
+	);
+	w.close();
+	w.line(`if (${failed}) throw ${error};`);
+	w.close();
+	w.line(`const ${out}: Json[] = ${c.input};`);
+}
+
+/**
+ * Time Saved: the node records the minutes on its own run (`setMetadata` of v1) and gives
+ * its items on. n8n keeps the run data, so the node sends the minutes to n8n.
+ */
+export function lowerTimeSaved(c: NodeContext): void {
+	const p = c.parameters;
+	requireServices(c, 'time-saved');
+	const mode = p.mode === undefined ? 'once' : p.mode;
+	const minutes = p.minutesSaved === undefined ? 0 : p.minutesSaved;
+	if (typeof mode !== 'string' || mode.startsWith('=')) {
+		throw new NodeFailure('time-saved', 'The mode of the node is an expression.', 'mode');
+	}
+	if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 0) {
+		throw new NodeFailure(
+			'time-saved',
+			'The minutes saved are not a fixed number that is zero or more.',
+			'minutesSaved',
+		);
+	}
+	const total = mode === 'perItem' ? `${c.input}.length * ${String(minutes)}` : String(minutes);
+	c.w.line(
+		`if (${c.input}.length > 0) await ctx.service({ name: ${str(c.node.name)}, service: '${EXECUTION_SERVICE}', op: 'setTimeSaved', args: { minutes: ${total} } });`,
+	);
+	c.w.line(`const ${c.output(0)}: Json[] = ${c.input};`);
+}
+
 /**
  * Remove Duplicates version 2, "Remove items processed in previous executions" and "Clear
  * deduplication history". n8n keeps the history: each call of the v1 node to the

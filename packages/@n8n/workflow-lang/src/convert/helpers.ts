@@ -767,6 +767,29 @@ function dedupeText(value: Json): string {
 	return String(value);
 }`,
 	},
+	customDataValues: {
+		uses: ['dedupeText'],
+		source: `/**
+ * The Execution Data node: the object that v1 gives to \`customData.setAll\` for one item.
+ * A key is the text of its value, as a JavaScript object key. From version 1.1 a value
+ * that is null or missing is the empty text. JSON has no \`undefined\`, \`NaN\` or infinity:
+ * a missing value goes as null, which n8n refuses as v1 refuses \`undefined\`, and a number
+ * that is not finite goes as the text that v1 stores.
+ */
+function customDataValues(pairs: Json[][], emptyForNull: boolean): Json {
+	const out: Json = {};
+	for (const pair of pairs) {
+		const name = pair[0];
+		const key = typeof name === 'string' ? name : name === null ? 'null' : name === undefined ? 'undefined' : dedupeText(name);
+		if (key === '__proto__') continue;
+		let value = pair[1];
+		if (value === null || value === undefined) value = emptyForNull ? '' : value === undefined ? null : value;
+		if (typeof value === 'number' && (isNaN(value) || value - value !== 0)) value = String(value);
+		out[key] = value;
+	}
+	return out;
+}`,
+	},
 	dedupeGroups: {
 		uses: ['dedupeText'],
 		source: `/**

@@ -9,6 +9,7 @@ import { libraryNodeTypes, lowerHttpRequest, lowerLibrary, NATIVE_ROOTS } from '
 import { lowerSplitInBatches } from './loops.ts';
 import {
 	lowerAggregate,
+	lowerExecutionData,
 	lowerFilter,
 	lowerIf,
 	lowerLimit,
@@ -21,6 +22,7 @@ import {
 	lowerSplitOut,
 	lowerStopAndError,
 	lowerSwitch,
+	lowerTimeSaved,
 } from './native.ts';
 import { LANGCHAIN_PREFIX, lowerAiNode } from './host-node.ts';
 import { lowerFallback } from './steps.ts';
@@ -57,6 +59,8 @@ export const NATIVE: Record<string, Lowerer> = {
 	[`${BASE}httpRequest`]: lowerHttpRequest,
 	[`${BASE}splitInBatches`]: lowerSplitInBatches,
 	[`${BASE}executeWorkflow`]: lowerExecuteWorkflow,
+	[`${BASE}executionData`]: lowerExecutionData,
+	[`${BASE}timeSaved`]: lowerTimeSaved,
 };
 
 /** Native nodes with one output that the fallback host can run when their expressions do not translate. */
