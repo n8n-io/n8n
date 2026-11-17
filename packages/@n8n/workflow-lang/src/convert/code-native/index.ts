@@ -15,7 +15,8 @@
 import { NodeFailure } from '../context.ts';
 import type { NodeContext } from '../context.ts';
 import { checkTranslation } from './check.ts';
-import { emitExpression, emitHelpers } from './emit.ts';
+import type { AsyncForm } from './emit.ts';
+import { emitAsync, emitExpression, emitHelpers } from './emit.ts';
 import type { Blocker, CodeKind, CodeMode, TranslateResult } from './translate.ts';
 import { HOST_GLOBALS, translateCode } from './translate.ts';
 
@@ -63,6 +64,17 @@ export type NativeAttempt =
 				plainInput?: boolean,
 			) => string;
 			helpers: (plainInput?: boolean) => string[];
+			/**
+			 * For code that makes requests: the declaration of its async function and the
+			 * expression of the result list. Undefined for other code.
+			 */
+			async?: (
+				form: AsyncForm,
+				input: string,
+				lists: string[],
+				allLists?: string[],
+				plainInput?: boolean,
+			) => { declaration: string; expression: string };
 	  }
 	| { ok: false; blockers: Blocker[] };
 
@@ -79,6 +91,7 @@ export function attemptNative(
 		allNodes?: string[];
 		timezone?: string;
 		nodeName?: string;
+		itemsOfFirstOnly?: boolean;
 	} = {},
 ): NativeAttempt & { nodes?: string[]; zones?: string[]; allNodes?: string[] } {
 	const src = codeOf(type, parameters);
@@ -114,6 +127,12 @@ export function attemptNative(
 		expression: (input, lists, allLists = [], plainInput = false) =>
 			emitExpression(t, src.mode, input, lists, allLists, plainInput),
 		helpers: (plainInput = false) => emitHelpers(t, src.mode, plainInput),
+		...(t.usesHttp
+			? {
+					async: (form, input, lists, allLists = [], plainInput = false) =>
+						emitAsync(t, src.mode, form, input, lists, allLists, plainInput),
+				}
+			: {}),
 	};
 }
 
@@ -144,6 +163,17 @@ function escapeMarkerCharacters(text: string): string {
 }
 
 /**
+ * True when the node before this one has "execute once", false when it has not, and undefined
+ * when the node before this one is not fixed. v1's `$items()` reads the setting of that node.
+ */
+export function previousRunsOnce(c: NodeContext): boolean | undefined {
+	const name = c.scope.prevNode;
+	if (c.scope.prevSource !== undefined || name === null) return undefined;
+	const node = c.workflow.nodes.find((n) => n.name === name);
+	return node === undefined ? undefined : node.executeOnce === true;
+}
+
+/**
  * Writes the node as native code and returns true, or returns false (with an
  * info diagnostic) when the host step must run it.
  */
@@ -168,6 +198,7 @@ export function lowerCodeNative(c: NodeContext): boolean {
 			runIndex: c.runIndex,
 			timezone: c.scope.timezone,
 			nodeName: c.node.name,
+			itemsOfFirstOnly: previousRunsOnce(c),
 			check: false,
 			allNodes: c.workflow.nodes
 				.map((n) => n.name)
@@ -204,7 +235,16 @@ export function lowerCodeNative(c: NodeContext): boolean {
 	for (const z of attempt.zones ?? []) c.useZone?.(z);
 	const out = c.output(0);
 	const allLists = (attempt.allNodes ?? []).map((name) => c.ranBefore(name) ?? '[]');
-	const expr = attempt.expression(input, lists, allLists, plainInput);
+	let expr: string;
+	if (attempt.async) {
+		// The workflow awaits only a call of a local async function, so the code gets a name.
+		const form = { fn: c.local('Run'), step: c.node.name };
+		const parts = attempt.async(form, input, lists, allLists, plainInput);
+		w.block(parts.declaration);
+		expr = parts.expression;
+	} else {
+		expr = attempt.expression(input, lists, allLists, plainInput);
+	}
 	if (onError === 'stopWorkflow') {
 		// The result list comes from a JSON parse (`codeItems`), and no other code assigns it.
 		c.plainLists?.add(out);

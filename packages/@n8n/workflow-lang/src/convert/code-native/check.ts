@@ -9,13 +9,28 @@ import type { CompileResult } from '../../compiler/index.ts';
 import { issueOf, withoutTypeNoise } from '../../legacy/index.ts';
 import { helperSources } from '../helpers.ts';
 import type { Blocker, Translation } from './translate.ts';
-import { emitExpression, emitHelpers } from './emit.ts';
+import { emitAsync, emitExpression, emitHelpers } from './emit.ts';
 
 /** The workflow source of a translated Code node. */
 export function harnessSource(t: Translation, mode: 'all' | 'each', plainInput = false): string {
 	const lists = t.nodes.map((_, k) => `trigger.body.nodes[${k}]`);
 	const all = t.allNodes.map((_, k) => `trigger.body.all[${k}]`);
-	const expr = emitExpression(t, mode, 'trigger.body.input', lists, all, plainInput);
+	// Code that makes requests is an async function; its \`http\` step has the name \`code\`.
+	const parts = t.usesHttp
+		? emitAsync(
+				t,
+				mode,
+				{ fn: 'runCode', step: 'code' },
+				'trigger.body.input',
+				lists,
+				all,
+				plainInput,
+			)
+		: {
+				declaration: '',
+				expression: emitExpression(t, mode, 'trigger.body.input', lists, all, plainInput),
+			};
+	const expr = parts.expression;
 	return `import { webhook, workflow } from '@n8n/workflow-lang';
 
 type Json = any;
@@ -25,6 +40,7 @@ export default workflow({
 	async run(ctx, trigger) {
 		// The engine shape names the run index of a node \`runIndex\`.
 		const runIndex: number = 0;
+		${parts.declaration}
 		const out: Json[] = ${expr};
 		return out;
 	},

@@ -83,6 +83,14 @@ const N8N_ROOTS = new Set([
 	'item',
 ]);
 
+/**
+ * Members of the error of a failed request that native code does not give as v1 does. v1's
+ * Code node gets the error through its task runner as plain JSON (`AxiosError.toJSON`):
+ * `message`, `name`, `code`, `status`, and also `stack` and `config`. It has no `response`.
+ * The fallback host gives `response` and `isAxiosError`, so code that reads them stays there.
+ */
+const REQUEST_ERROR_GAPS = new Set(['config', 'response', 'isAxiosError', 'request']);
+
 const ERROR_CONSTRUCTORS = new Set([
 	'Date',
 	'Error',
@@ -184,7 +192,13 @@ function groupText(e: ts.Expression): string | null {
 export function planCatch(
 	t: ts.TryStatement,
 	checker: ts.TypeChecker,
-	known: { dateVars: Set<ts.Symbol> },
+	known: {
+		dateVars: Set<ts.Symbol>;
+		/** What an `await` waits for: a request, a call of a local async function, or a value. */
+		awaited?: (n: ts.AwaitExpression) => 'http' | 'call' | null;
+		/** The code makes requests, so a caught error can be the error of a failed request. */
+		requests?: boolean;
+	},
 ): CatchPlan | string {
 	const clause = t.catchClause;
 	const decl = clause?.variableDeclaration;
@@ -208,7 +222,9 @@ export function planCatch(
 			if (ts.isPropertyAccessExpression(p) && p.expression === x) {
 				const name = p.name.text;
 				if (name === 'stack' || name === 'constructor') reason = `the error's ${name}`;
-				else if (
+				else if (known.requests && REQUEST_ERROR_GAPS.has(name)) {
+					reason = `the ${name} of the error of a request`;
+				} else if (
 					name === 'toString' &&
 					ts.isCallExpression(p.parent) &&
 					p.parent.expression === p
@@ -432,9 +448,27 @@ export function planCatch(
 		) {
 			reason = `the ${x.operatorToken.getText()} operator`;
 			return;
-		} else if (ts.isDeleteExpression(x) || ts.isAwaitExpression(x)) {
-			reason = ts.isDeleteExpression(x) ? '`delete`' : '`await`';
+		} else if (ts.isDeleteExpression(x)) {
+			reason = '`delete`';
 			return;
+		} else if (ts.isAwaitExpression(x)) {
+			const kind = known.awaited?.(x) ?? null;
+			if (kind === 'http') {
+				// A failed request throws v1's error (`codeHttpResult`). The options are checked.
+				const call = strip(x.expression);
+				if (ts.isCallExpression(call)) for (const a of call.arguments) check(a);
+				return;
+			}
+			if (kind === null) {
+				reason = '`await`';
+				return;
+			}
+			// A call of a local async function: the walk checks its body. `Promise.all` is not safe.
+			const call = strip(x.expression);
+			if (!ts.isCallExpression(call) || !ts.isIdentifier(strip(call.expression))) {
+				reason = '`await` of Promise.all';
+				return;
+			}
 		} else if (ts.isSpreadElement(x) && !ts.isArrayLiteralExpression(x.parent)) {
 			reason = 'spread arguments';
 			return;
