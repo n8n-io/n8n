@@ -3,12 +3,11 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { BadRequestError, OperationalError } from '@n8n/errors';
+import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-
-import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
 
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import {
