@@ -50,6 +50,7 @@ export class WorkflowCrashJournal {
 
 	private streak: Streak | null;
 
+	/** Scheduled job attempts in flight, attempt key to workflow id. */
 	private inFlight: Map<string, string>;
 
 	/** Workflows of the executions that did not finish, until the session starts. */
