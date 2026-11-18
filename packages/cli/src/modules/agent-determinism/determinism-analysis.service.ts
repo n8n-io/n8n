@@ -132,7 +132,9 @@ export class DeterminismAnalysisService {
 		source: DeterminismSource,
 		userId: string | null,
 	): Promise<User | null> {
-		const user = userId ? await this.userRepository.findOneBy({ id: userId }) : null;
+		const user = userId
+			? await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] })
+			: null;
 		return user ?? (await this.ownershipService.getPersonalProjectOwnerCached(source.projectId));
 	}
 }
