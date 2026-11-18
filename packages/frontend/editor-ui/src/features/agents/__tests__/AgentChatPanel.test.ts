@@ -1497,6 +1497,17 @@ describe('AgentChatPanel', () => {
 			expect(mountPanel().find(toggle).exists()).toBe(false);
 		});
 
+		it('shows the toggle after the host controls of the footer', () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' }, undefined, {
+				'footer-start': '<button data-testid="host-menu" />',
+			});
+
+			const html = wrapper.html();
+			expect(html.indexOf('data-testid="host-menu"')).toBeLessThan(
+				html.indexOf('data-test-id="agent-session-files-toggle"'),
+			);
+		});
+
 		it('lists system agent files with links to the system download route', async () => {
 			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' });
 
