@@ -31,7 +31,8 @@ function isStoredClassifier(value: unknown): value is StoredClassifier {
 		isNumberArray(candidate.bias) &&
 		Array.isArray(candidate.weights) &&
 		candidate.weights.every(isNumberArray) &&
-		typeof candidate.scale === 'number'
+		typeof candidate.scale === 'number' &&
+		(candidate.center === undefined || isNumberArray(candidate.center))
 	);
 }
 

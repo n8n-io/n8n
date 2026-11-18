@@ -2,6 +2,7 @@ export type SoftmaxModel = {
 	weights: number[][];
 	bias: number[];
 	scale: number;
+	center?: number[];
 };
 
 export type Prediction = {
@@ -56,16 +57,27 @@ function defaultEpochs(exampleCount: number, classCount: number, dimensions: num
 	return Math.round(Math.min(1000, Math.max(200, epochs)));
 }
 
+function meanVector(vectors: number[][]): number[] {
+	const mean = new Array<number>(vectors[0].length).fill(0);
+	for (const vector of vectors) for (let d = 0; d < mean.length; d++) mean[d] += vector[d];
+	return mean.map((sum) => sum / vectors.length);
+}
+
+const subtract = (vector: number[], center: number[] | undefined) =>
+	center ? vector.map((value, d) => value - center[d]) : vector;
+
 export function trainSoftmax(
-	vectors: number[][],
+	rawVectors: number[][],
 	labels: number[],
 	classCount: number,
 	{
-		epochs = defaultEpochs(vectors.length, classCount, vectors[0].length),
+		epochs = defaultEpochs(rawVectors.length, classCount, rawVectors[0].length),
 		learningRate = 2,
 		l2 = 1e-3,
 	}: TrainOptions = {},
 ): SoftmaxModel {
+	const center = meanVector(rawVectors);
+	const vectors = rawVectors.map((vector) => subtract(vector, center));
 	const dimensions = vectors[0].length;
 	const weights = Array.from({ length: classCount }, () => new Float64Array(dimensions));
 	const bias = new Float64Array(classCount);
@@ -101,12 +113,13 @@ export function trainSoftmax(
 		weights: weights.map((row) => Array.from(row, round)),
 		bias: Array.from(bias, round),
 		scale,
+		center: center.map(round),
 	};
 }
 
 export function predict(model: SoftmaxModel, vector: number[]): Prediction {
 	const probabilities = Array.from(
-		softmax(computeLogits(model.weights, model.bias, vector, model.scale)),
+		softmax(computeLogits(model.weights, model.bias, subtract(vector, model.center), model.scale)),
 	);
 	let index = 0;
 	for (let c = 1; c < probabilities.length; c++) {

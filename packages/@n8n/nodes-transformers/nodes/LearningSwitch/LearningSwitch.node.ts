@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -18,6 +19,78 @@ import { predictBySimilarity } from '../../engine/zero-shot';
 
 const DEFAULT_TEXT_MODEL = 'Xenova/multilingual-e5-small';
 const DEFAULT_IMAGE_MODEL = 'Xenova/clip-vit-base-patch32';
+
+const textModelParameter: INodeProperties = {
+	displayName: 'Text Model',
+	name: 'textModel',
+	type: 'options',
+	options: [
+		{
+			name: 'Multilingual E5 Small',
+			value: DEFAULT_TEXT_MODEL,
+			description: 'About 120 MB, 100 languages, needs about 1.3 GB of memory',
+		},
+		{
+			name: 'All MiniLM L6 V2',
+			value: 'Xenova/all-MiniLM-L6-v2',
+			description: 'About 25 MB, English only, fastest, needs about 0.5 GB of memory',
+		},
+		{
+			name: 'Custom',
+			value: 'custom',
+			description: 'Any transformers.js feature-extraction model from Hugging Face',
+		},
+	],
+	default: DEFAULT_TEXT_MODEL,
+	description:
+		'The model that turns text into vectors. It downloads on first use and runs on this instance.',
+};
+
+const imageModelParameter: INodeProperties = {
+	displayName: 'Image Model',
+	name: 'imageModel',
+	type: 'options',
+	options: [
+		{
+			name: 'CLIP ViT-B/32',
+			value: DEFAULT_IMAGE_MODEL,
+			description: 'About 150 MB, understands images and English text',
+		},
+		{
+			name: 'Custom',
+			value: 'custom',
+			description: 'Another CLIP model from Hugging Face in transformers.js format',
+		},
+	],
+	default: DEFAULT_IMAGE_MODEL,
+	description:
+		'The model that turns images into vectors. It downloads on first use and runs on this instance.',
+};
+
+const customModelParameter = (placeholder: string): INodeProperties => ({
+	displayName: 'Custom Model ID',
+	name: 'customModel',
+	type: 'string',
+	required: true,
+	default: '',
+	placeholder,
+});
+
+const modelParameters: INodeProperties[] = [
+	{ operation: ['train'] },
+	{ operation: ['classify'], classifyWith: ['descriptions'] },
+].flatMap((when) => [
+	{ ...textModelParameter, displayOptions: { show: { ...when, inputType: ['text'] } } },
+	{ ...imageModelParameter, displayOptions: { show: { ...when, inputType: ['image'] } } },
+	{
+		...customModelParameter('e.g. Xenova/bge-small-en-v1.5'),
+		displayOptions: { show: { ...when, inputType: ['text'], textModel: ['custom'] } },
+	},
+	{
+		...customModelParameter('e.g. Xenova/clip-vit-base-patch16'),
+		displayOptions: { show: { ...when, inputType: ['image'], imageModel: ['custom'] } },
+	},
+]);
 
 type OutputClass = { name: string; description?: string };
 
@@ -353,83 +426,7 @@ export class LearningSwitch implements INodeType {
 				description: 'The class of this example',
 				displayOptions: { show: { operation: ['train'] } },
 			},
-			{
-				displayName: 'Text Model',
-				name: 'textModel',
-				type: 'options',
-				options: [
-					{
-						name: 'Multilingual E5 Small',
-						value: DEFAULT_TEXT_MODEL,
-						description: 'About 120 MB, 100 languages',
-					},
-					{
-						name: 'All MiniLM L6 V2',
-						value: 'Xenova/all-MiniLM-L6-v2',
-						description: 'About 25 MB, English only, fastest',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Any transformers.js feature-extraction model from Hugging Face',
-					},
-				],
-				default: DEFAULT_TEXT_MODEL,
-				description:
-					'The model that turns text into vectors. It downloads on first use and runs on this instance.',
-				displayOptions: {
-					show: showFor('text'),
-					hide: { classifyWith: ['trained'] },
-				},
-			},
-			{
-				displayName: 'Image Model',
-				name: 'imageModel',
-				type: 'options',
-				options: [
-					{
-						name: 'CLIP ViT-B/32',
-						value: DEFAULT_IMAGE_MODEL,
-						description: 'About 150 MB, understands images and English text',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Another CLIP model from Hugging Face in transformers.js format',
-					},
-				],
-				default: DEFAULT_IMAGE_MODEL,
-				description:
-					'The model that turns images into vectors. It downloads on first use and runs on this instance.',
-				displayOptions: {
-					show: showFor('image'),
-					hide: { classifyWith: ['trained'] },
-				},
-			},
-			{
-				displayName: 'Custom Model ID',
-				name: 'customModel',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'e.g. Xenova/bge-small-en-v1.5',
-				displayOptions: {
-					show: { '/textModel': ['custom'], inputType: ['text'] },
-					hide: { classifyWith: ['trained'] },
-				},
-			},
-			{
-				displayName: 'Custom Model ID',
-				name: 'customModel',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'e.g. Xenova/clip-vit-base-patch16',
-				displayOptions: {
-					show: { '/imageModel': ['custom'], inputType: ['image'] },
-					hide: { classifyWith: ['trained'] },
-				},
-			},
+			...modelParameters,
 			{
 				displayName: 'Outputs',
 				name: 'classes',
