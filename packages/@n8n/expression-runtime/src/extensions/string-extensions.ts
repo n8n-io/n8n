@@ -285,14 +285,9 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	const result = EMAIL_REGEXP.test(value);
+	const matched = EMAIL_REGEXP.exec(value);
 
-	// email regex is loose so check manually for now
-	if (result && value.includes(' ')) {
-		return false;
-	}
-
-	return result;
+	return matched !== null && matched[0] === value;
 }
 
 function toTitleCase(value: string) {
