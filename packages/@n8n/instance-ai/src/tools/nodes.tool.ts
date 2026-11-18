@@ -22,6 +22,7 @@ import {
 } from '@n8n/api-types';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { isToolType } from 'n8n-workflow';
+import type { IBinaryKeyData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -31,6 +32,7 @@ import type { ExploreResourcesParams, InstanceAiContext, NodeDescription } from 
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
+import { readInputFiles, workflowFilesOf } from './shared/workflow-files';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -76,6 +78,8 @@ export type NodeTypeRequest = z.infer<typeof nodeRequestSchema>;
 
 const MAX_EXECUTE_TIMEOUT_MS = 600_000;
 
+const INPUT_ITEMS_DESCRIPTION = 'Input items for the node (defaults to one empty item)';
+
 const executeNodeFieldsShape = {
 	type: z.string().min(1).describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
@@ -103,7 +107,7 @@ const executeNodeFieldsShape = {
 	input: z
 		.array(z.object({ json: z.record(z.unknown()) }))
 		.optional()
-		.describe('Input items for the node (defaults to one empty item)'),
+		.describe(INPUT_ITEMS_DESCRIPTION),
 	timeoutMs: z
 		.number()
 		.int()
@@ -115,7 +119,37 @@ const executeNodeFieldsShape = {
 		),
 };
 
-const executeNodeInputSchema = z.object(executeNodeFieldsShape);
+// Only when the host can pass files to node runs. See `createExecuteNodeTool`.
+const executeNodeFileFieldsShape = {
+	input: z
+		.array(
+			z.object({
+				json: z.record(z.unknown()),
+				files: z
+					.record(z.string(), z.string())
+					.optional()
+					.describe(
+						'Files of this conversation to give this item as binary data. ' +
+							'Key = binary property name (usually "data"), value = fileId, such as the fileId of a user upload, ' +
+							'of a file from `share-files`, or of a file that a run returned.',
+					),
+			}),
+		)
+		.optional()
+		.describe(INPUT_ITEMS_DESCRIPTION),
+	storeFiles: z
+		.boolean()
+		.optional()
+		.describe(
+			'Store the files (binary data) of the output items as conversation files, at most 10. ' +
+				'The result lists them in `files` with a fileId. Without it, binary output is metadata only and is lost after the run.',
+		),
+};
+
+const executeNodeInputSchema = z.object({
+	...executeNodeFieldsShape,
+	...executeNodeFileFieldsShape,
+});
 
 type ExecuteInput = z.infer<typeof executeNodeInputSchema>;
 
@@ -507,11 +541,25 @@ async function handleExecute(
 		await context.grantSessionToolApproval?.(grantKey);
 	}
 
+	const workflowFiles = workflowFilesOf(context);
+	let items: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
+	if (input.input) {
+		items = [];
+		for (const { json, files } of input.input) {
+			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
+			if (error) return { status: 'error' as const, error: { message: error } };
+			items.push(binary ? { json, binary } : { json });
+		}
+	}
+
 	return await executeNodeService.execute({
 		type: input.type,
 		version: input.version,
 		config: input.config,
-		input: input.input,
+		input: items,
+		...(workflowFiles && input.storeFiles
+			? { storeOutputFile: workflowFiles.storeWorkflowFile }
+			: {}),
 		timeoutMs: input.timeoutMs,
 	});
 }
@@ -837,7 +885,15 @@ export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 		.build();
 }
 
+const EXECUTE_NODE_DESCRIPTION =
+	'Execute a single n8n node standalone with real credentials and return its real output items. ' +
+	'Use it to perform a one-off operation or to learn the exact output shape of a node before wiring ' +
+	'downstream expressions. Always read the node by running `get_node_types` through `call_tool` first and build the parameters ' +
+	'from it — never guess parameter names, resource/operation values, or the version. The node really ' +
+	'runs (requires user approval, real side effects). Expressions referencing other nodes cannot resolve; ';
+
 export function createExecuteNodeTool(context: InstanceAiContext) {
+	const withFiles = workflowFilesOf(context) !== undefined;
 	return new Tool(DOMAIN_TOOL_IDS.EXECUTE_NODE)
 		.legacyNames(
 			...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTE_NODE),
@@ -847,14 +903,14 @@ export function createExecuteNodeTool(context: InstanceAiContext) {
 			...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES),
 		)
 		.description(
-			'Execute a single n8n node standalone with real credentials and return its real output items. ' +
-				'Use it to perform a one-off operation or to learn the exact output shape of a node before wiring ' +
-				'downstream expressions. Always read the node by running `get_node_types` through `call_tool` first and build the parameters ' +
-				'from it — never guess parameter names, resource/operation values, or the version. The node really ' +
-				'runs (requires user approval, real side effects). Expressions referencing other nodes cannot resolve; ' +
-				'binary output is returned as metadata only.',
+			EXECUTE_NODE_DESCRIPTION +
+				(withFiles
+					? 'give an input item conversation files with its `files`, and keep the binary output with `storeFiles`.'
+					: 'binary output is returned as metadata only.'),
 		)
-		.input(sanitizeInputSchema(executeNodeInputSchema))
+		.input(
+			sanitizeInputSchema(withFiles ? executeNodeInputSchema : z.object(executeNodeFieldsShape)),
+		)
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input, ctx) => {

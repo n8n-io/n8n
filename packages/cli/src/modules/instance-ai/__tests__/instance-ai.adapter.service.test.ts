@@ -807,6 +807,18 @@ describe('redactExecuteNodeResult', () => {
 		});
 	});
 
+	it('keeps the stored output files', () => {
+		const files = [{ fileId: 'f-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 }];
+		const skippedFiles = { total: 1, files: [{ fileName: 'b.png', reason: 'larger than 50 MB' }] };
+
+		const result = redactExecuteNodeResult(
+			{ status: 'success', output: [[{ json: {} }]], files, skippedFiles },
+			true,
+		);
+
+		expect(result).toMatchObject({ status: 'success', files, skippedFiles });
+	});
+
 	it('returns the items inside the untrusted-data boundary when sending values is allowed', () => {
 		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
 
@@ -2208,6 +2220,48 @@ describe('executeNodeService adapter', () => {
 			'required permissions',
 		);
 		expect(executeNodeService.run).not.toHaveBeenCalled();
+	});
+
+	describe('files', () => {
+		const png = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
+		const stored = { fileId: 'f-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 };
+
+		async function runWithFiles(allowSendingParameterValues: boolean) {
+			mockedUserHasScopes.mockResolvedValue(true);
+			const executeNodeService = {
+				run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
+			};
+			const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+			const context = service.createContext(mockUser, {
+				projectId: 'team-project-1',
+				allowSendingParameterValues,
+			});
+			const storeOutputFile = vi.fn().mockResolvedValue(stored);
+			await context.executeNodeService?.execute({
+				...executeRequest,
+				input: [{ json: {}, binary: { data: png } }],
+				storeOutputFile,
+			});
+			return { request: executeNodeService.run.mock.calls[0][1], storeOutputFile };
+		}
+
+		it('passes the input files and stores each output file one time', async () => {
+			const { request, storeOutputFile } = await runWithFiles(true);
+
+			expect(request.input).toEqual([{ json: {}, binary: { data: png } }]);
+			const result = await request.storeOutputFiles([
+				{ json: {}, binary: { data: png } },
+				{ json: {}, binary: { copy: png } },
+			]);
+			expect(storeOutputFile).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ files: [stored] });
+		});
+
+		it('stores no output files when the privacy setting hides the output', async () => {
+			const { request } = await runWithFiles(false);
+
+			expect(request).not.toHaveProperty('storeOutputFiles');
+		});
 	});
 });
 

@@ -6,6 +6,7 @@ import {
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { OperationalError } from '@n8n/errors';
 import type { Mock } from 'vitest';
+import type { z } from 'zod';
 
 import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import { RESOURCE_EXPLORATION_UNAVAILABLE } from '../../constants/resource-exploration';
@@ -1092,6 +1093,91 @@ describe('nodes tools', () => {
 			);
 
 			expect(result).toMatchObject({ status: 'error' });
+		});
+
+		describe('files', () => {
+			const pngBinary = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
+
+			function contextWithFiles() {
+				const storedFiles = {
+					read: vi.fn(),
+					readBinary: vi.fn(async (fileId: string) =>
+						fileId === 'file-1' ? pngBinary : undefined,
+					),
+					storeWorkflowFile: vi.fn(),
+				};
+				const executeNodeService = {
+					execute: vi.fn().mockResolvedValue({ status: 'success', output: '' }),
+				};
+				const context = createMockContext({ executeNodeService, storedFiles });
+				return { context, storedFiles, executeNodeService };
+			}
+
+			const inputShape = (context: InstanceAiContext) =>
+				(createExecuteNodeTool(context).inputSchema as z.AnyZodObject).shape;
+			const itemShape = (context: InstanceAiContext) =>
+				(
+					(inputShape(context).input as z.ZodOptional<z.ZodArray<z.AnyZodObject>>).unwrap()
+						.element as z.AnyZodObject
+				).shape;
+
+			it('takes files only when the host can pass files to node runs', () => {
+				expect(itemShape(createMockContext())).not.toHaveProperty('files');
+				expect(inputShape(createMockContext())).not.toHaveProperty('storeFiles');
+				expect(itemShape(contextWithFiles().context)).toHaveProperty('files');
+				expect(inputShape(contextWithFiles().context)).toHaveProperty('storeFiles');
+			});
+
+			it('gives each item its files and stores the output files when asked', async () => {
+				const { context, storedFiles, executeNodeService } = contextWithFiles();
+
+				await executeTool(
+					createExecuteNodeTool(context),
+					{
+						...executeInput,
+						input: [{ json: { n: 1 } }, { json: { n: 2 }, files: { data: 'file-1' } }],
+						storeFiles: true,
+					} as never,
+					{ resumeData: { approved: true } } as never,
+				);
+
+				expect(storedFiles.readBinary).toHaveBeenCalledWith('file-1');
+				const request = executeNodeService.execute.mock.calls[0][0];
+				expect(request.input).toEqual([
+					{ json: { n: 1 } },
+					{ json: { n: 2 }, binary: { data: pngBinary } },
+				]);
+				await request.storeOutputFile(pngBinary);
+				expect(storedFiles.storeWorkflowFile).toHaveBeenCalledWith(pngBinary);
+			});
+
+			it('stores no output files without storeFiles', async () => {
+				const { context, executeNodeService } = contextWithFiles();
+
+				await executeTool(
+					createExecuteNodeTool(context),
+					executeInput as never,
+					{ resumeData: { approved: true } } as never,
+				);
+
+				expect(executeNodeService.execute.mock.calls[0][0]).not.toHaveProperty('storeOutputFile');
+			});
+
+			it('does not run the node with a file that the conversation does not have', async () => {
+				const { context, executeNodeService } = contextWithFiles();
+
+				const result = await executeTool(
+					createExecuteNodeTool(context),
+					{ ...executeInput, input: [{ json: {}, files: { data: 'other' } }] } as never,
+					{ resumeData: { approved: true } } as never,
+				);
+
+				expect(result).toEqual({
+					status: 'error',
+					error: { message: 'File "other" not found in this conversation' },
+				});
+				expect(executeNodeService.execute).not.toHaveBeenCalled();
+			});
 		});
 	});
 

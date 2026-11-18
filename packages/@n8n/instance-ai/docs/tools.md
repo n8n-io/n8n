@@ -1140,10 +1140,11 @@ so the agent can pass a node it is building verbatim:
 | `version` | number | yes | Node type version |
 | `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
 | `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
-| `input` | array | no | Input items `{ json }` (defaults to one empty item) |
+| `input` | array | no | Input items `{ json, files? }` (defaults to one empty item). `files` maps a binary property name to a fileId, and the files become binary data of that item. `files` is there only when the host can store files |
 | `timeoutMs` | number | no | Max execution time (default 30s, max 10 min). `EXECUTIONS_TIMEOUT_MAX` can lower the max |
+| `storeFiles` | boolean | no | Store the files of the output items as conversation files. Only when the host can store files |
 
-**Returns**: `{ status: 'success', output }` or
+**Returns**: `{ status: 'success', output, files?, skippedFiles?: { total, files } }` or
 `{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
 output is the serialized items inside an `<untrusted_data
 source="execution-output">` boundary, the same envelope the workflow-execution
@@ -1153,6 +1154,17 @@ called. Binary output is reduced to metadata (`fileName`, `mimeType`,
 items).
 When `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is disabled, output items and
 upstream error details are suppressed, mirroring `workflow_builder_executions(action="run")`.
+
+The temporary execution and its binary data are deleted after the run. With
+`storeFiles`, n8n copies the output files to conversation files before that, at
+most 10, one time for each binary. The result lists them in `files` with their
+fileId. `skippedFiles.files` lists at most 10 files that were not stored, and
+`skippedFiles.total` counts all of them. A failed or redacted run,
+or a run with output items suppressed by the privacy setting, stores no files.
+The input `files` entries point to the stored bytes of the conversation files,
+so the deletion does not touch them. The host offers `files` and `storeFiles`
+only when it sets `readBinary` and `storeWorkflowFile` on `storedFiles`.
+
 Wait states are not supported — a node that starts waiting (e.g. Wait,
 send-and-wait operations) returns an error.
 
