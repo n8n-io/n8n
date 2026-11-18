@@ -14,6 +14,7 @@ import {
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
+import WorkflowConstellation from '@/features/workflows/canvas/components/constellation/WorkflowConstellation.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -2128,6 +2129,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style.wrapper">
+		<WorkflowConstellation v-if="!isLoading" />
 		<WorkflowCanvas
 			v-if="!isLoading"
 			:id="workflowDocumentStore?.workflowId"
