@@ -1,5 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	READ_ONLY_ANNOTATIONS,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
 import * as mode from './mode';
 import { configuredInputs } from '../helpers/utils';
@@ -9,6 +13,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	group: ['transform'],
 	description: 'Merges data of multiple streams once data from both is available',
+	annotations: READ_ONLY_ANNOTATIONS,
 	version: [3, 3.1, 3.2, 3.3],
 	defaults: {
 		name: 'Merge',

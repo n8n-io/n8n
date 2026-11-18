@@ -21,8 +21,8 @@ const turns = (agentTree: InstanceAiAgentNode) =>
 const getLatestBuildResult = (node: InstanceAiAgentNode) => utils.getLatestBuildResult(turns(node));
 const getLatestDataTableResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestDataTableResult(turns(node));
-const getLatestDeletedDataTableId = (node: InstanceAiAgentNode) =>
-	utils.getLatestDeletedDataTableId(turns(node));
+const getLatestDeletedDataTableIds = (node: InstanceAiAgentNode) =>
+	utils.getLatestDeletedDataTableIds(turns(node));
 const getLatestWorkflowUpdateResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestWorkflowUpdateResult(turns(node));
 const getLatestAgentArtifactResult = (node: InstanceAiAgentNode) =>
@@ -64,6 +64,23 @@ function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAi
 		timeline: [],
 		...overrides,
 	};
+}
+
+/** A finished `change_data_tables` call with the given result. */
+function batchCall(
+	result: Record<string, unknown>,
+	toolCallId = 'tc-batch',
+): InstanceAiToolCallState {
+	return makeToolCall({
+		toolCallId,
+		toolName: 'change_data_tables',
+		args: { changes: [] },
+		result,
+	});
+}
+
+function applied(index: number, action: string, id: string) {
+	return { index, action, table: { id, name: `Table ${id}`, projectId: 'proj-1' }, result: {} };
 }
 
 describe('getLatestBuildResult', () => {
@@ -581,9 +598,72 @@ describe('getLatestDataTableResult', () => {
 	});
 });
 
-describe('getLatestDeletedDataTableId', () => {
+describe('getLatestDataTableResult for batch data table changes', () => {
+	test('returns the last table that the batch changed', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: true,
+					applied: [applied(0, 'create', 'dt-a'), applied(1, 'insert-rows', 'dt-b')],
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({
+			dataTableId: 'dt-b',
+			toolCallId: 'tc-batch',
+		});
+	});
+
+	test('ignores tables that the batch deleted', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: true,
+					applied: [
+						applied(0, 'insert-rows', 'dt-a'),
+						applied(1, 'insert-rows', 'dt-b'),
+						applied(2, 'delete', 'dt-b'),
+					],
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)?.dataTableId).toBe('dt-a');
+	});
+
+	test('returns an applied table of a batch that failed later', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: false,
+					applied: [applied(0, 'add-column', 'dt-a')],
+					failed: { index: 1, action: 'insert-rows', error: 'Bad value' },
+					skipped: [2],
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)?.dataTableId).toBe('dt-a');
+	});
+
+	test('skips a batch that only deleted tables, or that is still loading', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall(
+					{ success: true, applied: [applied(0, 'create', 'dt-old')], skipped: [] },
+					'tc-1',
+				),
+				batchCall({ success: true, applied: [applied(0, 'delete', 'dt-x')], skipped: [] }, 'tc-2'),
+				{ ...batchCall({}, 'tc-3'), isLoading: true, result: undefined },
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({ dataTableId: 'dt-old', toolCallId: 'tc-1' });
+	});
+});
+
+describe('getLatestDeletedDataTableIds', () => {
 	test('returns undefined for node with no tool calls', () => {
-		expect(getLatestDeletedDataTableId(makeAgentNode())).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(makeAgentNode())).toEqual([]);
 	});
 
 	test('returns undefined for non-delete-data-table tool calls', () => {
@@ -596,7 +676,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined for loading delete-data-table call', () => {
@@ -609,7 +689,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined when delete-data-table result has success: false', () => {
@@ -622,7 +702,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns undefined when args lacks dataTableId', () => {
@@ -635,7 +715,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBeUndefined();
+		expect(getLatestDeletedDataTableIds(node)).toEqual([]);
 	});
 
 	test('returns dataTableId from successful delete-data-table', () => {
@@ -648,7 +728,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBe('dt-deleted');
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-deleted']);
 	});
 
 	test('returns the latest result when multiple deletes exist', () => {
@@ -668,7 +748,7 @@ describe('getLatestDeletedDataTableId', () => {
 				}),
 			],
 		});
-		expect(getLatestDeletedDataTableId(node)).toBe('dt-new');
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-new']);
 	});
 
 	test('finds result in child agent nodes', () => {
@@ -683,7 +763,39 @@ describe('getLatestDeletedDataTableId', () => {
 			],
 		});
 		const parent = makeAgentNode({ children: [child] });
-		expect(getLatestDeletedDataTableId(parent)).toBe('dt-child');
+		expect(getLatestDeletedDataTableIds(parent)).toEqual(['dt-child']);
+	});
+
+	test('returns every table that the latest batch deleted', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				batchCall({
+					success: false,
+					applied: [
+						applied(0, 'delete', 'dt-a'),
+						applied(1, 'insert-rows', 'dt-b'),
+						applied(2, 'delete', 'dt-c'),
+					],
+					failed: { index: 3, action: 'delete', error: 'Not found' },
+					skipped: [],
+				}),
+			],
+		});
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-a', 'dt-c']);
+	});
+
+	test('skips a batch that deleted no table', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'data_tables',
+					args: { action: 'delete', dataTableId: 'dt-old' },
+					result: { success: true },
+				}),
+				batchCall({ success: true, applied: [applied(0, 'insert-rows', 'dt-b')], skipped: [] }),
+			],
+		});
+		expect(getLatestDeletedDataTableIds(node)).toEqual(['dt-old']);
 	});
 });
 

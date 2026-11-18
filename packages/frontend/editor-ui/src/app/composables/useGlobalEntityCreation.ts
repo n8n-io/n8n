@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
@@ -560,7 +561,10 @@ export const useGlobalEntityCreation = () => {
 				type: 'success',
 			});
 			foldersEventBus.emit('folder-created', { projectId: project.id });
-			telemetry.track('User created folder', { folder_id: newFolder.id });
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CREATED_FOLDER, {
+				resource_type: 'workflow',
+				folder_id: newFolder.id,
+			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.create.error.title'));
 		}

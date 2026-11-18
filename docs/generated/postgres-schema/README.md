@@ -108,6 +108,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
+| [public.lease](public.lease.md) | 11 |  | BASE TABLE |
+| [public.lease_kind](public.lease_kind.md) | 7 |  | BASE TABLE |
+| [public.lease_session](public.lease_session.md) | 7 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
@@ -148,7 +151,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 8 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_source](public.skill_source.md) | 14 |  | BASE TABLE |
+| [public.skill_source](public.skill_source.md) | 15 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -371,6 +374,8 @@ erDiagram
 "public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
+"public.lease" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
+"public.lease_session" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;assignedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -1545,6 +1550,37 @@ erDiagram
   timestamp_3__with_time_zone expiresAt
   varchar_512_ token
 }
+"public.lease" {
+  timestamp_3__with_time_zone claimedAt
+  timestamp_3__with_time_zone createdAt
+  json data
+  varchar_64_ dataHash
+  bigint fencingToken
+  varchar_255_ key
+  varchar_24_ leaseKind FK
+  uuid leaseSessionId
+  timestamp_3__with_time_zone readyAt
+  timestamp_3__with_time_zone revokedAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.lease_kind" {
+  timestamp_3__with_time_zone createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind
+  timestamp_3__with_time_zone lastFullSyncAt
+  timestamp_3__with_time_zone syncLockExpiresAt
+  uuid syncLockRoundId
+  timestamp_3__with_time_zone updatedAt
+}
+"public.lease_session" {
+  uuid bootId
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone expiresAt
+  varchar_255_ hostId
+  uuid id
+  integer leaseDurationSeconds
+  varchar_24_ leaseKind FK
+}
 "public.mcp_registry_server" {
   timestamp_3__with_time_zone createdAt
   json data
@@ -1928,6 +1964,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  json unlinkedSkills
   timestamp_3__with_time_zone updatedAt
 }
 "public.skill_source_link" {

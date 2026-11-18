@@ -12,6 +12,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './skills/index';
+export * from './knowledge/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
 export * from './schemas/app-binding.schema';
@@ -421,6 +422,7 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildWorkflowActionSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
@@ -551,6 +553,7 @@ export {
 	InstanceAiEvalSeedDataTableRowsRequest,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
+	InstanceAiCloudBrowserReturnControlRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	instanceAiAgentAttachmentSchema,
@@ -748,6 +751,7 @@ export type {
 	InstanceGatewayResourceDecision,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	InstanceAiEvalNodeExecutionMode,
@@ -1036,7 +1040,10 @@ export {
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
+	DATA_TABLE_CHANGE_SEVERITY,
+	isSessionGrantableDataTableAction,
 	type InstanceAiApprovalDetails,
+	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,
 	type InstanceAiApprovalPreferences,
 	type InstanceAiAutoApprovalDecider,
@@ -1096,8 +1103,10 @@ export {
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
 export {
+	DEFAULT_EXECUTION_LIMIT_SETTINGS,
 	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
 	EXECUTION_LIMIT_PERIOD_UNITS,
+	executionLimitMaxExecutionsSchema,
 	executionLimitSettingsSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,

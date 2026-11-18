@@ -11,6 +11,8 @@ import { orchestratorAgentId } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { secondsSinceSaved } from '@/services/ai-preference-write';
 
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -34,7 +36,14 @@ export class InstanceAiPreferenceCardService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly telemetry: TelemetryProxy,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 	) {}
+
+	private requirePreferencesEnabled(): void {
+		if (!this.aiPreferenceSettingsService.isEnabled) {
+			throw new NotFoundError('Preferences are turned off');
+		}
+	}
 
 	async undo(
 		user: User,
@@ -42,6 +51,7 @@ export class InstanceAiPreferenceCardService {
 		preferenceId: string,
 		{ runId, toolCallId }: InstanceAiPreferenceCardUndoRequestDto,
 	): Promise<InstanceAiPreferenceCardEvent> {
+		this.requirePreferencesEnabled();
 		// Read before the delete: the removal reports the scope and the age of the row, and both
 		// are gone once the row is.
 		const removed = await this.aiPreferenceService.getById(user, preferenceId);
@@ -86,6 +96,7 @@ export class InstanceAiPreferenceCardService {
 			userId,
 		}: InstanceAiPreferenceCardEditRequestDto,
 	): Promise<InstanceAiPreferenceCardEditResponse> {
+		this.requirePreferencesEnabled();
 		// The scope this edit found, for the report only. A card edit that names no scope
 		// leaves the target to the write itself, so a move that lands between this read and
 		// the write changes what is reported, never what is saved.

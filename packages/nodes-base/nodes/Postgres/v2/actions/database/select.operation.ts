@@ -7,6 +7,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { getStartAfter, getStartAfterSortRules } from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -22,8 +23,6 @@ import {
 	addStartAfterClause,
 	addWhereClauses,
 	checkStartAfterColumn,
-	getStartAfter,
-	getStartAfterSortRules,
 	getWhereClauses,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
