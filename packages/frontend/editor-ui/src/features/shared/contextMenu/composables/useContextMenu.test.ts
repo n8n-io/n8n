@@ -33,6 +33,12 @@ import {
 
 const mockEmptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: true }));
 
+const pagesWorkflowId = vi.hoisted(() => ({ value: undefined as string | undefined }));
+
+vi.mock('@/features/pages/composables/usePagesWorkflowId', () => ({
+	usePagesWorkflowId: () => pagesWorkflowId,
+}));
+
 vi.mock('@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag', () => ({
 	useEmptyCanvasGroupsFlag: () => mockEmptyCanvasGroupsEnabled,
 }));
@@ -1018,6 +1024,45 @@ describe('useContextMenu', () => {
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
 		expect(targetNodeIds.value).toEqual([node.id]);
+	});
+
+	describe('Copy link to node action', () => {
+		afterEach(() => {
+			pagesWorkflowId.value = undefined;
+		});
+
+		it('should offer the action for one node of a workflow that pages can link to', () => {
+			pagesWorkflowId.value = 'w1';
+			const { open, actions } = useContextMenu();
+			const node = nodeFactory();
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
+
+			open(mockEvent, { source: 'node-right-click', nodeId: node.id });
+
+			const copyLinkAction = actions.value.find((action) => action.id === 'copy_node_link');
+			expect(copyLinkAction?.label).toBe('Copy link to node');
+		});
+
+		it('should hide the action when pages cannot link to the workflow', () => {
+			const { open, actions } = useContextMenu();
+			const node = nodeFactory();
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
+
+			open(mockEvent, { source: 'node-right-click', nodeId: node.id });
+
+			expect(actions.value.find((action) => action.id === 'copy_node_link')).toBeUndefined();
+		});
+
+		it('should hide the action on a sticky note', () => {
+			pagesWorkflowId.value = 'w1';
+			const { open, actions } = useContextMenu();
+			const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(sticky);
+
+			open(mockEvent, { source: 'node-right-click', nodeId: sticky.id });
+
+			expect(actions.value.find((action) => action.id === 'copy_node_link')).toBeUndefined();
+		});
 	});
 
 	describe('Webhook URL copy actions', () => {

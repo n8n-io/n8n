@@ -113,6 +113,7 @@ import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
+import { useNodeLinkCopy } from '@/features/pages/composables/useNodeLinkCopy';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
@@ -1639,6 +1640,7 @@ const groupNodeFallbackDataById = computed(() =>
  */
 
 const contextMenu = useContextMenu();
+const { copyNodeLink } = useNodeLinkCopy();
 
 // Carried on the menu target so mutating items disable on canvases that are
 // read-only through props alone (e.g. while the AI builder streams) — the
@@ -1754,6 +1756,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return emit('copy:production:url', nodeIds[0]);
 		case 'copy_test_url':
 			return emit('copy:test:url', nodeIds[0]);
+		case 'copy_node_link':
+			return await copyNodeLink(nodeIds[0]);
 		case 'toggle_activation':
 			return emit('update:nodes:enabled', nodeIds);
 		case 'open':

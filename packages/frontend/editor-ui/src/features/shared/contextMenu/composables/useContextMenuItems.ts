@@ -23,6 +23,7 @@ import { useSelectionValidation } from '@/app/composables/useSelectionValidation
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isNodeTypeRestricted } from '@n8n/frontend-module-type-availability-policies';
 import { injectContextMenuGroupView } from './contextMenuGroupView';
+import { usePagesWorkflowId } from '@/features/pages/composables/usePagesWorkflowId';
 
 export type ContextMenuAction =
 	| 'open'
@@ -33,6 +34,7 @@ export type ContextMenuAction =
 	| 'execute'
 	| 'copy_test_url'
 	| 'copy_production_url'
+	| 'copy_node_link'
 	| 'rename'
 	| 'replace'
 	| 'toggle_pin'
@@ -98,6 +100,7 @@ export function useContextMenuItems(
 	const { resolveGroupableNodeIds, isSubworkflowConversionDisabled } = useSelectionValidation();
 	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
+	const pagesWorkflowId = usePagesWorkflowId();
 
 	// Per-editor host overrides (already ANDed with the instance-wide store
 	// flags) — e.g. the Instance AI artifact preview supersedes the AI
@@ -600,6 +603,15 @@ export function useContextMenuItems(
 									nodeTypesStore.isNodeDeprecated(nodes[0]),
 							},
 							...copyWebhookActions,
+							...(pagesWorkflowId.value !== undefined
+								? [
+										{
+											divided: copyWebhookActions.length === 0,
+											id: 'copy_node_link' as const,
+											label: i18n.baseText('page.node.copyLink'),
+										},
+									]
+								: []),
 							{
 								divided: !!copyWebhookActions.length,
 								id: 'rename',
