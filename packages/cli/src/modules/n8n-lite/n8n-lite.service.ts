@@ -97,9 +97,14 @@ export class N8nLiteService {
 		const length = Buffer.alloc(8);
 		length.writeBigUInt64LE(BigInt(payload.length));
 
+		const webhook = nodes.find((node) => node.type === 'n8n-nodes-base.webhook');
+
 		return {
 			binary: Buffer.concat([runner, payload, length, MAGIC]),
 			filename: `${slugify(workflowData.name)}-${target}`,
+			reportUrl: runnerConfig.report.url,
+			webhookPath:
+				typeof webhook?.parameters.path === 'string' ? webhook.parameters.path : undefined,
 		};
 	}
 

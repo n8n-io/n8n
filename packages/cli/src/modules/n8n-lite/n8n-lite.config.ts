@@ -15,4 +15,23 @@ export class N8nLiteConfig {
 	 */
 	@Env('N8N_LITE_REPORT_BASE_URL')
 	reportBaseUrl: string = '';
+
+	/**
+	 * AWS region for "Deploy as lambda". n8n reads the AWS credentials from the
+	 * standard AWS environment variables, for example `AWS_ACCESS_KEY_ID` and
+	 * `AWS_SECRET_ACCESS_KEY`.
+	 */
+	@Env('N8N_LITE_AWS_REGION')
+	awsRegion: string = 'eu-central-1';
+
+	/** ARN of the IAM role that each deployed Lambda function runs as. */
+	@Env('N8N_LITE_LAMBDA_ROLE_ARN')
+	lambdaRoleArn: string = '';
+
+	/**
+	 * ARN of the AWS Lambda Web Adapter layer for arm64. When empty, n8n uses
+	 * version 30 of the public layer in `N8N_LITE_AWS_REGION`.
+	 */
+	@Env('N8N_LITE_LAMBDA_ADAPTER_LAYER_ARN')
+	lambdaAdapterLayerArn: string = '';
 }

@@ -7,11 +7,7 @@ export interface UnsupportedReason {
 }
 
 const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
-const TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.scheduleTrigger',
-	'n8n-nodes-base.manualTrigger',
-]);
+const TRIGGER_TYPES = new Set(['n8n-nodes-base.webhook']);
 
 const SUPPORTED_VERSIONS: Record<string, number[]> = {
 	'n8n-nodes-base.webhook': [2, 2.1, 2.2],
@@ -19,8 +15,6 @@ const SUPPORTED_VERSIONS: Record<string, number[]> = {
 	'n8n-nodes-base.if': [2, 2.1, 2.2, 2.3, 2.4],
 	'n8n-nodes-base.respondToWebhook': [1.1, 1.2, 1.3, 1.4, 1.5],
 	'n8n-nodes-base.httpRequest': [4.2, 4.3, 4.4, 4.5],
-	'n8n-nodes-base.scheduleTrigger': [1.2, 1.3, 1.4],
-	'n8n-nodes-base.manualTrigger': [1],
 };
 
 const IF_OPERATIONS = new Map<string, string[]>([
@@ -149,21 +143,12 @@ function checkHttpRequest(parameters: INodeParameters): string[] {
 	return reasons;
 }
 
-function checkScheduleTrigger(parameters: INodeParameters): string[] {
-	const intervals = asRecord(parameters.rule).interval;
-	return (Array.isArray(intervals) ? intervals : [])
-		.map((interval) => String(asRecord(interval).field ?? 'days'))
-		.filter((field) => !['seconds', 'minutes', 'hours'].includes(field))
-		.map((field) => `schedule interval "${field}" is not supported`);
-}
-
 const NODE_CHECKS: Record<string, (parameters: INodeParameters) => string[]> = {
 	'n8n-nodes-base.webhook': checkWebhook,
 	'n8n-nodes-base.set': checkSet,
 	'n8n-nodes-base.if': checkIf,
 	'n8n-nodes-base.respondToWebhook': checkRespondToWebhook,
 	'n8n-nodes-base.httpRequest': checkHttpRequest,
-	'n8n-nodes-base.scheduleTrigger': checkScheduleTrigger,
 };
 
 function checkNode(node: INode): string[] {

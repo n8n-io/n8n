@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '../types';
-import { requestResponse } from '../utils';
+import { makeRestApiRequest, requestResponse } from '../utils';
 
 export type LiteTarget = 'linux-arm64' | 'linux-x64' | 'darwin-arm64';
 
@@ -24,4 +24,17 @@ export async function downloadLiteBinary(
 		blob: response.data,
 		filename: attachmentFilename(response.headers['content-disposition']) ?? `workflow-${target}`,
 	};
+}
+
+export interface LiteLambdaDeployment {
+	functionName: string;
+	functionUrl: string;
+	webhookUrl: string;
+}
+
+export async function deployLiteLambda(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<LiteLambdaDeployment> {
+	return await makeRestApiRequest(context, 'POST', `/n8n-lite/workflows/${workflowId}/lambda`);
 }

@@ -547,6 +547,31 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Pro
 			}
 			break;
 		}
+		case WORKFLOW_MENU_ACTIONS.DEPLOY_LAMBDA: {
+			if (!props.id) break;
+			const pending = toast.showMessage({
+				title: locale.baseText('menuActions.deployLambda.pending'),
+				type: 'info',
+				duration: 0,
+			});
+			try {
+				const { webhookUrl } = await n8nLiteApi.deployLiteLambda(
+					rootStore.restApiContext,
+					props.id,
+				);
+				pending.close();
+				toast.showMessage({
+					title: locale.baseText('menuActions.deployLambda.success'),
+					message: webhookUrl,
+					type: 'success',
+					duration: 0,
+				});
+			} catch (error) {
+				pending.close();
+				toast.showError(error, locale.baseText('menuActions.deployLambda.error'));
+			}
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
 			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
 			break;

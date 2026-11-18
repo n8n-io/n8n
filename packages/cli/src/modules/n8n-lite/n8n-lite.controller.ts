@@ -3,12 +3,16 @@ import { Get, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@n8n/errors';
 import type { Request, Response } from 'express';
 
+import { N8nLiteLambdaService } from './n8n-lite-lambda.service';
 import { liteRunReportSchema, liteTargetSchema } from './n8n-lite.schemas';
 import { N8nLiteService } from './n8n-lite.service';
 
 @RestController('/n8n-lite')
 export class N8nLiteController {
-	constructor(private readonly liteService: N8nLiteService) {}
+	constructor(
+		private readonly liteService: N8nLiteService,
+		private readonly lambdaService: N8nLiteLambdaService,
+	) {}
 
 	@Get('/workflows/:workflowId/binary')
 	@ProjectScope('workflow:read')
@@ -30,6 +34,12 @@ export class N8nLiteController {
 		// Lets a cross-origin editor (local dev) read the file name.
 		res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 		res.send(binary);
+	}
+
+	@Post('/workflows/:workflowId/lambda')
+	@ProjectScope('workflow:read')
+	async deployLambda(req: AuthenticatedRequest<{ workflowId: string }>) {
+		return await this.lambdaService.deploy(req.params.workflowId, req.user);
 	}
 
 	/** Authenticated by the report token in the binary, not by a session. */
