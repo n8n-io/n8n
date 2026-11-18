@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_0356cd250cb1f3::t_7105255af6243e 16-17,21,24,32,1190-1193
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.test.ts
+  s_0356cd250cb1f3::t_36a563c96fe065 7,1008-1026
+  s_0356cd250cb1f3::t_e8740a1bca2544 1027-1028
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_0356cd250cb1f3::t_cff31d980b11cb 221-222,1208-1211,1232,1315,1587
+  s_0356cd250cb1f3::t_1ef809f7744dd0 1927-1934,1938-1943,1967-1972,1974-1977,1979-1989
+  s_0356cd250cb1f3::t_dde1f28c7b6705 98
+  s_0356cd250cb1f3::t_c8c0ed480fcbf6 1973,1978
+  s_0356cd250cb1f3::t_560101fb9a9796 1206-1207,1212,1620-1625,1627
+  s_0356cd250cb1f3::t_545964d4c0f10d 1990-1991
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_0356cd250cb1f3::t_ab8a56d9c4b886 55-59,524-525,527-528,530-531,533-534,536-553
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_0356cd250cb1f3::t_b8529cfed2174b 410-425
+  s_0356cd250cb1f3::t_e5e6e832f6b91e 7,24-29,402-409,426-468
+  s_0356cd250cb1f3::t_3e1e8893d98a82 469-470
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_0356cd250cb1f3::t_98b92b726e3a1a 888,894-897,905-909,918-939,943-1033,2084-2116
+  s_0356cd250cb1f3::t_161c33c1941c93 81,90
+  s_0356cd250cb1f3::t_65fabf9dc6dcc2 940-942
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.ts
+  s_0356cd250cb1f3::t_7105255af6243e 23,77-83
+  s_0356cd250cb1f3::t_df86a9d9718b43 84-85
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_0356cd250cb1f3::t_47de4cbffae806 22,25,233,238,243,248-249,253-254,258-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cfd7c2770c4dc87956658ae57813438ed6d4a92",
+  "prompts": {},
+  "sessions": {
+    "s_0356cd250cb1f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "454afcfb-e073-4118-b4b9-fe81402b424d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_74d7705e7f5665::t_e46285a4ad59bc 3-4,94,108-121,123-124
+  s_74d7705e7f5665::t_fd29f4c421153d 122
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_74d7705e7f5665::t_e1618f1cd28865 261
+  s_74d7705e7f5665::t_e40e54f2467bfb 2
+  s_74d7705e7f5665::t_e46285a4ad59bc 242-260,262-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1067e404c6cf2dca41658c5be7d060a1786f4686",
+  "prompts": {},
+  "sessions": {
+    "s_74d7705e7f5665": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e1b7345-f87e-410f-9acb-bf0f0d710dca",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

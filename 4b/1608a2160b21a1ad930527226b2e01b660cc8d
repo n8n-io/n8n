@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/agents/__tests__/attention-flags.test.ts
+  s_33852536738524::t_38b9ed18d2e42a 29-32
+packages/@n8n/api-types/src/agents/dto.ts
+  s_33852536738524::t_2d866d732e3975 181-187
+packages/cli/test/integration/agents/agent-attention-flags.test.ts
+  s_33852536738524::t_5fa69ca430caec 151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b1608a2160b21a1ad930527226b2e01b660cc8d",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/@n8n/code-task-contract/src/__tests__/parse.test.ts
+  h_8fb27e0cdf6d1e 80-85,94-107
+packages/@n8n/code-task-contract/src/task-input.ts
+  h_8fb27e0cdf6d1e 86-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdb526f02966b03558b63cc91efa0b61c4dcdbe0",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
