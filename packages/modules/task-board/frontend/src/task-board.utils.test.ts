@@ -1,51 +1,31 @@
 import type { TaskBoardDetail, TaskBoardTask } from '@n8n/api-types';
 
+import { createBoard, createBoardSummary, createTask } from './__tests__/fixtures';
 import type { TaskBoardListItem } from './task-board.types';
 import {
+	decodeAssignee,
+	encodeAssignee,
 	groupBoardsByProject,
 	inboxTasks,
 	isAgentWorking,
 	pickBoardToOpen,
 } from './task-board.utils';
 
-const task = (overrides: Partial<TaskBoardTask>): TaskBoardTask => ({
-	id: 't1',
-	boardId: 'b1',
-	columnId: 'waiting',
-	// The API field is called `number`, which the identifier lint rule denies.
-	['number']: 1,
-	title: 'Task',
-	description: '',
-	assignee: null,
-	createdBy: { type: 'user', id: 'other', name: 'Grace' },
-	position: 0,
-	createdAt: '2026-01-01T00:00:00.000Z',
-	updatedAt: '2026-01-01T00:00:00.000Z',
-	...overrides,
-});
+/** A task that waits for input, created by another person. */
+const task = (overrides: Partial<TaskBoardTask>): TaskBoardTask =>
+	createTask({
+		columnId: 'waiting',
+		createdBy: { type: 'user', id: 'other', name: 'Grace' },
+		...overrides,
+	});
 
 const listItem = (overrides: Partial<TaskBoardListItem>): TaskBoardListItem => ({
-	id: 'b1',
-	projectId: 'p1',
-	name: 'Board',
-	description: null,
-	templateKey: 'agent-dev',
-	workflowId: null,
-	createdAt: '2026-01-01T00:00:00.000Z',
-	updatedAt: '2026-01-01T00:00:00.000Z',
-	taskCount: 0,
+	...createBoardSummary(),
 	projectName: 'Project 1',
 	...overrides,
 });
 
-const board = (tasks: TaskBoardTask[]): TaskBoardDetail => ({
-	...listItem({}),
-	columns: [
-		{ id: 'todo', boardId: 'b1', name: 'To do', position: 0, role: 'todo' },
-		{ id: 'waiting', boardId: 'b1', name: 'Needs input', position: 1, role: 'needs_input' },
-	],
-	tasks,
-});
+const board = (tasks: TaskBoardTask[]): TaskBoardDetail => createBoard({ tasks });
 
 describe('inboxTasks', () => {
 	const agent = { type: 'agent', id: 'a1', name: 'Dev agent' } as const;
@@ -156,5 +136,19 @@ describe('isAgentWorking', () => {
 	it('is false when the column is unknown or has no role', () => {
 		expect(isAgentWorking({ assignee: agent }, undefined)).toBe(false);
 		expect(isAgentWorking({ assignee: agent }, { role: null })).toBe(false);
+	});
+});
+
+describe('encodeAssignee and decodeAssignee', () => {
+	it('gives back the assignee that was encoded, also when the id has a colon', () => {
+		expect(decodeAssignee(encodeAssignee({ type: 'agent', id: 'a:1' }))).toEqual({
+			type: 'agent',
+			id: 'a:1',
+		});
+	});
+
+	it('reads "Unassigned" and an unknown value as no assignee', () => {
+		expect(decodeAssignee(encodeAssignee(null))).toBeNull();
+		expect(decodeAssignee('workflow:w1')).toBeNull();
 	});
 });
