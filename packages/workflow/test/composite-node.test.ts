@@ -1,6 +1,7 @@
 import {
 	COMPOSITE_ENTRY_NODE_TYPE,
 	COMPOSITE_EXIT_NODE_TYPE,
+	expandCompositeNode,
 	expandComposites,
 	exposeProperties,
 	type CompositeNodeType,
@@ -216,6 +217,80 @@ describe('expandComposites', () => {
 		expect(() => expandComposites(original, nodeTypes)).toThrow(
 			'Node "Repeat" needs the name "Repeat › check 1"',
 		);
+	});
+});
+
+describe('layout of an expansion', () => {
+	const positions = (nodes: INode[]) => Object.fromEntries(nodes.map((n) => [n.name, n.position]));
+
+	it('draws inner nodes in layers from the entry and puts the exit after them', () => {
+		const repeat = {
+			...node('Repeat', 'test.repeat', { attempts: 2 }),
+			position: [100, 50] as [number, number],
+		};
+
+		const { nodes } = expandComposites({ nodes: [repeat], connections: {} }, nodeTypes);
+
+		expect(positions(nodes)).toEqual({
+			'Repeat › entry': [100, 50],
+			'Repeat › request 1': [340, 50],
+			'Repeat › check 1': [580, 50],
+			'Repeat › request 2': [820, 50],
+			'Repeat › check 2': [1060, 50],
+			Repeat: [1300, 50],
+		});
+	});
+
+	it('uses the cells the definition gives', () => {
+		class Grid extends Repeat {
+			override composite: CompositeNodeType['composite'] = {
+				expand: (c) => {
+					const done = c.exit({ output: 0 });
+					for (const row of [0, 1]) {
+						const inner = c.addNode(`step ${row}`, {
+							type: 'test.request',
+							typeVersion: 1,
+							parameters: {},
+							cell: { column: 1, row },
+						});
+						c.connect(c.entry, inner);
+						c.connect(inner, done);
+					}
+				},
+			};
+		}
+		const gridTypes: INodeTypes = { ...nodeTypes, getByNameAndVersion: () => new Grid() };
+
+		const { nodes } = expandComposites(
+			{ nodes: [node('Grid', 'test.grid')], connections: {} },
+			gridTypes,
+		);
+
+		expect(positions(nodes)).toEqual({
+			'Grid › entry': [0, 0],
+			'Grid › step 0': [240, 0],
+			'Grid › step 1': [240, 200],
+			Grid: [480, 100],
+		});
+	});
+});
+
+describe('expandCompositeNode', () => {
+	it('expands a composite on its own, even when it is disabled', () => {
+		const repeat = { ...node('Repeat', 'test.repeat', { attempts: 1 }), disabled: true };
+
+		const expanded = expandCompositeNode(repeat, nodeTypes);
+
+		expect(expanded?.nodes.map((n) => n.name)).toEqual([
+			'Repeat › entry',
+			'Repeat › request 1',
+			'Repeat › check 1',
+			'Repeat',
+		]);
+	});
+
+	it('returns nothing for a node that is not a composite', () => {
+		expect(expandCompositeNode(node('After', 'test.after'), nodeTypes)).toBeUndefined();
 	});
 });
 

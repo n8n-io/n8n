@@ -3290,6 +3290,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	features?: NodeFeaturesDefinition;
 	/** The execution engines that can run the node. Absent means every engine. */
 	engines?: Array<'v1' | 'v2'>;
+	/** The node is a composite: a small workflow of other nodes that the user can look inside. */
+	isComposite?: boolean;
 	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
 	builderHint?: IBuilderHint;
 	/**

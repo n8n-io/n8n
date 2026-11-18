@@ -9,6 +9,7 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
+import CompositeNodeLookInside from '@/features/workflows/compositeNodes/CompositeNodeLookInside.vue';
 
 type Props = {
 	nodeName: string;
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 			:class="$style.tabs"
 			@update:model-value="emit('tab-changed', $event)"
 		/>
+		<CompositeNodeLookInside v-if="nodeType?.isComposite" :node-name="nodeName" />
 		<N8nIconButton
 			v-if="!hideExecute && isExecuting"
 			data-test-id="ndv-stop-execution-button"

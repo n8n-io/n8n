@@ -34,6 +34,7 @@ import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGrou
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
@@ -78,11 +79,22 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 // (which runs the composable's teardown). The `watch` callback runs outside
 // reactive tracking, so the composable's internal reactive reads don't cause
 // re-invocation.
+//
+// Resetting the workspace disposes the execution state store and creates a new
+// one under the same document id, for example when the demo preview imports a
+// workflow that keeps the id "demo". The second source re-runs when the document
+// is hydrated again and catches the new store, so the render data follows it.
 const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 let renderDataScope: EffectScope | undefined;
 watch(
-	() => workflowDocumentStore.value.documentId,
-	(documentId) => {
+	[
+		() => workflowDocumentStore.value.documentId,
+		() => {
+			void workflowDocumentStore.value.hydrated;
+			return useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId);
+		},
+	],
+	([documentId]) => {
 		renderDataScope?.stop();
 		renderDataScope = effectScope(true);
 		renderDataScope.run(() => {

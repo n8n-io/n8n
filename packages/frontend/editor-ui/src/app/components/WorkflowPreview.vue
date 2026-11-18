@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
+import type { ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -24,6 +26,13 @@ const props = withDefaults(
 		suppressNotifications?: boolean;
 		allowErrorNotifications?: boolean;
 		canExecute?: boolean;
+		/**
+		 * Statuses to show on the nodes of `workflow`, without an execution to load.
+		 * Only used in `workflow` mode.
+		 */
+		nodeStatuses?: Record<string, ExecutionPreviewNodeSchema>;
+		/** The status of the execution that `nodeStatuses` come from. */
+		executionStatus?: ExecutionStatus;
 	}>(),
 	{
 		loading: false,
@@ -40,6 +49,8 @@ const props = withDefaults(
 		suppressNotifications: false,
 		allowErrorNotifications: false,
 		canExecute: false,
+		nodeStatuses: undefined,
+		executionStatus: undefined,
 	},
 );
 
@@ -104,6 +115,19 @@ const loadWorkflow = () => {
 			return;
 		}
 		lastSentWorkflow = props.workflow;
+		if (props.nodeStatuses) {
+			iframeRef.value?.contentWindow?.postMessage?.(
+				JSON.stringify({
+					command: 'openExecutionPreview',
+					workflow: props.workflow,
+					nodeExecutionSchema: props.nodeStatuses,
+					executionStatus: props.executionStatus ?? 'success',
+					projectId: projectsStore.currentProjectId,
+				}),
+				'*',
+			);
+			return;
+		}
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openWorkflow',

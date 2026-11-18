@@ -1,4 +1,6 @@
 export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-by-identifier.dto';
+export { ExpandCompositeNodeRequestDto } from './composite-nodes/expand-composite-node-request.dto';
+export type { ExpandedCompositeNode } from './composite-nodes/expanded-composite-node';
 
 export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';

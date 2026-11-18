@@ -36,6 +36,9 @@ export const COMPOSITE_MAX_EXIT_INPUTS = 101;
 /** Joins a composite's name and an inner step's key into the inner node's name. */
 export const COMPOSITE_NAME_SEPARATOR = ' › ';
 
+const LAYOUT_COLUMN_WIDTH = 240;
+const LAYOUT_ROW_HEIGHT = 200;
+
 export type CompositeExitSpec =
 	| { output: number }
 	/** `{index}` in the message is replaced with the 1-based position of the input in the exit. */
@@ -64,6 +67,17 @@ export interface CompositeInnerNodeSpec {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	continueOnFail?: boolean;
+	/**
+	 * Where to draw the node when the user looks inside the composite. The entry is
+	 * at column 0, row 0. Without a cell for every inner node, the nodes are drawn
+	 * in layers from the entry.
+	 */
+	cell?: CompositeLayoutCell;
+}
+
+export interface CompositeLayoutCell {
+	column: number;
+	row: number;
 }
 
 export interface CompositeBuilder {
@@ -208,6 +222,10 @@ class Expansion implements CompositeBuilder {
 
 	private readonly entryName: string;
 
+	private readonly cells = new Map<string, CompositeLayoutCell>();
+
+	private exitPosition: [number, number];
+
 	constructor(
 		readonly node: INode,
 		description: INodeTypeDescription,
@@ -217,6 +235,7 @@ class Expansion implements CompositeBuilder {
 			{};
 		this.entryName = compositeInnerNodeName(node.name, 'entry');
 		this.entry = this.handle(this.entryName);
+		this.exitPosition = node.position;
 
 		// Exit input 0 always carries the entry's items and the exit ignores them.
 		// Engine v2 fills an empty input 0 with one empty item, so no branch can use it.
@@ -274,6 +293,7 @@ class Expansion implements CompositeBuilder {
 			...(spec.credentials ? { credentials: spec.credentials } : {}),
 			...(spec.continueOnFail ? { continueOnFail: true } : {}),
 		});
+		if (spec.cell) this.cells.set(name, spec.cell);
 		return this.handle(name);
 	}
 
@@ -311,6 +331,53 @@ class Expansion implements CompositeBuilder {
 		this.connections.push({ from: source.node.name, output: source.index, to: to.name, input: 0 });
 	}
 
+	/**
+	 * Places the inner nodes and the exit around the composite's position, so the
+	 * expansion reads as a workflow when the user looks inside the composite.
+	 */
+	applyLayout(): void {
+		const cells = this.cells.size === this.nodes.length ? new Map(this.cells) : this.layeredCells();
+		const [x, y] = this.node.position;
+		const toPosition = ({ column, row }: CompositeLayoutCell): [number, number] => [
+			x + column * LAYOUT_COLUMN_WIDTH,
+			y + row * LAYOUT_ROW_HEIGHT,
+		];
+
+		for (const inner of this.nodes) {
+			const cell = cells.get(inner.name);
+			if (cell) inner.position = toPosition(cell);
+		}
+
+		const all = [...cells.values()];
+		const lastColumn = Math.max(0, ...all.map((cell) => cell.column));
+		const lastRow = Math.max(0, ...all.map((cell) => cell.row));
+		this.exitPosition = toPosition({ column: lastColumn + 1, row: lastRow / 2 });
+	}
+
+	/** Puts each inner node one column after the furthest node that connects into it. */
+	private layeredCells(): Map<string, CompositeLayoutCell> {
+		const columns = new Map<string, number>([[this.entryName, 0]]);
+		const innerNames = new Set(this.nodes.map((inner) => inner.name));
+		// The inner graph has no cycles, so a pass for each node settles every column.
+		for (let pass = 0; pass < this.nodes.length; pass++) {
+			for (const { from, to } of this.connections) {
+				const fromColumn = columns.get(from);
+				if (fromColumn === undefined || !innerNames.has(to)) continue;
+				columns.set(to, Math.max(columns.get(to) ?? 0, fromColumn + 1));
+			}
+		}
+
+		const cells = new Map<string, CompositeLayoutCell>();
+		const rowsUsed = new Map<number, number>();
+		for (const inner of this.nodes) {
+			const column = columns.get(inner.name) ?? 1;
+			const row = rowsUsed.get(column) ?? 0;
+			rowsUsed.set(column, row + 1);
+			cells.set(inner.name, { column, row });
+		}
+		return cells;
+	}
+
 	entryNode(): INode {
 		return {
 			id: `${this.node.id}:entry`,
@@ -332,6 +399,7 @@ class Expansion implements CompositeBuilder {
 		);
 		return {
 			...settings,
+			position: this.exitPosition,
 			type: COMPOSITE_EXIT_NODE_TYPE,
 			typeVersion: 1,
 			parameters: {
@@ -400,6 +468,7 @@ export function expandComposites(
 
 		const expansion = new Expansion(node, nodeType.description);
 		nodeType.composite.expand(expansion);
+		expansion.applyLayout();
 
 		const entry = expansion.entryNode();
 		const added = [entry, ...expansion.nodes, expansion.exitNode()];
@@ -429,6 +498,19 @@ export function expandComposites(
 	}
 
 	return { nodes, connections, scopes };
+}
+
+/**
+ * Expands one composite node on its own, so the user can look inside it.
+ * Returns `undefined` when the node is not a composite.
+ */
+export function expandCompositeNode(
+	node: INode,
+	nodeTypes: INodeTypes,
+): ExpandedWorkflow | undefined {
+	const nodeType = findNodeType(nodeTypes, node);
+	if (!nodeType || !isCompositeNodeType(nodeType)) return undefined;
+	return expandComposites({ nodes: [{ ...node, disabled: false }], connections: {} }, nodeTypes);
 }
 
 function findNodeType(nodeTypes: INodeTypes, node: INode): INodeType | undefined {

@@ -70,11 +70,13 @@ function expand(c: CompositeBuilder): void {
 			parameters: request,
 			credentials: c.credentials(),
 			continueOnFail: options.keepPollingOnError === true,
+			cell: { column: 1, row: attempt - 1 },
 		});
 		const check = c.addNode(`check ${attempt}`, {
 			type: SWITCH_TYPE,
 			typeVersion: SWITCH_VERSION,
 			parameters: { mode: 'rules', rules: { values: rules }, options: { fallbackOutput: 'extra' } },
+			cell: { column: 2, row: attempt - 1 },
 		});
 
 		c.connect(previous, requestNode);
@@ -91,6 +93,7 @@ function expand(c: CompositeBuilder): void {
 			type: WAIT_TYPE,
 			typeVersion: WAIT_VERSION,
 			parameters: { resume: 'timeInterval', amount: waitAmount(interval, attempt, options), unit },
+			cell: { column: 3, row: attempt - 1 },
 		});
 		c.connect(check.output(continueOutput), wait);
 		previous = wait;
@@ -113,6 +116,7 @@ export class PollUntilDone implements CompositeNodeType {
 		group: ['transform'],
 		version: 1,
 		engines: ['v2'],
+		isComposite: true,
 		subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
 		description: 'Sends an HTTP request again and again until the response says the work is done',
 		defaults: {
