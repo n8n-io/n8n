@@ -7,26 +7,19 @@ import { computed } from 'vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import type { WorkflowTestRunState } from '../workflowTests.store';
-import { formatTestDuration, type WorkflowTestRow } from '../workflowTests.display';
+import { formatTestDuration, type WorkflowTestCounts } from '../workflowTests.display';
 
 const props = defineProps<{
 	run: WorkflowTestRunState | undefined;
-	rows: WorkflowTestRow[];
+	testCounts: WorkflowTestCounts;
 }>();
 
 const i18n = useI18n();
 
-const counts = computed(() => {
-	const count = (status: WorkflowTestRow['status']) =>
-		props.rows.filter((row) => row.status === status).length;
-	return {
-		passed: count('passed'),
-		failed: count('failed'),
-		skipped: count('skipped'),
-		pending: count('running') + count('notRun'),
-		total: props.rows.length,
-	};
-});
+const counts = computed(() => ({
+	...props.testCounts,
+	pending: props.testCounts.running + props.testCounts.notRun,
+}));
 
 type SummaryState = 'passed' | 'failed' | 'error' | 'running' | 'notRun';
 

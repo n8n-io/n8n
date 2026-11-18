@@ -18,8 +18,6 @@ import {
 
 const props = defineProps<{
 	row: WorkflowTestRow;
-	/** The source of the test call, when the file still has it. */
-	code?: string;
 	/** Whether the workflow has the node that the error names, so the row can open it. */
 	canOpenNode: boolean;
 	canFix: boolean;
@@ -71,7 +69,12 @@ const hint = computed(() => {
 			<N8nBadge v-if="row.error?.code" variant="outline" size="xsmall" :class="$style.codeBadge">
 				{{ row.error.code }}
 			</N8nBadge>
-			<N8nText v-if="row.durationMs !== undefined" size="xsmall" color="text-light">
+			<N8nText
+				v-if="row.durationMs !== undefined"
+				size="xsmall"
+				color="text-light"
+				:class="$style.duration"
+			>
 				{{ formatTestDuration(row.durationMs) }}
 			</N8nText>
 			<N8nBadge :variant="display.badge" size="xsmall">
@@ -110,11 +113,11 @@ const hint = computed(() => {
 				</div>
 			</section>
 
-			<section v-if="code">
+			<section v-if="row.code">
 				<N8nText size="small" bold tag="p" :class="$style.sectionTitle">
 					{{ i18n.baseText('workflowTests.row.code') }}
 				</N8nText>
-				<N8nCodeBlock :code="code" language="typescript" :max-height="240" />
+				<N8nCodeBlock :code="row.code" language="typescript" :max-height="240" />
 			</section>
 
 			<div :class="$style.actions">
@@ -141,6 +144,17 @@ const hint = computed(() => {
 <style module lang="scss">
 .row {
 	background-color: var(--background--surface);
+
+	// N8nCollapsiblePanel keeps its title at full width. A long test name must
+	// shrink instead, so the duration and the status stay in the row.
+	> div:first-child > button > span {
+		flex-shrink: 1;
+		min-width: 0;
+	}
+}
+
+.duration {
+	white-space: nowrap;
 }
 
 .title {

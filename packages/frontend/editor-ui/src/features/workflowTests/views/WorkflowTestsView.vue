@@ -23,12 +23,17 @@ import { useUIStore } from '@/app/stores/ui.store';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 import JsEditor from '@/features/shared/editors/components/JsEditor/JsEditor.vue';
 
-import WorkflowTestResultRow from '../components/WorkflowTestResultRow.vue';
+import WorkflowTestTree from '../components/WorkflowTestTree.vue';
 import WorkflowTestsSummary from '../components/WorkflowTestsSummary.vue';
 import { useWorkflowTestsAssistant } from '../useWorkflowTestsAssistant';
-import type { WorkflowTestRow } from '../workflowTests.display';
+import {
+	buildTestTree,
+	countTests,
+	type WorkflowTestRow,
+	type WorkflowTestTreeItem,
+} from '../workflowTests.display';
 import { useWorkflowTestsStore } from '../workflowTests.store';
-import { extractTestSource, parseTestNames } from '../workflowTests.utils';
+import { parseTestFile } from '../workflowTests.utils';
 
 const props = defineProps<{ workflowId: string }>();
 
@@ -53,8 +58,6 @@ const isLoading = ref(true);
 const isSaving = ref(false);
 const mode = ref<Mode>('results');
 const draft = ref('');
-const expanded = ref<Record<string, boolean>>({});
-
 const file = computed(() => testsStore.files[props.workflowId] ?? null);
 const run = computed(() => testsStore.runs[props.workflowId]);
 const isRunning = computed(() => run.value?.status === 'running');
@@ -67,39 +70,31 @@ const modeOptions = computed(() => [
 	{ label: i18n.baseText('workflowTests.view.code'), value: 'code' as const },
 ]);
 
-const rows = computed<WorkflowTestRow[]>(() => {
-	const names = parseTestNames(file.value?.source ?? '');
-	const results = new Map((run.value?.tests ?? []).map((test) => [test.name, test]));
-	// The runner can report a name that the parser missed, for example inside `describe`.
-	for (const name of results.keys()) if (!names.includes(name)) names.push(name);
-
-	return names.map((name) => {
-		const result = results.get(name);
-		// While the run is live, a test without a result is running or waiting for its turn.
-		const status = result?.status ?? (isRunning.value ? 'running' : 'notRun');
-		return { name, status, durationMs: result?.durationMs, error: result?.error };
-	});
-});
-
-// Failed tests open by themselves, so the error is visible without a click.
-watch(
-	() => run.value?.tests,
-	(tests) => {
-		for (const test of tests ?? []) {
-			if (test.status === 'failed' && expanded.value[test.name] === undefined) {
-				expanded.value[test.name] = true;
-			}
-		}
-	},
-	{ immediate: true },
+const tree = computed(() =>
+	buildTestTree(parseTestFile(file.value?.source ?? ''), run.value?.tests ?? [], isRunning.value),
 );
+const testCounts = computed(() => countTests(tree.value));
 
-function testCode(name: string) {
-	return extractTestSource(file.value?.source ?? '', name);
+/**
+ * Open state by full name. Groups start open. A test starts closed, unless it
+ * failed, so the error is visible without a click.
+ */
+const expanded = ref<Record<string, boolean>>({});
+
+function isExpanded(item: WorkflowTestTreeItem) {
+	return expanded.value[item.fullName] ?? (item.kind === 'group' || item.status === 'failed');
+}
+
+function toggle(fullName: string, value: boolean) {
+	expanded.value[fullName] = value;
 }
 
 function nodeId(name: string) {
 	return workflowDocumentStore?.value?.getNodeByName(name)?.id;
+}
+
+function canOpenNode(row: WorkflowTestRow) {
+	return !!row.error?.node && !!nodeId(row.error.node);
 }
 
 function openNode(name: string) {
@@ -206,7 +201,7 @@ function generate() {
 function fixTest(row: WorkflowTestRow) {
 	const error = [row.error?.code, row.error?.node, row.error?.message].filter(Boolean).join('\n');
 	askAssistant(
-		i18n.baseText('workflowTests.fix.prompt', { interpolate: { name: row.name, error } }),
+		i18n.baseText('workflowTests.fix.prompt', { interpolate: { name: row.fullName, error } }),
 		'workflow-tests-fix',
 	);
 }
@@ -328,7 +323,7 @@ function startWriting() {
 				</N8nCallout>
 
 				<template v-if="mode === 'results'">
-					<WorkflowTestsSummary :run="run" :rows="rows" />
+					<WorkflowTestsSummary :run="run" :test-counts="testCounts" />
 
 					<N8nCallout
 						v-if="run?.status === 'error'"
@@ -338,24 +333,20 @@ function startWriting() {
 						<pre :class="$style.runError">{{ run.errors.join('\n') }}</pre>
 					</N8nCallout>
 
-					<N8nText v-if="rows.length === 0" color="text-light">
+					<N8nText v-if="testCounts.total === 0" color="text-light">
 						{{ i18n.baseText('workflowTests.noTestsFound') }}
 					</N8nText>
 
-					<div :class="$style.rows">
-						<WorkflowTestResultRow
-							v-for="row in rows"
-							:key="row.name"
-							v-model:expanded="expanded[row.name]"
-							:row="row"
-							:code="testCode(row.name)"
-							:can-open-node="!!row.error?.node && !!nodeId(row.error.node)"
-							:can-fix="showPanel"
-							@fix="fixTest(row)"
-							@show-code="mode = 'code'"
-							@open-node="openNode"
-						/>
-					</div>
+					<WorkflowTestTree
+						:items="tree"
+						:is-expanded="isExpanded"
+						:can-open-node="canOpenNode"
+						:can-fix="showPanel"
+						@toggle="toggle"
+						@fix="fixTest"
+						@show-code="mode = 'code'"
+						@open-node="openNode"
+					/>
 				</template>
 
 				<div v-else :class="$style.editor" data-testid="workflow-tests-editor">
@@ -444,11 +435,6 @@ function startWriting() {
 
 .spacer {
 	flex: 1;
-}
-
-.rows {
-	display: flex;
-	flex-direction: column;
 }
 
 .runError {

@@ -1,9 +1,19 @@
+/** Vitest joins the names of the enclosing `describe` blocks and the test name with this. */
+export const FULL_NAME_SEPARATOR = ' > ';
+
+/** A `describe` block or a test, as the file declares it. */
+export type TestFileNode =
+	| { kind: 'describe'; name: string; fullName: string; children: TestFileNode[] }
+	| { kind: 'test'; name: string; fullName: string; code: string };
+
 /**
- * Matches `test('name'` and `it('name'`, with an optional modifier such as
- * `.skip` or `.only`. A name with a template expression is not matched.
+ * Matches the start of a `describe`, `test` or `it` call with a literal name,
+ * with modifiers such as `.skip` or `.only`. It is anchored at the scan position.
  */
-const TEST_CALL =
-	/\b(?:test|it)(?:\.(?:skip|only|todo|fails|concurrent))?\(\s*(['"`])((?:\\.|(?!\1).)*?)\1/g;
+const CALL =
+	/(describe|suite|test|it)(?:\.(?:skip|only|todo|fails|concurrent|sequential))*\s*\(\s*(['"`])((?:\\.|(?!\2)[^\\])*)\2/y;
+
+const IDENTIFIER_CHAR = /[\w$.]/;
 
 /** The index after the string, template or comment that starts at `start`, or `start` if none does. */
 function skipLiteral(source: string, start: number): number {
@@ -24,49 +34,82 @@ function skipLiteral(source: string, start: number): number {
 	return index + 1;
 }
 
-/**
- * Returns the source of one `test(...)` call, from `test` to its closing
- * parenthesis, so a result row can show the code that it ran. Returns
- * `undefined` when the file has no test with this name.
- */
-export function extractTestSource(source: string, name: string): string | undefined {
-	for (const match of source.matchAll(TEST_CALL)) {
-		if (match[2].replace(/\\(.)/g, '$1') !== name) continue;
-		const start = match.index;
-		let depth = 0;
-		let index = source.indexOf('(', start);
-		while (index < source.length) {
-			const skipped = skipLiteral(source, index);
-			if (skipped !== index) {
-				index = skipped;
-				continue;
-			}
-			const char = source[index];
-			if (char === '(' || char === '{' || char === '[') depth++;
-			if (char === ')' || char === '}' || char === ']') depth--;
-			index++;
-			if (depth === 0) {
-				const end = source[index] === ';' ? index + 1 : index;
-				return source.slice(start, end);
-			}
+/** The index after the bracket that closes the one at `open`, and an optional `;`. */
+function callEnd(source: string, open: number): number {
+	let depth = 0;
+	let index = open;
+	while (index < source.length) {
+		const skipped = skipLiteral(source, index);
+		if (skipped !== index) {
+			index = skipped;
+			continue;
 		}
-		return source.slice(start);
+		const char = source[index];
+		if (char === '(' || char === '{' || char === '[') depth++;
+		if (char === ')' || char === '}' || char === ']') depth--;
+		index++;
+		if (depth === 0) return source[index] === ';' ? index + 1 : index;
 	}
-	return undefined;
+	return source.length;
 }
 
 /**
- * Reads the test names from a test file without running it, so the Tests tab
- * can list tests that have not run yet. Good enough for the files that the
- * Assistant writes. The names of a run come from the runner.
+ * Reads the `describe` blocks and tests of a test file without running it, so
+ * the Tests tab can list tests that have not run yet and group them. Each test
+ * has the full name that the runner reports, and its own source. A name with
+ * a template expression is skipped: only the runner knows it.
  */
-export function parseTestNames(source: string): string[] {
-	const names: string[] = [];
-	for (const match of source.matchAll(TEST_CALL)) {
-		const [, quote, name] = match;
-		if (quote === '`' && /\$\{/.test(name)) continue;
-		const unescaped = name.replace(/\\(.)/g, '$1');
-		if (!names.includes(unescaped)) names.push(unescaped);
+export function parseTestFile(source: string): TestFileNode[] {
+	const root: TestFileNode[] = [];
+	const open: Array<{ node: Extract<TestFileNode, { kind: 'describe' }>; depth: number }> = [];
+	let depth = 0;
+	let index = 0;
+
+	while (index < source.length) {
+		const skipped = skipLiteral(source, index);
+		if (skipped !== index) {
+			index = skipped;
+			continue;
+		}
+
+		CALL.lastIndex = index;
+		const match = IDENTIFIER_CHAR.test(source[index - 1] ?? '') ? null : CALL.exec(source);
+		if (match) {
+			const [text, kind, quote, rawName] = match;
+			const parent = open.at(-1)?.node.children ?? root;
+			const path = open.map(({ node }) => node.name);
+			const name = rawName.replace(/\\(.)/g, '$1');
+			const known = !(quote === '`' && /\$\{/.test(rawName));
+			const fullName = [...path, name].join(FULL_NAME_SEPARATOR);
+
+			if (kind === 'describe' || kind === 'suite') {
+				const node: Extract<TestFileNode, { kind: 'describe' }> = {
+					kind: 'describe',
+					name,
+					fullName,
+					children: [],
+				};
+				if (known) parent.push(node);
+				// The call's bracket is open now. The block ends when the depth returns here.
+				open.push({ node, depth });
+				depth++;
+				index += text.length;
+				continue;
+			}
+
+			const end = callEnd(source, source.indexOf('(', index));
+			if (known) parent.push({ kind: 'test', name, fullName, code: source.slice(index, end) });
+			index = end;
+			continue;
+		}
+
+		const char = source[index];
+		if (char === '(' || char === '{' || char === '[') depth++;
+		if (char === ')' || char === '}' || char === ']') {
+			depth--;
+			if (open.length > 0 && open[open.length - 1].depth === depth) open.pop();
+		}
+		index++;
 	}
-	return names;
+	return root;
 }

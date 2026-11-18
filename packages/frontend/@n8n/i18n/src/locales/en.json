@@ -263,6 +263,7 @@
 	"workflowTests.summary.passed": "{count} passed",
 	"workflowTests.summary.failed": "{count} failed",
 	"workflowTests.summary.skipped": "{count} skipped",
+	"workflowTests.summary.notRun": "{count} not run",
 	"workflowTests.summary.version": "Saved draft",
 	"workflowTests.row.error": "Error",
 	"workflowTests.row.hint": "How to fix",
