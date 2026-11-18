@@ -929,6 +929,7 @@ onMounted(async () => {
 		:open="modalOpen"
 		size="2xlarge"
 		:container-class="$style.fixedHeight"
+		:data-test-id="`${SOURCE_CONTROL_PUSH_MODAL_KEY}-modal`"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogHeader :class="$style.dialogHeader">
