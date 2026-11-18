@@ -9459,6 +9459,7 @@ describe('createContext: appService', () => {
 					name: 'Tasks',
 					columns: [],
 					row: { type: 'object', properties: { title: { type: 'string' } } },
+					rowRule: null,
 				},
 			],
 			warnings: [],

@@ -57,6 +57,7 @@ function setup({ bindings = [], ...app }: Partial<App> & { bindings?: AppBinding
 		name: 'Table',
 		columns: [],
 		row: {},
+		rowRule: null,
 	}));
 	const workflows = mock<AppWorkflowPort>();
 	workflows.describe.mockImplementation(async (_p, binding) => ({

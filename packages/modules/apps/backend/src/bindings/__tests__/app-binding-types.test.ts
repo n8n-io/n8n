@@ -37,6 +37,7 @@ describe('renderBindingTypes', () => {
 				dataTableId: 't1',
 				permissions: ['read', 'insert'],
 				name: 'Tasks',
+				rowRule: null,
 				columns: [{ name: 'title', type: 'string' }],
 				row: {
 					type: 'object',

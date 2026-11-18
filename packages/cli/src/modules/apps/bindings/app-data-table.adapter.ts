@@ -103,7 +103,13 @@ export class AppDataTableAdapter extends AppDataTablePort {
 			const columns = (await service.getColumns(binding.dataTableId, projectId)).map(
 				({ name, type }) => ({ name, type }),
 			);
-			return { ...binding, name: table.name, columns, row: rowSchema(columns) };
+			return {
+				...binding,
+				name: table.name,
+				columns,
+				row: rowSchema(columns),
+				rowRule: table.rowRule ?? null,
+			};
 		} catch (error) {
 			if (error instanceof DataTableNotFoundError) return null;
 			throw error;

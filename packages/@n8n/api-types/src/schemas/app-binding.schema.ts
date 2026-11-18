@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 import type { AppVisibility } from './app.schema';
 import { dataTableFilterSchema } from './data-table-filter.schema';
-import { dataTableColumnNameSchema, dataTableColumnValueSchema } from './data-table.schema';
+import {
+	dataTableColumnNameSchema,
+	dataTableColumnValueSchema,
+	type DataTableRowRule,
+} from './data-table.schema';
 
 /** The key is a JS identifier, so the SDK can expose it as `n8n.tables.<key>`. */
 export const appBindingKeySchema = z
@@ -88,6 +92,8 @@ export type AppDescribedDataTableBinding = AppDataTableBinding & {
 	columns: Array<{ name: string; type: string }>;
 	/** One row as the runtime returns it. */
 	row: AppJsonSchema;
+	/** The table's row rule. `null` means every visitor gets every row. */
+	rowRule: DataTableRowRule | null;
 	missing?: false;
 };
 

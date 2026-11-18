@@ -48,7 +48,7 @@ const loaded: AppBindingsResponse = {
 	versionId: 'v1',
 	bindings: [
 		{ ...workflow, name: 'Sync social stats', published: false, input: {}, output: {} },
-		{ ...table, name: 'Weekly channel activity', columns: [], row: {} },
+		{ ...table, name: 'Weekly channel activity', columns: [], row: {}, rowRule: null },
 	],
 	warnings: [{ key: 'syncSocialStats', code: 'resource_unpublished', message: '' }],
 };
@@ -249,6 +249,46 @@ describe('AppConnectionsCard', () => {
 		expect(getByTestId('app-binding-picker-confirm')).toBeEnabled();
 	});
 
+	it('shows that a bound table limits visitors to their own rows', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(getAppBindings).mockResolvedValue({
+			...loaded,
+			bindings: [
+				loaded.bindings[0],
+				{
+					...table,
+					name: 'Weekly channel activity',
+					columns: [],
+					row: {},
+					rowRule: {
+						conditions: [{ column: 'owner', match: 'id' }],
+						projectMembersSeeAll: false,
+						runsWithoutUser: 'deny',
+					},
+				},
+			],
+		});
+		const { findByTestId, getByTestId } = renderComponent();
+
+		expect(await findByTestId('app-binding-weeklyChannelActivity-row-access')).toBeInTheDocument();
+		await userEvent.click(getByTestId('app-binding-weeklyChannelActivity'));
+		expect(
+			await findByTestId('app-binding-weeklyChannelActivity-row-access-details'),
+		).toHaveTextContent('owner');
+	});
+
+	it('shows that a bound table without row access gives every row', async () => {
+		providePermissions(['app:update']);
+		const { findByTestId, queryByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
+
+		expect(queryByTestId('app-binding-weeklyChannelActivity-row-access')).not.toBeInTheDocument();
+		expect(
+			await findByTestId('app-binding-weeklyChannelActivity-row-access-details'),
+		).toHaveTextContent('Every visitor gets every row');
+	});
+
 	it('saves permission changes when the binding popover closes', async () => {
 		providePermissions(['app:update']);
 		const { findByTestId } = renderComponent();
@@ -297,6 +337,7 @@ describe('AppConnectionsCard', () => {
 					name: 'Weekly channel activity',
 					columns: [],
 					row: {},
+					rowRule: null,
 				},
 			],
 			warnings: [],

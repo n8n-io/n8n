@@ -44,6 +44,15 @@ const draftChanged = ref(false);
 const config = computed(() => BINDING_KINDS[props.binding.kind]);
 const permissions = computed(() => permissionsOf(props.binding));
 const missing = computed(() => 'missing' in props.binding);
+/** `undefined` for bindings without row access, `null` for a table that shares every row. */
+const rowRule = computed(() =>
+	props.binding.kind === 'dataTable' && !('missing' in props.binding)
+		? props.binding.rowRule
+		: undefined,
+);
+const rowRuleColumns = computed(() =>
+	rowRule.value ? rowRule.value.conditions.map(({ column }) => column).join(', ') : '',
+);
 const href = computed(() =>
 	missing.value
 		? undefined
@@ -104,6 +113,17 @@ watch(permissions, (value) => {
 			>
 				<N8nIcon :icon="config.icon" :size="14" :class="$style.icon" />
 				<span>{{ binding.name }}</span>
+				<N8nTooltip v-if="rowRule" placement="top">
+					<N8nIcon
+						icon="user-lock"
+						:size="14"
+						:class="$style.icon"
+						:data-test-id="`app-binding-${binding.key}-row-access`"
+					/>
+					<template #content>
+						{{ i18n.baseText('apps.configure.connections.rowAccess.limited') }}
+					</template>
+				</N8nTooltip>
 				<N8nTooltip v-if="warning" placement="top">
 					<N8nIcon
 						icon="triangle-alert"
@@ -136,6 +156,20 @@ watch(permissions, (value) => {
 						:data-test-id="`app-binding-${binding.key}-permission-${permission}`"
 						@update:model-value="toggle(permission, $event)"
 					/>
+				</div>
+				<div v-if="rowRule !== undefined" :class="$style.section">
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('apps.configure.connections.rowAccess') }}
+					</N8nText>
+					<N8nText size="small" :data-test-id="`app-binding-${binding.key}-row-access-details`">
+						{{
+							rowRule
+								? i18n.baseText('apps.configure.connections.rowAccess.own', {
+										interpolate: { columns: rowRuleColumns },
+									})
+								: i18n.baseText('apps.configure.connections.rowAccess.all')
+						}}
+					</N8nText>
 				</div>
 				<div :class="$style.actions">
 					<N8nLink v-if="href" :to="href" :new-window="true" size="small">
