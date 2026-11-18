@@ -1,0 +1,19 @@
+packages/cli/src/modules/agent-determinism/stub-workflow-translator.ts
+  s_d25bc1113ac20c::t_96efeb48df2332 65-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86c24a38f37ed0defdfa6c191105841ab7645d12",
+  "prompts": {},
+  "sessions": {
+    "s_d25bc1113ac20c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a940ea3b-4e8f-43ed-aa04-ce3049b180f7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

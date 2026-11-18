@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/pages/composables/usePageTour.ts
+  s_f27bda1bd0c713::t_16abef8f30d70e 64-69
+  s_f27bda1bd0c713::t_b9c0380b76898d 1-63,70-113
+packages/frontend/editor-ui/src/features/pages/components/PageTourHost.vue
+  s_f27bda1bd0c713::t_b9c0380b76898d 1-50
+packages/frontend/editor-ui/src/features/pages/pageTour.store.test.ts
+  s_f27bda1bd0c713::t_5bbd43a528c2e2 1-106
+packages/frontend/editor-ui/src/features/pages/pageTour.store.ts
+  s_f27bda1bd0c713::t_5bbd43a528c2e2 1-71
+packages/modules/page/frontend/src/composables/usePageTourStart.ts
+  s_f27bda1bd0c713::t_a41cd6bae704eb 1-41
+packages/frontend/editor-ui/src/features/pages/components/PagePeekPanel.test.ts
+  s_f27bda1bd0c713::t_4ae26a3192409b 92-96,101-105,110
+  s_f27bda1bd0c713::t_0c2cc845f489a0 3-4,43-54,90-91,97-100,106-109
+  s_f27bda1bd0c713::t_633a2c3e561cd6 2,64
+packages/modules/page/frontend/src/views/PagesView.test.ts
+  s_f27bda1bd0c713::t_edd63d39dc894e 152-175
+packages/frontend/editor-ui/src/features/pages/components/PagePeekPanel.vue
+  ai_agent 2,40,68-73,101-109
+packages/modules/page/frontend/src/index.ts
+  s_f27bda1bd0c713::t_6f7925f2766752 22
+packages/frontend/editor-ui/src/features/pages/components/PageTourCard.vue
+  s_f27bda1bd0c713::t_5af86e20190cdf 56-60,64,118
+  s_f27bda1bd0c713::t_b9c0380b76898d 1-55,61-63,65-117,119-195
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 3433-3441
+packages/frontend/editor-ui/src/features/pages/components/PageTourCard.test.ts
+  s_f27bda1bd0c713::t_4ae26a3192409b 1-109
+packages/frontend/editor-ui/src/features/pages/composables/usePageTour.test.ts
+  s_f27bda1bd0c713::t_4ae26a3192409b 1-248
+packages/modules/page/frontend/src/views/PagesView.vue
+  ai_agent 27,60,207-215
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_f27bda1bd0c713::t_b9c0380b76898d 139,2268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd0f9f9851421741c2df2eb2bfe9e6171f364d42",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
