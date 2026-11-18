@@ -259,6 +259,44 @@ function isHttpHelper(e: ts.Expression): boolean {
 }
 
 /**
+ * The argument of a request call that gives its options, also through `call` and `apply`:
+ * `request(o)`, `request.call(thisArg, o)` and `request.apply(thisArg, [o])`. n8n's helper
+ * reads no `this`, so all three send the same request. A reason when the call gives the
+ * options in another form, and null when the call is no request.
+ */
+function requestForm(
+	expression: ts.Expression,
+	isRequest: (callee: ts.Expression) => boolean,
+): { arg: ts.Expression; via: 'direct' | 'call' | 'apply' } | string | null {
+	const call = stripParens(expression);
+	if (!ts.isCallExpression(call)) return null;
+	const callee = stripParens(call.expression);
+	if (isRequest(callee)) {
+		const arg = call.arguments[0];
+		return call.arguments.length === 1 && arg !== undefined && !ts.isSpreadElement(arg)
+			? { arg, via: 'direct' }
+			: 'arguments other than one object of options';
+	}
+	if (
+		!ts.isPropertyAccessExpression(callee) ||
+		(callee.name.text !== 'call' && callee.name.text !== 'apply') ||
+		!isRequest(stripParens(callee.expression))
+	) {
+		return null;
+	}
+	if (call.arguments.length !== 2 || call.arguments.some((a) => ts.isSpreadElement(a))) {
+		return '`call` or `apply` without one object of options';
+	}
+	if (callee.name.text === 'call') return { arg: call.arguments[1], via: 'call' };
+	const list = stripParens(call.arguments[1]);
+	const element =
+		ts.isArrayLiteralExpression(list) && list.elements.length === 1 ? list.elements[0] : undefined;
+	return element !== undefined && !ts.isSpreadElement(element)
+		? { arg: element, via: 'apply' }
+		: 'a list of `apply` that does not hold one object';
+}
+
+/**
  * The options of `await this.helpers.httpRequest({ … })` when the request has a native form,
  * a reason when it has none, and null when the expression is not such a call.
  *
@@ -272,9 +310,10 @@ export function httpRequestOptions(
 	isRequest: (callee: ts.Expression) => boolean = isHttpHelper,
 	constantOf: (id: ts.Identifier) => ts.Expression | null = () => null,
 ): ts.ObjectLiteralExpression | string | null {
-	const call = stripParens(n.expression);
-	if (!ts.isCallExpression(call) || !isRequest(stripParens(call.expression))) return null;
-	let options = call.arguments.length === 1 ? stripParens(call.arguments[0]) : undefined;
+	const form = requestForm(n.expression, isRequest);
+	if (form === null) return null;
+	if (typeof form === 'string') return form;
+	let options: ts.Expression | undefined = stripParens(form.arg);
 	// The options in a constant that the code uses only for requests.
 	if (options !== undefined && ts.isIdentifier(options)) {
 		options = constantOf(options) ?? options;
@@ -2465,10 +2504,13 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 			if (ts.isAwaitExpression(x)) {
 				const call = stripParens(x.expression);
-				if (ts.isCallExpression(call) && isRequest(stripParens(call.expression))) {
-					uses(call.expression, true);
-					for (const arg of call.arguments) uses(arg, false);
-					return;
+				if (ts.isCallExpression(call)) {
+					const form = requestForm(call, isRequest);
+					if (form !== null && typeof form !== 'string') {
+						uses(call.expression, true);
+						for (const arg of call.arguments) uses(arg, false);
+						return;
+					}
 				}
 			}
 			ts.forEachChild(x, (c) => uses(c, allowed));
@@ -4882,13 +4924,17 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 					return;
 				}
 				// \`await this.helpers.httpRequest({ … })\` becomes \`await __wf_http({ … })\` (\`emit.ts\`).
+				// The same for the forms of \`call\` and \`apply\`: n8n's helper reads no \`this\`.
 				const call = stripParens(n.expression);
-				if (ts.isCallExpression(call)) {
-					replace(call.expression.getStart(sf), call.expression.getEnd(), HTTP);
+				const form = requestForm(call, isRequest);
+				if (form !== null && typeof form !== 'string') {
+					replace(call.getStart(sf), form.arg.getStart(sf), `${HTTP}(`);
+					if (form.via !== 'direct') replace(form.arg.getEnd(), call.getEnd(), ')');
 				}
 				// Options in a constant: the walk writes them at the declaration.
-				const inline = ts.isCallExpression(call) && stripParens(call.arguments[0]) === options;
-				if (inline) for (const p of options.properties) visit(p);
+				if (stripParens(form === null || typeof form === 'string' ? call : form.arg) === options) {
+					for (const p of options.properties) visit(p);
+				}
 				return;
 			}
 			if (kind === null) {
