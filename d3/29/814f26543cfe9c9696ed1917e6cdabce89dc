@@ -1,0 +1,19 @@
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3dd47ea0104342::t_d996e350ef0bf4 2,7,11,62-88,92-93,104-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d329814f26543cfe9c9696ed1917e6cdabce89dc",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
