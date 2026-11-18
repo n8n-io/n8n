@@ -136,6 +136,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import PageTourHost from '@/features/pages/components/PageTourHost.vue';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
@@ -2263,6 +2264,8 @@ onBeforeUnmount(() => {
 					/>
 				</div>
 			</div>
+
+			<PageTourHost />
 
 			<N8nCallout
 				v-if="isReadOnlyEnvironment"

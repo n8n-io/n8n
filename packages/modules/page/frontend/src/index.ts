@@ -19,6 +19,7 @@ export { usePageResourceStore, type ResourceResolution } from './resources/resou
 export { toAbsoluteUrl, toInstanceRelativePath } from './resources/resourceUrl';
 export type { InstanceLocation } from './resources/resourceUrl';
 export { useInstanceLocation } from './composables/useInstanceLocation';
+export { usePageTourStart } from './composables/usePageTourStart';
 export {
 	DEFAULT_SLASH_COMMANDS,
 	insertMarkdownAtSelection,

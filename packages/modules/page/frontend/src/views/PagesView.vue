@@ -24,6 +24,7 @@ import PageWritingTips from '../components/PageWritingTips.vue';
 import { useInstanceLocation } from '../composables/useInstanceLocation';
 import { usePageBacklinks } from '../composables/usePageBacklinks';
 import type { PageSaveStatus } from '../composables/usePageDocument';
+import { usePageTourStart } from '../composables/usePageTourStart';
 import { PROJECT_PAGES_VIEW } from '../page.constants';
 import { getPagePermissions } from '../page.permissions';
 import { usePageStore } from '../page.store';
@@ -56,6 +57,7 @@ const selectedPageId = computed(() => toRouteParam(route.params.pageId));
 
 const pages = computed(() => (projectId.value ? pageStore.pagesOf(projectId.value) : []));
 const { backlinks, refresh: refreshBacklinks } = usePageBacklinks(selectedPageId);
+const { canStartTour, startTour } = usePageTourStart(selectedPageId);
 const isListLoading = ref(true);
 const permissions = computed(() =>
 	projectId.value ? getPagePermissions(projectId.value) : undefined,
@@ -202,6 +204,15 @@ watch(selectedPageId, () => {
 						>
 							{{ saveStatusLabel }}
 						</N8nText>
+						<N8nButton
+							v-if="canStartTour"
+							variant="ghost"
+							size="small"
+							icon="play"
+							:label="i18n.baseText('page.tour.start')"
+							data-test-id="page-start-tour-button"
+							@click="startTour"
+						/>
 						<N8nButton
 							variant="ghost"
 							size="small"

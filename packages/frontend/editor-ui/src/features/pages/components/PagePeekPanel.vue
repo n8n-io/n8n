@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PageEditor, type PageSaveStatus } from '@n8n/frontend-module-page';
+import { PageEditor, usePageTourStart, type PageSaveStatus } from '@n8n/frontend-module-page';
 import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { APP_Z_INDEXES } from '@n8n/frontend-constants/z-indexes';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -37,6 +37,7 @@ const PANEL_Z_INDEX = APP_Z_INDEXES.MODALS + 1;
 const i18n = useI18n();
 const uiStore = useUIStore();
 const { href, openInThisTabAndWait } = usePageOpening(() => props.pageId);
+const { canStartTour, startTour } = usePageTourStart(() => props.pageId);
 
 useFocusEntry(useTemplateRef<HTMLElement>('panel'));
 
@@ -63,6 +64,12 @@ async function openFullPage(event: MouseEvent): Promise<void> {
 		closeOpenModals();
 		emit('close');
 	}
+}
+
+/** Starts the tour on the canvas, then closes the modals, because they would cover it. */
+async function startTourOnCanvas(): Promise<void> {
+	await startTour();
+	closeOpenModals();
 }
 </script>
 
@@ -91,6 +98,15 @@ async function openFullPage(event: MouseEvent): Promise<void> {
 			>
 				{{ saveStatusLabel }}
 			</N8nText>
+			<N8nButton
+				v-if="canStartTour"
+				variant="ghost"
+				size="small"
+				icon="play"
+				:label="i18n.baseText('page.tour.start')"
+				data-test-id="page-peek-start-tour"
+				@click="startTourOnCanvas"
+			/>
 			<N8nButton
 				variant="ghost"
 				size="small"

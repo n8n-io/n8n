@@ -1,4 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
+import type { Page } from '@n8n/api-types';
+import { usePageStore } from '@n8n/frontend-module-page';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useRouter } from 'vue-router';
@@ -37,6 +40,19 @@ vi.mock('@n8n/frontend-module-page', async (importOriginal) => {
 	};
 });
 
+function createPage(overrides: Partial<Page>): Page {
+	return {
+		id: 'p1',
+		projectId: 'project-1',
+		title: 'Runbook',
+		content: '',
+		version: 1,
+		createdAt: '2026-11-16T10:00:00.000Z',
+		updatedAt: '2026-11-16T10:00:00.000Z',
+		...overrides,
+	};
+}
+
 const renderComponent = createComponentRenderer(PagePeekPanel, {
 	props: { pageId: 'p1' },
 });
@@ -45,7 +61,7 @@ describe('PagePeekPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
-		useUIStore().modalsById = { credentialEdit: { open: true }, about: { open: false } };
+		mockedStore(useUIStore).modalsById = { credentialEdit: { open: true }, about: { open: false } };
 	});
 
 	it('should show the editor of the page', () => {
@@ -69,6 +85,29 @@ describe('PagePeekPanel', () => {
 
 		expect(getByTestId('page-peek-not-found')).toBeInTheDocument();
 		expect(queryByTestId('page-editor-stub')).toBeNull();
+	});
+
+	it('should hide the tour button for a page that links to no node', () => {
+		usePageStore().pagesById = { p1: createPage({ content: 'A [workflow](/workflow/w1).' }) };
+		const { queryByTestId } = renderComponent();
+
+		expect(queryByTestId('page-peek-start-tour')).toBeNull();
+	});
+
+	it('should start the tour on the canvas and close the open modals', async () => {
+		usePageStore().pagesById = {
+			p1: createPage({ content: 'The [Webhook](/workflow/w1/n1) node.' }),
+		};
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('page-peek-start-tour'));
+
+		expect(getByTestId('page-peek-start-tour')).toHaveTextContent('Start tour');
+		expect(useRouter().push).toHaveBeenCalledWith({
+			path: '/workflow/w1',
+			query: { pageTour: 'p1' },
+		});
+		expect(useUIStore().closeModal).toHaveBeenCalledWith('credentialEdit');
 	});
 
 	it('should emit `close` from the close button', async () => {

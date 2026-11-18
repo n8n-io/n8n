@@ -149,6 +149,30 @@ describe('PagesView', () => {
 		expect(wrapper.getAllByTestId('page-list-item')[0]).toHaveTextContent('Runbook v2');
 	});
 
+	it('hides the tour button for a page that links to no node', async () => {
+		const { wrapper } = await renderView('/projects/project-1/pages/page-1');
+		await wrapper.findByTestId('page-editor-title');
+
+		expect(wrapper.queryByTestId('page-start-tour-button')).not.toBeInTheDocument();
+	});
+
+	it('opens the workflow of the first node link with a request to start the tour', async () => {
+		api.getPage.mockResolvedValue(
+			createPage({
+				content: 'First [Webhook](/workflow/wf-1/n-1), then [Other](/workflow/wf-2/n-2).',
+			}),
+		);
+		const { wrapper, router } = await renderView('/projects/project-1/pages/page-1');
+
+		const button = await wrapper.findByTestId('page-start-tour-button');
+		expect(button).toHaveTextContent('Start tour');
+		await fireEvent.click(button);
+
+		await waitFor(() =>
+			expect(router.currentRoute.value.fullPath).toBe('/workflow/wf-1?pageTour=page-1'),
+		);
+	});
+
 	it('shows where the open page is linked from', async () => {
 		api.getPageBacklinks.mockResolvedValue({
 			pages: [toSummary(notes)],
