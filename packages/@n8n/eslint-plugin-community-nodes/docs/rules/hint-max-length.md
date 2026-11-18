@@ -15,8 +15,8 @@ it holds documentation without cost to the panel layout.
 
 The rule reports a `hint` of more than 120 characters. Almost all first-party
 hints are within this limit, so it only cuts the long tail. The hint renders as
-HTML, so the rule counts the text after it decodes HTML entities. It ignores HTML
-tags and their attributes. Plain-text comparisons such as `< 10` count as text.
+HTML, so the rule ignores HTML tags and counts each HTML entity, such as `&lt;`,
+as one character. Plain-text comparisons such as `< 10` count as text.
 
 The rule checks static strings. This includes template literals, concatenated
 strings, and local constants. It skips values that need runtime data.

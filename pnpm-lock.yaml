@@ -3035,9 +3035,6 @@ importers:
       fastest-levenshtein:
         specifier: 'catalog:'
         version: 1.0.16
-      htmlparser2:
-        specifier: ^10.1.0
-        version: 10.1.0
       pluralize:
         specifier: ^8.0.0
         version: 8.0.0

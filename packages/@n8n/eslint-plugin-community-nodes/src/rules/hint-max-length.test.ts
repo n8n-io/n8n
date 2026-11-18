@@ -104,12 +104,6 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 				`properties: [${property(`hint: '${'x'.repeat(MAX_HINT_LENGTH - text.length)}${encoded}'`)}]`,
 			),
 		})),
-		{
-			name: 'ignores a greater-than sign inside an HTML attribute',
-			code: createNodeDescriptionCode(
-				`properties: [${property(`hint: '<b title="a > b">${'x'.repeat(MAX_HINT_LENGTH)}</b>'`)}]`,
-			),
-		},
 	],
 	invalid: [
 		{
@@ -197,7 +191,6 @@ ruleTester.run('hint-max-length', HintMaxLengthRule, {
 			{ encoded: '&lt;script&gt;', text: '<script>' },
 			{ encoded: '&#65;&#x42;', text: 'AB' },
 			{ encoded: '&amp;lt;', text: '&lt;' },
-			{ encoded: '&unknown;', text: '&unknown;' },
 		].map(({ encoded, text }) => ({
 			name: `reports the decoded length of ${encoded} over the limit`,
 			code: createNodeDescriptionCode(

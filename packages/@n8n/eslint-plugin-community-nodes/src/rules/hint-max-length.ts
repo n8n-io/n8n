@@ -1,5 +1,4 @@
 import { AST_NODE_TYPES, ASTUtils, type TSESTree } from '@typescript-eslint/utils';
-import { Parser } from 'htmlparser2';
 
 import {
 	createRule,
@@ -84,16 +83,14 @@ function isPropertyLike(node: TSESTree.ObjectExpression): boolean {
 	);
 }
 
-/** The editor renders a hint as HTML, so only the text takes up space. */
+/**
+ * The editor renders a hint as HTML, so count tags as nothing and each entity
+ * as one character. A tag starts only with `<` and a letter, `/`, `!` or `?`,
+ * so a plain `a < 10` stays text.
+ */
 function visibleLength(hint: string): number {
-	let length = 0;
-	const parser = new Parser({
-		ontext: (text) => {
-			length += text.length;
-		},
-	});
-	parser.end(hint);
-	return length;
+	return hint.replace(/<[a-zA-Z/!?][^>]*>/g, '').replace(/&(#\d+|#x[\da-f]+|[a-z]+);/gi, '_')
+		.length;
 }
 
 export const HintMaxLengthRule = createRule({
