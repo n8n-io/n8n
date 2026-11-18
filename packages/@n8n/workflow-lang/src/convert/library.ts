@@ -2243,18 +2243,25 @@ function lowerHttpLibrary(c: NodeContext): void {
 		c.node.onError === 'continueErrorOutput' ||
 		(!c.node.onError && c.node.continueOnFail)
 	) {
-		// v1 wraps a failure of `requestWithAuthentication` in a NodeApiError, and the item then
-		// has `{ message, name, description, timestamp, context, cause }`. The library node has
-		// no form of that without the parent types of the credential. `requestOAuth1` and
-		// `requestOAuth2` throw the client's error, so a generic OAuth credential has no such
-		// form either.
-		const genericOAuth = p.genericAuthType === 'oAuth1Api' || p.genericAuthType === 'oAuth2Api';
-		if (p.authentication === 'predefinedCredentialType' || genericOAuth) {
-			throw new NodeFailure(
-				'http',
-				'The error item of a request that authenticates through this credential has no compiled form.',
-				'authentication',
-			);
+		// v1 uses `requestWithAuthentication` for a predefined credential, which wraps a failure
+		// in a NodeApiError (shape A). A generic credential uses `requestOAuth1` / `requestOAuth2`
+		// or `request`, which throw the client's error (shape B), already reproduced by the
+		// library node. The NodeApiError form is checked against v1 for the versions 4.2 to 4.4;
+		// version 4.5 and later, whose item also has a `details` member, stays in the host.
+		const predefined = p.authentication === 'predefinedCredentialType';
+		if (predefined) {
+			const type =
+				typeof credentialType === 'string' && !credentialType.startsWith('=')
+					? credentialType
+					: undefined;
+			if (type === undefined || v < 4.2 || v >= 4.5) {
+				throw new NodeFailure(
+					'http',
+					'The error item of a request that authenticates through this credential has no compiled form.',
+					'authentication',
+				);
+			}
+			entries.push(['apiErrorItems', raw('true')]);
 		}
 		entries.push(['errorItems', raw('true')]);
 	}

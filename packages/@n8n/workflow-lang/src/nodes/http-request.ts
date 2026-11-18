@@ -29,6 +29,12 @@ interface HttpRequestParameters {
 	sendBody?: boolean;
 	response?: ResponseOptions;
 	errorItems?: boolean;
+	/**
+	 * The request signs with `requestWithAuthentication` of v1 (a predefined credential). Under a
+	 * continue setting the error item is then the NodeApiError of v1, not the raw error of the
+	 * client.
+	 */
+	apiErrorItems?: boolean;
 	version?: number;
 	/** The index of the item in the input, for the messages of v1. */
 	itemIndex?: number;
@@ -532,6 +538,81 @@ function errorDescription(body: unknown): string | undefined {
 	return undefined;
 }
 
+/** The keys of a message in an error answer, in the order of n8n-workflow. */
+const API_ERROR_MESSAGE_KEYS = [
+	'cause',
+	'error',
+	'message',
+	'Message',
+	'msg',
+	'messages',
+	'description',
+	'reason',
+	'detail',
+	'details',
+	'errors',
+	'errorMessage',
+	'errorMessages',
+	'ErrorMessage',
+	'error_message',
+	'_error_message',
+	'errorDescription',
+	'error_description',
+	'error_summary',
+	'error_info',
+	'title',
+	'text',
+	'field',
+	'err',
+	'type',
+];
+
+/** `findProperty` of the NodeError of n8n-workflow, without traversal keys. */
+function findErrorText(value: unknown): string | null {
+	let v: unknown = value;
+	if (typeof v === 'string') {
+		const text = v;
+		try {
+			v = JSON.parse(text);
+		} catch (error) {
+			return text;
+		}
+		if (typeof v === 'string') return v;
+	}
+	if (typeof v === 'number') return String(v);
+	if (Array.isArray(v)) {
+		const texts: string[] = [];
+		for (const member of v) {
+			if (typeof member === 'string' || typeof member === 'number') {
+				texts.push(String(member));
+			} else if (isRecord(member)) {
+				const inner = findErrorProperty(member);
+				if (inner !== null) texts.push(inner);
+			}
+		}
+		return texts.length === 0 ? null : texts.join(' | ');
+	}
+	if (!isRecord(v)) return null;
+	return findErrorProperty(v);
+}
+
+function findErrorProperty(source: Record<string, unknown>): string | null {
+	for (const key of API_ERROR_MESSAGE_KEYS) {
+		const value = source[key];
+		if (!value) continue;
+		const found = findErrorText(value);
+		if (found !== null && found !== '') return found;
+	}
+	return null;
+}
+
+/** The description of a NodeApiError for a failed status: the error text in the body. */
+function apiErrorDescription(body: unknown, rawMessage: string): string {
+	if (!body) return rawMessage;
+	const found = findErrorText(body);
+	return found !== null && found !== '' ? found : rawMessage;
+}
+
 /** Three digits as a number, or undefined when the text is not exactly three digits. */
 function digits3(text: string): number | undefined {
 	if (text.length !== 3) return undefined;
@@ -573,6 +654,56 @@ function failureCode(message: string): string | undefined {
 		if (message.indexOf(code) >= 0) return code;
 	}
 	return undefined;
+}
+
+/** `COMMON_ERRORS` of n8n's `NodeApiError`, for the codes a request can fail with. */
+const COMMON_ERROR_MESSAGES: Record<string, string> = {
+	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
+	ECONNRESET:
+		'The connection to the server was closed unexpectedly, perhaps it is offline. You can retry the request immediately or wait and retry later.',
+	ENOTFOUND:
+		'The connection cannot be established, this usually occurs due to an incorrect host (domain) value',
+	ETIMEDOUT: "The connection timed out, consider setting the 'Retry on Fail' option in the node settings",
+	ERRADDRINUSE:
+		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
+	EADDRNOTAVAIL: 'The address is not available, ensure that you have the right IP address',
+	ECONNABORTED: 'The connection was aborted, perhaps the server is offline',
+	EHOSTUNREACH: 'The host is unreachable, perhaps the server is offline',
+	EAI_AGAIN: 'The DNS server returned an error, perhaps the server is offline',
+};
+
+/**
+ * The error item of a failed request under a continue setting, as the v1 node wraps the
+ * failure in a `NodeApiError` (`requestWithAuthentication`). `timestamp` is the clock of
+ * the run and cannot be equal; the tests compare it by kind only.
+ */
+function apiErrorItem(
+	message: string,
+	causeName: string,
+	causeMessage: string,
+	description?: string,
+): Item {
+	const error: Item = {
+		message,
+		timestamp: 0,
+		name: 'NodeApiError',
+		context: {},
+		cause: { name: causeName, message: causeMessage },
+	};
+	if (description !== undefined) error.description = description;
+	return { error };
+}
+
+/** The NodeApiError item of a failed status: the message of n8n for the status. */
+function apiErrorItemFromStatus(status: number, rawMessage: string, body: unknown): Item {
+	const message = status >= 400 ? apiErrorMessage(status) : rawMessage;
+	const description = apiErrorDescription(body, rawMessage);
+	return apiErrorItem(
+		message,
+		'AxiosError',
+		rawMessage,
+		description === message ? undefined : description,
+	);
 }
 
 /**
@@ -825,7 +956,7 @@ export default defineNode<HttpRequestParameters>({
 				if (limit !== undefined) throw limit;
 			}
 			if (!continues) throw requestError(error);
-			return [failedRequestItem(error, version, false, parameters.timeoutMs)];
+			return [failedRequestItem(error, version, false, parameters.timeoutMs, parameters.apiErrorItems)];
 		}
 		const sendsCredentials =
 			parameters.sendCredentialsOnCrossOriginRedirect ?? (version >= 3 && version < 4.4);
@@ -877,7 +1008,7 @@ export default defineNode<HttpRequestParameters>({
 					if (tooLarge !== undefined) throw tooLarge;
 				}
 				if (!continues) throw requestError(error);
-				return [failedRequestItem(error, version, true, parameters.timeoutMs)];
+				return [failedRequestItem(error, version, true, parameters.timeoutMs, parameters.apiErrorItems)];
 			}
 		}
 		const status = response.status;
@@ -887,6 +1018,9 @@ export default defineNode<HttpRequestParameters>({
 			if (limit > 0 && typeof response.headers.location === 'string') {
 				const message = 'Maximum number of redirects exceeded';
 				if (continues) {
+					if (parameters.apiErrorItems === true) {
+						return [apiErrorItem(message, 'Error [ERR_FR_TOO_MANY_REDIRECTS]', message)];
+					}
 					const item: Item = {
 						error: {
 							message,
@@ -919,6 +1053,9 @@ export default defineNode<HttpRequestParameters>({
 				const message = `${status} - ${JSON.stringify(bodyText(response.body))}`;
 				const description = errorDescription(response.body);
 				if (continues) {
+					if (parameters.apiErrorItems === true) {
+						return [apiErrorItemFromStatus(status, message, response.body)];
+					}
 					const item: Item = {
 						error: { message, name: 'AxiosError', code: 'ERR_BAD_RESPONSE', status },
 					};
@@ -946,6 +1083,9 @@ export default defineNode<HttpRequestParameters>({
 		if (status >= 400 && options.neverError !== true) {
 			if (continues) {
 				const message = `${status} - ${JSON.stringify(bodyText(response.body))}`;
+				if (parameters.apiErrorItems === true) {
+					return [apiErrorItemFromStatus(status, message, response.body)];
+				}
 				// With the response format "file" the error of v1's HTTP client has no body.
 				const reason = !stores
 					? requestReason(status, message)
@@ -1148,12 +1288,20 @@ function failedRequestItem(
 	version: number,
 	redirected = false,
 	timeoutMs?: number,
+	apiErrorItems = false,
 ): Item {
 	const message =
 		typeof error === 'object' && error !== null && 'message' in error
 			? String(error.message)
 			: String(error);
 	if (timedOut(message)) {
+		if (apiErrorItems) {
+			return apiErrorItem(
+				COMMON_ERROR_MESSAGES.ECONNABORTED,
+				'AxiosError',
+				`timeout of ${timeoutMs ?? 300000}ms exceeded`,
+			);
+		}
 		// The error of v1's HTTP client for a request that reached its time limit.
 		const item: Item = {
 			error: {
@@ -1175,6 +1323,14 @@ function failedRequestItem(
 	}
 	const refused = refusedDomainItem(message, redirected);
 	if (refused !== undefined) return refused;
+	if (apiErrorItems) {
+		const code = failureCode(message);
+		return apiErrorItem(
+			code !== undefined ? (COMMON_ERROR_MESSAGES[code] ?? message) : message,
+			'Error',
+			message,
+		);
+	}
 	const status = failureStatus(message);
 	return requestFailureItem(requestReason(status, message), status, undefined, version);
 }
