@@ -1,38 +1,6 @@
 {
 	"version": 1,
 	"violations": {
-		"pages/AIAssistantPage.ts": [
-			{
-				"rule": "scope-lockdown",
-				"line": 15,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 19,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 61,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 85,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 109,
-				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "0d4d5092768f"
-			}
-		],
 		"pages/InstanceAiPage.ts": [
 			{
 				"rule": "scope-lockdown",
