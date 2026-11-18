@@ -1,5 +1,5 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, type UrlService } from '@n8n/backend-services';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import {
 	PubSubMetadata,
@@ -30,6 +30,7 @@ const emptyExecutionData = {
 
 const nodeTypes = mock<INodeTypes>();
 const workflowRepository = mock<WorkflowRepository>();
+const urlService = mock<UrlService>({ getInstanceBaseUrl: () => 'http://localhost:5678' });
 
 function createWorkflowInstance() {
 	return new Workflow({
@@ -59,10 +60,15 @@ function makeOtelSettingsService(
 		tracesSampleRate: 1,
 		startupConnectivityTimeoutMs: 2_000,
 		injectOutbound: true,
+		includeExecutionUrl: false,
+		traceLinkBackend: 'none',
+		traceLinkBaseUrl: '',
+		traceLinkDatasourceUid: '',
 		...overrides,
 	};
 	return {
 		getSettings: () => ({ ..._settings, envManagedFields: [] }),
+		isExecutionUrlEnabled: () => _settings.enabled && _settings.includeExecutionUrl,
 		_settings,
 	} as unknown as OtelSettingsService & {
 		_settings: OtelConfig;
@@ -119,6 +125,7 @@ describe('OtelLifecycleHandler', () => {
 				logger,
 				licenseState,
 				mock<EventService>(),
+				urlService,
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
@@ -556,6 +563,7 @@ describe('OtelLifecycleHandler', () => {
 				logger,
 				licenseState,
 				mock<EventService>(),
+				urlService,
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
@@ -799,6 +807,7 @@ describe('OtelLifecycleHandler', () => {
 				logger,
 				licenseState,
 				mock<EventService>(),
+				urlService,
 			);
 		});
 
@@ -896,6 +905,7 @@ describe('OtelLifecycleHandler', () => {
 				logger,
 				licenseState,
 				eventService ?? mock<EventService>(),
+				urlService,
 			);
 
 		beforeEach(() => {
@@ -1000,6 +1010,110 @@ describe('OtelLifecycleHandler', () => {
 		});
 	});
 
+	describe('execution URL', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const ownershipService = mock<OwnershipService>();
+
+		const startCtx: WorkflowExecuteBeforeContext = {
+			type: 'workflowExecuteBefore',
+			workflow: {
+				id: 'wf-1',
+				name: 'Test',
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				activeVersionId: null,
+			},
+			mode: 'trigger',
+			workflowInstance: createWorkflowInstance(),
+			executionId: 'exec-1',
+		};
+
+		const makeHandler = (settings: Partial<OtelConfig>, instanceBaseUrl: string) =>
+			new OtelLifecycleHandler(
+				tracer,
+				traceContextService,
+				mock<OtelService>(),
+				makeOtelSettingsService({ productionExecutionsOnly: false, ...settings }),
+				ownershipService,
+				workflowRepository,
+				mock<Logger>(),
+				mock<LicenseState>(),
+				mock<EventService>(),
+				mock<UrlService>({ getInstanceBaseUrl: () => instanceBaseUrl }),
+			);
+
+		const startedUrl = () => tracer.startWorkflow.mock.calls[0][0].executionUrl;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			traceContextService.get.mockResolvedValue(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		});
+
+		it('should pass the execution URL built from the instance base URL', async () => {
+			await makeHandler({ includeExecutionUrl: true }, 'https://n8n.example.com').onWorkflowStart(
+				startCtx,
+			);
+
+			expect(startedUrl()).toBe('https://n8n.example.com/workflow/wf-1/executions/exec-1');
+		});
+
+		it('should not pass an execution URL when the setting is off', async () => {
+			await makeHandler({ includeExecutionUrl: false }, 'https://n8n.example.com').onWorkflowStart(
+				startCtx,
+			);
+
+			expect(startedUrl()).toBeUndefined();
+		});
+
+		it.each(['', 'n8n.example.com'])(
+			'should not pass an execution URL when the instance base URL is "%s"',
+			async (instanceBaseUrl) => {
+				await makeHandler({ includeExecutionUrl: true }, instanceBaseUrl).onWorkflowStart(startCtx);
+
+				expect(startedUrl()).toBeUndefined();
+			},
+		);
+
+		it('should pass the execution URL on resume', async () => {
+			await makeHandler({ includeExecutionUrl: true }, 'https://n8n.example.com').onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: undefined as never,
+				executionData: undefined as never,
+				executionId: 'exec-2',
+			} as never);
+
+			expect(startedUrl()).toBe('https://n8n.example.com/workflow/wf-1/executions/exec-2');
+		});
+
+		it('should pass the execution URL for a crashed execution', async () => {
+			await makeHandler(
+				{ includeExecutionUrl: true },
+				'https://n8n.example.com',
+			).onExecutionCrashed({
+				executionId: 'exec-3',
+				workflowId: 'wf-1',
+				mode: 'trigger',
+				stoppedAt: new Date(),
+				detector: 'queue-recovery',
+				hostId: 'main-1',
+			} as RelayEventMap['execution-crashed']);
+
+			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					executionUrl: 'https://n8n.example.com/workflow/wf-1/executions/exec-3',
+				}),
+			);
+		});
+	});
+
 	describe('onNodeStart / onNodeEnd', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
@@ -1055,6 +1169,7 @@ describe('OtelLifecycleHandler', () => {
 				logger,
 				licenseState,
 				mock<EventService>(),
+				urlService,
 			);
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 		});
@@ -1071,6 +1186,7 @@ describe('OtelLifecycleHandler', () => {
 				logger,
 				licenseState,
 				mock<EventService>(),
+				urlService,
 			);
 
 			handler.onNodeStart(makeStartCtx());
@@ -1453,6 +1569,7 @@ describe('productionExecutionsOnly filter', () => {
 			logger,
 			licenseState,
 			mock<EventService>(),
+			urlService,
 		);
 		licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 	});
@@ -1547,6 +1664,7 @@ describe('onReloadOtelConfig', () => {
 			mock<Logger>(),
 			licenseState,
 			mock<EventService>(),
+			urlService,
 		);
 	}
 

@@ -6,6 +6,7 @@ import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 
 import { OtelConfig } from './otel.config';
 import { OTEL_ENV_VARS } from './otel.constants';
+import type { TraceLinkSettings } from './trace-link/trace-link.builder';
 
 export const OTEL_SETTINGS_KEY = 'features.otel';
 
@@ -72,6 +73,21 @@ export class OtelSettingsService {
 
 	isOutboundInjectionEnabled(): boolean {
 		return Boolean(this.currentSettings?.enabled && this.currentSettings?.injectOutbound);
+	}
+
+	isExecutionUrlEnabled(): boolean {
+		return Boolean(this.currentSettings?.enabled && this.currentSettings?.includeExecutionUrl);
+	}
+
+	/** Returns the trace link settings, or `undefined` while OTel is off. */
+	getTraceLinkSettings(): TraceLinkSettings | undefined {
+		if (!this.currentSettings?.enabled) return undefined;
+		const { traceLinkBackend, traceLinkBaseUrl, traceLinkDatasourceUid } = this.currentSettings;
+		return {
+			backend: traceLinkBackend,
+			baseUrl: traceLinkBaseUrl,
+			datasourceUid: traceLinkDatasourceUid,
+		};
 	}
 
 	getSettings(): OtelSettingsResponse {
@@ -238,6 +254,10 @@ export class OtelSettingsService {
 			emitNodeStartSpan: pick('emitNodeStartSpan'),
 			injectOutbound: pick('injectOutbound'),
 			productionExecutionsOnly: pick('productionExecutionsOnly'),
+			includeExecutionUrl: pick('includeExecutionUrl'),
+			traceLinkBackend: pick('traceLinkBackend'),
+			traceLinkBaseUrl: pick('traceLinkBaseUrl'),
+			traceLinkDatasourceUid: pick('traceLinkDatasourceUid'),
 		};
 	}
 }

@@ -17,5 +17,9 @@ export function toOtelSettingsResponse(config: OtelConfig): OtelSettingsResponse
 		emitNodeStartSpan: config.emitNodeStartSpan,
 		injectOutbound: config.injectOutbound,
 		productionExecutionsOnly: config.productionExecutionsOnly,
+		includeExecutionUrl: config.includeExecutionUrl,
+		traceLinkBackend: config.traceLinkBackend,
+		traceLinkBaseUrl: config.traceLinkBaseUrl,
+		traceLinkDatasourceUid: config.traceLinkDatasourceUid,
 	};
 }

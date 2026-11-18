@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { Scope } from '@n8n/permissions';
-import type { ExecutionListPagination } from '@n8n/api-types';
+import type { ExecutionListPagination, ExecutionTraceLink } from '@n8n/api-types';
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -65,6 +65,8 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	id: string;
 	/** See {@link IExecutionResponse.dataTooLargeToDisplay}. When true, `data` is empty. */
 	dataTooLargeToDisplay?: boolean;
+	/** See {@link IExecutionResponse.trace}. */
+	trace?: ExecutionTraceLink;
 }
 
 export interface IExecutionPushResponse {
@@ -81,7 +83,12 @@ export interface IExecutionResponse extends IExecutionBase {
 	triggerNode?: string;
 	/** Set when the backend skipped loading oversized run data; `data` is then empty. */
 	dataTooLargeToDisplay?: boolean;
+	/** Link to the execution's trace in the observability backend. Set only for a sampled trace. */
+	trace?: ExecutionTraceLink;
 }
+
+/** An execution summary that can carry the trace link of the full execution. */
+export type ExecutionSummaryWithTrace = ExecutionSummary & { trace?: ExecutionTraceLink };
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 

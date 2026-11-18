@@ -23,6 +23,7 @@ import {
 	N8nSettingsSection,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, ref, watch, onMounted } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
@@ -31,9 +32,10 @@ import {
 	CREDENTIALS_BLANKING_VALUE,
 	OTEL_FIELD_ENV_VARS,
 	OTEL_TEST_SPAN_NAME,
+	TRACE_LINK_BACKENDS,
 } from './otel.constants';
 import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
-import { createSampleRateFormat, isOtlpProtocol } from './otel.utils';
+import { createSampleRateFormat, isOtlpProtocol, isTraceLinkBackend } from './otel.utils';
 import OtelSettingsRow from './OtelSettingsRow.vue';
 
 const OTEL_DOCS_URL = 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/';
@@ -146,6 +148,29 @@ const headersDescription = computed(() =>
 function onProtocolChange(value: unknown) {
 	if (isOtlpProtocol(value)) {
 		otelStore.settings.exporterProtocol = value;
+	}
+}
+
+const traceLinkBackendOptions = TRACE_LINK_BACKENDS.map((backend) => ({
+	value: backend,
+	label: i18n.baseText(
+		`settings.opentelemetry.traceLinkBackend.option.${backend}` satisfies BaseTextKey,
+	),
+}));
+
+const isTraceLinkOff = computed(() => otelStore.settings.traceLinkBackend === 'none');
+
+const traceLinkBaseUrlPlaceholder = computed(() => {
+	const backend = otelStore.settings.traceLinkBackend;
+	if (backend === 'none') return '';
+	return i18n.baseText(
+		`settings.opentelemetry.traceLinkBaseUrl.placeholder.${backend}` satisfies BaseTextKey,
+	);
+});
+
+function onTraceLinkBackendChange(value: unknown) {
+	if (isTraceLinkBackend(value)) {
+		otelStore.settings.traceLinkBackend = value;
 	}
 }
 
@@ -788,6 +813,92 @@ watch(
 									@update:model-value="
 										otelStore.settings.productionExecutionsOnly = Boolean($event)
 									"
+								/>
+							</template>
+						</OtelSettingsRow>
+
+						<OtelSettingsRow
+							:title="i18n.baseText('settings.opentelemetry.includeExecutionUrl.label')"
+							:description="i18n.baseText('settings.opentelemetry.includeExecutionUrl.description')"
+							:env-tooltip="envTooltip('includeExecutionUrl')"
+						>
+							<template #action>
+								<N8nCheckbox
+									:model-value="otelStore.settings.includeExecutionUrl"
+									:disabled="isEnvManaged('includeExecutionUrl')"
+									data-test-id="otel-include-execution-url"
+									@update:model-value="otelStore.settings.includeExecutionUrl = Boolean($event)"
+								/>
+							</template>
+						</OtelSettingsRow>
+					</N8nSettingsRowGroup>
+				</N8nSettingsSection>
+
+				<N8nSettingsSection :title="i18n.baseText('settings.opentelemetry.traceLinks.title')">
+					<N8nSettingsRowGroup>
+						<OtelSettingsRow
+							:title="i18n.baseText('settings.opentelemetry.traceLinkBackend.label')"
+							:description="i18n.baseText('settings.opentelemetry.traceLinkBackend.description')"
+							:env-tooltip="envTooltip('traceLinkBackend')"
+							action-fill
+						>
+							<template #action>
+								<N8nSelect
+									:class="$style.control"
+									:model-value="otelStore.settings.traceLinkBackend"
+									:disabled="isEnvManaged('traceLinkBackend')"
+									:aria-label="i18n.baseText('settings.opentelemetry.traceLinkBackend.label')"
+									data-test-id="otel-trace-link-backend"
+									@update:model-value="onTraceLinkBackendChange"
+								>
+									<N8nOption
+										v-for="option in traceLinkBackendOptions"
+										:key="option.value"
+										:value="option.value"
+										:label="option.label"
+									/>
+								</N8nSelect>
+							</template>
+						</OtelSettingsRow>
+
+						<OtelSettingsRow
+							v-if="!isTraceLinkOff"
+							:title="i18n.baseText('settings.opentelemetry.traceLinkBaseUrl.label')"
+							:description="i18n.baseText('settings.opentelemetry.traceLinkBaseUrl.description')"
+							:env-tooltip="envTooltip('traceLinkBaseUrl')"
+							action-fill
+						>
+							<template #action>
+								<N8nInput
+									v-model="otelStore.settings.traceLinkBaseUrl"
+									:class="$style.control"
+									:placeholder="traceLinkBaseUrlPlaceholder"
+									:disabled="isEnvManaged('traceLinkBaseUrl')"
+									:aria-label="i18n.baseText('settings.opentelemetry.traceLinkBaseUrl.label')"
+									data-test-id="otel-trace-link-base-url"
+								/>
+							</template>
+						</OtelSettingsRow>
+
+						<OtelSettingsRow
+							v-if="otelStore.settings.traceLinkBackend === 'tempo'"
+							:title="i18n.baseText('settings.opentelemetry.traceLinkDatasourceUid.label')"
+							:description="
+								i18n.baseText('settings.opentelemetry.traceLinkDatasourceUid.description')
+							"
+							:env-tooltip="envTooltip('traceLinkDatasourceUid')"
+							action-fill
+						>
+							<template #action>
+								<N8nInput
+									v-model="otelStore.settings.traceLinkDatasourceUid"
+									:class="$style.control"
+									:placeholder="
+										i18n.baseText('settings.opentelemetry.traceLinkDatasourceUid.placeholder')
+									"
+									:disabled="isEnvManaged('traceLinkDatasourceUid')"
+									:aria-label="i18n.baseText('settings.opentelemetry.traceLinkDatasourceUid.label')"
+									data-test-id="otel-trace-link-datasource-uid"
 								/>
 							</template>
 						</OtelSettingsRow>

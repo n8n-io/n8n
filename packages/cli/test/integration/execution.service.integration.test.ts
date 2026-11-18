@@ -1,3 +1,4 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -65,6 +66,7 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			mock(),
+			Object.defineProperty(mock<ModuleRegistry>(), 'context', { value: new Map() }),
 		);
 
 		owner = await createOwner();

@@ -1,3 +1,4 @@
+import type { ExecutionTraceLink } from '@n8n/api-types';
 import type {
 	ICredentialsBase,
 	IExecutionBase,
@@ -130,6 +131,8 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 	/** See {@link IExecutionResponse.dataTooLargeToDisplay}. When true, `data` is empty. */
 	dataTooLargeToDisplay?: boolean;
+	/** Link to the execution's trace in the observability backend. Set only for a sampled trace. */
+	trace?: ExecutionTraceLink;
 }
 
 export interface IExecutionsListResponse {

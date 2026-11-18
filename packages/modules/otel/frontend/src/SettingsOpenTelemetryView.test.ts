@@ -63,6 +63,10 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
+	includeExecutionUrl: false,
+	traceLinkBackend: 'none',
+	traceLinkBaseUrl: '',
+	traceLinkDatasourceUid: '',
 	envManagedFields: [],
 	...overrides,
 });
@@ -297,6 +301,16 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.click(getByTestId('otel-production-only'));
 
 		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+	});
+
+	it('turns on the execution link setting when clicking its checkbox', async () => {
+		const { getByTestId, store } = render();
+		await waitFor(() => expect(getByTestId('otel-include-execution-url')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-include-execution-url'));
+
+		await waitFor(() => expect(store.settings.includeExecutionUrl).toBe(true));
+		expect(getByTestId('settings-save-bar-save')).toBeInTheDocument();
 	});
 
 	it('disables the node start span checkbox while node spans are off', async () => {
@@ -665,6 +679,58 @@ describe('SettingsOpenTelemetryView', () => {
 				expect.objectContaining({ exporterProtocol: 'grpc' }),
 			);
 		});
+	});
+
+	it('hides the trace link URL fields while the trace link backend is None', async () => {
+		const { getByTestId, queryByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-trace-link-backend')).toBeInTheDocument());
+
+		expect(queryByTestId('otel-trace-link-base-url')).not.toBeInTheDocument();
+		expect(queryByTestId('otel-trace-link-datasource-uid')).not.toBeInTheDocument();
+	});
+
+	it('shows the backend URL with a matching placeholder when a trace link backend is set', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ traceLinkBackend: 'datadog' }));
+
+		const { getByTestId, queryByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-trace-link-base-url')).toBeInTheDocument());
+
+		expect(getByTestId('otel-trace-link-base-url')).toHaveAttribute(
+			'placeholder',
+			'https://app.datadoghq.com',
+		);
+		expect(queryByTestId('otel-trace-link-datasource-uid')).not.toBeInTheDocument();
+	});
+
+	it('shows the Tempo data source UID only for Grafana Tempo', async () => {
+		getOtelSettingsMock.mockResolvedValue(
+			makeSettings({
+				traceLinkBackend: 'tempo',
+				traceLinkBaseUrl: 'https://grafana.example.com',
+				traceLinkDatasourceUid: 'tempo-prod',
+			}),
+		);
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-trace-link-datasource-uid')).toBeInTheDocument());
+
+		expect(getByTestId('otel-trace-link-datasource-uid')).toHaveValue('tempo-prod');
+		expect(getByTestId('otel-trace-link-base-url')).toHaveValue('https://grafana.example.com');
+	});
+
+	it('disables the trace link fields that are managed by env vars', async () => {
+		getOtelSettingsMock.mockResolvedValue(
+			makeSettings({
+				traceLinkBackend: 'jaeger',
+				envManagedFields: ['traceLinkBackend', 'traceLinkBaseUrl'],
+			}),
+		);
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-trace-link-base-url')).toBeInTheDocument());
+
+		expect(getByTestId('otel-trace-link-backend').querySelector('input')).toBeDisabled();
+		expect(getByTestId('otel-trace-link-base-url')).toBeDisabled();
 	});
 
 	it('disables the protocol select when it is managed by an env var', async () => {

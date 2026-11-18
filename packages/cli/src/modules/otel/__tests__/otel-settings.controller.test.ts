@@ -27,6 +27,10 @@ const baseSettings: OtelConfig = {
 	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: false,
+	includeExecutionUrl: false,
+	traceLinkBackend: 'none',
+	traceLinkBaseUrl: '',
+	traceLinkDatasourceUid: '',
 };
 
 const baseResponse: OtelSettingsResponse = { ...baseSettings, envManagedFields: [] };

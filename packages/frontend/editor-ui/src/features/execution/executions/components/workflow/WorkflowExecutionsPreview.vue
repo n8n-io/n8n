@@ -21,6 +21,7 @@ import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
+import type { ExecutionSummaryWithTrace } from '../../executions.types';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
@@ -37,7 +38,7 @@ import {
 import VoteButtons from './VoteButtons.vue';
 
 const props = defineProps<{
-	execution?: ExecutionSummary;
+	execution?: ExecutionSummaryWithTrace;
 }>();
 
 const emit = defineEmits<{
@@ -420,6 +421,18 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 
 			<div :class="$style.actions">
+				<N8nButton
+					v-if="execution.trace"
+					:href="execution.trace.url"
+					target="_blank"
+					size="medium"
+					variant="outline"
+					icon="external-link"
+					data-test-id="execution-preview-open-trace-button"
+					data-attr="execution-preview-open-trace-button"
+				>
+					{{ locale.baseText('executionDetails.openTrace') }}
+				</N8nButton>
 				<N8nTooltip
 					:content="locale.baseText('executionsList.debug.button.redacted.tooltip')"
 					:disabled="!pinBlockedByRedaction"

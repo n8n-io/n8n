@@ -30,6 +30,7 @@ export type StartWorkflowParams = {
 	workflow: WorkflowContext;
 	project?: ProjectContext;
 	emitStartSpan?: boolean;
+	executionUrl?: string;
 };
 
 export type EndWorkflowParams = {
@@ -54,6 +55,7 @@ export type EndCrashedWorkflowParams = {
 	tracingContext?: TracingContext;
 	workflow?: { customAttributes?: CustomAttributes };
 	project?: ProjectContext;
+	executionUrl?: string;
 };
 
 type NodeTracingParams = Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>;

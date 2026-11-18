@@ -177,6 +177,29 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(getByTestId('stop-execution')).toBeDisabled();
 	});
 
+	it('shows an Open trace link when the execution has a trace', () => {
+		const url = 'https://jaeger.example.com/trace/4bf92f3577b34da6a3ce929d0e0e4736';
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: {
+					...executionData,
+					trace: { traceId: '4bf92f3577b34da6a3ce929d0e0e4736', url },
+				},
+			},
+		});
+
+		const link = getByTestId('execution-preview-open-trace-button');
+		expect(link).toHaveTextContent('Open trace');
+		expect(link).toHaveAttribute('href', url);
+		expect(link).toHaveAttribute('target', '_blank');
+	});
+
+	it('hides the Open trace link when the execution has no trace', () => {
+		const { queryByTestId } = renderComponent({ props: { execution: executionData } });
+
+		expect(queryByTestId('execution-preview-open-trace-button')).not.toBeInTheDocument();
+	});
+
 	it('shows the add-to-dataset button for a successful non-evaluation execution', () => {
 		const { getByTestId } = renderComponent({
 			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },

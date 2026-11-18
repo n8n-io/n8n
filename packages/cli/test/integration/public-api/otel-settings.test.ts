@@ -25,6 +25,10 @@ const validSettings = {
 	emitNodeStartSpan: true,
 	injectOutbound: false,
 	productionExecutionsOnly: false,
+	includeExecutionUrl: true,
+	traceLinkBackend: 'jaeger',
+	traceLinkBaseUrl: 'https://jaeger.example.com',
+	traceLinkDatasourceUid: '',
 };
 
 const testConnection = {
@@ -107,6 +111,10 @@ describe('OpenTelemetry settings in Public API', () => {
 					'emitNodeStartSpan',
 					'injectOutbound',
 					'productionExecutionsOnly',
+					'includeExecutionUrl',
+					'traceLinkBackend',
+					'traceLinkBaseUrl',
+					'traceLinkDatasourceUid',
 				].sort(),
 			);
 			// Internal-only bookkeeping must never leak through the public API.
@@ -290,6 +298,41 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send({ ...validSettings, exporterProtocol: 'http/json' });
 
 			expect(response.status).toBe(400);
+		});
+
+		it('rejects an unsupported trace link backend with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, traceLinkBackend: 'newrelic' });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects a trace link base URL that is not http or https with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send({ ...validSettings, traceLinkBaseUrl: 'javascript:alert(1)' });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('turns trace links off when a write omits the trace link fields', async () => {
+			const { traceLinkBackend, traceLinkBaseUrl, traceLinkDatasourceUid, ...withoutTraceLink } =
+				validSettings;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(withoutTraceLink);
+
+			expect(response.status).toBe(200);
+			expect(response.body).toMatchObject({
+				traceLinkBackend: 'none',
+				traceLinkBaseUrl: '',
+				traceLinkDatasourceUid: '',
+			});
 		});
 
 		it('rejects a partial body with 400', async () => {

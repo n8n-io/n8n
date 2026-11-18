@@ -189,6 +189,10 @@ const enabledSettings: OtelConfig = {
 	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
+	includeExecutionUrl: false,
+	traceLinkBackend: 'none',
+	traceLinkBaseUrl: '',
+	traceLinkDatasourceUid: '',
 };
 
 const disabledSettings: OtelConfig = { ...enabledSettings, enabled: false };

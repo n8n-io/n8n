@@ -1,6 +1,11 @@
-import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
+import {
+	OTLP_PROTOCOLS,
+	type OtlpProtocol,
+	TRACE_LINK_BACKENDS,
+	type TraceLinkBackend,
+} from '@n8n/api-types';
 
-export { OTLP_PROTOCOLS, type OtlpProtocol };
+export { OTLP_PROTOCOLS, type OtlpProtocol, TRACE_LINK_BACKENDS, type TraceLinkBackend };
 
 export const OTEL_STORE = 'otel';
 
@@ -37,4 +42,8 @@ export const OTEL_FIELD_ENV_VARS = {
 	emitNodeStartSpan: 'N8N_OTEL_TRACES_EMIT_NODE_START_SPAN',
 	injectOutbound: 'N8N_OTEL_TRACES_INJECT_OUTBOUND',
 	productionExecutionsOnly: 'N8N_OTEL_TRACES_PRODUCTION_ONLY',
+	includeExecutionUrl: 'N8N_OTEL_TRACES_INCLUDE_EXECUTION_URL',
+	traceLinkBackend: 'N8N_OTEL_TRACE_LINK_BACKEND',
+	traceLinkBaseUrl: 'N8N_OTEL_TRACE_LINK_BASE_URL',
+	traceLinkDatasourceUid: 'N8N_OTEL_TRACE_LINK_DATASOURCE_UID',
 } as const;

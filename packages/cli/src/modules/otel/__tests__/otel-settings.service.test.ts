@@ -92,6 +92,10 @@ describe('OtelSettingsService', () => {
 				emitNodeStartSpan: false,
 				injectOutbound: true,
 				productionExecutionsOnly: true,
+				includeExecutionUrl: false,
+				traceLinkBackend: 'none',
+				traceLinkBaseUrl: '',
+				traceLinkDatasourceUid: '',
 				envManagedFields: [],
 			});
 		});
@@ -148,6 +152,42 @@ describe('OtelSettingsService', () => {
 			await service.loadSettings();
 
 			expect(service.getSettings().exporterProtocol).toBe('grpc');
+		});
+
+		it('returns the persisted trace link settings', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({
+					traceLinkBackend: 'tempo',
+					traceLinkBaseUrl: 'https://grafana.example.com',
+					traceLinkDatasourceUid: 'tempo-prod',
+				}),
+			} as Settings);
+
+			await service.loadSettings();
+
+			expect(service.getSettings()).toMatchObject({
+				traceLinkBackend: 'tempo',
+				traceLinkBaseUrl: 'https://grafana.example.com',
+				traceLinkDatasourceUid: 'tempo-prod',
+			});
+		});
+
+		it('the trace link backend env var overrides the DB value and is tracked in envManagedFields', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ traceLinkBackend: 'jaeger' }),
+			} as Settings);
+			process.env.N8N_OTEL_TRACE_LINK_BACKEND = 'datadog';
+
+			const configWithEnv = new OtelConfig();
+			configWithEnv.traceLinkBackend = 'datadog';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
+
+			await serviceWithEnv.loadSettings();
+			const result = serviceWithEnv.getSettings();
+
+			expect(result.traceLinkBackend).toBe('datadog');
+			expect(result.envManagedFields).toContain('traceLinkBackend');
+			expect(result.envManagedFields).not.toContain('traceLinkBaseUrl');
 		});
 
 		it('falls back to the default protocol for a DB row written before the field existed', async () => {
@@ -332,6 +372,61 @@ describe('OtelSettingsService', () => {
 		});
 	});
 
+	describe('isExecutionUrlEnabled', () => {
+		it('is false before loadSettings, rather than throwing', () => {
+			expect(service.isExecutionUrlEnabled()).toBe(false);
+		});
+
+		it.each([
+			[true, true, true],
+			[true, false, false],
+			[false, true, false],
+		])('is %s && %s -> %s', async (enabled, includeExecutionUrl, expected) => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ enabled, includeExecutionUrl }),
+			} as Settings);
+
+			await service.loadSettings();
+
+			expect(service.isExecutionUrlEnabled()).toBe(expected);
+		});
+	});
+
+	describe('getTraceLinkSettings', () => {
+		it('should return undefined before loadSettings', () => {
+			expect(service.getTraceLinkSettings()).toBeUndefined();
+		});
+
+		it('should return undefined while OTel is off', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ enabled: false, traceLinkBackend: 'jaeger' }),
+			} as Settings);
+
+			await service.loadSettings();
+
+			expect(service.getTraceLinkSettings()).toBeUndefined();
+		});
+
+		it('should return the trace link settings while OTel is on', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({
+					enabled: true,
+					traceLinkBackend: 'tempo',
+					traceLinkBaseUrl: 'https://grafana.example.com',
+					traceLinkDatasourceUid: 'tempo-prod',
+				}),
+			} as Settings);
+
+			await service.loadSettings();
+
+			expect(service.getTraceLinkSettings()).toEqual({
+				backend: 'tempo',
+				baseUrl: 'https://grafana.example.com',
+				datasourceUid: 'tempo-prod',
+			});
+		});
+	});
+
 	describe('saveSettings', () => {
 		const settings: OtelConfig = {
 			enabled: true,
@@ -347,6 +442,10 @@ describe('OtelSettingsService', () => {
 			emitNodeStartSpan: false,
 			injectOutbound: true,
 			productionExecutionsOnly: false,
+			includeExecutionUrl: false,
+			traceLinkBackend: 'none',
+			traceLinkBaseUrl: '',
+			traceLinkDatasourceUid: '',
 		};
 
 		it('inserts a new row with loadOnStartup when none exists', async () => {

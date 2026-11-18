@@ -119,6 +119,36 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.status.code).toBe(SpanStatusCode.OK);
 		});
 
+		it('should set the execution URL on the workflow span only', () => {
+			const url = 'https://n8n.example.com/workflow/wf-1/executions/exec-url';
+			tracer.startWorkflow({
+				executionId: 'exec-url',
+				workflow: defaultWorkflow,
+				executionUrl: url,
+			});
+			const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
+			tracer.startNode({ executionId: 'exec-url', node });
+			tracer.endNode({ executionId: 'exec-url', node, inputItemCount: 1, outputItemCount: 1 });
+			tracer.endWorkflow({
+				executionId: 'exec-url',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const spans = otel.getFinishedSpans();
+			const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+			expect(workflowSpan.attributes['n8n.execution.url']).toBe(url);
+			expect(nodeSpan.attributes['n8n.execution.url']).toBeUndefined();
+		});
+
+		it('should not set the execution URL attribute when no URL is given', () => {
+			const { workflowSpan } = runSingleNodeExecution('exec-no-url');
+
+			expect(workflowSpan.attributes).not.toHaveProperty('n8n.execution.url');
+		});
+
 		it('should attach project custom telemetry tags to the workflow span', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-custom-tags',
@@ -406,6 +436,21 @@ describe('ExecutionLevelTracer', () => {
 			const headers: Record<string, string> = {};
 			tracer.injectTraceHeaders('exec-crashed', undefined, headers);
 			expect(headers.traceparent).toBeUndefined();
+		});
+
+		it('should set the execution URL on a reconstructed crashed workflow span', () => {
+			const url = 'https://n8n.example.com/workflow/wf-1/executions/exec-crashed-url';
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-crashed-url',
+				workflowId: 'wf-1',
+				mode: 'trigger',
+				detector: 'stall',
+				stoppedAt: new Date(),
+				executionUrl: url,
+			});
+
+			const span = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+			expect(span.attributes['n8n.execution.url']).toBe(url);
 		});
 
 		it('should reconstruct the workflow span for an untracked execution', () => {
@@ -1654,6 +1699,16 @@ describe('ExecutionLevelTracer', () => {
 				'n8n.project.custom.env': 'prod',
 				...identity,
 			});
+		});
+
+		it('should keep the execution URL on the workflow span and off the workflow marker', () => {
+			const url = 'https://n8n.example.com/workflow/wf-1/executions/exec-1';
+			runSegment(true, { executionUrl: url });
+
+			const [workflowSpan] = spansNamed('workflow.execute');
+			const [marker] = spansNamed('workflow.execute.started');
+			expect(workflowSpan.attributes['n8n.execution.url']).toBe(url);
+			expect(marker.attributes).not.toHaveProperty('n8n.execution.url');
 		});
 
 		it('should emit one zero-duration node marker as a child of each node span', () => {

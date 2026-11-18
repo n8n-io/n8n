@@ -155,6 +155,24 @@ describe('UpdateOtelSettingsDto', () => {
 		);
 	});
 
+	it.each(['', 'https://grafana.example.com', 'http://localhost:16686'])(
+		'accepts the trace link base URL "%s"',
+		(traceLinkBaseUrl) => {
+			expect(UpdateOtelSettingsDto.safeParse({ ...validSettings, traceLinkBaseUrl }).success).toBe(
+				true,
+			);
+		},
+	);
+
+	it.each(['http://', 'jaeger.example.com', 'javascript:alert(1)', 'ftp://jaeger.example.com'])(
+		'rejects the trace link base URL "%s"',
+		(traceLinkBaseUrl) => {
+			expect(UpdateOtelSettingsDto.safeParse({ ...validSettings, traceLinkBaseUrl }).success).toBe(
+				false,
+			);
+		},
+	);
+
 	it('rejects a sample rate outside the 0..1 range', () => {
 		const result = UpdateOtelSettingsDto.safeParse({ ...validSettings, tracesSampleRate: 2 });
 

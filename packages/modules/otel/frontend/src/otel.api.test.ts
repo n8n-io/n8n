@@ -26,6 +26,10 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
+	includeExecutionUrl: false,
+	traceLinkBackend: 'none',
+	traceLinkBaseUrl: '',
+	traceLinkDatasourceUid: '',
 	envManagedFields: [],
 	...overrides,
 });

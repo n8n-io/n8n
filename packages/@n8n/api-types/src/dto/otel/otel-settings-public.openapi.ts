@@ -3,8 +3,10 @@ import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 export const otelSettingsPublicDescription =
 	'The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a ' +
 	'full replacement: every field must be provided, except `exporterProtocol`, which defaults to ' +
-	'`http/protobuf` when omitted, and `emitWorkflowStartSpan` and `emitNodeStartSpan`, which ' +
-	'default to `false` when omitted. Fields managed declaratively via environment variables are ' +
+	'`http/protobuf` when omitted, `emitWorkflowStartSpan` and `emitNodeStartSpan`, which ' +
+	'default to `false` when omitted, `includeExecutionUrl`, which defaults to `false` when omitted, ' +
+	'and the `traceLink*` fields, which default to no trace link ' +
+	'when omitted. Fields managed declaratively via environment variables are ' +
 	'returned with their effective value. A write can repeat these values, but changing them returns 409.';
 
 export const otelSettingsPublicFieldDocs = {
@@ -89,5 +91,38 @@ export const otelSettingsPublicFieldDocs = {
 			'When true, only production executions of published (active) workflows are traced, not ' +
 			'manual/test runs.',
 		example: true,
+	},
+	includeExecutionUrl: {
+		default: false,
+		description:
+			'Whether to add the `n8n.execution.url` attribute, a link to the execution in n8n, to each ' +
+			'`workflow.execute` span. n8n builds the link from `N8N_EDITOR_BASE_URL`, or from its host ' +
+			'and port when that variable is not set. Optional: a write that omits it selects `false`.',
+		example: false,
+	},
+	traceLinkBackend: {
+		default: 'none',
+		description:
+			'The observability backend that executions link to. n8n uses it to build an "Open trace" ' +
+			'link for each execution with a sampled trace. `none` turns the link off. Optional: a write ' +
+			'that omits it selects `none`.',
+		example: 'jaeger',
+	},
+	traceLinkBaseUrl: {
+		default: '',
+		description:
+			'The URL of the observability backend UI, for example `https://jaeger.example.com`, ' +
+			'`https://grafana.example.com`, `https://app.datadoghq.com`, ' +
+			'`https://ui.honeycomb.io/<team>/environments/<environment>` or ' +
+			'`https://zipkin.example.com/zipkin`. The value must be empty or an `http://` or `https://` URL. ' +
+			'Optional: a write that omits it selects an empty string.',
+		example: 'https://jaeger.example.com',
+	},
+	traceLinkDatasourceUid: {
+		default: '',
+		description:
+			'The UID of the Tempo data source in Grafana. Only used when `traceLinkBackend` is ' +
+			'`tempo`. Optional: a write that omits it selects an empty string.',
+		example: 'tempo',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;

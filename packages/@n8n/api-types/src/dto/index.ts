@@ -720,6 +720,13 @@ export {
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export {
+	TRACE_LINK_BACKENDS,
+	traceLinkBackendSchema,
+	traceLinkBaseUrlSchema,
+	type TraceLinkBackend,
+	type ExecutionTraceLink,
+} from './otel/trace-link';
+export {
 	OtelSettingsPublicDto,
 	OtelSettingsQueryPublicDto,
 	UpdateOtelSettingsPublicDto,

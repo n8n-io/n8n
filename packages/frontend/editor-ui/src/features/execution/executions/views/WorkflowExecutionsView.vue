@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import WorkflowExecutionsList from '../components/workflow/WorkflowExecutionsList.vue';
 import { useExecutionsStore } from '../executions.store';
 import { useI18n } from '@n8n/i18n';
-import type { ExecutionFilterType } from '../executions.types';
+import type { ExecutionFilterType, ExecutionSummaryWithTrace } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
@@ -59,15 +59,17 @@ const execution = computed(() => {
 		return current;
 	}
 
-	// Keep workflowVersionId from execution details if available
-	if (current?.id === fromList.id && current.workflowVersionId) {
-		return { ...fromList, workflowVersionId: current.workflowVersionId };
-	}
+	if (current?.id !== fromList.id) return fromList;
 
-	return fromList;
+	// List items lack these fields, so keep them from the execution details
+	return {
+		...fromList,
+		workflowVersionId: current.workflowVersionId ?? fromList.workflowVersionId,
+		trace: current.trace,
+	};
 });
 
-const currentExecution = ref<ExecutionSummary | undefined>();
+const currentExecution = ref<ExecutionSummaryWithTrace | undefined>();
 
 // Check if this is a new workflow by looking for the ?new query param
 const isNewWorkflowRoute = computed(() => {
@@ -112,7 +114,7 @@ async function fetchExecution() {
 	try {
 		currentExecution.value = (await executionsStore.fetchExecution(
 			executionId.value,
-		)) as ExecutionSummary;
+		)) as ExecutionSummaryWithTrace;
 		executionsStore.activeExecution = currentExecution.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));

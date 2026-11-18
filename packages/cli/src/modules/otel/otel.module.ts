@@ -1,7 +1,9 @@
+import type { ExecutionTraceLink } from '@n8n/api-types';
 import type { ModuleContext, ModuleInterface } from '@n8n/decorators';
 import { BackendModule, LOWEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import type { ExecutionTracingContext } from 'n8n-workflow';
 
 @BackendModule({
 	name: 'otel',
@@ -30,6 +32,7 @@ export class OtelModule implements ModuleInterface {
 		const { ExecutionLevelTracer } = await import('./execution-level-tracer.js');
 		const { OtelSettingsService } = await import('./otel-settings.service.js');
 		const { toBaggageHeader, toCallerBaggage } = await import('./caller-baggage.js');
+		const { buildTraceLink } = await import('./trace-link/trace-link.builder.js');
 		const tracer = Container.get(ExecutionLevelTracer);
 		const settingsService = Container.get(OtelSettingsService);
 
@@ -40,6 +43,13 @@ export class OtelModule implements ModuleInterface {
 
 				const baggage = toCallerBaggage(header);
 				return baggage && toBaggageHeader(baggage);
+			},
+			buildTraceLink: (
+				tracingContext: ExecutionTracingContext | null | undefined,
+				timing: { startedAt?: Date | null; stoppedAt?: Date | null },
+			): ExecutionTraceLink | undefined => {
+				const settings = settingsService.getTraceLinkSettings();
+				return settings && buildTraceLink(settings, tracingContext, timing);
 			},
 		};
 	}

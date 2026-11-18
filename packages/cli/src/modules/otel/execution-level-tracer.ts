@@ -99,7 +99,17 @@ export class ExecutionLevelTracer {
 				...identity,
 			};
 
-			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
+			const span = this.tracer.startSpan(
+				'workflow.execute',
+				{
+					attributes: {
+						...attributes,
+						...(params.executionUrl && { [ATTR.EXECUTION_URL]: params.executionUrl }),
+					},
+					links,
+				},
+				parentCtx,
+			);
 			const workflowContext = trace.setSpan(parentCtx, span);
 			const baggage = toCallerBaggage(params.tracingContext?.baggage);
 
@@ -206,6 +216,7 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflowVersionId,
 					}),
 					...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+					...(params.executionUrl && { [ATTR.EXECUTION_URL]: params.executionUrl }),
 					...identity,
 				},
 			},

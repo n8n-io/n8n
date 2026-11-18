@@ -72,6 +72,8 @@ describe('ExecutionService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const eligibleModules: ModuleName[] = [];
 	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
+	// A real Map: the mock proxy breaks Map methods.
+	Object.defineProperty(moduleRegistry, 'context', { value: new Map() });
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -95,6 +97,7 @@ describe('ExecutionService', () => {
 		engineV2ExecutionReader,
 		engineDataPlane,
 		new WorkflowVersionedSettingsService(moduleRegistry),
+		moduleRegistry,
 	);
 
 	beforeEach(() => {
@@ -158,6 +161,53 @@ describe('ExecutionService', () => {
 				execution,
 				expect.objectContaining({ redactExecutionData: undefined }),
 			);
+		});
+
+		describe('trace link', () => {
+			const tracingContext = {
+				traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+				baggage: 'tenant=acme',
+			};
+			const link = {
+				traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+				url: 'https://jaeger.example.com/trace/4bf92f3577b34da6a3ce929d0e0e4736',
+			};
+
+			const arrangeExecution = () => {
+				const execution = {
+					id: '123',
+					startedAt: new Date('2026-11-18T10:00:00.000Z'),
+					stoppedAt: new Date('2026-11-18T10:00:02.000Z'),
+					tracingContext,
+					data: { resultData: {} },
+				} as unknown as IExecutionResponse;
+				executionPersistence.findOneInWorkflows.mockResolvedValue(execution);
+				executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+				return mock<ExecutionRequest.GetOne>({ params: { id: '123' }, query: {} });
+			};
+
+			afterEach(() => moduleRegistry.context.clear());
+
+			it('should return the trace link and leave out the tracing context', async () => {
+				const buildTraceLink = vi.fn().mockReturnValue(link);
+				moduleRegistry.context.set('otel', { buildTraceLink });
+
+				const result = await executionService.findOne(arrangeExecution(), ['workflow-1']);
+
+				expect(result?.trace).toEqual(link);
+				expect(result).not.toHaveProperty('tracingContext');
+				expect(buildTraceLink).toHaveBeenCalledWith(tracingContext, {
+					startedAt: new Date('2026-11-18T10:00:00.000Z'),
+					stoppedAt: new Date('2026-11-18T10:00:02.000Z'),
+				});
+			});
+
+			it('should leave out the trace link when the otel module is not loaded', async () => {
+				const result = await executionService.findOne(arrangeExecution(), ['workflow-1']);
+
+				expect(result).not.toHaveProperty('trace');
+				expect(result).not.toHaveProperty('tracingContext');
+			});
 		});
 
 		it('should surface missing execution data as a user-facing not-found error', async () => {
@@ -331,6 +381,7 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				new WorkflowVersionedSettingsService(moduleRegistry),
+				moduleRegistry,
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -415,6 +466,7 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				new WorkflowVersionedSettingsService(moduleRegistry),
+				moduleRegistry,
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');

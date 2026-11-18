@@ -1,7 +1,16 @@
-import { OTLP_PROTOCOLS, type OtlpProtocol } from './otel.constants';
+import {
+	OTLP_PROTOCOLS,
+	type OtlpProtocol,
+	TRACE_LINK_BACKENDS,
+	type TraceLinkBackend,
+} from './otel.constants';
 
 export function isOtlpProtocol(value: unknown): value is OtlpProtocol {
 	return OTLP_PROTOCOLS.some((protocol) => protocol === value);
+}
+
+export function isTraceLinkBackend(value: unknown): value is TraceLinkBackend {
+	return TRACE_LINK_BACKENDS.some((backend) => backend === value);
 }
 
 /**

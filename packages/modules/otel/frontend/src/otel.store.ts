@@ -41,6 +41,10 @@ const defaultSettings: OtelSettings = {
 	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
+	includeExecutionUrl: false,
+	traceLinkBackend: 'none',
+	traceLinkBaseUrl: '',
+	traceLinkDatasourceUid: '',
 };
 
 function extractSettings(response: OtelSettingsResponse): OtelSettings {

@@ -6,6 +6,7 @@ import {
 	otelSettingsPublicDescription,
 	otelSettingsPublicFieldDocs as docs,
 } from './otel-settings-public.openapi';
+import { TRACE_LINK_BACKENDS } from './trace-link';
 import { OTLP_PROTOCOLS, UpdateOtelSettingsDto } from './update-otel-settings.dto';
 import { Z } from '../../zod-class';
 
@@ -24,6 +25,12 @@ export class OtelSettingsPublicDto extends Z.class(
 		emitNodeStartSpan: z.boolean().openapi(docs.emitNodeStartSpan),
 		injectOutbound: z.boolean().openapi(docs.injectOutbound),
 		productionExecutionsOnly: z.boolean().openapi(docs.productionExecutionsOnly),
+		includeExecutionUrl: z.boolean().openapi(docs.includeExecutionUrl),
+		traceLinkBackend: z
+			.string()
+			.openapi({ ...docs.traceLinkBackend, enum: [...TRACE_LINK_BACKENDS] }),
+		traceLinkBaseUrl: z.string().openapi(docs.traceLinkBaseUrl),
+		traceLinkDatasourceUid: z.string().openapi(docs.traceLinkDatasourceUid),
 	},
 	{ strict: true },
 ) {
@@ -51,6 +58,10 @@ export class UpdateOtelSettingsPublicDto extends Z.class(
 		productionExecutionsOnly: fields.productionExecutionsOnly.openapi(
 			docs.productionExecutionsOnly,
 		),
+		includeExecutionUrl: fields.includeExecutionUrl.openapi(docs.includeExecutionUrl),
+		traceLinkBackend: fields.traceLinkBackend.openapi(docs.traceLinkBackend),
+		traceLinkBaseUrl: fields.traceLinkBaseUrl.openapi(docs.traceLinkBaseUrl),
+		traceLinkDatasourceUid: fields.traceLinkDatasourceUid.openapi(docs.traceLinkDatasourceUid),
 	},
 	{ strict: true },
 ) {

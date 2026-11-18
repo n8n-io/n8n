@@ -1,6 +1,6 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
 	ExecutionRedactionServiceProxy,
@@ -74,6 +74,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
+import { resolveExecutionTraceLink } from './execution-trace-link';
 import { ExecutionPersistence } from './execution-persistence';
 
 import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
@@ -143,6 +144,7 @@ export class ExecutionService {
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
 		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	/**
@@ -201,10 +203,15 @@ export class ExecutionService {
 			},
 		);
 
+		// The raw tracing context holds caller baggage, so only the derived link leaves the server.
+		const { tracingContext: _, ...executionWithoutTracingContext } = execution;
+		const trace = resolveExecutionTraceLink(this.moduleRegistry, execution);
+
 		return {
-			...execution,
+			...executionWithoutTracingContext,
 			data: stringify(processedExecution.data),
 			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
+			...(trace && { trace }),
 		};
 	}
 

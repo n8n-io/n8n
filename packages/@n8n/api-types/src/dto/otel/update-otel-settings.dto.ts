@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { traceLinkBackendSchema, traceLinkBaseUrlSchema } from './trace-link';
 import { Z } from '../../zod-class';
 
 export const OTLP_PROTOCOLS = ['http/protobuf', 'grpc'] as const;
@@ -30,4 +31,8 @@ export class UpdateOtelSettingsDto extends Z.class({
 	emitNodeStartSpan: z.boolean().default(false),
 	injectOutbound: z.boolean(),
 	productionExecutionsOnly: z.boolean(),
+	includeExecutionUrl: z.boolean().default(false),
+	traceLinkBackend: traceLinkBackendSchema.default('none'),
+	traceLinkBaseUrl: traceLinkBaseUrlSchema.default(''),
+	traceLinkDatasourceUid: z.string().trim().default(''),
 }) {}

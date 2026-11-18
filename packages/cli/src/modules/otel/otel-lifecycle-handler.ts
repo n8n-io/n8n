@@ -1,6 +1,6 @@
 import { isGenAiAttributeKey } from '@n8n/ai-utilities/gen-ai';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { WorkflowRepository, type Project } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent } from '@n8n/decorators';
 import type {
@@ -55,6 +55,7 @@ export class OtelLifecycleHandler {
 		private readonly logger: Logger,
 		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
+		private readonly urlService: UrlService,
 	) {}
 
 	init() {
@@ -62,6 +63,19 @@ export class OtelLifecycleHandler {
 			'execution-crashed',
 			async (event) => await this.onExecutionCrashed(event),
 		);
+	}
+
+	/**
+	 * Builds the link to an execution in n8n, the same way as `$execution.url` in an error
+	 * workflow: `N8N_EDITOR_BASE_URL` when set, else the URL n8n derives from host and port.
+	 */
+	private buildExecutionUrl(workflowId: string, executionId: string): string | undefined {
+		if (!this.otelSettingsService.isExecutionUrlEnabled()) return undefined;
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		if (!/^https?:\/\//i.test(baseUrl)) return undefined;
+
+		return `${baseUrl}/workflow/${encodeURIComponent(workflowId)}/executions/${encodeURIComponent(executionId)}`;
 	}
 
 	@OnPubSubEvent('reload-otel-config')
@@ -112,6 +126,7 @@ export class OtelLifecycleHandler {
 			tracingContext,
 			savedIdentity,
 			emitStartSpan: this.otelSettingsService.getSettings().emitWorkflowStartSpan,
+			executionUrl: this.buildExecutionUrl(ctx.workflow.id, ctx.executionId),
 			project: this.buildProjectContext(project),
 			workflow: {
 				id: ctx.workflow.id,
@@ -156,6 +171,7 @@ export class OtelLifecycleHandler {
 			linkTo: previousWorkflowExecution,
 			savedIdentity: toExecutionIdentity(previousWorkflowExecution?.identity),
 			emitStartSpan: this.otelSettingsService.getSettings().emitWorkflowStartSpan,
+			executionUrl: this.buildExecutionUrl(ctx.workflow.id, ctx.executionId),
 			project: this.buildProjectContext(project),
 			workflow: {
 				id: ctx.workflow.id,
@@ -197,6 +213,7 @@ export class OtelLifecycleHandler {
 			startedAt: event.startedAt,
 			stoppedAt: event.stoppedAt,
 			tracingContext: event.tracingContext,
+			executionUrl: this.buildExecutionUrl(event.workflowId, event.executionId),
 			workflow: {
 				customAttributes: this.buildWorkflowCustomAttributes(event.workflowCustomTelemetryTags),
 			},

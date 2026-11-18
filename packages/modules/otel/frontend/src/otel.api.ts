@@ -1,7 +1,7 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
-import type { OtlpProtocol } from './otel.constants';
+import type { OtlpProtocol, TraceLinkBackend } from './otel.constants';
 
 export type OtelSettings = {
 	enabled: boolean;
@@ -17,6 +17,10 @@ export type OtelSettings = {
 	emitNodeStartSpan: boolean;
 	injectOutbound: boolean;
 	productionExecutionsOnly: boolean;
+	includeExecutionUrl: boolean;
+	traceLinkBackend: TraceLinkBackend;
+	traceLinkBaseUrl: string;
+	traceLinkDatasourceUid: string;
 };
 
 export type OtelSettingsResponse = OtelSettings & {

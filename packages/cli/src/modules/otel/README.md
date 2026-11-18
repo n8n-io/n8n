@@ -187,6 +187,50 @@ or a node started, before the real span ends.
 - Both flags follow `N8N_OTEL_TRACES_PRODUCTION_ONLY`. Set them on workers too.
 - A marker that fails logs a warning. It does not stop the real span or the execution.
 
+### Trace links
+
+An admin can link each execution to its trace in an observability backend. The execution
+preview then shows an "Open trace" button. Set it in Settings → OpenTelemetry, or with these
+environment variables:
+
+| Environment variable                 | Use                                                             |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `N8N_OTEL_TRACE_LINK_BACKEND`        | `none`, `jaeger`, `tempo`, `datadog`, `honeycomb` or `zipkin`   |
+| `N8N_OTEL_TRACE_LINK_BASE_URL`       | The URL of the backend UI. It must be `http://` or `https://`.  |
+| `N8N_OTEL_TRACE_LINK_DATASOURCE_UID` | The Tempo data source UID in Grafana. Only `tempo` uses it.     |
+
+- `trace-link/trace-link.builder.ts` holds the link format of each backend.
+- `GET /executions/:id` reads the saved `traceparent` and returns `trace: { traceId, url }`.
+  The executions service calls `buildTraceLink` through the module context, so it does not load
+  the module. The response does not contain the raw `tracingContext`, because it holds caller
+  baggage.
+- The link exists only when OTel is on, a backend is set and the trace flag of the saved
+  `traceparent` is sampled. The head sampler sets that flag when the workflow span starts, so
+  n8n knows the decision before the span is exported.
+- n8n cannot know when a collector drops a trace (tail sampling), an export fails, or the
+  backend deletes a trace. The link then opens a "trace not found" page.
+- Datadog shows OpenTelemetry traces under the lower 64 bits of the trace id, in decimal. The
+  Datadog link uses that form.
+
+### Execution link on spans
+
+With `N8N_OTEL_TRACES_INCLUDE_EXECUTION_URL=true` (or "Add execution link to spans" in Settings),
+n8n adds `n8n.execution.url` to each `workflow.execute` span. The value is a link to the
+execution in n8n, for example `https://n8n.example.com/workflow/<workflowId>/executions/<executionId>`.
+A user can then open the execution from the trace in any backend. n8n still checks access when the
+link opens.
+
+- The setting is off by default, because the link shows the n8n host name to the trace backend.
+- n8n builds the link the same way as `$execution.url` in an error workflow:
+  `N8N_EDITOR_BASE_URL` when it is set, else the URL that n8n derives from protocol, host, port
+  and path. Behind a proxy, that derived URL can be an internal address, so set
+  `N8N_EDITOR_BASE_URL`.
+- Each `workflow.execute` span gets the link of its own execution: each resumed segment, each
+  sub-workflow and the span of a crashed execution. Node spans and start marker spans do not
+  get it, so each trace segment holds the link once.
+- In queue mode, workers send their own `workflow.execute` spans. Set the same
+  `N8N_EDITOR_BASE_URL` on workers, so their links match the ones from main.
+
 ### Custom attribute prefixes
 
 n8n adds a prefix to the keys of custom telemetry tags: `n8n.project.custom.`,
