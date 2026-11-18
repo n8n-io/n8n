@@ -147,11 +147,12 @@ describe('AppNavigation', () => {
 	});
 
 	it('shows the rail items with a divider before the projects, and the account menu', () => {
-		const { getByTestId, getByRole } = setup({ collapsed: false });
+		const { getByTestId, getAllByRole } = setup({ collapsed: false });
 
 		expect(getByTestId('app-nav-overview')).toHaveAttribute('aria-current', 'page');
 		expect(getByTestId('app-nav-project')).not.toHaveAttribute('aria-current');
-		expect(getByRole('separator')).toBeInTheDocument();
+		// One divider before the projects, one above the account menu.
+		expect(getAllByRole('separator')).toHaveLength(2);
 		expect(getByTestId('account-menu')).toBeInTheDocument();
 	});
 
