@@ -23,10 +23,11 @@ consumers and possibly several backends use the port.
 Consumers register lease kinds and report changes through `LeaseService`. They never call the
 `LeaseProvider` directly.
 
-`LeaseService` owns the rules for a kind. A kind name has lower case letters, digits and dashes,
-starts with a letter, and has at most 24 characters. A name is registered once. The kind's options
-are merged over the defaults: a start timeout of 60 seconds and 5 failed starts. The service then
-gives the provider the source of the kind, its complete options and its handler.
+`LeaseService` owns the rules for a kind. It rejects a name that does not match the name rule or
+that is already registered. It rejects an option that is not valid. It merges the kind's options
+over the defaults. The service then gives the provider the source of the kind, its complete
+options and its handler. `MAX_LEASE_KIND_LENGTH` and `DEFAULT_LEASE_KIND_OPTIONS` hold the limit
+and the defaults.
 
 The main reason is that the rules for a kind are in one place, for every consumer and every
 backend.
@@ -34,13 +35,13 @@ backend.
 ## Alternatives Considered
 
 1. **Consumers call the `LeaseProvider` directly.** We rejected it because each consumer would
-   repeat the name check and the defaults. The rules would drift between consumers.
-2. **Each backend checks names and applies defaults.** We rejected it because each backend would
+   repeat the checks and the defaults. The rules would drift between consumers.
+2. **Each backend checks kinds and applies defaults.** We rejected it because each backend would
    repeat the rules. A consumer would get different behaviour from different backends.
 
 ## Consequences
 
-1. A backend gets only valid names and complete options. It does not check them again.
+1. A backend gets only valid names and valid, complete options. It does not check them again.
 2. A change to the name rule or to a default changes one class.
 3. `LeaseService` rejects a call for a kind that is not registered, before the call reaches the
    backend.
