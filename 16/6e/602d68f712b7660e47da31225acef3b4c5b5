@@ -1,0 +1,14 @@
+packages/testing/playwright/global-setup.ts
+  h_52a137d26d774c 32-35,39,42,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "166e602d68f712b7660e47da31225acef3b4c5b5",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
