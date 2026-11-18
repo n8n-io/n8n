@@ -72,6 +72,7 @@ export class N8nLiteLambdaService {
 			Variables: {
 				LITE_PORT: LAMBDA_PORT,
 				LITE_REPORT_BEFORE_RESPONSE: '1',
+				...(this.config.slackToken ? { LITE_SLACK_TOKEN: this.config.slackToken } : {}),
 				...(publicUrl ? { LITE_PUBLIC_URL: publicUrl } : {}),
 			},
 		});

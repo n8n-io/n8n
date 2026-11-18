@@ -15,7 +15,11 @@ const SUPPORTED_VERSIONS: Record<string, number[]> = {
 	'n8n-nodes-base.if': [2, 2.1, 2.2, 2.3, 2.4],
 	'n8n-nodes-base.respondToWebhook': [1.1, 1.2, 1.3, 1.4, 1.5],
 	'n8n-nodes-base.httpRequest': [4.2, 4.3, 4.4, 4.5],
+	'n8n-nodes-base.slack': [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7],
 };
+
+// The runner takes the Slack bot token from its environment, not from the n8n credential.
+const NODES_WITH_CREDENTIALS = new Set(['n8n-nodes-base.slack']);
 
 const IF_OPERATIONS = new Map<string, string[]>([
 	[
@@ -143,12 +147,36 @@ function checkHttpRequest(parameters: INodeParameters): string[] {
 	return reasons;
 }
 
+function checkSlack(parameters: INodeParameters): string[] {
+	const reasons: string[] = [];
+	if (parameters.resource !== 'message' || parameters.operation !== 'post') {
+		reasons.push('only "Send a message" is supported');
+	}
+	if (parameters.select !== 'channel') reasons.push('only sending to a channel is supported');
+	if (parameters.messageType !== 'text') reasons.push('only simple text messages are supported');
+	const mode = asRecord(parameters.channelId).mode;
+	if (mode !== 'list' && mode !== 'id') {
+		reasons.push(`channel mode "${String(mode)}" is not supported`);
+	}
+	for (const key of onlyAllowedKeys(parameters.otherOptions, [
+		'includeLinkToWorkflow',
+		'mrkdwn',
+		'unfurl_links',
+		'unfurl_media',
+		'link_names',
+	])) {
+		reasons.push(`option "${key}" is not supported`);
+	}
+	return reasons;
+}
+
 const NODE_CHECKS: Record<string, (parameters: INodeParameters) => string[]> = {
 	'n8n-nodes-base.webhook': checkWebhook,
 	'n8n-nodes-base.set': checkSet,
 	'n8n-nodes-base.if': checkIf,
 	'n8n-nodes-base.respondToWebhook': checkRespondToWebhook,
 	'n8n-nodes-base.httpRequest': checkHttpRequest,
+	'n8n-nodes-base.slack': checkSlack,
 };
 
 function checkNode(node: INode): string[] {
@@ -160,7 +188,11 @@ function checkNode(node: INode): string[] {
 
 	const reasons: string[] = [];
 	if (node.disabled) reasons.push('disabled nodes are not supported');
-	if (node.credentials && Object.keys(node.credentials).length > 0) {
+	if (
+		node.credentials &&
+		Object.keys(node.credentials).length > 0 &&
+		!NODES_WITH_CREDENTIALS.has(node.type)
+	) {
 		reasons.push('credentials are not supported');
 	}
 	reasons.push(...(NODE_CHECKS[node.type]?.(node.parameters) ?? []));

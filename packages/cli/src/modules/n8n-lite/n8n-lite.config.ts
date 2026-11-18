@@ -34,4 +34,11 @@ export class N8nLiteConfig {
 	 */
 	@Env('N8N_LITE_LAMBDA_ADAPTER_LAYER_ARN')
 	lambdaAdapterLayerArn: string = '';
+
+	/**
+	 * Slack bot token for the Slack nodes of a deployed Lambda function. n8n
+	 * sets it as `LITE_SLACK_TOKEN` on the function. The token starts with `xoxb-`.
+	 */
+	@Env('N8N_LITE_SLACK_TOKEN')
+	slackToken: string = '';
 }
