@@ -80,6 +80,10 @@ export interface CreatureTraits {
 	speed: number;
 	/** CSS colour blended over the sprite. */
 	tint?: string;
+	/** Seconds for one on-and-off cycle of the tint. Without it, the tint stays on. */
+	tintBlinkSeconds?: number;
+	/** Multiplies the whole swim speed, live boost included. Without it, the factor is 1. */
+	speedFactor?: number;
 	/** Ids of effects in the effect registry. */
 	effects: string[];
 }

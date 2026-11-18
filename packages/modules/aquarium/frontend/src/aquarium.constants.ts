@@ -38,5 +38,17 @@ export const SIZE_TIER_THRESHOLDS = {
 
 export const BUBBLES_MIN_EXECUTIONS = 10;
 
+/** Failure rate above which a creature looks sick. */
+export const SICK_FAILURE_RATE = 0.2;
+
+/** One fixed colour, so the renderer caches one tinted sprite for each species. */
+export const SICK_TINT = '#7fbf3f';
+
+/** Seconds for one on-and-off cycle of the sick tint. */
+export const SICK_BLINK_SECONDS = 1;
+
+/** Share of the normal swim speed that a sick creature keeps. */
+export const SICK_SPEED_FACTOR = 0.4;
+
 /** Delay between two polls of the live activity endpoint. */
 export const ACTIVITY_POLL_MS = 2_000;

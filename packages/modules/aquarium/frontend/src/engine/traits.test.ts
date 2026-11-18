@@ -1,3 +1,4 @@
+import { SICK_BLINK_SECONDS, SICK_SPEED_FACTOR, SICK_TINT } from '../aquarium.constants';
 import type { AquariumEntity } from '../aquarium.types';
 import { emptyMetrics } from '../sources/source.utils';
 import { failureRateOf } from './scaling';
@@ -37,6 +38,19 @@ describe('deriveTraits', () => {
 	it('adds bubbles only to creatures that run often', () => {
 		expect(deriveTraits(entity({ executionCount: 0 })).effects).toEqual([]);
 		expect(deriveTraits(entity({ executionCount: 100 })).effects).toEqual(['bubbles']);
+	});
+
+	it('makes creatures that fail often blink green and swim slowly', () => {
+		const healthy = deriveTraits(entity({ executionCount: 100, failedCount: 10 }));
+		const sick = deriveTraits(entity({ executionCount: 100, failedCount: 45 }));
+
+		expect(healthy).not.toHaveProperty('tint');
+		expect(healthy).not.toHaveProperty('speedFactor');
+		expect(sick).toMatchObject({
+			tint: SICK_TINT,
+			tintBlinkSeconds: SICK_BLINK_SECONDS,
+			speedFactor: SICK_SPEED_FACTOR,
+		});
 	});
 
 	it('applies extra rules after the default rules', () => {

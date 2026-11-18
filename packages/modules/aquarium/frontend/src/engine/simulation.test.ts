@@ -122,6 +122,16 @@ describe('simulation', () => {
 			expect(settle(15)).toBeGreaterThan(settle(5) + 5);
 		});
 
+		it('applies the speed factor to the live boost too', () => {
+			const creature = spawnCreature(entity, deriveTraits(entity), minnow, bounds, seededRandom());
+			creature.activity = activityAt(15);
+			const full = targetSpeedOf(creature);
+
+			creature.traits = { ...creature.traits, speedFactor: 0.4 };
+
+			expect(targetSpeedOf(creature)).toBeCloseTo(full * 0.4);
+		});
+
 		it('eases toward a new target instead of jumping', () => {
 			const creature = spawnCreature(entity, deriveTraits(entity), minnow, bounds, seededRandom());
 			creature.activity = activityAt(15);

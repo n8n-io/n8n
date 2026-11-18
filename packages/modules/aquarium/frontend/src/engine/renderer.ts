@@ -69,10 +69,13 @@ export class AquariumRenderer {
 	}
 
 	private drawCreature(creature: Creature): void {
+		const { tint, tintBlinkSeconds } = creature.traits;
+		// Age, not tank time, so blinking creatures are out of step, and reduced motion stops it.
+		const tintOn = !tintBlinkSeconds || creature.age % tintBlinkSeconds < tintBlinkSeconds / 2;
 		const frames = this.spriteFrames(
 			creature.species.id,
 			creature.species.sprite,
-			creature.traits.tint,
+			tintOn ? tint : undefined,
 		);
 		const frame = frames[frameIndexOf(creature)];
 		if (!frame) return;

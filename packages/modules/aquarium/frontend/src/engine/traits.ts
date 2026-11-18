@@ -1,7 +1,13 @@
-import { BUBBLES_MIN_EXECUTIONS } from '../aquarium.constants';
+import {
+	BUBBLES_MIN_EXECUTIONS,
+	SICK_BLINK_SECONDS,
+	SICK_FAILURE_RATE,
+	SICK_SPEED_FACTOR,
+	SICK_TINT,
+} from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
 import { pickSpecies } from '../species/species.registry';
-import { complexityScore, sizeTierFor, swimSpeedFor } from './scaling';
+import { complexityScore, failureRateOf, sizeTierFor, swimSpeedFor } from './scaling';
 
 /**
  * One step of the trait pipeline. A rule gets the traits of the previous rules and
@@ -29,8 +35,25 @@ export const bubblesRule: TraitRule = (entity, traits) =>
 		? { ...traits, effects: [...traits.effects, 'bubbles'] }
 		: traits;
 
+/** A creature that fails often blinks green and swims slowly. */
+export const sickRule: TraitRule = (entity, traits) =>
+	failureRateOf(entity.metrics) > SICK_FAILURE_RATE
+		? {
+				...traits,
+				tint: SICK_TINT,
+				tintBlinkSeconds: SICK_BLINK_SECONDS,
+				speedFactor: SICK_SPEED_FACTOR,
+			}
+		: traits;
+
 /** Order matters: `speciesRule` reads the tier from `sizeRule`. */
-export const defaultTraitRules: TraitRule[] = [sizeRule, speciesRule, speedRule, bubblesRule];
+export const defaultTraitRules: TraitRule[] = [
+	sizeRule,
+	speciesRule,
+	speedRule,
+	bubblesRule,
+	sickRule,
+];
 
 const BASE_TRAITS: CreatureTraits = {
 	speciesId: '',

@@ -95,10 +95,10 @@ export function clampToTank(creature: Creature, bounds: TankBounds): void {
 	creature.targetY = Math.min(Math.max(0, creature.targetY), maxY(creature, bounds));
 }
 
-/** Resting speed from the traits, plus a boost from the live start rate. */
+/** Resting speed from the traits, plus a boost from the live start rate, times the speed factor. */
 export function targetSpeedOf(creature: Creature): number {
 	const rate = creature.activity ? recentRate(creature.activity.startedPerSecond) : 0;
-	return creature.traits.speed + liveSpeedBoostFor(rate);
+	return (creature.traits.speed + liveSpeedBoostFor(rate)) * (creature.traits.speedFactor ?? 1);
 }
 
 /** Moves the creature for `dt` seconds. Mutates it to save allocations in the frame loop. */

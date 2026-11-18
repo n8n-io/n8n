@@ -25,6 +25,7 @@ export const DEMO_ENTITIES: AquariumEntity[] = [
 	demo('Sync CRM contacts', 'workflow', 6, 1_200, 30, 4_000),
 	demo('Weekly report', 'workflow', 9, 12, 1, 45_000),
 	demo('Invoice OCR', 'workflow', 14, 300, 40, 20_000),
+	demo('Flaky scraper', 'workflow', 5, 400, 180, 3_000),
 	demo('Lead enrichment', 'workflow', 22, 2_000, 100, 8_000),
 	demo('Data warehouse ETL', 'workflow', 45, 30, 3, 600_000),
 	demo('Webhook relay', 'workflow', 3, 8_000, 0, 100),
