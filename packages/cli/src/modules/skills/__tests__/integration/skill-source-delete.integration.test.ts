@@ -47,6 +47,7 @@ describe('Delete a skill source', () => {
 	let owner: SuperAgentTest;
 	let editor: SuperAgentTest;
 	let updater: SuperAgentTest;
+	let deleter: SuperAgentTest;
 	let viewer: SuperAgentTest;
 	let outsider: SuperAgentTest;
 	let team: Project;
@@ -59,9 +60,11 @@ describe('Delete a skill source', () => {
 		owner = server.authAgentFor(ownerUser);
 		const editorUser = await createMember();
 		const updaterUser = await createMember();
+		const deleterUser = await createMember();
 		const viewerUser = await createMember();
 		editor = server.authAgentFor(editorUser);
 		updater = server.authAgentFor(updaterUser);
+		deleter = server.authAgentFor(deleterUser);
 		viewer = server.authAgentFor(viewerUser);
 		outsider = server.authAgentFor(await createMember());
 		team = await createTeamProject('Marketing');
@@ -73,6 +76,11 @@ describe('Delete a skill source', () => {
 			{ roleType: 'project' },
 		);
 		await linkUserToProject(updaterUser, team, role.slug);
+		const deleteRole = await createCustomRoleWithScopeSlugs(
+			['projectSkill:list', 'projectSkill:read', 'projectSkill:delete'],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(deleterUser, team, deleteRole.slug);
 	});
 
 	beforeEach(() => {
@@ -270,12 +278,15 @@ describe('Delete a skill source', () => {
 		},
 	);
 
-	it.each(['multiple', 'unlinked', 'used'] as const)(
+	// `other`: the source has one linked skill, but it is not the selected one.
+	it.each(['multiple', 'unlinked', 'other', 'used'] as const)(
 		'refuses last-skill removal when the selection is %s and changes nothing',
 		async (state) => {
 			const { sourceId, first, second } = await sourceWithSkills();
-			if (state !== 'multiple') await editor.delete(`/skills/${second.id}`).expect(200);
-			if (state === 'unlinked') {
+			if (state === 'unlinked' || state === 'used') {
+				await editor.delete(`/skills/${second.id}`).expect(200);
+			}
+			if (state === 'unlinked' || state === 'other') {
 				await editor.post(`/skill-sources/skills/${first.id}/stop-syncing`).expect(200);
 			}
 			if (state === 'used') await agentUsing('Research agent', team.id, [first], false);
@@ -397,6 +408,46 @@ describe('Delete a skill source', () => {
 			.expect(role === 'outsider' ? 404 : 403);
 
 		expect(await snapshot()).toEqual(before);
+	});
+
+	it.each([false, true])(
+		'lets a role with delete and no update remove a source with keepSkills=%s',
+		async (keepSkills) => {
+			const { sourceId, first, second } = await sourceWithSkills();
+			const before = await readSkillTables();
+
+			// Stop syncing for one skill is an edit of the source, which this role cannot do.
+			await deleter.post(`/skill-sources/skills/${first.id}/stop-syncing`).expect(403);
+			await deleter.delete(`/skill-sources/${sourceId}`).query({ keepSkills }).expect(200);
+
+			expect(await sources().findById(sourceId)).toBeNull();
+			expect(await sources().findLinksBySource(sourceId)).toEqual([]);
+			if (keepSkills) {
+				expect(await readSkillTables()).toEqual(before);
+			} else {
+				expect(await findSkill(first.id)).toBeNull();
+				expect(await findSkill(second.id)).toBeNull();
+			}
+		},
+	);
+
+	it('applies the last-skill check before it keeps the skills', async () => {
+		const { sourceId, first, second } = await sourceWithSkills();
+		const before = await snapshot();
+
+		await editor
+			.delete(`/skill-sources/${sourceId}`)
+			.query({ keepSkills: true, onlySkillId: first.id })
+			.expect(400);
+		expect(await snapshot()).toEqual(before);
+
+		await editor.delete(`/skills/${second.id}`).expect(200);
+		await editor
+			.delete(`/skill-sources/${sourceId}`)
+			.query({ keepSkills: true, onlySkillId: first.id })
+			.expect(200);
+		expect(await sources().findById(sourceId)).toBeNull();
+		expect(await findSkill(first.id)).not.toBeNull();
 	});
 
 	it.each([randomUUID(), 'not-a-uuid'])('answers 404 for unknown source %s', async (id) => {
