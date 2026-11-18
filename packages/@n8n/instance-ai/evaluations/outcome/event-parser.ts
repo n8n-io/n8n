@@ -31,12 +31,34 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 // Tool names whose results contain resource IDs we need to track
 // ---------------------------------------------------------------------------
 
+/**
+ * The instance MCP server's save tools, as the Assistant calls them over MCP
+ * (PoC). Their results carry `workflowId` but no `success` flag; a result
+ * without `error` is a save.
+ */
+export const INSTANCE_MCP_WORKFLOW_TOOLS = new Set<string>([
+	'create_workflow_from_code',
+	'update_workflow',
+	'build_workflow',
+]);
+
 /** Tools that save a workflow; their results carry its id. */
 export const WORKFLOW_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 	REMOVED_BUILDER_TOOL_NAMES.PATCH_WORKFLOW,
+	...INSTANCE_MCP_WORKFLOW_TOOLS,
 ]);
+
+/** Whether a save tool's result reports a saved workflow. */
+export function isSavedWorkflowResult(toolName: string, result: Record<string, unknown>): boolean {
+	if (result.success === true) return true;
+	return (
+		INSTANCE_MCP_WORKFLOW_TOOLS.has(toolName) &&
+		typeof result.workflowId === 'string' &&
+		result.error === undefined
+	);
+}
 
 // Retired standalone tool names, kept so captures from older backends still parse.
 const EXECUTION_TOOL_LEGACY = 'run-workflow';
@@ -688,11 +710,12 @@ export function savedWorkflowsFromEvents(
 	return extractOutcomeFromEvents(events).toolCalls.flatMap((call) => {
 		if (!WORKFLOW_TOOLS.has(call.toolName)) return [];
 		const result = toResultRecord(call.result);
-		if (result?.success !== true) return [];
+		if (!result || !isSavedWorkflowResult(call.toolName, result)) return [];
 		const id = extractIdFromResult(result, 'workflowId', 'id');
 		if (!id) return [];
-		if (typeof result.workflowName === 'string' && result.workflowName.trim()) {
-			names.set(id, result.workflowName);
+		const name = result.workflowName ?? result.name;
+		if (typeof name === 'string' && name.trim()) {
+			names.set(id, name);
 		}
 		return [{ id, name: names.get(id) ?? id }];
 	});

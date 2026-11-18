@@ -7,7 +7,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
-import { WORKFLOW_TOOLS, extractOutcomeFromEvents } from '../outcome/event-parser';
+import {
+	WORKFLOW_TOOLS,
+	extractOutcomeFromEvents,
+	isSavedWorkflowResult,
+} from '../outcome/event-parser';
 import type { CapturedEvent, CapturedToolCall } from '../types';
 import { getNestedRecord, getString } from '../utils/safe-extract';
 
@@ -99,7 +103,9 @@ function eventToolCallId(event: CapturedEvent): string | undefined {
 function firstSaveAt(events: CapturedEvent[], toolCalls: CapturedToolCall[]): number | undefined {
 	const save = toolCalls.find(
 		(call) =>
-			WORKFLOW_TOOLS.has(call.toolName) && isRecord(call.result) && call.result.success === true,
+			WORKFLOW_TOOLS.has(call.toolName) &&
+			isRecord(call.result) &&
+			isSavedWorkflowResult(call.toolName, call.result),
 	);
 	if (!save) return undefined;
 	return events.find(
