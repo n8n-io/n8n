@@ -1,0 +1,21 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_79761b64d7fda7 11201
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_457be3ef5c9207 766-817
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1b26ef8e61cb125da45f99d810f5c1437dd0e96",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

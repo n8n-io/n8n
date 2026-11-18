@@ -1,0 +1,53 @@
+packages/@n8n/config/test/config.test.ts
+  s_dfe3f914c8bb46::t_117e604279f184 781,897-898,951
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_dfe3f914c8bb46::t_dd89b8b55516bb 4,6,2111
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_dfe3f914c8bb46::t_96b2a95346962f 506-513
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_cdfa59ac4e39e2 65-69,85,851,859,910
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_dfe3f914c8bb46::t_9cdb0a4aeceb84 1857-1869
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-bindings.test.ts
+  s_dfe3f914c8bb46::t_3f4b0a1c9daf89 18,25-26,38
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_dfe3f914c8bb46::t_67d8cba4b219e8 1133,1439
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_b80d9ab8069e2d 257-263
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_dfe3f914c8bb46::t_c5551514c49ea2 135-136
+packages/cli/src/executions/__tests__/response-wait-tracker.service.test.ts
+  s_dfe3f914c8bb46::t_0b817b673785b2 1-179
+packages/cli/src/executions/execution-persistence.ts
+  s_dfe3f914c8bb46::t_5f806a9462d7f0 1163
+packages/cli/src/executions/response-wait-tracker.service.ts
+  s_33852536738524::t_e5575f6e9c1b11 1-65
+packages/cli/src/wait-tracker.ts
+  s_dfe3f914c8bb46::t_042d2275b6eceb 148,157,163,168,178
+packages/cli/test/integration/executions/execution-persistence.test.ts
+  s_dfe3f914c8bb46::t_b54bef417ae0f8 5-9,32-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a665b333fec6af5d5a816f389a637a496bffc551",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
