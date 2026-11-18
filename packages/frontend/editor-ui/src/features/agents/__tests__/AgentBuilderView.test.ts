@@ -11,7 +11,7 @@ import {
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { N8nToggle } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type {
 	AgentJsonConfig,
@@ -2456,7 +2456,7 @@ describe('AgentBuilderView — preview routing', () => {
 	});
 
 	it('disables legacy Test entries while the embedded Assistant works', async () => {
-		const wrapper = await renderView();
+		const wrapper = await renderView({ stubs: { N8nButton } });
 		async function setWorking(working: boolean) {
 			if (!wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()) {
 				await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
@@ -2468,17 +2468,23 @@ describe('AgentBuilderView — preview routing', () => {
 		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
 		expect(editor.props('previewDisabledReason')).toBe('agents.builder.chatMode.building');
 		const trigger = wrapper.get('[data-testid="agent-triggers-preview-chat-button"]');
-		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(true);
 		const primary = wrapper.get('[data-testid="agent-header-preview-btn"]');
-		expect(primary.attributes('disabled')).toBeDefined();
 		editor.vm.$emit('open-preview');
-		await trigger.trigger('click');
 		await flushPromises();
 		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		for (const button of [primary, trigger]) {
+			expect(button.attributes('aria-disabled')).toBe('true');
+			expect(button.attributes('disabled')).toBeUndefined();
+			await button.trigger('click');
+			await flushPromises();
+			expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		}
 		await setWorking(false);
 		expect(editor.props('previewDisabledReason')).toBeUndefined();
-		expect(primary.attributes('disabled')).toBeUndefined();
-		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(false);
+		for (const button of [primary, trigger]) {
+			expect(button.attributes('aria-disabled')).toBeUndefined();
+			expect(button.attributes('disabled')).toBeUndefined();
+		}
 		await trigger.trigger('click');
 		await flushPromises();
 		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
