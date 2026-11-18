@@ -13,7 +13,8 @@ function jsonFile(content: string): File {
 
 vi.mock('../engine/renderer', () => ({
 	AquariumRenderer: class {
-		resize() {}
+		setViewSize() {}
+		setWorld() {}
 		render() {}
 	},
 }));

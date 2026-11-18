@@ -46,6 +46,19 @@ rules.
 | Drawing | `src/engine/renderer.ts`, `src/engine/effects.ts` | Draws the tank on a canvas at 1 logical pixel = `PIXEL_SIZE` CSS pixels. |
 | UI | `src/components/AquariumTank.vue`, `src/views/AquariumView.vue` | Frame loop and popup. Hover shows the popup. A click pins it, with an **Open** button. A click on the water or Esc closes it. |
 
+## Zoom
+
+The tank is a world that grows with its creatures: their sprites cover about 10%
+(`ZOOM.creatureCoverage`) of it. With few creatures, the world is the size of the screen at the
+default zoom, so nothing changes. With many, the world is bigger than the screen, and the camera
+opens zoomed out to show all creatures.
+
+- The mouse wheel zooms around the pointer. Drag to pan. A drag does not pin a popup.
+- The buttons at the bottom right zoom in, zoom out, and show all creatures.
+- The zoom goes from the zoom that shows the whole world (at least `ZOOM.min`, 0.5) to
+  `ZOOM.max` (12). After you zoom or pan, a new world size keeps your view.
+- The camera maths is in `src/engine/camera.ts`. The renderer draws only what the camera shows.
+
 ## Data sources
 
 | Source | Gives | Limits |
@@ -67,8 +80,8 @@ set is loaded, it replaces the live and the demo entities, and the page sends no
   `name` and `metrics`, as in `AquariumEntity`. Other fields are ignored. `null` metrics become 0.
 - `meta.instance` is shown in the label. `meta.executionWindow` (`approxHours`, or `from` and `to`)
   says how long the execution counts cover. Without it, the counts are taken as one week.
-- The tank shows the `DATASET_MAX_WORKFLOWS` (100) most-run workflows and `DATASET_MAX_AGENTS` (10)
-  agents.
+- The tank shows up to `DATASET_MAX_WORKFLOWS` (2000) workflows and `DATASET_MAX_AGENTS` (500)
+  agents, the most-run first. These limits keep the drawing fast.
 - Live activity is simulated from each workflow's real rate: execution count over the window, with
   a wave between 0.4 and 1.6 times that rate. "Running now" is the rate times the average run time.
 - Entities from a data set have no route, so their popup has no **Open** button.

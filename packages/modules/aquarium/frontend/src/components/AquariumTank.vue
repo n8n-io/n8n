@@ -4,8 +4,18 @@ import { useI18n } from '@n8n/i18n';
 import { onKeyStroke, usePreferredReducedMotion, useRafFn, useResizeObserver } from '@vueuse/core';
 import { computed, onMounted, ref, shallowRef, triggerRef, watch } from 'vue';
 
-import { LIVE_SPEED, PIXEL_SIZE, SAND_HEIGHT } from '../aquarium.constants';
-import type { ActivitySnapshot, AquariumEntity } from '../aquarium.types';
+import { DRAG_THRESHOLD, LIVE_SPEED, SAND_HEIGHT, ZOOM } from '../aquarium.constants';
+import type { ActivitySnapshot, AquariumEntity, CreatureTraits } from '../aquarium.types';
+import {
+	clampCamera,
+	fitCamera,
+	panBy,
+	worldSizeFor,
+	zoomAt,
+	type Camera,
+	type Point,
+	type Size,
+} from '../engine/camera';
 import { AquariumRenderer } from '../engine/renderer';
 import { failureRateOf, recentRate } from '../engine/scaling';
 import {
@@ -19,6 +29,7 @@ import {
 } from '../engine/simulation';
 import { defaultTraitRules, deriveTraits, type TraitRule } from '../engine/traits';
 import { getSpecies } from '../species/species.registry';
+import { spriteSize, type SpeciesDefinition } from '../species/species.types';
 
 const props = withDefaults(
 	defineProps<{ entities: AquariumEntity[]; activity?: ActivitySnapshot; rules?: TraitRule[] }>(),
@@ -38,29 +49,74 @@ const pinned = shallowRef<Creature>();
 const pointer = ref({ x: 0, y: 0 });
 const pinnedAt = ref({ x: 0, y: 0 });
 const tankSize = ref({ width: 0, height: 0 });
+const isDragging = ref(false);
 
 let renderer: AquariumRenderer | undefined;
 let creatures: Creature[] = [];
-let bounds: TankBounds = { width: 1, height: 1, floor: 1 };
+/** Element size in CSS pixels. */
+let viewport: Size = { width: 1, height: 1 };
+/** Size of the whole tank in logical pixels. The camera shows a part of it. */
+let world: TankBounds = { width: 1, height: 1, floor: 1 };
+let camera: Camera = { x: 0, y: 0, zoom: ZOOM.default };
+/** After the user zooms or pans, a new world size keeps their view and does not fit again. */
+let hasUserMovedCamera = false;
+let drag: { start: Point; camera: Camera; moved: boolean } | undefined;
+let suppressNextClick = false;
 let time = 0;
+
+function applyCamera(next: Camera) {
+	camera = clampCamera(next, viewport, world);
+	renderer?.setViewSize({
+		width: viewport.width / camera.zoom,
+		height: viewport.height / camera.zoom,
+	});
+}
+
+/** Sizes the world for the creature area. Existing creatures keep their relative position. */
+function resizeWorld(creatureArea: number) {
+	const size = worldSizeFor(creatureArea, viewport);
+	if (size.width !== world.width || size.height !== world.height) {
+		const scaleX = size.width / world.width;
+		const scaleY = size.height / world.height;
+		world = { ...size, floor: Math.max(1, size.height - SAND_HEIGHT) };
+		for (const creature of creatures) {
+			creature.x *= scaleX;
+			creature.y *= scaleY;
+			creature.targetY *= scaleY;
+			clampToTank(creature, world);
+		}
+		renderer?.setWorld(world);
+	}
+	applyCamera(hasUserMovedCamera ? camera : fitCamera(viewport, world));
+}
 
 function syncCreatures() {
 	const existing = new Map(creatures.map((creature) => [creature.entity.key, creature]));
-	const next: Creature[] = [];
+	const planned: Array<{
+		entity: AquariumEntity;
+		traits: CreatureTraits;
+		species: SpeciesDefinition;
+	}> = [];
+	let area = 0;
 
 	for (const entity of props.entities) {
 		const traits = deriveTraits(entity, props.rules);
 		const species = getSpecies(traits.speciesId);
 		if (!species) continue;
-
-		const creature = existing.get(entity.key);
-		if (creature) {
-			updateCreature(creature, entity, traits, species, bounds);
-			next.push(creature);
-		} else {
-			next.push(spawnCreature(entity, traits, species, bounds));
-		}
+		const { width, height } = spriteSize(species.sprite);
+		area += width * height * traits.scale ** 2;
+		planned.push({ entity, traits, species });
 	}
+
+	// The world gets its new size first, so new creatures are placed over all of it.
+	resizeWorld(area);
+
+	const next = planned.map(({ entity, traits, species }) => {
+		const creature = existing.get(entity.key);
+		if (!creature) return spawnCreature(entity, traits, species, world);
+		updateCreature(creature, entity, traits, species, world);
+		return creature;
+	});
 
 	// Big creatures go behind small ones, so small ones stay visible and clickable.
 	creatures = next.sort((a, b) => b.width * b.height - a.width * a.height);
@@ -81,12 +137,12 @@ function applyActivity() {
 function resize() {
 	const container = containerRef.value;
 	if (!container || !renderer) return;
-	const width = Math.max(1, Math.floor(container.clientWidth / PIXEL_SIZE));
-	const height = Math.max(SAND_HEIGHT + 1, Math.floor(container.clientHeight / PIXEL_SIZE));
-	bounds = { width, height, floor: height - SAND_HEIGHT };
-	tankSize.value = { width: container.clientWidth, height: container.clientHeight };
-	renderer.resize(bounds);
-	for (const creature of creatures) clampToTank(creature, bounds);
+	viewport = {
+		width: Math.max(1, container.clientWidth),
+		height: Math.max(1, container.clientHeight),
+	};
+	tankSize.value = { ...viewport };
+	resizeWorld(creatures.reduce((total, creature) => total + creature.width * creature.height, 0));
 }
 
 onMounted(() => {
@@ -113,24 +169,83 @@ useRafFn(({ delta }) => {
 	// Clamp, so a background tab does not teleport creatures when it comes back.
 	const dt = reducedMotion.value === 'reduce' ? 0 : Math.min(delta / 1000, 0.1);
 	time += dt;
-	for (const creature of creatures) stepCreature(creature, dt, bounds);
-	renderer.render(creatures, bounds, time, (pinned.value ?? hovered.value)?.entity.key);
+	for (const creature of creatures) stepCreature(creature, dt, world);
+	renderer.render(creatures, world, camera, time, (pinned.value ?? hovered.value)?.entity.key);
 });
 
-function onPointerMove(event: PointerEvent) {
+function pointFrom(event: MouseEvent): Point {
+	const rect = containerRef.value?.getBoundingClientRect();
+	return { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) };
+}
+
+/** Uses the real canvas scale, which can differ a little from the zoom after rounding. */
+function toWorld(point: Point): Point {
 	const canvas = canvasRef.value;
-	if (!canvas) return;
-	const rect = canvas.getBoundingClientRect();
-	pointer.value = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-	hovered.value = findCreatureAt(
-		creatures,
-		pointer.value.x / PIXEL_SIZE,
-		pointer.value.y / PIXEL_SIZE,
-	);
+	const scaleX = canvas ? canvas.width / viewport.width : 1 / camera.zoom;
+	const scaleY = canvas ? canvas.height / viewport.height : 1 / camera.zoom;
+	return { x: Math.round(camera.x) + point.x * scaleX, y: Math.round(camera.y) + point.y * scaleY };
+}
+
+function onPointerDown(event: PointerEvent) {
+	if (event.button !== 0) return;
+	drag = { start: pointFrom(event), camera, moved: false };
+	canvasRef.value?.setPointerCapture?.(event.pointerId);
+}
+
+function onPointerMove(event: PointerEvent) {
+	pointer.value = pointFrom(event);
+
+	if (drag && event.buttons & 1) {
+		const delta = { x: pointer.value.x - drag.start.x, y: pointer.value.y - drag.start.y };
+		if (drag.moved || Math.hypot(delta.x, delta.y) >= DRAG_THRESHOLD) {
+			drag.moved = true;
+			isDragging.value = true;
+			hovered.value = undefined;
+			hasUserMovedCamera = true;
+			applyCamera(panBy(drag.camera, delta, viewport, world));
+			return;
+		}
+	}
+
+	const at = toWorld(pointer.value);
+	hovered.value = findCreatureAt(creatures, at.x, at.y);
+}
+
+function onPointerUp() {
+	// The browser still sends `click` after a drag. It must not pin or unpin.
+	if (drag?.moved) suppressNextClick = true;
+	drag = undefined;
+	isDragging.value = false;
+}
+
+function onPointerLeave() {
+	if (!drag) hovered.value = undefined;
+}
+
+function onWheel(event: WheelEvent) {
+	// Line mode (Firefox) reports about 3 for one step. Pixel mode reports about 100.
+	const pixels = event.deltaMode === 1 ? event.deltaY * 33 : event.deltaY;
+	hasUserMovedCamera = true;
+	applyCamera(zoomAt(camera, ZOOM.wheelStep ** (-pixels / 100), pointFrom(event), viewport, world));
+}
+
+function zoomBy(factor: number) {
+	hasUserMovedCamera = true;
+	const centre = { x: viewport.width / 2, y: viewport.height / 2 };
+	applyCamera(zoomAt(camera, factor, centre, viewport, world));
+}
+
+function showAll() {
+	hasUserMovedCamera = false;
+	applyCamera(fitCamera(viewport, world));
 }
 
 /** A click on a creature pins its popup. A click on the water closes it. */
 function onClick() {
+	if (suppressNextClick) {
+		suppressNextClick = false;
+		return;
+	}
 	pinned.value = hovered.value;
 	if (hovered.value) pinnedAt.value = { ...pointer.value };
 }
@@ -213,14 +328,53 @@ const ariaLabel = computed(() =>
 	<div ref="containerRef" :class="$style.tank">
 		<canvas
 			ref="canvasRef"
-			:class="[$style.canvas, { [$style.pointer]: !!hovered }]"
+			:class="[
+				$style.canvas,
+				{ [$style.pointer]: !!hovered && !isDragging, [$style.dragging]: isDragging },
+			]"
 			role="img"
 			:aria-label="ariaLabel"
 			data-test-id="aquarium-canvas"
+			@pointerdown="onPointerDown"
 			@pointermove="onPointerMove"
-			@pointerleave="hovered = undefined"
+			@pointerup="onPointerUp"
+			@pointercancel="onPointerUp"
+			@pointerleave="onPointerLeave"
+			@wheel.prevent="onWheel"
 			@click="onClick"
 		/>
+		<div :class="$style.zoomControls" data-test-id="aquarium-zoom-controls">
+			<N8nButton
+				variant="outline"
+				size="small"
+				icon-only
+				:aria-label="i18n.baseText('aquarium.zoom.in')"
+				data-test-id="aquarium-zoom-in"
+				@click="zoomBy(ZOOM.buttonStep)"
+			>
+				<template #icon><N8nIcon icon="zoom-in" size="small" /></template>
+			</N8nButton>
+			<N8nButton
+				variant="outline"
+				size="small"
+				icon-only
+				:aria-label="i18n.baseText('aquarium.zoom.out')"
+				data-test-id="aquarium-zoom-out"
+				@click="zoomBy(1 / ZOOM.buttonStep)"
+			>
+				<template #icon><N8nIcon icon="zoom-out" size="small" /></template>
+			</N8nButton>
+			<N8nButton
+				variant="outline"
+				size="small"
+				icon-only
+				:aria-label="i18n.baseText('aquarium.zoom.fit')"
+				data-test-id="aquarium-zoom-fit"
+				@click="showAll"
+			>
+				<template #icon><N8nIcon icon="maximize" size="small" /></template>
+			</N8nButton>
+		</div>
 		<div
 			v-if="tooltip"
 			:class="[$style.tooltip, { [$style.pinned]: tooltip.isPinned }]"
@@ -263,10 +417,30 @@ const ariaLabel = computed(() =>
 	width: 100%;
 	height: 100%;
 	image-rendering: pixelated;
+	cursor: grab;
+	touch-action: none;
 }
 
 .pointer {
 	cursor: pointer;
+}
+
+.dragging {
+	cursor: grabbing;
+}
+
+.zoomControls {
+	position: absolute;
+	right: var(--spacing--sm);
+	bottom: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: color-mix(in srgb, var(--color--background--light-3) 85%, transparent);
+	backdrop-filter: blur(4px);
 }
 
 .tooltip {

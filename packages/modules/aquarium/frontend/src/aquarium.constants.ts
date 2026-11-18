@@ -1,7 +1,23 @@
 export const AQUARIUM_VIEW = 'Aquarium';
 
-/** CSS pixels for one logical pixel of the tank. */
+/** CSS pixels for one logical pixel of the tank, at the default zoom. */
 export const PIXEL_SIZE = 4;
+
+export const ZOOM = {
+	default: PIXEL_SIZE,
+	/** Below 1, the canvas has more pixels than the screen. Lower values cost more to draw. */
+	min: 0.5,
+	max: 12,
+	/** Factor for one mouse wheel step. */
+	wheelStep: 1.15,
+	/** Factor for one click on a zoom button. */
+	buttonStep: 1.5,
+	/** Share of the world that creature sprites cover. Lower spreads creatures out more. */
+	creatureCoverage: 0.1,
+} as const;
+
+/** Pointer movement in CSS pixels after which a press becomes a drag and not a click. */
+export const DRAG_THRESHOLD = 4;
 
 /** Height of the sand floor, in logical pixels. */
 export const SAND_HEIGHT = 10;
@@ -53,9 +69,9 @@ export const SICK_SPEED_FACTOR = 0.4;
 /** Delay between two polls of the live activity endpoint. */
 export const ACTIVITY_POLL_MS = 2_000;
 
-/** A data set can hold thousands of entities. The tank shows the most-run ones. */
-export const DATASET_MAX_WORKFLOWS = 100;
-export const DATASET_MAX_AGENTS = 10;
+/** Limits that keep a very large data set fast to draw. The tank shows the most-run entities. */
+export const DATASET_MAX_WORKFLOWS = 2_000;
+export const DATASET_MAX_AGENTS = 500;
 
 /** Window of the execution counts when a data set does not say. Insights use a week. */
 export const DATASET_DEFAULT_WINDOW_SECONDS = 7 * 24 * 60 * 60;

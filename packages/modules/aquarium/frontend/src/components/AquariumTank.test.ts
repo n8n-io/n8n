@@ -6,9 +6,14 @@ import { emptyMetrics } from '../sources/source.utils';
 import AquariumTank from './AquariumTank.vue';
 
 // jsdom has no 2D canvas context.
+const viewSizes = vi.hoisted(() => [] as Array<{ width: number; height: number }>);
+
 vi.mock('../engine/renderer', () => ({
 	AquariumRenderer: class {
-		resize() {}
+		setViewSize(size: { width: number; height: number }) {
+			viewSizes.push(size);
+		}
+		setWorld() {}
 		render() {}
 	},
 }));
@@ -128,5 +133,54 @@ describe('AquariumTank', () => {
 		await move('creature');
 
 		expect(getByTestId('aquarium-tooltip')).toHaveTextContent('3.033s');
+	});
+
+	describe('zoom and pan', () => {
+		beforeEach(() => {
+			viewSizes.length = 0;
+		});
+
+		it('does not pin a popup after a drag', async () => {
+			const { move, canvas, queryByTestId } = await setup();
+			await move('creature');
+
+			await fireEvent.pointerDown(canvas, { button: 0, buttons: 1, clientX: 10, clientY: 10 });
+			await fireEvent.pointerMove(canvas, { buttons: 1, clientX: 60, clientY: 40 });
+			await fireEvent.pointerUp(canvas, { button: 0 });
+			await fireEvent.click(canvas);
+			await move('water');
+
+			expect(queryByTestId('aquarium-tooltip')).not.toBeInTheDocument();
+		});
+
+		it('still pins on a click with a small pointer movement', async () => {
+			const { move, canvas, getByTestId } = await setup();
+			await move('creature');
+
+			await fireEvent.pointerDown(canvas, { button: 0, buttons: 1, clientX: 10, clientY: 10 });
+			pointAt('creature');
+			await fireEvent.pointerMove(canvas, { buttons: 1, clientX: 11, clientY: 11 });
+			await fireEvent.pointerUp(canvas, { button: 0 });
+			await fireEvent.click(canvas);
+
+			expect(getByTestId('aquarium-tooltip-open')).toBeInTheDocument();
+		});
+
+		it('zooms in with the wheel and the buttons, and back out to show all', async () => {
+			const { canvas, getByTestId } = await setup();
+			const widthNow = () => viewSizes.at(-1)?.width ?? 0;
+			const start = widthNow();
+
+			await fireEvent.wheel(canvas, { deltaY: -100, clientX: 10, clientY: 10 });
+			const afterWheel = widthNow();
+			await fireEvent.click(getByTestId('aquarium-zoom-in'));
+			const afterButton = widthNow();
+			await fireEvent.click(getByTestId('aquarium-zoom-fit'));
+
+			// A higher zoom shows fewer logical pixels.
+			expect(afterWheel).toBeLessThan(start);
+			expect(afterButton).toBeLessThan(afterWheel);
+			expect(widthNow()).toBeCloseTo(start);
+		});
 	});
 });

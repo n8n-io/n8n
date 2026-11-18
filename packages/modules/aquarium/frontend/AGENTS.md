@@ -15,6 +15,7 @@ extend the module, and which rules to obey.
 | Creature art | `src/species/creatures/*.ts`, `src/species/builtin.ts` |
 | Extra pixels each frame (bubbles, halo) | `src/engine/effects.ts` |
 | Motion | `src/engine/simulation.ts` |
+| Zoom, pan, world size | `src/engine/camera.ts`, `ZOOM` in `src/aquarium.constants.ts` |
 | Background and sprite drawing | `src/engine/renderer.ts` |
 | Tooltip, hover, click | `src/components/AquariumTank.vue` |
 | Page header, demo switch, warnings | `src/views/AquariumView.vue` |
@@ -126,9 +127,16 @@ Each rule gets the traits of the rules before it. `speciesRule` reads `sizeTier`
 - The renderer caches sprites by species id and tint. Use a small fixed set of tint colours.
   A tint from a continuous value makes a new cache entry for each value.
 
-### Pixel grid
+### Pixel grid and camera
 
-- All engine coordinates are logical pixels. One logical pixel is `PIXEL_SIZE` CSS pixels.
+- All engine coordinates are world coordinates in logical pixels. At the default zoom, one logical
+  pixel is `PIXEL_SIZE` CSS pixels. The camera zoom changes that.
+- Effects draw in world coordinates. The renderer moves the canvas to the camera before it calls
+  them, so an effect does not need to know the camera.
+- Convert a pointer position with `toWorld()` in `AquariumTank.vue`, not by dividing by
+  `PIXEL_SIZE`.
+- The renderer skips creatures outside the view. An effect that draws further than `CULL_MARGIN`
+  (16) pixels from its creature can be cut at the edge of the view.
 - Round positions with `Math.round` before you draw, or pixels blur.
 - Keep `traits.scale` an integer.
 - Hex colours in sprites and in `renderer.ts` are art, not UI. Use design tokens in Vue styles.
