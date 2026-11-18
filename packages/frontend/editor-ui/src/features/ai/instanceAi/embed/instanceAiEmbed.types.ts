@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { InstanceAiAgentAttachment } from '@n8n/api-types';
+import type { InstanceAiThreadSubject } from '@n8n/api-types';
 import type { ComputedRef, InjectionKey } from 'vue';
 
 import { INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY } from '../constants';
@@ -13,13 +13,13 @@ import {
 /**
  * A resource an embedded `InstanceAiChatPanel` is scoped to: which thread(s) it
  * shows in its history list, and what a newly minted thread should bind to. The
- * agent variant IS the api-types agent attachment — `InstanceAiChatPanel` passes
- * it straight through to `stashPendingAgentAttachment`. `workflow` is the
- * follow-up host (`NodeView`) — see `threadTargetsSubject` below.
+ * agent and app variants are the api-types thread subject; the agent variant is
+ * also the agent attachment, which `InstanceAiChatPanel` passes to
+ * `stashPendingAgentAttachment`. `workflow` is the follow-up host (`NodeView`) —
+ * see `threadTargetsSubject` below.
  */
 export type InstanceAiEmbedSubject =
-	| InstanceAiAgentAttachment
-	| { type: 'app'; id: string; projectId: string; name?: string; pending?: true }
+	| InstanceAiThreadSubject
 	| { type: 'workflow'; id: string; projectId: string; name?: string };
 
 /**
