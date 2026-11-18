@@ -2,13 +2,15 @@ import { hashString } from '../species/species.registry';
 import type { PixelSprite } from '../species/species.types';
 import type { Camera, Size } from './camera';
 import { getEffect } from './effects';
+import { FRAME_THICKNESS, paintFrame } from './frames';
+import type { TankRegion } from './layout';
 import { frameIndexOf, type Creature, type TankBounds } from './simulation';
 
 const WATER_BANDS = ['#5fb4d9', '#4aa2cc', '#3a8fbd', '#2d7aa8', '#236690', '#1b5277'];
 const SAND = { base: '#d9bd7f', speck: '#c2a160', light: '#ead29b' };
 const SEAWEED = ['#2f8f4e', '#3fa65c', '#267a42'];
 const AMBIENT_BUBBLE = 'rgba(220, 240, 255, 0.6)';
-/** Fills the view outside the world when the world is smaller than the view. */
+/** Fills the view outside the tanks: the wall between project tanks, and space around the world. */
 const OUTSIDE_WORLD = '#153e5c';
 /** Logical pixels of world width for each column of ambient bubbles. */
 const BUBBLE_COLUMN_SPACING = 80;
@@ -47,9 +49,15 @@ export class AquariumRenderer {
 
 	private readonly spriteCache = new Map<string, HTMLCanvasElement[]>();
 
-	private background: HTMLCanvasElement | undefined;
+	/** Keyed by tank size, so tanks of the same size share one background. */
+	private readonly backgrounds = new Map<string, HTMLCanvasElement>();
 
-	private plants: Plant[] = [];
+	private readonly plantsByTank = new Map<string, Plant[]>();
+
+	/** Painted once for each tank, because frame noise and colours differ for each tank. */
+	private readonly framesByTank = new Map<string, HTMLCanvasElement>();
+
+	private regions: TankRegion[] = [];
 
 	constructor(private readonly canvas: HTMLCanvasElement) {
 		this.ctx = context2d(canvas);
@@ -65,14 +73,33 @@ export class AquariumRenderer {
 		this.ctx.imageSmoothingEnabled = false;
 	}
 
-	setWorld(world: TankBounds): void {
-		this.background = this.drawBackground(world);
-		this.plants = this.layoutPlants(world);
+	setRegions(regions: TankRegion[]): void {
+		this.regions = regions;
+		const sizeKeys = new Set<string>();
+		const tankIds = new Set<string>();
+		for (const region of regions) {
+			const key = `${region.bounds.width}x${region.bounds.height}`;
+			sizeKeys.add(key);
+			tankIds.add(region.id);
+			if (!this.backgrounds.has(key)) this.backgrounds.set(key, this.drawBackground(region.bounds));
+			this.plantsByTank.set(region.id, this.layoutPlants(region.bounds, region.id));
+
+			const frameKey = `${region.id}|${region.frame}|${key}`;
+			const frame = this.framesByTank.get(frameKey);
+			if (!frame) {
+				const painted = paintFrame({ style: region.frame, ...region.bounds, seed: region.id });
+				if (painted) this.framesByTank.set(frameKey, painted);
+			}
+			tankIds.add(frameKey);
+		}
+		for (const key of this.backgrounds.keys()) if (!sizeKeys.has(key)) this.backgrounds.delete(key);
+		for (const id of this.plantsByTank.keys()) if (!tankIds.has(id)) this.plantsByTank.delete(id);
+		for (const key of this.framesByTank.keys())
+			if (!tankIds.has(key)) this.framesByTank.delete(key);
 	}
 
 	render(
-		creatures: Creature[],
-		world: TankBounds,
+		creaturesByTank: Map<string, Creature[]>,
 		camera: Camera,
 		time: number,
 		highlightKey?: string,
@@ -88,16 +115,64 @@ export class AquariumRenderer {
 		ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 		ctx.translate(-left, -top);
 
-		if (this.background) ctx.drawImage(this.background, 0, 0);
-		this.drawPlants(world, time, left - CULL_MARGIN, right + CULL_MARGIN);
-		this.drawAmbientBubbles(world, time);
+		for (const region of this.regions) {
+			const { width, height } = region.bounds;
+			const border = FRAME_THICKNESS[region.frame];
+			const visible =
+				region.x + width + border > left &&
+				region.x - border < right &&
+				region.y + height + border > top &&
+				region.y - border < bottom;
+			if (!visible) continue;
+
+			ctx.save();
+			ctx.translate(region.x, region.y);
+			// Bubbles and highlights stay inside their tank.
+			ctx.beginPath();
+			ctx.rect(0, 0, width, height);
+			ctx.clip();
+			this.drawTank(region, creaturesByTank.get(region.id) ?? [], time, highlightKey, {
+				left: left - region.x,
+				right: right - region.x,
+				top: top - region.y,
+				bottom: bottom - region.y,
+			});
+			ctx.restore();
+
+			// After the water, so the porthole plate covers the corners of the window.
+			const frame = this.framesByTank.get(
+				`${region.id}|${region.frame}|${region.bounds.width}x${region.bounds.height}`,
+			);
+			if (frame) ctx.drawImage(frame, region.x - border, region.y - border);
+		}
+	}
+
+	/** Draws one tank in its local coordinates. `view` is the visible area in those coordinates. */
+	private drawTank(
+		region: TankRegion,
+		creatures: Creature[],
+		time: number,
+		highlightKey: string | undefined,
+		view: { left: number; right: number; top: number; bottom: number },
+	): void {
+		const ctx = this.ctx;
+		const background = this.backgrounds.get(`${region.bounds.width}x${region.bounds.height}`);
+		if (background) ctx.drawImage(background, 0, 0);
+		this.drawPlants(
+			region.bounds,
+			this.plantsByTank.get(region.id) ?? [],
+			time,
+			view.left - CULL_MARGIN,
+			view.right + CULL_MARGIN,
+		);
+		this.drawAmbientBubbles(region.bounds, time);
 
 		for (const creature of creatures) {
 			const visible =
-				creature.x + creature.width > left - CULL_MARGIN &&
-				creature.x < right + CULL_MARGIN &&
-				creature.y + creature.height > top - CULL_MARGIN &&
-				creature.y < bottom + CULL_MARGIN;
+				creature.x + creature.width > view.left - CULL_MARGIN &&
+				creature.x < view.right + CULL_MARGIN &&
+				creature.y + creature.height > view.top - CULL_MARGIN &&
+				creature.y < view.bottom + CULL_MARGIN;
 			if (!visible) continue;
 			this.drawCreature(creature);
 			for (const effectId of creature.traits.effects) {
@@ -207,10 +282,11 @@ export class AquariumRenderer {
 		return canvas;
 	}
 
-	private layoutPlants(bounds: TankBounds): Plant[] {
+	/** `seed` gives each tank its own plants. */
+	private layoutPlants(bounds: TankBounds, seed: string): Plant[] {
 		const plants: Plant[] = [];
 		for (let x = 3; x < bounds.width - 3; x += 7) {
-			const hash = hashString(`plant${x}`);
+			const hash = hashString(`${seed}:plant${x}`);
 			if (hash % 3 !== 0) continue;
 			plants.push({
 				x: x + (hash % 4),
@@ -222,9 +298,15 @@ export class AquariumRenderer {
 		return plants;
 	}
 
-	private drawPlants(bounds: TankBounds, time: number, fromX: number, toX: number): void {
+	private drawPlants(
+		bounds: TankBounds,
+		plants: Plant[],
+		time: number,
+		fromX: number,
+		toX: number,
+	): void {
 		const ctx = this.ctx;
-		for (const plant of this.plants) {
+		for (const plant of plants) {
 			if (plant.x < fromX || plant.x > toX) continue;
 			ctx.fillStyle = plant.color;
 			for (let i = 0; i < plant.height; i++) {

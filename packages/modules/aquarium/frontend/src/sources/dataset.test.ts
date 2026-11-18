@@ -42,8 +42,15 @@ describe('parseDataset', () => {
 			id: '1',
 			kind: 'workflow',
 			name: 'Workflow 1',
+			project: { id: 'p1', name: 'Project 1' },
 			metrics: { complexity: 4, executionCount: 10, failedCount: 1, averageRunTimeMs: 500 },
 		});
+	});
+
+	it('names a project that the file does not list by its id', () => {
+		const dataset = parseDataset({ entities: [workflow('1', 1, { projectId: 'p-missing' })] });
+
+		expect(dataset?.entities[0].project).toEqual({ id: 'p-missing', name: 'p-missing' });
 	});
 
 	it('turns missing metrics into the smallest values', () => {

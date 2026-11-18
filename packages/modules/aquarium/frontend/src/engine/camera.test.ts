@@ -102,3 +102,27 @@ describe('panBy', () => {
 		expect(panned.y).toBe(100 + 5);
 	});
 });
+
+describe('top inset', () => {
+	const world = { width: 900, height: 450 };
+	const withInset = { ...viewport, insetTop: 100 };
+
+	it('fits the world below the inset', () => {
+		const camera = fitCamera(withInset, world);
+
+		expect(camera.zoom).toBeCloseTo(Math.min(1200 / 900, 500 / 450));
+		// The top of the world is on screen at the inset or below it.
+		expect(-camera.y * camera.zoom).toBeGreaterThanOrEqual(100 - 0.001);
+		expect((world.height - camera.y) * camera.zoom).toBeLessThanOrEqual(600 + 0.001);
+	});
+
+	it('lets the user pan the world up under the inset', () => {
+		const camera = clampCamera({ x: 0, y: 200, zoom: 4 }, withInset, world);
+
+		expect(camera.y).toBe(200);
+	});
+
+	it('does not fit a small world below the inset when it has none', () => {
+		expect(fitCamera(viewport, world).y).toBeLessThanOrEqual(0);
+	});
+});

@@ -3,6 +3,16 @@ import type { RouteLocationRaw } from 'vue-router';
 
 export type EntityKind = 'workflow' | 'agent';
 
+export interface EntityProject {
+	id: string;
+	name: string;
+	/** `personal` or `team` on n8n. Other sources can leave it out. */
+	type?: string;
+}
+
+/** `single` shows one tank. `project` shows one tank for each project. */
+export type TankGrouping = 'single' | 'project';
+
 /** The raw numbers that shape a creature. A source sets only the values it knows. */
 export interface EntityMetrics {
 	/** Nodes of a workflow, or skills of an agent. */
@@ -21,6 +31,8 @@ export interface AquariumEntity {
 	name: string;
 	/** Where a click on the creature goes. */
 	route?: RouteLocationRaw;
+	/** The project that owns the entity. Entities without one share a tank in project view. */
+	project?: EntityProject;
 	metrics: EntityMetrics;
 }
 

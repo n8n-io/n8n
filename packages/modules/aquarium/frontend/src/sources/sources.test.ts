@@ -79,6 +79,16 @@ describe('source mappers', () => {
 		expect(entity.metrics.complexity).toBe(1);
 	});
 
+	it('reads the owning project of a workflow and an agent', () => {
+		const project = { id: 'p1', name: 'Sales', type: 'team' };
+
+		expect(toWorkflowEntity({ id: 'w', name: 'W', homeProject: project }).project).toEqual(project);
+		expect(toAgentEntity({ id: 'a', name: 'A', projectId: 'p1', project }).project).toEqual(
+			project,
+		);
+		expect(toWorkflowEntity({ id: 'w', name: 'W', homeProject: null }).project).toBeUndefined();
+	});
+
 	it('uses the skill count as agent complexity', () => {
 		const entity = toAgentEntity({
 			id: 'a',

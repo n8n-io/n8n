@@ -16,6 +16,21 @@ export const ZOOM = {
 	creatureCoverage: 0.1,
 } as const;
 
+/** Sizes of project tanks, in logical pixels. */
+export const PROJECT_TANK = {
+	/** Width over height of a tank. */
+	aspect: 16 / 9,
+	minWidth: 96,
+	minHeight: 32,
+	/** Space between frames. Even, so half of it is a whole pixel. */
+	gap: 6,
+	/** Space between a creature and the tank wall, so it can turn. */
+	margin: 4,
+} as const;
+
+/** A project label shows only when its tank is at least this wide on screen, in CSS pixels. */
+export const PROJECT_LABEL_MIN_WIDTH = 72;
+
 /** Pointer movement in CSS pixels after which a press becomes a drag and not a click. */
 export const DRAG_THRESHOLD = 4;
 

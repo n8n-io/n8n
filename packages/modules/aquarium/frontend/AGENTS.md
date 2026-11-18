@@ -16,6 +16,8 @@ extend the module, and which rules to obey.
 | Extra pixels each frame (bubbles, halo) | `src/engine/effects.ts` |
 | Motion | `src/engine/simulation.ts` |
 | Zoom, pan, world size | `src/engine/camera.ts`, `ZOOM` in `src/aquarium.constants.ts` |
+| Project tanks (size, packing, hit test) | `src/engine/layout.ts`, `PROJECT_TANK` in `src/aquarium.constants.ts` |
+| Tank frames (styles, colours, textures) | `src/engine/frames.ts` |
 | Background and sprite drawing | `src/engine/renderer.ts` |
 | Tooltip, hover, click | `src/components/AquariumTank.vue` |
 | Page header, demo switch, warnings | `src/views/AquariumView.vue` |
@@ -82,6 +84,20 @@ The tooltip in `AquariumTank.vue` shows the counts, so you can compare your effe
 2. Add it to the effect registry in the same file.
 3. Add its id to `traits.effects` from a trait rule. Do not add it from the renderer.
 
+### Add a frame style
+
+1. Add the style to `FrameStyle` and give it a thickness in `FRAME_THICKNESS`.
+2. Add one or more palettes to `PALETTES`.
+3. Add a `case` to `frameColorAt()`. It gets one pixel in frame coordinates and returns a colour, or
+   `undefined` for a clear pixel. Use `across` (distance from the outer edge) and `along` for
+   bands and patterns, and `noise()` for texture. Never use `Math.random()`: a frame must look the
+   same on every paint.
+4. Add the style to `STYLE_WEIGHTS`, once for each share of tanks it should get.
+5. Add the style to the `it.each` list in `frames.test.ts`.
+
+The renderer paints each frame once for each tank and draws it over the water, so a frame can also
+cover parts of the tank, like the porthole corners.
+
 ### Add a live field
 
 1. Count it in `ActivityTracker` in `../backend/src/activity-tracker.ts`. Keep the memory fixed:
@@ -133,8 +149,13 @@ Each rule gets the traits of the rules before it. `speciesRule` reads `sizeTier`
   pixel is `PIXEL_SIZE` CSS pixels. The camera zoom changes that.
 - Effects draw in world coordinates. The renderer moves the canvas to the camera before it calls
   them, so an effect does not need to know the camera.
-- Convert a pointer position with `toWorld()` in `AquariumTank.vue`, not by dividing by
-  `PIXEL_SIZE`.
+- Convert a pointer position with `creatureAt()` or `toWorld()` in `AquariumTank.vue`, not by
+  dividing by `PIXEL_SIZE`.
+- A creature's `x` and `y` are local to its tank (`creature.tankId`). The renderer moves the canvas
+  to the tank before it draws the creature and its effects. Step a creature with the bounds of its
+  own tank, never with the world size.
+- In tests, jsdom has no layout, so tanks have no real size. Mock `regionAt` (see
+  `AquariumTank.test.ts`), or mock `clientWidth` and `clientHeight` when a test needs real sizes.
 - The renderer skips creatures outside the view. An effect that draws further than `CULL_MARGIN`
   (16) pixels from its creature can be cut at the edge of the view.
 - Round positions with `Math.round` before you draw, or pixels blur.

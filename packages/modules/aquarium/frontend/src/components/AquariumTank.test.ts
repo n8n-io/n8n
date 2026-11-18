@@ -13,10 +13,16 @@ vi.mock('../engine/renderer', () => ({
 		setViewSize(size: { width: number; height: number }) {
 			viewSizes.push(size);
 		}
-		setWorld() {}
+		setRegions() {}
 		render() {}
 	},
 }));
+
+// jsdom has no layout, so the tank has no real size. The tank under the pointer is the first one.
+vi.mock('../engine/layout', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../engine/layout')>();
+	return { ...actual, regionAt: vi.fn((regions: unknown[]) => regions[0]) };
+});
 
 vi.mock('../engine/simulation', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../engine/simulation')>();
@@ -181,6 +187,59 @@ describe('AquariumTank', () => {
 			expect(afterWheel).toBeLessThan(start);
 			expect(afterButton).toBeLessThan(afterWheel);
 			expect(widthNow()).toBeCloseTo(start);
+		});
+	});
+
+	describe('project view', () => {
+		const project = (id: string, name: string) => ({ id, name, type: 'team' });
+		const inProject = (key: string, p?: { id: string; name: string; type: string }) => ({
+			...workflow,
+			key: `workflow:${key}`,
+			id: key,
+			...(p ? { project: p } : {}),
+		});
+
+		beforeEach(() => {
+			// jsdom has no layout, so give the tank a real size.
+			vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1200);
+			vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(600);
+		});
+
+		it('shows one labelled tank for each project, and one for entities without a project', async () => {
+			const entities = [
+				inProject('1', project('p1', 'Sales')),
+				inProject('2', project('p1', 'Sales')),
+				inProject('3', project('p2', 'Data')),
+				inProject('4'),
+			];
+			const { findAllByTestId } = render(AquariumTank, {
+				props: { entities, grouping: 'project' },
+			});
+
+			const labels = (await findAllByTestId('aquarium-project-label')).map((l) =>
+				l.textContent?.trim(),
+			);
+
+			expect(labels.sort()).toEqual(['Data', 'No project', 'Sales']);
+		});
+
+		it('shows no labels in the single tank', async () => {
+			const { queryAllByTestId } = render(AquariumTank, {
+				props: { entities: [inProject('1', project('p1', 'Sales'))], grouping: 'single' },
+			});
+
+			expect(queryAllByTestId('aquarium-project-label')).toHaveLength(0);
+		});
+
+		it('shows the project in the popup', async () => {
+			pointAt('creature');
+			const { getByTestId } = render(AquariumTank, {
+				props: { entities: [inProject('1', project('p1', 'Sales'))], grouping: 'project' },
+			});
+
+			await fireEvent.pointerMove(getByTestId('aquarium-canvas'), { clientX: 10, clientY: 10 });
+
+			expect(getByTestId('aquarium-tooltip')).toHaveTextContent('Sales');
 		});
 	});
 });

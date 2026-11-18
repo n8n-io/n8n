@@ -28,6 +28,8 @@ export interface Creature {
 	speed: number;
 	/** Live run counts. Undefined when the entity had no recent runs. */
 	activity?: EntityActivity;
+	/** The tank that holds the creature. Its position is local to that tank. */
+	tankId: string;
 }
 
 export type RandomFn = () => number;
@@ -59,6 +61,7 @@ export function spawnCreature(
 	species: SpeciesDefinition,
 	bounds: TankBounds,
 	random: RandomFn = Math.random,
+	tankId = '',
 ): Creature {
 	const size = sizeOf(traits, species);
 	const y = random() * maxY(size, bounds);
@@ -74,6 +77,7 @@ export function spawnCreature(
 		wanderIn: random() * 4,
 		age: random() * 10,
 		speed: traits.speed * (traits.speedFactor ?? 1),
+		tankId,
 	};
 }
 

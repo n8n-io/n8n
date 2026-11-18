@@ -5,7 +5,7 @@ import {
 	DATASET_MAX_AGENTS,
 	DATASET_MAX_WORKFLOWS,
 } from '../aquarium.constants';
-import type { AquariumEntity } from '../aquarium.types';
+import type { AquariumEntity, EntityProject } from '../aquarium.types';
 import { entityKey } from './source.utils';
 
 /** Entities from a file, for example a scrape of another instance. Lives in memory only. */
@@ -23,8 +23,19 @@ function count(value: unknown): number {
 	return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+function projectsOf(raw: unknown): Map<string, EntityProject> {
+	const projects = new Map<string, EntityProject>();
+	if (!Array.isArray(raw)) return projects;
+	for (const item of raw) {
+		if (!isRecord(item) || typeof item.id !== 'string' || typeof item.name !== 'string') continue;
+		const type = typeof item.type === 'string' ? item.type : undefined;
+		projects.set(item.id, { id: item.id, name: item.name, ...(type ? { type } : {}) });
+	}
+	return projects;
+}
+
 /** Ids from another instance do not exist here, so the entity gets no route. */
-function toEntity(raw: unknown): AquariumEntity | undefined {
+function toEntity(raw: unknown, projects: Map<string, EntityProject>): AquariumEntity | undefined {
 	if (!isRecord(raw)) return undefined;
 	const { id, kind, name } = raw;
 	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
@@ -32,11 +43,17 @@ function toEntity(raw: unknown): AquariumEntity | undefined {
 
 	const metrics = isRecord(raw.metrics) ? raw.metrics : {};
 	const executionCount = count(metrics.executionCount);
+	// A project that the file does not list still groups its entities, under its id.
+	const projectId = typeof raw.projectId === 'string' ? raw.projectId : undefined;
+	const project = projectId
+		? (projects.get(projectId) ?? { id: projectId, name: projectId })
+		: undefined;
 	return {
 		key: entityKey(kind, id),
 		id,
 		kind,
 		name,
+		...(project ? { project } : {}),
 		metrics: {
 			complexity: Math.max(1, count(metrics.complexity)),
 			executionCount,
@@ -65,9 +82,10 @@ const byRunsThenSize = (a: AquariumEntity, b: AquariumEntity) =>
 export function parseDataset(raw: unknown): AquariumDataset | undefined {
 	if (!isRecord(raw) || !Array.isArray(raw.entities)) return undefined;
 
+	const projects = projectsOf(raw.projects);
 	const unique = new Map<string, AquariumEntity>();
 	for (const item of raw.entities) {
-		const entity = toEntity(item);
+		const entity = toEntity(item, projects);
 		if (entity && !unique.has(entity.key)) unique.set(entity.key, entity);
 	}
 	if (unique.size === 0) return undefined;

@@ -10,6 +10,7 @@ interface AgentListItem {
 	id: string;
 	name: string;
 	projectId: string;
+	project?: { id: string; name: string; type: string } | null;
 	skillVersions?: Record<string, unknown>;
 }
 
@@ -20,6 +21,9 @@ export function toAgentEntity(agent: AgentListItem): AquariumEntity {
 		kind: 'agent',
 		name: agent.name,
 		route: { name: AGENT_BUILDER_VIEW, params: { projectId: agent.projectId, agentId: agent.id } },
+		...(agent.project
+			? { project: { id: agent.project.id, name: agent.project.name, type: agent.project.type } }
+			: {}),
 		// The list has no tools or run stats. Skills are the only size signal it gives.
 		metrics: { ...emptyMetrics(), complexity: 1 + Object.keys(agent.skillVersions ?? {}).length },
 	};

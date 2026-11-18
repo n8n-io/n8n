@@ -46,6 +46,27 @@ rules.
 | Drawing | `src/engine/renderer.ts`, `src/engine/effects.ts` | Draws the tank on a canvas at 1 logical pixel = `PIXEL_SIZE` CSS pixels. |
 | UI | `src/components/AquariumTank.vue`, `src/views/AquariumView.vue` | Frame loop and popup. Hover shows the popup. A click pins it, with an **Open** button. A click on the water or Esc closes it. |
 
+## Project view
+
+**By project** in the page header shows one tank for each project. **One tank** shows all creatures
+together. The choice is in the URL (`?view=projects`).
+
+- Each tank grows with the sprite area of its creatures, like the single tank, from a minimum size
+  (`PROJECT_TANK`). The biggest creature always fits.
+- `packTanks()` in `src/engine/layout.ts` fills a wall with the shape of the free screen area, like
+  a treemap, so the wall has no holes. Each tank gets a cell with the area that it needs. The wall
+  is cut in two again and again, at a weight between 40% and 60%, in the direction that keeps the
+  halves closest to square. Groups of up to 5 tanks are searched fully, so they do not get slivers.
+- The order is shuffled by project id, so big and small tanks mix, and the wall is the same after a
+  reload. Tank shapes vary between wide and tall. Entities without a project share a "No project"
+  tank.
+- Each project tank has a pixel-art frame: wood, riveted steel, a porthole, stone, brass or coloured
+  glass, in colour variants. The project id picks the frame. Frames are in `src/engine/frames.ts`.
+- All tanks are drawn on one canvas, and zoom and pan work on the whole wall. A tank label shows
+  when the tank is at least `PROJECT_LABEL_MIN_WIDTH` CSS pixels wide on screen.
+- "Show all" fits the tanks below the page header. Personal projects show the name without the
+  email address.
+
 ## Zoom
 
 The tank is a world that grows with its creatures: their sprites cover about 10%

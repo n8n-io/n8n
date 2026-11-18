@@ -4,8 +4,14 @@ import { useI18n } from '@n8n/i18n';
 import { onKeyStroke, usePreferredReducedMotion, useRafFn, useResizeObserver } from '@vueuse/core';
 import { computed, onMounted, ref, shallowRef, triggerRef, watch } from 'vue';
 
-import { DRAG_THRESHOLD, LIVE_SPEED, SAND_HEIGHT, ZOOM } from '../aquarium.constants';
-import type { ActivitySnapshot, AquariumEntity, CreatureTraits } from '../aquarium.types';
+import { DRAG_THRESHOLD, LIVE_SPEED, PROJECT_LABEL_MIN_WIDTH, ZOOM } from '../aquarium.constants';
+import { displayProjectName } from '../aquarium.utils';
+import type {
+	ActivitySnapshot,
+	AquariumEntity,
+	CreatureTraits,
+	TankGrouping,
+} from '../aquarium.types';
 import {
 	clampCamera,
 	fitCamera,
@@ -15,26 +21,42 @@ import {
 	type Camera,
 	type Point,
 	type Size,
+	type Viewport,
 } from '../engine/camera';
+import {
+	packTanks,
+	regionAt,
+	singleRegion,
+	type TankContent,
+	type TankRegion,
+} from '../engine/layout';
 import { AquariumRenderer } from '../engine/renderer';
 import { failureRateOf, recentRate } from '../engine/scaling';
 import {
-	clampToTank,
 	findCreatureAt,
 	spawnCreature,
 	stepCreature,
 	updateCreature,
 	type Creature,
-	type TankBounds,
 } from '../engine/simulation';
 import { defaultTraitRules, deriveTraits, type TraitRule } from '../engine/traits';
 import { getSpecies } from '../species/species.registry';
 import { spriteSize, type SpeciesDefinition } from '../species/species.types';
 
 const props = withDefaults(
-	defineProps<{ entities: AquariumEntity[]; activity?: ActivitySnapshot; rules?: TraitRule[] }>(),
-	{ activity: undefined, rules: () => defaultTraitRules },
+	defineProps<{
+		entities: AquariumEntity[];
+		activity?: ActivitySnapshot;
+		rules?: TraitRule[];
+		grouping?: TankGrouping;
+		/** CSS pixels at the top that page UI covers. Project view fits its tanks below them. */
+		topInset?: number;
+	}>(),
+	{ activity: undefined, rules: () => defaultTraitRules, grouping: 'single', topInset: 0 },
 );
+
+const SINGLE_TANK_ID = 'all';
+const NO_PROJECT_ID = 'no-project';
 
 const emit = defineEmits<{ select: [entity: AquariumEntity] }>();
 
@@ -50,13 +72,19 @@ const pointer = ref({ x: 0, y: 0 });
 const pinnedAt = ref({ x: 0, y: 0 });
 const tankSize = ref({ width: 0, height: 0 });
 const isDragging = ref(false);
+/** Tanks on the wall. Reactive, so the project labels follow them. */
+const regions = shallowRef<TankRegion[]>([]);
+/** Changes on every camera move, so the project labels follow the camera. */
+const cameraVersion = ref(0);
 
 let renderer: AquariumRenderer | undefined;
 let creatures: Creature[] = [];
-/** Element size in CSS pixels. */
-let viewport: Size = { width: 1, height: 1 };
-/** Size of the whole tank in logical pixels. The camera shows a part of it. */
-let world: TankBounds = { width: 1, height: 1, floor: 1 };
+let creaturesByTank = new Map<string, Creature[]>();
+let regionsById = new Map<string, TankRegion>();
+/** Element size in CSS pixels. In project view it has the top inset, so labels stay visible. */
+let viewport: Viewport = { width: 1, height: 1 };
+/** Size of all tanks together, in logical pixels. The camera shows a part of it. */
+let world: Size = { width: 1, height: 1 };
 let camera: Camera = { x: 0, y: 0, zoom: ZOOM.default };
 /** After the user zooms or pans, a new world size keeps their view and does not fit again. */
 let hasUserMovedCamera = false;
@@ -70,56 +98,106 @@ function applyCamera(next: Camera) {
 		width: viewport.width / camera.zoom,
 		height: viewport.height / camera.zoom,
 	});
+	cameraVersion.value++;
 }
 
-/** Sizes the world for the creature area. Existing creatures keep their relative position. */
-function resizeWorld(creatureArea: number) {
-	const size = worldSizeFor(creatureArea, viewport);
-	if (size.width !== world.width || size.height !== world.height) {
-		const scaleX = size.width / world.width;
-		const scaleY = size.height / world.height;
-		world = { ...size, floor: Math.max(1, size.height - SAND_HEIGHT) };
-		for (const creature of creatures) {
-			creature.x *= scaleX;
-			creature.y *= scaleY;
-			creature.targetY *= scaleY;
-			clampToTank(creature, world);
-		}
-		renderer?.setWorld(world);
+interface PlannedCreature {
+	entity: AquariumEntity;
+	traits: CreatureTraits;
+	species: SpeciesDefinition;
+	tankId: string;
+	width: number;
+	height: number;
+}
+
+function tankOf(entity: AquariumEntity): { id: string; label: string } {
+	if (props.grouping === 'single') return { id: SINGLE_TANK_ID, label: '' };
+	if (!entity.project) return { id: NO_PROJECT_ID, label: i18n.baseText('aquarium.noProject') };
+	return { id: entity.project.id, label: displayProjectName(entity.project.name) };
+}
+
+/** Lays out the tanks for the planned creatures, and sets `world` and `regions`. */
+function layoutTanks(planned: PlannedCreature[]) {
+	const contents = new Map<string, TankContent>();
+	for (const { entity, tankId, width, height } of planned) {
+		const content = contents.get(tankId) ?? {
+			id: tankId,
+			label: tankOf(entity).label,
+			creatureArea: 0,
+			widestCreature: 0,
+			tallestCreature: 0,
+		};
+		content.creatureArea += width * height;
+		content.widestCreature = Math.max(content.widestCreature, width);
+		content.tallestCreature = Math.max(content.tallestCreature, height);
+		contents.set(tankId, content);
 	}
-	applyCamera(hasUserMovedCamera ? camera : fitCamera(viewport, world));
+
+	if (props.grouping === 'single') {
+		const area = contents.get(SINGLE_TANK_ID)?.creatureArea ?? 0;
+		world = worldSizeFor(area, viewport);
+		regions.value = [singleRegion(SINGLE_TANK_ID, world)];
+	} else {
+		// The wall takes the shape of the free area below the page header.
+		const freeHeight = Math.max(1, viewport.height - (viewport.insetTop ?? 0));
+		const packed = packTanks([...contents.values()], viewport.width / freeHeight);
+		world = packed.world;
+		regions.value = packed.regions;
+	}
+	regionsById = new Map(regions.value.map((region) => [region.id, region]));
+	renderer?.setRegions(regions.value);
 }
 
 function syncCreatures() {
 	const existing = new Map(creatures.map((creature) => [creature.entity.key, creature]));
-	const planned: Array<{
-		entity: AquariumEntity;
-		traits: CreatureTraits;
-		species: SpeciesDefinition;
-	}> = [];
-	let area = 0;
+	const previousRegions = regionsById;
+	const planned: PlannedCreature[] = [];
 
 	for (const entity of props.entities) {
 		const traits = deriveTraits(entity, props.rules);
 		const species = getSpecies(traits.speciesId);
 		if (!species) continue;
-		const { width, height } = spriteSize(species.sprite);
-		area += width * height * traits.scale ** 2;
-		planned.push({ entity, traits, species });
+		const size = spriteSize(species.sprite);
+		planned.push({
+			entity,
+			traits,
+			species,
+			tankId: tankOf(entity).id,
+			width: size.width * traits.scale,
+			height: size.height * traits.scale,
+		});
 	}
 
-	// The world gets its new size first, so new creatures are placed over all of it.
-	resizeWorld(area);
+	// The tanks get their new size first, so new creatures are placed over all of a tank.
+	layoutTanks(planned);
 
-	const next = planned.map(({ entity, traits, species }) => {
+	const next = planned.map(({ entity, traits, species, tankId }) => {
+		const bounds = regionsById.get(tankId)?.bounds ?? singleRegion(tankId, world).bounds;
 		const creature = existing.get(entity.key);
-		if (!creature) return spawnCreature(entity, traits, species, world);
-		updateCreature(creature, entity, traits, species, world);
+		if (!creature) return spawnCreature(entity, traits, species, bounds, Math.random, tankId);
+
+		// A creature keeps its relative position when its tank changes or resizes.
+		const previous = previousRegions.get(creature.tankId)?.bounds;
+		if (previous && previous !== bounds) {
+			creature.x *= bounds.width / previous.width;
+			creature.y *= bounds.floor / previous.floor;
+			creature.targetY *= bounds.floor / previous.floor;
+		}
+		creature.tankId = tankId;
+		updateCreature(creature, entity, traits, species, bounds);
 		return creature;
 	});
 
 	// Big creatures go behind small ones, so small ones stay visible and clickable.
 	creatures = next.sort((a, b) => b.width * b.height - a.width * a.height);
+	creaturesByTank = new Map();
+	for (const creature of creatures) {
+		const list = creaturesByTank.get(creature.tankId) ?? [];
+		list.push(creature);
+		creaturesByTank.set(creature.tankId, list);
+	}
+
+	applyCamera(hasUserMovedCamera ? camera : fitCamera(viewport, world));
 
 	if (pinned.value) {
 		// The creature object is kept and changed in place, so tell the popup to read it again.
@@ -140,16 +218,17 @@ function resize() {
 	viewport = {
 		width: Math.max(1, container.clientWidth),
 		height: Math.max(1, container.clientHeight),
+		insetTop: props.grouping === 'project' ? props.topInset : 0,
 	};
-	tankSize.value = { ...viewport };
-	resizeWorld(creatures.reduce((total, creature) => total + creature.width * creature.height, 0));
+	tankSize.value = { width: viewport.width, height: viewport.height };
+	// The viewport sets the single tank size and the wall shape, so lay out again.
+	syncCreatures();
 }
 
 onMounted(() => {
 	if (!canvasRef.value) return;
 	renderer = new AquariumRenderer(canvasRef.value);
 	resize();
-	syncCreatures();
 	applyActivity();
 });
 
@@ -162,6 +241,14 @@ watch(
 		applyActivity();
 	},
 );
+watch(
+	() => [props.grouping, props.topInset],
+	() => {
+		// A new layout is a new picture: show all of it.
+		hasUserMovedCamera = false;
+		resize();
+	},
+);
 watch(() => props.activity, applyActivity);
 
 useRafFn(({ delta }) => {
@@ -169,8 +256,11 @@ useRafFn(({ delta }) => {
 	// Clamp, so a background tab does not teleport creatures when it comes back.
 	const dt = reducedMotion.value === 'reduce' ? 0 : Math.min(delta / 1000, 0.1);
 	time += dt;
-	for (const creature of creatures) stepCreature(creature, dt, world);
-	renderer.render(creatures, world, camera, time, (pinned.value ?? hovered.value)?.entity.key);
+	for (const creature of creatures) {
+		const bounds = regionsById.get(creature.tankId)?.bounds;
+		if (bounds) stepCreature(creature, dt, bounds);
+	}
+	renderer.render(creaturesByTank, camera, time, (pinned.value ?? hovered.value)?.entity.key);
 });
 
 function pointFrom(event: MouseEvent): Point {
@@ -178,13 +268,48 @@ function pointFrom(event: MouseEvent): Point {
 	return { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) };
 }
 
-/** Uses the real canvas scale, which can differ a little from the zoom after rounding. */
-function toWorld(point: Point): Point {
+/** Logical pixels for each CSS pixel. Uses the real canvas size, which is rounded. */
+function canvasScale(): Point {
 	const canvas = canvasRef.value;
-	const scaleX = canvas ? canvas.width / viewport.width : 1 / camera.zoom;
-	const scaleY = canvas ? canvas.height / viewport.height : 1 / camera.zoom;
-	return { x: Math.round(camera.x) + point.x * scaleX, y: Math.round(camera.y) + point.y * scaleY };
+	return {
+		x: canvas ? canvas.width / viewport.width : 1 / camera.zoom,
+		y: canvas ? canvas.height / viewport.height : 1 / camera.zoom,
+	};
 }
+
+function toWorld(point: Point): Point {
+	const scale = canvasScale();
+	return {
+		x: Math.round(camera.x) + point.x * scale.x,
+		y: Math.round(camera.y) + point.y * scale.y,
+	};
+}
+
+/** The creature under a screen point. Creature positions are local to their tank. */
+function creatureAt(point: Point): Creature | undefined {
+	const at = toWorld(point);
+	const region = regionAt(regions.value, at.x, at.y);
+	if (!region) return undefined;
+	return findCreatureAt(creaturesByTank.get(region.id) ?? [], at.x - region.x, at.y - region.y);
+}
+
+/** Labels for the project tanks that are on screen and wide enough to read. */
+const projectLabels = computed(() => {
+	// Read the version, so the labels move with the camera.
+	if (cameraVersion.value < 0 || props.grouping === 'single') return [];
+	const scale = canvasScale();
+	const left = Math.round(camera.x);
+	const top = Math.round(camera.y);
+	return regions.value.flatMap((region) => {
+		const x = (region.x - left) / scale.x;
+		const y = (region.y - top) / scale.y;
+		const width = region.bounds.width / scale.x;
+		const height = region.bounds.height / scale.y;
+		const onScreen = x + width > 0 && x < viewport.width && y + height > 0 && y < viewport.height;
+		if (!onScreen || width < PROJECT_LABEL_MIN_WIDTH) return [];
+		return [{ id: region.id, label: region.label, x, y, maxWidth: width }];
+	});
+});
 
 function onPointerDown(event: PointerEvent) {
 	if (event.button !== 0) return;
@@ -207,8 +332,7 @@ function onPointerMove(event: PointerEvent) {
 		}
 	}
 
-	const at = toWorld(pointer.value);
-	hovered.value = findCreatureAt(creatures, at.x, at.y);
+	hovered.value = creatureAt(pointer.value);
 }
 
 function onPointerUp() {
@@ -293,6 +417,14 @@ const tooltip = computed(() => {
 			creature.entity.kind === 'agent' ? 'aquarium.kind.agent' : 'aquarium.kind.workflow',
 		),
 		rows: [
+			...(creature.entity.project
+				? [
+						[
+							i18n.baseText('aquarium.tooltip.project'),
+							displayProjectName(creature.entity.project.name),
+						],
+					]
+				: []),
 			[i18n.baseText('aquarium.tooltip.complexity'), String(metrics.complexity)],
 			[i18n.baseText('aquarium.tooltip.executions'), metrics.executionCount.toLocaleString()],
 			[
@@ -343,6 +475,19 @@ const ariaLabel = computed(() =>
 			@wheel.prevent="onWheel"
 			@click="onClick"
 		/>
+		<div
+			v-for="label in projectLabels"
+			:key="label.id"
+			:class="$style.projectLabel"
+			:style="{
+				left: `${label.x}px`,
+				top: `${label.y}px`,
+				maxWidth: `${label.maxWidth}px`,
+			}"
+			data-test-id="aquarium-project-label"
+		>
+			{{ label.label }}
+		</div>
 		<div :class="$style.zoomControls" data-test-id="aquarium-zoom-controls">
 			<N8nButton
 				variant="outline"
@@ -427,6 +572,20 @@ const ariaLabel = computed(() =>
 
 .dragging {
 	cursor: grabbing;
+}
+
+.projectLabel {
+	position: absolute;
+	transform: translate(var(--spacing--4xs), var(--spacing--4xs));
+	padding: 0 var(--spacing--4xs);
+	border-radius: var(--radius--xs);
+	background: color-mix(in srgb, var(--color--background--light-3) 80%, transparent);
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--3xs);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	pointer-events: none;
 }
 
 .zoomControls {

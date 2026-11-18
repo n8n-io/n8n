@@ -11,6 +11,18 @@ export interface Point {
 }
 
 /**
+ * Element size in CSS pixels. UI covers the top `insetTop` pixels, so fitting keeps the world
+ * below them. The user can still pan the world under that UI.
+ */
+export interface Viewport extends Size {
+	insetTop?: number;
+}
+
+function insetOf(viewport: Viewport): number {
+	return Math.min(Math.max(0, viewport.insetTop ?? 0), viewport.height / 2);
+}
+
+/**
  * The part of the world on screen. `x` and `y` are the world position of the top-left corner,
  * in logical pixels. `zoom` is CSS pixels for each logical pixel.
  */
@@ -33,32 +45,41 @@ export function worldSizeFor(creatureArea: number, viewport: Size): Size {
 }
 
 /** The zoom at which the whole world is on screen. */
-export function fitZoom(viewport: Size, world: Size): number {
-	return Math.min(viewport.width / world.width, viewport.height / world.height);
+export function fitZoom(viewport: Viewport, world: Size): number {
+	return Math.min(
+		viewport.width / world.width,
+		(viewport.height - insetOf(viewport)) / world.height,
+	);
 }
 
-function zoomLimits(viewport: Size, world: Size): { min: number; max: number } {
+function zoomLimits(viewport: Viewport, world: Size): { min: number; max: number } {
 	const min = Math.max(ZOOM.min, Math.min(ZOOM.default, fitZoom(viewport, world)));
 	return { min, max: ZOOM.max };
 }
 
 /** Keeps the zoom in its limits and the view on the world. Centres a world smaller than the view. */
-export function clampCamera(camera: Camera, viewport: Size, world: Size): Camera {
+export function clampCamera(camera: Camera, viewport: Viewport, world: Size): Camera {
 	const { min, max } = zoomLimits(viewport, world);
 	const zoom = Math.min(max, Math.max(min, camera.zoom));
-	const clampAxis = (position: number, view: number, size: number) =>
-		view >= size ? (size - view) / 2 : Math.min(size - view, Math.max(0, position));
+	const inset = insetOf(viewport) / zoom;
+	// `start` is where the free area begins: below the inset, which only the y axis has.
+	const clampAxis = (position: number, view: number, size: number, start: number) => {
+		if (view - start >= size) return (size - view + start) / 2 - start;
+		// Written out, so an axis without an inset clamps to 0 and not to -0.
+		const lowest = start > 0 ? -start : 0;
+		return Math.min(size - view, Math.max(lowest, position));
+	};
 	return {
 		zoom,
-		x: clampAxis(camera.x, viewport.width / zoom, world.width),
-		y: clampAxis(camera.y, viewport.height / zoom, world.height),
+		x: clampAxis(camera.x, viewport.width / zoom, world.width, 0),
+		y: clampAxis(camera.y, viewport.height / zoom, world.height, inset),
 	};
 }
 
 /** Shows the whole world, but never zooms in past the default. */
-export function fitCamera(viewport: Size, world: Size): Camera {
+export function fitCamera(viewport: Viewport, world: Size): Camera {
 	return clampCamera(
-		{ x: 0, y: 0, zoom: Math.min(ZOOM.default, fitZoom(viewport, world)) },
+		{ x: 0, y: -Infinity, zoom: Math.min(ZOOM.default, fitZoom(viewport, world)) },
 		viewport,
 		world,
 	);
@@ -73,7 +94,7 @@ export function zoomAt(
 	camera: Camera,
 	factor: number,
 	anchor: Point,
-	viewport: Size,
+	viewport: Viewport,
 	world: Size,
 ): Camera {
 	const before = screenToWorld(camera, anchor);
@@ -86,7 +107,7 @@ export function zoomAt(
 }
 
 /** Moves the view by a drag of `delta` CSS pixels. The world follows the pointer. */
-export function panBy(camera: Camera, delta: Point, viewport: Size, world: Size): Camera {
+export function panBy(camera: Camera, delta: Point, viewport: Viewport, world: Size): Camera {
 	return clampCamera(
 		{ ...camera, x: camera.x - delta.x / camera.zoom, y: camera.y - delta.y / camera.zoom },
 		viewport,

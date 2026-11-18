@@ -11,6 +11,8 @@ interface WorkflowListItem {
 	id: string;
 	name: string;
 	nodes?: Array<{ type: string }>;
+	/** Present when the list selects `ownedBy`. */
+	homeProject?: { id: string; name: string; type: string } | null;
 }
 
 export function toWorkflowEntity(workflow: WorkflowListItem): AquariumEntity {
@@ -21,6 +23,15 @@ export function toWorkflowEntity(workflow: WorkflowListItem): AquariumEntity {
 		kind: 'workflow',
 		name: workflow.name,
 		route: { name: VIEWS.WORKFLOW, params: { workflowId: workflow.id } },
+		...(workflow.homeProject
+			? {
+					project: {
+						id: workflow.homeProject.id,
+						name: workflow.homeProject.name,
+						type: workflow.homeProject.type,
+					},
+				}
+			: {}),
 		metrics: { ...emptyMetrics(), complexity: nodeCount },
 	};
 }
@@ -34,7 +45,7 @@ export const workflowsSource: EntitySource = {
 			'/workflows',
 			{
 				filter: { isArchived: false },
-				select: JSON.stringify(['id', 'name', 'nodes']),
+				select: JSON.stringify(['id', 'name', 'nodes', 'ownedBy']),
 				sortBy: 'updatedAt:desc',
 				take: MAX_WORKFLOWS,
 			},

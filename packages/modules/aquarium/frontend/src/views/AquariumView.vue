@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nSwitch, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nHeading,
+	N8nIcon,
+	N8nSegmentControl,
+	N8nSwitch,
+	N8nText,
+	type SegmentOption,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAquariumStore } from '../aquarium.store';
-import type { AquariumEntity } from '../aquarium.types';
+import type { AquariumEntity, TankGrouping } from '../aquarium.types';
 import AquariumTank from '../components/AquariumTank.vue';
 import { readDatasetFile } from '../sources/dataset';
 
@@ -18,8 +28,27 @@ const store = useAquariumStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
 const fileInput = ref<HTMLInputElement>();
+const overlay = ref<HTMLDivElement>();
+const { height: overlayHeight } = useElementSize(overlay);
+/** The header panels cover the top of the tank. Leave a little gap below them. */
+const tankTopInset = computed(() => Math.ceil(overlayHeight.value) + 16);
 
 const isDemo = computed(() => route.query.demo === 'true');
+
+/** Kept in the URL, so a reload or a shared link opens the same view. */
+const grouping = computed<TankGrouping>({
+	get: () => (route.query.view === 'projects' ? 'project' : 'single'),
+	set: (value) => {
+		void router.replace({
+			query: { ...route.query, view: value === 'project' ? 'projects' : undefined },
+		});
+	},
+});
+
+const groupingOptions = computed<Array<SegmentOption<TankGrouping>>>(() => [
+	{ label: i18n.baseText('aquarium.view.single'), value: 'single' },
+	{ label: i18n.baseText('aquarium.view.projects'), value: 'project' },
+]);
 
 async function load() {
 	const options = { demo: isDemo.value };
@@ -83,11 +112,17 @@ watch(isDemo, load);
 <template>
 	<div :class="$style.view">
 		<div :class="$style.tank">
-			<AquariumTank :entities="store.entities" :activity="store.activity" @select="onSelect" />
+			<AquariumTank
+				:entities="store.entities"
+				:activity="store.activity"
+				:grouping="grouping"
+				:top-inset="tankTopInset"
+				@select="onSelect"
+			/>
 		</div>
 
 		<!-- The overlay lets pointer events through, so creatures under its gaps stay clickable. -->
-		<div :class="$style.overlay">
+		<div ref="overlay" :class="$style.overlay">
 			<header :class="[$style.panel, $style.intro]">
 				<N8nHeading tag="h1" size="xlarge">{{ i18n.baseText('aquarium.title') }}</N8nHeading>
 				<N8nText size="small" color="text-light">{{
@@ -96,6 +131,13 @@ watch(isDemo, load);
 			</header>
 
 			<div :class="[$style.panel, $style.actions]">
+				<N8nSegmentControl
+					v-model="grouping"
+					:options="groupingOptions"
+					size="small"
+					:aria-label="i18n.baseText('aquarium.view.label')"
+					data-test-id="aquarium-grouping"
+				/>
 				<template v-if="store.dataset">
 					<N8nText size="small" data-test-id="aquarium-dataset-label">{{ datasetLabel }}</N8nText>
 					<N8nButton

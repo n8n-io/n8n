@@ -14,7 +14,7 @@ function jsonFile(content: string): File {
 vi.mock('../engine/renderer', () => ({
 	AquariumRenderer: class {
 		setViewSize() {}
-		setWorld() {}
+		setRegions() {}
 		render() {}
 	},
 }));
