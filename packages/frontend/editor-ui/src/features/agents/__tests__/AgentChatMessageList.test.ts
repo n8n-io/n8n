@@ -55,6 +55,7 @@ vi.mock('@n8n/design-system', () => ({
 		</div>`,
 	},
 	N8nIcon: { template: '<i />' },
+	N8nSpinner: { template: '<span />' },
 	N8nLink: { props: ['to', 'theme', 'size', 'underline'], template: '<a :href="to"><slot /></a>' },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
