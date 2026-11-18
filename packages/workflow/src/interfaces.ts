@@ -1309,6 +1309,45 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+/** A page of a project as a node sees it. `url` is the path of the page inside the instance. */
+export type ProjectPageSummary = {
+	id: string;
+	title: string;
+	version: number;
+	updatedAt: string;
+	url: string;
+};
+
+/** `content` is markdown. */
+export type ProjectPage = ProjectPageSummary & { content: string };
+
+/** Reads and writes the pages of one project. A page of another project counts as not found. */
+export interface IPageProjectService {
+	getProjectId(): string;
+	/** Lists the pages of the project, the most recently updated first. `titleQuery` keeps the titles that contain it. */
+	listPages(options?: { titleQuery?: string }): Promise<ProjectPageSummary[]>;
+	getPage(pageId: string): Promise<ProjectPage>;
+	/** Adds the text as a new block after the content of the page, and returns the saved page. */
+	appendToPage(pageId: string, text: string): Promise<ProjectPage>;
+	/**
+	 * Replaces the text under the heading with this title, and returns the saved page.
+	 * A page with no such heading gets a new section at its end.
+	 */
+	updatePageSection(pageId: string, sectionTitle: string, text: string): Promise<ProjectPage>;
+	/** Replaces the whole content of the page, and returns the saved page. */
+	replacePageContent(pageId: string, content: string): Promise<ProjectPage>;
+}
+
+export type PageProxyProvider = {
+	/** `projectId` overrides the project of the workflow. */
+	getPageProxy(workflow: Workflow, node: INode, projectId?: string): Promise<IPageProjectService>;
+};
+
+export type PageProxyFunctions = {
+	// Optional to account for situations where the page module is disabled
+	getPageProxy?(): Promise<IPageProjectService>;
+};
+
 /** What a node may ask of a trusted source: the surface it is used on and the capability it needs. */
 export type TrustedSourceFilter = {
 	surface: 'trigger';
@@ -1492,6 +1531,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			DataTableProxyFunctions &
+			PageProxyFunctions &
 			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -1591,6 +1631,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	helpers: RequestHelperFunctions &
 		SSHTunnelFunctions &
 		DataTableProxyFunctions &
+		PageProxyFunctions &
 		TrustedSourceFunctions;
 }
 

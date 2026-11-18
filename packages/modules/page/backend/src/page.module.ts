@@ -1,5 +1,6 @@
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 @BackendModule({ name: 'page' })
 export class PageModule implements ModuleInterface {
@@ -13,5 +14,11 @@ export class PageModule implements ModuleInterface {
 		const { PageReferenceEntity } = await import('./page-reference.entity.js');
 
 		return [PageEntity, PageReferenceEntity];
+	}
+
+	async context() {
+		const { PageProxyService } = await import('./page-proxy.service.js');
+
+		return { pageProxyProvider: Container.get(PageProxyService) };
 	}
 }

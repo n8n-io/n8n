@@ -1,6 +1,7 @@
 import type { SsrfBridge } from '@n8n/backend-network';
 import type {
 	DataTableProxyProvider,
+	PageProxyProvider,
 	DynamicCredentialCheckProxyProvider,
 	IExecuteFunctions,
 	IExecutionContext,
@@ -62,6 +63,7 @@ declare module 'n8n-workflow' {
 		/** Eval only: answers for non-HTTP nodes at run time. Never present in normal executions. */
 		evalNodeMockHandler?: EvalNodeMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+		page?: { pageProxyProvider: PageProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
 		'inbound-auth-core'?: { trustedSourceDirectory: TrustedSourceDirectory };
