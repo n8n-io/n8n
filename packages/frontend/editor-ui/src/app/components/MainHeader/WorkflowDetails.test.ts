@@ -32,10 +32,16 @@ import {
 import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { telemetry } from '@/app/plugins/telemetry';
+import { usePageStore } from '@n8n/frontend-module-page';
 
 const mockMcpNudgeCanShow = vi.hoisted(() => vi.fn(() => true));
 const mockMcpNudgeIsEligibleApartFromExperiment = vi.hoisted(() => vi.fn(() => true));
 const saveAsMock = vi.hoisted(() => vi.fn());
+const isPageModuleActive = vi.hoisted(() => ({ value: false }));
+
+vi.mock('@/features/pages/composables/useIsPageModuleActive', () => ({
+	useIsPageModuleActive: () => isPageModuleActive,
+}));
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
 	useMcpJsonNudgeEligibility: () => ({
@@ -256,6 +262,37 @@ describe('WorkflowDetails', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('pages button', () => {
+		afterEach(() => {
+			isPageModuleActive.value = false;
+		});
+
+		it('should hide the button when the page module is off', () => {
+			const { queryByTestId } = renderComponent({ props: defaultProps });
+
+			expect(queryByTestId('workflow-pages-button')).not.toBeInTheDocument();
+		});
+
+		it('should show the button for a saved workflow when the page module is on', () => {
+			isPageModuleActive.value = true;
+			mockedStore(usePageStore).listReferencing.mockResolvedValue([]);
+
+			const { getByTestId } = renderComponent({ props: defaultProps });
+
+			expect(getByTestId('workflow-pages-button')).toBeInTheDocument();
+		});
+
+		it('should hide the button for a workflow that is not saved', () => {
+			isPageModuleActive.value = true;
+			mockedStore(usePageStore).listReferencing.mockResolvedValue([]);
+			workflowsStore.isWorkflowSaved = {};
+
+			const { queryByTestId } = renderComponent({ props: defaultProps });
+
+			expect(queryByTestId('workflow-pages-button')).not.toBeInTheDocument();
+		});
 	});
 
 	it('renders workflow name', async () => {

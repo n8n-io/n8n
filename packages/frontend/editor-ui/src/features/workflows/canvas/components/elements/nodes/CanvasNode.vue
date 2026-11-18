@@ -37,6 +37,8 @@ import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from './render-types/parts/CanvasNodeTrigger.vue';
 import { CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { getAgentNodeHandleOffsetCss } from '@/features/agents/utils/agentNode';
+import NodePagesBadge from '@/features/pages/components/NodePagesBadge.vue';
+import { useIsPageModuleActive } from '@/features/pages/composables/useIsPageModuleActive';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -336,6 +338,14 @@ const hasToolbar = computed(
 		![CanvasNodeRenderType.AddNodes, CanvasNodeRenderType.ChoicePrompt].includes(renderType.value),
 );
 
+const isPageModuleActive = useIsPageModuleActive();
+const canShowPagesBadge = computed(
+	() =>
+		isPageModuleActive.value &&
+		!isExperimentalNdvActive.value &&
+		[CanvasNodeRenderType.Default, CanvasNodeRenderType.Agent].includes(renderType.value),
+);
+
 const showToolbar = computed(() => {
 	const target = contextMenu.target.value;
 	return contextMenu.isOpen && target?.source === 'node-button' && target.nodeId === id.value;
@@ -448,6 +458,10 @@ onBeforeUnmount(() => {
 			@replace:node="onReplaceNode"
 		/>
 
+		<div v-if="canShowPagesBadge" :class="$style.pagesBadge">
+			<NodePagesBadge :node-id="id" :node-name="data.name" />
+		</div>
+
 		<CanvasNodeTrigger
 			v-if="
 				props.data.render.type === CanvasNodeRenderType.Default && props.data.render.options.trigger
@@ -477,6 +491,14 @@ onBeforeUnmount(() => {
 			opacity: 1;
 		}
 	}
+}
+
+.pagesBadge {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	transform: translate(30%, -30%);
 }
 
 .canvasNodeToolbar {

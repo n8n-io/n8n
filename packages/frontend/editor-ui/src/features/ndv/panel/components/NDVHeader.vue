@@ -58,6 +58,7 @@ function onRename(newNodeName: string) {
 		</div>
 
 		<div :class="$style.actions">
+			<slot name="actions" />
 			<N8nLink v-if="docsUrl" theme="text" target="_blank" :href="docsUrl">
 				<span :class="$style.docsLabel">
 					<N8nText size="small" bold>

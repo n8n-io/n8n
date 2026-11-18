@@ -30,6 +30,8 @@ import {
 } from '@n8n/design-system';
 import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
+import ResourcePagesButton from '@/features/pages/components/ResourcePagesButton.vue';
+import { useDataTablePages } from '@/features/pages/composables/useProjectResourcePages';
 
 type Props = {
 	id: string;
@@ -60,6 +62,7 @@ const saving = ref(false);
 const dataTable = ref<DataTable | null>(null);
 const dataTableTableRef = ref<InstanceType<typeof DataTableTable>>();
 const searchQuery = ref('');
+const { pagesResource, pagesProjectId } = useDataTablePages(dataTable);
 
 const { debounce } = useDebounce();
 
@@ -188,6 +191,14 @@ onBeforeUnmount(() => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<ResourcePagesButton
+						v-if="pagesResource"
+						:resource="pagesResource"
+						:resource-name="dataTable.name"
+						:project-id="pagesProjectId"
+						test-id-prefix="datatable-pages"
+						align="end"
+					/>
 					<DependencyPill
 						v-if="dataTableHasDependents"
 						resource-type="dataTable"

@@ -42,6 +42,21 @@ vi.mock('@n8n/i18n', () => {
 	};
 });
 
+const isPageModuleActive = vi.hoisted(() => ({ value: false }));
+
+vi.mock('@/features/pages/composables/useIsPageModuleActive', () => ({
+	useIsPageModuleActive: () => isPageModuleActive,
+}));
+
+vi.mock('@/features/pages/components/ResourcePagesButton.vue', () => ({
+	default: {
+		props: ['resource', 'resourceName', 'projectId', 'testIdPrefix'],
+		emits: ['navigate'],
+		template:
+			'<button :data-test-id="testIdPrefix + \'-button\'" :data-resource="JSON.stringify(resource)" :data-name="resourceName" :data-project-id="projectId" @click="$emit(\'navigate\')" />',
+	},
+}));
+
 const mockRouter = {
 	push: vi.fn(),
 };
@@ -77,6 +92,42 @@ const renderComponent = createComponentRenderer(DataTableDetailsView, {
 });
 
 describe('DataTableDetailsView', () => {
+	describe('Pages button', () => {
+		afterEach(() => {
+			isPageModuleActive.value = false;
+		});
+
+		function renderLoadedDataTable() {
+			const pinia = createTestingPinia({ stubActions: false });
+			vi.spyOn(useDataTableStore(), 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+			return renderComponent({ pinia });
+		}
+
+		it('should show the pages of the data table when the page module is on', async () => {
+			isPageModuleActive.value = true;
+
+			const { findByTestId } = renderLoadedDataTable();
+
+			const button = await findByTestId('datatable-pages-button');
+			expect(JSON.parse(button.dataset.resource ?? '')).toEqual({
+				resourceType: 'dataTable',
+				resourceId: 'ds1',
+				projectId: 'proj1',
+			});
+			expect(button).toHaveAttribute('data-name', 'Test Data Table');
+			expect(button).toHaveAttribute('data-project-id', 'proj1');
+		});
+
+		it('should show no pages button when the page module is off', async () => {
+			const { queryByTestId } = renderLoadedDataTable();
+
+			await waitFor(() =>
+				expect(queryByTestId('data-table-details-loading')).not.toBeInTheDocument(),
+			);
+			expect(queryByTestId('datatable-pages-button')).not.toBeInTheDocument();
+		});
+	});
+
 	beforeEach(() => {
 		(useToast as ReturnType<typeof vi.fn>).mockReturnValue(mockToast);
 		(useRouter as ReturnType<typeof vi.fn>).mockReturnValue(mockRouter);

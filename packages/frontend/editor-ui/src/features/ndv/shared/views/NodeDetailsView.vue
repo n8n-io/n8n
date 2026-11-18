@@ -7,6 +7,8 @@ import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 
 import NDVHeader from '../../panel/components/NDVHeader.vue';
+import NodePagesButton from '@/features/pages/components/NodePagesButton.vue';
+import { useIsPageModuleActive } from '@/features/pages/composables/useIsPageModuleActive';
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import {
 	useNdvAgentConfig,
@@ -75,6 +77,7 @@ const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const activeNode = computed(() => ndvStore.value.activeNode);
+const isPageModuleActive = useIsPageModuleActive();
 const { isRestricted } = useNodeTypeRestriction(() => activeNode.value?.type);
 const pinnedData = usePinnedData(activeNode);
 
@@ -793,7 +796,11 @@ onBeforeUnmount(() => {
 					:docs-url="docsUrl"
 					@close="close"
 					@rename="onRename"
-				/>
+				>
+					<template v-if="isPageModuleActive" #actions>
+						<NodePagesButton :node-id="activeNode.id" :node-name="activeNode.name" />
+					</template>
+				</NDVHeader>
 				<main :class="$style.main">
 					<div
 						v-if="hasInputPanel"

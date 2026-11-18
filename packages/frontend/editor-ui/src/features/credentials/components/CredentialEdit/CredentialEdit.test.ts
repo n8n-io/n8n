@@ -385,6 +385,21 @@ const createCredentialResponse = (
 		...overrides,
 	}) as ICredentialsResponse;
 
+const isPageModuleActive = vi.hoisted(() => ({ value: false }));
+
+vi.mock('@/features/pages/composables/useIsPageModuleActive', () => ({
+	useIsPageModuleActive: () => isPageModuleActive,
+}));
+
+vi.mock('@/features/pages/components/ResourcePagesButton.vue', () => ({
+	default: {
+		props: ['resource', 'resourceName', 'projectId', 'testIdPrefix'],
+		emits: ['navigate'],
+		template:
+			'<button :data-test-id="testIdPrefix + \'-button\'" :data-resource="JSON.stringify(resource)" :data-name="resourceName" :data-project-id="projectId" @click="$emit(\'navigate\')" />',
+	},
+}));
+
 describe('CredentialEdit', () => {
 	beforeEach(() => {
 		broadcastMessageListener = undefined;
@@ -676,6 +691,84 @@ describe('CredentialEdit', () => {
 				['cred-used'],
 				'credential',
 			);
+		});
+
+		describe('pages button', () => {
+			afterEach(() => {
+				isPageModuleActive.value = false;
+			});
+
+			test('shows the pages of a saved credential when the page module is on', async () => {
+				isPageModuleActive.value = true;
+				const credentialsStore = mockedStore(useCredentialsStore);
+				credentialsStore.getCredentialData.mockResolvedValueOnce({
+					id: 'cred-pages',
+					name: 'Test credential',
+					type: 'testApi',
+					data: {},
+					isManaged: false,
+					sharedWithProjects: [],
+					homeProject: {
+						id: 'home-project',
+						name: 'Home',
+						type: 'team',
+						icon: null,
+						createdAt: '2025-05-13T10:45:45.588Z',
+						updatedAt: '2025-05-13T10:45:45.588Z',
+					},
+					scopes: ['credential:read'],
+					createdAt: '2025-05-13T10:45:45.588Z',
+					updatedAt: '2025-05-15T12:36:01.826Z',
+				});
+
+				const { findByTestId } = renderComponent({
+					props: { activeId: 'cred-pages', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				});
+
+				const button = await findByTestId('credential-pages-button');
+				expect(JSON.parse(button.dataset.resource ?? '')).toEqual({
+					resourceType: 'credential',
+					resourceId: 'cred-pages',
+					projectId: 'home-project',
+				});
+				expect(button).toHaveAttribute('data-project-id', 'home-project');
+			});
+
+			test('closes the modal when a page opens', async () => {
+				isPageModuleActive.value = true;
+				loadCredential('cred-pages');
+				const { findByTestId } = renderComponent({
+					props: { activeId: 'cred-pages', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				});
+
+				await userEvent.click(await findByTestId('credential-pages-button'));
+
+				await waitFor(() =>
+					expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(
+						CREDENTIAL_EDIT_MODAL_KEY,
+					),
+				);
+			});
+
+			test('shows no pages button when the page module is off', async () => {
+				loadCredential('cred-pages');
+				const { getByTestId, queryByTestId } = renderComponent({
+					props: { activeId: 'cred-pages', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				});
+
+				await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
+				expect(queryByTestId('credential-pages-button')).not.toBeInTheDocument();
+			});
+
+			test('shows no pages button for a new credential', async () => {
+				isPageModuleActive.value = true;
+				const { getByTestId, queryByTestId } = renderComponent({
+					props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				});
+
+				await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
+				expect(queryByTestId('credential-pages-button')).not.toBeInTheDocument();
+			});
 		});
 
 		test('hides the pill when nothing uses the credential', async () => {

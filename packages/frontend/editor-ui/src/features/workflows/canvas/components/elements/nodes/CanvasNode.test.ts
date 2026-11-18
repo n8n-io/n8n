@@ -35,6 +35,19 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
+const isPageModuleActive = vi.hoisted(() => ({ value: false }));
+
+vi.mock('@/features/pages/composables/useIsPageModuleActive', () => ({
+	useIsPageModuleActive: () => isPageModuleActive,
+}));
+
+vi.mock('@/features/pages/components/NodePagesBadge.vue', () => ({
+	default: {
+		props: ['nodeId', 'nodeName'],
+		template: '<div data-test-id="node-pages-badge-stub" :data-node-id="nodeId" />',
+	},
+}));
+
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 
@@ -159,6 +172,43 @@ describe('CanvasNode', () => {
 			expect(inputHandles[1]).toHaveStyle('left: 40px');
 			expect(inputHandles[2]).toHaveStyle('left: 136px');
 			expect(inputHandles[3]).toHaveStyle('left: 184px');
+		});
+	});
+
+	describe('pages badge', () => {
+		afterEach(() => {
+			isPageModuleActive.value = false;
+		});
+
+		it('should mount the badge on a node when the page module is on', () => {
+			isPageModuleActive.value = true;
+
+			const { getByTestId } = renderComponent({ props: { ...createCanvasNodeProps() } });
+
+			expect(getByTestId('node-pages-badge-stub')).toHaveAttribute('data-node-id', 'node');
+		});
+
+		it('should mount no badge when the page module is off', () => {
+			const { queryByTestId } = renderComponent({ props: { ...createCanvasNodeProps() } });
+
+			expect(queryByTestId('node-pages-badge-stub')).not.toBeInTheDocument();
+		});
+
+		it('should mount no badge on a sticky note', () => {
+			isPageModuleActive.value = true;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					...createCanvasNodeProps({
+						data: createCanvasNodeData({
+							render: { type: CanvasNodeRenderType.StickyNote, options: {} },
+						}),
+					}),
+				},
+				global: { stubs: { CanvasNodeToolbar: true, CanvasNodeRenderer: true } },
+			});
+
+			expect(queryByTestId('node-pages-badge-stub')).not.toBeInTheDocument();
 		});
 	});
 

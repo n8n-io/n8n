@@ -26,6 +26,8 @@ import CredentialInfo from './CredentialInfo.vue';
 import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
+import ResourcePagesButton from '@/features/pages/components/ResourcePagesButton.vue';
+import { useCredentialPages } from '@/features/pages/composables/useProjectResourcePages';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -849,6 +851,9 @@ function onDescriptionEdit(text: string) {
 	credentialDescription.value = text;
 	hasUnsavedChanges.value = true;
 }
+
+const { pagesResource: credentialPagesResource, pagesProjectId: credentialPagesProjectId } =
+	useCredentialPages(currentCredential);
 
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
@@ -1712,6 +1717,15 @@ const { width } = useElementSize(credNameRef);
 					</div>
 				</N8nDialogTitle>
 				<div :class="$style.credActions">
+					<ResourcePagesButton
+						v-if="credentialPagesResource"
+						:resource="credentialPagesResource"
+						:resource-name="credentialName"
+						:project-id="credentialPagesProjectId"
+						test-id-prefix="credential-pages"
+						align="end"
+						@navigate="closeDialog"
+					/>
 					<DependencyPill
 						v-if="credentialHasDependents"
 						resource-type="credential"

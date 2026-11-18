@@ -17,6 +17,8 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { PathItem } from '@n8n/design-system';
 import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import WorkflowPagesButton from '@/features/pages/components/WorkflowPagesButton.vue';
+import { useIsPageModuleActive } from '@/features/pages/composables/useIsPageModuleActive';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
@@ -75,6 +77,10 @@ const isNewWorkflow = computed(() => {
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 );
+
+const isPageModuleActive = useIsPageModuleActive();
+const isPagesButtonVisible = computed(() => isPageModuleActive.value && !isNewWorkflow.value);
+const homeProjectId = computed(() => workflowDocumentStore?.value?.homeProject?.id);
 
 const readOnly = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
@@ -377,6 +383,12 @@ onBeforeUnmount(() => {
 			:name="name"
 			:tags="tags"
 			:current-folder="currentFolderForBreadcrumbs ?? undefined"
+		/>
+		<WorkflowPagesButton
+			v-if="isPagesButtonVisible"
+			:workflow-id="id"
+			:workflow-name="name"
+			:project-id="homeProjectId"
 		/>
 		<span class="spacer">
 			<span :class="$style['header-controls']">
