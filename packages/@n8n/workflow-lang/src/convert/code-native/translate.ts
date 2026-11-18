@@ -4844,18 +4844,19 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 
 	const visit = (n: ts.Node): void => {
 		if (taEnabled && ts.isNewExpression(n) && isNewTypedArray(n)) {
-			if (!taPlace(n)) {
+			if (!taPlace(n) || !canHandOver) {
 				blockTypedArray();
 				return;
 			}
+			handOver('typed array');
 			const args = n.arguments ?? [];
 			if (args.length > 1) {
 				blockTypedArray();
 				return;
 			}
 			if (args.length === 0) {
-				helpers.add('taNew');
-				replaceNode(n, 'taNew(undefined)');
+				helpers.add('taNewHost');
+				replaceNode(n, 'taNewHost(undefined)');
 				return;
 			}
 			const arg = args[0];
@@ -4863,7 +4864,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				blockTypedArray();
 				return;
 			}
-			const fn = isTa(arg) ? 'taCopy' : 'taNew';
+			const fn = isTa(arg) ? 'taCopy' : 'taNewHost';
 			helpers.add(fn);
 			const o = seq;
 			replace(n.getStart(sf), arg.getStart(sf), `${fn}(`);

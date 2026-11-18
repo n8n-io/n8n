@@ -9,6 +9,9 @@
  */
 import type { CodeHelperSource } from './helpers.ts';
 
+/** \`RUNS_IN_HOST\` of the converter (\`../helpers.ts\`, which imports this file). */
+const RUNS_IN_HOST = '(no request to repeat: the fallback host runs the node)';
+
 export const TYPED_ARRAY_HELPERS: Record<string, CodeHelperSource> = {
 	taByte: {
 		uses: [],
@@ -18,34 +21,24 @@ function taByte(x: Json): number {
 	return isNaN(n) || !Number.isFinite(n) ? 0 : ((n % 256) + 256) % 256;
 }`,
 	},
-	taMaxLength: {
-		uses: [],
-		source: `/** The largest length of a typed array that Node.js makes, and the error of one above it. */
-function taMaxLength(n: number): number {
-	if (n > 4294967295) throw new RangeError('Invalid typed array length: ' + String(n));
-	return n;
-}`,
-	},
 	taLengthOf: {
 		uses: [],
 		source: `/** ToLength: a length as \`{ length: … }\` takes it. */
 function taLengthOf(value: Json): number {
 	const n = Number(value);
 	if (isNaN(n) || n <= 0) return 0;
-	const t = Math.trunc(n);
-	if (t > 4294967295) throw new RangeError('Array buffer allocation failed');
-	return t;
+	return Math.trunc(n);
 }`,
 	},
 	taIndex: {
-		uses: ['taMaxLength'],
+		uses: [],
 		source: `/** ToIndex: the length that a value of \`new Uint8Array(value)\` means, or its error. */
 function taIndex(value: Json): number {
 	const n = Number(value);
 	if (isNaN(n)) return 0;
 	const t = Math.trunc(n);
 	if (t < 0) throw new RangeError('Invalid typed array length: ' + String(n));
-	return taMaxLength(t);
+	return t;
 }`,
 	},
 	taLen: {
@@ -73,6 +66,31 @@ function taNew(value: Json): Json {
 	const n = taIndex(value);
 	for (let k = 0; k < n; k++) out[String(k)] = 0;
 	return out;
+}`,
+	},
+	taSizeOf: {
+		uses: ['taIndex', 'taLengthOf'],
+		source: `/** The count of values that \`new Uint8Array(value)\` makes. */
+function taSizeOf(value: Json): number {
+	if (value !== null && typeof value === 'object') {
+		return Array.isArray(value) ? value.length : taLengthOf(value.length);
+	}
+	return taIndex(value);
+}`,
+	},
+	taNewHost: {
+		uses: ['taNew', 'taSizeOf'],
+		source: `/**
+ * \`new Uint8Array(...)\` in code that can hand the node over to the fallback host
+ * (\`Translation.handsOver\`). A typed array of more than 1048576 values, and a count that
+ * fails, needs a size that no helper gives exactly: the fallback host runs the node there.
+ */
+function taNewHost(value: Json): Json {
+	const n = taSizeOf(value);
+	if (!(n >= 0 && n <= 1048576)) {
+		throw new Error('The code makes a typed array of more than 1048576 values ${RUNS_IN_HOST}');
+	}
+	return taNew(value);
 }`,
 	},
 	taCopy: {

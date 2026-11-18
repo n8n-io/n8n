@@ -12,7 +12,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { useUtc } from '../../../reference/runner.ts';
+import { RUNS_IN_HOST } from '../../helpers.ts';
 import type { CodeMode } from '../translate.ts';
+import { translateCode } from '../translate.ts';
 import { nativeCode, runnerCode, startRunner, taskRunnerAvailable } from './runner-oracle.ts';
 
 useUtc();
@@ -24,6 +26,11 @@ interface Case {
 }
 
 const ITEMS = [{ a: 1 }, { a: 2 }];
+
+/** The bound of a native typed array: more values, and a count that fails, run in the host. */
+const BOUND = 1048576;
+const sizeCase = (count: string) =>
+	`const u = new Uint8Array(${count});\nreturn [{ json: { l: u.length } }];`;
 
 /** Cases of the forms that the translation gives natively. */
 const CASES: Case[] = [
@@ -68,10 +75,6 @@ const CASES: Case[] = [
 		code: "const u = new Uint8Array('abc');\nreturn [{ json: { u, l: u.length } }];",
 	},
 	{ name: 'new Uint8Array(-1)', code: 'const u = new Uint8Array(-1);\nreturn [{ json: { u } }];' },
-	{
-		name: 'new Uint8Array(Infinity)',
-		code: 'const u = new Uint8Array(Infinity);\nreturn [{ json: { u } }];',
-	},
 	{
 		name: 'new Uint8Array(list)',
 		code: 'const u = new Uint8Array([1, 2, 300, -1, 2.7, -2.9]);\nreturn [{ json: { u, l: u.length } }];',
@@ -307,6 +310,49 @@ describe.skipIf(!taskRunnerAvailable())(
 		});
 	},
 );
+
+const handsOver = (r: { ok: boolean; error?: string }): boolean =>
+	!r.ok && typeof r.error === 'string' && r.error.includes(RUNS_IN_HOST);
+
+describe.skipIf(!taskRunnerAvailable())('a typed array above the bound hands the node over', () => {
+	beforeAll(async () => await startRunner(), 120_000);
+
+	const ABOVE = [
+		{ name: 'a count above the bound', code: sizeCase(`${BOUND + 1}`) },
+		{ name: 'a count far above the bound', code: sizeCase('4294967296') },
+			{
+			name: 'an array-like length above the bound',
+			code: `const u = new Uint8Array({ length: ${BOUND + 1} });\nreturn [{ json: { l: u.length } }];`,
+		},
+		{
+			name: 'an array-like length of 1e10',
+			code: 'const u = new Uint8Array({ length: 1e10 });\nreturn [{ json: { l: u.length } }];',
+		},
+	];
+
+	it.each(ABOVE)('$name', ({ code }) => {
+		expect(handsOver(nativeCode(code, 'all', ITEMS))).toBe(true);
+	});
+
+	it('the host gives the result of v1 for a count above the bound', async () => {
+		expect(await runnerCode(ABOVE[0].code, 'all', ITEMS)).toEqual({
+			ok: true,
+			value: [{ l: BOUND + 1 }],
+		});
+	});
+
+	it('the translation carries the host form', () => {
+		const t = translateCode({
+			code: ABOVE[0].code,
+			mode: 'all',
+			kind: 'code',
+			hasNode: () => false,
+		});
+		if (!t.ok) throw new Error(t.blockers.map((b) => b.feature).join(', '));
+		expect(t.translation.handsOver).toBe(true);
+		expect(t.translation.helpers.has('taNewHost')).toBe(true);
+	});
+});
 
 describe('the feature of each refusal of a typed array', () => {
 	const blocked = (code: string): string[] => {
