@@ -52,7 +52,6 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
-import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -64,6 +63,7 @@ import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detai
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
+import type { EmbeddingProviderOptions } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
@@ -77,10 +77,12 @@ import {
 	AgentSandboxRuntimeService,
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
+import type { AgentRunTelemetryType } from './agent-telemetry.types';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildFileUploadGuidance } from './integrations/integration-tool-descriptions';
+import { createConversationTools } from './integrations/conversation-tools';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
@@ -93,7 +95,6 @@ import {
 	buildFromJson,
 	buildProviderToolsForModel,
 	type MemoryFactory,
-	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { toAgentDocument } from './json-config/agent-document';
@@ -1027,7 +1028,7 @@ export class AgentRuntimeReconstructionService {
 	 */
 	private async resolveManagedEmbeddingProviderOptions(
 		ownerId: string,
-	): Promise<ManagedEmbeddingProviderOptions | null> {
+	): Promise<EmbeddingProviderOptions | null> {
 		if (!this.aiService.isProxyEnabled()) return null;
 		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
 		const client = await this.aiService.getClient();
@@ -1280,6 +1281,9 @@ export class AgentRuntimeReconstructionService {
 				createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor, projectId }),
 			);
 		}
+		agent.tool(
+			createConversationTools({ descriptors, messageContextStore, actionExecutor, projectId }),
+		);
 	}
 
 	private createIntegrationDescriptors(
@@ -1293,6 +1297,8 @@ export class AgentRuntimeReconstructionService {
 			(integrationConfig) => {
 				const integrationDef = integrationRegistry.get(integrationConfig.type);
 				return {
+					conversationTools: integrationDef?.conversationTools,
+					supportedComponents: integrationDef?.supportedComponents,
 					contextToolDefinitions: integrationDef?.contextToolDefinitions,
 					actionToolDefinitions: integrationDef?.actionToolDefinitions,
 					contextQueries: integrationDef?.contextQueries,
@@ -1335,6 +1341,8 @@ export class AgentRuntimeReconstructionService {
 			actionToolDefinitions: [...n8nChat.actionToolDefinitions],
 			contextToolGuidance: n8nChat.contextToolGuidance,
 			actionToolGuidance: n8nChat.actionToolGuidance,
+			conversationTools: n8nChat.conversationTools,
+			supportedComponents: n8nChat.supportedComponents,
 		};
 	}
 

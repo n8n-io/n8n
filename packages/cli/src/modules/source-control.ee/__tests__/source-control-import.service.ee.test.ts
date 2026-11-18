@@ -287,6 +287,17 @@ describe('SourceControlImportService', () => {
 			expect(result).toHaveLength(fileCount);
 			expect(result.map((workflow) => workflow.id)).toEqual(files.map((_, i) => `workflow${i}`));
 		});
+
+		it('should read the version-scoped settings from the workflow settings', async () => {
+			globMock.mockResolvedValue([mockWorkflowFile]);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({ id: 'workflow1', versionId: 'v1', settings: { engineType: 'v2' } }),
+			);
+
+			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
+
+			expect(result[0].versionedSettings).toEqual({ engineType: 'v2' });
+		});
 	});
 
 	describe('importWorkflowFromWorkFolder', () => {
@@ -3316,6 +3327,23 @@ describe('SourceControlImportService', () => {
 			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
 
 			expect(result[0].updatedAt).toBe(now.toISOString());
+		});
+
+		it('should read the version-scoped settings from the workflow settings', async () => {
+			const mockWorkflows = [
+				{
+					id: 'workflow1',
+					name: 'Test Workflow',
+					updatedAt: now,
+					settings: { engineType: 'v2' },
+				},
+			] as unknown as WorkflowEntity[];
+
+			workflowRepository.find.mockResolvedValue(mockWorkflows);
+
+			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
+
+			expect(result[0].versionedSettings).toEqual({ engineType: 'v2' });
 		});
 	});
 

@@ -500,6 +500,7 @@ export class ToolCallExecutor {
 			const tool = target.tool;
 			const params = this.pendingToolCallParams(entry, ctx);
 			if (target.dispatchedBy) params.input = target.input as JSONValue;
+			// A resume-only tool keeps its former-name input here. Only processToolCall converts it, and cleanup never runs the handler.
 			try {
 				await this.runner.runCancellationCleanup(params, tool, message);
 			} catch {

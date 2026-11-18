@@ -11,7 +11,7 @@ import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
+import { ExecutionData, ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
 import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -596,37 +596,26 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('cancelMany', () => {
-		test('should clear waitTill when canceling executions', async () => {
-			const executionIds = ['1', '2', '3'];
+	describe('markAsCanceled', () => {
+		test('should cancel only unfinished executions by default and clear waitTill', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
 
-			await executionRepository.cancelMany(executionIds);
+			await executionRepository.markAsCanceled(['1', '2', '1']);
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ExecutionEntity,
-				{ id: In(executionIds) },
+				{ id: In(['1', '2']), status: In(['new', 'running', 'unknown', 'waiting']) },
 				expect.objectContaining({ status: 'canceled', waitTill: null }),
 			);
 		});
-	});
 
-	describe('stopBeforeRun', () => {
-		test('should clear waitTill when stopping execution before run', async () => {
-			const execution = mock<IExecutionResponse>({
-				id: '1',
-				status: 'waiting',
-				waitTill: new Date('2025-01-01T00:00:00.000Z'),
-			});
+		test('should update in batches of 900 ids', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+			const ids = Array.from({ length: 901 }, (_, i) => String(i));
 
-			await executionRepository.stopBeforeRun(execution);
+			await executionRepository.markAsCanceled(ids);
 
-			expect(execution.waitTill).toBeNull();
-			expect(execution.status).toBe('canceled');
-			expect(entityManager.update).toHaveBeenCalledWith(
-				ExecutionEntity,
-				{ id: '1' },
-				expect.objectContaining({ status: 'canceled', waitTill: null }),
-			);
+			expect(entityManager.update).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -685,6 +674,41 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('updateExistingExecution', () => {
+		test.each([0, 1])(
+			'guards the wait timestamp before writing row and data (matched rows: %s)',
+			async (affected) => {
+				const expectedWait = new Date('3000-01-01T00:00:00.000Z');
+				const nextWait = new Date('2026-11-17T12:00:00.000Z');
+				entityManager.transaction.mockImplementation(
+					async (fn: unknown) =>
+						await (fn as (em: typeof entityManager) => Promise<boolean>)(entityManager),
+				);
+				entityManager.update.mockResolvedValue({ affected, raw: [], generatedMaps: [] });
+
+				const updated = await executionRepository.updateExistingExecution(
+					'1',
+					{ waitTill: nextWait, data: mock<IRunExecutionData>() },
+					{ requireStatus: 'waiting', requireWaitTill: expectedWait },
+				);
+
+				expect(entityManager.update).toHaveBeenNthCalledWith(
+					1,
+					ExecutionEntity,
+					{ id: '1', status: 'waiting', waitTill: expectedWait },
+					{ waitTill: nextWait },
+				);
+				expect(updated).toBe(affected === 1);
+				expect(entityManager.update).toHaveBeenCalledTimes(affected === 1 ? 2 : 1);
+				if (affected === 1) {
+					expect(entityManager.update).toHaveBeenLastCalledWith(
+						ExecutionData,
+						{ executionId: '1' },
+						expect.objectContaining({ data: expect.any(String) }),
+					);
+				}
+			},
+		);
+
 		test.each(['sqlite', 'postgresdb'] as const)(
 			'should update execution and data in transaction on %s',
 			async (dbType) => {

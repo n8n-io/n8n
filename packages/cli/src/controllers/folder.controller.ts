@@ -83,6 +83,7 @@ export class ProjectController {
 
 		try {
 			const folder = await this.folderService.createFolder(payload, projectId);
+
 			return folder;
 		} catch (e) {
 			throw toResponseError(e) ?? new InternalServerError(undefined, e);
@@ -138,6 +139,7 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
+			await this.folderService.assertContentAccess(req.user, folderId, projectId, 'update');
 			await this.folderService.updateFolder(folderId, projectId, payload);
 		} catch (e) {
 			throw toResponseError(e) ?? new InternalServerError(undefined, e);
@@ -171,6 +173,10 @@ export class ProjectController {
 	) {
 		const { projectId } = req.params;
 
+		if (payload.resourceType === 'agent') {
+			await this.folderService.assertAgentContentAccess(req.user, projectId, 'read');
+		}
+
 		const [data, count] = await this.folderService.getManyAndCount(projectId, payload);
 
 		res.json({ count, data });
@@ -183,12 +189,14 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			const { totalSubFolders, totalWorkflows } =
+			await this.folderService.assertContentAccess(req.user, folderId, projectId, 'read');
+			const { totalSubFolders, totalWorkflows, totalAgents } =
 				await this.folderService.findFolderWithContentCounts(folderId, projectId);
 
 			return {
 				totalSubFolders,
 				totalWorkflows,
+				totalAgents,
 			};
 		} catch (e) {
 			throw toResponseError(e) ?? new InternalServerError(undefined, e);

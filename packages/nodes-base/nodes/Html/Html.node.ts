@@ -8,9 +8,9 @@ import type {
 	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
-import { getResolvables, sanitizeDataPathKey } from '@utils/utilities';
+import { resolveExpressions, sanitizeDataPathKey } from '@utils/utilities';
 
 import { placeholder } from './placeholder';
 import type { IValueData } from './types';
@@ -130,7 +130,7 @@ export class Html implements INodeType {
 		icon: 'node:html',
 		iconColor: 'rust',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{ $parameter["operation"] }}',
 		description: 'Work with HTML',
 		defaults: {
@@ -149,16 +149,19 @@ export class Html implements INodeType {
 					{
 						name: 'Generate HTML Template',
 						value: 'generateHtmlTemplate',
+						annotations: READ_ONLY_ANNOTATIONS,
 						action: 'Generate HTML template',
 					},
 					{
 						name: 'Extract HTML Content',
 						value: 'extractHtmlContent',
+						annotations: READ_ONLY_ANNOTATIONS,
 						action: 'Extract HTML Content',
 					},
 					{
 						name: 'Convert to HTML Table',
 						value: 'convertToHtmlTable',
+						annotations: READ_ONLY_ANNOTATIONS,
 						action: 'Convert to HTML Table',
 					},
 				],
@@ -488,14 +491,11 @@ export class Html implements INodeType {
 					//       generateHtmlTemplate
 					// ----------------------------------
 
-					let html = this.getNodeParameter('html', itemIndex) as string;
-
-					for (const resolvable of getResolvables(html)) {
-						html = html.replace(
-							resolvable,
-							this.evaluateExpression(resolvable, itemIndex) as string,
-						);
-					}
+					const html = resolveExpressions(
+						this.getNodeParameter('html', itemIndex) as string,
+						(resolvable) => this.evaluateExpression(resolvable, itemIndex),
+						{ legacy: nodeVersion < 1.3 },
+					);
 
 					const result = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ html }),

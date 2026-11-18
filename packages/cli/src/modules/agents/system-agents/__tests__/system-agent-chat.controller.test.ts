@@ -239,6 +239,40 @@ describe('SystemAgentChatController', () => {
 		);
 	});
 
+	it('reports a stop of a running turn to the provider', async () => {
+		const { controller, systemAgents, chatExecutionService } = setup();
+		chatExecutionService.requestCancel.mockResolvedValue(true);
+
+		await controller.cancelChatExecution(
+			request({}),
+			mock<Response>(),
+			AGENT_ID,
+			'thread-1',
+			'exec-1',
+		);
+
+		expect(systemAgents.reportUserStoppedTurn).toHaveBeenCalledWith({
+			agentId: AGENT_ID,
+			threadId: 'thread-1',
+			userId: 'user-1',
+		});
+	});
+
+	it('does not report a stop when no turn was running', async () => {
+		const { controller, systemAgents, chatExecutionService } = setup();
+		chatExecutionService.requestCancel.mockResolvedValue(false);
+
+		await controller.cancelChatExecution(
+			request({}),
+			mock<Response>(),
+			AGENT_ID,
+			'thread-1',
+			'exec-1',
+		);
+
+		expect(systemAgents.reportUserStoppedTurn).not.toHaveBeenCalled();
+	});
+
 	describe('listThreads', () => {
 		const listed = (id: string, updatedAt: string) =>
 			({
@@ -544,9 +578,61 @@ describe('SystemAgentChatController', () => {
 		systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
 
 		await expect(
-			controller.getChatMessages(request({ agentId: AGENT_ID, threadId: 'thread-1' })),
+			controller.getChatMessages(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+				mock<Response>(),
+			),
 		).rejects.toThrow(NotFoundError);
 		expect(orchestrator.getConversationHistory).not.toHaveBeenCalled();
+	});
+
+	it('reads one page of older turns without the open suspensions', async () => {
+		const { controller, orchestrator, checkpointStorage } = setup();
+		orchestrator.getConversationHistory.mockResolvedValue({
+			messages: [],
+			activeExecutionId: null,
+			nextCursor: null,
+		});
+		checkpointStorage.findSuspendedForThread.mockResolvedValue({
+			persistence: { threadId: thread.id, resourceId: 'system-chat:user-1' },
+			pendingToolCalls: { 'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true } },
+			messageList: { messages: [] },
+		} as never);
+
+		const result = await controller.getChatMessages(
+			request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+			mock<Response>(),
+			{ limit: 20, cursor: '2026-05-07T10:00:00.000Z|execution-1' },
+		);
+
+		expect(orchestrator.getConversationHistory).toHaveBeenCalledWith(
+			expect.objectContaining({
+				page: {
+					limit: 20,
+					before: { createdAt: new Date('2026-05-07T10:00:00.000Z'), id: 'execution-1' },
+				},
+			}),
+		);
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+			nextCursor: null,
+		});
+	});
+
+	it('rejects an invalid history cursor before it reads the thread', async () => {
+		const { controller, systemAgents } = setup();
+
+		await expect(
+			controller.getChatMessages(
+				request({ agentId: AGENT_ID, threadId: 'thread-1' }),
+				mock<Response>(),
+				{ limit: 20, cursor: 'invalid' },
+			),
+		).rejects.toThrow(BadRequestError);
+		expect(systemAgents.getUsableThread).not.toHaveBeenCalled();
 	});
 
 	it('returns the usage of a usable thread', async () => {
@@ -610,5 +696,30 @@ describe('SystemAgentChatController', () => {
 			resourceId: 'system-chat:user-1',
 			cancelBackgroundJobs: false,
 		});
+	});
+
+	it('reports a cancelled suspended run with the thread of its checkpoint', async () => {
+		const { controller, systemAgents, orchestrator } = setup();
+		systemAgents.findThreadIdOfRun.mockResolvedValue('thread-1');
+		orchestrator.cancelChatRun.mockResolvedValue(true);
+
+		await controller.cancelChatRun(request({}), mock<Response>(), AGENT_ID, 'run-1');
+
+		expect(systemAgents.findThreadIdOfRun).toHaveBeenCalledWith(AGENT_ID, user, 'run-1');
+		expect(systemAgents.reportUserStoppedTurn).toHaveBeenCalledWith({
+			agentId: AGENT_ID,
+			threadId: 'thread-1',
+			userId: 'user-1',
+		});
+	});
+
+	it('does not report a suspended run that was not cancelled', async () => {
+		const { controller, systemAgents, orchestrator } = setup();
+		systemAgents.findThreadIdOfRun.mockResolvedValue('thread-1');
+		orchestrator.cancelChatRun.mockResolvedValue(false);
+
+		await controller.cancelChatRun(request({}), mock<Response>(), AGENT_ID, 'run-1');
+
+		expect(systemAgents.reportUserStoppedTurn).not.toHaveBeenCalled();
 	});
 });

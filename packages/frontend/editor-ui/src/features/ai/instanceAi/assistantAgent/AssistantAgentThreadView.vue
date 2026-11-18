@@ -72,7 +72,7 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { firstMessageTitle, threadTargetsAgent } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext } from '../threadArtifacts';
-import { useCanvasPreview } from '../useCanvasPreview';
+import { isArtifactTab, useCanvasPreview } from '../useCanvasPreview';
 import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
@@ -222,7 +222,7 @@ function threadArtifactsContext(): Record<string, unknown> {
 	const threadArtifacts = buildThreadArtifactsContext(
 		thread.producedArtifacts.values(),
 		activeId,
-		preview.openTabs.value,
+		preview.openTabs.value.filter(isArtifactTab),
 	);
 	return threadArtifacts ? { threadArtifacts } : {};
 }
@@ -697,7 +697,7 @@ function removeStagedNodes(chipId: string): void {
 							preview.openTabs.value.length === 0
 						"
 						:project-id="props.projectId"
-						:excluded-tabs="preview.openTabs.value"
+						:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
 						placement="bottom-end"
 						content-test-id="assistant-agent-open-resource-picker"
 						@select="preview.openTab"

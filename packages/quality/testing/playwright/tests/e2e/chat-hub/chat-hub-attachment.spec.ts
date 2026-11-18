@@ -58,12 +58,12 @@ test.describe(
 
 			// Verify image is persisted and can be opened in new tab
 			await n8n.page.reload();
-			const newPage = await n8n.chatHubChat.openAttachmentAt(0, 0);
+			const preview = await n8n.chatHubChat.openAttachmentAt(0, 0);
 
-			await expect(newPage.locator('img')).toBeVisible();
-			await expect(newPage.locator('img')).toHaveJSProperty('naturalWidth', 100);
-			await expect(newPage.locator('img')).toHaveJSProperty('naturalHeight', 100);
-			await newPage.close();
+			await expect(preview.image).toBeVisible();
+			await expect(preview.image).toHaveJSProperty('naturalWidth', 100);
+			await expect(preview.image).toHaveJSProperty('naturalHeight', 100);
+			await preview.close();
 		});
 
 		test('text file attachment', async ({ n8n, anthropicCredential: _ }) => {

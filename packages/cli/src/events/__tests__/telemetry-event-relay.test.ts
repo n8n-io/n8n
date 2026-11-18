@@ -96,6 +96,10 @@ describe('TelemetryEventRelay', () => {
 		versionNotifications: {
 			enabled: true,
 		},
+		publicApi: {
+			disabled: false,
+			swaggerUiDisabled: true,
+		},
 		executions: {
 			mode: 'regular',
 			timeout: -1,
@@ -2079,6 +2083,7 @@ describe('TelemetryEventRelay', () => {
 				packageNodeNames: ['CustomNode1', 'CustomNode2'],
 				packageAuthor: 'John Smith',
 				packageAuthorEmail: 'john@example.com',
+				source: 'mcp',
 			};
 
 			eventService.emit('community-package-installed', event);
@@ -2093,6 +2098,7 @@ describe('TelemetryEventRelay', () => {
 				package_author: 'John Smith',
 				package_author_email: 'john@example.com',
 				failure_reason: undefined,
+				source: 'mcp',
 			});
 		});
 
@@ -4556,6 +4562,8 @@ describe('TelemetryEventRelay', () => {
 					n8n_binary_data_mode: 'default',
 					n8n_deployment_type: 'default',
 					n8n_deployment_artifact: 'helm-chart/1.14.0',
+					public_api_disabled: false,
+					public_api_swagger_ui_disabled: true,
 					saml_enabled: false,
 					smtp_set_up: true,
 					system_info: {
@@ -4634,6 +4642,39 @@ describe('TelemetryEventRelay', () => {
 			expect(traits?.n8n_deployment_artifact).toBeUndefined();
 			expect(info?.n8n_deployment_artifact).toBeUndefined();
 		});
+
+		it('should send the license consumer ID on `server-started` when the instance has a license', async () => {
+			license.isEphemeral.mockReturnValueOnce(false);
+			license.getConsumerId.mockReturnValueOnce('test-consumer-id');
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ license_consumer_id: 'test-consumer-id' }),
+			);
+		});
+
+		it.each([
+			{ name: 'no license', isEphemeral: false, consumerId: 'unknown' },
+			{ name: 'an ephemeral license', isEphemeral: true, consumerId: 'shared-placeholder-id' },
+		])(
+			'should leave out the license consumer ID on `server-started` with $name',
+			async ({ isEphemeral, consumerId }) => {
+				license.isEphemeral.mockReturnValueOnce(isEphemeral);
+				license.getConsumerId.mockReturnValue(consumerId);
+
+				eventService.emit('server-started');
+				await flushPromises();
+
+				const startupEvent = telemetry.track.mock.calls.find(
+					([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				);
+				expect(startupEvent?.[1]).toHaveProperty('license_consumer_id', undefined);
+				license.getConsumerId.mockReset();
+			},
+		);
 
 		it('should skip the PostHog group update on `server-started` before owner setup', async () => {
 			workflowRepository.findOne.mockResolvedValue(null);
