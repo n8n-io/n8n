@@ -106,7 +106,11 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 				/>
 			</KeyboardShortcutTooltip>
 		</header>
-		<N8nScrollArea :class="$style.scroll">
+		<!-- A rail item can bring its own content, such as the Inbox list, which scrolls itself. -->
+		<div v-if="$slots.default" :class="$style.custom">
+			<slot />
+		</div>
+		<N8nScrollArea v-else :class="$style.scroll">
 			<nav :class="$style.sections" :aria-label="title">
 				<section
 					v-for="section in sections"
@@ -219,6 +223,13 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 }
 
 .scroll {
+	flex: 1;
+	min-height: 0;
+}
+
+.custom {
+	display: flex;
+	flex-direction: column;
 	flex: 1;
 	min-height: 0;
 }

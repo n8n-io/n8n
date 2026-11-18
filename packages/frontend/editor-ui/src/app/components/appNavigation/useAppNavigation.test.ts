@@ -372,10 +372,8 @@ describe('useAppNavigation', () => {
 			expect(favorites.emptyText).toBeTruthy();
 		});
 
-		it('gives the Inbox a single link', () => {
-			const [section] = setup().nav.sectionsFor(INBOX_ITEM_ID);
-
-			expect(section.links.map((link) => link.to)).toEqual([{ name: INBOX_VIEW }]);
+		it('gives the Inbox no links, because its panel shows the Inbox list', () => {
+			expect(setup().nav.sectionsFor(INBOX_ITEM_ID)).toEqual([]);
 		});
 	});
 });

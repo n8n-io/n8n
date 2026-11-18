@@ -480,22 +480,8 @@ export function useAppNavigation() {
 		if (itemId === OVERVIEW_ITEM_ID) {
 			return [{ id: 'overview-pages', links: pageLinks('overview') }, favoritesSection()];
 		}
-		if (itemId === INBOX_ITEM_ID) {
-			return [
-				{
-					id: 'inbox-pages',
-					links: [
-						{
-							id: 'inbox',
-							label: i18n.baseText('inbox.title'),
-							icon: 'inbox',
-							to: { name: INBOX_VIEW },
-							active: isInboxRoute(route),
-						},
-					],
-				},
-			];
-		}
+		// The Inbox panel shows the Inbox list instead of links.
+		if (itemId === INBOX_ITEM_ID) return [];
 		if (itemId.startsWith(PROJECT_ITEM_PREFIX)) {
 			const project = findProject(itemId.slice(PROJECT_ITEM_PREFIX.length));
 			if (!project) return [];

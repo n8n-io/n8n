@@ -10,13 +10,18 @@ import type { InboxSectionKey } from '../inbox.constants';
 import InboxListSection from './InboxListSection.vue';
 import type { InboxListSection as ListSection } from './InboxListSection.vue';
 
-const props = defineProps<{
-	sections: ListSection[];
-	activeTab: InboxState;
-	selectedKey: string | null;
-	openCount: number | null;
-	closedCount: number | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		sections: ListSection[];
+		activeTab: InboxState;
+		selectedKey: string | null;
+		openCount: number | null;
+		closedCount: number | null;
+		/** Inside a host panel that already names the Inbox: no title, no border, the host's padding */
+		embedded?: boolean;
+	}>(),
+	{ embedded: false },
+);
 const emit = defineEmits<{
 	select: [item: InboxItem];
 	clear: [];
@@ -86,8 +91,8 @@ function onListBackgroundClick() {
 </script>
 
 <template>
-	<aside :class="$style.sidebar" data-test-id="inbox-list">
-		<div :class="$style.title">
+	<aside :class="[$style.sidebar, { [$style.embedded]: embedded }]" data-test-id="inbox-list">
+		<div v-if="!embedded" :class="$style.title">
 			<N8nHeading bold tag="h2" size="xlarge">{{ i18n.baseText('inbox.title') }}</N8nHeading>
 		</div>
 		<div :class="$style.header">
@@ -174,6 +179,18 @@ function onListBackgroundClick() {
 	min-width: 0;
 	overflow-y: auto;
 	padding: 0 var(--spacing--md) var(--spacing--md) 0;
+}
+
+.embedded {
+	border-right: none;
+
+	.header {
+		margin: 0 var(--spacing--2xs) var(--spacing--2xs);
+	}
+
+	.list {
+		padding: 0 var(--spacing--2xs) var(--spacing--sm);
+	}
 }
 
 .sectionError {

@@ -21,6 +21,7 @@ import { createInboxListSlice, useInboxStore } from '../inbox.store';
 import { useReviewActivityStore } from '../reviews/reviewActivity.store';
 import { useReviewDetailStore } from '../reviews/reviewDetail.store';
 import * as reviewApi from '../reviews/workflowReviews.api';
+import InboxNavList from '../components/InboxNavList.vue';
 import InboxView from './InboxView.vue';
 
 vi.mock('../inbox.api');
@@ -110,8 +111,17 @@ const renderOptions = {
 		},
 	},
 };
-const renderComponent = createComponentRenderer(InboxView, renderOptions);
-const renderRoutedComponent = createComponentRenderer(RouterView, renderOptions);
+// The app shows the Inbox list in the navigation panel, next to the page.
+const InboxPage = defineComponent({
+	components: { InboxNavList, InboxView },
+	template: '<div><InboxNavList /><InboxView /></div>',
+});
+const RoutedInboxPage = defineComponent({
+	components: { InboxNavList, RouterView },
+	template: '<div><InboxNavList /><RouterView /></div>',
+});
+const renderComponent = createComponentRenderer(InboxPage, renderOptions);
+const renderRoutedComponent = createComponentRenderer(RoutedInboxPage, renderOptions);
 
 let store: ReturnType<typeof mockedStore<typeof useInboxStore>>;
 beforeEach(async () => {

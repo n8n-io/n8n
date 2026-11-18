@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { InboxItem } from '@n8n/api-types';
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import { N8nResizeWrapper, useResizablePanel } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -10,9 +9,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import InboxEmptyState from '../components/InboxEmptyState.vue';
-import InboxList from '../components/InboxList.vue';
 import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
+import { inboxSelectionClears } from '../inbox.selectionClear';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
 import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
@@ -20,7 +19,7 @@ import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue
 
 const store = useInboxStore();
 const settingsStore = useSettingsStore();
-const { activeTab, openCount, closedCount } = storeToRefs(store);
+const { activeTab } = storeToRefs(store);
 const sections = computed(() =>
 	store.activeSectionKeys.map((key) => ({ key, ...store.lists[key] })),
 );
@@ -32,17 +31,6 @@ const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.
 documentTitle.set(i18n.baseText('inbox.title'));
 
 const contentRef = ref<HTMLElement | null>(null);
-const sidebarResizer = useResizablePanel({
-	container: contentRef,
-	width: {
-		localStorageKey: 'N8N_WORKFLOW_REVIEW_SIDEBAR_WIDTH',
-		defaultSize: (size) => Math.min(Math.max(size * 0.25, 240), 400),
-		minSize: 240,
-		maxSize: (size) => Math.min(size * 0.5, 640),
-		snap: true,
-	},
-});
-const sidebarWidth = sidebarResizer.width;
 const selection = computed(() => selectionFromRoute(route));
 const selectedKey = computed(() =>
 	selection.value ? `${selection.value.type}:${selection.value.id}` : null,
@@ -83,10 +71,14 @@ function isSelectedResult(id: string) {
 store.reset();
 store.activeTab = route.query.state === 'closed' ? 'closed' : 'open';
 
+// The navigation panel's Inbox list switches tabs through the route.
 watch(
 	() => route.query.state,
 	(state) => {
-		if (isOnInbox()) void store.setActiveTab(state === 'closed' ? 'closed' : 'open');
+		if (!isOnInbox()) return;
+		const tab = state === 'closed' ? 'closed' : 'open';
+		autoSelectTab = tab;
+		void store.setActiveTab(tab);
 	},
 );
 watch(
@@ -131,13 +123,9 @@ function onUserClearSelection() {
 	nextPageSelection++;
 	onClearSelection();
 }
-function onActiveTabChange(tab: 'open' | 'closed') {
-	autoSelectTab = tab;
-	const query = { ...route.query };
-	if (tab === 'closed') query.state = tab;
-	else delete query.state;
-	void router.replace({ query });
-}
+watch(inboxSelectionClears, () => {
+	if (isActive()) onUserClearSelection();
+});
 function onDetailTabChange(tab: 'activity' | 'changes') {
 	if (!isOnInbox()) return;
 	const query = { ...route.query };
@@ -218,28 +206,7 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.layout" data-test-id="inbox-view">
 		<main ref="contentRef" :class="$style.content">
-			<N8nResizeWrapper
-				:class="$style.sidebarResizer"
-				:style="{ width: `${sidebarWidth}px` }"
-				:resizer="sidebarResizer"
-				:supported-directions="['right']"
-			>
-				<InboxList
-					:class="$style.sidebar"
-					:sections="sections"
-					:active-tab="activeTab"
-					:selected-key="selectedKey"
-					:open-count="openCount"
-					:closed-count="closedCount"
-					@select="onSelect"
-					@clear="onUserClearSelection"
-					@update:active-tab="onActiveTabChange"
-					@load-more="(section) => store.lists[section].loadMore()"
-					@retry="(section) => store.lists[section].retry()"
-					@refresh-section="(section) => store.lists[section].fetchList()"
-					@retry-active-tab="store.fetchActiveTab()"
-				/>
-			</N8nResizeWrapper>
+			<!-- The navigation panel shows the Inbox list, so the page shows only the selected item. -->
 			<div :class="$style.main">
 				<WorkflowReviewDetail
 					v-if="
@@ -304,9 +271,6 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
-}
-.sidebarResizer {
-	flex: 0 0 auto;
 }
 .main {
 	display: flex;

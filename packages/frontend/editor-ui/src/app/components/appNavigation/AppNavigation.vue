@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	computed,
+	defineAsyncComponent,
 	nextTick,
 	onBeforeMount,
 	onBeforeUnmount,
@@ -41,8 +42,14 @@ import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8n
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useQuickChat } from '@/features/ai/instanceAi/quickChat/useQuickChat';
+import { loadInboxNavList, useInboxStore } from '@n8n/frontend-module-inbox';
 import AppNavigationPanel from './AppNavigationPanel.vue';
-import { ASSISTANT_ITEM_ID, useAppNavigation, type AppNavLink } from './useAppNavigation';
+import {
+	ASSISTANT_ITEM_ID,
+	INBOX_ITEM_ID,
+	useAppNavigation,
+	type AppNavLink,
+} from './useAppNavigation';
 import { useNavigationPeek } from './useNavigationPeek';
 
 const route = useRoute();
@@ -208,6 +215,16 @@ watch([isAgentsN8nChatFlag, () => instanceAiSettingsStore.isAssistantAgentEnable
 // Another tab can start a chat; refresh the list when the user comes back to this one.
 useDocumentVisibility().onDocumentVisible(() => loadChats());
 
+// The panel shows the Inbox list itself, and the rail marks the Inbox while items are open.
+const InboxNavList = defineAsyncComponent(loadInboxNavList);
+const inboxStore = useInboxStore();
+const hasOpenInboxItems = computed(() => (inboxStore.openCount ?? 0) > 0);
+function loadInboxSummary() {
+	if (inboxStore.enabled) void inboxStore.fetchSummary();
+}
+onMounted(loadInboxSummary);
+useDocumentVisibility().onDocumentVisible(loadInboxSummary);
+
 /** A pull or an applied package can create and delete projects behind the navigation. */
 async function reloadMyProjects() {
 	await projectsStore.getMyProjects();
@@ -291,6 +308,11 @@ onBeforeUnmount(() => {
 								border-less
 								color="text-dark"
 							/>
+							<span
+								v-if="item.id === INBOX_ITEM_ID && hasOpenInboxItems"
+								:class="$style.railDot"
+								data-test-id="app-nav-inbox-dot"
+							/>
 						</RouterLink>
 					</N8nTooltip>
 				</div>
@@ -368,7 +390,12 @@ onBeforeUnmount(() => {
 				@search="openCommandBar"
 				@navigate="onLinkNavigate"
 				@unfavorite="onUnfavorite"
-			/>
+			>
+				<!-- A slot always counts as given, so the v-if sits on the template. -->
+				<template v-if="panelItem.id === INBOX_ITEM_ID" #default>
+					<InboxNavList />
+				</template>
+			</AppNavigationPanel>
 		</div>
 
 		<Transition
@@ -386,14 +413,19 @@ onBeforeUnmount(() => {
 			>
 				<AppNavigationPanel
 					:title="panelItem.label"
-				:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
+					:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 					:sections="panelSections"
 					:is-expanded="false"
 					@toggle="toggle"
 					@search="openCommandBar"
 					@navigate="onLinkNavigate"
 					@unfavorite="onUnfavorite"
-				/>
+				>
+					<!-- A slot always counts as given, so the v-if sits on the template. -->
+					<template v-if="panelItem.id === INBOX_ITEM_ID" #default>
+						<InboxNavList />
+					</template>
+				</AppNavigationPanel>
 			</div>
 		</Transition>
 	</div>
@@ -446,6 +478,7 @@ $panel-width: 240px;
 }
 
 .railItem {
+	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -468,6 +501,19 @@ $panel-width: 240px;
 		outline: var(--focus--border-width, 1px) solid var(--focus--border-color);
 		outline-offset: 1px;
 	}
+}
+
+// Marks the Inbox while it has open items. The ring cuts it out of the icon.
+.railDot {
+	position: absolute;
+	top: var(--spacing--3xs);
+	right: var(--spacing--3xs);
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--pink-500);
+	box-shadow: 0 0 0 var(--border-width, 1px) var(--app-shell--rail--color--background);
+	pointer-events: none;
 }
 
 .createProject {

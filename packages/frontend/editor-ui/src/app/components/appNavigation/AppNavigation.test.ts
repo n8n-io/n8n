@@ -9,6 +9,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useInboxStore } from '@n8n/frontend-module-inbox';
 import { VIEWS } from '@/app/constants';
 import AppNavigation from './AppNavigation.vue';
 import type { AppNavRailItem, AppNavSection } from './useAppNavigation';
@@ -185,6 +186,33 @@ describe('AppNavigation', () => {
 
 		await router.push('/insights');
 		await waitFor(() => expect(insights).toHaveAttribute('aria-current', 'page'));
+	});
+
+	it('marks the Inbox in the rail while it has open items', async () => {
+		railItems.push({
+			id: 'inbox',
+			label: 'Inbox',
+			icon: { type: 'icon', value: 'inbox' },
+			to: '/workflows',
+			group: 'main',
+			testId: 'app-nav-inbox',
+		});
+		try {
+			let inboxStore!: ReturnType<typeof mockedStore<typeof useInboxStore>>;
+			const { queryByTestId } = setup({
+				collapsed: true,
+				before: () => {
+					inboxStore = mockedStore(useInboxStore);
+					inboxStore.openCount = 3;
+				},
+			});
+			expect(queryByTestId('app-nav-inbox-dot')).toBeInTheDocument();
+
+			inboxStore.openCount = 0;
+			await waitFor(() => expect(queryByTestId('app-nav-inbox-dot')).not.toBeInTheDocument());
+		} finally {
+			railItems.pop();
+		}
 	});
 
 	it('unstars a favorite from its row in the panel', async () => {
