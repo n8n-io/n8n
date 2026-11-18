@@ -1,6 +1,7 @@
 import { ExecutionLifecycleHooks } from 'n8n-core';
 import { createRunExecutionData, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import type { INode, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import { startPreparedWorkflow } from '../start-prepared-workflow';
@@ -60,7 +61,7 @@ function execution() {
 
 test('waits for asynchronous configuration before a node can execute', async () => {
 	const fixture = execution();
-	const configured = Promise.withResolvers<undefined>();
+	const configured = createDeferredPromise<undefined>();
 	let configuring = false;
 	const started = startPreparedWorkflow({
 		...fixture,

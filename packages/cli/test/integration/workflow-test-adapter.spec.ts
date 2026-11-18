@@ -150,7 +150,7 @@ test('matches application root and child HTTP effects after asynchronous executi
 	expect(application?.status).toBe('success');
 	expect(requests).toEqual(['/items/eu', '/child/eu']);
 
-	const workflows = adapter.loadWorkflows([workflow, child]);
+	const workflows = adapter.loadWorkflows([workflow, child] as TestAdapter.WorkflowDefinition[]);
 	const tested = await adapter.executeWorkflow(workflows.get(workflow.id), {
 		variables: { region: 'eu' },
 	});
