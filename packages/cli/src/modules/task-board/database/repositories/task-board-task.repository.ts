@@ -22,12 +22,23 @@ export type NewTaskBoardTaskRow = Pick<
 	| 'createdByType'
 	| 'createdById'
 	| 'position'
+	| 'severity'
+	| 'tags'
 >;
 
 export type TaskBoardTaskChanges = Partial<
 	Pick<
 		TaskBoardTaskEntity,
-		'title' | 'description' | 'columnId' | 'position' | 'assigneeType' | 'assigneeId'
+		| 'title'
+		| 'description'
+		| 'columnId'
+		| 'position'
+		| 'assigneeType'
+		| 'assigneeId'
+		| 'severity'
+		| 'tags'
+		| 'handoffCount'
+		| 'agentUsage'
 	>
 >;
 
@@ -95,7 +106,7 @@ export class TaskBoardTaskRepository {
 		return await this.table.managerFor(ctx).save(TaskBoardTaskEntity, this.table.create(row));
 	}
 
-	async updateTask(taskId: string, changes: TaskBoardTaskChanges, ctx: OperationContext) {
+	async updateTask(taskId: string, changes: TaskBoardTaskChanges, ctx: OperationContext = {}) {
 		await this.table.managerFor(ctx).update(TaskBoardTaskEntity, { id: taskId }, changes);
 	}
 }
