@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { TelemetryProxy } from '@n8n/backend-services';
+import { PushProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -15,7 +15,6 @@ import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
-import { PushProxy } from '@n8n/backend-services';
 
 import { AiService } from '@/services/ai.service';
 
