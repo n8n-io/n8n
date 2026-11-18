@@ -126,6 +126,12 @@ export default defineConfig({
 				/\.page\.waitForLoadState/,
 				/\.page\.waitForURL/,
 				/\.page\.reload/,
+				// Network mocks, network waits, and popup waits do not touch the DOM.
+				// The `$` anchor keeps a locator on the call result reported.
+				/\.page\.(route|unroute|waitForRequest|waitForResponse|waitForEvent)$/,
+				// A composable can open a tab or get the browser from the context.
+				// The rule checks each prefix of a chain, so `context` must also match alone.
+				/\.page\.context(\(\)\.(newPage|browser))?$/,
 			],
 		},
 		'api-purity': { enabled: true, severity: 'warning' },

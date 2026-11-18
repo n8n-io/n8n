@@ -1,9 +1,50 @@
-import { resetConfig, ScopeLockdownRule, setConfig } from '@n8n/playwright-janitor';
+import {
+	NoPageInFlowRule,
+	resetConfig,
+	ScopeLockdownRule,
+	setConfig,
+} from '@n8n/playwright-janitor';
 import { readFileSync } from 'node:fs';
 import { Project } from 'ts-morph';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import config from './janitor.config.mjs';
+
+describe('Composable browser orchestration configuration', () => {
+	beforeEach(() => setConfig(config));
+	afterEach(() => resetConfig());
+
+	const analyze = (body: string) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/composables/ExampleComposer.ts`,
+			`export class ExampleComposer {\nasync setup() {\n${body}\n}\n}`,
+		);
+		return new NoPageInFlowRule().analyzeProject(project, [file]).map(({ line }) => line - 2);
+	};
+
+	test('allows browser orchestration', () => {
+		expect(
+			analyze(`await this.n8n.page.route('**/rest/example', async () => {});
+				await this.n8n.page.unroute('**/rest/example');
+				await this.n8n.page.waitForRequest('**/run');
+				await this.n8n.page.waitForResponse('**/run');
+				await this.n8n.page.waitForEvent('popup');
+				await this.n8n.page.context().newPage();
+				this.n8n.page.context().browser();`),
+		).toEqual([]);
+	});
+
+	test('reports DOM access behind an allowed operation', () => {
+		expect(
+			analyze(`this.n8n.page.context().pages()[0].getByTestId('button').click();
+				this.n8n.page.context().newPage().locator('button').click();
+				await this.n8n.page.route('**/rest/example', async () => {
+					await this.n8n.page.getByTestId('button').click();
+				});`),
+		).toEqual([1, 2, 4]);
+	});
+});
 
 describe('AIAssistantPage scope configuration', () => {
 	beforeEach(() => setConfig(config));
