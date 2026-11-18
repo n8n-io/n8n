@@ -18,7 +18,7 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | activeVersionId | varchar(36) |  | true |  | [agent_history](agent_history.md) |  |
 | availableInMCP | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_publish_history](agent_publish_history.md) [agent_skill_dependency](agent_skill_dependency.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) [agents_tags](agents_tags.md) |  |  |
+| id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_publish_history](agent_publish_history.md) [agent_skill_dependency](agent_skill_dependency.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) [agents_tags](agents_tags.md) [task_board_agent](task_board_agent.md) |  |  |
 | identityId | varchar |  | true |  | [user](user.md) |  |
 | integrations | TEXT | '[]' | false |  |  |  |
 | isArchived | boolean | false | false |  |  |  |
@@ -88,6 +88,7 @@ erDiagram
 "agents_observation_locks" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observations" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"task_board_agent" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--o| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -379,6 +380,11 @@ erDiagram
 "agents_tags" {
   varchar_36_ agentId PK
   varchar_36_ tagId PK
+}
+"task_board_agent" {
+  varchar_36_ agentId PK
+  varchar_36_ boardId PK
+  datetime_3_ createdAt
 }
 "user" {
   datetime_3_ createdAt

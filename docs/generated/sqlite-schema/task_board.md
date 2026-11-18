@@ -17,7 +17,7 @@ CREATE TABLE "task_board" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" va
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [task_board_column](task_board_column.md) [task_board_task](task_board_task.md) |  |  |
+| id | varchar(36) |  | false | [task_board_agent](task_board_agent.md) [task_board_column](task_board_column.md) [task_board_task](task_board_task.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | templateKey | varchar(32) |  | true |  |  |  |
@@ -45,6 +45,7 @@ CREATE TABLE "task_board" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" va
 ```mermaid
 erDiagram
 
+"task_board_agent" |o--|| "task_board" : "FOREIGN KEY (boardId) REFERENCES task_board (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "task_board_column" }o--|| "task_board" : "FOREIGN KEY (boardId) REFERENCES task_board (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "task_board_task" }o--|| "task_board" : "FOREIGN KEY (boardId) REFERENCES task_board (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "task_board" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -60,6 +61,11 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
 }
+"task_board_agent" {
+  varchar_36_ agentId PK
+  varchar_36_ boardId PK
+  datetime_3_ createdAt
+}
 "task_board_column" {
   varchar_36_ boardId FK
   datetime_3_ createdAt
@@ -70,6 +76,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "task_board_task" {
+  TEXT agentUsage
   varchar_36_ assigneeId
   varchar_16_ assigneeType
   varchar_36_ boardId FK
@@ -78,9 +85,12 @@ erDiagram
   varchar_36_ createdById
   varchar_16_ createdByType
   TEXT description
+  SMALLINT handoffCount
   varchar_36_ id PK
   INTEGER number
   INTEGER position
+  VARCHAR_16_ severity
+  TEXT tags
   varchar_255_ title
   datetime_3_ updatedAt
 }

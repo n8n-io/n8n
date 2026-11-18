@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "task_board_task" ("id" varchar(36) PRIMARY KEY NOT NULL, "boardId" varchar(36) NOT NULL, "columnId" varchar(36) NOT NULL, "number" integer NOT NULL, "title" varchar(255) NOT NULL, "description" text NOT NULL DEFAULT (''), "assigneeType" varchar(16), "assigneeId" varchar(36), "createdByType" varchar(16) NOT NULL, "createdById" varchar(36) NOT NULL, "position" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_task_board_task_assigneeType" CHECK ("assigneeType" IN ('user', 'agent')), CONSTRAINT "CHK_task_board_task_createdByType" CHECK ("createdByType" IN ('user', 'agent', 'workflow')), CONSTRAINT "FK_89cb150ce8f73eb95950c1f62b8" FOREIGN KEY ("boardId") REFERENCES "task_board" ("id") ON DELETE CASCADE, CONSTRAINT "FK_36d6cbd2aa4767b580dab4125e5" FOREIGN KEY ("columnId") REFERENCES "task_board_column" ("id") ON DELETE CASCADE)
+CREATE TABLE "task_board_task" ("id" varchar(36) PRIMARY KEY NOT NULL, "boardId" varchar(36) NOT NULL, "columnId" varchar(36) NOT NULL, "number" integer NOT NULL, "title" varchar(255) NOT NULL, "description" text NOT NULL DEFAULT (''), "assigneeType" varchar(16), "assigneeId" varchar(36), "createdByType" varchar(16) NOT NULL, "createdById" varchar(36) NOT NULL, "position" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "severity" VARCHAR(16) CONSTRAINT "CHK_task_board_task_severity" CHECK ("severity" IN ('low', 'medium', 'high', 'critical')), "tags" TEXT NOT NULL DEFAULT '[]', "handoffCount" SMALLINT NOT NULL DEFAULT 0, "agentUsage" TEXT NOT NULL DEFAULT '[]', CONSTRAINT "CHK_task_board_task_assigneeType" CHECK ("assigneeType" IN ('user', 'agent')), CONSTRAINT "CHK_task_board_task_createdByType" CHECK ("createdByType" IN ('user', 'agent', 'workflow')), CONSTRAINT "FK_89cb150ce8f73eb95950c1f62b8" FOREIGN KEY ("boardId") REFERENCES "task_board" ("id") ON DELETE CASCADE, CONSTRAINT "FK_36d6cbd2aa4767b580dab4125e5" FOREIGN KEY ("columnId") REFERENCES "task_board_column" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "task_board_task" ("id" varchar(36) PRIMARY KEY NOT NULL, "boardId"
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| agentUsage | TEXT | '[]' | false |  |  |  |
 | assigneeId | varchar(36) |  | true |  |  |  |
 | assigneeType | varchar(16) |  | true |  |  |  |
 | boardId | varchar(36) |  | false |  | [task_board](task_board.md) |  |
@@ -23,9 +24,12 @@ CREATE TABLE "task_board_task" ("id" varchar(36) PRIMARY KEY NOT NULL, "boardId"
 | createdById | varchar(36) |  | false |  |  |  |
 | createdByType | varchar(16) |  | false |  |  |  |
 | description | TEXT | '' | false |  |  |  |
+| handoffCount | SMALLINT | 0 | false |  |  |  |
 | id | varchar(36) |  | false | [task_board_comment](task_board_comment.md) |  |  |
 | number | INTEGER |  | false |  |  |  |
 | position | INTEGER |  | false |  |  |  |
+| severity | VARCHAR(16) |  | true |  |  |  |
+| tags | TEXT | '[]' | false |  |  |  |
 | title | varchar(255) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -33,6 +37,7 @@ CREATE TABLE "task_board_task" ("id" varchar(36) PRIMARY KEY NOT NULL, "boardId"
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("severity" IN ('low', 'medium', 'high', 'critical')) |
 | - | CHECK | CHECK ("assigneeType" IN ('user', 'agent')) |
 | - | CHECK | CHECK ("createdByType" IN ('user', 'agent', 'workflow')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (columnId) REFERENCES task_board_column (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
@@ -59,6 +64,7 @@ erDiagram
 "task_board_comment" }o--|| "task_board_task" : "FOREIGN KEY (taskId) REFERENCES task_board_task (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "task_board_task" {
+  TEXT agentUsage
   varchar_36_ assigneeId
   varchar_16_ assigneeType
   varchar_36_ boardId FK
@@ -67,9 +73,12 @@ erDiagram
   varchar_36_ createdById
   varchar_16_ createdByType
   TEXT description
+  SMALLINT handoffCount
   varchar_36_ id PK
   INTEGER number
   INTEGER position
+  VARCHAR_16_ severity
+  TEXT tags
   varchar_255_ title
   datetime_3_ updatedAt
 }

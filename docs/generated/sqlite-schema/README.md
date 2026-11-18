@@ -153,9 +153,10 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [skill_version](skill_version.md) | 12 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
 | [task_board](task_board.md) | 8 |  | table |
+| [task_board_agent](task_board_agent.md) | 3 |  | table |
 | [task_board_column](task_board_column.md) | 7 |  | table |
 | [task_board_comment](task_board_comment.md) | 7 |  | table |
-| [task_board_task](task_board_task.md) | 13 |  | table |
+| [task_board_task](task_board_task.md) | 17 |  | table |
 | [test_case_execution](test_case_execution.md) | 16 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
@@ -427,6 +428,8 @@ erDiagram
 "skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "task_board" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "task_board" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"task_board_agent" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"task_board_agent" |o--|| "task_board" : "FOREIGN KEY (boardId) REFERENCES task_board (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "task_board_column" }o--|| "task_board" : "FOREIGN KEY (boardId) REFERENCES task_board (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "task_board_comment" }o--|| "task_board_task" : "FOREIGN KEY (taskId) REFERENCES task_board_task (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "task_board_task" }o--|| "task_board_column" : "FOREIGN KEY (columnId) REFERENCES task_board_column (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1970,6 +1973,11 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
 }
+"task_board_agent" {
+  varchar_36_ agentId PK
+  varchar_36_ boardId PK
+  datetime_3_ createdAt
+}
 "task_board_column" {
   varchar_36_ boardId FK
   datetime_3_ createdAt
@@ -1989,6 +1997,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "task_board_task" {
+  TEXT agentUsage
   varchar_36_ assigneeId
   varchar_16_ assigneeType
   varchar_36_ boardId FK
@@ -1997,9 +2006,12 @@ erDiagram
   varchar_36_ createdById
   varchar_16_ createdByType
   TEXT description
+  SMALLINT handoffCount
   varchar_36_ id PK
   INTEGER number
   INTEGER position
+  VARCHAR_16_ severity
+  TEXT tags
   varchar_255_ title
   datetime_3_ updatedAt
 }

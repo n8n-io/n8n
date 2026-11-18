@@ -56,6 +56,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "task_board_task" {
+  TEXT agentUsage
   varchar_36_ assigneeId
   varchar_16_ assigneeType
   varchar_36_ boardId FK
@@ -64,9 +65,12 @@ erDiagram
   varchar_36_ createdById
   varchar_16_ createdByType
   TEXT description
+  SMALLINT handoffCount
   varchar_36_ id PK
   INTEGER number
   INTEGER position
+  VARCHAR_16_ severity
+  TEXT tags
   varchar_255_ title
   datetime_3_ updatedAt
 }
