@@ -32,7 +32,18 @@ responses:
             executionId:
               type: string
             status:
-              type: string
+              anyOf:
+                - type: string
+                  enum:
+                    - running
+                    - success
+                    - error
+                    - cancelled
+                    - interrupted
+                    - awaiting
+                - type: string
+                  enum:
+                    - cancel_requested
           required:
             - executionId
             - status

@@ -166,6 +166,12 @@ export type PubSubCommandMap = {
 		/** Older mains read only `productionN8nChat`, so senders set both. */
 		surface?: 'preview' | 'n8n-chat' | 'system';
 		productionN8nChat?: boolean;
+		/**
+		 * Set only by the Public API stop path.
+		 * It lets this cancel target a `public_api` run.
+		 * Older mains ignore this field.
+		 */
+		allowPublicApiSource?: boolean;
 	};
 
 	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
@@ -476,6 +482,12 @@ export type PubSubCommandMap = {
 	 * The writing process reloads its own snapshot, so this is not a self-send command.
 	 */
 	'reload-type-availability-policies': never;
+
+	/**
+	 * Reload the execution limits held in memory. Published after a limit write commits.
+	 * The writing process reloads its own copy, so this is not a self-send command.
+	 */
+	'reload-execution-limits': never;
 
 	// #endregion
 };

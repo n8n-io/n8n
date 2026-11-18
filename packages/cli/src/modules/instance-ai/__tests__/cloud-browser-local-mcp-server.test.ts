@@ -922,4 +922,109 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
 		});
 	});
+
+	describe('getLiveView', () => {
+		it('has no session before the agent opens one', async () => {
+			const { server } = setup();
+
+			expect(await server.getLiveView()).toEqual({ status: 'no-session' });
+		});
+
+		it('is starting while the session opens', async () => {
+			const { server, sessionProvider, start } = setup();
+			let openSession!: () => void;
+			sessionProvider.createSession.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => (openSession = resolve));
+				return { id: 'sess-1', connectUrl: 'wss://connect/1' };
+			});
+
+			const started = start({ url: 'https://example.com' });
+			await vi.waitFor(() => expect(sessionProvider.createSession).toHaveBeenCalled());
+
+			expect(await server.getLiveView()).toEqual({ status: 'starting' });
+			openSession();
+			await started;
+		});
+
+		it('has no session after a session failed to open', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.createSession.mockRejectedValueOnce(new Error('HTTP 502'));
+
+			const result = await start({ url: 'https://example.com' });
+
+			expect(result.isError).toBe(true);
+			expect(await server.getLiveView()).toEqual({ status: 'no-session' });
+		});
+
+		it('rejects when the live view link cannot be fetched', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockRejectedValue(new Error('HTTP 502'));
+			await start({ url: 'https://example.com' });
+
+			await expect(server.getLiveView()).rejects.toThrow('HTTP 502');
+		});
+
+		it("returns the session's live view link", async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+			await start({ url: 'https://example.com' });
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+			});
+			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(scope, 'sess-1');
+		});
+
+		it('is starting when a new session replaced the one it asked about', async () => {
+			const { server, sessionProvider, start } = setup();
+			await start({ url: 'https://example.com' });
+			sessionProvider.createSession.mockResolvedValueOnce({
+				id: 'sess-2',
+				connectUrl: 'wss://connect/2',
+			});
+			sessionProvider.getSessionLiveViewUrl.mockImplementation(async (_scope, sessionId) => {
+				// The agent opens a new session while the gateway answers for the first one.
+				if (sessionId === 'sess-1') await start({ url: 'https://example.org' });
+				return `https://live.example.com/${sessionId}`;
+			});
+
+			expect(await server.getLiveView()).toEqual({ status: 'starting' });
+		});
+
+		it('is disconnected when the connection dropped', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			toolkits[0].connection.isConnected = false;
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'disconnected',
+				reason: 'connectionLost',
+			});
+		});
+
+		it('is not found once the task released its browser', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			await server.release();
+
+			expect(await server.getLiveView()).toEqual({ status: 'not-found' });
+		});
+
+		describe('after an idle timeout', () => {
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('is disconnected', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'disconnected',
+					reason: 'idleTimeout',
+				});
+			});
+		});
+	});
 });

@@ -33,6 +33,7 @@ export class AgentPublicRunService {
 	async run(user: User, agentId: string, body: RunAgentPublicDto) {
 		const agent = await this.agentsService.findById(agentId);
 		if (!agent) throw new NotFoundError('Not Found');
+		await this.agentTestRunService.assertCanRunDraft(user, agent.projectId);
 		if (draftRequiresApproval(agent)) throw new UnprocessableRequestError(NEEDS_APPROVAL);
 
 		const result = await this.agentTestRunService.executeDraftRun({
@@ -53,7 +54,18 @@ export class AgentPublicRunService {
 		if (result.status === 'agent_misconfigured') {
 			throw new UnprocessableRequestError(`${NOT_RUNNABLE} Missing: ${result.missing.join(', ')}.`);
 		}
-		if (result.status === 'suspended') throw new UnprocessableRequestError(NEEDS_APPROVAL);
+		if (result.status === 'suspended') {
+			const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+				agentId,
+				suspensions: result.suspensions,
+				userId: user.id,
+			});
+			throw new UnprocessableRequestError(
+				cancelled
+					? NEEDS_APPROVAL
+					: `${NEEDS_APPROVAL} The run could not be cancelled. Stop execution ${result.executionId}.`,
+			);
+		}
 
 		const execution = await this.executionRepository.findExecution(result.executionId);
 		if (!execution) throw new UnexpectedError('The agent run did not record an execution.');
@@ -95,8 +107,15 @@ export class AgentPublicRunService {
 			executionId,
 			userId: user.id,
 			surface: 'preview',
+			allowPublicApiSource: true,
 		});
-		return { executionId, status: cancelRequested ? 'cancel_requested' : execution.status };
+		if (cancelRequested) return { executionId, status: 'cancel_requested' };
+
+		// The run can finish between the first read and the cancel request.
+		// `false` then means "already finished", and the first read is stale.
+		const latest = await this.executionRepository.findExecution(executionId);
+		if (!latest) throw new NotFoundError('Not Found');
+		return { executionId, status: latest.status };
 	}
 }
 

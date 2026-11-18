@@ -10,6 +10,7 @@ import {
 	ListAgentsPublicQueryDto,
 	RunAgentPublicDto,
 	StoppedAgentExecutionPublicDto,
+	UpdateAgentPublicDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -26,11 +27,13 @@ import {
 	Post,
 	ProjectScope,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
@@ -53,6 +56,7 @@ export class AgentsPublicController {
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentPublicRunService: AgentPublicRunService,
+		private readonly agentConfigService: AgentConfigService,
 	) {}
 
 	@Post('/')
@@ -191,6 +195,60 @@ export class AgentsPublicController {
 		@Param('executionId', agentExecutionIdParamSchema) executionId: string,
 	): Promise<StoppedAgentExecutionPublicDto> {
 		return await this.agentPublicRunService.stop(req.user, agentId, executionId);
+	}
+
+	@Put('/:agentId')
+	@ApiKeyScope('agent:update')
+	@ProjectScope('agent:update')
+	@ApiSummary('Update an agent')
+	@ApiDescription(
+		'Replace the configuration of an agent. Send the configuration and the concurrency token you read from the retrieve endpoint: ' +
+			'a stale token returns a conflict. Fields the server manages are ignored, not rejected. ' +
+			'The retrieved body of an agent without a configuration carries a null configuration: ' +
+			'sending it back changes nothing.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async updateAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Body body: UpdateAgentPublicDto,
+	): Promise<AgentPublicDto> {
+		const agent = await this.agentsService.findById(agentId);
+		if (!agent?.projectId) {
+			throw new NotFoundError('Not Found');
+		}
+
+		// A retrieved body carries `config: null` when the agent has no
+		// configuration. Writing that back is a no-op; removing a stored
+		// configuration is not an operation this endpoint offers.
+		if (body.config === null) {
+			if (agent.schema) {
+				throw new BadRequestError(
+					'Provide the configuration document: the update endpoint cannot remove it.',
+				);
+			}
+			return await this.agentResponseMapper.toPublicDto(agent, agent.projectId, req.user);
+		}
+
+		// The Public API has no push channel, so no client write lock is
+		// validated here: without a push connection there is no client to hold
+		// the lock. Concurrent edits surface as the stale `baseConfigHash`
+		// conflict (409) below.
+		await this.agentConfigService.updateConfig(agentId, agent.projectId, body.config, req.user, {
+			baseConfigHash: body.baseConfigHash,
+			modifiedBy: 'user',
+		});
+
+		const updated = await this.agentsService.findById(agentId);
+		if (!updated) {
+			throw new NotFoundError('Not Found');
+		}
+
+		return await this.agentResponseMapper.toPublicDto(updated, updated.projectId ?? '', req.user);
 	}
 
 	@Delete('/:agentId')

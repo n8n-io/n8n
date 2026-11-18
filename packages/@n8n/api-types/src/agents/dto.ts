@@ -1,5 +1,5 @@
 import { jsonParse } from 'n8n-workflow';
-import { z } from 'zod';
+import { z, type ZodRawShape } from 'zod';
 
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
@@ -201,7 +201,7 @@ export class AgentRunPublicDto extends Z.class({
 export class StoppedAgentExecutionPublicDto extends Z.class({
 	executionId: z.string(),
 	/** A running run returns `cancel_requested`. A finished run returns its status. */
-	status: z.string(),
+	status: agentRunStatusSchema.or(z.literal('cancel_requested')),
 }) {}
 
 export class ListAgentSessionsQueryDto extends Z.class({
@@ -246,6 +246,26 @@ export class ListSystemAgentThreadsQueryDto extends Z.class({
 	cursor: z.string().max(512).optional(),
 	limit: z.string().optional(),
 	search: threadTitleSearchSchema,
+}) {}
+
+/** The largest number of turns in one page of a chat thread's messages. */
+const MAX_CHAT_HISTORY_PAGE_TURNS = 100;
+
+/**
+ * One page of a chat thread's messages. Without `limit`, the route returns the
+ * whole thread. With `limit`, it returns the newest turns before `cursor`.
+ */
+export class AgentChatMessagesQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().min(1).max(512).optional(),
+	// No default: a request without `limit` asks for the whole thread.
+	limit: z
+		.string()
+		.regex(/^\d+$/, 'Param `limit` must be a positive integer')
+		.transform(Number)
+		.refine((limit) => limit >= 1, { message: 'Param `limit` must be a positive integer' })
+		.transform((limit) => Math.min(limit, MAX_CHAT_HISTORY_PAGE_TURNS))
+		.optional(),
 }) {}
 
 /** A new title for a thread of a system agent. */
@@ -639,6 +659,72 @@ export class UpdateAgentDto implements UpdateAgent {
 
 	static parse(data: unknown) {
 		return updateAgentSchema.parse(data);
+	}
+}
+
+/**
+ * Response fields a PUT body may carry but must not write. Derived from the
+ * agent response DTO schemas, so the strict schema cannot drift from them: a
+ * new response field is accepted-and-ignored here without a list to maintain.
+ * `config` and `configHash` are real inputs of this DTO, not managed fields.
+ */
+const serverManagedAgentResponseFields: ZodRawShape = Object.fromEntries(
+	[...Object.keys(AgentPublicDto.schema.shape), ...Object.keys(AgentDto.schema.shape), 'adopted']
+		.filter((field) => field !== 'config' && field !== 'configHash')
+		.map((field) => [field, strippedAgentField]),
+);
+
+const updateAgentPublicObjectSchema = z
+	.object({
+		// `null` is the retrieved body of an agent that has no configuration
+		// yet, so the round-trip accepts it. The handler turns a null config
+		// into a no-op for such an agent and rejects it for one with a config.
+		config: AgentJsonConfigSchema.nullable().openapi(alsoNullable({ type: 'object' })),
+		baseConfigHash: z.string().nullable().optional(),
+		configHash: z.string().nullable().optional(),
+		...serverManagedAgentResponseFields,
+	})
+	.strict();
+
+const updateAgentPublicSchema = updateAgentPublicObjectSchema
+	.superRefine((value, ctx) => {
+		if (value.baseConfigHash === undefined && value.configHash === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'baseConfigHash or configHash is required',
+				path: ['baseConfigHash'],
+			});
+		}
+	})
+	.transform(({ config, baseConfigHash, configHash }) => ({
+		config,
+		baseConfigHash: baseConfigHash !== undefined ? baseConfigHash : (configHash ?? null),
+	}));
+
+type UpdateAgentPublic = z.infer<typeof updateAgentPublicSchema>;
+
+/**
+ * Body of the Public API `PUT /agents/:agentId`. Accepts a `GET /agents/:agentId`
+ * body: server-managed fields are ignored, not rejected. `configHash` is the
+ * concurrency token when `baseConfigHash` is absent.
+ */
+export class UpdateAgentPublicDto implements UpdateAgentPublic {
+	declare config: UpdateAgentPublic['config'];
+
+	declare baseConfigHash: UpdateAgentPublic['baseConfigHash'];
+
+	static schema = updateAgentPublicSchema;
+
+	constructor(data: z.input<typeof updateAgentPublicObjectSchema>) {
+		Object.assign(this, updateAgentPublicSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateAgentPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateAgentPublicSchema.parse(data);
 	}
 }
 

@@ -7865,6 +7865,9 @@ importers:
 
   packages/modules/execution-limits/backend:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants

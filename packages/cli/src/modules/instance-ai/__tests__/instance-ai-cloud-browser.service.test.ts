@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { PostHogClient } from '@n8n/backend-services';
 import type { User, UserRepository } from '@n8n/db';
 import type { DomainAccessTracker } from '@n8n/instance-ai';
+import type { InstanceSettings } from 'n8n-core';
 import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { mock } from 'vitest-mock-extended';
@@ -32,6 +33,7 @@ describe('InstanceAiCloudBrowserService', () => {
 	const domainGate: BrowserDomainGate = { tracker: mock<DomainAccessTracker>(), runId: 'run-1' };
 	let release: ReturnType<typeof vi.spyOn>;
 	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
+	let instanceSettings: { isMultiMain: boolean };
 
 	beforeEach(() => {
 		const logger = mock<Logger>();
@@ -40,12 +42,14 @@ describe('InstanceAiCloudBrowserService', () => {
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
 		postHogClient.getFeatureFlagForInstance.mockReset();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+		instanceSettings = { isMultiMain: false };
 		service = new InstanceAiCloudBrowserService(
 			logger,
 			aiGatewayBrowserUseService,
 			userRepository,
 			credentialsService,
 			postHogClient,
+			instanceSettings as InstanceSettings,
 		);
 		release = vi.spyOn(CloudBrowserLocalMcpServer.prototype, 'release').mockResolvedValue();
 	});
@@ -185,6 +189,40 @@ describe('InstanceAiCloudBrowserService', () => {
 		expect(mkdir).not.toHaveBeenCalled();
 	});
 
+	describe('getLiveView', () => {
+		it("passes on the server's live view to its owner", async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			vi.spyOn(server, 'getLiveView').mockResolvedValue({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+			});
+
+			expect(await service.getLiveView('user-1', 'thread-1', 'task-1')).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+			});
+		});
+
+		it.each([
+			['another user', 'user-2', 'thread-1'],
+			['another thread', 'user-1', 'thread-2'],
+		])('reads as not found for %s', async (_, userId, threadId) => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const getLiveView = vi.spyOn(server, 'getLiveView');
+
+			expect(await service.getLiveView(userId, threadId, 'task-1')).toEqual({
+				status: 'not-found',
+			});
+			expect(getLiveView).not.toHaveBeenCalled();
+		});
+
+		it('reads as not found for a task with no server', async () => {
+			expect(await service.getLiveView('user-1', 'thread-1', 'task-1')).toEqual({
+				status: 'not-found',
+			});
+		});
+	});
+
 	describe('isAvailable', () => {
 		beforeEach(() => {
 			postHogClient.getFeatureFlagForInstance.mockReset();
@@ -213,6 +251,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
 
 			expect(await service.isAvailable()).toBe(false);
+		});
+
+		it('is not available on a multi-main instance, and does not read the flag', async () => {
+			instanceSettings.isMultiMain = true;
+
+			expect(await service.isAvailable()).toBe(false);
+			expect(postHogClient.getFeatureFlagForInstance).not.toHaveBeenCalled();
 		});
 	});
 
@@ -262,6 +307,23 @@ describe('InstanceAiCloudBrowserService', () => {
 		expect(aiGatewayBrowserUseService.releaseSession).toHaveBeenCalledWith({
 			userId: 'user-1',
 			attribution,
+			sessionId: 'sess-1',
+		});
+	});
+
+	it("gets a session's live view link through the gateway for the task", async () => {
+		aiGatewayBrowserUseService.getLiveView.mockResolvedValue({
+			debuggerFullscreenUrl: 'https://live.example.com/1',
+		});
+		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const { sessionProvider, scope } = server['options'];
+
+		await expect(sessionProvider.getSessionLiveViewUrl(scope, 'sess-1')).resolves.toBe(
+			'https://live.example.com/1',
+		);
+		expect(aiGatewayBrowserUseService.getLiveView).toHaveBeenCalledWith({
+			userId: 'user-1',
+			attribution: { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' },
 			sessionId: 'sess-1',
 		});
 	});

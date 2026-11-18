@@ -1,5 +1,6 @@
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import {
+	canCancelPublicApiThread,
 	canContinueThreadOnSurface,
 	chatSurfaceForKind,
 	N8N_CHAT_PRODUCTION_SOURCE,
@@ -26,7 +27,6 @@ describe('chatSurfaceForKind', () => {
 describe('canContinueThreadOnSurface', () => {
 	it.each([
 		['preview', 'chat', false],
-		['preview', 'public_api', false],
 		['n8n-chat', N8N_CHAT_PRODUCTION_SOURCE, false],
 		['system', SYSTEM_CHAT_SOURCE, true],
 	] as const)(
@@ -49,6 +49,19 @@ describe('canContinueThreadOnSurface', () => {
 		expect(canContinueThreadOnSurface('system', thread, 'user-2', SYSTEM_CHAT_SOURCE, true)).toBe(
 			false,
 		);
+	});
+
+	it('does not let Preview continue a Public API session', () => {
+		expect(canContinueThreadOnSurface('preview', thread, 'user-1', 'public_api', false)).toBe(
+			false,
+		);
+	});
+
+	it('lets the Public API stop path cancel its own session', () => {
+		expect(canCancelPublicApiThread(thread, 'user-1', 'public_api', false)).toBe(true);
+		expect(canCancelPublicApiThread(thread, 'user-1', 'chat', false)).toBe(false);
+		expect(canCancelPublicApiThread(thread, 'user-2', 'public_api', false)).toBe(false);
+		expect(canCancelPublicApiThread(thread, 'user-1', 'public_api', true)).toBe(false);
 	});
 
 	describe('system threads', () => {

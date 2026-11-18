@@ -3,12 +3,15 @@ import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { N8nSegmentControl, N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
+import { createReusableTemplate } from '@vueuse/core';
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicy } from './useInstancePolicy';
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import {
+	INSTANCE_POLICY_DOCS_URL,
 	POLICIES_LANDING_VIEW,
 	POLICY_TAB_LABEL_KEY,
 	type RestrictedTypeKind,
@@ -20,6 +23,8 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { manageableKinds, entryRouteName } = usePolicyAdminAccess();
 const instancePolicy = useInstancePolicy();
+// The tabs sit in the table's toolbar, so a tab with a table renders them there.
+const [DefineTabs, ReuseTabs] = createReusableTemplate();
 
 const tabOptions = computed(() =>
 	manageableKinds.value.map((kind) => ({
@@ -73,19 +78,37 @@ onMounted(() => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('typeAvailabilityPolicies.instancePolicy.title')"
 			:description="i18n.baseText('typeAvailabilityPolicies.instancePolicy.description')"
-			:show-docs-link="false"
+			:docs-url="INSTANCE_POLICY_DOCS_URL"
 		/>
-		<N8nSegmentControl
-			v-if="activeTab"
-			v-model="activeTab"
-			:options="tabOptions"
-			data-test-id="instance-policy-tabs"
-		/>
+		<DefineTabs>
+			<N8nSegmentControl
+				v-model="activeTab"
+				:options="tabOptions"
+				size="xlarge"
+				data-test-id="instance-policy-tabs"
+			/>
+		</DefineTabs>
+		<CredentialTypesTab v-if="activeTab === 'credential'">
+			<template #toolbar-start>
+				<ReuseTabs />
+			</template>
+		</CredentialTypesTab>
+		<ReuseTabs v-else-if="activeTab" />
 	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
 @use '../settings-subpage';
+
+/* Doubled to win over the layout's own rules: the policy table needs the full page width, and the
+   design keeps the tabs close to the header. */
+.layout.layout {
+	--settings-content--max-width: none;
+
+	:global(header) + * {
+		margin-block-start: var(--spacing--lg);
+	}
+}
 
 .layout {
 	@include settings-subpage.layout;

@@ -9,11 +9,6 @@ import {
 export type AgentSessionMode = 'new' | 'existing';
 
 export const PREVIEW_THREAD_SOURCES = ['', 'chat', 'n8n_chat'] as const;
-/**
- * Sources a draft chat can continue. `public_api` stays out of
- * `PREVIEW_THREAD_SOURCES` so the sessions list keeps that origin separate.
- */
-const DRAFT_CHAT_SOURCES = [...PREVIEW_THREAD_SOURCES, 'public_api'] as const;
 export const N8N_CHAT_PRODUCTION_SOURCE = 'n8n_chat_production' as const;
 /** Transcript source of a system-agent turn. It is not a Preview source. */
 export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
@@ -79,7 +74,26 @@ export function canContinueThreadInPreview(
 	return (
 		!isSystemAgent &&
 		isOpenChatThread(thread, userId) &&
-		DRAFT_CHAT_SOURCES.some((draftSource) => draftSource === (source?.trim().toLowerCase() ?? ''))
+		PREVIEW_THREAD_SOURCES.some(
+			(previewSource) => previewSource === (source?.trim().toLowerCase() ?? ''),
+		)
+	);
+}
+
+/**
+ * A Public API stop may target a `public_api` session.
+ * Preview continuation does not use this check.
+ */
+export function canCancelPublicApiThread(
+	thread: AgentExecutionThread,
+	userId: string,
+	source: string | null | undefined,
+	isSystemAgent: boolean,
+): boolean {
+	return (
+		!isSystemAgent &&
+		isOpenChatThread(thread, userId) &&
+		(source?.trim().toLowerCase() ?? '') === 'public_api'
 	);
 }
 

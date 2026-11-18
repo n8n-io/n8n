@@ -5,7 +5,8 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import type { AgentPublicRunService } from '@/modules/agents/agent-public-run.service';
 import type { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
@@ -20,7 +21,7 @@ describe('AgentsPublicController route metadata', () => {
 	);
 	const routes = new Map(metadata.routes);
 
-	it('registers the create, read, list, and delete routes', () => {
+	it('registers the public agent routes', () => {
 		expect([...routes.keys()].sort()).toEqual([
 			'createAgent',
 			'deleteAgent',
@@ -28,6 +29,7 @@ describe('AgentsPublicController route metadata', () => {
 			'listAgents',
 			'runAgent',
 			'stopAgentExecution',
+			'updateAgent',
 		]);
 	});
 
@@ -96,6 +98,14 @@ describe('AgentsPublicController route metadata', () => {
 		});
 	});
 
+	it('updateAgent requires the agent:update API key scope and project RBAC check', () => {
+		expect(routes.get('updateAgent')?.apiKeyScope).toBe('agent:update');
+		expect(routes.get('updateAgent')?.accessScope).toEqual({
+			scope: 'agent:update',
+			globalOnly: false,
+		});
+	});
+
 	it('runAgent answers 200 and documents 404 and 422', () => {
 		const route = routes.get('runAgent');
 		expect(route?.successStatus).toBe(200);
@@ -115,6 +125,14 @@ describe('AgentsPublicController route metadata', () => {
 		expect(
 			routes.get('stopAgentExecution')?.errorResponses?.some((response) => response.status === 404),
 		).toBe(true);
+	});
+
+	it('updateAgent answers 200 with the public agent DTO and declares the conflict', () => {
+		const route = routes.get('updateAgent');
+		expect(route?.successStatus).toBe(200);
+		expect(route?.responseDto).toBeDefined();
+		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
 	});
 });
 
@@ -154,6 +172,7 @@ describe('AgentsPublicController createAgent', () => {
 		agentDefaultModelResolverService,
 		agentCustomToolsService,
 		mock<AgentPublicRunService>(),
+		mock<AgentConfigService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -293,6 +312,7 @@ describe('AgentsPublicController getAgent', () => {
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
 		mock<AgentPublicRunService>(),
+		mock<AgentConfigService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -347,6 +367,7 @@ describe('AgentsPublicController listAgents', () => {
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
 		mock<AgentPublicRunService>(),
+		mock<AgentConfigService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -444,6 +465,150 @@ describe('AgentsPublicController listAgents', () => {
 	});
 });
 
+describe('AgentsPublicController updateAgent', () => {
+	const agentsService = mock<AgentsService>();
+	const agentResponseMapper = mock<AgentResponseMapper>();
+	const agentConfigService = mock<AgentConfigService>();
+	const controller = new AgentsPublicController(
+		agentsService,
+		agentResponseMapper,
+		mock<AgentDefaultModelResolverService>(),
+		mock<AgentCustomToolsService>(),
+		mock<AgentPublicRunService>(),
+		agentConfigService,
+	);
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+
+	const agentEntity = {
+		id: 'agent-1',
+		projectId: 'project-1',
+	} as unknown as Awaited<ReturnType<AgentsService['findById']>>;
+
+	const config = { name: 'My Agent', model: 'openai/gpt-5', instructions: 'Help users' };
+
+	it('replaces the config and returns the public DTO without builder state', async () => {
+		agentsService.findById.mockResolvedValueOnce(agentEntity).mockResolvedValueOnce(agentEntity);
+		agentConfigService.updateConfig.mockResolvedValue({} as never);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
+
+		const result = await controller.updateAgent(req, res, 'agent-1', {
+			config,
+			baseConfigHash: 'hash-1',
+		});
+
+		expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			config,
+			req.user,
+			{ baseConfigHash: 'hash-1', modifiedBy: 'user' },
+		);
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			agentEntity,
+			'project-1',
+			req.user,
+		);
+		expect(result).toEqual({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: 'project-1',
+			project: null,
+			parentFolder: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: 'version-1',
+			activeVersionId: null,
+			createdAt: '2025-01-02T03:04:05.000Z',
+			updatedAt: '2025-06-07T08:09:10.000Z',
+			config: { name: 'My Agent', model: '', instructions: '' },
+			configHash: 'hash-1',
+			tools: {},
+			activeVersion: null,
+		});
+	});
+
+	it('answers 404 when the agent does not exist', async () => {
+		agentsService.findById.mockResolvedValue(null);
+
+		await expect(
+			controller.updateAgent(req, res, 'missing-agent', {
+				config,
+				baseConfigHash: 'hash-1',
+			}),
+		).rejects.toThrow(NotFoundError);
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+	});
+
+	it('propagates the conflict when the config hash is stale', async () => {
+		agentsService.findById.mockResolvedValue(agentEntity);
+		agentConfigService.updateConfig.mockRejectedValue(
+			new ConflictError('Agent config was changed elsewhere; reload to get the latest version'),
+		);
+
+		await expect(
+			controller.updateAgent(req, res, 'agent-1', {
+				config,
+				baseConfigHash: 'stale-hash',
+			}),
+		).rejects.toThrow(ConflictError);
+	});
+
+	it('treats a null config as a no-op for an agent without a configuration', async () => {
+		const noConfigAgent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			schema: null,
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>;
+		agentsService.findById.mockResolvedValue(noConfigAgent);
+		agentResponseMapper.toPublicDto.mockResolvedValue(toAgentPublicDto(fullAgentDto));
+
+		const result = await controller.updateAgent(req, res, 'agent-1', {
+			config: null,
+			baseConfigHash: null,
+		});
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		expect(agentResponseMapper.toPublicDto).toHaveBeenCalledWith(
+			noConfigAgent,
+			'project-1',
+			req.user,
+		);
+		expect(result).toEqual({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: 'project-1',
+			project: null,
+			parentFolder: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: 'version-1',
+			activeVersionId: null,
+			createdAt: '2025-01-02T03:04:05.000Z',
+			updatedAt: '2025-06-07T08:09:10.000Z',
+			config: { name: 'My Agent', model: '', instructions: '' },
+			configHash: 'hash-1',
+			tools: {},
+			activeVersion: null,
+		});
+	});
+
+	it('rejects a null config when the agent has a configuration', async () => {
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			schema: { name: 'My Agent' },
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>);
+
+		await expect(
+			controller.updateAgent(req, res, 'agent-1', { config: null, baseConfigHash: 'hash-1' }),
+		).rejects.toThrow(BadRequestError);
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+	});
+});
+
 describe('AgentsPublicController deleteAgent', () => {
 	const agentsService = mock<AgentsService>();
 	const agentResponseMapper = mock<AgentResponseMapper>();
@@ -454,6 +619,7 @@ describe('AgentsPublicController deleteAgent', () => {
 		agentDefaultModelResolverService,
 		mock<AgentCustomToolsService>(),
 		mock<AgentPublicRunService>(),
+		mock<AgentConfigService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
@@ -502,6 +668,7 @@ describe('AgentsPublicController run and stop', () => {
 		mock<AgentDefaultModelResolverService>(),
 		mock<AgentCustomToolsService>(),
 		agentPublicRunService,
+		mock<AgentConfigService>(),
 	);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
