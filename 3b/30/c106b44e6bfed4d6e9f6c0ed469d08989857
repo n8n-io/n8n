@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_f27bda1bd0c713::t_13115625096dd6 67-72
+packages/frontend/editor-ui/src/features/pages/components/OverviewModeSwitch.vue
+  ai_agent 7,11,15-23,33,48-51
+packages/frontend/editor-ui/src/features/pages/components/SortItOutButton.vue
+  s_f27bda1bd0c713::t_8a47ca46a1ad50 1-50
+packages/frontend/editor-ui/src/features/pages/composables/useSortItOutWithAi.ts
+  s_f27bda1bd0c713::t_8a47ca46a1ad50 1-8,10-39,46-49,52-60,62-72
+  s_f27bda1bd0c713::t_d41da3cf54722a 9,40-45,50-51,61
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 3463-3466
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f27bda1bd0c713::t_13115625096dd6 1829,1855,1905-1906,1934
+packages/frontend/editor-ui/src/features/pages/components/SortItOutButton.test.ts
+  s_f27bda1bd0c713::t_b20d67b0f5358f 1-67,71-93
+  s_f27bda1bd0c713::t_d41da3cf54722a 68-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b30c106b44e6bfed4d6e9f6c0ed469d08989857",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
