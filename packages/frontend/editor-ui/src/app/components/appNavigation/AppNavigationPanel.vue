@@ -157,7 +157,10 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 	align-items: center;
 	gap: var(--spacing--4xs);
 	height: var(--spacing--2xl);
-	padding: 0 var(--spacing--3xs) 0 var(--spacing--sm);
+	// The last icon sits 16px from the right edge, like the title from the left edge. The icon
+	// button has its own inset, and the docked panel a border on its right.
+	padding: 0 calc(var(--spacing--sm) - var(--spacing--3xs) - var(--border-width, 1px)) 0
+		var(--spacing--sm);
 	flex: none;
 }
 
