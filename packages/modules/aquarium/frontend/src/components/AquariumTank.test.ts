@@ -130,8 +130,43 @@ describe('AquariumTank', () => {
 		expect(queryByTestId('aquarium-tooltip-open')).not.toBeInTheDocument();
 	});
 
+	it('shows only the essential stats on hover', async () => {
+		const { move, getByTestId, queryByTestId } = await setup({
+			...workflow,
+			project: { id: 'p', name: 'Sales', type: 'team' },
+			metrics: { ...workflow.metrics, executionCount: 20, failedCount: 5, averageRunTimeMs: 1500 },
+		});
+
+		await move('creature');
+		const popup = getByTestId('aquarium-tooltip');
+
+		expect(popup).toHaveTextContent('Complexity3');
+		expect(popup).toHaveTextContent('Executions20');
+		expect(popup).toHaveTextContent('Average run time1.5s');
+		expect(popup).toHaveTextContent('Failure rate25%');
+		expect(popup).not.toHaveTextContent('Sales');
+		expect(queryByTestId('aquarium-tooltip-details-toggle')).not.toBeInTheDocument();
+	});
+
+	it('shows and hides the other stats of a pinned popup', async () => {
+		const { move, canvas, getByTestId, queryByTestId } = await setup({
+			...workflow,
+			project: { id: 'p', name: 'Sales', type: 'team' },
+		});
+		await move('creature');
+		await fireEvent.click(canvas);
+
+		expect(queryByTestId('aquarium-tooltip-details')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('aquarium-tooltip-details-toggle'));
+		expect(getByTestId('aquarium-tooltip-details')).toHaveTextContent('ProjectSales');
+
+		await fireEvent.click(getByTestId('aquarium-tooltip-details-toggle'));
+		expect(queryByTestId('aquarium-tooltip-details')).not.toBeInTheDocument();
+	});
+
 	it('shows the build, the error workflow and paused runs of a workflow', async () => {
-		const { move, getByTestId } = await setup({
+		const { move, canvas, getByTestId } = await setup({
 			...workflow,
 			metrics: { ...workflow.metrics, executionCount: 10, waitingCount: 4, finishedCount: 0 },
 			design: {
@@ -147,7 +182,9 @@ describe('AquariumTank', () => {
 		});
 
 		await move('creature');
-		const popup = getByTestId('aquarium-tooltip');
+		await fireEvent.click(canvas);
+		await fireEvent.click(getByTestId('aquarium-tooltip-details-toggle'));
+		const popup = getByTestId('aquarium-tooltip-details');
 
 		expect(popup).toHaveTextContent('Maintainability88/100');
 		expect(popup).toHaveTextContent('Main issueMany Code nodes');
@@ -156,14 +193,18 @@ describe('AquariumTank', () => {
 	});
 
 	it('reports a workflow whose runs are all paused', async () => {
-		const { move, getByTestId } = await setup({
+		const { move, canvas, getByTestId } = await setup({
 			...workflow,
 			metrics: { ...workflow.metrics, executionCount: 5, waitingCount: 5, finishedCount: 0 },
 		});
 
 		await move('creature');
+		await fireEvent.click(canvas);
+		await fireEvent.click(getByTestId('aquarium-tooltip-details-toggle'));
 
-		expect(getByTestId('aquarium-tooltip')).toHaveTextContent('StateAll runs paused, not broken');
+		expect(getByTestId('aquarium-tooltip-details')).toHaveTextContent(
+			'StateAll runs paused, not broken',
+		);
 	});
 
 	it('rounds the average run time to whole milliseconds', async () => {
@@ -267,15 +308,18 @@ describe('AquariumTank', () => {
 			expect(queryAllByTestId('aquarium-project-label')).toHaveLength(0);
 		});
 
-		it('shows the project in the popup', async () => {
+		it('shows the project in the popup details', async () => {
 			pointAt('creature');
 			const { getByTestId } = render(AquariumTank, {
 				props: { entities: [inProject('1', project('p1', 'Sales'))], grouping: 'project' },
 			});
+			const canvas = getByTestId('aquarium-canvas');
 
-			await fireEvent.pointerMove(getByTestId('aquarium-canvas'), { clientX: 10, clientY: 10 });
+			await fireEvent.pointerMove(canvas, { clientX: 10, clientY: 10 });
+			await fireEvent.click(canvas);
+			await fireEvent.click(getByTestId('aquarium-tooltip-details-toggle'));
 
-			expect(getByTestId('aquarium-tooltip')).toHaveTextContent('Sales');
+			expect(getByTestId('aquarium-tooltip-details')).toHaveTextContent('Sales');
 		});
 	});
 });

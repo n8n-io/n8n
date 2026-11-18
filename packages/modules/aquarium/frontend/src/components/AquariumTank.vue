@@ -2,7 +2,7 @@
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { onKeyStroke, usePreferredReducedMotion, useRafFn, useResizeObserver } from '@vueuse/core';
-import { computed, onMounted, ref, shallowRef, triggerRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, shallowRef, triggerRef, watch } from 'vue';
 
 import { DRAG_THRESHOLD, LIVE_SPEED, PROJECT_LABEL_MIN_WIDTH, ZOOM } from '../aquarium.constants';
 import { displayProjectName } from '../aquarium.utils';
@@ -18,10 +18,12 @@ import {
 	fitCamera,
 	insetOf,
 	panBy,
+	popupAnchorFor,
 	worldSizeFor,
 	zoomAt,
 	type Camera,
 	type Point,
+	type PopupAnchor,
 	type Size,
 	type Viewport,
 } from '../engine/camera';
@@ -85,10 +87,14 @@ const reducedMotion = usePreferredReducedMotion();
 const containerRef = ref<HTMLDivElement>();
 const canvasRef = ref<HTMLCanvasElement>();
 const hovered = shallowRef<Creature>();
-/** A clicked creature. Its popup stays open, keeps updating, and takes clicks. */
+/** A clicked creature. Its popup follows it, keeps updating, and takes clicks. */
 const pinned = shallowRef<Creature>();
+const popupRef = ref<HTMLDivElement>();
+/** The popup stops following its creature while the pointer is on it, so its buttons hold still. */
+const isPointerOnPopup = ref(false);
+/** Kept between pins, so a user who wants all stats does not open them each time. */
+const showDetails = ref(false);
 const pointer = ref({ x: 0, y: 0 });
-const pinnedAt = ref({ x: 0, y: 0 });
 const tankSize = ref({ width: 0, height: 0 });
 const isDragging = ref(false);
 /** Tanks on the wall. Reactive, so the project labels follow them. */
@@ -292,6 +298,7 @@ useRafFn(({ delta }) => {
 		if (bounds) stepCreature(creature, dt, bounds);
 	}
 	renderer.render(creaturesByTank, camera, time, (pinned.value ?? hovered.value)?.entity.key);
+	placePinnedPopup();
 });
 
 function pointFrom(event: MouseEvent): Point {
@@ -403,11 +410,42 @@ function onClick() {
 		return;
 	}
 	pinned.value = hovered.value;
-	if (hovered.value) pinnedAt.value = { ...pointer.value };
+	isPointerOnPopup.value = false;
+	// Place it before the next frame, so it does not show at the corner for one frame.
+	if (pinned.value) void nextTick(placePinnedPopup);
 }
 
 function unpin() {
 	pinned.value = undefined;
+}
+
+function popupTransform({ toLeft, above }: PopupAnchor, gapY: boolean): string {
+	const gap = 'var(--spacing--sm)';
+	const x = toLeft ? `calc(-100% - ${gap})` : gap;
+	const y = above ? (gapY ? `calc(-100% - ${gap})` : '-100%') : gapY ? gap : '0';
+	return `translate(${x}, ${y})`;
+}
+
+/** Moves the pinned popup next to its creature. Runs each frame, so it writes the DOM directly. */
+function placePinnedPopup() {
+	const element = popupRef.value;
+	const creature = pinned.value;
+	if (!element || !creature || isPointerOnPopup.value) return;
+	const region = regionsById.get(creature.tankId);
+	if (!region) return;
+	const scale = canvasScale();
+	const left = (region.x + Math.round(creature.x) - Math.round(camera.x)) / scale.x;
+	const top = (region.y + Math.round(creature.y) - Math.round(camera.y)) / scale.y;
+	const box = {
+		left,
+		top,
+		right: left + creature.width / scale.x,
+		bottom: top + creature.height / scale.y,
+	};
+	const anchor = popupAnchorFor(box, viewport);
+	element.style.left = `${anchor.x}px`;
+	element.style.top = `${anchor.y}px`;
+	element.style.transform = popupTransform(anchor, false);
 }
 
 function openPinned() {
@@ -489,49 +527,40 @@ function designRows(entity: AquariumEntity): Array<[string, string]> {
 const tooltip = computed(() => {
 	const creature = pinned.value ?? hovered.value;
 	if (!creature) return undefined;
-	const { metrics } = creature.entity;
+	const { entity } = creature;
+	const { metrics } = entity;
+	const project: Array<[string, string]> = entity.project
+		? [[i18n.baseText('aquarium.tooltip.project'), displayProjectName(entity.project.name)]]
+		: [];
+	const security: Array<[string, string]> = metrics.securityRisks
+		? [[i18n.baseText('aquarium.tooltip.securityRisks'), String(metrics.securityRisks)]]
+		: [];
 	return {
 		isPinned: creature === pinned.value,
-		canOpen: creature.entity.route !== undefined,
-		name: creature.entity.name,
-		kind: i18n.baseText(
-			creature.entity.kind === 'agent' ? 'aquarium.kind.agent' : 'aquarium.kind.workflow',
-		),
+		canOpen: entity.route !== undefined,
+		name: entity.name,
+		kind: i18n.baseText(entity.kind === 'agent' ? 'aquarium.kind.agent' : 'aquarium.kind.workflow'),
 		rows: [
-			...(creature.entity.project
-				? [
-						[
-							i18n.baseText('aquarium.tooltip.project'),
-							displayProjectName(creature.entity.project.name),
-						],
-					]
-				: []),
 			[i18n.baseText('aquarium.tooltip.complexity'), String(metrics.complexity)],
 			[i18n.baseText('aquarium.tooltip.executions'), metrics.executionCount.toLocaleString()],
-			[
-				i18n.baseText('aquarium.tooltip.failureRate'),
-				`${Math.round(failureRateOf(metrics) * 100)}%`,
-			],
 			[
 				i18n.baseText('aquarium.tooltip.averageRunTime'),
 				i18n.displayTimer(Math.round(metrics.averageRunTimeMs), true),
 			],
-			...(metrics.securityRisks
-				? [[i18n.baseText('aquarium.tooltip.securityRisks'), String(metrics.securityRisks)]]
-				: []),
-			...designRows(creature.entity),
-			...liveRows(creature.entity.key),
+			[
+				i18n.baseText('aquarium.tooltip.failureRate'),
+				`${Math.round(failureRateOf(metrics) * 100)}%`,
+			],
 		],
+		details: [...project, ...security, ...designRows(entity), ...liveRows(entity.key)],
 	};
 });
 
-/** Opens the popup toward the middle of the tank, so it is not cut off at an edge. */
-const tooltipStyle = computed(() => {
-	const { x, y } = tooltip.value?.isPinned ? pinnedAt.value : pointer.value;
-	const gap = 'var(--spacing--sm)';
-	const shiftX = x > tankSize.value.width / 2 ? `calc(-100% - ${gap})` : gap;
-	const shiftY = y > tankSize.value.height / 2 ? `calc(-100% - ${gap})` : gap;
-	return { left: `${x}px`, top: `${y}px`, transform: `translate(${shiftX}, ${shiftY})` };
+/** The hover popup follows the pointer. The pinned popup follows its creature. */
+const hoverStyle = computed(() => {
+	const { x, y } = pointer.value;
+	const anchor = popupAnchorFor({ left: x, top: y, right: x, bottom: y }, tankSize.value);
+	return { left: `${x}px`, top: `${y}px`, transform: popupTransform(anchor, true) };
 });
 
 const ariaLabel = computed(() =>
@@ -607,9 +636,12 @@ const ariaLabel = computed(() =>
 		</div>
 		<div
 			v-if="tooltip"
+			ref="popupRef"
 			:class="[$style.tooltip, { [$style.pinned]: tooltip.isPinned }]"
-			:style="tooltipStyle"
+			:style="tooltip.isPinned ? undefined : hoverStyle"
 			data-test-id="aquarium-tooltip"
+			@pointerenter="isPointerOnPopup = true"
+			@pointerleave="isPointerOnPopup = false"
 		>
 			<div :class="$style.tooltipTitle">{{ tooltip.name }}</div>
 			<div :class="$style.tooltipKind">{{ tooltip.kind }}</div>
@@ -619,8 +651,36 @@ const ariaLabel = computed(() =>
 					<dd>{{ value }}</dd>
 				</template>
 			</dl>
-			<div v-if="tooltip.isPinned && tooltip.canOpen" :class="$style.tooltipActions">
+			<dl
+				v-if="tooltip.isPinned && showDetails && tooltip.details.length > 0"
+				:class="[$style.tooltipRows, $style.tooltipDetails]"
+				data-test-id="aquarium-tooltip-details"
+			>
+				<template v-for="[label, value] in tooltip.details" :key="label">
+					<dt>{{ label }}</dt>
+					<dd>{{ value }}</dd>
+				</template>
+			</dl>
+			<div v-if="tooltip.isPinned" :class="$style.tooltipActions">
 				<N8nButton
+					v-if="tooltip.details.length > 0"
+					variant="ghost"
+					size="mini"
+					:aria-expanded="showDetails"
+					data-test-id="aquarium-tooltip-details-toggle"
+					@click="showDetails = !showDetails"
+				>
+					<template #icon>
+						<N8nIcon :icon="showDetails ? 'chevron-up' : 'chevron-down'" size="small" />
+					</template>
+					{{
+						i18n.baseText(
+							showDetails ? 'aquarium.tooltip.fewerDetails' : 'aquarium.tooltip.moreDetails',
+						)
+					}}
+				</N8nButton>
+				<N8nButton
+					v-if="tooltip.canOpen"
 					variant="outline"
 					size="mini"
 					data-test-id="aquarium-tooltip-open"
@@ -706,7 +766,14 @@ const ariaLabel = computed(() =>
 .tooltipActions {
 	display: flex;
 	justify-content: flex-end;
+	gap: var(--spacing--4xs);
 	margin-top: var(--spacing--2xs);
+}
+
+.tooltipDetails {
+	margin-top: var(--spacing--3xs);
+	padding-top: var(--spacing--3xs);
+	border-top: var(--border);
 }
 
 .tooltipTitle {

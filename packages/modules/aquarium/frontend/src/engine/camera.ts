@@ -122,3 +122,34 @@ export function panBy(camera: Camera, delta: Point, viewport: Viewport, world: S
 export function canvasResolutionFor(zoom: number, devicePixelRatio = 1): number {
 	return zoom < ZOOM.detail ? zoom * Math.max(1, devicePixelRatio) : 1;
 }
+
+/** A rectangle on screen, in CSS pixels. */
+export interface ScreenBox {
+	left: number;
+	top: number;
+	right: number;
+	bottom: number;
+}
+
+export interface PopupAnchor {
+	/** The point that the popup touches, in CSS pixels. */
+	x: number;
+	y: number;
+	/** The popup opens to the left of `x`. */
+	toLeft: boolean;
+	/** The popup opens above `y`. */
+	above: boolean;
+}
+
+/** Puts a popup beside a box, toward the middle of the view. The anchor stays on screen. */
+export function popupAnchorFor(box: ScreenBox, view: Size): PopupAnchor {
+	const toLeft = (box.left + box.right) / 2 > view.width / 2;
+	const above = (box.top + box.bottom) / 2 > view.height / 2;
+	const clamp = (value: number, max: number) => Math.min(max, Math.max(0, value));
+	return {
+		x: clamp(toLeft ? box.left : box.right, view.width),
+		y: clamp(above ? box.bottom : box.top, view.height),
+		toLeft,
+		above,
+	};
+}

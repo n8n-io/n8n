@@ -47,7 +47,7 @@ rules.
 | Species | `src/species/` | Pixel-art sprites as text, one file for each creature. |
 | Motion | `src/engine/simulation.ts` | Moves creatures. No DOM, so you can test it. |
 | Drawing | `src/engine/renderer.ts`, `src/engine/effects.ts` | Draws the tank on a canvas at 1 logical pixel = `PIXEL_SIZE` CSS pixels. |
-| UI | `src/components/AquariumTank.vue`, `src/views/AquariumView.vue` | Frame loop and popup. Hover shows the popup. A click pins it, with an **Open** button. A click on the water or Esc closes it. |
+| UI | `src/components/AquariumTank.vue`, `src/views/AquariumView.vue` | Frame loop and popup. Hover shows the popup with the essential stats: complexity, executions, average run time and failure rate. A click pins it to the creature: the popup follows it, and stops while the pointer is on the popup. **More details** shows the other stats, and **Open** opens the workflow. A click on the water or Esc closes it. |
 
 ## Project view
 
@@ -171,8 +171,8 @@ maximum:
 | `disabled` | Disabled nodes | 0 | 3 | 15 |
 | `branching` | If, Switch and Merge nodes | 3 | 2 | 20 |
 
-The popup shows the score, its main issue, the error workflow, paused runs, and "All runs
-paused, not broken" when every run waits.
+**More details** in a pinned popup shows the score, its main issue, the error workflow, paused
+runs, and "All runs paused, not broken" when every run waits.
 
 ## Live activity
 

@@ -501,6 +501,8 @@
 	"aquarium.tooltip.averageRunTime": "Average run time",
 	"aquarium.tooltip.securityRisks": "Security risks",
 	"aquarium.tooltip.open": "Open",
+	"aquarium.tooltip.moreDetails": "More details",
+	"aquarium.tooltip.fewerDetails": "Fewer details",
 	"aquarium.tooltip.runningNow": "Running now",
 	"aquarium.tooltip.pausedNow": "Paused now",
 	"aquarium.tooltip.pausedRuns": "Paused runs",

@@ -5,6 +5,7 @@ import {
 	fitCamera,
 	fitZoom,
 	panBy,
+	popupAnchorFor,
 	screenToWorld,
 	worldSizeFor,
 	zoomAt,
@@ -135,5 +136,34 @@ describe('canvasResolutionFor', () => {
 		expect(canvasResolutionFor(1, 2)).toBe(2);
 		expect(canvasResolutionFor(ZOOM.detail, 2)).toBe(1);
 		expect(canvasResolutionFor(ZOOM.default, 2)).toBe(1);
+	});
+});
+
+describe('popupAnchorFor', () => {
+	const view = { width: 1000, height: 600 };
+
+	it('opens right of and below a box in the top left', () => {
+		expect(popupAnchorFor({ left: 100, top: 50, right: 140, bottom: 70 }, view)).toEqual({
+			x: 140,
+			y: 50,
+			toLeft: false,
+			above: false,
+		});
+	});
+
+	it('opens left of and above a box in the bottom right', () => {
+		expect(popupAnchorFor({ left: 800, top: 500, right: 840, bottom: 520 }, view)).toEqual({
+			x: 800,
+			y: 520,
+			toLeft: true,
+			above: true,
+		});
+	});
+
+	it('keeps the anchor on screen when the box leaves the view', () => {
+		expect(popupAnchorFor({ left: -80, top: -40, right: -20, bottom: -10 }, view)).toMatchObject({
+			x: 0,
+			y: 0,
+		});
 	});
 });

@@ -200,7 +200,8 @@ The same entity always gets the same species.
    `speedFactor`, the species or `effects`.
 
 4. Add the rule to `defaultTraitRules`. See "Rule order" below.
-5. Add a row to the tooltip in `AquariumTank.vue` if a user must see the number.
+5. Add a row to `details` in the `tooltip` computed of `AquariumTank.vue` if a user must see the
+   number. Keep `rows` to the four essential stats: the hover popup shows only those.
 6. Give some entities in `demo.source.ts` values that show the new look.
 7. Add a test in `traits.test.ts`.
 
@@ -235,7 +236,8 @@ runs in the window. Read `creature.speed`, not `creature.traits.speed`, for the 
 3. To see the effect without real traffic, turn on demo mode. `demo-activity.ts` makes new fake
    counts on each poll.
 
-The tooltip in `AquariumTank.vue` shows the counts, so you can compare your effect with the data.
+The details of a pinned popup in `AquariumTank.vue` show the counts, so you can compare your effect
+with the data.
 
 ### Add an effect
 
