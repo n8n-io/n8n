@@ -8,6 +8,7 @@ import type {
 	GraphNode,
 	StepExecutionContext,
 	StepSlots,
+	StepOutputSources,
 	SubExecutionResumeCause,
 	WorkflowGraph,
 } from '@n8n/engine';
@@ -59,6 +60,7 @@ import {
 	nodeNamesById,
 	toSourceLineage,
 	toSourcesAt,
+	linkOutputSources,
 	type SourceLineage,
 } from './v1-run-data';
 
@@ -67,11 +69,12 @@ export function toV1Execution(
 	outputsByNode: Record<string, Record<number, StepSlots>>,
 	activeNodeId: string,
 	activeIteration: number,
+	outputSourcesByNode: Record<string, Record<number, StepOutputSources>> = {},
 ): V1Execution {
 	return {
 		nodes: toV1Nodes(graph),
 		connections: toV1Connections(graph),
-		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration),
+		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration, outputSourcesByNode),
 	};
 }
 
@@ -120,6 +123,7 @@ function toV1RunData(
 	outputsByNode: Record<string, Record<number, StepSlots>>,
 	activeNodeId: string,
 	activeIteration: number,
+	outputSourcesByNode: Record<string, Record<number, StepOutputSources>>,
 ): IRunData {
 	const lineage = toExecuteLineage(graph, outputsByNode);
 	const activeLoop = lineage.loops.find((loop) => loop.memberIds.has(activeNodeId));
@@ -142,12 +146,17 @@ function toV1RunData(
 			const outputs = outputsByIteration[iteration];
 			if (outputs === undefined) return emptyRun(iteration, source);
 
+			const main = linkOutputSources(
+				fromStepInputs(outputs),
+				outputSourcesByNode[completedNodeId]?.[iteration] ?? null,
+				lineage.namesById,
+			);
 			return {
 				startTime: 0,
 				executionTime: 0,
 				executionIndex: iteration,
 				source,
-				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
+				data: { [MAIN_CONNECTION_TYPE]: main },
 			};
 		});
 	}

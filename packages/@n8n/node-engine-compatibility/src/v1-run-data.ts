@@ -5,8 +5,14 @@
  * They differ in what they report per pass, not in how a graph maps to v1.
  */
 
-import { deriveLoops, type GraphEdge, type WorkflowGraph, type WorkflowLoop } from '@n8n/engine';
-import type { ISourceData, ITaskData } from 'n8n-workflow';
+import {
+	deriveLoops,
+	type GraphEdge,
+	type StepOutputSources,
+	type WorkflowGraph,
+	type WorkflowLoop,
+} from '@n8n/engine';
+import type { INodeExecutionData, ISourceData, ITaskData } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
 
@@ -137,4 +143,42 @@ export function emptyRun(
 		source,
 		data: { [MAIN_CONNECTION_TYPE]: [[]] },
 	};
+}
+
+/**
+ * Returns the output items of a step with the paired item the engine states for
+ * them. The engine says "these `itemCount` items came from node X, slot s, pass
+ * p, from `offset` on"; v1's data proxy reads the same fact as
+ * `pairedItem.sourceOverwrite` plus the item's index in that slot. Nothing
+ * here derives anything: a step that states no source keeps its items as they
+ * are.
+ */
+export function linkOutputSources(
+	slots: INodeExecutionData[][],
+	outputSources: StepOutputSources | null,
+	namesById: Map<string, string>,
+): INodeExecutionData[][] {
+	// A data plane older than this field leaves it out of the step it sends.
+	if (!outputSources) return slots;
+	return slots.map((items, slotIndex) => {
+		const sources = outputSources[slotIndex];
+		if (!sources) return items;
+		const links = sources.flatMap((source) => {
+			const previousNode = namesById.get(source.nodeId);
+			// Keep the positions of the sources after this one.
+			if (previousNode === undefined)
+				return Array.from({ length: source.itemCount }, () => undefined);
+			return Array.from({ length: source.itemCount }, (_, offset) => ({
+				item: source.offset + offset,
+				sourceOverwrite: {
+					previousNode,
+					previousNodeOutput: source.outputIndex,
+					previousNodeRun: source.iteration,
+				},
+			}));
+		});
+		return items.map((item, index) =>
+			links[index] === undefined ? item : { ...item, pairedItem: links[index] },
+		);
+	});
 }

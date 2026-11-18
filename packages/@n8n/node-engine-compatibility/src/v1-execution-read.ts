@@ -7,6 +7,7 @@
 
 import type { StepDetail, StepError, StepStatus, WorkflowGraph } from '@n8n/engine';
 import type {
+	INodeExecutionData,
 	ExecutionError,
 	ExecutionStatus,
 	IPinData,
@@ -19,7 +20,13 @@ import { createRunExecutionData } from 'n8n-workflow';
 import { MAIN_CONNECTION_TYPE } from './constants';
 import { fromStepInputs } from './io';
 import { fromV1ErrorDetails } from './v1-error-details';
-import { emptyRun, toSourceLineage, toSourcesAt, type SourceLineage } from './v1-run-data';
+import {
+	emptyRun,
+	linkOutputSources,
+	toSourceLineage,
+	toSourcesAt,
+	type SourceLineage,
+} from './v1-run-data';
 
 /**
  * Only a step that ran gets an entry. v1 reports a node that did not run by
@@ -107,6 +114,7 @@ function toStepRuns(graph: WorkflowGraph, steps: StepDetail[]): StepRun[] {
 				executionStatus,
 				runs.length,
 				toSourcesAt(lineage, step.nodeId, step.iteration),
+				lineage.namesById,
 			),
 		});
 	}
@@ -134,6 +142,7 @@ function toTaskData(
 	executionStatus: ExecutionStatus,
 	executionIndex: number,
 	source: Array<ISourceData | null>,
+	namesById: Map<string, string>,
 ): ITaskData {
 	// TODO(CAT-4234): report real run timing. Row timestamps include queue time.
 	const startTime = Date.parse(step.createdAt);
@@ -147,9 +156,14 @@ function toTaskData(
 		// Every output slot is `main`: no other connection type exists here.
 		...(step.outputs === null
 			? {}
-			: { data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(step.outputs) } }),
+			: { data: { [MAIN_CONNECTION_TYPE]: toMainOutputs(step, namesById) } }),
 		...(step.error === null ? {} : { error: toV1Error(step.error) }),
 	};
+}
+
+/** The outputs as v1 items, with the paired items a loop node states. */
+function toMainOutputs(step: StepDetail, namesById: Map<string, string>): INodeExecutionData[][] {
+	return linkOutputSources(fromStepInputs(step.outputs ?? []), step.outputSources, namesById);
 }
 
 function toRunData(runs: StepRun[]): IRunData {
