@@ -1,0 +1,44 @@
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_3dd47ea0104342::t_7150c70be0c4c6 45-46,53,85-87,91
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3dd47ea0104342::t_d468025fca2b7b 71,154,157-161
+  s_3dd47ea0104342::t_1725dfea7d5539 312-318,912,919,924
+  s_3dd47ea0104342::t_e40ecdc2b83b9f 512,514,629
+  s_3dd47ea0104342::t_7150c70be0c4c6 300-311,1062,1205
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_3dd47ea0104342::t_d468025fca2b7b 2,249-284
+  s_3dd47ea0104342::t_26bf883580620c 285
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.vue
+  s_3dd47ea0104342::t_7150c70be0c4c6 55-56,58,203-206,248-249
+  s_3dd47ea0104342::t_5089862c681f51 73-82
+  s_3dd47ea0104342::t_64f45bf01c0e9a 250
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCards.vue
+  s_3dd47ea0104342::t_7150c70be0c4c6 43-44,51,139
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_305c524c91bf2d 4969
+  s_3dd47ea0104342::t_7150c70be0c4c6 11200-11201
+  s_3dd47ea0104342::t_7d6d0eb18b33ed 11479
+packages/modules/promotions/frontend/src/composables/usePromotionDependencyLabels.ts
+  s_3dd47ea0104342::t_ee8954dacbdff0 12
+  s_3dd47ea0104342::t_b4e12d0889a4c4 37,125-128
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyResultDialog.vue
+  s_3dd47ea0104342::t_317e3f853fd603 178,180-201
+packages/modules/promotions/frontend/src/promotionApplyOutcome.ts
+  s_3dd47ea0104342::t_ac452284b54d56 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e331a27172835a72cd18675c51993aa85f97b15f",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
