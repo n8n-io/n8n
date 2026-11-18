@@ -182,7 +182,12 @@ function onDiscard() {
 					</template>
 					<template #action>
 						<div :class="$style.accentActions">
-							<N8nText v-if="row.linked" size="small" color="text-light">
+							<N8nText
+								v-if="row.linked"
+								:class="$style.automatic"
+								size="small"
+								color="text-light"
+							>
 								{{ i18n.baseText('settings.branding.accentColor.automatic') }}
 							</N8nText>
 							<N8nButton
@@ -254,7 +259,13 @@ function onDiscard() {
 .accentActions {
 	display: flex;
 	align-items: center;
+	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+}
+
+.automatic {
+	margin-inline-end: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .warning {
@@ -267,18 +278,21 @@ function onDiscard() {
 }
 
 .previews {
-	display: flex;
-	gap: var(--spacing--2xs);
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: var(--spacing--sm);
+	padding-block: var(--spacing--md);
 }
 
 .preview {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border);
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--md);
+	border: var(--border-width) var(--border-style) var(--border-color--subtle);
 	border-radius: var(--radius--lg);
-	background: var(--background--surface);
+	background: var(--background--subtle);
 }
 </style>
