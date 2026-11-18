@@ -250,7 +250,8 @@ export function useAppNavigation() {
 				id: SETTINGS_ITEM_ID,
 				label: i18n.baseText('mainSidebar.settings'),
 				icon: { type: 'icon', value: 'settings' },
-				to: { name: VIEWS.SETTINGS },
+				// `/settings` itself opens the usage page when the user can see it.
+				to: { name: VIEWS.PERSONAL_SETTINGS },
 				group: 'footer',
 				testId: 'app-nav-settings',
 			});
