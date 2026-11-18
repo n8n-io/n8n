@@ -102,6 +102,11 @@ export interface UseAgentChatStreamParams {
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	/** Called with each event of the chat stream, as received. */
 	onStreamEvent?: (event: AgentSseEvent) => void;
+	/**
+	 * The `references` of a sent message, from the client context that it sends.
+	 * The history gives the same references after a reload.
+	 */
+	messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
 }
 
 type ResumePayload =
@@ -2002,6 +2007,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isSubmitting.value = true;
 		const submission = ++submissionVersion;
 		const target = targetKey();
+		const references = params.messageReferences?.(clientContext);
 		const userMessage: ChatMessage = {
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -2014,6 +2020,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				sizeBytes: file.size,
 				file,
 			})),
+			...(references?.length ? { references } : {}),
 		};
 		// Nothing waits ahead of the first message of a new session, so its run starts
 		// right away. The message shows now, not when the run starts.

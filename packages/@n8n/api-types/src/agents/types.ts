@@ -593,6 +593,12 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 	/** Set on user turns that came in through a chat integration. */
 	author?: AgentMessageAuthor;
+	/**
+	 * Resources that the user sent with a user turn, for example mentioned
+	 * workflows. The system agent provider reads them from the stored model
+	 * input, and the chat host shows them. The shape belongs to that provider.
+	 */
+	references?: unknown[];
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */

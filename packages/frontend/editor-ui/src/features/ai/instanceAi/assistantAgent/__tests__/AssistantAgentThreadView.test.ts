@@ -107,6 +107,11 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage: vi.fn() }),
+}));
+
 // The test view has no layout, so the tests set the width of the thread area.
 const { threadArea } = vi.hoisted(() => ({
 	threadArea: { width: undefined as Ref<number> | undefined },
@@ -124,6 +129,8 @@ const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
 const isBusy = ref(false);
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
+// The user message whose references the stub panel renders through its slot.
+const referencedMessage = ref<ChatMessage>();
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
@@ -154,8 +161,10 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				composerAttachments,
 				messages: chatMessages,
 				isStreaming: ref(false),
+				isSubmitting: ref(false),
 				isBusy,
 				isLoadingHistory,
+				getInputElement: () => undefined,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
@@ -164,6 +173,10 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 					slots['inline-offers']?.(),
 					slots['composer-attachments']?.(),
 					slots['footer-start']?.({ disabled: composerBlocked.current }),
+					slots['composer-actions']?.(),
+					referencedMessage.value
+						? slots['user-message-references']?.({ message: referencedMessage.value })
+						: undefined,
 				]);
 			};
 		},
@@ -379,6 +392,50 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 	}),
 }));
 
+// The real picker searches the project, which its own tests cover. The stub emits the
+// selection that a test sets, and shows the props that the view passes.
+const { mentionsEnabled, mentionSelection, mentionPickerProps } = vi.hoisted(() => ({
+	mentionsEnabled: { current: true },
+	mentionSelection: { current: undefined as unknown },
+	mentionPickerProps: { current: undefined as Record<string, unknown> | undefined },
+}));
+vi.mock('@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		emits: ['select'],
+		setup(_props, { attrs, emit, expose }) {
+			expose({
+				handleExternalKeydown: () => false,
+				getOpenMetrics: () => ({}),
+				flushEmptySearch: () => {},
+			});
+			return () => {
+				mentionPickerProps.current = { ...attrs };
+				return h('button', {
+					'data-test-id': 'mention-picker-stub',
+					onClick: () => emit('select', mentionSelection.current),
+				});
+			};
+		},
+	}),
+}));
+vi.mock(
+	'@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled',
+	async () => {
+		const { computed } = await import('vue');
+		return { useIsAssistantAtMentionsEnabled: () => computed(() => mentionsEnabled.current) };
+	},
+);
+vi.mock(
+	'@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability',
+	async () => {
+		const { computed } = await import('vue');
+		return {
+			useAssistantMentionAvailability: () => ({ isAvailable: computed(() => true) }),
+		};
+	},
+);
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
@@ -459,6 +516,11 @@ describe('AssistantAgentThreadView', () => {
 		setDraft.mockReset();
 		localStorage.clear();
 		composerAttachments.value = [];
+		referencedMessage.value = undefined;
+		mentionsEnabled.current = true;
+		mentionSelection.current = undefined;
+		mentionPickerProps.current = undefined;
+		showError.mockReset();
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 		isBusy.value = false;
@@ -2072,6 +2134,204 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(composerAttachments.value).toEqual([]);
+		});
+	});
+
+	describe('mentions', () => {
+		const workflowMention = {
+			item: {
+				key: 'workflow:wf-1:wf-1',
+				kind: 'workflow',
+				source: 'workflows',
+				label: 'Uptime monitor',
+				breadcrumbs: ['Uptime monitor'],
+				workflowId: 'wf-1',
+				entityId: 'wf-1',
+				workflowName: 'Uptime monitor',
+			},
+			attachment: { type: 'workflow', id: 'wf-1', name: 'Uptime monitor' },
+			truncated: false,
+			telemetry: { mode: 'browse', resultPosition: 1, queryLength: 0 },
+		};
+		const agentMention = {
+			item: {
+				key: 'agent:agent-1',
+				kind: 'agent',
+				source: 'agents',
+				label: 'Support agent',
+				breadcrumbs: ['Support agent'],
+				entityId: 'agent-1',
+				projectId: 'project-1',
+			},
+			attachment: { type: 'agent', id: 'agent-1', name: 'Support agent', projectId: 'project-1' },
+			truncated: false,
+		};
+		const nodeMention = {
+			item: {
+				key: 'node:wf-1:id-Slack',
+				kind: 'node',
+				source: 'artifacts',
+				label: 'Slack',
+				breadcrumbs: ['Uptime monitor', 'Slack'],
+				workflowId: 'wf-1',
+				entityId: 'id-Slack',
+				workflowName: 'Uptime monitor',
+			},
+			attachment: {
+				type: 'nodes',
+				workflowId: 'wf-1',
+				workflowName: 'Uptime monitor',
+				sets: [{ nodes: [{ id: 'id-Slack', name: 'Slack' }] }],
+			},
+			truncated: false,
+		};
+
+		async function pick(selection: unknown, getByTestId: (id: string) => HTMLElement) {
+			mentionSelection.current = selection;
+			await userEvent.click(getByTestId('mention-picker-stub'));
+			await flushPromises();
+		}
+
+		it('hides the picker when mentions are off', async () => {
+			mentionsEnabled.current = false;
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('mention-picker-stub')).not.toBeInTheDocument();
+		});
+
+		it('stages a mentioned workflow or agent as a chip that sends it in the client context', async () => {
+			const { getByTestId, getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(workflowMention, getByTestId);
+			await pick(agentMention, getByTestId);
+
+			expect(stagedNodes()).toEqual([
+				{ id: 'mention:workflow:wf-1', attachments: [workflowMention.attachment] },
+				{ id: 'mention:agent:agent-1', attachments: [agentMention.attachment] },
+			]);
+			expect(getAllByTestId('agent-chat-composer-chip').map((chip) => chip.textContent)).toEqual([
+				'Uptime monitor',
+				'Support agent',
+			]);
+			expect(mentionPickerProps.current?.['excluded-keys']).toEqual([
+				'workflow:wf-1:wf-1',
+				'agent:agent-1',
+			]);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
+				expect.objectContaining({ thread_id: 'thread-1', kind: 'workflow', source: 'workflows' }),
+			);
+		});
+
+		it('adds a mentioned node to the nodes chip of its workflow', async () => {
+			// The canvas staged a node of the same workflow.
+			composerAttachments.value = [
+				{
+					chip: { id: 'nodes:wf-1', label: '1 node', icon: 'layers' },
+					clientContextPatch: {
+						attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
+					},
+				},
+			];
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(nodeMention, getByTestId);
+
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							sets: [nodeSet('Webhook'), nodeSet('Slack')],
+						},
+					],
+				},
+			]);
+		});
+
+		it('refuses a mention past the attachment limit of a message', async () => {
+			composerAttachments.value = Array.from({ length: 10 }, (_, index) => ({
+				chip: { id: `mention:workflow:wf-${index}`, label: `Workflow ${index}` },
+				clientContextPatch: { attachments: [{ type: 'workflow', id: `wf-${index}` }] },
+			}));
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(agentMention, getByTestId);
+
+			expect(composerAttachments.value).toHaveLength(10);
+			expect(showError).toHaveBeenCalled();
+		});
+
+		it('reports the staged mentions with the sent message, and opens the mentioned workflow', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			await pick(workflowMention, getByTestId);
+			await pick(agentMention, getByTestId);
+			const clientContext = { attachments: [workflowMention.attachment, agentMention.attachment] };
+
+			const onMessageSending = panelProps.current.onMessageSending as (payload: {
+				text: string;
+				files: File[];
+				clientContext: Record<string, unknown>;
+				isFirstMessage: boolean;
+			}) => void;
+			onMessageSending({ text: 'Compare them', files: [], clientContext, isFirstMessage: false });
+			(panelProps.current.onMessageAccepted as AcceptMessage)({ clientContext });
+			await flushPromises();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					mention_counts: { total: 2, workflow: 1, node: 0, group: 0, agent: 1 },
+				}),
+			);
+			expect(getByTestId('workflow-preview-stub')).toBeInTheDocument();
+			expect(previewProps.current?.['workflow-id']).toBe('wf-1');
+		});
+
+		it('gives a sent message the resources of its client context, and shows them', async () => {
+			const { getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			const messageReferences = panelProps.current['message-references'] as (
+				context: Record<string, unknown> | undefined,
+			) => unknown[];
+			expect(
+				messageReferences({
+					timeZone: 'Europe/Helsinki',
+					attachments: [workflowMention.attachment, { type: 'unknown' }],
+				}),
+			).toEqual([workflowMention.attachment]);
+
+			referencedMessage.value = {
+				id: 'u-1',
+				role: 'user',
+				content: 'Compare them',
+				references: [workflowMention.attachment, agentMention.attachment],
+			};
+			await flushPromises();
+
+			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
+				['Uptime monitor', 'Support agent'],
+			);
 		});
 	});
 });

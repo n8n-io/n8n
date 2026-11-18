@@ -653,6 +653,7 @@ describe('InstanceAiInput — mention attachments', () => {
 			workflow: 1,
 			node: 0,
 			group: 0,
+			agent: 0,
 		});
 		expect(firstSubmit[6]).toEqual(['w1']);
 
