@@ -29,6 +29,7 @@ const THEME_FAMILY_LABELS: Record<ThemeFamily, BaseTextKey> = {
 	solarized: 'settings.personal.theme.solarized',
 	github: 'settings.personal.theme.github',
 	'rose-pine': 'settings.personal.theme.rosePine',
+	'n8n-extreme': 'settings.personal.theme.n8nExtreme',
 	custom: 'settings.personal.theme.custom',
 };
 
@@ -45,6 +46,7 @@ const THEME_FAMILY_ORDER: ThemeFamily[] = [
 	'solarized',
 	'github',
 	'rose-pine',
+	'n8n-extreme',
 	'custom',
 ];
 

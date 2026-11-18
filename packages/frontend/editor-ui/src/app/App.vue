@@ -25,6 +25,7 @@ import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { applyAccentColor } from '@/app/utils/accentColor';
+import { useJanSparkles } from '@/app/composables/useJanSparkles';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -132,6 +133,8 @@ watch(
 	([light, dark]) => applyAccentColor(light, dark),
 	{ immediate: true },
 );
+
+useJanSparkles();
 
 const layoutRef = ref<Element | null>(null);
 

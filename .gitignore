@@ -103,3 +103,6 @@ packages/@n8n/db/src/migrations/sqlite/index.ts
 packages/@n8n/db/src/migrations/postgresdb/index.ts
 # Files that local dev tools generate, such as `pnpm telemetry:sink`
 .output/
+# Jan theme photos stay local. `useJanSparkles` skips the sparkles and the cursor without them.
+/jan.png
+packages/frontend/editor-ui/src/app/assets/jan*.png

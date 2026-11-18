@@ -989,6 +989,7 @@ export type ThemePalette =
 	| 'github-dark'
 	| 'rose-pine-dawn'
 	| 'rose-pine-moon'
+	| 'n8n-extreme'
 	| 'custom';
 /** A group of palettes. A family has a light and a dark variant, or only one of them. */
 export type ThemeFamily =
@@ -1004,6 +1005,7 @@ export type ThemeFamily =
 	| 'solarized'
 	| 'github'
 	| 'rose-pine'
+	| 'n8n-extreme'
 	| 'custom';
 export interface ThemeSelection {
 	mode: ThemeMode;

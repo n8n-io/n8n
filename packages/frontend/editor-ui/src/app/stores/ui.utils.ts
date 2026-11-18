@@ -43,6 +43,8 @@ export const THEME_FAMILIES: Record<
 	github: { light: 'github-light', dark: 'github-dark' },
 	// Dawn is the light variant. Moon is the dark variant.
 	'rose-pine': { light: 'rose-pine-dawn', dark: 'rose-pine-moon' },
+	// Light only: the click sparkles need a light background.
+	'n8n-extreme': { light: 'n8n-extreme' },
 	// The user's own theme has only the variant of its mode. Its CSS is generated at runtime.
 	custom: {
 		get light() {

@@ -337,6 +337,8 @@ export function useGenericCommands(): CommandGroup {
 				'rose pine',
 				'dawn',
 				'moon',
+				'n8n extreme',
+				'extreme',
 				'colors',
 				'appearance',
 			],

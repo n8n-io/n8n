@@ -1278,3 +1278,59 @@ body[data-palette='rose-pine-dawn'] {
 body[data-palette='rose-pine-moon'] {
 	@include dark-preset($rose-pine-moon);
 }
+
+// n8n Extreme: everything in n8n's original pink (#ea4b71). Success, warning and danger keep their
+// own hues, so status stays clear. `useJanSparkles` adds the click effects and the cursor.
+$n8n-extreme-pink: #ea4b71;
+$n8n-extreme-plum: #2b0a14;
+
+body[data-palette='n8n-extreme'] {
+	$pink: $n8n-extreme-pink;
+	$plum: $n8n-extreme-plum;
+
+	// Neutral: pink tints for the surfaces, then pink shades down to plum for the text.
+	--color--neutral-white: #{color.mix($pink, #fff, 9%)};
+	--color--neutral-50: #{color.mix($pink, #fff, 12%)};
+	--color--neutral-100: #{color.mix($pink, #fff, 18%)};
+	--color--neutral-125: #{color.mix($pink, #fff, 22%)};
+	--color--neutral-150: #{color.mix($pink, #fff, 28%)};
+	--color--neutral-200: #{color.mix($pink, #fff, 36%)};
+	--color--neutral-250: #{color.mix($pink, #fff, 44%)};
+	--color--neutral-300: #{color.mix($pink, #fff, 52%)};
+	--color--neutral-400: #{color.mix($pink, #fff, 68%)};
+	--color--neutral-500: #{color.mix($pink, $plum, 85%)};
+	--color--neutral-600: #{color.mix($pink, $plum, 65%)};
+	--color--neutral-700: #{color.mix($pink, $plum, 45%)};
+	--color--neutral-750: #{color.mix($pink, $plum, 35%)};
+	--color--neutral-800: #{color.mix($pink, $plum, 28%)};
+	--color--neutral-850: #{color.mix($pink, $plum, 18%)};
+	--color--neutral-900: #{color.mix($pink, $plum, 10%)};
+	--color--neutral-950: #{$plum};
+
+	@include ramp('pink', $pink, #fff, $plum);
+	@include ramp('orange', $pink, #fff, $plum);
+	@include ramp('purple', $pink, #fff, $plum);
+	@include ramp('blue', $pink, #fff, $plum);
+	@include ramp('mint', $pink, #fff, $plum);
+
+	// Borders and hover fills are translucent black. Plum keeps them pink.
+	@include alpha-ramp(
+		'black',
+		$plum,
+		(
+			50: 0.05,
+			100: 0.1,
+			150: 0.15,
+			200: 0.2,
+			250: 0.25,
+			300: 0.3,
+			400: 0.4,
+			500: 0.5,
+			600: 0.6,
+			700: 0.7,
+			800: 0.8,
+			900: 0.9,
+			950: 0.95,
+		)
+	);
+}

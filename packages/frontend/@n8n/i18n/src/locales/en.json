@@ -7649,6 +7649,7 @@
 	"settings.personal.theme.solarized": "Solarized",
 	"settings.personal.theme.github": "GitHub",
 	"settings.personal.theme.rosePine": "Rosé Pine",
+	"settings.personal.theme.n8nExtreme": "n8n Extreme",
 	"settings.personal.theme.custom": "Custom",
 	"settings.personal.customTheme": "Custom theme",
 	"settings.personal.customTheme.description": "Pick a few colors. n8n builds the rest of the palette from them. The page previews your changes.",
