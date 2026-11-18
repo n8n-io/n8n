@@ -108,6 +108,12 @@ export const workflowSettingsFieldDocs = {
 			'Defaults to false. The workflow must be active and must hold at least one active ' +
 			'Webhook node.',
 	},
+	autoRetry: {
+		example: { enabled: true },
+		description:
+			'Controls whether a failed production execution retries on its own when the error is ' +
+			'temporary, such as a rate limit or a service outage. Defaults to off.',
+	},
 	credentialResolverId: {
 		description:
 			'ID of the credential resolver that resolves credentials for this workflow. This is a ' +
@@ -283,6 +289,12 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 			...workflowSettingsFieldDocs.redactCallerExecutions,
 		},
 		availableInMCP: { type: 'boolean', ...workflowSettingsFieldDocs.availableInMCP },
+		autoRetry: {
+			type: 'object',
+			properties: { enabled: { type: 'boolean' } },
+			required: ['enabled'],
+			...workflowSettingsFieldDocs.autoRetry,
+		},
 		customTelemetryTags: {
 			type: 'array',
 			items: {

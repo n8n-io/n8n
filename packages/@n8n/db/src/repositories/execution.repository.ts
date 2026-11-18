@@ -1173,6 +1173,35 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return where;
 	}
 
+	/** Where an execution sits in its retry chain. */
+	async findRetryLink(executionId: string): Promise<{
+		workflowId: string;
+		workflowVersionId: string | null;
+		mode: WorkflowExecuteMode;
+		retryOf: string | null;
+		retrySuccessId: string | null;
+	} | null> {
+		const execution = await this.findOne({
+			select: ['id', 'workflowId', 'workflowVersionId', 'mode', 'retryOf', 'retrySuccessId'],
+			where: { id: executionId },
+		});
+
+		return execution
+			? {
+					workflowId: execution.workflowId,
+					workflowVersionId: execution.workflowVersionId,
+					mode: execution.mode,
+					retryOf: execution.retryOf ?? null,
+					retrySuccessId: execution.retrySuccessId ?? null,
+				}
+			: null;
+	}
+
+	/** How many runs retried the execution. `retryOf` has no index, so `workflowId` bounds the read. */
+	async countRetries(workflowId: string, executionId: string): Promise<number> {
+		return await this.countBy({ workflowId, retryOf: executionId });
+	}
+
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
 		return await this.findSingleExecution(executionId, {
 			where: {

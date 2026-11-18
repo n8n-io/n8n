@@ -250,6 +250,17 @@ requestBody:
                 type: boolean
                 description: Controls whether this workflow is reachable over the Model Context Protocol (MCP). Defaults to false. The workflow must be active and must hold at least one active Webhook node.
                 example: false
+              autoRetry:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                required:
+                  - enabled
+                additionalProperties: false
+                description: Controls whether a failed production execution retries on its own when the error is temporary, such as a rate limit or a service outage. Defaults to off.
+                example:
+                  enabled: true
               customTelemetryTags:
                 type: array
                 items:
@@ -839,6 +850,16 @@ responses:
                   type: boolean
                   example: false
                   description: Controls whether this workflow is reachable over the Model Context Protocol (MCP). Defaults to false. The workflow must be active and must hold at least one active Webhook node.
+                autoRetry:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                  required:
+                    - enabled
+                  example:
+                    enabled: true
+                  description: Controls whether a failed production execution retries on its own when the error is temporary, such as a rate limit or a service outage. Defaults to off.
                 customTelemetryTags:
                   type: array
                   items:

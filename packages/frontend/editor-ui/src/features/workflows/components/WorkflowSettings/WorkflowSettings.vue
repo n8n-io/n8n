@@ -199,6 +199,7 @@ const helpTexts = computed(() => ({
 	saveManualExecutions: i18n.baseText('workflowSettings.helpTexts.saveManualExecutions'),
 	executionTimeoutToggle: i18n.baseText('workflowSettings.helpTexts.executionTimeoutToggle'),
 	executionTimeout: i18n.baseText('workflowSettings.helpTexts.executionTimeout'),
+	autoRetry: i18n.baseText('workflowSettings.helpTexts.autoRetry'),
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 	redactProductionData: i18n.baseText('workflowSettings.helpTexts.redactProductionData'),
@@ -851,6 +852,12 @@ const saveSettings = async () => {
 
 const toggleTimeout = () => {
 	workflowSettings.value.executionTimeout = workflowSettings.value.executionTimeout === -1 ? 0 : -1;
+};
+
+const toggleAutoRetry = () => {
+	workflowSettings.value.autoRetry = {
+		enabled: workflowSettings.value.autoRetry?.enabled !== true,
+	};
 };
 
 const toggleAvailableInMCP = () => {
@@ -1715,6 +1722,30 @@ onBeforeUnmount(() => {
 						</ElCol>
 					</ElRow>
 				</template>
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.autoRetry') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="helpTexts.autoRetry"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14">
+						<div>
+							<N8nSwitch
+								:class="$style['setting-switch']"
+								size="large"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:aria-label="i18n.baseText('workflowSettings.autoRetry')"
+								:model-value="workflowSettings.autoRetry?.enabled === true"
+								data-test-id="workflow-settings-auto-retry"
+								@update:model-value="toggleAutoRetry"
+							/>
+						</div>
+					</ElCol>
+				</ElRow>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}

@@ -15,6 +15,7 @@ type ScopeForEverySetting = Record<keyof Required<IWorkflowSettings>, WorkflowSe
 // Lists every setting, so a new setting without a scope does not compile.
 const WORKFLOW_SETTINGS_SCOPE = {
 	availableInMCP: 'live',
+	autoRetry: 'live',
 	binaryMode: 'live',
 	callerIds: 'live',
 	callerPolicy: 'live',

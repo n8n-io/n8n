@@ -585,6 +585,30 @@ describe('WorkflowSettingsVue', () => {
 		},
 	);
 
+	it('saves autoRetry when the switch is turned on', async () => {
+		const { getByTestId, getByRole } = createComponent({ pinia });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('workflow-settings-auto-retry'));
+		await userEvent.click(getByRole('button', { name: 'Save' }));
+
+		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				settings: expect.objectContaining({ autoRetry: { enabled: true } }),
+			}),
+		);
+	});
+
+	it('shows the auto-retry switch in queue mode', async () => {
+		settingsStore.isQueueModeEnabled = true;
+
+		const { queryByTestId } = createComponent({ pinia });
+		await flushPromises();
+
+		expect(queryByTestId('workflow-settings-auto-retry')).toBeInTheDocument();
+	});
+
 	it('should save time saved per execution correctly', async () => {
 		workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
 		const { getByTestId, getByRole } = createComponent({ pinia });

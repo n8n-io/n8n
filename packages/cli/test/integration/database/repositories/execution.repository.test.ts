@@ -190,6 +190,70 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('retry chain', () => {
+		const insert = async (
+			workflow: WorkflowEntity,
+			mode: 'trigger' | 'retry',
+			retryOf?: string,
+		) => {
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId: workflow.id,
+				workflowVersionId: workflow.versionId,
+				mode,
+				status: 'error',
+				finished: false,
+				createdAt: new Date(),
+				retryOf,
+			});
+			return String(identifiers[0].id);
+		};
+
+		it('findRetryLink returns the retry link of an execution', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+			const failedId = await insert(workflow, 'trigger');
+			const retryId = await insert(workflow, 'retry', failedId);
+			await executionRepo.update(failedId, { retrySuccessId: retryId });
+
+			expect({
+				failed: await executionRepo.findRetryLink(failedId),
+				retry: await executionRepo.findRetryLink(retryId),
+				missing: await executionRepo.findRetryLink('999999'),
+			}).toEqual({
+				failed: {
+					workflowId: workflow.id,
+					workflowVersionId: workflow.versionId,
+					mode: 'trigger',
+					retryOf: null,
+					retrySuccessId: retryId,
+				},
+				retry: {
+					workflowId: workflow.id,
+					workflowVersionId: workflow.versionId,
+					mode: 'retry',
+					retryOf: failedId,
+					retrySuccessId: null,
+				},
+				missing: null,
+			});
+		});
+
+		it('countRetries counts the runs of the same workflow that retried an execution', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow();
+			const otherWorkflow = await createWorkflow();
+			const failedId = await insert(workflow, 'trigger');
+			const firstRetryId = await insert(workflow, 'retry', failedId);
+			await insert(workflow, 'retry', failedId);
+
+			expect({
+				failed: await executionRepo.countRetries(workflow.id, failedId),
+				retry: await executionRepo.countRetries(workflow.id, firstRetryId),
+				otherWorkflow: await executionRepo.countRetries(otherWorkflow.id, failedId),
+			}).toEqual({ failed: 2, retry: 0, otherWorkflow: 0 });
+		});
+	});
+
 	describe('markAsCrashed', () => {
 		const createExecution = async (
 			status: ExecutionStatus,

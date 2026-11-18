@@ -151,6 +151,11 @@ function onRetryMenuItemSelect(action: string): void {
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
 				</div>
+				<div v-if="execution.retrySuccessId" data-test-id="execution-auto-retried">
+					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
+						{{ locale.baseText('executionDetails.autoRetried') }}
+					</N8nText>
+				</div>
 				<div v-if="isAnnotationEnabled" :class="$style.annotation">
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
 						<N8nIcon v-if="execution.annotation.vote == 'up'" :class="$style.up" icon="thumbs-up" />

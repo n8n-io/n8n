@@ -120,6 +120,15 @@ describe('CreateWorkflowPublicDto', () => {
 		}
 	});
 
+	test('accepts settings.autoRetry', () => {
+		const settings = { ...validPayload.settings, autoRetry: { enabled: true } };
+
+		expect(CreateWorkflowPublicDto.safeParse({ ...validPayload, settings })).toMatchObject({
+			success: true,
+			data: { settings },
+		});
+	});
+
 	test.each([['v2'], ['v1'], [null], ['unknown']])(
 		'accepts settings.engineType %s but ignores it',
 		(engineType) => {

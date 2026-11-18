@@ -109,6 +109,11 @@ const workflowSettingsWritePublicSchema = z
 			.optional()
 			.openapi(workflowSettingsFieldDocs.redactCallerExecutions),
 		availableInMCP: z.boolean().optional().openapi(workflowSettingsFieldDocs.availableInMCP),
+		autoRetry: z
+			.object({ enabled: z.boolean() })
+			.strict()
+			.optional()
+			.openapi(workflowSettingsFieldDocs.autoRetry),
 		customTelemetryTags: z.array(customTelemetryTagPublicSchema).optional(),
 		credentialResolverId: z
 			.string()

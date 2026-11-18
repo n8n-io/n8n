@@ -319,4 +319,27 @@ describe('scheduled job lifecycle across publish, unpublish and republish', () =
 		expect(await jobRepo.findOneBy({ id: ghost.id })).not.toBeNull();
 		expect(await owner.findExisting([workflow.id])).toEqual(new Set([workflow.id]));
 	});
+
+	it('unpublishing deletes an auto-retry job of the workflow', async () => {
+		const workflow = await createWorkflow([scheduleNode('a')]);
+		await publish(workflow);
+		const fireAt = new Date(Date.now() + 60_000);
+		const retryJob = await jobRepo.save(
+			jobRepo.create({
+				name: 'attempt',
+				...workflowOwned(workflow.id, 'auto-retry:1'),
+				taskType: 'execution-auto-retry',
+				payload: { executionId: '1' },
+				kind: 'one_off',
+				fireAt,
+				enabled: true,
+				nextRunAt: fireAt,
+				maxAttempts: 3,
+			}),
+		);
+
+		await unpublish(workflow, workflow.versionId);
+
+		expect(await jobRepo.findOneBy({ id: retryJob.id })).toBeNull();
+	});
 });

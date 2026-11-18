@@ -160,6 +160,29 @@ describe('WorkflowExecutionsCard', () => {
 		},
 	);
 
+	test.each([
+		['3', true],
+		[null, false],
+	])(
+		'marks a failed execution as automatically retried when retrySuccessId is %s: %s',
+		(retrySuccessId, isMarked) => {
+			const { queryByText } = renderComponent({
+				props: {
+					execution: {
+						id: '2',
+						mode: 'webhook',
+						status: 'error',
+						retryOf: null,
+						retrySuccessId,
+					} as ExecutionSummary,
+					workflowPermissions: {},
+				},
+			});
+
+			expect(queryByText('Automatically retried') !== null).toBe(isMarked);
+		},
+	);
+
 	test('aligns the retry menu and explains both retry options', async () => {
 		const { getByTestId, findByRole, getByText, emitted } = renderComponent({
 			props: {

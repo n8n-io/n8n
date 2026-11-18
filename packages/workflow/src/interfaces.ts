@@ -4252,6 +4252,7 @@ export interface IWorkflowSettings {
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
+	autoRetry?: { enabled: boolean };
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	/**
