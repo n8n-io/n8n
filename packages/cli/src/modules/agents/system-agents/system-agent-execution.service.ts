@@ -21,6 +21,7 @@ import { AgentExecutionService, type StartExecutionParams } from '../agent-execu
 import { AgentFormattedTurnError } from '../agent-formatted-turn.error';
 import type { ClaimedAgentMessage } from '../agent-message-queue.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
+import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import { chatErrorCode, emitChunkEvents } from '../agent-sse-stream';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -144,6 +145,7 @@ export class SystemAgentExecutionService {
 		private readonly conversationState: AgentConversationStateService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly threadGrants: AgentThreadGrantRepository,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	resourceIdFor(user: Pick<User, 'id'>): string {
@@ -691,6 +693,7 @@ export class SystemAgentExecutionService {
 						...this.turnStateOf(thread),
 						emitHostEvent: hostEvents.emit,
 						readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+						...(await this.sandboxFilesOf()),
 						executionId: admission.executionId,
 						message: payload.message,
 						attachments,
@@ -787,6 +790,7 @@ export class SystemAgentExecutionService {
 					...this.turnStateOf(thread),
 					emitHostEvent: hostEvents.emit,
 					readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
+					...(await this.sandboxFilesOf()),
 					runId,
 					toolCallId: pending.toolCallId,
 					checkpointHostMetadata,
@@ -953,6 +957,12 @@ export class SystemAgentExecutionService {
 				revoke: async (key) => await this.threadGrants.revoke(thread.id, key),
 			},
 		};
+	}
+
+	/** The sandbox files of project agents, with the same flag and caps. Set only when the flag is on. */
+	private async sandboxFilesOf(): Promise<Pick<SystemAgentStartTurn, 'sandboxFiles'>> {
+		if (!(await this.sandboxFiles.isEnabled())) return {};
+		return { sandboxFiles: { maxImportBytes: this.sandboxFiles.maxImportBytes } };
 	}
 
 	/** Read an attachment of the turn, from the system chat of the thread's owner. */

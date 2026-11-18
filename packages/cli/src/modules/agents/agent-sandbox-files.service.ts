@@ -135,6 +135,11 @@ export class AgentSandboxFilesService {
 		return (await this.postHogClient.getFeatureFlagForInstance(AGENT_SANDBOX_FILES_FLAG)) === true;
 	}
 
+	/** The largest import into a workspace, in bytes. */
+	get maxImportBytes(): number {
+		return this.agentsConfig.maxImportMb * 1024 * 1024;
+	}
+
 	/**
 	 * Copy conversation files into `inputs/` of the workspace. Each key is a
 	 * path relative to `inputs/`, each value a fileId that the thread can read.

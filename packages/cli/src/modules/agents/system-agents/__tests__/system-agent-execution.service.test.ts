@@ -16,6 +16,7 @@ import type { AgentChatExecutionService } from '../../agent-chat-execution.servi
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import { AgentFormattedTurnError } from '../../agent-formatted-turn.error';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 import { toChatErrorEvent } from '../../agent-sse-stream';
 import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import type {
@@ -116,6 +117,8 @@ function setup(
 	const agentCheckpointStore = mock<ReturnType<N8NCheckpointStorage['getStorage']>>();
 	checkpointStorage.getStorage.mockReturnValue(agentCheckpointStore);
 	const threadGrants = mock<AgentThreadGrantRepository>();
+	const sandboxFiles = mock<AgentSandboxFilesService>({ maxImportBytes: 200 * 1024 * 1024 });
+	sandboxFiles.isEnabled.mockResolvedValue(false);
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -171,6 +174,7 @@ function setup(
 		new AgentConversationStateService(executionRepository, checkpointStorage),
 		n8nMemory,
 		threadGrants,
+		sandboxFiles,
 	);
 
 	return {
@@ -195,6 +199,7 @@ function setup(
 		agentMemory,
 		agentCheckpointStore,
 		threadGrants,
+		sandboxFiles,
 	};
 }
 
@@ -710,6 +715,20 @@ describe('SystemAgentExecutionService', () => {
 			expect(threadGrants.findKeys).toHaveBeenCalledWith('thread-1');
 			expect(threadGrants.grant).toHaveBeenCalledWith('thread-1', 'tool:write');
 			expect(threadGrants.revoke).toHaveBeenCalledWith('thread-1', 'tool:run');
+		});
+
+		it('gives the turn the sandbox files of project agents only when their flag is on', async () => {
+			const off = setup([textChunk]);
+			await off.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			expect(off.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toBeUndefined();
+
+			const on = setup([textChunk]);
+			on.sandboxFiles.isEnabled.mockResolvedValue(true);
+			await on.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			// The import cap of project agents, N8N_AGENTS_FILES_MAX_IMPORT_MB.
+			expect(on.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toEqual({
+				maxImportBytes: 200 * 1024 * 1024,
+			});
 		});
 
 		describe('attachment reads', () => {

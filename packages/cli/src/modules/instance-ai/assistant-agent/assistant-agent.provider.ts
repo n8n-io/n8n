@@ -12,7 +12,7 @@ import {
 	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig, GlobalConfig, type AiConfig } from '@n8n/config';
+import { GlobalConfig, type AiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -31,7 +31,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
-import { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
 import type {
 	SystemAgentAfterThreadDeletion,
 	SystemAgentProvider,
@@ -177,8 +176,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: TelemetryProxy,
-		private readonly sandboxFiles: AgentSandboxFilesService,
-		private readonly agentsConfig: AgentsConfig,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -347,10 +344,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		environment.context.storedFiles = {
 			read: async (fileId) => await turn.readFile(fileId),
 		};
-		// The same flag and import cap as the sandbox files of project agents.
-		if (await this.sandboxFiles.isEnabled()) {
+		// The turn has the sandbox files of project agents only when their flag is on.
+		if (turn.sandboxFiles) {
 			environment.context.sandboxFiles = {
-				maxImportBytes: this.agentsConfig.maxImportMb * 1024 * 1024,
+				maxImportBytes: turn.sandboxFiles.maxImportBytes,
 			};
 		}
 		const contextTurn = await this.createContextTurnTelemetry(turn, runId);

@@ -77,6 +77,17 @@ interface SystemAgentTurnBase<TLease> {
 	 * Gives `undefined` for a file of another thread.
 	 */
 	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
+	/**
+	 * The sandbox files of project agents, for this turn. It is set only when
+	 * the sandbox files flag is on.
+	 */
+	sandboxFiles?: SystemAgentSandboxFiles;
+}
+
+/** The sandbox files feature of project agents, as a system-agent turn uses it. */
+export interface SystemAgentSandboxFiles {
+	/** The largest import into the sandbox, in bytes (`N8N_AGENTS_FILES_MAX_IMPORT_MB`). */
+	maxImportBytes: number;
 }
 
 /** A stored file of a system-agent thread. */
