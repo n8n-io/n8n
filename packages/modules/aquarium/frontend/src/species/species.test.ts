@@ -17,15 +17,18 @@ describe('built-in species', () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	it('never picks the turtle on its own: only a trait rule sets it', () => {
-		for (const kind of ['workflow', 'agent'] as const) {
-			for (const tier of SIZE_TIERS) {
-				for (const seed of ['a', 'b', 'c', 'd']) {
-					expect(pickSpecies(kind, tier, seed)?.id).not.toBe('turtle');
+	it.each(['turtle', 'penguin'])(
+		'never picks the %s on its own: only a trait rule sets it',
+		(id) => {
+			for (const kind of ['workflow', 'agent'] as const) {
+				for (const tier of SIZE_TIERS) {
+					for (const seed of ['a', 'b', 'c', 'd']) {
+						expect(pickSpecies(kind, tier, seed)?.id).not.toBe(id);
+					}
 				}
 			}
-		}
-	});
+		},
+	);
 
 	it.each<EntityKind>(['workflow', 'agent'])('has a species for every %s size tier', (kind) => {
 		for (const tier of SIZE_TIERS) {

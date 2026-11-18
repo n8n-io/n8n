@@ -54,6 +54,11 @@ describe('swimSpeedFor', () => {
 	it('increases with the execution count', () => {
 		expect(swimSpeedFor(100)).toBeGreaterThan(swimSpeedFor(10));
 	});
+
+	it('gives any run a clear lift over no runs', () => {
+		expect(swimSpeedFor(1)).toBeGreaterThan(SWIM_SPEED.ranMin);
+		expect(SWIM_SPEED.ranMin).toBeGreaterThan(SWIM_SPEED.min);
+	});
 });
 
 describe('failureRateOf', () => {

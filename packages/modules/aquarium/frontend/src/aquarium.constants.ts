@@ -61,8 +61,11 @@ export const PROP_LAYOUT = {
 
 /** Resting speed, from the execution count of the period. Live activity adds `LIVE_SPEED`. */
 export const SWIM_SPEED = {
+	/** Speed of a creature with no runs, for example an agent. */
 	min: 2,
-	max: 14,
+	/** Lowest speed of a creature with one or more runs, so any run shows. */
+	ranMin: 5,
+	max: 17,
 	/** Execution count at which a creature reaches `max`. */
 	saturation: 10_000,
 } as const;
@@ -140,6 +143,19 @@ export const DATASET_MAX_AGENTS = 500;
 
 /** Window of the execution counts when a data set does not say. Insights use a week. */
 export const DATASET_DEFAULT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+
+/** Share of the colour that a still creature loses, from 0 (none) to 1 (grey). */
+export const STILL_DESATURATION = 0.55;
+
+/**
+ * A simple workflow (`sizeTiers`) is a penguin when it has at least `minExecutions` runs and is
+ * among the busiest share of all workflows. The share keeps it rare in a long run window.
+ */
+export const BUSY_WORKFLOW = {
+	minExecutions: 100,
+	busiestShare: 0.02,
+	sizeTiers: ['tiny', 'small'],
+} as const;
 
 /** A workflow is old when it is at least this old and among the oldest share of all workflows. */
 export const OLD_WORKFLOW = {

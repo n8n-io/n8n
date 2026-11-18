@@ -21,8 +21,9 @@ export function sizeTierFor(score: number): SizeTier {
 
 /** Log scale, so 10 and 10,000 executions both look different from their neighbours. */
 export function swimSpeedFor(executionCount: number): number {
-	const ratio = Math.log10(1 + Math.max(0, executionCount)) / Math.log10(1 + SWIM_SPEED.saturation);
-	return SWIM_SPEED.min + (SWIM_SPEED.max - SWIM_SPEED.min) * clamp01(ratio);
+	if (executionCount <= 0) return SWIM_SPEED.min;
+	const ratio = Math.log10(1 + executionCount) / Math.log10(1 + SWIM_SPEED.saturation);
+	return SWIM_SPEED.ranMin + (SWIM_SPEED.max - SWIM_SPEED.ranMin) * clamp01(ratio);
 }
 
 export function failureRateOf(metrics: EntityMetrics): number {

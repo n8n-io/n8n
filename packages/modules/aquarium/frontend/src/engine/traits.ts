@@ -1,5 +1,6 @@
 import {
 	BUBBLES_MIN_EXECUTIONS,
+	BUSY_WORKFLOW,
 	SICK_FAILURE_RATE,
 	SICK_GLITCH_EVERY_SECONDS,
 	SICK_SPEED_FACTOR,
@@ -8,6 +9,7 @@ import {
 	TANK_HEALTH,
 } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
+import { penguin } from '../species/creatures/penguin';
 import { turtle } from '../species/creatures/turtle';
 import { pickSpecies } from '../species/species.registry';
 import { complexityScore, failureRateOf, sizeTierFor, swimSpeedFor } from './scaling';
@@ -29,9 +31,14 @@ export type TraitRule = (
 export interface TraitContext {
 	/** Keys of workflows that are old compared with the rest. See `oldWorkflowKeys()`. */
 	oldWorkflowKeys: ReadonlySet<string>;
+	/** Keys of workflows that run more than the rest. See `busyWorkflowKeys()`. */
+	busyWorkflowKeys: ReadonlySet<string>;
 }
 
-export const EMPTY_TRAIT_CONTEXT: TraitContext = { oldWorkflowKeys: new Set() };
+export const EMPTY_TRAIT_CONTEXT: TraitContext = {
+	oldWorkflowKeys: new Set(),
+	busyWorkflowKeys: new Set(),
+};
 
 export const sizeRule: TraitRule = (entity, traits) => {
 	const sizeTier = sizeTierFor(complexityScore(entity.metrics));
@@ -51,6 +58,15 @@ export const turtleRule: TraitRule = (entity, traits, context) =>
 				speciesId: turtle.id,
 				scale: traits.sizeTier === 'large' || traits.sizeTier === 'huge' ? 2 : 1,
 			}
+		: traits;
+
+const isBusyTier = (tier: CreatureTraits['sizeTier']) =>
+	BUSY_WORKFLOW.sizeTiers.some((busyTier) => busyTier === tier);
+
+/** Simple workflows that run a lot are penguins. It overrides the turtle: busy says more than old. */
+export const penguinRule: TraitRule = (entity, traits, context) =>
+	context.busyWorkflowKeys.has(entity.key) && isBusyTier(traits.sizeTier)
+		? { ...traits, speciesId: penguin.id, scale: 1 }
 		: traits;
 
 export const speedRule: TraitRule = (entity, traits) => ({
@@ -114,13 +130,15 @@ export const stillRule: TraitRule = (entity, traits) =>
 		: traits;
 
 /**
- * Order matters: `speciesRule` reads the tier from `sizeRule`, `turtleRule` overrides the species,
- * `skeletonRule` overrides `sickRule`, and `shimmerRule` reads both.
+ * Order matters: `speciesRule` reads the tier from `sizeRule`, `turtleRule` and then
+ * `penguinRule` override the species, `skeletonRule` overrides `sickRule`, and `shimmerRule`
+ * reads both.
  */
 export const defaultTraitRules: TraitRule[] = [
 	sizeRule,
 	speciesRule,
 	turtleRule,
+	penguinRule,
 	speedRule,
 	bubblesRule,
 	securityRule,

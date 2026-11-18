@@ -68,7 +68,7 @@ function demo(
 
 /** Fixed fake data, so you can work on the tank without real workflows. */
 export const DEMO_ENTITIES: AquariumEntity[] = [
-	// No failures in Operations, so its tank shows the Positive look.
+	// No failures in Operations, so its tank shows the Positive look. Simple and the busiest: a penguin.
 	demo('Slack ping', 'ops', 'workflow', 2, 50_000, 0, 200, {
 		design: { hasErrorWorkflow: true },
 	}),

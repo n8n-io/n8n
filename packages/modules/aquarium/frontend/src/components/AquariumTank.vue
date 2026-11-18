@@ -42,6 +42,7 @@ import {
 	type Creature,
 } from '../engine/simulation';
 import { oldWorkflowKeys } from '../engine/age';
+import { busyWorkflowKeys } from '../engine/busy';
 import {
 	defaultTraitRules,
 	deriveTraits,
@@ -161,7 +162,10 @@ function syncCreatures() {
 	const previousRegions = regionsById;
 	const planned: PlannedCreature[] = [];
 
-	const context: TraitContext = { oldWorkflowKeys: oldWorkflowKeys(props.entities, Date.now()) };
+	const context: TraitContext = {
+		oldWorkflowKeys: oldWorkflowKeys(props.entities, Date.now()),
+		busyWorkflowKeys: busyWorkflowKeys(props.entities),
+	};
 
 	for (const entity of props.entities) {
 		const traits = deriveTraits(entity, props.rules, context);

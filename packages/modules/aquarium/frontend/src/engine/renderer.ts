@@ -15,8 +15,9 @@ import type { Camera, Size } from './camera';
 import { getEffect } from './effects';
 import { FRAME_THICKNESS, paintFrame } from './frames';
 import type { TankRegion } from './layout';
-import { frameIndexOf, type Creature, type TankBounds } from './simulation';
+import { frameIndexOf, isResting, type Creature, type TankBounds } from './simulation';
 import { GLITCH_STAGES, glitchStageAt, shimmerProgressAt } from './glitch';
+import { toFaded } from './faded';
 import { toSkeleton } from './skeleton';
 
 /**
@@ -152,6 +153,9 @@ export class AquariumRenderer {
 
 	/** Bone versions of the species sprites, made the first time a species dies. */
 	private readonly skeletons = new Map<string, PixelSprite>();
+
+	/** Washed-out versions of the species sprites, for creatures that stand still. */
+	private readonly fadedSprites = new Map<string, PixelSprite>();
 
 	/** Keyed by sprite, so a frame finds a prop image with no string keys. */
 	private readonly propImages = new WeakMap<PixelSprite, HTMLCanvasElement>();
@@ -375,9 +379,18 @@ export class AquariumRenderer {
 		}
 		if (skeleton && creature.age % 3.3 < 0.12) offsetX = Math.floor(creature.age * 40) % 2 ? 1 : -1;
 
-		const frames = skeleton
-			? this.spriteFrames(`${creature.species.id}:skeleton`, this.skeletonOf(creature))
-			: this.spriteFrames(creature.species.id, creature.species.sprite, tinted ? tint : undefined);
+		let frames: HTMLCanvasElement[];
+		if (skeleton) {
+			frames = this.spriteFrames(`${creature.species.id}:skeleton`, this.skeletonOf(creature));
+		} else if (isResting(creature)) {
+			frames = this.spriteFrames(`${creature.species.id}:faded`, this.fadedOf(creature));
+		} else {
+			frames = this.spriteFrames(
+				creature.species.id,
+				creature.species.sprite,
+				tinted ? tint : undefined,
+			);
+		}
 		const frameIndex = frameIndexOf(creature);
 		const frame = frames[frameIndex];
 		if (!frame) return;
@@ -481,6 +494,14 @@ export class AquariumRenderer {
 		const skeleton = toSkeleton(creature.species.sprite);
 		this.skeletons.set(creature.species.id, skeleton);
 		return skeleton;
+	}
+
+	private fadedOf(creature: Creature): PixelSprite {
+		const cached = this.fadedSprites.get(creature.species.id);
+		if (cached) return cached;
+		const faded = toFaded(creature.species.sprite);
+		this.fadedSprites.set(creature.species.id, faded);
+		return faded;
 	}
 
 	private drawHighlight(creature: Creature): void {

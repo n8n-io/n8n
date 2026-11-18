@@ -7,7 +7,7 @@ import {
 import type { AquariumEntity } from '../aquarium.types';
 import { emptyMetrics } from '../sources/source.utils';
 import { failureRateOf } from './scaling';
-import { defaultTraitRules, deriveTraits, type TraitRule } from './traits';
+import { defaultTraitRules, deriveTraits, EMPTY_TRAIT_CONTEXT, type TraitRule } from './traits';
 
 function entity(
 	overrides: Partial<AquariumEntity['metrics']>,
@@ -108,7 +108,7 @@ describe('deriveTraits', () => {
 	it('makes an old workflow a turtle, and a big old workflow a bigger turtle', () => {
 		const small = entity({ complexity: 1 });
 		const big = { ...entity({ complexity: 50 }), key: 'workflow:big' };
-		const context = { oldWorkflowKeys: new Set([small.key, big.key]) };
+		const context = { ...EMPTY_TRAIT_CONTEXT, oldWorkflowKeys: new Set([small.key, big.key]) };
 
 		expect(deriveTraits(small, defaultTraitRules, context)).toMatchObject({
 			speciesId: 'turtle',
@@ -119,6 +119,20 @@ describe('deriveTraits', () => {
 			scale: 2,
 		});
 		expect(deriveTraits(small).speciesId).toBe('minnow');
+	});
+
+	it('makes a busy simple workflow a penguin, even when it is old', () => {
+		const simple = entity({ complexity: 2, executionCount: 5_000 });
+		const complex = { ...entity({ complexity: 20, executionCount: 5_000 }), key: 'workflow:big' };
+		const keys = new Set([simple.key, complex.key]);
+		const context = { busyWorkflowKeys: keys, oldWorkflowKeys: keys };
+
+		expect(deriveTraits(simple, defaultTraitRules, context)).toMatchObject({
+			speciesId: 'penguin',
+			scale: 1,
+		});
+		expect(deriveTraits(complex, defaultTraitRules, context).speciesId).toBe('turtle');
+		expect(deriveTraits(simple).speciesId).toBe('minnow');
 	});
 
 	it('makes a workflow that never ran still, but not an agent or a workflow with runs', () => {

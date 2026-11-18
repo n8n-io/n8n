@@ -68,10 +68,10 @@ The species says what an entity is and how big it is. Speed says how busy it is.
 | Data | Meaning | Look | Status |
 | --- | --- | --- | --- |
 | Node count, plus a little for run time | How complex the workflow is | Species by size: minnow, tetra, angelfish, shark, whale | Built. Open: size from node count only |
-| Execution count | How busy it is | Resting swim speed on a log scale. Bubbles from 10 runs | Built |
-| No runs and no paused runs | Not in use | Stands still with no animation until a live run starts (`stillRule`, `isResting`). Agents still move | Built |
+| Execution count | How busy it is | Resting swim speed on a log scale. One run lifts it from `SWIM_SPEED.min` to `SWIM_SPEED.ranMin`. Bubbles from 10 runs | Built |
+| No runs and no paused runs | Not in use | Stands still with no animation and slightly faded colours until a live run starts (`stillRule`, `isResting`, `toFaded`). Agents still move | Built |
 | Live run rate | Busy right now | Faster swimming, fins and bubbles. A wave of gold sweeps over it while a run is in progress (`shimmerRule`, `shimmerProgressAt`) | Built |
-| Small workflow with many runs | A busy little helper | A fast minnow. Planned: a school of fish | Partly |
+| Tiny or small workflow with 100 or more runs, among the busiest 2% | A busy little helper | A penguin (`penguinRule`, `busyWorkflowKeys`). It overrides the turtle | Built |
 | Agent | It exists, with a number of skills | A seahorse that holds one seaweed strand for each skill (`skillStrandsEffect`), coloured by the agent id | Built |
 | Many workflows | A large instance | Zoom and pan, and a tank for each project | Built |
 
@@ -290,7 +290,8 @@ work the fact out once in `TraitContext` and read it in the rule:
 
 The context covers the entities that the tank shows, so a filter such as "My projects" changes it.
 
-A species with `kinds: []`, like the turtle, is never picked by `pickSpecies`. Only a rule sets it.
+A species with `kinds: []`, like the turtle or the penguin, is never picked by `pickSpecies`. Only a
+rule sets it.
 
 ### Rule order
 
