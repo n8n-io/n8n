@@ -124,6 +124,7 @@ erDiagram
   varchar id PK
   TEXT result
   varchar_16_ status
+  varchar_36_ testWorkflowId
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

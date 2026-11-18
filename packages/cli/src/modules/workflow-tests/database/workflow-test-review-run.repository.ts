@@ -24,7 +24,12 @@ export class WorkflowTestReviewRunRepository {
 
 	/** `save`, not `insert`: the `@BeforeInsert` id generator only runs on an entity instance. */
 	async startRun(
-		run: { workflowReviewRequestId: string; workflowId: string; workflowVersionId: string },
+		run: {
+			workflowReviewRequestId: string;
+			workflowId: string;
+			workflowVersionId: string;
+			testWorkflowId: string;
+		},
 		ctx: OperationContext,
 	) {
 		return await this.table
@@ -46,10 +51,13 @@ export class WorkflowTestReviewRunRepository {
 			.update(WorkflowTestReviewRunEntity, { id }, { status, result, updatedAt: new Date() });
 	}
 
-	/** The latest run for the workflow in the review, on any version. */
-	async findLatest(workflowReviewRequestId: string, workflowId: string, ctx: OperationContext) {
+	/** The latest run of one test file for the workflow in the review, on any version. */
+	async findLatest(
+		run: { workflowReviewRequestId: string; workflowId: string; testWorkflowId: string },
+		ctx: OperationContext,
+	) {
 		return await this.table.managerFor(ctx).findOne(WorkflowTestReviewRunEntity, {
-			where: { workflowReviewRequestId, workflowId },
+			where: run,
 			order: { createdAt: 'DESC', id: 'DESC' },
 		});
 	}

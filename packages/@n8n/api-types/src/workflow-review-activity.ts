@@ -110,6 +110,12 @@ export const WORKFLOW_REVIEW_TESTS_MAX_FAILURES = 10;
 export const workflowReviewTestsCompletedActivityDataSchema = z.object({
 	workflowId: z.string(),
 	workflowVersionId: z.string(),
+	/**
+	 * Set when the tests of a workflow that calls the reviewed workflow ran. The
+	 * name is a snapshot: the caller is not part of the review, so the feed has
+	 * no other source for it.
+	 */
+	caller: z.object({ workflowId: z.string(), name: z.string() }).optional(),
 	status: z.enum(['passed', 'failed', 'error']),
 	passed: z.number().int(),
 	failed: z.number().int(),

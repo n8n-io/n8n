@@ -2,6 +2,7 @@ import { RunStoredWorkflowTestDto, RunWorkflowTestDto, SaveWorkflowTestDto } fro
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, ProjectScope, Put, RestController } from '@n8n/decorators';
 
+import { WorkflowTestCallerService } from './workflow-test-caller.service';
 import { WorkflowTestFileService } from './workflow-test-file.service';
 import { WorkflowTestRunService } from './workflow-test-run.service';
 
@@ -10,6 +11,7 @@ export class WorkflowTestsController {
 	constructor(
 		private readonly workflowTestRunService: WorkflowTestRunService,
 		private readonly workflowTestFileService: WorkflowTestFileService,
+		private readonly workflowTestCallerService: WorkflowTestCallerService,
 	) {}
 
 	@Get('/:workflowId/tests')
@@ -26,6 +28,21 @@ export class WorkflowTestsController {
 		@Body payload: SaveWorkflowTestDto,
 	) {
 		return await this.workflowTestFileService.save(req.params.workflowId, payload.source);
+	}
+
+	/** The workflows that call this one as a sub-workflow, with the state of their tests. */
+	@Get('/:workflowId/tests/callers')
+	@ProjectScope('workflow:read')
+	async listCallers(req: AuthenticatedRequest<{ workflowId: string }>) {
+		return await this.workflowTestCallerService.listForUser(req.user, req.params.workflowId);
+	}
+
+	// Declared before `/:workflowId/tests/:id/run`, which would match `callers` as an id.
+	@Post('/:workflowId/tests/callers/run')
+	// The runner runs the test code on the n8n host, so only owners and admins can run it.
+	@GlobalScope('workflow:execute')
+	async runCallers(req: AuthenticatedRequest<{ workflowId: string }>) {
+		return await this.workflowTestCallerService.startForUser(req.user, req.params.workflowId);
 	}
 
 	@Post('/:workflowId/tests/:id/run')

@@ -8,6 +8,7 @@
 | id | uuid |  | false |  |  |  |
 | result | json |  | true |  |  | Result of the run: run status, errors, and one entry for each test. NULL while the run is in progress. |
 | status | varchar(16) |  | false |  |  | One of running, passed, failed, or error. |
+| testWorkflowId | varchar(36) |  | true |  |  | The workflow whose test file ran: the reviewed workflow, or a workflow that calls it. NULL on rows from before this column, which ran the tests of the reviewed workflow. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
@@ -48,6 +49,7 @@ erDiagram
   uuid id
   json result
   varchar_16_ status
+  varchar_36_ testWorkflowId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

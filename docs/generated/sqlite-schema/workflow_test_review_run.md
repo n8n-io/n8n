@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_test_review_run" ("id" varchar PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "workflowId" varchar(36) NOT NULL, "workflowVersionId" varchar(36) NOT NULL, "status" varchar(16) NOT NULL, "result" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_workflow_test_review_run_workflowReviewRequestId" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_workflow_test_review_run_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE)
+CREATE TABLE "workflow_test_review_run" ("id" varchar PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "workflowId" varchar(36) NOT NULL, "workflowVersionId" varchar(36) NOT NULL, "status" varchar(16) NOT NULL, "result" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "testWorkflowId" varchar(36), CONSTRAINT "FK_workflow_test_review_run_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflow_test_review_run_workflowReviewRequestId" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -19,6 +19,7 @@ CREATE TABLE "workflow_test_review_run" ("id" varchar PRIMARY KEY NOT NULL, "wor
 | id | varchar |  | false |  |  |  |
 | result | TEXT |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
+| testWorkflowId | varchar(36) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [workflow_review_request](workflow_review_request.md) |  |
@@ -28,8 +29,8 @@ CREATE TABLE "workflow_test_review_run" ("id" varchar PRIMARY KEY NOT NULL, "wor
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_workflow_test_review_run_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -53,6 +54,7 @@ erDiagram
   varchar id PK
   TEXT result
   varchar_16_ status
+  varchar_36_ testWorkflowId
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

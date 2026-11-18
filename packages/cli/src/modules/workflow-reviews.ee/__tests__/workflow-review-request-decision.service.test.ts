@@ -89,6 +89,8 @@ describe('WorkflowReviewRequestDecisionService.decide', () => {
 		id: 'workflow-tests',
 		workflowId: 'wf-1',
 		workflowVersionId,
+		testWorkflowId: 'wf-1',
+		testWorkflowName: null,
 		status,
 		counts: null,
 		message: null,

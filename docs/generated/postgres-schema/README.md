@@ -187,7 +187,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_suggestion](public.workflow_suggestion.md) | 17 |  | BASE TABLE |
 | [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 7 |  | BASE TABLE |
 | [public.workflow_test](public.workflow_test.md) | 6 |  | BASE TABLE |
-| [public.workflow_test_review_run](public.workflow_test_review_run.md) | 8 |  | BASE TABLE |
+| [public.workflow_test_review_run](public.workflow_test_review_run.md) | 9 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -2333,6 +2333,7 @@ erDiagram
   uuid id
   json result
   varchar_16_ status
+  varchar_36_ testWorkflowId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

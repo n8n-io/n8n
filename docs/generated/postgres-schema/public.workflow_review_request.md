@@ -119,6 +119,7 @@ erDiagram
   uuid id
   json result
   varchar_16_ status
+  varchar_36_ testWorkflowId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

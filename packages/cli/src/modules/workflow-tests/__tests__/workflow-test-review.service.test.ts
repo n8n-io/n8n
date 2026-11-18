@@ -15,8 +15,10 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { WorkflowTestReviewRunEntity } from '../database/workflow-test-review-run.entity';
 import type { WorkflowTestReviewRunRepository } from '../database/workflow-test-review-run.repository';
+import type { WorkflowTestCallerService } from '../workflow-test-caller.service';
 import type { WorkflowTestFileService } from '../workflow-test-file.service';
 import { WorkflowTestReviewService } from '../workflow-test-review.service';
+import { WorkflowTestRunQueue } from '../workflow-test-run-queue.service';
 import type { WorkflowTestRunService } from '../workflow-test-run.service';
 
 const userWithScopes = (id: string, scopes: Scope[]): User =>
@@ -46,18 +48,24 @@ describe('WorkflowTestReviewService', () => {
 	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
 	const workflowFinderService = mock<WorkflowFinderService>();
+	const callerService = mock<WorkflowTestCallerService>();
 
 	const service = new WorkflowTestReviewService(
 		mock<Logger>(),
 		eventService,
-		fileService,
 		runService,
 		runRepository,
 		activityRepository,
 		userRepository,
 		workflowFinderService,
 		mock<WorkflowReviewAuthorizationService>(),
+		fileService,
+		callerService,
+		new WorkflowTestRunQueue(),
 	);
+
+	const callerFile: WorkflowTestFile = { ...file, id: 'file-2', workflowId: 'caller-1' };
+	const caller = { workflowId: 'caller-1', name: 'Billing flow' };
 	service.listenForReviews();
 
 	// A plain object, not a deep mock: the service reads `result.errors[0]`, which a proxy answers.
@@ -79,6 +87,7 @@ describe('WorkflowTestReviewService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		fileService.get.mockResolvedValue(file);
+		callerService.findCallersWithTests.mockResolvedValue([]);
 		runRepository.startRun.mockResolvedValue(run({ status: 'running' }));
 	});
 
@@ -123,6 +132,8 @@ describe('WorkflowTestReviewService', () => {
 				id: 'workflow-tests',
 				workflowId: 'wf-1',
 				workflowVersionId: 'ver-2',
+				testWorkflowId: 'wf-1',
+				testWorkflowName: null,
 				status: 'passed',
 				counts: { passed: 1, failed: 0, skipped: 1, total: 2 },
 				message: null,
@@ -138,6 +149,43 @@ describe('WorkflowTestReviewService', () => {
 			const [check] = await service.getChecks(owner, subject);
 
 			expect(check?.status).toBe('error');
+		});
+
+		it('adds a check for each caller with tests, and names only a readable caller', async () => {
+			fileService.get.mockResolvedValue(null);
+			callerService.findCallersWithTests.mockResolvedValue([
+				{ ...caller, file: callerFile },
+				{
+					workflowId: 'caller-2',
+					name: 'Secret flow',
+					file: { ...callerFile, workflowId: 'caller-2' },
+				},
+			]);
+			runRepository.findLatest.mockResolvedValue(null);
+			workflowFinderService.findWorkflowForUser.mockImplementation(async (workflowId) =>
+				workflowId === 'caller-1' ? mock<WorkflowEntity>() : null,
+			);
+
+			const checks = await service.getChecks(member, subject);
+
+			expect(checks).toEqual([
+				expect.objectContaining({
+					id: 'workflow-caller-tests',
+					testWorkflowId: 'caller-1',
+					testWorkflowName: 'Billing flow',
+					status: 'pending',
+				}),
+				expect.objectContaining({
+					id: 'workflow-caller-tests',
+					testWorkflowId: 'caller-2',
+					testWorkflowName: null,
+					status: 'pending',
+				}),
+			]);
+			expect(runRepository.findLatest).toHaveBeenCalledWith(
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1', testWorkflowId: 'caller-1' },
+				{},
+			);
 		});
 	});
 
@@ -215,6 +263,36 @@ describe('WorkflowTestReviewService', () => {
 
 			expect(runService.run).not.toHaveBeenCalled();
 			expect(runRepository.finishRun).toHaveBeenCalledWith('run-1', 'error', expect.anything(), {});
+		});
+
+		it("runs each caller's tests with the pinned sub-workflow and names the caller in the feed", async () => {
+			fileService.get.mockResolvedValue(null);
+			callerService.findCallersWithTests.mockResolvedValue([{ ...caller, file: callerFile }]);
+			userRepository.findManyByIds.mockResolvedValue([owner]);
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				mock<WorkflowEntity>({ versionId: 'ver-2', activeVersionId: 'ver-1' }),
+			);
+			runService.run.mockResolvedValue({ type: 'runFinished', status: 'passed', errors: [] });
+
+			emitPin(owner);
+			await waitForActivity();
+
+			expect(runRepository.startRun).toHaveBeenCalledWith(
+				{ ...pin, testWorkflowId: 'caller-1' },
+				{},
+			);
+			expect(runService.run).toHaveBeenCalledWith(
+				owner,
+				'caller-1',
+				{ source: callerFile.source, version: 'draft' },
+				expect.any(Function),
+			);
+			expect(activityRepository.createActivity).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({ caller, status: 'passed' }),
+				}),
+				{},
+			);
 		});
 
 		it('waits for an owner or admin when the requester cannot run tests', async () => {
