@@ -26,11 +26,10 @@ registration of a kind. The backend owns how leases are claimed, renewed and syn
 ## Alternatives Considered
 
 1. **Consumers call the `LeaseProvider` directly.** We rejected it because each consumer would mix
-   its own logic with the registration of a kind, such as the order of the provider calls. Each
-   module would hold more than one concern.
+   its own logic with the registration of a kind, such as the order of the provider calls.
 2. **Each backend implements the API that consumers call.** We rejected it because each backend
    would hold the consumer interface and the registration of a kind next to the management of
-   leases. Each module would hold more than one concern.
+   leases.
 
 ## Consequences
 
