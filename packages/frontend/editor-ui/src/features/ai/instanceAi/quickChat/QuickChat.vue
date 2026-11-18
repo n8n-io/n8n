@@ -206,7 +206,10 @@ function onKeydown(event: KeyboardEvent) {
 	border: var(--border-width) var(--border-style) var(--border-color);
 	border-radius: var(--radius--lg);
 	background-color: var(--background--surface);
-	box-shadow: var(--shadow--lg);
+	// A tight shadow for the edge and a wide, soft one, so the panel stands off the page.
+	box-shadow:
+		var(--shadow--xl),
+		0 24px 48px -12px var(--shadow-color);
 
 	&:focus-visible {
 		outline: none;
@@ -248,6 +251,11 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .body {
+	// The composer keeps the same space to the bottom and the sides, and uses smaller text.
+	--instance-ai-input-padding: 0 var(--spacing--sm) var(--spacing--sm);
+	--instance-ai-conversation-background: var(--background--surface);
+	--chat-input--font-size: var(--font-size--sm);
+
 	display: flex;
 	flex-direction: column;
 	flex: 1;

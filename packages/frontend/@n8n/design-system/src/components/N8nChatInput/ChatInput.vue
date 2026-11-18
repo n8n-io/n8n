@@ -481,7 +481,8 @@ defineExpose({
 	resize: none;
 	outline: none;
 	font-family: var(--font-family);
-	font-size: var(--font-size--md);
+	// A compact host, such as a floating chat, can set a smaller size.
+	font-size: var(--chat-input--font-size, var(--font-size--md));
 	line-height: var(--line-height--xs);
 	color: var(--text-color);
 	padding: var(--spacing--3xs);
