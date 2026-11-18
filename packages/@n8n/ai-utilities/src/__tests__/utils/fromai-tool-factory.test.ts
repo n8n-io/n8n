@@ -101,6 +101,18 @@ describe('fromAIToolFactory', () => {
 				expect(result.data.name).toBe('John');
 			}
 		});
+
+		it('should omit an optional number with a blank default and keep explicit defaults', () => {
+			const args = extractFromAIParameters({
+				limit: '$fromAI("limit", "Maximum results", "number", " ")',
+				count: '$fromAI("count", "Number of requests", "number")',
+				offset: '$fromAI("offset", "Start at", "number", "0")',
+			});
+			const schema = createZodSchemaFromArgs(args);
+
+			expect(schema.parse({ count: 5 })).toStrictEqual({ count: 5, offset: 0 });
+			expect(schema.safeParse({}).success).toBe(false);
+		});
 	});
 
 	describe('createToolFromNode', () => {

@@ -19,6 +19,15 @@ export type FromAIArgument = {
 
 class ParseError extends Error {}
 
+export function isBlankFromAINumberDefault(type: unknown, value: unknown): boolean {
+	return (
+		typeof value === 'string' &&
+		value.trim() === '' &&
+		typeof type === 'string' &&
+		type.toLowerCase() === 'number'
+	);
+}
+
 /**
  * Generates a Zod schema based on the provided FromAIArgument placeholder.
  * @param placeholder The FromAIArgument object containing key, type, description, and defaultValue.
@@ -98,6 +107,10 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 
 	if (placeholder.description) {
 		schema = schema.describe(`${schema.description ?? ''} ${placeholder.description}`.trim());
+	}
+
+	if (isBlankFromAINumberDefault(placeholder.type, placeholder.defaultValue)) {
+		return schema.optional();
 	}
 
 	if (placeholder.defaultValue !== undefined) {
@@ -462,6 +475,18 @@ export function isFromAIOnlyExpression(expr: string): boolean {
 	// Everything after the closing `)` must be whitespace only
 	const remainder = str.slice(current).trim();
 	return remainder.length === 0;
+}
+
+export function isFromAIOnlyExpressionWithBlankNumberDefault(value: unknown): boolean {
+	if (!isExpression(value) || !isFromAIOnlyExpression(value)) return false;
+
+	try {
+		const [argument] = extractFromAICalls(value);
+		return !!argument && isBlankFromAINumberDefault(argument.type, argument.defaultValue);
+	} catch (error) {
+		if (!(error instanceof ParseError)) throw error;
+		return false;
+	}
 }
 
 /**
