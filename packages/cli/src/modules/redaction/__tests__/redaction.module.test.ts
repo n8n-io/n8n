@@ -4,7 +4,13 @@ import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import {
+	ExecutingUserIdentifierProxy,
+	ExecutionRedactionServiceProxy,
+} from '@n8n/backend-services';
+import type { ICredentialContext } from 'n8n-workflow';
+
+import { N8NIdentifier } from '../../dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier';
 
 import { ExecutionRedactionService } from '../executions/execution-redaction.service';
 import { RedactionModule } from '../redaction.module';
@@ -37,6 +43,20 @@ describe('RedactionModule', () => {
 			expect(executionRedactionServiceProxy.setExecutionRedaction).toHaveBeenCalledWith(
 				executionRedactionService,
 			);
+		});
+
+		it('lets every instance identify the user a run executes as', async () => {
+			const identifier = mock<N8NIdentifier>();
+			identifier.identify.mockResolvedValue('user-1');
+			Container.set(N8NIdentifier, identifier);
+			const context = { version: 1, identity: 'token' } as ICredentialContext;
+
+			await module.init();
+
+			await expect(Container.get(ExecutingUserIdentifierProxy).identify(context)).resolves.toBe(
+				'user-1',
+			);
+			expect(identifier.identify).toHaveBeenCalledWith(context);
 		});
 	});
 });

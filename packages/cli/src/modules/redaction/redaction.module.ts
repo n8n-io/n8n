@@ -2,7 +2,10 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import {
+	ExecutingUserIdentifierProxy,
+	ExecutionRedactionServiceProxy,
+} from '@n8n/backend-services';
 
 /**
  * Context is established by whichever instance runs the workflow — main, queue worker or
@@ -34,5 +37,17 @@ export class RedactionModule implements ModuleInterface {
 
 		const executionRedactionServiceProxy = Container.get(ExecutionRedactionServiceProxy);
 		executionRedactionServiceProxy.setExecutionRedaction(executionRedactionService);
+
+		// Data table row rules need the run's user on every instance, not only where the
+		// licensed dynamic-credentials module registers the identifier.
+		// Resolved on first use, so start-up does not build the identifier's dependencies.
+		Container.get(ExecutingUserIdentifierProxy).setProvider({
+			identify: async (context) => {
+				const { N8NIdentifier } = await import(
+					'../dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.js'
+				);
+				return await Container.get(N8NIdentifier).identify(context);
+			},
+		});
 	}
 }
