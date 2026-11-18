@@ -1,0 +1,49 @@
+packages/cli/src/modules/promotions.ee/cross-project-moves.ts
+  s_3dd47ea0104342::t_87a6cde3f712bf 4-5
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_3dd47ea0104342::t_2f5bd731355c56 74-78
+packages/cli/src/modules/promotions.ee/project-moves.ts
+  s_3dd47ea0104342::t_80a73ee1142f7d 1-407
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_3dd47ea0104342::t_f76fccf49bcb45 434-438
+  s_3dd47ea0104342::t_c4ba4ca09aa55a 25-30,380
+  s_3dd47ea0104342::t_6bf0fb51ce334f 341
+  s_3dd47ea0104342::t_e5bcb0ef6dc897 381-399
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_2f5bd731355c56 11140
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_3dd47ea0104342::t_8b319861d3d3c6 220-223
+  s_3dd47ea0104342::t_e567c94775064f 317-323
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_3dd47ea0104342::t_457460eea2d47b 170-190,312-315,342
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_3dd47ea0104342::t_8f1ad6fd9621eb 94-96,98
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_3dd47ea0104342::t_1739f5bf86fb63 15-16,65-72
+spike/ligo-1159/poc/decisions.md
+  s_1f72d857ffd270::t_ebca5de9966d7e 112-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bcc4579164b687cafe4c5d4c3a1f05bb014cf91b",
+  "prompts": {},
+  "sessions": {
+    "s_1f72d857ffd270": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a341a53502b181928",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

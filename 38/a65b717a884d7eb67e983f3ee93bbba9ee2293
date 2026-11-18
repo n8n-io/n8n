@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/pages/composables/usePageCreation.ts
+  ai_agent 1-81
+packages/frontend/editor-ui/src/features/pages/pageLink.test.ts
+  ai_agent 1-89
+packages/frontend/editor-ui/src/features/pages/resourcePages.ts
+  ai_agent 1-52
+packages/frontend/editor-ui/src/features/pages/composables/useProjectPages.ts
+  ai_agent 1-35
+packages/frontend/editor-ui/src/features/pages/pageLink.ts
+  ai_agent 1-50
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.test.ts
+  ai_agent 18-21,228-287
+packages/frontend/editor-ui/src/features/pages/pageSearch.test.ts
+  ai_agent 1-28
+packages/frontend/editor-ui/src/features/pages/composables/useIsPageModuleActive.ts
+  ai_agent 1-12
+packages/frontend/editor-ui/src/features/pages/pageSearch.ts
+  ai_agent 1-12
+packages/frontend/editor-ui/src/features/pages/composables/useLinkedPageId.ts
+  ai_agent 1-23
+packages/frontend/@n8n/design-system/src/components/N8nSticky/Sticky.vue
+  ai_agent 115-118,196-202
+packages/frontend/editor-ui/src/features/pages/pageRoute.ts
+  ai_agent 1-7
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.test.ts
+  ai_agent 7-14,24-43,150-208
+packages/frontend/editor-ui/src/features/pages/composables/useWorkflowPagesProjectId.ts
+  ai_agent 1-21
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue
+  ai_agent 11-12,59-62,129-138
+packages/frontend/editor-ui/src/features/pages/composables/usePageOpening.ts
+  ai_agent 1-39
+packages/frontend/editor-ui/src/features/pages/components/StickyPageLinkPicker.vue
+  ai_agent 1-223
+packages/frontend/editor-ui/src/features/pages/components/StickyPageLinkPicker.test.ts
+  ai_agent 1-109
+packages/frontend/editor-ui/src/features/pages/components/StickyLinkedPage.vue
+  ai_agent 1-224
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  ai_agent 18-21,85,91-92,155-166,274-279
+packages/frontend/@n8n/design-system/src/components/N8nSticky/Sticky.test.ts
+  ai_agent 130-156
+packages/frontend/editor-ui/src/features/pages/components/StickyLinkedPage.test.ts
+  ai_agent 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "38a65b717a884d7eb67e983f3ee93bbba9ee2293",
+  "prompts": {}
+}

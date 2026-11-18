@@ -1,0 +1,25 @@
+demos/HACKMATION.md
+  s_c33bde4687101e::t_20270a93eb046f 8
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/README.md
+  s_c33bde4687101e::t_ec3923ff287f05 12,32,45
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/zoom.test.ts
+  s_c33bde4687101e::t_f5f272c98a225b 7-9,11,14-15,18
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/zoom.ts
+  s_c33bde4687101e::t_fbddc189b0a8c7 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61c175185ff4940ba444472f1edd4a9118c6a758",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

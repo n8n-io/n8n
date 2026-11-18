@@ -1,0 +1,53 @@
+packages/modules/page/backend/src/page-reference.repository.ts
+  s_f27bda1bd0c713::t_d738e93a274369 4,17-23,40,45,47-55,59-61,128,130,132-133,137-145
+  s_f27bda1bd0c713::t_30b1dbf52dc563 24,41-44,46,126-127,129,131,134-136,146-147
+  s_f27bda1bd0c713::t_3cd2d8cd2e05b9 56-58
+packages/modules/page/backend/src/page.repository.ts
+  s_f27bda1bd0c713::t_d738e93a274369 114-116
+  s_f27bda1bd0c713::t_30b1dbf52dc563 117-118
+packages/modules/page/backend/src/__tests__/page-overview.integration.test.ts
+  s_f27bda1bd0c713::t_da37876ad5a075 6,10-16,19,40,63-85,102,108-109,113,119-120,124,150,215,238,249,263,270,283,295,304-339,341-421
+  s_f27bda1bd0c713::t_85bc30ad7aca0d 163-211
+  s_f27bda1bd0c713::t_6ccb08f5426ebe 1-5,7-9,17-18,20-39,41-62,86-101,103-107,110-112,114-118,121-123,125-149,151-162,212-214,216-237,239-248,250-262,264-269,271-282,284-294,296-303,340,422-423
+packages/modules/page/backend/src/page-execution.repository.ts
+  s_f27bda1bd0c713::t_3cd2d8cd2e05b9 31-35,68
+  s_f27bda1bd0c713::t_d738e93a274369 1-30,36-67,69-87
+packages/modules/page/backend/src/page-overview.ts
+  s_f27bda1bd0c713::t_85bc30ad7aca0d 6,142,151
+  s_f27bda1bd0c713::t_d738e93a274369 8,13,22-24,28,36,47-48,57-64,67-83,87-88,90-91,93,100,106,109-110,113-117,120,125-126,130-133,137,139-140,143,147-148,153-154,156,160-163,167,170-172
+  s_f27bda1bd0c713::t_30b1dbf52dc563 1-5,7,9-12,14-21,25-27,29-35,37-46,49-56,65-66,84-86,89,92,94-99,101-105,107-108,111-112,118-119,121-124,127-129,134-136,138,141,144-146,149-150,152,155,157-159,164-166,168-169,173-174
+packages/modules/page/backend/src/page.controller.ts
+  s_f27bda1bd0c713::t_d738e93a274369 29-30
+  s_f27bda1bd0c713::t_30b1dbf52dc563 27-28,31-32
+packages/modules/page/backend/src/page-placements.ts
+  s_f27bda1bd0c713::t_30b1dbf52dc563 5
+packages/modules/page/backend/src/page-lookup.controller.ts
+  s_f27bda1bd0c713::t_d738e93a274369 16,50-52
+packages/modules/page/backend/src/page.service.ts
+  s_f27bda1bd0c713::t_d738e93a274369 26-27,58,261-262,264-277,279-280,282-290,293-294,296,299
+  s_f27bda1bd0c713::t_30b1dbf52dc563 9,31,260,263,278,281,291-292,295,297-298,300-303
+packages/modules/page/backend/src/__tests__/page.controller.test.ts
+  s_f27bda1bd0c713::t_d738e93a274369 32,55,69
+  s_f27bda1bd0c713::t_30b1dbf52dc563 39-43
+packages/modules/page/backend/src/page-workflow.repository.ts
+  s_f27bda1bd0c713::t_d738e93a274369 10,44-53
+  s_f27bda1bd0c713::t_bbd89113693142 20-26,30-41,85-90,93,96-108,111,115
+  s_f27bda1bd0c713::t_30b1dbf52dc563 27-29,42-43,84,91-92,94-95,109,116
+  s_f27bda1bd0c713::t_3cd2d8cd2e05b9 112-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6bdf11830ffa1fd459287018462ab55b8e933d5e",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

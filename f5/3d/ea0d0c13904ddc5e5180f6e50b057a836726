@@ -1,0 +1,26 @@
+scripts/zero-trust-vault/demo-client.mjs
+  s_293d023a29dd97::t_824a568a94bf6b 1-61
+scripts/zero-trust-vault/apify-demo.mjs
+  ai_agent 37-38,186,214
+  s_293d023a29dd97::t_14c744c53a9a27 1-30,34-36,39-78,85-110,113-133,138,142-144,150-151,155-167,170-179,183-185,187-202,209-213,215-225
+  s_293d023a29dd97::t_0314b4ed908610 31-33,79-84,111-112,134-137,139-141,145-149,152-154,168-169,180-182,203-208
+scripts/zero-trust-vault/e2e.mjs
+  s_293d023a29dd97::t_03ee5f5b20e261 8,17
+  s_293d023a29dd97::t_e04a67af8a19f9 16,75-77,188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f53dea0d0c13904ddc5e5180f6e50b057a836726",
+  "prompts": {},
+  "sessions": {
+    "s_293d023a29dd97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ed4163-15ff-44f2-a2f6-48db5f846d4f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_aac4ff4fc8f273::t_47710f32c64b02 14
+  s_aac4ff4fc8f273::t_659fda0e849198 369,375
+  s_aac4ff4fc8f273::t_60502b8b032138 365-368,370-374,376-408
+  s_aac4ff4fc8f273::t_eb89bd7d777342 364
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  s_aac4ff4fc8f273::t_4be69be31cefc4 37-46
+packages/@n8n/backend-network/src/http/axios/request.ts
+  s_aac4ff4fc8f273::t_0a2ac3066878c4 24
+  s_aac4ff4fc8f273::t_9457a015194d59 227
+packages/@n8n/backend-network/src/http/legacy-request.ts
+  s_aac4ff4fc8f273::t_83bebefa1718ef 90
+  s_aac4ff4fc8f273::t_567dab2640b73d 23
+packages/@n8n/backend-network/src/http/__tests__/fixtures/recording-proxy.ts
+  s_aac4ff4fc8f273::t_1631ece4627298 18-19,23-25
+  s_aac4ff4fc8f273::t_059e15132c38cc 1-5,8-17,20-22,26-32
+  s_aac4ff4fc8f273::t_c74475b3efe48f 6-7
+packages/@n8n/backend-network/src/http/axios/__tests__/request.test.ts
+  s_aac4ff4fc8f273::t_100801656401bc 800,806
+  s_aac4ff4fc8f273::t_322771fc91202a 11
+  s_aac4ff4fc8f273::t_57c60b700992f5 795-799,801-805,807-837
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aca8587791c2015c66320dd7cb1f537695288307",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_aac4ff4fc8f273": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e573bc21-cad1-4b0c-a38b-d00bab4f66fe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
