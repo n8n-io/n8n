@@ -204,7 +204,8 @@ export class DuplicateLogicRule extends AstRule<{ rootDir: string }> {
 		// Build test fingerprint index
 		for (const file of testFiles) {
 			const relativePath = getRelativePath(file.getFilePath()).replaceAll('\\', '/');
-			if (excludePaths.some((pattern) => pattern.test(relativePath))) continue;
+			// Search starts at position zero without changing the pattern's lastIndex.
+			if (excludePaths.some((pattern) => relativePath.search(pattern) !== -1)) continue;
 
 			const tests = this.extractTestBodies(file);
 
