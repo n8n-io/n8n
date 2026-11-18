@@ -1,0 +1,212 @@
+packages/cli/src/modules/mcp/mcp.module.ts
+  s_b66aa0d80e11d6::t_78bbbcacf89ea8 18
+  s_b66aa0d80e11d6::t_52e5a1037b7e2a 44-51
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_b66aa0d80e11d6::t_be0a63aaffc081 26-27
+packages/nodes-base/nodes/Slack/V2/UserGroupDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,19,25,31,37,43,49,55
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+  s_b66aa0d80e11d6::t_96f2748c1a5bf1 3-4
+packages/nodes-base/nodes/Slack/V2/ReactionDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,21,28,35
+packages/cli/src/modules/mcp/mcp.credentials.controller.ts
+  s_b66aa0d80e11d6::t_78bbbcacf89ea8 1-2,4-50
+  s_b66aa0d80e11d6::t_847cd292f1d8a3 3
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_b66aa0d80e11d6::t_b92cb23920ccf9 19-20,164-186,197-198
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_b66aa0d80e11d6::t_1c3395e655028d 112
+packages/modules/mcp/frontend/src/SettingsMCPView.vue
+  s_b66aa0d80e11d6::t_847cd292f1d8a3 177,279,366-369,402,538-575,651-671
+  s_b66aa0d80e11d6::t_6737138701754e 2,6-7,16,24,26,42,132-176,178-241
+  s_b66aa0d80e11d6::t_6e9af081edb3ad 242,672-675
+packages/cli/src/modules/mcp/credential-broker/mcp-credential-broker.service.ts
+  s_b66aa0d80e11d6::t_4b81779e8f297f 256,315,456
+  s_b66aa0d80e11d6::t_be0a63aaffc081 426
+  s_b66aa0d80e11d6::t_aaf2ee0d9f3115 6,189-192,513-515
+  s_b66aa0d80e11d6::t_847cd292f1d8a3 7
+  s_b66aa0d80e11d6::t_ac7d364ccb9fe5 27,124,146-151,153-155,158-169,171-178,181-182,221-224
+  s_b66aa0d80e11d6::t_708445f6b0706a 446-449
+  s_b66aa0d80e11d6::t_3ed81ac1d6b0ce 1-5,8-26,28-123,125-145,152,156-157,170,179-180,183-188,193-220,225-255,257-314,316-425,427-445,450-455,457-512,516-547
+packages/nodes-base/nodes/Slack/V2/UserDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,20,27,34,41,48,55
+packages/frontend/editor-ui/src/Interface.ts
+  s_b66aa0d80e11d6::t_b92cb23920ccf9 367
+packages/modules/mcp/frontend/src/mcp.module.ts
+  s_b66aa0d80e11d6::t_424422877a712a 7,15,60-63
+  s_b66aa0d80e11d6::t_6b1c6c35f40094 64-71
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_b66aa0d80e11d6::t_b92cb23920ccf9 65-71
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_b66aa0d80e11d6::t_1c3395e655028d 249-261
+packages/modules/mcp/frontend/src/mcp.types.ts
+  s_b66aa0d80e11d6::t_424422877a712a 21-35
+packages/nodes-base/nodes/Linear/CommentDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 20
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_b66aa0d80e11d6::t_201363f6c5ba43 5-7,107-112,114
+  s_b66aa0d80e11d6::t_ab03928f39aad5 115-122
+  s_b66aa0d80e11d6::t_4bb017bcb8b43b 4
+packages/nodes-base/nodes/Slack/V2/FileDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,19,26,33
+packages/modules/mcp/frontend/src/components/MCPCredentialsSelect.vue
+  s_b66aa0d80e11d6::t_1ad327b54ef51c 1-160
+packages/nodes-base/nodes/Linear/IssueDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,20,27,34,41,48,55
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialMcpAccessToggle.vue
+  s_b66aa0d80e11d6::t_6eb6ccdada9a5f 1-128,130-149
+  s_b66aa0d80e11d6::t_82aea3b3a5b27b 129
+packages/cli/src/modules/mcp/credential-broker/credential-broker.tools.ts
+  s_b66aa0d80e11d6::t_708445f6b0706a 35,133-134,227-230,234-247,280
+  s_b66aa0d80e11d6::t_aaf2ee0d9f3115 1-8,10-34,36-132,135-226,231-233,248-279,281-291,295,298-300,303,309,312-313
+  s_b66aa0d80e11d6::t_201363f6c5ba43 9,292-294,296-297,301-302,304-308,310-311
+packages/cli/src/modules/mcp-registry/mcp-connection-discovery.service.ts
+  s_b66aa0d80e11d6::t_0e3da987833c8a 187-208
+packages/modules/mcp/frontend/src/mcp.constants.ts
+  s_b66aa0d80e11d6::t_424422877a712a 39
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b66aa0d80e11d6::t_82aea3b3a5b27b 1548-1554,1627-1628,4493-4511,4577-4587,4690-4701
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_b66aa0d80e11d6::t_82aea3b3a5b27b 26,1866-1871
+  s_b66aa0d80e11d6::t_80387e12460388 1872
+packages/cli/src/modules/mcp/dto/update-credentials-availability.dto.ts
+  s_b66aa0d80e11d6::t_78bbbcacf89ea8 1-7
+packages/nodes-base/nodes/Slack/V2/StarDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,21,28,35
+packages/modules/mcp/frontend/src/modals/MCPConnectCredentialsModal.vue
+  s_b66aa0d80e11d6::t_1ad327b54ef51c 1-138
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_b66aa0d80e11d6::t_1792d1c968ebe7 618-623
+  s_b66aa0d80e11d6::t_fa871aed0ac3aa 435,761
+packages/cli/src/modules/mcp/credential-broker/node-allowlist.ts
+  s_b66aa0d80e11d6::t_1792d1c968ebe7 1-49,62-68,70-80,82-95
+  s_b66aa0d80e11d6::t_ac7d364ccb9fe5 50-61
+  s_b66aa0d80e11d6::t_651269eacfb010 69,81
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_b66aa0d80e11d6::t_201363f6c5ba43 80,83-84,303,561,581-583,749-752,754
+  s_b66aa0d80e11d6::t_e6e6484b214118 81-82,753,755
+packages/nodes-base/nodes/Slack/V2/MessageDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,20,26,32,38,44,50,56,62,68
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_b66aa0d80e11d6::t_96f2748c1a5bf1 30-31,41-42
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_b66aa0d80e11d6::t_ea3944d9b10ba3 1,357-358
+packages/modules/mcp/frontend/src/SettingsMCPCredentialsView.vue
+  s_b66aa0d80e11d6::t_6737138701754e 171
+  s_b66aa0d80e11d6::t_2f17ec76dbaa8e 1-170,172-234
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/credentialMcpAccessSync.ts
+  s_b66aa0d80e11d6::t_96f2748c1a5bf1 1-12
+packages/cli/src/commands/import/credentials.ts
+  s_b66aa0d80e11d6::t_be0a63aaffc081 552
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_b66aa0d80e11d6::t_f092ef4cb2b4cf 32,47-57
+  s_b66aa0d80e11d6::t_1aeacaf23f07f3 58
+packages/nodes-base/nodes/Slack/V2/ChannelDescription.ts
+  s_b66aa0d80e11d6::t_3192c64eb1e572 1,21,28,35,42,49,56,63,70,77,84,91,98,105,112,119,126,133
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/credentialTypeNames.ts
+  s_b66aa0d80e11d6::t_96f2748c1a5bf1 1-10
+packages/modules/mcp/frontend/src/mcp.api.ts
+  s_b66aa0d80e11d6::t_424422877a712a 8,10,20-21,53-57,217-241
+  s_b66aa0d80e11d6::t_b82cee4078a517 17-19
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_b66aa0d80e11d6::t_96f2748c1a5bf1 182-192
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_b66aa0d80e11d6::t_b92cb23920ccf9 24-25,64-65
+packages/modules/mcp/frontend/src/mcp.store.ts
+  s_b66aa0d80e11d6::t_424422877a712a 17-19,27,29,33,36,44-46,78-81,89-103,176-178,200-241,523-527
+  s_b66aa0d80e11d6::t_29a464f994b64c 197-199
+packages/modules/mcp/frontend/src/components/tabs/CredentialsTable.vue
+  s_b66aa0d80e11d6::t_1ad327b54ef51c 1-398
+docs/generated/postgres-schema/README.md
+  s_b66aa0d80e11d6::t_28f6a2a9bcb00f 69,1145
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_b66aa0d80e11d6::t_24249336889e00 64
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_b66aa0d80e11d6::t_b9b7013c7ac09a 72
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_b66aa0d80e11d6::t_0f293b77af91c4 89
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_b66aa0d80e11d6::t_3ae4bfafe2cb13 49
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_b66aa0d80e11d6::t_7bcffb5608595b 7,28,70
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_b66aa0d80e11d6::t_1988be1252eca9 53
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_b66aa0d80e11d6::t_7b9beb2b3fd6e6 51
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_b66aa0d80e11d6::t_4951b3f17be179 55
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_b66aa0d80e11d6::t_da2d2086c61a20 57
+docs/generated/postgres-schema/public.instance_credential_assignment.md
+  s_b66aa0d80e11d6::t_11c0563e6db882 44
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_b66aa0d80e11d6::t_87794fec58294a 48
+docs/generated/postgres-schema/public.skill_source.md
+  s_b66aa0d80e11d6::t_b25182671d92df 94
+docs/generated/sqlite-schema/README.md
+  s_b66aa0d80e11d6::t_4083b346923d58 69,1131
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_b66aa0d80e11d6::t_4b514427bfab69 74
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_b66aa0d80e11d6::t_22a97900c0552d 74
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_b66aa0d80e11d6::t_8a293550a45797 93
+docs/generated/sqlite-schema/credential_dependency.md
+  s_b66aa0d80e11d6::t_e99c4774a258d3 54
+docs/generated/sqlite-schema/credentials_entity.md
+  s_b66aa0d80e11d6::t_44b42489178fe1 9,18,69
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_b66aa0d80e11d6::t_1768dd927c5451 61
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_b66aa0d80e11d6::t_e0cfa44979947f 57
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_b66aa0d80e11d6::t_6ffe066d02a380 63
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_b66aa0d80e11d6::t_d7b09756778e0e 62
+docs/generated/sqlite-schema/instance_credential_assignment.md
+  s_b66aa0d80e11d6::t_45dab570484831 52
+docs/generated/sqlite-schema/shared_credentials.md
+  s_b66aa0d80e11d6::t_eb5ab28c66d4e5 56
+docs/generated/sqlite-schema/skill_source.md
+  s_b66aa0d80e11d6::t_0191f173f40a30 98
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_b66aa0d80e11d6::t_9a78f22db07e0d 68-74,84,107-111,182
+packages/@n8n/api-types/src/index.ts
+  s_6a503ffa557ef7::t_f3ca88f40f91cb 873-874,882
+packages/@n8n/db/src/entities/credentials-entity.ts
+  s_b66aa0d80e11d6::t_b1ce5cc776895b 79-85
+packages/@n8n/db/src/entities/types-db.ts
+  s_b66aa0d80e11d6::t_77b6f234f3d5f9 113
+packages/@n8n/db/src/migrations/common/1794940000000-AddAvailableInMcpToCredentials.ts
+  s_b66aa0d80e11d6::t_ebd2583419593f 1-21
+packages/cli/src/modules/mcp/dto/update-mcp-settings.dto.ts
+  s_6a503ffa557ef7::t_d7064b35350443 1,7,12-15
+packages/cli/src/modules/mcp/mcp.settings.controller.ts
+  s_6a503ffa557ef7::t_a5e4796367e28b 59-62,74,77,80
+packages/cli/src/modules/mcp/mcp.settings.service.ts
+  s_6a503ffa557ef7::t_44bd76db85af34 1-5,35-38,143-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55e62236897aec89bd5ce439c729ab296b93ea2f",
+  "prompts": {},
+  "sessions": {
+    "s_6a503ffa557ef7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5cc6dc8b087f7ebd",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b66aa0d80e11d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a6e9c78-78ae-452e-893f-015e2529605a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
