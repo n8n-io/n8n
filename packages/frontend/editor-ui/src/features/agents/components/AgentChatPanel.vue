@@ -39,7 +39,6 @@ import {
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
-	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
@@ -129,6 +128,11 @@ const props = withDefaults(
 		 * file tool.
 		 */
 		acceptedMimeTypes?: string;
+		/**
+		 * Largest file in bytes. Only the system channel uploads files as they are,
+		 * so only a system agent host can raise it above the base64 attachment cap.
+		 */
+		maxAttachmentBytes?: number;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canSendToAssistant?: boolean;
@@ -939,6 +943,12 @@ const acceptedMimeTypes = computed(() => {
 		.join(',');
 });
 
+const maxAttachmentBytes = computed(() =>
+	props.channel === 'system' && props.maxAttachmentBytes !== undefined
+		? props.maxAttachmentBytes
+		: MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+);
+
 function handleFilesSelected(files: File[]) {
 	for (const file of files) {
 		if (attachedFiles.value.length >= MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) {
@@ -967,13 +977,13 @@ function handleFilesSelected(files: File[]) {
 			});
 			continue;
 		}
-		if (file.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+		if (file.size > maxAttachmentBytes.value) {
 			toast.showMessage({
 				type: 'error',
 				title: locale.baseText('agents.chat.attachments.tooLarge', {
 					interpolate: {
 						fileName: file.name,
-						limit: String(MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB),
+						limit: String(Math.floor(maxAttachmentBytes.value / (1024 * 1024))),
 					},
 				}),
 			});
@@ -2041,6 +2051,7 @@ onBeforeUnmount(() => {
 						:show-attach="showAttach"
 						:show-attach-button="false"
 						:accepted-mime-types="acceptedMimeTypes"
+						:max-file-bytes="props.channel === 'system' ? maxAttachmentBytes : undefined"
 						:can-submit="!props.disabled && !isSubmissionBlocked && hasDraft"
 						:disabled="isComposerBlocked"
 						data-testid="chat-input"

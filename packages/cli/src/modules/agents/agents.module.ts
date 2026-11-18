@@ -284,6 +284,7 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
+			maxImportBytes: config.maxImportMb * 1024 * 1024,
 		};
 	}
 

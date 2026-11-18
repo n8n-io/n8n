@@ -743,6 +743,64 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.interactive?.cancelled).toBeUndefined();
 	});
 
+	it('sends the files of a system message as multipart parts', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const clip = new File(['video bytes'], 'clip.mp4', { type: 'video/mp4' });
+
+		const hook = buildHook(undefined, { channel: ref('system') });
+		await hook.sendMessage('see clip', [clip]);
+		await flushPromises();
+
+		const init = fetchMock.mock.calls[0][1] as RequestInit;
+		expect(init.headers).not.toHaveProperty('Content-Type');
+		expect(init.body).toBeInstanceOf(FormData);
+		const form = init.body as FormData;
+		expect(JSON.parse(form.get('payload') as string)).toEqual(
+			expect.objectContaining({ message: 'see clip' }),
+		);
+		expect(JSON.parse(form.get('payload') as string)).not.toHaveProperty('attachments');
+		expect((form.getAll('files')[0] as File).name).toBe('clip.mp4');
+	});
+
+	it('sends the files of a project agent message as base64 in JSON', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const csv = new File(['a,b'], 'data.csv', { type: 'text/csv' });
+
+		const hook = buildHook(undefined, { channel: ref('chat') });
+		await hook.sendMessage('read this', [csv]);
+		await flushPromises();
+
+		const init = fetchMock.mock.calls[0][1] as RequestInit;
+		expect(init.headers).toHaveProperty('Content-Type', 'application/json');
+		expect(JSON.parse(init.body as string)).toEqual(
+			expect.objectContaining({
+				attachments: [expect.objectContaining({ fileName: 'data.csv' })],
+			}),
+		);
+	});
+
+	it('shows the message of a rejected request', async () => {
+		globalThis.fetch = vi.fn().mockResolvedValueOnce(
+			new Response(JSON.stringify({ code: 400, message: 'Files must be 200 MB or smaller' }), {
+				status: 400,
+				statusText: 'Bad Request',
+				headers: { 'Content-Type': 'application/json' },
+			}),
+		) as unknown as typeof fetch;
+		const big = new File(['x'], 'big.mov', { type: 'video/quicktime' });
+
+		const hook = buildHook(undefined, { channel: ref('system') });
+		await hook.sendMessage('see clip', [big]);
+		await flushPromises();
+
+		expect(showQueueErrorMock).toHaveBeenCalledWith(
+			new Error('Files must be 200 MB or smaller'),
+			expect.any(String),
+		);
+	});
+
 	it('cancels an idle suspended interaction and settles its UI state', async () => {
 		globalThis.fetch = vi.fn(async () =>
 			makeSseResponse([

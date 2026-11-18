@@ -50,6 +50,15 @@ describe('SystemAgentChatMessageDto', () => {
 		).toBe(false);
 	});
 
+	it('accepts a message with only uploaded files', () => {
+		expect(SystemAgentChatMessageDto.safeParse({ message: '', uploadedFileCount: 1 }).success).toBe(
+			true,
+		);
+		expect(SystemAgentChatMessageDto.safeParse({ message: '', uploadedFileCount: 0 }).success).toBe(
+			false,
+		);
+	});
+
 	it('accepts a message at the length limit', () => {
 		expect(SystemAgentChatMessageDto.safeParse({ message: atLimit }).success).toBe(true);
 	});

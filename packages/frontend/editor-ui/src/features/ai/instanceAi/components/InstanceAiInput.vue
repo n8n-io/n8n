@@ -118,6 +118,8 @@ const props = withDefaults(
 		attachOnlyMimeTypes?: string;
 		/** Restricts the accepted file types, as an `accept` string, and keeps the "+" menu. `attachOnlyMimeTypes` wins when both are set. */
 		acceptedMimeTypes?: string;
+		/** Largest file in bytes, for a host that uploads files as they are. See `ChatInputBase`. */
+		maxFileBytes?: number;
 	}>(),
 	{
 		isStreaming: false,
@@ -938,6 +940,7 @@ const resizable = computed(() => {
 			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
 			:accepted-mime-types="props.attachOnlyMimeTypes ?? props.acceptedMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
+			:max-file-bytes="props.maxFileBytes"
 			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"
 			@stop="handleStop"

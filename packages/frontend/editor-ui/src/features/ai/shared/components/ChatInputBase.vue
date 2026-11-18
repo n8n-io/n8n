@@ -46,6 +46,12 @@ const props = withDefaults(
 		 * batch the backend then rejects.
 		 */
 		attachedEncodedBytes?: number;
+		/**
+		 * Largest file in bytes, for a host that uploads files as they are rather
+		 * than as base64 in the message. It replaces the per-file and message-wide
+		 * base64 limits.
+		 */
+		maxFileBytes?: number;
 		autosize?: boolean | { minRows: number; maxRows: number };
 		/** Keeps the composer at this CSS height, including its attachment row. */
 		composerHeight?: string;
@@ -58,6 +64,7 @@ const props = withDefaults(
 		showAttachButton: true,
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
+		maxFileBytes: undefined,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
 		maxLength: undefined,
 	},
@@ -159,6 +166,7 @@ function getSendStopButtonElement(): HTMLElement | undefined {
  * them directly would admit files ~4/3 too large.
  */
 function withinSizeLimit(files: File[]): File[] {
+	if (props.maxFileBytes !== undefined) return withinFileLimit(files, props.maxFileBytes);
 	const oversized = files.filter((file) => exceedsAttachmentSizeLimit(file.size));
 	if (oversized.length > 0) {
 		toast.showError(
@@ -203,6 +211,24 @@ function withinSizeLimit(files: File[]): File[] {
 	}
 
 	return accepted;
+}
+
+function withinFileLimit(files: File[], maxBytes: number): File[] {
+	const oversized = files.filter((file) => file.size > maxBytes);
+	if (oversized.length > 0) {
+		toast.showError(
+			new Error(
+				i18n.baseText('chat.attachment.tooLarge.message', {
+					interpolate: {
+						fileNames: oversized.map((file) => file.name).join(', '),
+						limit: `${(maxBytes / (1024 * 1024)).toFixed(1)} MB`,
+					},
+				}),
+			),
+			i18n.baseText('chat.attachment.tooLarge.title'),
+		);
+	}
+	return files.filter((file) => file.size <= maxBytes);
 }
 
 function handleFiles(files: File[]) {

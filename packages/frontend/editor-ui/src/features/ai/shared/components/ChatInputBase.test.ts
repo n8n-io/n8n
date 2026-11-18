@@ -546,5 +546,39 @@ describe('ChatInputBase', () => {
 			expect(events[0][0].map((f) => f.name)).toEqual(['fine.png']);
 			expect(mockShowError).toHaveBeenCalled();
 		});
+
+		describe('with a raw file cap', () => {
+			const maxFileBytes = 200 * 1024 * 1024;
+
+			it('attaches files over the base64 limits up to the cap', () => {
+				const { getByRole, emitted } = renderComponent({
+					props: makeProps({ showAttach: true, maxFileBytes }),
+				});
+
+				pasteInto(getByRole('textbox'), [
+					fileOfSize('a.mp4', maxFileBytes),
+					fileOfSize('b.mp4', MAX_TOTAL_ATTACHMENT_DECODED_BYTES),
+				]);
+
+				const events = emitted()['files-selected'] as Array<[File[]]>;
+				expect(events[0][0].map((f) => f.name)).toEqual(['a.mp4', 'b.mp4']);
+				expect(mockShowError).not.toHaveBeenCalled();
+			});
+
+			it('drops a file over the cap and warns', () => {
+				const { getByRole, emitted } = renderComponent({
+					props: makeProps({ showAttach: true, maxFileBytes }),
+				});
+
+				pasteInto(getByRole('textbox'), [
+					fileOfSize('fine.mp4', 1024),
+					fileOfSize('huge.mp4', maxFileBytes + 1),
+				]);
+
+				const events = emitted()['files-selected'] as Array<[File[]]>;
+				expect(events[0][0].map((f) => f.name)).toEqual(['fine.mp4']);
+				expect(mockShowError).toHaveBeenCalled();
+			});
+		});
 	});
 });

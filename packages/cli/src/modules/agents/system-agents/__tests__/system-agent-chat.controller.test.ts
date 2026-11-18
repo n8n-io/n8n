@@ -157,6 +157,30 @@ describe('SystemAgentChatController', () => {
 		);
 	});
 
+	it('stores the files of a multipart message with their cap', async () => {
+		const { controller, systemAgents, chatRelay } = setup();
+		chatRelay.relayQueuedMessage.mockImplementation(async (_res, accept) => {
+			await accept(vi.fn(), new AbortController().signal);
+		});
+		systemAgents.prepareChatMessage.mockImplementation(async ({ storeAttachments }) => {
+			await storeAttachments?.('thread-1', 'project-1');
+			return {} as never;
+		});
+		const uploads = [{ fileName: 'clip.mp4', mimeType: 'video/mp4', path: '/tmp/upload-1' }];
+
+		await controller.chat(
+			Object.assign(request({}), { chatUploads: uploads, chatUploadMaxBytes: 1024 }),
+			mock<FlushableResponse>(),
+			AGENT_ID,
+			{ message: '', sessionId: 'thread-1', uploadedFileCount: 1 } as never,
+			{ projectId: 'project-1' },
+		);
+
+		expect(chatRelay.storeChatAttachments).toHaveBeenCalledWith(
+			expect.objectContaining({ uploads, maxUploadBytes: 1024, threadId: 'thread-1' }),
+		);
+	});
+
 	it('lists the queue of a usable thread as system messages', async () => {
 		const { controller, systemAgents, messageQueue } = setup();
 

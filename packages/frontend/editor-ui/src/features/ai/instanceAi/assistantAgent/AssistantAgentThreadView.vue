@@ -107,7 +107,6 @@ import {
 	saveAssistantAgentThreadTabs,
 } from './assistantAgentTabs.api';
 import {
-	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
@@ -150,6 +149,7 @@ import {
 	ASSISTANT_AGENT_SETUP_SAVED,
 	useAssistantAgentSetupSavedTelemetry,
 } from './useAssistantAgentSetupSavedTelemetry';
+import { useAssistantAgentAttachmentRules } from './useAssistantAgentAttachmentRules';
 import { useAssistantAgentMentions } from './useAssistantAgentMentions';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
@@ -178,6 +178,7 @@ const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
 const threadsStore = useAssistantAgentThreadsStore();
 const toast = useToast();
+const attachmentRules = useAssistantAgentAttachmentRules();
 const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
 
 // A new thread has a launch marker until the server accepts its first message.
@@ -1020,7 +1021,8 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:new-session="isNewSession"
 						:agent-config="agentConfig"
 						empty-state-icon="n8n-assistant"
-						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
+						:accepted-mime-types="attachmentRules.acceptedMimeTypes.value"
+						:max-attachment-bytes="attachmentRules.maxAttachmentBytes.value"
 						agent-status="production"
 						:connected-triggers="[]"
 						channel="system"

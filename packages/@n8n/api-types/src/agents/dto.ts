@@ -889,11 +889,19 @@ const systemAgentChatMessageShape = {
 	...agentChatMessageShape,
 	message: systemAgentMessageSchema,
 	sessionId: lowercaseUuidSchema.optional(),
+	/**
+	 * The number of files in the `files` parts of a multipart request. The
+	 * server sets it from the request; it does not trust a client value.
+	 */
+	uploadedFileCount: z.number().int().min(0).max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE).optional(),
 };
 
 const systemAgentChatMessageSchema = z
 	.object(systemAgentChatMessageShape)
-	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(
+		(value) => hasMessageContent.check(value) || (value.uploadedFileCount ?? 0) > 0,
+		hasMessageContent.options,
+	)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
 
 /**
