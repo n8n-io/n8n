@@ -11,7 +11,7 @@ This is the normal n8n app with its backend, database, workflow editor, node par
 
 1. Leave the canvas idle for 3 seconds. The disconnected Code node sleeps.
 2. Move the pointer to wake it. Select it to use **Sleep now**.
-3. Click the sticky note's top-right corner. The note folds into a bird and returns.
+3. Delete the sticky note. A paper bird flies away. Undo restores the note.
 4. Double-click the note to edit it. Double-click the Code node to open its parameters.
 
 Import [real-workflow.json](real-workflow.json) into another running instance of this branch to repeat the demo. Add `?hackmation=delight` to that workflow URL.
@@ -74,8 +74,8 @@ Start n8n through the normal development setup. Open a workflow and add `?hackma
 
 - A disconnected or disabled regular node sleeps after 3 seconds. Running and waiting nodes stay awake.
 - Select an eligible node to show its **Sleep now** or **Wake** control.
-- Click a sticky note's top-right corner to fold it. The corner is also a keyboard-accessible button.
-- Editing a note cancels its flight. Read-only notes do not show the fold control.
+- Delete a sticky note with its toolbar, the context menu, or the keyboard. A temporary copy folds and flies away.
+- The real note is deleted immediately. Undo stays available during the flight. The canvas has no corner trigger.
 - Remove the URL parameter to disable the demo. The ordinary sticky-note renderer has no added layout wrapper in this state.
 
 The app integration accepts normal n8n workflows, including workflows imported through the editor. The harness has a fixed sample. It does not import or export workflow files.

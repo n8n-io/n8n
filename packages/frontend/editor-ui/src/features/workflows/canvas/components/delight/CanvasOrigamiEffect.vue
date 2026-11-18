@@ -6,6 +6,7 @@ const props = defineProps<{
 	enabled: boolean;
 	disabled?: boolean;
 	label: string;
+	deletionOnly?: boolean;
 	reducedMotion?: boolean;
 }>();
 const active = ref(false);
@@ -50,10 +51,11 @@ defineExpose({ fold, cancel, active });
 		:style="{ '--origami-duration': `${duration}ms` }"
 		data-testid="canvas-origami"
 		:data-folding="active"
+		:data-deletion-enabled="!disabled"
 	>
 		<div class="origami-paper"><slot /></div>
 		<button
-			v-if="enabled && !disabled"
+			v-if="enabled && !disabled && !deletionOnly"
 			class="origami-corner nodrag nopan"
 			type="button"
 			:aria-label="label"
@@ -68,7 +70,7 @@ defineExpose({ fold, cancel, active });
 				<path d="M0 0v32h32z" fill="currentColor" opacity=".2" />
 			</svg>
 		</button>
-		<div v-if="active" class="origami-flight" aria-hidden="true" data-testid="origami-bird">
+		<div class="origami-flight" aria-hidden="true" data-testid="origami-bird">
 			<svg viewBox="0 0 180 140" class="origami-bird">
 				<path d="M80 83 11 42 61 103Z" fill="#b89b50" />
 				<path class="origami-wing far" d="M76 88 49 8 126 66Z" fill="#f1d789" />
@@ -132,6 +134,7 @@ defineExpose({ fold, cancel, active });
 	@include motion.reduced-motion;
 }
 .origami-flight {
+	visibility: hidden;
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -141,6 +144,9 @@ defineExpose({ fold, cancel, active });
 	z-index: 3;
 	animation: origami-flight var(--origami-duration) cubic-bezier(0.4, 0, 0.2, 1) both;
 	@include motion.reduced-motion;
+}
+.is-folding .origami-flight {
+	visibility: visible;
 }
 .origami-bird {
 	width: 100%;
@@ -210,6 +216,62 @@ defineExpose({ fold, cancel, active });
 	}
 	to {
 		transform: scaleY(0.42);
+	}
+}
+</style>
+
+<style lang="scss">
+.canvas-origami-deletion {
+	position: absolute;
+	pointer-events: none;
+}
+.is-folding.is-deleting:not(.is-reduced) .origami-paper {
+	animation: origami-delete-fold var(--origami-duration) ease-in both;
+}
+.is-deleting .origami-flight {
+	animation-name: origami-delete-flight;
+}
+.is-deleting.is-reduced .origami-paper {
+	visibility: hidden;
+	animation: none;
+}
+@keyframes origami-delete-fold {
+	0% {
+		transform: none;
+		opacity: 1;
+	}
+	25%,
+	100% {
+		transform: scale(0.12) rotate(-18deg) skewY(-12deg);
+		opacity: 0;
+	}
+}
+@keyframes origami-delete-flight {
+	0%,
+	12% {
+		opacity: 0;
+		transform: scale(0.3) rotate(-18deg);
+	}
+	28% {
+		opacity: 1;
+		transform: translate(0, calc(-1 * var(--spacing--xl))) rotate(-12deg);
+	}
+	75% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translate(calc(4 * var(--spacing--4xl)), calc(-4 * var(--spacing--4xl)))
+			rotate(-20deg) scale(0.5);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.is-deleting .origami-paper {
+		visibility: hidden;
+		animation: none;
+	}
+	.is-deleting .origami-flight {
+		animation: none;
 	}
 }
 </style>

@@ -118,6 +118,7 @@ onBeforeUnmount(() => {
 	/>
 	<CanvasOrigamiEffect
 		:enabled="delightEnabled"
+		deletion-only
 		:disabled="isActive || isReadOnly"
 		:label="i18n.baseText('canvas.delight.fold')"
 	>
