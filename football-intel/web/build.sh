@@ -7,7 +7,7 @@ static="$here/../src/footintel/api/static"
 dist="$here/dist"
 rm -rf "$dist"
 mkdir -p "$dist"
-cp "$static"/{index.html,app.js,names.js,style.css,value.html,value.js,value.css} "$here"/{site.js,site.css,config.js} "$dist"/
+cp "$static"/{index.html,app.js,names.js,nav.js,style.css,value.html,value.js,value.css} "$here"/{site.js,site.css,config.js} "$dist"/
 cp "$here/vercel.json" "$dist"/
 
 SUPABASE_JS='<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>'
@@ -24,7 +24,7 @@ done
 # integrity hashes, so the Vercel deployment holds only the small HTML and config files.
 if [ -n "${CDN_COMMIT:-}" ]; then
   cdn="https://cdn.jsdelivr.net/gh/benkas418-alt/n8n@$CDN_COMMIT/football-intel"
-  for asset in app.js:src/footintel/api/static names.js:src/footintel/api/static style.css:src/footintel/api/static \
+  for asset in app.js:src/footintel/api/static names.js:src/footintel/api/static nav.js:src/footintel/api/static style.css:src/footintel/api/static \
                value.js:src/footintel/api/static value.css:src/footintel/api/static site.js:web site.css:web; do
     name="${asset%%:*}"
     url="$cdn/${asset##*:}/$name"

@@ -110,7 +110,7 @@ tr.group td { background: var(--bg); padding-top: 10px; }
 /* Phone tab bar: same four destinations as the dashboard. */
 .tabbar { display: none; }
 @media (max-width: 900px) {
-  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr);
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr);
     background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
   .tabbar a { display: flex; align-items: center; justify-content: center; min-height: 56px; font-size: 13px; font-weight: 500;
     color: var(--muted); text-decoration: none; border-top: 2px solid transparent; }
@@ -157,3 +157,11 @@ h1, h2, .day { font-family: var(--font); letter-spacing: -0.02em; }
   .filters::-webkit-scrollbar { display: none; }
   .filters button { flex: 0 0 auto; scroll-snap-align: start; }
 }
+
+/* Swipe between tabs (D89): the new page slides in from the side of the swipe. */
+@keyframes fi-in-left { from { opacity: .4; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes fi-in-right { from { opacity: .4; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.swipe-in-left { animation: fi-in-left .26s ease-out; }
+.swipe-in-right { animation: fi-in-right .26s ease-out; }
+@media (prefers-reduced-motion: reduce) { .swipe-in-left, .swipe-in-right { animation: none; } }
+@media (max-width: 900px) { .tabbar a { font-size: 12px; letter-spacing: -.01em; } }
