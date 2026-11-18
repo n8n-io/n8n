@@ -9,11 +9,13 @@ import {
 	type ITaskBoardProxy,
 	type TaskBoardActor,
 	type TaskBoardAssigneeInput,
+	type TaskBoardSeverity,
 } from 'n8n-workflow';
 
 import { TASK_BOARD_DISABLED_MESSAGE } from './constants';
 
-const WRITE_OPERATIONS = ['create', 'addComment', 'move', 'assign'];
+// Record Usage is not in this list: it has no actor and emits no task event.
+const WRITE_OPERATIONS = ['create', 'addComment', 'move', 'assign', 'update', 'handoff'];
 
 const COLUMN_ROLES = [
 	{ name: 'Backlog', value: 'backlog' },
@@ -22,6 +24,15 @@ const COLUMN_ROLES = [
 	{ name: 'Needs Input', value: 'needs_input' },
 	{ name: 'To Do', value: 'todo' },
 ];
+
+const SEVERITIES: Array<{ name: string; value: TaskBoardSeverity }> = [
+	{ name: 'Critical', value: 'critical' },
+	{ name: 'High', value: 'high' },
+	{ name: 'Low', value: 'low' },
+	{ name: 'Medium', value: 'medium' },
+];
+
+const NO_SEVERITY = 'none';
 
 const assigneeTypeOptions: INodeProperties['options'] = [
 	{ name: 'Agent', value: 'agent' },
@@ -88,10 +99,28 @@ export class TaskBoard implements INodeType {
 						action: 'Get a task',
 					},
 					{
+						name: 'Hand Off',
+						value: 'handoff',
+						description: 'Hand a task off to another agent of the board',
+						action: 'Hand off a task',
+					},
+					{
 						name: 'Move',
 						value: 'move',
 						description: 'Move a task to another column',
 						action: 'Move a task',
+					},
+					{
+						name: 'Record Usage',
+						value: 'recordUsage',
+						description: 'Add the token usage of an agent run to a task',
+						action: 'Record usage on a task',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Change the title, description, severity or tags of a task',
+						action: 'Update a task',
 					},
 				],
 				default: 'create',
@@ -149,6 +178,24 @@ export class TaskBoard implements INodeType {
 					hide: { assigneeType: ['none'] },
 				},
 			},
+			{
+				displayName: 'Severity',
+				name: 'severity',
+				type: 'options',
+				options: [{ name: 'None', value: NO_SEVERITY }, ...SEVERITIES],
+				default: NO_SEVERITY,
+				displayOptions: showFor('create'),
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. billing, refund',
+				description:
+					'Comma-separated list of tags. An expression can also return an array of strings.',
+				displayOptions: showFor('create'),
+			},
 
 			// Task ID for all other operations
 			{
@@ -157,7 +204,15 @@ export class TaskBoard implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				displayOptions: showFor('get', 'addComment', 'move', 'assign'),
+				displayOptions: showFor(
+					'get',
+					'addComment',
+					'move',
+					'assign',
+					'update',
+					'handoff',
+					'recordUsage',
+				),
 			},
 
 			// Add comment
@@ -223,6 +278,112 @@ export class TaskBoard implements INodeType {
 				required: true,
 				default: '',
 				displayOptions: { show: { resource: ['task'], operation: ['assign'], unassign: [false] } },
+			},
+
+			// Update
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: showFor('update'),
+				options: [
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						typeOptions: { rows: 4 },
+						default: '',
+					},
+					{
+						displayName: 'Severity',
+						name: 'severity',
+						type: 'options',
+						options: [{ name: 'None', value: NO_SEVERITY }, ...SEVERITIES],
+						default: NO_SEVERITY,
+						description: 'None removes the severity',
+					},
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. billing, refund',
+						description:
+							'Comma-separated list of tags. An expression can also return an array of strings. The new tags replace the current tags.',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+
+			// Hand off
+			{
+				displayName: 'Hand Off To',
+				name: 'handoffTo',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The ID or the name of the agent that takes the task over',
+				displayOptions: showFor('handoff'),
+			},
+
+			// Record usage
+			{
+				displayName: 'Agent ID',
+				name: 'usageAgentId',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The ID of the agent that used the tokens',
+				displayOptions: showFor('recordUsage'),
+			},
+			{
+				displayName: 'Prompt Tokens',
+				name: 'promptTokens',
+				type: 'number',
+				typeOptions: { minValue: 0 },
+				default: 0,
+				displayOptions: showFor('recordUsage'),
+			},
+			{
+				displayName: 'Completion Tokens',
+				name: 'completionTokens',
+				type: 'number',
+				typeOptions: { minValue: 0 },
+				default: 0,
+				displayOptions: showFor('recordUsage'),
+			},
+			{
+				displayName: 'Total Tokens',
+				name: 'totalTokens',
+				type: 'number',
+				typeOptions: { minValue: 0 },
+				default: 0,
+				displayOptions: showFor('recordUsage'),
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: showFor('recordUsage'),
+				options: [
+					{
+						displayName: 'Cost (USD)',
+						name: 'cost',
+						type: 'number',
+						typeOptions: { minValue: 0, numberPrecision: 6 },
+						default: 0,
+						description: 'The cost of the agent run in US dollars',
+					},
+				],
 			},
 
 			// Act as
@@ -296,6 +457,44 @@ function getActor(context: IExecuteFunctions, itemIndex: number): TaskBoardActor
 	return { type: 'workflow', id: context.getWorkflow().id ?? '' };
 }
 
+const isUnset = (value: unknown) => value === undefined || value === null || value === '';
+
+/** Returns `undefined` for an unset value, and `null` for the "None" option. */
+function toSeverity(
+	context: IExecuteFunctions,
+	value: unknown,
+	itemIndex: number,
+): TaskBoardSeverity | null | undefined {
+	if (isUnset(value)) return undefined;
+	if (value === NO_SEVERITY) return null;
+	const severity = SEVERITIES.find((option) => option.value === value);
+	if (!severity) {
+		throw new NodeOperationError(context.getNode(), `Unknown severity: ${String(value)}`, {
+			itemIndex,
+		});
+	}
+	return severity.value;
+}
+
+/** Accepts a comma-separated string or an array. Returns `undefined` for an unset value. */
+function toTags(value: unknown): string[] | undefined {
+	if (value === undefined || value === null) return undefined;
+	const parts: unknown[] = Array.isArray(value) ? value : String(value).split(',');
+	return parts.map((part) => String(part).trim()).filter((part) => part !== '');
+}
+
+/** A missing or non-numeric value counts as zero, so a run without usage data does not fail. */
+function toTokenCount(value: unknown): number {
+	const count = Number(value);
+	return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
+function toCost(value: unknown): number | null {
+	if (isUnset(value)) return null;
+	const cost = Number(value);
+	return Number.isFinite(cost) ? cost : null;
+}
+
 function toAssignee(type: string, id: string): TaskBoardAssigneeInput {
 	return type === 'user' ? { type: 'user', id } : { type: 'agent', id };
 }
@@ -312,6 +511,7 @@ async function runOperation(
 		case 'create': {
 			const columnRole = param('columnRole');
 			const assigneeType = param('assigneeType');
+			const tags = toTags(context.getNodeParameter('tags', i, ''));
 			return await proxy.createTask(
 				{
 					boardId: param('boardId'),
@@ -320,6 +520,10 @@ async function runOperation(
 					columnRole: columnRole === 'default' ? undefined : columnRole,
 					assignee:
 						assigneeType === 'none' ? undefined : toAssignee(assigneeType, param('assigneeId')),
+					severity:
+						toSeverity(context, context.getNodeParameter('severity', i, NO_SEVERITY), i) ??
+						undefined,
+					tags: tags?.length ? tags : undefined,
 				},
 				getActor(context, i),
 			);
@@ -341,6 +545,50 @@ async function runOperation(
 				? null
 				: toAssignee(param('assignTargetType'), param('assignTargetId'));
 			return await proxy.assignTask(param('taskId'), assignee, getActor(context, i));
+		}
+		case 'update': {
+			const updateFields = context.getNodeParameter('updateFields', i, {});
+			const fields: Parameters<ITaskBoardProxy['updateTask']>[1] = {};
+			// An expression that returns no value leaves the field as it is.
+			if (!isUnset(updateFields.title)) fields.title = String(updateFields.title);
+			if (updateFields.description !== undefined && updateFields.description !== null) {
+				fields.description = String(updateFields.description);
+			}
+			const severity = toSeverity(context, updateFields.severity, i);
+			if (severity !== undefined) fields.severity = severity;
+			const tags = toTags(updateFields.tags);
+			if (tags) fields.tags = tags;
+			if (Object.keys(fields).length === 0) {
+				throw new NodeOperationError(context.getNode(), 'Set at least one field to update', {
+					itemIndex: i,
+				});
+			}
+			return await proxy.updateTask(param('taskId'), fields, getActor(context, i));
+		}
+		case 'handoff': {
+			// An expression can return no value, for example when an agent did not name a teammate.
+			const to = String(context.getNodeParameter('handoffTo', i, '') ?? '').trim();
+			if (!to) {
+				throw new NodeOperationError(context.getNode(), 'Hand Off To is required', {
+					itemIndex: i,
+				});
+			}
+			const { task, handedOff } = await proxy.handoffTask(
+				param('taskId'),
+				to,
+				getActor(context, i),
+			);
+			return { ...task, handedOff };
+		}
+		case 'recordUsage': {
+			const options = context.getNodeParameter('options', i, {});
+			return await proxy.recordUsage(param('taskId'), {
+				agentId: param('usageAgentId').trim(),
+				promptTokens: toTokenCount(context.getNodeParameter('promptTokens', i, 0)),
+				completionTokens: toTokenCount(context.getNodeParameter('completionTokens', i, 0)),
+				totalTokens: toTokenCount(context.getNodeParameter('totalTokens', i, 0)),
+				cost: toCost(options.cost),
+			});
 		}
 		default:
 			throw new NodeOperationError(context.getNode(), `Unknown operation: ${operation}`, {
