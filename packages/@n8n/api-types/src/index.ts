@@ -1,6 +1,7 @@
 export { Z, type ZodClass, type ZodArrayClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
+export * from './schemas/task-board.schema';
 export type * from './push';
 export type * from './scaling';
 export type * from './process-internals';
