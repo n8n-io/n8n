@@ -23,6 +23,7 @@ const ITEM_ID = {
 	SETTINGS: 'settings',
 	THEME: 'theme',
 	THEME_MODE: 'theme-mode',
+	TOGGLE_MODE: 'toggle-mode',
 	CUSTOM_THEME: 'custom-theme',
 	SIGN_OUT: 'sign-out',
 	TEMPLATES: 'templates',
@@ -49,7 +50,10 @@ export function useGenericCommands(): CommandGroup {
 	const activeFamily = useActiveThemeFamily();
 
 	const modeCommands = computed<ThemeCommandBarItem[]>(() =>
-		modeOptions.value.map((option): ThemeCommandBarItem => {
+		[
+			...modeOptions.value.filter((option) => option.value === uiStore.themeMode),
+			...modeOptions.value.filter((option) => option.value !== uiStore.themeMode),
+		].map((option): ThemeCommandBarItem => {
 			const isCurrent = uiStore.themeMode === option.value;
 
 			return {
@@ -293,6 +297,24 @@ export function useGenericCommands(): CommandGroup {
 				},
 			},
 			keywords: [i18n.baseText('mainSidebar.aboutN8n').toLowerCase()],
+		},
+		{
+			id: ITEM_ID.TOGGLE_MODE,
+			title:
+				uiStore.appliedTheme === 'dark'
+					? i18n.baseText('commandBar.mode.switchToLight')
+					: i18n.baseText('commandBar.mode.switchToDark'),
+			section: i18n.baseText('commandBar.sections.general'),
+			handler: () => {
+				uiStore.setThemeMode(uiStore.appliedTheme === 'dark' ? 'light' : 'dark');
+			},
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: uiStore.appliedTheme === 'dark' ? 'sun' : 'moon',
+				},
+			},
+			keywords: ['dark', 'light', 'mode', 'appearance', 'theme', 'toggle'],
 		},
 		{
 			id: ITEM_ID.THEME_MODE,
