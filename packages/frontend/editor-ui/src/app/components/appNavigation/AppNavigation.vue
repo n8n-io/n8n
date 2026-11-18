@@ -354,6 +354,29 @@ onBeforeUnmount(() => {
 			</div>
 			<div :class="$style.account">
 				<N8nTooltip
+					v-if="isInsightsAvailable"
+					:content="i18n.baseText('mainSidebar.insights')"
+					placement="right"
+					:show-after="300"
+				>
+					<RouterLink
+						:to="{ name: VIEWS.INSIGHTS }"
+						:class="[$style.railItem, { [$style.railItemActive]: isInsightsActive }]"
+						:aria-label="i18n.baseText('mainSidebar.insights')"
+						:aria-current="isInsightsActive ? 'page' : undefined"
+						data-test-id="app-nav-insights"
+						@mouseenter="peek.onLeave"
+						@click="onInsightsClick"
+					>
+						<ProjectIcon
+							:icon="{ type: 'icon', value: 'chart-column-decreasing' }"
+							size="small"
+							border-less
+							color="text-dark"
+						/>
+					</RouterLink>
+				</N8nTooltip>
+				<N8nTooltip
 					v-for="item in footerItems"
 					:key="item.id"
 					:content="item.label"
@@ -380,29 +403,6 @@ onBeforeUnmount(() => {
 					>
 						<ProjectIcon
 							:icon="railIcon(item.icon, item.id === activeItemId)"
-							size="small"
-							border-less
-							color="text-dark"
-						/>
-					</RouterLink>
-				</N8nTooltip>
-				<N8nTooltip
-					v-if="isInsightsAvailable"
-					:content="i18n.baseText('mainSidebar.insights')"
-					placement="right"
-					:show-after="300"
-				>
-					<RouterLink
-						:to="{ name: VIEWS.INSIGHTS }"
-						:class="[$style.railItem, { [$style.railItemActive]: isInsightsActive }]"
-						:aria-label="i18n.baseText('mainSidebar.insights')"
-						:aria-current="isInsightsActive ? 'page' : undefined"
-						data-test-id="app-nav-insights"
-						@mouseenter="peek.onLeave"
-						@click="onInsightsClick"
-					>
-						<ProjectIcon
-							:icon="{ type: 'icon', value: 'chart-column-decreasing' }"
 							size="small"
 							border-less
 							color="text-dark"
