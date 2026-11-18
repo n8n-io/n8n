@@ -1,15 +1,16 @@
 import type { CommandBarItem } from '@n8n/design-system';
 import type { ComputedRef } from 'vue';
-import type { ThemeOption } from '@/Interface';
+import type { ThemeSelection } from '@/Interface';
 
 export type { CommandBarItem };
 
 /**
- * A command that sets the theme.
- * The command bar previews `theme` while the user highlights the item.
+ * A command that sets the mode, the theme family, or both.
+ * The command bar previews `theme` over the saved selection while the user highlights the item.
+ * A key that is not set keeps its saved value.
  */
 export interface ThemeCommandBarItem extends CommandBarItem {
-	theme: ThemeOption;
+	theme: Partial<ThemeSelection>;
 }
 
 export interface CommandBarSearchRequest {

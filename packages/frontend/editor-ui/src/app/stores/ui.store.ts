@@ -1,4 +1,9 @@
-import { VIEWS, LOCAL_STORAGE_THEME, LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
+import {
+	VIEWS,
+	LOCAL_STORAGE_THEME_MODE,
+	LOCAL_STORAGE_THEME_FAMILY,
+	LOCAL_STORAGE_SIDEBAR_WIDTH,
+} from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { DELETE_USER_MODAL_KEY } from '@/features/settings/users/users.constants';
 import {
@@ -15,7 +20,9 @@ import type {
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
-	ThemeOption,
+	ThemeFamily,
+	ThemeMode,
+	ThemeSelection,
 	ModalState,
 	ModalKey,
 	AppliedThemeOption,
@@ -27,9 +34,12 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	applyThemeToBody,
 	applyThemeWithTransition,
-	getThemeMode,
-	getThemeOverride,
-	isValidTheme,
+	DEFAULT_THEME_SELECTION,
+	getSavedTheme,
+	hasThemeVariant,
+	isThemeFamily,
+	isThemeMode,
+	resolveTheme,
 } from './ui.utils';
 import { SHELL_MODAL_INITIAL_STATE } from './defaults/modals';
 import { computed, ref, watch } from 'vue';
@@ -46,14 +56,12 @@ import {
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { showsPlaceholderPage } from '@/app/moduleInitializer/placeholderPage';
 
-let savedTheme: ThemeOption = 'system';
+let savedTheme: ThemeSelection = DEFAULT_THEME_SELECTION;
 
+// Apply the saved theme before the app mounts, with no animation.
 try {
-	const value = getThemeOverride();
-	if (value !== null) {
-		savedTheme = value;
-		applyThemeToBody(value);
-	}
+	savedTheme = getSavedTheme();
+	applyThemeToBody(savedTheme);
 } catch (e) {}
 
 type UiStore = ReturnType<typeof useUIStore>;
@@ -110,10 +118,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const telemetry = useTelemetry();
 	const activeActions = ref<string[]>([]);
 	const activeCredentialType = ref<string | null>(null);
-	const theme = useLocalStorage<ThemeOption>(LOCAL_STORAGE_THEME, savedTheme, {
+	const themeMode = useLocalStorage<ThemeMode>(LOCAL_STORAGE_THEME_MODE, savedTheme.mode, {
 		writeDefaults: false,
 		serializer: {
-			read: (value) => (isValidTheme(value) ? value : savedTheme),
+			read: (value) => (isThemeMode(value) ? value : savedTheme.mode),
+			write: identity,
+		},
+	});
+	const themeFamily = useLocalStorage<ThemeFamily>(LOCAL_STORAGE_THEME_FAMILY, savedTheme.family, {
+		writeDefaults: false,
+		serializer: {
+			read: (value) => (isThemeFamily(value) ? value : savedTheme.family),
 			write: identity,
 		},
 	});
@@ -194,12 +209,28 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
-	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
-		isDarkThemePreferred.value ? 'dark' : 'light',
+
+	const savedThemeSelection = (): ThemeSelection => ({
+		mode: themeMode.value,
+		family: themeFamily.value,
+	});
+
+	// The resolved mode. The consumers of the theme (icons, diffs, telemetry) only need light or dark.
+	const appliedTheme = computed<AppliedThemeOption>(
+		() => resolveTheme(savedThemeSelection(), isDarkThemePreferred.value).mode,
 	);
 
-	const appliedTheme = computed(() => {
-		return theme.value === 'system' ? preferredSystemTheme.value : getThemeMode(theme.value);
+	// A family can have no variant for the new resolved mode. Then the saved family is the default one.
+	// A command bar preview does not reach this code. It only changes the body attributes.
+	const resetUnavailableFamily = (): void => {
+		if (!hasThemeVariant(themeFamily.value, appliedTheme.value)) themeFamily.value = 'default';
+	};
+
+	// The OS preference can change while the app is open. Only a pinned theme needs a new apply.
+	watch(isDarkThemePreferred, () => {
+		if (themeMode.value !== 'system') return;
+		resetUnavailableFamily();
+		applyThemeWithTransition(savedThemeSelection());
 	});
 
 	const contextBasedTranslationKeys = computed(() => {
@@ -336,9 +367,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	// Methods
 
-	const setTheme = (newTheme: ThemeOption): void => {
-		theme.value = newTheme;
-		applyThemeWithTransition(newTheme);
+	const setThemeMode = (mode: ThemeMode): void => {
+		themeMode.value = mode;
+		resetUnavailableFamily();
+		applyThemeWithTransition(savedThemeSelection());
+	};
+
+	const setThemeFamily = (family: ThemeFamily): void => {
+		themeFamily.value = family;
+		applyThemeWithTransition(savedThemeSelection());
 	};
 
 	/**
@@ -673,14 +710,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
 		sidebarWidth,
-		theme: computed(() => theme.value),
+		themeMode: computed(() => themeMode.value),
+		themeFamily: computed(() => themeFamily.value),
 		modalsById,
 		modalStateById,
 		currentView,
 		isAnyModalOpen,
 		activeModals,
 		isProcessingExecutionResults,
-		setTheme,
+		setThemeMode,
+		setThemeFamily,
 		setModalData,
 		openModalWithData,
 		openModal,

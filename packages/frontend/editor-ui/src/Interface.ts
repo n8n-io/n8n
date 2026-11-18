@@ -967,9 +967,22 @@ export type ToggleNodeCreatorOptions = {
 	connectionType?: NodeConnectionType;
 };
 
+/** The resolved mode. It decides `data-theme` and `appliedTheme`. */
 export type AppliedThemeOption = 'light' | 'dark';
-export type ThemePreset = 'catppuccin-latte' | 'dracula';
-export type ThemeOption = AppliedThemeOption | 'system' | ThemePreset;
+/** The mode the user picks. `system` follows the OS preference. */
+export type ThemeMode = AppliedThemeOption | 'system';
+/** The `data-palette` values. `_palettes.scss` has one block for each value. */
+export type ThemePalette =
+	| 'catppuccin-latte'
+	| 'dracula'
+	| 'high-contrast-light'
+	| 'high-contrast-dark';
+/** A group of palettes. A family has a light and a dark variant, or only one of them. */
+export type ThemeFamily = 'default' | 'catppuccin' | 'dracula' | 'high-contrast';
+export interface ThemeSelection {
+	mode: ThemeMode;
+	family: ThemeFamily;
+}
 
 export type EnterpriseEditionFeatureKey =
 	| 'AdvancedExecutionFilters'

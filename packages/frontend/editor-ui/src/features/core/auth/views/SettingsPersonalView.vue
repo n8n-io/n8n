@@ -4,8 +4,12 @@ import { ROLE, type Role, type ChangeEmailRequestDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useThemeOptions } from '@/app/composables/useThemeOptions';
-import type { ThemeOption } from '@/Interface';
+import {
+	useActiveThemeFamily,
+	useThemeFamilyOptions,
+	useThemeModeOptions,
+} from '@/app/composables/useThemeOptions';
+import type { ThemeFamily, ThemeMode } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { MFA_DOCS_URL, VALID_EMAIL_REGEX } from '@/app/constants';
 import {
@@ -236,12 +240,22 @@ function visibleError(field: ProfileField): string | undefined {
 	return touched[field] ? fieldErrors.value[field] : undefined;
 }
 
-const themeOptions = useThemeOptions();
-const themeItems = computed((): Array<SelectOptionBase<ThemeOption>> => themeOptions.value);
+const modeOptions = useThemeModeOptions();
+const modeItems = computed((): Array<SelectOptionBase<ThemeMode>> => modeOptions.value);
+
+function onModeChange(value: SelectValue | undefined) {
+	const item = modeItems.value.find((option) => option.value === value);
+	if (item && item.value !== uiStore.themeMode) uiStore.setThemeMode(item.value);
+}
+
+const familyOptions = useThemeFamilyOptions();
+const themeItems = computed((): Array<SelectOptionBase<ThemeFamily>> => familyOptions.value);
+// The list only has the families that fit the current mode. The saved family can be missing from it.
+const activeFamily = useActiveThemeFamily();
 
 function onThemeChange(value: SelectValue | undefined) {
 	const item = themeItems.value.find((option) => option.value === value);
-	if (item && item.value !== uiStore.theme) uiStore.setTheme(item.value);
+	if (item && item.value !== uiStore.themeFamily) uiStore.setThemeFamily(item.value);
 }
 
 onMounted(() => {
@@ -583,12 +597,44 @@ onBeforeUnmount(() => {
 		<N8nSettingsSection :title="i18n.baseText('settings.personal.personalisation')">
 			<N8nSettingsRowGroup>
 				<N8nSettingsRow
+					:title="i18n.baseText('settings.personal.appearance')"
+					:description="i18n.baseText('settings.personal.appearance.description')"
+				>
+					<template #action>
+						<N8nSelect2
+							:model-value="uiStore.themeMode"
+							:items="modeItems"
+							size="medium"
+							:aria-label="i18n.baseText('settings.personal.appearance')"
+							data-test-id="mode-select"
+							@update:model-value="onModeChange"
+						>
+							<!-- Every label shares one grid cell, so the trigger is as wide as the widest mode whichever one is chosen. -->
+							<template #default="{ modelValue }">
+								<span :class="$style.themeValue">
+									<span
+										v-for="item in modeItems"
+										:key="item.value"
+										:class="[
+											$style.themeLabel,
+											{ [$style.themeLabelHidden]: item.value !== modelValue },
+										]"
+										:aria-hidden="item.value !== modelValue || undefined"
+									>
+										{{ item.label }}
+									</span>
+								</span>
+							</template>
+						</N8nSelect2>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow
 					:title="i18n.baseText('settings.personal.theme')"
 					:description="i18n.baseText('settings.personal.theme.description')"
 				>
 					<template #action>
 						<N8nSelect2
-							:model-value="uiStore.theme"
+							:model-value="activeFamily"
 							:items="themeItems"
 							size="medium"
 							:aria-label="i18n.baseText('settings.personal.theme')"
