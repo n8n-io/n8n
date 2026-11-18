@@ -80,6 +80,15 @@ export default workflow('id', 'name')
 						description:
 							'Whether the node starts again from the beginning of the input items. This will treat incoming data as a new set rather than continuing with the previous items.',
 					},
+					{
+						displayName: 'Max Concurrency',
+						name: 'maxConcurrency',
+						type: 'number',
+						default: 1,
+						typeOptions: { minValue: 1 },
+						description:
+							'How many batches run the loop body at the same time. Only applies on engine v2. Above 1, the loop body must not read the output of an earlier batch.',
+					},
 				],
 			},
 		],

@@ -316,6 +316,15 @@ export interface StepStore {
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
 
+	/** How many of one node's steps have settled, across every pass. */
+	countSettledStepsOfNode(executionId: string, nodeId: string): Promise<number>;
+
+	/**
+	 * How many of the execution's steps are `queued` or `running`. A `waiting`
+	 * step holds no worker, so it is not counted.
+	 */
+	countActiveSteps(executionId: string): Promise<number>;
+
 	/** The execution's failed steps, by node and then by pass. */
 	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

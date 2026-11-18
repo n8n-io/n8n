@@ -93,6 +93,16 @@ export class EngineConfig {
 	orchestrationConcurrency: number = 1;
 
 	/**
+	 * How many steps one execution can have queued or running at the same time.
+	 * This limits how far a Loop Over Items node with a concurrency above 1 can
+	 * get ahead of its slowest pass. Set `0` to not limit an execution.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_MAX_ACTIVE_STEPS_PER_EXECUTION')
+	maxActiveStepsPerExecution: number = 100;
+
+	/**
 	 * Maximum number of connections in the engine's Postgres connection pool, for
 	 * each engine process. Raise it when the engine reports connection timeouts
 	 * while the database responds normally.

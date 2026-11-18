@@ -4,7 +4,9 @@ import {
 	findTriggerNode,
 	getDescendantNodeIds,
 	getSuccessorNodeIds,
+	isBatchStepConfig,
 	type GraphNode,
+	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
@@ -20,8 +22,8 @@ import {
 	type StepKeyId,
 	type StepSlots,
 } from './execution.types';
-import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
-import { decideSuccessors, decisionKeys } from './settlement';
+import { decideConcurrentLoopStep, exitSourcesInto, loadTerminalIterations } from './loop-ledger';
+import { decideSuccessors, decisionKeys, isConcurrentLoop } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
 import {
 	collectSubExecutionResult,
@@ -50,6 +52,12 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
+		/**
+		 * How many steps one execution may have `queued` or `running` at once.
+		 * Only a concurrent loop can get an execution past the size of its graph,
+		 * so only its passes are held back by this. Unset, nothing is.
+		 */
+		private readonly maxActiveStepsPerExecution?: number,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -148,6 +156,7 @@ export class StepSettledHandler {
 			steps,
 			terminalIterations,
 		);
+		toQueue.push(...(await this.decideConcurrentLoops(execution, step, loops, toQueue.length)));
 		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
 
 		// Seeded steps had their outputs passed in at execution start, so we just
@@ -172,6 +181,42 @@ export class StepSettledHandler {
 		]);
 
 		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
+	}
+
+	/**
+	 * The next row of each concurrent loop the settled step can move: the loop
+	 * it heads, or the loop whose back-edge it is the source of.
+	 */
+	private async decideConcurrentLoops(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		loops: WorkflowLoop[],
+		/** Rows this settlement queues alongside, which no count has seen yet. */
+		queuedAlongside: number,
+	): Promise<StepKey[]> {
+		const keys: StepKey[] = [];
+		for (const loop of loops) {
+			if (!isConcurrentLoop(execution.graph, loop.batchNodeId)) continue;
+			const movesLoop =
+				step.nodeId === loop.batchNodeId ||
+				loop.backEdges.some((edge) => edge.from === step.nodeId);
+			if (!movesLoop) continue;
+
+			const node = execution.graph.nodes.find((n) => n.id === loop.batchNodeId);
+			if (!isBatchStepConfig(node?.config)) continue;
+			const key = await decideConcurrentLoopStep(
+				this.stepStore,
+				execution.id,
+				loop,
+				node.config.maxConcurrency ?? 1,
+				async () =>
+					this.maxActiveStepsPerExecution === undefined ||
+					(await this.stepStore.countActiveSteps(execution.id)) + queuedAlongside + keys.length <
+						this.maxActiveStepsPerExecution,
+			);
+			if (key) keys.push(key);
+		}
+		return keys;
 	}
 
 	/**

@@ -78,6 +78,11 @@ export interface EngineRuntimeOptions {
 	/** How many handlers each queue runs at once. Defaults to 1 each. */
 	concurrency?: { step?: number; orchestration?: number };
 	/**
+	 * How many steps one execution may have queued or running at once. Holds
+	 * back the passes of a concurrent loop. Unset, an execution is not limited.
+	 */
+	maxActiveStepsPerExecution?: number;
+	/**
 	 * How long a row can stay `queued` or `running` before the engine treats it
 	 * as stuck. Defaults to `DEFAULT_STALENESS_THRESHOLDS`.
 	 */
@@ -114,6 +119,7 @@ export function createEngineRuntime({
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
 	concurrency = {},
+	maxActiveStepsPerExecution,
 	staleness,
 	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
 }: EngineRuntimeOptions): EngineRuntime {
@@ -161,6 +167,7 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			lifecycleEventPublisherFactory,
 			responseSender,
+			maxActiveStepsPerExecution,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);

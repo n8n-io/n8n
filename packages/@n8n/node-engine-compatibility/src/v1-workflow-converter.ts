@@ -464,11 +464,18 @@ function toBatchConfig(node: INode): BatchStepConfig {
 		);
 	}
 
-	const config = { batchSize };
+	const maxConcurrency = isRecord(options) ? options.maxConcurrency : undefined;
+	if (typeof maxConcurrency === 'string') {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" sets its max concurrency from an expression. Engine v2 needs it before the workflow runs. Use a fixed value.`,
+		);
+	}
+
+	const config = { batchSize, ...(maxConcurrency === undefined ? {} : { maxConcurrency }) };
 
 	if (!isBatchStepConfig(config)) {
 		throw new UnsupportedWorkflowError(
-			`Node "${node.name}" has a batch size of ${String(batchSize)}, and it must be a whole number of at least 1.`,
+			`Node "${node.name}" has a batch size of ${String(batchSize)} and a max concurrency of ${String(maxConcurrency)}, and each must be a whole number of at least 1.`,
 		);
 	}
 

@@ -140,6 +140,7 @@ export class EngineV2Runtime {
 				step: this.engineConfig.stepConcurrency,
 				orchestration: this.engineConfig.orchestrationConcurrency,
 			},
+			maxActiveStepsPerExecution: this.engineConfig.maxActiveStepsPerExecution || undefined,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)

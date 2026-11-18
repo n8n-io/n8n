@@ -47,6 +47,7 @@ async function main(): Promise<void> {
 			step: config.stepConcurrency,
 			orchestration: config.orchestrationConcurrency,
 		},
+		maxActiveStepsPerExecution: config.maxActiveStepsPerExecution || undefined,
 	});
 	runtime.start();
 
