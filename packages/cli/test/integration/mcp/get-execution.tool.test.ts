@@ -14,10 +14,9 @@ import { createEmptyRunExecutionData, type IRunExecutionData } from 'n8n-workflo
 import { createExecution } from '../shared/db/executions';
 import { createMember, createOwner } from '../shared/db/users';
 
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
 import { createGetExecutionTool } from '@/modules/mcp/tools/get-execution.tool';
 import { RedactionModule } from '@/modules/redaction/redaction.module';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 beforeAll(async () => {
@@ -32,7 +31,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 
 /**
  * Data redaction is licensed-gated, and `resolvePolicy` returns 'none' without it.

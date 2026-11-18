@@ -7,7 +7,7 @@ import {
 } from './useChatHubMarkdownOptions';
 
 function renderMarkdown(content: string): string {
-	const markdown = useChatHubMarkdownOptions('code-actions', 'table-container', null);
+	const markdown = useChatHubMarkdownOptions('table-container', null);
 	const renderer = new MarkdownIt(markdown.options);
 
 	for (const plugin of markdown.plugins.value) {

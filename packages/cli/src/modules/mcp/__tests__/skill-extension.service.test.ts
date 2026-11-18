@@ -6,6 +6,7 @@ import {
 	PROTOCOL_VERSION_META_KEY,
 } from '@modelcontextprotocol/server';
 import type { AgentSkill } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createHash } from 'node:crypto';
@@ -13,7 +14,6 @@ import { mock } from 'vitest-mock-extended';
 import { parse as parseYaml } from 'yaml';
 
 import type { McpSkillContent, SkillService } from '@/modules/skills';
-import type { Telemetry } from '@/telemetry';
 
 import {
 	McpSkillExtensionService,
@@ -166,7 +166,7 @@ describe('toSkillEntry', () => {
 
 describe('McpSkillExtensionService', () => {
 	const skillService = mock<SkillService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const client = connect(new McpSkillExtensionService(skillService, telemetry));
 
 	beforeEach(() => {
@@ -257,6 +257,22 @@ describe('McpSkillExtensionService', () => {
 				project_id: 'project-1',
 				file: 'reference',
 			});
+		});
+
+		it('reports the provider and access of the source of a synced skill', async () => {
+			skillService.readForMcp.mockResolvedValue({
+				...content(releaseNotes, 'project-1'),
+				origin: { provider: 'github', access: 'credential' },
+			});
+
+			await client.request('resources/read', {
+				uri: 'skill://skill_a1/release-notes-writer/references/style.md',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.MCP_READ_SKILL_FILE,
+				expect.objectContaining({ source_provider: 'github', source_access: 'credential' }),
+			);
 		});
 
 		it.each([

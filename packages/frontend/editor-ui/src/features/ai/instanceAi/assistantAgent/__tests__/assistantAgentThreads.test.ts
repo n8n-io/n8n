@@ -1,6 +1,10 @@
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+
+import { USER_TYPED_MESSAGE } from '../../prefills';
 import {
 	consumePendingAssistantAgentMessage,
 	discardPendingAssistantAgentMessage,
+	getAssistantAgentLaunch,
 	knownAssistantThreadRuntime,
 	lookUpAssistantThreadRuntime,
 	rememberAssistantAgentThread,
@@ -34,6 +38,13 @@ describe('assistantAgentThreads', () => {
 
 		it('needs a lookup for an unknown thread while the Assistant agent is on', () => {
 			expect(knownAssistantThreadRuntime('unknown-thread', options)).toBeUndefined();
+		});
+
+		it('ignores a launch marker that is not valid JSON', () => {
+			localStorage.setItem('n8n-assistant-agent-launch:broken-thread', '{not json');
+
+			expect(getAssistantAgentLaunch('broken-thread')).toBeUndefined();
+			expect(knownAssistantThreadRuntime('broken-thread', options)).toBeUndefined();
 		});
 	});
 
@@ -75,7 +86,14 @@ describe('assistantAgentThreads', () => {
 	});
 
 	describe('pending first message', () => {
-		const message = { threadId: 'thread-1', text: 'hello', files: [], references: [] };
+		const message = {
+			threadId: 'thread-1',
+			text: 'hello',
+			files: [],
+			references: [],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
+		};
 
 		it('hands the message over once, to its own thread only', () => {
 			stashPendingAssistantAgentMessage(message);

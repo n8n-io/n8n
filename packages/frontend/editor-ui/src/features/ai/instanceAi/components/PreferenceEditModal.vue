@@ -266,7 +266,7 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 <template>
 	<N8nDialog
 		:open="open"
-		size="medium"
+		size="xlarge"
 		:header="i18n.baseText('instanceAi.preferenceCard.modal.title')"
 		data-test-id="instance-ai-preference-modal"
 		@update:open="onOpenChange"
@@ -282,7 +282,7 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 					type="textarea"
 					required
 					:label="i18n.baseText('instanceAi.preferenceCard.modal.textLabel')"
-					:autosize="{ minRows: 3, maxRows: 8 }"
+					:autosize="{ minRows: 6, maxRows: 16 }"
 					:maxlength="AI_PREFERENCE_CONTENT_MAX_LENGTH"
 					:validate-on-blur="false"
 					:validation-rules="contentValidationRules"

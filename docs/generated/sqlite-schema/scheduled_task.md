@@ -92,6 +92,7 @@ erDiagram
   INTEGER id
   INTEGER intervalSeconds
   varchar_16_ kind
+  datetime_3_ lastDispatchedAt
   datetime_3_ lastFiredAt
   INTEGER maxAttempts
   INT misfireGraceSeconds

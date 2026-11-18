@@ -87,6 +87,21 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it.each(['success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps an empty Stop reply in history when its execution ends with %s',
+		(status) => {
+			const messages = executionsToMessagesDto([
+				execution({ userMessage: null, inputMessages: [], stopReport: true, status }),
+				execution({ id: 'later', userMessage: 'Continue' }),
+			]);
+
+			expect(messages).toMatchObject([
+				{ role: 'assistant', stopReport: true, content: [], executionId: 'execution-1' },
+				{ role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+			]);
+		},
+	);
+
 	it('splits assistant output around stable additional user messages', () => {
 		const inputD = {
 			id: 'steer-d',
@@ -450,6 +465,49 @@ describe('execution-to-message-mapper', () => {
 			toolCallId: 'call-1',
 			suspendPayload,
 		});
+	});
+
+	it('keeps the files of an interactive card on its tool call after the resume', () => {
+		const suspendPayload = {
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'n8n_chat',
+			files: [
+				{ fileId: 'file-1', fileName: 'report.pdf', mimeType: 'application/pdf', sizeBytes: 1 },
+			],
+		};
+		const cardCall = {
+			type: 'tool-call' as const,
+			kind: 'tool' as const,
+			name: 'chat_action',
+			toolCallId: 'call-1',
+			input: {},
+			startTime: 100,
+		};
+		const messages = executionsToMessagesDto([
+			execution({
+				timeline: [
+					{ ...cardCall, output: undefined, endTime: 0, success: false },
+					{
+						type: 'suspension',
+						toolName: 'chat_action',
+						toolCallId: 'call-1',
+						timestamp: 110,
+						suspendPayload,
+					},
+				],
+			}),
+			execution({
+				id: 'execution-2',
+				userMessage: null,
+				timeline: [{ ...cardCall, output: { value: 'approve' }, endTime: 200, success: true }],
+			}),
+		]);
+
+		const parts = messages.flatMap(({ content }) => content);
+		expect(parts.filter(({ toolCallId }) => toolCallId === 'call-1')).toEqual([
+			expect.objectContaining({ state: 'resolved', output: { value: 'approve' }, suspendPayload }),
+		]);
 	});
 
 	it('maps failed timeline tool calls as rejected content parts', () => {

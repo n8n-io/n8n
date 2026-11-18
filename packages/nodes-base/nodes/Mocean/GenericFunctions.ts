@@ -4,8 +4,11 @@ import type {
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
+	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Twilio
@@ -14,7 +17,7 @@ import { NodeApiError } from 'n8n-workflow';
 export async function moceanApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
@@ -34,11 +37,11 @@ export async function moceanApiRequest(
 		query['mocean-resp-format'] = 'JSON';
 	}
 
-	const options = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		form: body,
 		qs: query,
-		uri: `https://rest.moceanapi.com${endpoint}`,
+		uri: requestUrl`https://rest.moceanapi.com${endpoint}`,
 		json: true,
 	};
 

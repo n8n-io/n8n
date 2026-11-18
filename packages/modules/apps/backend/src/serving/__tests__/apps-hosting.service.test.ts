@@ -13,6 +13,7 @@ function setup(owned = true) {
 	hosts.validRequestHost.mockReturnValue(true);
 	hosts.ownsRequest.mockReturnValue(owned);
 	hosts.namespace.mockReturnValue('sales');
+	hosts.contentSecurityPolicy.mockReturnValue("frame-ancestors 'none'");
 	const service = new AppsHostingService(hosts, mock<Logger>());
 	const req = mock<Request>();
 	const res = mock<Response>({ headersSent: false });
@@ -34,6 +35,41 @@ describe('AppsHostingService', () => {
 		expect(service.allowsUpgrade(req)).toBe(false);
 	});
 
+	it.each([
+		['a success', () => {}],
+		[
+			'a router error',
+			(_req: unknown, _res: unknown, next: (error?: unknown) => void) => next(new Error()),
+		],
+		[
+			'no matching route',
+			(_req: unknown, _res: unknown, next: (error?: unknown) => void) => next(),
+		],
+	])('sends the content security policy of the host with %s', (_case, handler) => {
+		const { service, hosts, req, res } = setup();
+		const router = service.router as typeof service.router & { handle: RequestHandler };
+		vi.spyOn(router, 'handle').mockImplementation(handler);
+
+		void service.dispatch(req, res, vi.fn());
+
+		expect(hosts.contentSecurityPolicy).toHaveBeenCalledWith(req);
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ 'Content-Security-Policy': "frame-ancestors 'none'" }),
+		);
+	});
+
+	it('sends the content security policy with the response for an unknown app host', () => {
+		const { service, hosts, req, res } = setup();
+		hosts.namespace.mockReturnValue(undefined);
+
+		void service.dispatch(req, res, vi.fn());
+
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ 'Content-Security-Policy': "frame-ancestors 'none'" }),
+		);
+		expect(res.sendStatus).toHaveBeenCalledWith(404);
+	});
+
 	it('rejects apps-owned requests without a namespace', () => {
 		const { service, hosts, req, res } = setup();
 		hosts.namespace.mockReturnValue(undefined);
@@ -43,6 +79,19 @@ describe('AppsHostingService', () => {
 
 		expect(res.sendStatus).toHaveBeenCalledExactlyOnceWith(404);
 		expect(next).not.toHaveBeenCalled();
+	});
+
+	it('routes preview hosts to the apps router', () => {
+		const { service, hosts, req, res } = setup();
+		hosts.namespace.mockReturnValue(undefined);
+		hosts.previewNamespace.mockReturnValue('sales');
+		const router = service.router as typeof service.router & { handle: RequestHandler };
+		const handle = vi.spyOn(router, 'handle').mockImplementation(() => {});
+
+		void service.dispatch(req, res, vi.fn());
+
+		expect(handle).toHaveBeenCalledOnce();
+		expect(res.sendStatus).not.toHaveBeenCalled();
 	});
 
 	it('never falls through to main routes when the apps router exits', () => {

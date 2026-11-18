@@ -58,6 +58,7 @@ const {
 	REQUIRED_REVIEW_EXEMPTIONS,
 	LARGE_SCALE_CHANGE_LABEL,
 	LARGE_SCALE_CHANGES_TEAM,
+	RELEASE_HELPER_LOGIN,
 	STATUS_CONTEXT,
 	buildStatus,
 	collectApprovers,
@@ -431,6 +432,48 @@ describe('run', () => {
 			{ user: { login: 'outsider' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 		];
 		isTeamMemberImpl = async () => false;
+
+		await run();
+
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'pending');
+		assert.match(status.description, /Waiting for approval from: qa-dx/);
+	});
+
+	it('skips required team approvals when n8n Release Helper approved', async () => {
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		getPrReviewsImpl = async () => [
+			{
+				user: { login: RELEASE_HELPER_LOGIN },
+				state: 'APPROVED',
+				submitted_at: '2026-01-01T00:00:00Z',
+			},
+		];
+		const isTeamMember = mock.fn(async () => false);
+		isTeamMemberImpl = isTeamMember;
+
+		await run();
+
+		assert.equal(isTeamMember.mock.calls.length, 0);
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'success');
+		assert.equal(status.description, 'Owners check skipped by n8n Release Helper');
+	});
+
+	it('does not skip required team approvals after the Release Helper approval is dismissed', async () => {
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		getPrReviewsImpl = async () => [
+			{
+				user: { login: RELEASE_HELPER_LOGIN },
+				state: 'APPROVED',
+				submitted_at: '2026-01-01T00:00:00Z',
+			},
+			{
+				user: { login: RELEASE_HELPER_LOGIN },
+				state: 'DISMISSED',
+				submitted_at: '2026-01-02T00:00:00Z',
+			},
+		];
 
 		await run();
 

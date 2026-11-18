@@ -1,0 +1,202 @@
+{
+	"name": "Google Calendar event request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "5f1c2a0e-3b7d-4e8a-9c41-2d6b8f0a1e01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"calendar": {
+					"__rl": true,
+					"value": "c_8f2k1m4q7r@group.calendar.google.com",
+					"mode": "list",
+					"cachedResultName": "Team Planning"
+				},
+				"start": "2026-10-12T09:00:00",
+				"end": "2026-10-12T10:00:00",
+				"additionalFields": {
+					"summary": "Weekly sync"
+				}
+			},
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1.3,
+			"position": [220, 0],
+			"id": "5f1c2a0e-3b7d-4e8a-9c41-2d6b8f0a1e02",
+			"name": "Create Event",
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "gcal-cred-1",
+					"name": "Google Calendar account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"calendar": {
+					"__rl": true,
+					"value": "team.planning@example.com",
+					"mode": "id"
+				},
+				"eventId": "kq3f8bhd2s1u6v0m4n7p9r5t2c",
+				"options": {
+					"returnNextInstance": true
+				}
+			},
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1.3,
+			"position": [440, 0],
+			"id": "5f1c2a0e-3b7d-4e8a-9c41-2d6b8f0a1e03",
+			"name": "Get Event",
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "gcal-cred-1",
+					"name": "Google Calendar account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"calendar": {
+					"__rl": true,
+					"value": "team.planning@example.com",
+					"mode": "id"
+				},
+				"limit": 5,
+				"timeMin": "2026-10-12T00:00:00Z",
+				"timeMax": "2026-10-19T00:00:00Z",
+				"options": {
+					"recurringEventHandling": "next"
+				}
+			},
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1.3,
+			"position": [660, 0],
+			"id": "5f1c2a0e-3b7d-4e8a-9c41-2d6b8f0a1e04",
+			"name": "Get Many Events",
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "gcal-cred-1",
+					"name": "Google Calendar account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"calendar": {
+					"__rl": true,
+					"value": "team.planning@example.com",
+					"mode": "id"
+				},
+				"eventId": "kq3f8bhd2s1u6v0m4n7p9r5t2c_20261012T090000Z",
+				"modifyTarget": "event",
+				"updateFields": {
+					"summary": "Weekly sync (moved)"
+				}
+			},
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1.3,
+			"position": [880, 0],
+			"id": "5f1c2a0e-3b7d-4e8a-9c41-2d6b8f0a1e05",
+			"name": "Update Event",
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "gcal-cred-1",
+					"name": "Google Calendar account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"calendar": {
+					"__rl": true,
+					"value": "team.planning@example.com",
+					"mode": "id"
+				},
+				"eventId": "kq3f8bhd2s1u6v0m4n7p9r5t2c",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleCalendar",
+			"typeVersion": 1.3,
+			"position": [1100, 0],
+			"id": "5f1c2a0e-3b7d-4e8a-9c41-2d6b8f0a1e06",
+			"name": "Delete Event",
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "gcal-cred-1",
+					"name": "Google Calendar account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Create Event", "type": "main", "index": 0 }]]
+		},
+		"Create Event": {
+			"main": [[{ "node": "Get Event", "type": "main", "index": 0 }]]
+		},
+		"Get Event": {
+			"main": [[{ "node": "Get Many Events", "type": "main", "index": 0 }]]
+		},
+		"Get Many Events": {
+			"main": [[{ "node": "Update Event", "type": "main", "index": 0 }]]
+		},
+		"Update Event": {
+			"main": [[{ "node": "Delete Event", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Create Event": [
+			{
+				"json": {
+					"id": "kq3f8bhd2s1u6v0m4n7p9r5t2c",
+					"summary": "Weekly sync",
+					"status": "confirmed"
+				}
+			}
+		],
+		"Get Event": [
+			{
+				"json": {
+					"id": "kq3f8bhd2s1u6v0m4n7p9r5t2c_20261012T090000Z",
+					"summary": "Weekly sync",
+					"recurringEventId": "kq3f8bhd2s1u6v0m4n7p9r5t2c"
+				}
+			}
+		],
+		"Get Many Events": [
+			{
+				"json": {
+					"id": "kq3f8bhd2s1u6v0m4n7p9r5t2c_20261012T090000Z",
+					"summary": "Weekly sync",
+					"recurringEventId": "kq3f8bhd2s1u6v0m4n7p9r5t2c"
+				}
+			}
+		],
+		"Update Event": [
+			{
+				"json": {
+					"id": "kq3f8bhd2s1u6v0m4n7p9r5t2c",
+					"summary": "Weekly sync (moved)",
+					"status": "confirmed"
+				}
+			}
+		],
+		"Delete Event": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	}
+}

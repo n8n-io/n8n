@@ -1,0 +1,89 @@
+{
+	"name": "Twilio Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"from": "+15005550006",
+				"to": "+15005550010",
+				"message": "Your order has shipped"
+			},
+			"id": "twilio-0",
+			"name": "SMS Send",
+			"type": "n8n-nodes-base.twilio",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"twilioApi": {
+					"id": "1",
+					"name": "Twilio account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "call",
+				"operation": "make",
+				"from": "+15005550006",
+				"to": "+15005550010",
+				"message": "Your order has shipped"
+			},
+			"id": "twilio-1",
+			"name": "Call Make",
+			"type": "n8n-nodes-base.twilio",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"twilioApi": {
+					"id": "1",
+					"name": "Twilio account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"SMS Send": [
+			{
+				"json": {
+					"sid": "SM0123456789abcdef0123456789abcdef"
+				}
+			}
+		],
+		"Call Make": [
+			{
+				"json": {
+					"sid": "CA0123456789abcdef0123456789abcdef"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "SMS Send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Call Make",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

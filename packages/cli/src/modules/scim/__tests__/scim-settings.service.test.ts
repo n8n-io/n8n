@@ -91,6 +91,43 @@ describe('ScimSettingsService', () => {
 		});
 	});
 
+	describe('setDeprovisioningPolicy', () => {
+		const policy = {
+			onDelete: 'disable',
+			dataAction: 'transfer',
+			transferProjectId: 'p-1',
+		} as const;
+
+		it('reads and saves the policy under one row lock, and returns the policy that it replaced', async () => {
+			const previous = { onDelete: 'delete', dataAction: 'delete', transferProjectId: null };
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
+				mock<Settings>({ value: JSON.stringify(previous) }),
+			);
+
+			await expect(service.setDeprovisioningPolicy(policy)).resolves.toEqual(previous);
+			expect(settingsRepository.getOrCreateWithWriteLock).toHaveBeenCalledWith(
+				'scim.provisioning.deprovisioning',
+				JSON.stringify(DEFAULT_SCIM_DEPROVISIONING_POLICY),
+				false,
+				trxCtx,
+			);
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+				'scim.provisioning.deprovisioning',
+				JSON.stringify(policy),
+				false,
+				trxCtx,
+			);
+		});
+
+		it('returns the default policy when the saved value is broken', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(mock<Settings>({ value: '{' }));
+
+			await expect(service.setDeprovisioningPolicy(policy)).resolves.toEqual(
+				DEFAULT_SCIM_DEPROVISIONING_POLICY,
+			);
+		});
+	});
+
 	describe('setEnabled', () => {
 		it.each([true, false])('persists and caches %p', async (enabled) => {
 			await service.setEnabled(enabled);

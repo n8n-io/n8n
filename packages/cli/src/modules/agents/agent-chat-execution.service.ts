@@ -1,12 +1,11 @@
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import type { SerializableAgentState } from '@n8n/agents';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { NotFoundError } from '@n8n/errors';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
@@ -313,6 +312,13 @@ export class AgentChatExecutionService {
 			if (!latest || !executionIds.includes(latest.id)) return;
 			await this.backgroundJobService.cancelForSession(agentId, threadId);
 			await this.clearSessionSuspension(agentId, threadId, latest.hitlStatus);
+		});
+	}
+
+	/** Project deletion has fenced new turns, including suspended sessions. */
+	async cancelProjectSessionWork(agentId: string, threadId: string): Promise<void> {
+		await this.withTurnLock(threadId, async () => {
+			await this.backgroundJobService.cancelForSession(agentId, threadId);
 		});
 	}
 

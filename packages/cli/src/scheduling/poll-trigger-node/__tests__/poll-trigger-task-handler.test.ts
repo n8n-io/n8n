@@ -14,7 +14,8 @@ import {
 } from '@n8n/scheduler';
 import type { ErrorReporter, TriggersAndPollers } from 'n8n-core';
 import type { INode, INodeExecutionData, IPollFunctions, IWorkflowBase } from 'n8n-workflow';
-import { UnexpectedError, Workflow, WorkflowExpression } from 'n8n-workflow';
+import { Workflow, WorkflowExpression } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -765,6 +766,16 @@ describe('PollTriggerTaskHandler', () => {
 				expect.stringContaining('no published version'),
 				expect.objectContaining({ taskId: 'task-1', workflowId: 'wf-1', nodeId: 'node-1' }),
 			);
+		});
+
+		test('skips the occurrence without polling when the workflow is unpublished but its published version remains', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ activeVersionId: null }),
+			);
+
+			await handler.execute(buildTask(), report, runOf(leaseSignal));
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 		});
 
 		test.each([

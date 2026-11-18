@@ -126,7 +126,7 @@ describe('useSubWorkflowRestriction', () => {
 		expect(isRestricted.value).toBe(false);
 	});
 
-	it('forces the first load only when asked to refresh', async () => {
+	it('forces every selected sub-workflow when asked to refresh', async () => {
 		const { fetchSubWorkflowCheck } = mockChecks({});
 		const node = ref(executeWorkflowNode());
 
@@ -136,7 +136,38 @@ describe('useSubWorkflowRestriction', () => {
 		});
 		await nextTick();
 
+		expect(fetchSubWorkflowCheck).toHaveBeenCalledTimes(2);
 		expect(fetchSubWorkflowCheck).toHaveBeenNthCalledWith(1, 'parent', 'child', { force: true });
+		expect(fetchSubWorkflowCheck).toHaveBeenNthCalledWith(2, 'parent', 'other-child', {
+			force: true,
+		});
+	});
+
+	it('forces a sub-workflow selected after opening with none when refreshing', async () => {
+		const { fetchSubWorkflowCheck } = mockChecks({});
+		const node = ref(executeWorkflowNode({ workflowId: { __rl: true, mode: 'list', value: '' } }));
+
+		useSubWorkflowRestriction({ parentWorkflowId: 'parent', node, refresh: true });
+		expect(fetchSubWorkflowCheck).not.toHaveBeenCalled();
+
+		node.value = executeWorkflowNode();
+		await nextTick();
+
+		expect(fetchSubWorkflowCheck).toHaveBeenCalledExactlyOnceWith('parent', 'child', {
+			force: true,
+		});
+	});
+
+	it('reuses cached checks when switching sub-workflows without refresh', async () => {
+		const { fetchSubWorkflowCheck } = mockChecks({});
+		const node = ref(executeWorkflowNode());
+
+		useSubWorkflowRestriction({ parentWorkflowId: 'parent', node });
+		node.value = executeWorkflowNode({
+			workflowId: { __rl: true, mode: 'list', value: 'other-child' },
+		});
+		await nextTick();
+
 		expect(fetchSubWorkflowCheck).toHaveBeenNthCalledWith(2, 'parent', 'other-child', {
 			force: false,
 		});

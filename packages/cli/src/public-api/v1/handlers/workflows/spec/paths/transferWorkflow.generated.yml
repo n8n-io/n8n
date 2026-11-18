@@ -2,7 +2,10 @@ operationId: transferWorkflow
 tags:
   - Workflow
 summary: Transfer a workflow to another project
-description: Transfer a workflow to another project.
+description: |-
+  Transfer a workflow to another project.
+
+  Requires the `workflow:move` API key scope.
 x-required-scope: workflow:move
 parameters:
   - schema:
@@ -35,3 +38,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

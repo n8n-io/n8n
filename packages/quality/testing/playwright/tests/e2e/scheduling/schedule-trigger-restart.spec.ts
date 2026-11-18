@@ -12,7 +12,7 @@ test.use(durableScheduleTestConfig);
 test.describe(
 	'Schedule Trigger restart continuity (durable scheduler)',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should keep firing after a main restart without re-activation', async ({

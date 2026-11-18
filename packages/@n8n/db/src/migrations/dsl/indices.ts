@@ -20,8 +20,8 @@ abstract class IndexOperation extends LazyPromise<void> {
 		queryRunner: QueryRunner,
 		protected customIndexName?: string,
 	) {
-		super((resolve) => {
-			void this.execute(queryRunner).then(resolve);
+		super((resolve, reject) => {
+			void this.execute(queryRunner).then(resolve).catch(reject);
 		});
 	}
 }

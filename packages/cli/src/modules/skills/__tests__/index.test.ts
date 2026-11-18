@@ -13,9 +13,12 @@ describe('public API', () => {
 		expect(Object.keys(publicApi).sort()).toEqual([
 			'AssistantSkillsFlagGate',
 			'SkillAccessService',
+			'SkillAgentNameTakenError',
 			'SkillNameTakenError',
 			'SkillRuntimeService',
 			'SkillService',
+			'SkillSourceCredentials',
+			'SkillSourceCredentialsProxy',
 			'SkillUsage',
 			'SkillUsageProxy',
 			'SkillsGate',

@@ -2,6 +2,8 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'generic.remove': 'Remove',
+	'attachment.remove': 'Remove {fileName}',
 	'approvalCard.awaitingApproval': 'Awaiting approval',
 	'approvalCard.alwaysAllow': 'Always allow',
 	'approvalCard.alwaysAllowSuffix': 'during this session',
@@ -23,6 +25,8 @@ export default {
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
 	'generic.close': 'Close',
+	'generic.ignore': 'Ignore',
+	'generic.ignoreAll': 'Ignore all',
 	'dialog.close': 'Close dialog',
 	'generic.moreInfo': 'More info',
 	'generic.delete': 'Delete',
@@ -82,7 +86,7 @@ export default {
 	'codeBlock.expand': 'Expand code',
 	'codeBlock.collapse': 'Collapse code',
 	'previewBadge.preview': 'Preview',
-	'enterpriseReadinessBadge.limited': 'Limited enterprise support',
+	'enterpriseReadinessBadge.limited': 'Limited enterprise readiness',
 	'enterpriseReadinessBadge.tooltip':
 		"Some enterprise capabilities don't cover this feature yet. See docs for details.",
 	'settingsPageHeader.docsLeadingText': 'Learn more in the ',

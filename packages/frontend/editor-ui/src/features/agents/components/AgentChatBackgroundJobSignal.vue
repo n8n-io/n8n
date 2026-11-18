@@ -1,36 +1,53 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { N8nAiActivityStep, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { BACKGROUND_JOB_STATUS_LABEL_KEYS } from '../utils/background-job-labels';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 
-const props = defineProps<{ signal: AgentBackgroundJobSignal }>();
+const props = defineProps<{
+	signal: AgentBackgroundJobSignal;
+	projectId?: string;
+	agentId?: string;
+}>();
 const i18n = useI18n();
+
+const files = computed(() => props.signal.tasks.flatMap((job) => job.files ?? []));
 </script>
 
 <template>
-	<N8nAiActivityStep
-		:label="i18n.baseText('agents.chat.backgroundTasks.resultsReceived')"
-		wrap-content
-		data-testid="agent-chat-background-job-signal"
-	>
-		<ul :class="$style.jobs">
-			<li v-for="job in props.signal.tasks" :key="job.id" :class="$style.job">
-				<N8nText size="small" color="text-dark" :class="$style.title">{{ job.title }}</N8nText>
-				<span :class="$style.outcome">
-					<N8nIcon
-						:icon="job.status === 'completed' ? 'circle-check' : 'circle-x'"
-						:class="$style.statusIcon"
-						:data-status="job.status"
-						size="small"
-					/>
-					<N8nText size="small" color="text-base">{{
-						i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status])
-					}}</N8nText>
-				</span>
-			</li>
-		</ul>
-	</N8nAiActivityStep>
+	<div>
+		<N8nAiActivityStep
+			:label="i18n.baseText('agents.chat.backgroundTasks.resultsReceived')"
+			wrap-content
+			data-testid="agent-chat-background-job-signal"
+		>
+			<ul :class="$style.jobs">
+				<li v-for="job in props.signal.tasks" :key="job.id" :class="$style.job">
+					<N8nText size="small" color="text-dark" :class="$style.title">{{ job.title }}</N8nText>
+					<span :class="$style.outcome">
+						<N8nIcon
+							:icon="job.status === 'completed' ? 'circle-check' : 'circle-x'"
+							:class="$style.statusIcon"
+							:data-status="job.status"
+							size="small"
+						/>
+						<N8nText size="small" color="text-base">{{
+							i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status])
+						}}</N8nText>
+					</span>
+				</li>
+			</ul>
+		</N8nAiActivityStep>
+		<AgentChatMessageAttachments
+			v-if="files.length && projectId && agentId"
+			:class="$style.files"
+			:attachments="files"
+			:project-id="projectId"
+			:agent-id="agentId"
+		/>
+	</div>
 </template>
 
 <style module lang="scss">
@@ -49,6 +66,10 @@ const i18n = useI18n();
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
 	gap: var(--spacing--sm);
+}
+
+.files {
+	margin-top: var(--spacing--4xs);
 }
 
 .title {

@@ -3,6 +3,7 @@ import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IConnection, IConnections, INodeConnections } from 'n8n-workflow';
 import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 import { isObject } from '@/app/utils/objectUtils';
+import type { LocationQuery, LocationQueryRaw } from 'vue-router';
 
 /**
  * Converts workflow tags from ITag[] (API response format) to string[] (store format)
@@ -218,5 +219,19 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 		dfs(trigger.node.name);
 	}
 
+	return result;
+}
+
+/** Query parameters for an unsaved workflow: the `new` flag and the project and folder to save it in. */
+const NEW_WORKFLOW_QUERY_KEYS = ['new', 'projectId', 'parentFolderId'] as const;
+
+export function hasNewWorkflowQuery(query: LocationQuery): boolean {
+	return NEW_WORKFLOW_QUERY_KEYS.some((key) => query[key] !== undefined);
+}
+
+/** A saved workflow can move, so a leftover `projectId` can name its former project. */
+export function withoutNewWorkflowQuery(query: LocationQuery): LocationQueryRaw {
+	const result: LocationQueryRaw = { ...query };
+	for (const key of NEW_WORKFLOW_QUERY_KEYS) result[key] = undefined;
 	return result;
 }

@@ -129,7 +129,7 @@ export function groupSetupCards(
 		let parentState: NodeSetupState | undefined;
 
 		for (const card of flatCards) {
-			if (!card.state) continue;
+			if (!card.state || card.state.restriction) continue;
 			const nodeName = card.state.node.name;
 			if (subnodeNames.has(nodeName) && !claimedNodeNames.has(nodeName)) {
 				subnodeCards.push(card.state);

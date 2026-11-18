@@ -7,17 +7,17 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import {
 	isTerminalExecutionStatus,
-	UnexpectedError,
-	UserError,
 	type IRun,
 	type IWorkflowBase,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ResumeAttemptService } from '@/executions/resume-attempt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -49,6 +49,8 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
+	private readonly resuming = new Set<string>();
+
 	private resumingParkedParents = false;
 
 	constructor(
@@ -60,6 +62,7 @@ export class WaitTracker {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly resumeAttemptService: ResumeAttemptService,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
 	}
@@ -146,6 +149,33 @@ export class WaitTracker {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
+		// A poll can find the row still `waiting` while this process resumes it. A second
+		// resume would double the memory in use and consume a second attempt.
+		if (this.resuming.has(executionId)) throw new ExecutionAlreadyResumingError(executionId);
+		this.resuming.add(executionId);
+		try {
+			await this.resumeExecution(executionId);
+		} finally {
+			this.resuming.delete(executionId);
+		}
+	}
+
+	private async resumeExecution(executionId: string) {
+		const claim = await this.resumeAttemptService.claim(executionId, 'waiting');
+		if (!claim.granted) return;
+
+		try {
+			await this.loadAndRun(executionId);
+		} catch (error) {
+			// A failure that repeats on every poll keeps its attempt, so the limit stops it
+			if (isRetryableResumeError(error)) {
+				await this.resumeAttemptService.release(executionId, 'waiting', claim.attempt);
+			}
+			throw error;
+		}
+	}
+
+	private async loadAndRun(executionId: string) {
 		// Get the data to execute
 		const fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
@@ -357,6 +387,34 @@ export class WaitTracker {
 	}
 
 	private async resumeParentIfChildFinished(parentId: string) {
+		// The child-completion callback may be resuming this parent under the same guard, so
+		// the inspection must not count a second attempt on top of that resume.
+		if (this.resuming.has(parentId)) return;
+		this.resuming.add(parentId);
+
+		let childExecution: RelatedExecution | undefined;
+		try {
+			// The inspection loads the parent's full run data, so it counts as an attempt until
+			// it ends. The resume that may follow counts its own.
+			const claim = await this.resumeAttemptService.claim(parentId, 'waiting');
+			if (!claim.granted) return;
+
+			try {
+				childExecution = await this.patchParentWithFinishedChild(parentId);
+			} finally {
+				await this.resumeAttemptService.release(parentId, 'waiting', claim.attempt);
+			}
+		} finally {
+			this.resuming.delete(parentId);
+		}
+
+		if (childExecution) await this.claimParent(parentId, childExecution);
+	}
+
+	/** Patch the parent with its finished child's result. Returns the child when patched. */
+	private async patchParentWithFinishedChild(
+		parentId: string,
+	): Promise<RelatedExecution | undefined> {
 		const parent = await this.executionPersistence.findSingleExecution(parentId, {
 			includeData: true,
 			unflattenData: true,
@@ -414,7 +472,7 @@ export class WaitTracker {
 			return;
 		}
 
-		await this.claimParent(parentId, childExecution);
+		return childExecution;
 	}
 
 	/**

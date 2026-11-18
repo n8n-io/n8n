@@ -23,6 +23,14 @@ describe('WorkflowExpression', () => {
 					position: [0, 0],
 					parameters: {},
 				},
+				{
+					name: 'arrayParameter',
+					typeVersion: 1,
+					type: 'test.set',
+					id: 'uuid-array-parameter',
+					position: [0, 0],
+					parameters: { value1: '={{ $input.all().map((item) => item.json.id) }}' },
+				},
 				...Object.entries(selfReferencingParameters).map(([name, parameters], index) => ({
 					name,
 					typeVersion: 1,
@@ -45,8 +53,37 @@ describe('WorkflowExpression', () => {
 			await expression.releaseIsolate();
 		});
 
-		const evaluate = (value: NodeParameterValueType, inputData: INodeExecutionData[] = []) =>
-			expression.getParameterValue(value, null, 0, 0, 'node', inputData, 'manual', {});
+		const evaluate = (
+			value: NodeParameterValueType,
+			inputData: INodeExecutionData[] = [],
+			nodeName = 'node',
+		) => expression.getParameterValue(value, null, 0, 0, nodeName, inputData, 'manual', {});
+
+		it.each(
+			[
+				'$parameter["value1"]',
+				'$node["arrayParameter"].parameter["value1"]',
+				'$item(0).$parameter["value1"]',
+				'$item(0).$node["arrayParameter"].parameter["value1"]',
+			].flatMap((access) => [access, `${access}.map((id) => id)`]),
+		)('resolves an array parameter once through %s', (access) => {
+			const resolve = vi.spyOn(expression, 'getParameterValue');
+			const ids = Array.from({ length: 50 }, (_, id) => id);
+
+			try {
+				expect(
+					evaluate(
+						`={{ ${access} }}`,
+						ids.map((id) => ({ json: { id } })),
+						'arrayParameter',
+					),
+				).toEqual(ids);
+				// The outer evaluation and the nested one.
+				expect(resolve).toHaveBeenCalledTimes(2);
+			} finally {
+				resolve.mockRestore();
+			}
+		});
 
 		it('preserves own input fields when copying expression results', () => {
 			const input = {

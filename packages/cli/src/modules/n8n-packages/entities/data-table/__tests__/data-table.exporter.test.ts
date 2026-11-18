@@ -3,8 +3,7 @@ import type { User } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTable, type DataTableService } from '@n8n/backend-module-data-table';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { DataTableExporter } from '../data-table.exporter';

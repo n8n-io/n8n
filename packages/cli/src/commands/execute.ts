@@ -3,7 +3,8 @@ import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
+import { ExecutionBaseError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -32,12 +33,13 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	async init() {
 		await super.init();
 		await this.initLicense();
 		await this.initPolicyEnforcement();
+		await this.initExecutionLedger();
 		await this.initCommunityPackages();
 		await this.initBinaryDataService();
 		await this.initDataDeduplicationService();

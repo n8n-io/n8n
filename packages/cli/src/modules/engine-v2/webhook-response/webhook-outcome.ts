@@ -1,6 +1,6 @@
 import type { EndedMessage, ExecutionResponse, ResponseExpectation, StepSlots } from '@n8n/engine';
 import { decodeBufferBody } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /** The last node that ran, as the `lastNode` response mode answers with. */
 export type LastNode = { nodeName: string; outputs: StepSlots };

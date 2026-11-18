@@ -5,8 +5,7 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import { type DataTableColumn, type DataTable } from '@n8n/backend-module-data-table';
 
 import { definePackageSerializationPayload } from '../package-serialization.types';
 

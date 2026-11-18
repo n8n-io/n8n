@@ -14,8 +14,9 @@ import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
+	WorkflowScanContext,
 } from '../../types';
-import { BreakingChangeCategory } from '../../types';
+import { BreakingChangeCategory, createWorkflowScanContext } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class SlackTriggerSignatureSecretRule implements IBreakingChangeWorkflowRule {
@@ -51,10 +52,12 @@ export class SlackTriggerSignatureSecretRule implements IBreakingChangeWorkflowR
 	async detectWorkflow(
 		_workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
+		context: WorkflowScanContext = createWorkflowScanContext(),
 	): Promise<WorkflowDetectionReport> {
 		const affectedNodes = await findSlackNodesWithoutSignatureSecret(
 			this.credentialsRepository,
 			nodesGroupedByType.get(SLACK_TRIGGER_NODE_TYPE) ?? [],
+			context.slackSignatureSecretMissing,
 		);
 
 		return reportAffectedNodes(affectedNodes, (node) => ({

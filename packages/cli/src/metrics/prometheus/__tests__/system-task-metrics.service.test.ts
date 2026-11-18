@@ -384,19 +384,61 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	});
 
 	describe('durable job state', () => {
+		const LAST_SUCCESS = new Date(NOW.getTime() - 600_000);
+
 		const job = (
-			overrides: Partial<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>,
+			overrides: Partial<
+				Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & {
+					runnable: boolean;
+					lastDispatchedAt: Date | null;
+				}
+			>,
 		) => ({
 			ownerId: 'prune',
 			runnable: true,
 			nextRunAt: new Date(NOW.getTime() + 60_000),
+			lastDispatchedAt: LAST_SUCCESS,
 			...overrides,
 		});
 
 		async function scrape() {
 			await metric('system_task_scheduled').collect!();
 			await metric('system_task_next_run_timestamp_seconds').collect!();
+			await metric('system_task_last_success_timestamp_seconds').collect?.();
 		}
+
+		it('exports the stored last success of a durable task on a main that never ran it', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([job({})]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await metric('system_task_last_success_timestamp_seconds').collect?.();
+
+			expect(
+				metric('system_task_last_success_timestamp_seconds').value({
+					task: 'prune',
+					mode: 'durable',
+				}),
+			).toBe(LAST_SUCCESS.getTime() / 1000);
+		});
+
+		it('keeps the last success when the stored job has no succeeded run', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType
+				.mockResolvedValueOnce([job({})])
+				.mockResolvedValue([job({ lastDispatchedAt: null })]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await metric('system_task_last_success_timestamp_seconds').collect?.();
+			await metric('system_task_last_success_timestamp_seconds').collect?.();
+
+			expect(
+				metric('system_task_last_success_timestamp_seconds').value({
+					task: 'prune',
+					mode: 'durable',
+				}),
+			).toBe(LAST_SUCCESS.getTime() / 1000);
+		});
 
 		it('reads nothing while no task runs durably', async () => {
 			service.init();
@@ -454,7 +496,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			);
 		});
 
-		it('reads the jobs once for both gauges and caches them for the metrics interval', async () => {
+		it('reads the jobs once for every gauge and caches them for the metrics interval', async () => {
 			const cache = new Map<string, unknown>();
 			cacheService.get.mockImplementation(async (key: string) => cache.get(key));
 			cacheService.set.mockImplementation(async (key: string, value: unknown) => {
@@ -469,15 +511,22 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 			expect(scheduledJobRepository.findScheduleStatesByOwnerType).toHaveBeenCalledTimes(1);
 			expect(cacheService.set).toHaveBeenCalledExactlyOnceWith(
-				'metrics:system-tasks:durable-jobs:v1',
-				[{ task: 'prune', runnable: true, nextRunAtSeconds: NOW.getTime() / 1000 + 60 }],
+				'metrics:system-tasks:durable-jobs:v2',
+				[
+					{
+						task: 'prune',
+						runnable: true,
+						nextRunAtSeconds: NOW.getTime() / 1000 + 60,
+						lastSuccessAtSeconds: LAST_SUCCESS.getTime() / 1000,
+					},
+				],
 				20_000,
 			);
 		});
 
-		it('serves both gauges from the cache without reading the jobs', async () => {
+		it('serves every gauge from the cache without reading the jobs', async () => {
 			cacheService.get.mockResolvedValue([
-				{ task: 'prune', runnable: true, nextRunAtSeconds: 1234 },
+				{ task: 'prune', runnable: true, nextRunAtSeconds: 1234, lastSuccessAtSeconds: 1000 },
 			]);
 			service.init();
 			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
@@ -487,6 +536,12 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			expect(scheduledJobRepository.findScheduleStatesByOwnerType).not.toHaveBeenCalled();
 			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
 			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(1234);
+			expect(
+				metric('system_task_last_success_timestamp_seconds').value({
+					task: 'prune',
+					mode: 'durable',
+				}),
+			).toBe(1000);
 		});
 
 		it('keeps the last values when the job read fails', async () => {
@@ -533,7 +588,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			});
 		});
 
-		it('observes the duration in seconds by result and stamps the last success', () => {
+		it('observes the duration in seconds by result', () => {
 			service.init();
 
 			handler('system-task-run-settled')({
@@ -547,11 +602,38 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				{ task: 'prune', mode: 'durable', result: 'success' },
 				0.25,
 			);
-			expect(metric('system_task_last_success_timestamp_seconds').set).toHaveBeenCalledWith(
-				{ task: 'prune', mode: 'durable' },
-				NOW.getTime() / 1000,
-			);
 		});
+
+		it('does not stamp the last success of a durable run when it settles', () => {
+			service.init();
+
+			handler('system-task-run-settled')({
+				name: 'prune',
+				mode: 'durable',
+				result: 'success',
+				durationMs: 250,
+			});
+
+			expect(metric('system_task_last_success_timestamp_seconds').set).not.toHaveBeenCalled();
+		});
+
+		it.each(['leader_timer', 'instance_timer'])(
+			'stamps the last success of a %s run when it settles',
+			(mode) => {
+				service.init();
+
+				handler('system-task-run-settled')({
+					name: 'prune',
+					mode,
+					result: 'success',
+					durationMs: 250,
+				});
+
+				expect(
+					metric('system_task_last_success_timestamp_seconds').value({ task: 'prune', mode }),
+				).toBe(NOW.getTime() / 1000);
+			},
+		);
 
 		it.each(['failure', 'aborted'])('does not stamp the last success on a %s', (result) => {
 			service.init();

@@ -1,5 +1,10 @@
-import type { IDataObject, IExecuteFunctions, IHttpRequestMethods } from 'n8n-workflow';
-import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeOperationError, requestPath, setSafeObjectProperty } from 'n8n-workflow';
 import {
 	dataverseApiRequest,
 	dataverseApiRequestAllItems,
@@ -186,10 +191,10 @@ export function assertValidEntitySet(
  * {@link assertValidEntitySet} and the identifier with {@link assertValidRecordId}
  * or {@link assertValidAlternateKey}, so URL-breaking input never reaches here.
  */
-export function buildRecordPath(entitySet: string, recordId: string): string {
+export function buildRecordPath(entitySet: string, recordId: string): RequestPath {
 	const safeSet = normalizeEntitySet(entitySet);
 	const id = String(recordId).trim();
-	return `/${safeSet}(${id})`;
+	return requestPath`/${safeSet}(${id})`;
 }
 
 /**
@@ -329,7 +334,7 @@ export function applyPartitionIdToQuery(qs: IDataObject, partitionId?: unknown):
 export interface RequestPlan {
 	method: IHttpRequestMethods;
 	/** Web API path relative to `/api/data/v9.2` (e.g. `/accounts` or `/accounts(<id>)`). */
-	path: string;
+	path: RequestPath;
 	body?: IDataObject;
 	qs?: DataverseQuery;
 	extraHeaders?: DataverseHeaders;

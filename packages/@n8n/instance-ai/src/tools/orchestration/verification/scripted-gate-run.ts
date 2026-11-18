@@ -8,7 +8,9 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	buildSkippedWaitNote,
 	injectedTriggerSimulations,
+	joinNotes,
 	WORKFLOW_PIN_SIMULATION_REASON,
 	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
@@ -199,7 +201,13 @@ function mergeAnalyses(
 		nodesNotReached,
 		remediation: failing?.analysis.remediation,
 		nodesExecuted: [...reachedNames],
-		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
+		simulationNote: joinNotes(
+			buildSimulationNote(reachedSimulatedNodes, false),
+			buildSkippedWaitNote(
+				passes.flatMap((pass) => pass.result.skippedWaitNodeNames ?? []),
+				reachedNames,
+			),
+		),
 		coverageNote,
 		// Every pass runs the same workflow for the same user, so one note covers them.
 		redactionNote: passes.find((pass) => pass.analysis.redactionNote)?.analysis.redactionNote,

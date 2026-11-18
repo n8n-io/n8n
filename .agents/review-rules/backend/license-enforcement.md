@@ -12,3 +12,7 @@ Nothing fails the build when a paid feature ships ungated, so this is review-onl
 - Custom licensing middleware where the `@Licensed` decorator fits
 - Decorator order: route decorator → `@Licensed` → scope decorators
 - Enterprise code reachable outside `*.ee.ts` files or licensed modules
+- Plan or feature decisions read from `getCurrentEntitlements()` or
+  `getMainPlan()` alone — they check only each entitlement's dates, not the
+  cert's validity, so an expired cert still looks paid; gate on `getValue()`
+  or `isLicensed()` first

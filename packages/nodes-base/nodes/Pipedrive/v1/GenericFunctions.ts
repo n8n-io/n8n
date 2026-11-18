@@ -7,8 +7,10 @@ import type {
 	INodePropertyOptions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 export interface ICustomInterface {
 	name: string;
@@ -31,7 +33,7 @@ export interface ICustomProperties {
 export async function pipedriveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query: IDataObject = {},
 	formData?: IDataObject,
@@ -39,13 +41,13 @@ export async function pipedriveApiRequest(
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 		},
 		method,
 		qs: query,
-		uri: `https://api.pipedrive.com/v1${endpoint}`,
+		uri: requestUrl`https://api.pipedrive.com/v1${endpoint}`,
 	};
 
 	if (downloadFile === true) {
@@ -103,7 +105,7 @@ export async function pipedriveApiRequest(
 export async function pipedriveApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
@@ -143,12 +145,12 @@ export async function pipedriveGetCustomProperties(
 	this: IHookFunctions | IExecuteFunctions,
 	resource: string,
 ): Promise<ICustomProperties> {
-	const endpoints: { [key: string]: string } = {
-		activity: '/activityFields',
-		deal: '/dealFields',
-		organization: '/organizationFields',
-		person: '/personFields',
-		product: '/productFields',
+	const endpoints: { [key: string]: RequestPath } = {
+		activity: requestPath`/activityFields`,
+		deal: requestPath`/dealFields`,
+		organization: requestPath`/organizationFields`,
+		person: requestPath`/personFields`,
+		product: requestPath`/productFields`,
 	};
 
 	if (endpoints[resource] === undefined) {

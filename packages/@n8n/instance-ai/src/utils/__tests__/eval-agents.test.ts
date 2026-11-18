@@ -7,6 +7,7 @@ type MockAgentInstance = {
 	configuration: Mock;
 	telemetry: Mock;
 	modelFetch: Mock;
+	functionId: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -19,13 +20,14 @@ vi.mock('@n8n/agents', () => ({
 		this.configuration = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
 		this.modelFetch = vi.fn().mockReturnThis();
+		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
 }));
 
 import type { GenerateResult } from '@n8n/agents';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -44,6 +46,7 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_INSTANCE_AI_MODEL_URL',
+	'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS_FILE',
 	'N8N_INSTANCE_AI_EVAL_MODEL_URL',
 	'N8N_INSTANCE_AI_EVAL_MODEL_API_KEY',
 	'EVAL_MODAL_LLM_HEADERS',
@@ -56,6 +59,7 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_JUDGE_MODEL',
 	'N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT',
 	'N8N_INSTANCE_AI_EVAL_USAGE_LOG',
+	'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS',
 ];
 
 function resetModelEnv(): void {
@@ -120,15 +124,15 @@ describe('eval agent model config', () => {
 		});
 	});
 
-	it('throws without env keys or a fallback model config', () => {
+	it('throws without env keys or a resolved model', () => {
 		expect(() => createEvalAgent('test-agent', { instructions: 'Do the task.' })).toThrow(
 			/Missing API key/,
 		);
 	});
 
-	it('uses the fallback model config when no env API key is configured', () => {
-		const fallbackModelConfig = {
-			id: 'anthropic/claude-opus-4-8' as const,
+	it('uses a resolved model as is, with its own effort', () => {
+		const resolvedModel = {
+			id: 'anthropic/claude-haiku-5-5' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
@@ -136,31 +140,76 @@ describe('eval agent model config', () => {
 
 		createEvalAgent('test-agent', {
 			instructions: 'Do the task.',
-			fallbackModelConfig,
+			resolvedModel,
+			effort: 'low',
 			modelFetch,
 		});
 
-		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(resolvedModel);
 		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[0]?.functionId).not.toHaveBeenCalled();
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
-			effort: 'medium',
+			effort: 'low',
 		});
 	});
 
-	it('prefers env-based model resolution over the fallback', () => {
+	it('names the caller only when model request labels are on', () => {
 		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = 'true';
+		try {
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+		} finally {
+			delete process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS;
+		}
 
-		createEvalAgent('test-agent', {
-			instructions: 'Do the task.',
-			fallbackModelConfig: { id: 'anthropic/claude-opus-4-8' as const, url: '', apiKey: 'jwt' },
-		});
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
+	});
 
-		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-5-5',
-			apiKey: 'env-key',
-			url: undefined,
-		});
+	it('reads the request labels switch from its _FILE form, as @n8n/config does', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		const dir = mkdtempSync(path.join(tmpdir(), 'labels-'));
+		const file = path.join(dir, 'flag');
+		writeFileSync(file, 'true\n');
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS_FILE = file;
+
+		try {
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+		} finally {
+			rmSync(dir, { recursive: true });
+		}
+
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
+	});
+
+	it.each(['true ', '"true"', 'yes'])(
+		'stays off for %j, which @n8n/config also reads as off',
+		(value) => {
+			process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+			process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = value;
+
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+
+			expect(mockAgentInstances[0]?.functionId).not.toHaveBeenCalled();
+		},
+	);
+
+	it('turns a helper name with spaces or slashes into a safe caller id', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = 'true';
+
+		createEvalAgent('eval mock/Slack node', { instructions: 'Do the task.' });
+
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('eval-mock-Slack-node');
+	});
+
+	it('skips env-based model resolution for a resolved model', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		const resolvedModel = { id: 'anthropic/claude-opus-4-8' as const, url: '', apiKey: 'jwt' };
+
+		createEvalAgent('test-agent', { instructions: 'Do the task.', resolvedModel });
+
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(resolvedModel);
 	});
 
 	it('supports custom endpoints that authenticate with EVAL_MODAL_LLM_HEADERS only', () => {

@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	WEBHOOK_INTEGRATION_TYPE,
+	webhookAuthentication,
+} from '@n8n/api-types';
 import type {
 	AgentConfigValidationIssue,
 	AgentJsonTaskConfig,
 	TeamsFileAccessConsentState,
 } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
@@ -23,6 +27,7 @@ import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
 import { metaTitleKey, presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
@@ -80,7 +85,8 @@ const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
-const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+const { connectedCredentials, integrationSettings, runtimeErrors, hasRuntimeError, fetchStatus } =
+	integrationStatus;
 
 // The chip reads Meta's status once, and again when the channel modal closes.
 // The modal polls on its own while it is open.
@@ -175,23 +181,11 @@ function channelIcon(integrationIcon?: string): IconName {
 	return 'zap';
 }
 
-const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-	// A channel and a task carry no node type, so this never reaches here; the map is exhaustive.
-	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
-};
-
 const channelIssueMessages = computed(() => {
 	const messages = new Map<string, string[]>();
 	for (const issue of props.validationIssues) {
 		if (issue.capability.kind !== 'channel' || !issue.capability.id) continue;
-		const message = i18n.baseText(ISSUE_KEYS[issue.code], {
+		const message = i18n.baseText(resolveAgentValidationIssueMessageKey(issue), {
 			interpolate: { id: issue.capability.id },
 		});
 		messages.set(issue.capability.id, [
@@ -229,7 +223,13 @@ const channelRows = computed(() =>
 			invalidReasons,
 			// A red callout in the channel settings shows a red cross on the chip too.
 			invalidIcon: metaNotice?.isError ? ('circle-x' as const) : undefined,
-			warningReasons: metaNotice && !metaNotice.isError ? [metaNotice.message] : [],
+			warningReasons: [
+				...(metaNotice && !metaNotice.isError ? [metaNotice.message] : []),
+				...(channel === WEBHOOK_INTEGRATION_TYPE &&
+				webhookAuthentication({ settings: integrationSettings.value[channel] }) === 'none'
+					? [i18n.baseText('agents.channels.webhook.authentication.noneNotice')]
+					: []),
+			],
 			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
 			connected:
 				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),

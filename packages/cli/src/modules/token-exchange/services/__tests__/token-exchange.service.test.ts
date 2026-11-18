@@ -1,9 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, Person, ServiceAccount } from '@n8n/db';
 import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthError, BadRequestError } from '@n8n/errors';
+
+import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import type { JwtService } from '@n8n/backend-services';
 
 import type { TokenExchangeConfig } from '../../token-exchange.config';
@@ -38,7 +40,7 @@ const resolvedKey: ResolvedTrustedKey = {
 	requireVerifiedEmail: false,
 };
 
-const mockUser = mock<User>({
+const mockPerson = Object.assign(new Person(), {
 	id: '123',
 	email: 'user@example.com',
 	role: GLOBAL_MEMBER_ROLE,
@@ -62,6 +64,24 @@ describe('TokenExchangeService', () => {
 	});
 
 	describe('embedLogin', () => {
+		it('rejects a service account, which has no browser session', async () => {
+			vi.spyOn(jwt, 'decode').mockReturnValue({
+				header: { alg: 'RS256', kid: 'test-kid' },
+				payload: validClaims,
+				signature: 'sig',
+			} as unknown as ReturnType<typeof jwt.decode>);
+			vi.spyOn(jwt, 'verify').mockReturnValue(
+				validClaims as unknown as ReturnType<typeof jwt.verify>,
+			);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
+			jtiStore.consume.mockResolvedValue(true);
+			identityResolutionService.resolve.mockResolvedValue(
+				Object.assign(new ServiceAccount(), { id: 'sa-1', role: GLOBAL_MEMBER_ROLE }),
+			);
+
+			await expect(service.embedLogin('valid-token')).rejects.toThrow(TokenExchangeAuthError);
+		});
+
 		it('should return user on valid token', async () => {
 			vi.spyOn(jwt, 'decode').mockReturnValue({
 				header: { alg: 'RS256', kid: 'test-kid' },
@@ -73,12 +93,12 @@ describe('TokenExchangeService', () => {
 			);
 			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 			jtiStore.consume.mockResolvedValue(true);
-			identityResolutionService.resolve.mockResolvedValue(mockUser);
+			identityResolutionService.resolve.mockResolvedValue(mockPerson);
 
 			const result = await service.embedLogin('valid-token');
 
 			expect(result).toEqual({
-				user: mockUser,
+				user: mockPerson,
 				subject: 'external-user-1',
 				issuer: 'https://issuer.example.com',
 				kid: 'test-kid',

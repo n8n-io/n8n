@@ -219,8 +219,11 @@ export function rankEpisodicMemoryEntries(
 	const topK = opts.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K;
 	const statuses = new Set(opts.includeStatuses ?? ['active']);
 	const positive = entries
-		.filter((entry) => statuses.has(entry.status) && entry.embedding)
-		.map((entry) => ({ entry, score: cosineSimilarity(queryEmbedding, entry.embedding ?? []) }))
+		.flatMap((entry) =>
+			statuses.has(entry.status) && entry.embedding
+				? [{ entry, score: cosineSimilarity(queryEmbedding, entry.embedding) }]
+				: [],
+		)
 		.filter((item) => item.score > 0);
 	// Rank recency before the floor. Among only the few entries above it, a corrected
 	// fact and the value it replaced get nearly the same recency weight.
@@ -311,7 +314,7 @@ function normalizeHashContent(content: string): string {
 	return content.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function cosineSimilarity(a: number[], b: number[]): number {
+function cosineSimilarity(a: ArrayLike<number>, b: ArrayLike<number>): number {
 	if (a.length !== b.length || a.length === 0) return 0;
 	let dot = 0;
 	let aMagnitude = 0;

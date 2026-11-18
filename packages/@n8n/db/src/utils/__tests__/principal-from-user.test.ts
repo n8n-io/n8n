@@ -1,14 +1,14 @@
 import type { ResourceGrant } from '@n8n/permissions';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
-import { User } from '../../entities';
+import { Person, ServiceAccount, ServiceAccountDetails } from '../../entities';
 import type { Role } from '../../entities';
 import { principalFromUser } from '../principal-from-user';
 
 const role = { slug: 'global:member', scopes: [] } as unknown as Role;
 
-function makeUser(fields: Partial<User>) {
-	return Object.assign(new User(), { id: 'user-1', role, ...fields });
+function makeUser(fields: Partial<Person>) {
+	return Object.assign(new Person(), { id: 'user-1', role, ...fields });
 }
 
 describe('principalFromUser', () => {
@@ -54,6 +54,16 @@ describe('principalFromUser', () => {
 			'role',
 			'type',
 		]);
+	});
+
+	it('maps a service account to type service without person fields', () => {
+		const serviceAccount = Object.assign(new ServiceAccount(), {
+			id: 'sa-1',
+			role,
+			details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+		});
+
+		expect(principalFromUser(serviceAccount)).toEqual({ id: 'sa-1', type: 'service', role });
 	});
 
 	it('keeps ResourceGrant and OAuthResourceGrant assignable in both directions', () => {

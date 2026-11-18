@@ -1,5 +1,7 @@
 import { createRuntimeSkillSource } from '../../../skills/registry';
+import type { BuiltMemory, BuiltTool } from '../../../types';
 import type { ModelConfig } from '../../../types/sdk/agent';
+import { READ_HISTORY_TOOL_NAME } from '../../memory/history-recall-tool';
 import { getCatalogModelId, getModelIdString } from '../../../utils/model';
 import { AgentMessageList } from '../../model/message-list';
 import { ActiveSkills } from '../../skills/active-skills';
@@ -49,6 +51,53 @@ describe('getCatalogModelId', () => {
 	it('falls back to the model id', () => {
 		expect(getCatalogModelId({ id: 'azure-openai/my-chat' })).toBe('azure-openai/my-chat');
 		expect(getCatalogModelId('anthropic/claude-opus-4-8')).toBe('anthropic/claude-opus-4-8');
+	});
+});
+
+describe('read_history wiring', () => {
+	const persistence = { threadId: 't-1', resourceId: 'r-1' };
+	const memory = { getMessages: vi.fn(async () => []) } as unknown as BuiltMemory;
+
+	function build(historyRecall: boolean, tools: BuiltTool[] = []) {
+		return new RuntimeContextBuilder(
+			{
+				name: 'test',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Base instructions',
+				memory,
+				observationalMemory: { historyRecall },
+				tools,
+			},
+			undefined,
+		);
+	}
+
+	it('adds read_history when history recall is enabled', () => {
+		const names = build(true)
+			.getCurrentTools(persistence)
+			.map((tool) => tool.name);
+		expect(names).toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('leaves read_history out when history recall is off', () => {
+		const names = build(false)
+			.getCurrentTools(persistence)
+			.map((tool) => tool.name);
+		expect(names).not.toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('leaves read_history out without persistence', () => {
+		const names = build(true)
+			.getCurrentTools()
+			.map((tool) => tool.name);
+		expect(names).not.toContain(READ_HISTORY_TOOL_NAME);
+	});
+
+	it('rejects a user tool with the reserved name', () => {
+		const userTool = { name: READ_HISTORY_TOOL_NAME } as BuiltTool;
+		expect(() => build(true, [userTool]).getCurrentTools(persistence)).toThrow(
+			'is reserved while history recall is enabled',
+		);
 	});
 });
 
