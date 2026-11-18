@@ -1,4 +1,5 @@
 import '@/app/dev/demoConsole';
+import { printCanvasDelightGreeting } from '@/app/init/consoleGreeting';
 import { HACKMATION_DEMO } from '@/app/hackmation';
 
 import { createApp } from 'vue';
@@ -95,7 +96,6 @@ if (import.meta.env.VUE_SCAN) {
 app.mount('#app');
 
 if (HACKMATION_DEMO || (import.meta.env.DEV && import.meta.env.VUE_APP_CANVAS_DELIGHT === 'true')) {
-	const { printCanvasDelightGreeting } = await import('@/app/init/consoleGreeting');
 	printCanvasDelightGreeting();
 }
 
