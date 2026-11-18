@@ -170,7 +170,15 @@ describe('identifyPolicedTool', () => {
 		expect(
 			identifyPolicedTool({ name: 'refund', metadata: { kind: 'workflow', workflowId: 'wf-1' } }),
 		).toEqual({ type: 'workflow', workflowId: 'wf-1' });
-		expect(identifyPolicedTool(notionFetch)).toEqual({ type: 'mcpServer', name: 'Notion' });
+		expect(identifyPolicedTool(notionFetch)).toEqual({
+			type: 'mcpServer',
+			name: 'Notion',
+			tool: 'notion-fetch',
+		});
+		expect(identifyPolicedTool({ name: 'Notion_x', mcpServerName: 'Notion' })).toEqual({
+			type: 'mcpServer',
+			name: 'Notion',
+		});
 	});
 });
 
@@ -376,6 +384,62 @@ describe('evaluateToolCall', () => {
 				[record('Read_Customer_DB')],
 			);
 			expect(sessionHistory).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('earlier calls that describe their tool', () => {
+		const used = (tool: PolicedTool): PolicedToolCallRecord => ({ ...record(tool.name), tool });
+		const calculator: PolicedTool = { name: 'calculator' };
+
+		it('uses the tool of the call, without a lookup', async () => {
+			const noLookup = { describe: undefined };
+
+			expect(
+				(await decide([own([preventLeaks])], sendEmail, [used(readDb)], noLookup)).decision.action,
+			).toBe('deny');
+			// A tool with a name only is known, and it is in no category.
+			expect(
+				(await decide([own([preventLeaks])], sendEmail, [used(calculator)], noLookup)).decision
+					.action,
+			).toBe('allow');
+		});
+
+		it('names a tool for the policy through identify, for the call and for earlier calls', async () => {
+			const identify = vi.fn((tool: PolicedTool) => ({
+				...identifyPolicedTool(tool),
+				// As if the node types said that this database tool writes and the mail tool reads.
+				effect: tool.name === 'Read_Customer_DB' ? ('write' as const) : ('read' as const),
+			}));
+			const { ctx } = context(sendEmail, [used(readDb)]);
+
+			const decision = await evaluateToolCall({
+				policies: [own([preventLeaks])],
+				context: ctx,
+				checkId: 'check',
+				identify,
+			});
+
+			// The mail tool only reads, so the rule for sending tools does not cover it.
+			expect(decision.action).toBe('allow');
+			expect(identify).toHaveBeenCalledWith(sendEmail);
+		});
+
+		it('denies one tool of an MCP server and leaves its other tools', async () => {
+			const noNotionCreate: ToolPolicyRule = {
+				id: 'no-notion-create',
+				action: 'deny',
+				tools: [
+					{ kind: 'tool', ref: { type: 'mcpServer', name: 'Notion', tool: 'notion-create-page' } },
+				],
+			};
+			const notionCreate: PolicedTool = {
+				name: 'Notion_notion-create-page',
+				mcpServerName: 'Notion',
+				mcpToolName: 'notion-create-page',
+			};
+
+			expect((await decide([own([noNotionCreate])], notionCreate)).decision.action).toBe('deny');
+			expect((await decide([own([noNotionCreate])], notionFetch)).decision.action).toBe('allow');
 		});
 	});
 

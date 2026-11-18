@@ -426,6 +426,7 @@ defineExpose({ onSetupTaskAction });
 						<AgentToolPolicyPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
+							:project-id="projectId"
 							@update:config="emit('update:config', $event)"
 						/>
 						<N8nCard

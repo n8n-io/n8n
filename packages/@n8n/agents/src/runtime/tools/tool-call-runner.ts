@@ -4,7 +4,6 @@ import type { JSONSchema7 } from 'json-schema';
 import {
 	executeTool,
 	isSuspendedToolResult,
-	reportedToolCall,
 	resolveToolCallTarget,
 	type SuspendedToolResult,
 } from './tool-adapter';
@@ -32,7 +31,11 @@ import type {
 	ToolCallOutcome,
 } from '../../types/runtime/tool-execution';
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
-import type { PreToolExecutionDecision, ToolCallTarget } from '../../types/sdk/pre-tool-execution';
+import type {
+	PreToolExecutionDecision,
+	RunToolCall,
+	ToolCallTarget,
+} from '../../types/sdk/pre-tool-execution';
 import type { JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
@@ -101,12 +104,24 @@ function toolCallTarget(tool: BuiltTool, dispatchedBy: BuiltTool | undefined): T
  * Copies, because the list changes a block in place when its call settles. A dispatched call
  * is listed as the tool that runs, not as the dispatcher.
  */
-function toolCallsOf(list: AgentMessageList, toolMap: Map<string, BuiltTool>): ContentToolCall[] {
+function toolCallsOf(list: AgentMessageList, toolMap: Map<string, BuiltTool>): RunToolCall[] {
 	return list
 		.messages()
 		.flatMap((m) => (isLlmMessage(m) && 'content' in m ? (m as Message).content : []))
 		.filter((c): c is ContentToolCall => c.type === 'tool-call')
-		.map((c) => reportedToolCall(toolMap, { ...c }));
+		.map((c) => {
+			const target = resolveToolCallTarget(toolMap, c.toolName, c.input);
+			// The runtime has no tool of this name any more, so the call stays as it was stored.
+			if (!target) return { ...c };
+			return {
+				...c,
+				...(target.dispatchedBy && {
+					toolName: target.tool.name,
+					input: target.input as JSONValue,
+				}),
+				tool: toolCallTarget(target.tool, target.dispatchedBy),
+			};
+		});
 }
 
 /** Execute one tool call and keep its result, cancellation, and lifecycle events together. */

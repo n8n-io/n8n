@@ -247,5 +247,6 @@ export type {
 	PreToolExecution,
 	PreToolExecutionContext,
 	PreToolExecutionDecision,
+	RunToolCall,
 	ToolCallTarget,
 } from './sdk/pre-tool-execution';

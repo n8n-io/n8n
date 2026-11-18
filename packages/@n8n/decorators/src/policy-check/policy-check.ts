@@ -171,6 +171,12 @@ export type PolicedTool = {
 export type PolicedToolCallRecord = {
 	readonly toolCallId: string;
 	readonly toolName: string;
+	/**
+	 * The tool that the call ran or will run. Absent when it is not known, such as for a tool
+	 * that the agent no longer has. A call that was read from storage has less detail: no MCP
+	 * annotations, and an MCP tool name only as far as the runtime name shows it.
+	 */
+	readonly tool?: PolicedTool;
 	readonly input: unknown;
 	/** `pending` for a call with no result yet, such as the call that is being decided. */
 	readonly status: 'pending' | 'success' | 'error' | 'canceled';

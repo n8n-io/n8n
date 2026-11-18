@@ -33,9 +33,17 @@ export const TOOL_POLICY_MAX_CONDITION_DEPTH = 4;
 export const ToolPolicyToolRefSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('node'), name: z.string().min(1) }),
 	z.object({ type: z.literal('workflow'), workflowId: z.string().min(1) }),
-	z.object({ type: z.literal('mcpServer'), name: z.string().min(1) }),
+	z.object({
+		type: z.literal('mcpServer'),
+		name: z.string().min(1),
+		/** One tool of the server, by the name that the server gives it. Absent: every tool. */
+		tool: z.string().min(1).optional(),
+	}),
 ]);
 export type ToolPolicyToolRef = z.infer<typeof ToolPolicyToolRefSchema>;
+
+/** What one tool call does. A node tool has one fixed operation, an MCP tool is one operation. */
+export type ToolPolicyToolEffect = 'read' | 'write';
 
 const BASE = 'n8n-nodes-base';
 const LANGCHAIN = '@n8n/n8n-nodes-langchain';
@@ -45,19 +53,38 @@ const LANGCHAIN = '@n8n/n8n-nodes-langchain';
  * node types: `n8n-nodes-base.gmail` also covers the `n8n-nodes-base.gmailTool`
  * tool variant.
  *
- * The lists work per node type, not per operation. Gmail both reads and sends,
- * so it is in both categories. Missing node types are a silent gap in every
- * rule that uses the category, so add new integrations here.
+ * A listed node type counts for every operation, unless the effect of the
+ * operation is known and is the `excludedEffect` of the category. Gmail both
+ * reads and sends, so it is in both categories: a Gmail tool that is known to
+ * only read does not send data out, and one that is known to write does not
+ * read data. A tool with an unknown effect counts in both.
+ *
+ * Missing node types are a silent gap in every rule that uses the category, so
+ * add new integrations here.
  */
 export const TOOL_POLICY_CATEGORIES = {
 	/**
-	 * Tools that can send data outside n8n. Search tools count, because a query
-	 * can carry data. MCP servers and workflow tools can do anything, so they
-	 * count too.
+	 * Tools that can send data outside n8n. MCP tools count unless they are known
+	 * to only read. Workflow tools can do anything, so they count.
 	 */
 	sendsDataOut: {
-		includesMcpServers: true,
+		excludedEffect: 'read',
+		includesUnclassifiedMcpTools: true,
 		includesWorkflowTools: true,
+		/**
+		 * These send data to a place that the call chooses, also when they only read:
+		 * the URL or the query can carry the data. So they count for every operation.
+		 */
+		alwaysNodeTypes: [
+			`${BASE}.httpRequest`,
+			`${LANGCHAIN}.mcpClientTool`,
+			`${LANGCHAIN}.toolHttpRequest`,
+			`${LANGCHAIN}.toolSearXng`,
+			`${LANGCHAIN}.toolSerpApi`,
+			`${LANGCHAIN}.toolWikipedia`,
+			`${LANGCHAIN}.toolWolframAlpha`,
+			`${LANGCHAIN}.toolWorkflow`,
+		],
 		nodeTypes: [
 			`${BASE}.discord`,
 			`${BASE}.emailSend`,
@@ -84,10 +111,15 @@ export const TOOL_POLICY_CATEGORIES = {
 			`${LANGCHAIN}.toolWorkflow`,
 		],
 	},
-	/** Tools that read business data: databases, CRMs, support desks, files, and mailboxes. */
+	/**
+	 * Tools that read business data: databases, CRMs, support desks, files, and
+	 * mailboxes. An MCP tool counts only when it is known to read.
+	 */
 	readsData: {
-		includesMcpServers: false,
+		excludedEffect: 'write',
+		includesUnclassifiedMcpTools: false,
 		includesWorkflowTools: false,
+		alwaysNodeTypes: [],
 		nodeTypes: [
 			`${BASE}.airtable`,
 			`${BASE}.awsS3`,
@@ -128,7 +160,13 @@ export const TOOL_POLICY_CATEGORIES = {
 	},
 } as const satisfies Record<
 	string,
-	{ includesMcpServers: boolean; includesWorkflowTools: boolean; nodeTypes: readonly string[] }
+	{
+		excludedEffect: ToolPolicyToolEffect;
+		includesUnclassifiedMcpTools: boolean;
+		includesWorkflowTools: boolean;
+		alwaysNodeTypes: readonly string[];
+		nodeTypes: readonly string[];
+	}
 >;
 
 export type ToolPolicyCategory = keyof typeof TOOL_POLICY_CATEGORIES;
@@ -244,12 +282,24 @@ export function collectToolPolicySelectors(rule: ToolPolicyRule): ToolPolicySele
 	return out;
 }
 
-/** One tool of an agent, as the policy sees it. `nodeType` is set for node tools only. */
-export type ToolPolicyToolIdentity = ToolPolicyToolRef & { nodeType?: string };
+/**
+ * One tool of an agent, as the policy sees it. `nodeType` is set for node tools only. For an
+ * MCP tool, `tool` is the name of the tool on its server. `effect` is absent when it is not
+ * known what the operation does.
+ */
+export type ToolPolicyToolIdentity = ToolPolicyToolRef & {
+	nodeType?: string;
+	effect?: ToolPolicyToolEffect;
+};
 
 /** `n8n-nodes-base.gmailTool` → `n8n-nodes-base.gmail`. Other names stay as they are. */
 function stripToolSuffix(nodeType: string): string {
 	return nodeType.endsWith('Tool') ? nodeType.slice(0, -'Tool'.length) : nodeType;
+}
+
+/** True for a listed base node type and for its tool variant. */
+function isListed(nodeTypes: readonly string[], nodeType: string): boolean {
+	return nodeTypes.includes(nodeType) || nodeTypes.includes(stripToolSuffix(nodeType));
 }
 
 /** The package part of a node type: `n8n-nodes-base.gmailTool` → `n8n-nodes-base`. */
@@ -266,21 +316,31 @@ export function toolPolicySelectorMatches(
 	if (selector.kind === 'nodeType') return tool.nodeType === selector.value;
 	if (selector.kind === 'category') {
 		const category = TOOL_POLICY_CATEGORIES[selector.value];
-		if (tool.type === 'mcpServer') return category.includesMcpServers;
 		if (tool.type === 'workflow') return category.includesWorkflowTools;
+		if (tool.type === 'mcpServer') {
+			return tool.effect === undefined
+				? category.includesUnclassifiedMcpTools
+				: tool.effect !== category.excludedEffect;
+		}
 		if (tool.nodeType === undefined) return false;
-		const listed: readonly string[] = category.nodeTypes;
-		return listed.includes(tool.nodeType) || listed.includes(stripToolSuffix(tool.nodeType));
+		if (isListed(category.alwaysNodeTypes, tool.nodeType)) return true;
+		return isListed(category.nodeTypes, tool.nodeType) && tool.effect !== category.excludedEffect;
 	}
 	if (selector.kind === 'package') {
 		return tool.nodeType !== undefined && packageOfNodeType(tool.nodeType) === selector.value;
 	}
 	const { ref } = selector;
-	if (ref.type !== tool.type) return false;
-	if (ref.type === 'workflow' && tool.type === 'workflow')
-		return ref.workflowId === tool.workflowId;
-	if (ref.type !== 'workflow' && tool.type !== 'workflow') return ref.name === tool.name;
-	return false;
+	if (ref.type === 'workflow') {
+		return tool.type === 'workflow' && ref.workflowId === tool.workflowId;
+	}
+	if (ref.type === 'mcpServer') {
+		return (
+			tool.type === 'mcpServer' &&
+			ref.name === tool.name &&
+			(ref.tool === undefined || ref.tool === tool.tool)
+		);
+	}
+	return tool.type === 'node' && ref.name === tool.name;
 }
 
 /**

@@ -81,6 +81,7 @@ describe('AgentToolCallHistoryService', () => {
 				{
 					toolCallId: 'call-1',
 					toolName: 'lookup',
+					tool: { name: 'lookup' },
 					input: { for: 'call-1' },
 					status: 'success',
 					output: { from: 'call-1' },
@@ -88,6 +89,7 @@ describe('AgentToolCallHistoryService', () => {
 				{
 					toolCallId: 'call-2',
 					toolName: 'delete_record',
+					tool: { name: 'delete_record' },
 					input: { for: 'call-2' },
 					status: 'error',
 					output: 'Not found',
@@ -135,6 +137,46 @@ describe('AgentToolCallHistoryService', () => {
 		const [session] = await service.sessionHistory('thread-1', 'agent-1', []);
 
 		expect(session.toolCalls).toMatchObject([{ toolCallId: 'call-1', status: 'canceled' }]);
+	});
+
+	it('describes the tool of a stored call from what the timeline keeps', async () => {
+		const { service, threadRepository, executionService } = setUp();
+		threadRepository.findDelegationChain.mockResolvedValue([
+			{ id: 'thread-1', agentId: 'agent-1' },
+		]);
+		executionService.findThreadExecutions.mockResolvedValue([
+			execution([
+				toolCall('call-node', 'Read_Customer_DB', {
+					kind: 'node',
+					nodeType: 'n8n-nodes-base.postgresTool',
+					nodeTypeVersion: 2,
+					nodeParameters: { operation: 'select' },
+				}),
+				toolCall('call-workflow', 'refund', { kind: 'workflow', workflowId: 'wf-1' }),
+				toolCall('call-mcp', 'My_CRM_get_contact', { mcpServerName: 'My CRM' }),
+				// The runtime name does not start with the server name, so the tool stays unnamed.
+				toolCall('call-mcp-renamed', 'get_contact_2', { mcpServerName: 'My CRM' }),
+				toolCall('call-plain', 'load_skill'),
+			]),
+		]);
+
+		const [session] = await service.sessionHistory('thread-1', 'agent-1', []);
+
+		expect(session.toolCalls.map((call) => call.tool)).toEqual([
+			{
+				name: 'Read_Customer_DB',
+				metadata: {
+					kind: 'node',
+					nodeType: 'n8n-nodes-base.postgresTool',
+					nodeTypeVersion: 2,
+					nodeParameters: { operation: 'select' },
+				},
+			},
+			{ name: 'refund', metadata: { kind: 'workflow', workflowId: 'wf-1' } },
+			{ name: 'My_CRM_get_contact', mcpServerName: 'My CRM', mcpToolName: 'get_contact' },
+			{ name: 'get_contact_2', mcpServerName: 'My CRM' },
+			{ name: 'load_skill' },
+		]);
 	});
 
 	it('adds each session that delegated to this one, up to the root', async () => {

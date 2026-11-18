@@ -206,6 +206,13 @@ This includes a call that suspended and resumes, for example after an approval.
   the stored turns with `runToolCalls()`. It reads the database one time for each
   tool call and runs inside the deadline of the check, so call it only when the
   decision needs it.
+- **Each call describes its tool.** A call in memory has what the runtime knows:
+  the metadata of a node or workflow tool, and the server, the tool name and the
+  annotations of an MCP tool. A stored call has the node type, the node
+  parameters and the workflow from the timeline, and the MCP server once the
+  call has a result. A stored MCP call has no annotations, and its tool name is
+  read from the runtime name. A call without `tool` is one that nothing
+  describes.
 - **Stored calls differ from calls in memory.** A stored call has its sensitive
   keys redacted. Large results are cut in both.
 - **The stored copy of a running turn can lag.** So the last calls of a parent

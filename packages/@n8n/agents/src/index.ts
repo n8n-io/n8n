@@ -16,6 +16,7 @@ export type {
 	PreToolExecution,
 	PreToolExecutionContext,
 	PreToolExecutionDecision,
+	RunToolCall,
 	ToolCallTarget,
 	PiiDetectionType,
 	BuiltEval,

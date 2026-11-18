@@ -262,7 +262,7 @@ describe('AgentPolicyService', () => {
 				block('call-a', { state: 'resolved', output: { found: true } }),
 				block('call-b', { state: 'rejected', error: 'Not found' }),
 				block('call-c', { state: 'resolved', output: 'Declined', canceled: true }),
-				block('call-1', { state: 'pending' }),
+				{ ...block('call-1', { state: 'pending' }), tool: call.tool },
 			];
 			const policedRunToolCalls = [
 				{
@@ -286,7 +286,13 @@ describe('AgentPolicyService', () => {
 					status: 'canceled',
 					output: 'Declined',
 				},
-				{ toolCallId: 'call-1', toolName: 'lookup', input: { id: 'call-1' }, status: 'pending' },
+				{
+					toolCallId: 'call-1',
+					toolName: 'lookup',
+					input: { id: 'call-1' },
+					tool: call.tool,
+					status: 'pending',
+				},
 			];
 
 			async function policedContext(setup: ReturnType<typeof setUp>) {

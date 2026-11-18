@@ -3,7 +3,9 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { PolicedTool, PolicedToolCallRecord, PreToolExecutionContext } from '@n8n/decorators';
 import { PolicyCheckMetadata, pointsImplementedBy } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
+import type { ToolEffectResolver } from '../tool-effect-resolver';
 import { ToolPolicyCheck } from '../tool-policy.check';
 
 describe('ToolPolicyCheck', () => {
@@ -52,6 +54,8 @@ describe('ToolPolicyCheck', () => {
 		]);
 		const loadAgentToolPolicy = vi.fn<PreToolExecutionContext['loadAgentToolPolicy']>();
 		loadAgentToolPolicy.mockResolvedValue(parent?.toolPolicy ?? null);
+		const toolEffects = mock<ToolEffectResolver>();
+		toolEffects.effectOf.mockReturnValue(undefined);
 		const context: PreToolExecutionContext = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
@@ -71,7 +75,8 @@ describe('ToolPolicyCheck', () => {
 		return {
 			logger,
 			debug: vi.mocked(logger.scoped('policy').debug),
-			check: new ToolPolicyCheck(logger),
+			check: new ToolPolicyCheck(logger, toolEffects),
+			toolEffects,
 			context,
 			sessionHistory,
 			loadAgentToolPolicy,
@@ -151,6 +156,57 @@ describe('ToolPolicyCheck', () => {
 			});
 
 			expect(await check.onPreToolExecution(context)).toEqual({ violations: [] });
+		});
+	});
+
+	describe('rules by category', () => {
+		const preventDataLeaks: ToolPolicyRule = {
+			id: 'prevent-data-leaks',
+			action: 'deny',
+			tools: [{ kind: 'category', value: 'sendsDataOut' }],
+			when: { toolUsed: [{ kind: 'category', value: 'readsData' }] },
+		};
+		const usedTool = (tool: PolicedTool): PolicedToolCallRecord => ({ ...used(tool), tool });
+
+		it('denies sending after a tool that reads business data was used', async () => {
+			const { check, context } = setUp(policy([preventDataLeaks]), sendEmail, [usedTool(readDb)]);
+
+			expect((await check.onPreToolExecution(context)).violations).toHaveLength(1);
+		});
+
+		it('allows sending after a tool that is in no category was used', async () => {
+			const { check, context } = setUp(policy([preventDataLeaks]), sendEmail, [
+				usedTool({ name: 'load_skill' }),
+			]);
+
+			expect(await check.onPreToolExecution(context)).toEqual({ violations: [] });
+		});
+
+		it('does not count a mail tool that only reads as a tool that sends', async () => {
+			const { check, context, toolEffects } = setUp(policy([preventDataLeaks]), sendEmail, [
+				usedTool(readDb),
+			]);
+			toolEffects.effectOf.mockImplementation((tool) =>
+				tool.name === sendEmail.name ? 'read' : undefined,
+			);
+
+			expect(await check.onPreToolExecution(context)).toEqual({ violations: [] });
+		});
+
+		it('counts an MCP tool that reads as a tool that reads business data', async () => {
+			const fetchPage: PolicedTool = {
+				name: 'Notion_fetch',
+				mcpServerName: 'Notion',
+				mcpToolName: 'fetch',
+			};
+			const { check, context, toolEffects } = setUp(policy([preventDataLeaks]), sendEmail, [
+				usedTool(fetchPage),
+			]);
+			toolEffects.effectOf.mockImplementation((tool) =>
+				tool.name === fetchPage.name ? 'read' : undefined,
+			);
+
+			expect((await check.onPreToolExecution(context)).violations).toHaveLength(1);
 		});
 	});
 

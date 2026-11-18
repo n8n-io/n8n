@@ -13,6 +13,7 @@ import type { AgentRepository } from '@/modules/agents/repositories/agent.reposi
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 
+import { ToolEffectResolver } from '../tool-effect-resolver';
 import { ToolPolicyCheck } from '../tool-policy.check';
 
 /**
@@ -53,6 +54,7 @@ describe('tool policy enforcement for an agent tool call', () => {
 
 	function hookFor(policy: ToolPolicy | null, earlierCalls: PolicedToolCallRecord[]) {
 		Container.set(Logger, mockLogger());
+		Container.set(ToolEffectResolver, mock<ToolEffectResolver>());
 		const enforcement = new PolicyEnforcementService();
 		enforcement.setImplementation(
 			new PolicyDecisionService(

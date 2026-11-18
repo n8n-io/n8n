@@ -10111,6 +10111,7 @@
 	"agents.toolPolicy.warning.noToolAtStart": "The agent cannot use any tool at the start of a conversation",
 	"agents.toolPolicy.selector.workflow": "{name} (workflow)",
 	"agents.toolPolicy.selector.mcpServer": "{name} (MCP server)",
+	"agents.toolPolicy.selector.mcpTool": "{tool} ({server} MCP tool)",
 	"agents.toolPolicy.selector.nodeType": "All {name} tools",
 	"agents.toolPolicy.selector.package": "All tools from {name}",
 	"agents.toolPolicy.category.sendsDataOut": "Any tool that sends data out",

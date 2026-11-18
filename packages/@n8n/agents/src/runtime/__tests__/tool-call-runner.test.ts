@@ -445,9 +445,14 @@ describe('ToolCallRunner preToolExecution', () => {
 			}),
 		);
 
-		// The history names the tool that runs, the same as `tool` does.
+		// The history names and describes the tool that runs, the same as `tool` does.
 		expect(runToolCalls).toMatchObject([
-			{ toolCallId: 'call-1', toolName: 'send_message', input: { text: 'hi' } },
+			{
+				toolCallId: 'call-1',
+				toolName: 'send_message',
+				input: { text: 'hi' },
+				tool: { name: 'send_message', dispatchedBy: 'call_tool' },
+			},
 		]);
 
 		expect(hook).toHaveBeenCalledExactlyOnceWith(
@@ -574,7 +579,12 @@ describe('ToolCallRunner preToolExecution', () => {
 	});
 
 	it('lists the tool calls of the run so far', async () => {
-		const tool: BuiltTool = { name: 'send_message', description: '', handler: makeHandler() };
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: '',
+			handler: makeHandler(),
+			metadata: { kind: 'node' },
+		};
 		const call = makeCall([tool], { toolName: tool.name });
 		const toolCallMessage = (toolCallId: string, toolName: string) =>
 			fromAiMessages([
@@ -596,5 +606,8 @@ describe('ToolCallRunner preToolExecution', () => {
 			{ toolCallId: 'call-0', toolName: 'lookup', state: 'resolved', output: { found: true } },
 			{ toolCallId: 'call-1', toolName: 'send_message', state: 'pending' },
 		]);
+		// The runtime has no `lookup` tool any more, so only the current tool is described.
+		expect(runToolCalls[0]).not.toHaveProperty('tool');
+		expect(runToolCalls[1].tool).toEqual({ name: 'send_message', metadata: { kind: 'node' } });
 	});
 });

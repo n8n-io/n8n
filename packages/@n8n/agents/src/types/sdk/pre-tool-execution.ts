@@ -12,6 +12,12 @@ export type ToolCallTarget = Pick<
 	readonly dispatchedBy?: string;
 };
 
+/**
+ * A tool call in the message list of a run. `tool` describes the tool that the call ran or
+ * will run. It is absent when the runtime no longer has a tool of that name.
+ */
+export type RunToolCall = ContentToolCall & { readonly tool?: ToolCallTarget };
+
 export interface PreToolExecutionContext {
 	readonly toolCallId: string;
 	readonly runId: string;
@@ -26,7 +32,7 @@ export interface PreToolExecutionContext {
 	 * calls of its batch are `pending`. History before the point where the run loaded its
 	 * messages is not included.
 	 */
-	readonly runToolCalls: () => readonly ContentToolCall[];
+	readonly runToolCalls: () => readonly RunToolCall[];
 }
 
 export type PreToolExecutionDecision =

@@ -36,6 +36,24 @@ describe('ExecutionRecorder', () => {
 		},
 	);
 
+	it.each([true, false])('keeps the MCP server of a tool call (started: %s)', (started) => {
+		const recorder = new ExecutionRecorder();
+		if (started) recorder.record(makeToolCallChunk('crm_get_contact', {}, 'tc-mcp'));
+		recorder.record({
+			type: 'tool-result',
+			toolCallId: 'tc-mcp',
+			toolName: 'crm_get_contact',
+			output: { name: 'Ada' },
+			mcpServerName: 'crm',
+		});
+
+		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
+			type: 'tool-call',
+			toolCallId: 'tc-mcp',
+			mcpServerName: 'crm',
+		});
+	});
+
 	it.each([true, false])('keeps tool trace output on the timeline (started: %s)', (started) => {
 		const recorder = new ExecutionRecorder();
 		if (started) recorder.record(makeToolCallChunk('recall_memory', {}, 'tc-recall'));

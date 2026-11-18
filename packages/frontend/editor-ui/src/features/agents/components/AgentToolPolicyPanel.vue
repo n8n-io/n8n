@@ -24,8 +24,10 @@ import {
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { AgentJsonConfig } from '../types';
+import { mcpServerToNode } from '../composables/useMcpServerAdapter';
+import type { AgentJsonConfig, AgentJsonMcpServerConfig } from '../types';
 import {
 	applyToolPolicyTemplate,
 	blocksAllToolsAtStart,
@@ -52,8 +54,9 @@ const props = withDefaults(
 	defineProps<{
 		config: AgentJsonConfig | null;
 		disabled?: boolean;
+		projectId?: string;
 	}>(),
-	{ disabled: false },
+	{ disabled: false, projectId: undefined },
 );
 
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -78,7 +81,49 @@ function edit(change: () => void) {
 	emit('update:config', toolPolicySave(props.config, fromToolPolicyDraft(draft.value)));
 }
 
-const options = computed(() => buildToolPolicyOptions(props.config));
+/** The tool names of each MCP server whose list is loaded, by server name. */
+const mcpServerTools = ref<Record<string, string[]>>({});
+
+/**
+ * Asks an MCP server for its tools, the same way as the approval setting of an MCP tool. A
+ * server that does not answer keeps its one option for all of its tools.
+ */
+async function loadMcpServerTools(server: AgentJsonMcpServerConfig) {
+	const nodeType =
+		nodeTypesStore.getNodeType(server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE) ??
+		nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE);
+	if (!nodeType) return;
+
+	const node = mcpServerToNode(server, nodeType);
+	try {
+		const tools = await nodeTypesStore.getNodeParameterOptions({
+			nodeTypeAndVersion: { name: node.type, version: node.typeVersion },
+			path: 'parameters.includeTools',
+			methodName: 'getTools',
+			currentNodeParameters: node.parameters,
+			credentials: node.credentials,
+			projectId: props.projectId,
+		});
+		mcpServerTools.value = {
+			...mcpServerTools.value,
+			[server.name]: tools.map((tool) => String(tool.value)),
+		};
+	} catch {
+		// Rules for the whole server still work, and a saved rule for one tool stays selected.
+	}
+}
+
+// When the panel opens, and when the builder adds or changes a server.
+watch(
+	() =>
+		(props.config?.mcpServers ?? []).map((server) => `${server.name}\n${server.url}`).join('\n'),
+	() => {
+		for (const server of props.config?.mcpServers ?? []) void loadMcpServerTools(server);
+	},
+	{ immediate: true },
+);
+
+const options = computed(() => buildToolPolicyOptions(props.config, mcpServerTools.value));
 
 function sourceLabel(source: ToolPolicyOptionSource): string {
 	switch (source.type) {
@@ -91,6 +136,10 @@ function sourceLabel(source: ToolPolicyOptionSource): string {
 		case 'mcpServer':
 			return i18n.baseText('agents.toolPolicy.selector.mcpServer', {
 				interpolate: { name: source.name },
+			});
+		case 'mcpTool':
+			return i18n.baseText('agents.toolPolicy.selector.mcpTool', {
+				interpolate: { tool: source.tool, server: source.server },
 			});
 		case 'nodeType':
 			return i18n.baseText('agents.toolPolicy.selector.nodeType', {
@@ -115,6 +164,14 @@ function fallbackLabel(selector: ToolPolicySelector): string {
 	if (selector.kind === 'category')
 		return sourceLabel({ type: 'category', category: selector.value });
 	const { ref } = selector;
+	// The list of the server is not loaded. The server is still there, so the tool is not removed.
+	if (
+		ref.type === 'mcpServer' &&
+		ref.tool !== undefined &&
+		(props.config?.mcpServers ?? []).some((server) => server.name === ref.name)
+	) {
+		return sourceLabel({ type: 'mcpTool', server: ref.name, tool: ref.tool });
+	}
 	return i18n.baseText('agents.toolPolicy.selector.missing', {
 		interpolate: { name: ref.type === 'workflow' ? ref.workflowId : ref.name },
 	});

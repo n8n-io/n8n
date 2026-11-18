@@ -1,4 +1,4 @@
-import type { ContentToolCall, PreToolExecution } from '@n8n/agents';
+import type { PreToolExecution, RunToolCall } from '@n8n/agents';
 import type { AgentJsonConfig, ToolPolicy } from '@n8n/api-types';
 import type {
 	PolicedSession,
@@ -36,14 +36,12 @@ function policedWorkflowForAgent(
 }
 
 /** A tool call of the running turn, as a policy check reads it. */
-function toPolicedToolCall(call: ContentToolCall): PolicedToolCallRecord {
-	const { toolCallId, toolName, input } = call;
-	if (call.state === 'pending') return { toolCallId, toolName, input, status: 'pending' };
-	if (call.state === 'rejected') {
-		return { toolCallId, toolName, input, status: 'error', output: call.error };
-	}
-	const status = call.canceled ? 'canceled' : 'success';
-	return { toolCallId, toolName, input, status, output: call.output };
+function toPolicedToolCall(call: RunToolCall): PolicedToolCallRecord {
+	const { toolCallId, toolName, input, tool } = call;
+	const base = { toolCallId, toolName, input, ...(tool && { tool }) };
+	if (call.state === 'pending') return { ...base, status: 'pending' };
+	if (call.state === 'rejected') return { ...base, status: 'error', output: call.error };
+	return { ...base, status: call.canceled ? 'canceled' : 'success', output: call.output };
 }
 
 /**

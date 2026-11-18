@@ -1,6 +1,7 @@
 import { findToolPolicyRefIssues, isToolPolicyRefOnAgent } from '../agent-json-config.schema';
 import {
 	collectToolPolicySelectors,
+	TOOL_POLICY_CATEGORIES,
 	TOOL_POLICY_MAX_CONDITION_DEPTH,
 	TOOL_POLICY_NAME_MAX_LENGTH,
 	ToolPolicySchema,
@@ -391,13 +392,89 @@ describe('tool policy categories', () => {
 		expect(toolPolicySelectorMatches(readsData, postgres)).toBe(true);
 	});
 
-	it('counts MCP servers and workflow tools as sending data out, not as reading data', () => {
+	it('counts workflow tools and unclassified MCP tools as sending data out, not as reading data', () => {
 		const mcp = { type: 'mcpServer', name: 'crm' } as const;
 		const workflow = { type: 'workflow', workflowId: 'wf-1' } as const;
 		for (const tool of [mcp, workflow]) {
 			expect(toolPolicySelectorMatches(sendsDataOut, tool)).toBe(true);
 			expect(toolPolicySelectorMatches(readsData, tool)).toBe(false);
 		}
+	});
+
+	describe('with a known effect', () => {
+		const gmail = { type: 'node', name: 'Mail', nodeType: 'n8n-nodes-base.gmailTool' } as const;
+
+		it('takes a node tool that only reads out of the sending category', () => {
+			const readMail = { ...gmail, effect: 'read' } as const;
+			expect(toolPolicySelectorMatches(sendsDataOut, readMail)).toBe(false);
+			expect(toolPolicySelectorMatches(readsData, readMail)).toBe(true);
+		});
+
+		it('takes a node tool that writes out of the reading category', () => {
+			const sendMail = { ...gmail, effect: 'write' } as const;
+			expect(toolPolicySelectorMatches(sendsDataOut, sendMail)).toBe(true);
+			expect(toolPolicySelectorMatches(readsData, sendMail)).toBe(false);
+		});
+
+		it.each(['n8n-nodes-base.httpRequestTool', '@n8n/n8n-nodes-langchain.toolSerpApi'])(
+			'keeps %s in the sending category when it only reads, because the request carries data',
+			(nodeType) => {
+				const tool = { type: 'node', name: 'Fetch', nodeType, effect: 'read' } as const;
+				expect(toolPolicySelectorMatches(sendsDataOut, tool)).toBe(true);
+			},
+		);
+
+		it('lists each node type that always sends data out in the sending category', () => {
+			const { alwaysNodeTypes, nodeTypes } = TOOL_POLICY_CATEGORIES.sendsDataOut;
+			const listed: readonly string[] = nodeTypes;
+			expect(alwaysNodeTypes.filter((nodeType) => !listed.includes(nodeType))).toEqual([]);
+		});
+
+		it('puts an MCP tool in the category of what it does', () => {
+			const read = { type: 'mcpServer', name: 'crm', tool: 'get_contact', effect: 'read' } as const;
+			const write = { type: 'mcpServer', name: 'crm', tool: 'send_mail', effect: 'write' } as const;
+			expect(toolPolicySelectorMatches(readsData, read)).toBe(true);
+			expect(toolPolicySelectorMatches(sendsDataOut, read)).toBe(false);
+			expect(toolPolicySelectorMatches(sendsDataOut, write)).toBe(true);
+			expect(toolPolicySelectorMatches(readsData, write)).toBe(false);
+		});
+	});
+});
+
+describe('MCP tool refs', () => {
+	const server = { kind: 'tool', ref: { type: 'mcpServer', name: 'crm' } } as const;
+	const oneTool = {
+		kind: 'tool',
+		ref: { type: 'mcpServer', name: 'crm', tool: 'send_mail' },
+	} as const;
+
+	it('accepts a ref to one tool of a server', () => {
+		const policy = {
+			defaultAction: 'allow',
+			rules: [{ id: 'r1', action: 'deny', tools: [oneTool] }],
+		};
+		expect(ToolPolicySchema.parse(policy).rules[0].tools).toEqual([oneTool]);
+	});
+
+	it('matches every tool of the server without a tool name', () => {
+		expect(toolPolicySelectorMatches(server, { type: 'mcpServer', name: 'crm' })).toBe(true);
+		expect(
+			toolPolicySelectorMatches(server, { type: 'mcpServer', name: 'crm', tool: 'get_contact' }),
+		).toBe(true);
+	});
+
+	it('matches only the named tool of the server', () => {
+		expect(
+			toolPolicySelectorMatches(oneTool, { type: 'mcpServer', name: 'crm', tool: 'send_mail' }),
+		).toBe(true);
+		expect(
+			toolPolicySelectorMatches(oneTool, { type: 'mcpServer', name: 'crm', tool: 'get_contact' }),
+		).toBe(false);
+		expect(
+			toolPolicySelectorMatches(oneTool, { type: 'mcpServer', name: 'other', tool: 'send_mail' }),
+		).toBe(false);
+		// The tool of the call is not known, so the rule for one tool does not cover it.
+		expect(toolPolicySelectorMatches(oneTool, { type: 'mcpServer', name: 'crm' })).toBe(false);
 	});
 });
 

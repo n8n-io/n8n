@@ -1,6 +1,6 @@
 import { N8nActionDropdown, N8nInlineTextEdit } from '@n8n/design-system';
-import { mount, type VueWrapper } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import type { ToolPolicy, ToolPolicyTemplate } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
@@ -8,10 +8,21 @@ import { N8nInput } from '@n8n/design-system';
 import AgentToolPolicyPanel from '../components/AgentToolPolicyPanel.vue';
 import type { AgentJsonConfig } from '../types';
 
+const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+
+// The tools of an MCP server come from the server. By default the list does not load.
+const { loadMcpTools } = vi.hoisted(() => ({ loadMcpTools: vi.fn() }));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
-		getNodeType: (name: string) =>
-			name === 'n8n-nodes-base.gmailTool' ? { displayName: 'Gmail' } : null,
+		getNodeType: (name: string) => {
+			if (name === 'n8n-nodes-base.gmailTool') return { displayName: 'Gmail' };
+			if (name === MCP_CLIENT_NODE_TYPE) {
+				return { name, displayName: 'MCP Client', version: 1, properties: [] };
+			}
+			return null;
+		},
+		getNodeParameterOptions: loadMcpTools,
 	}),
 }));
 
@@ -21,6 +32,7 @@ vi.mock('@n8n/i18n', () => ({
 			const copy: Record<string, string> = {
 				'agents.toolPolicy.selector.workflow': '{name} (workflow)',
 				'agents.toolPolicy.selector.mcpServer': '{name} (MCP server)',
+				'agents.toolPolicy.selector.mcpTool': '{tool} ({server} MCP tool)',
 				'agents.toolPolicy.selector.nodeType': 'All {name} tools',
 				'agents.toolPolicy.selector.missing': '{name} (removed)',
 				'agents.toolPolicy.rule.warning.missingTools': 'Missing: {tools}',
@@ -83,9 +95,9 @@ const stubs = {
 	},
 };
 
-function render(config: AgentJsonConfig, disabled = false) {
+function render(config: AgentJsonConfig, disabled = false, projectId?: string) {
 	return mount(AgentToolPolicyPanel, {
-		props: { config, disabled },
+		props: { config, disabled, projectId },
 		global: { stubs: { ...stubs, Select: stubs.N8nSelect, Option: stubs.N8nOption } },
 	});
 }
@@ -103,6 +115,85 @@ function lastPolicy(wrapper: VueWrapper): ToolPolicy | undefined {
 }
 
 describe('AgentToolPolicyPanel', () => {
+	beforeEach(() => {
+		loadMcpTools.mockReset().mockRejectedValue(new Error('The MCP server is not reachable'));
+	});
+
+	describe('tools of an MCP server', () => {
+		const sendMail = {
+			kind: 'tool',
+			ref: { type: 'mcpServer', name: 'crm', tool: 'send_mail' },
+		} as const;
+		const sendMailKey = '["tool","mcpServer","crm","send_mail"]';
+		const denyRule = (tools: ToolPolicy['rules'][number]['tools']): ToolPolicy => ({
+			defaultAction: 'allow',
+			rules: [{ id: 'r1', action: 'deny', tools }],
+		});
+		const toolLabels = (wrapper: VueWrapper) =>
+			select(wrapper, 'agent-tool-policy-rule-tools')
+				.findAllComponents({ name: 'N8nOption' })
+				.map((option) => option.props('label'));
+
+		it('lists each tool after its server once the list is loaded', async () => {
+			loadMcpTools.mockResolvedValue([
+				{ name: 'Get contact', value: 'get_contact' },
+				{ name: 'Send mail', value: 'send_mail' },
+			]);
+			const wrapper = render(makeConfig(denyRule([sendEmail])), false, 'project-1');
+			await flushPromises();
+
+			expect(loadMcpTools).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					nodeTypeAndVersion: { name: MCP_CLIENT_NODE_TYPE, version: 1 },
+					methodName: 'getTools',
+					currentNodeParameters: expect.objectContaining({
+						endpointUrl: 'https://example.com/mcp',
+					}),
+					projectId: 'project-1',
+				}),
+			);
+			const labels = toolLabels(wrapper);
+			expect(labels.slice(labels.indexOf('crm (MCP server)'))).toEqual([
+				'crm (MCP server)',
+				'get_contact (crm MCP tool)',
+				'send_mail (crm MCP tool)',
+				'All n8n-nodes-base.postgresTool tools',
+				'All Gmail tools',
+			]);
+		});
+
+		it('saves a rule for one tool of the server', async () => {
+			loadMcpTools.mockResolvedValue([{ name: 'Send mail', value: 'send_mail' }]);
+			const wrapper = render(makeConfig(denyRule([sendEmail])));
+			await flushPromises();
+
+			select(wrapper, 'agent-tool-policy-rule-tools').vm.$emit('update:modelValue', [sendMailKey]);
+			await nextTick();
+
+			expect(lastPolicy(wrapper)).toEqual(denyRule([sendMail]));
+		});
+
+		it('offers only the whole server when the list does not load', async () => {
+			const wrapper = render(makeConfig(denyRule([sendEmail])));
+			await flushPromises();
+
+			const labels = toolLabels(wrapper);
+			expect(labels).toContain('crm (MCP server)');
+			expect(labels.filter((label) => label.includes('MCP tool'))).toEqual([]);
+		});
+
+		it('keeps a saved rule for one tool when the list does not load', async () => {
+			const wrapper = render(makeConfig(denyRule([sendMail])));
+			await flushPromises();
+
+			expect(toolLabels(wrapper)).toContain('send_mail (crm MCP tool)');
+			expect(select(wrapper, 'agent-tool-policy-rule-tools').props('modelValue')).toEqual([
+				sendMailKey,
+			]);
+			expect(wrapper.find('[data-testid="agent-tool-policy-rule-warning"]').exists()).toBe(false);
+		});
+	});
+
 	it('shows the rule position until the rule has a name, and saves a new name', () => {
 		const wrapper = render(
 			makeConfig({

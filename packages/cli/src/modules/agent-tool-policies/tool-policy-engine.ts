@@ -44,9 +44,15 @@ export interface EvaluateToolCallInput {
 	/** Written on each violation, so the audit log names the check. */
 	checkId: string;
 	/**
-	 * Describes the tool of an earlier call, by the agent that made the call and the runtime
-	 * name. History records carry only the name. A call that this cannot describe counts as
-	 * unknown: see {@link evaluateToolCall}.
+	 * Names a tool for the policy, from what the runtime or a stored turn says about it. It is
+	 * used for the call being decided and for each earlier call that describes its tool.
+	 * Defaults to {@link identifyPolicedTool}.
+	 */
+	identify?: (tool: PolicedTool) => ToolPolicyToolIdentity;
+	/**
+	 * Describes the tool of an earlier call that does not describe its tool, by the agent that
+	 * made the call and the runtime name. A call that neither describes counts as unknown: see
+	 * {@link evaluateToolCall}.
 	 */
 	describeTool?: (agentId: string | null, toolName: string) => ToolPolicyToolIdentity | undefined;
 }
@@ -60,7 +66,13 @@ interface CallTarget {
 
 /** The tool of the call being decided, from what the runtime sends. */
 export function identifyPolicedTool(tool: PolicedTool): ToolPolicyToolIdentity {
-	if (tool.mcpServerName) return { type: 'mcpServer', name: tool.mcpServerName };
+	if (tool.mcpServerName) {
+		return {
+			type: 'mcpServer',
+			name: tool.mcpServerName,
+			...(tool.mcpToolName !== undefined && { tool: tool.mcpToolName }),
+		};
+	}
 	const { metadata } = tool;
 	if (metadata?.kind === 'workflow' && typeof metadata.workflowId === 'string') {
 		return { type: 'workflow', workflowId: metadata.workflowId };
@@ -225,10 +237,11 @@ function needsHistory({ source, policy }: SourcedToolPolicy, current: CallTarget
  */
 export async function evaluateToolCall(input: EvaluateToolCallInput): Promise<ToolPolicyDecision> {
 	const { context } = input;
+	const identify = input.identify ?? identifyPolicedTool;
 	const current: CallTarget = {
 		agentId: context.agentId,
 		toolName: context.tool.name,
-		identity: identifyPolicedTool(context.tool),
+		identity: identify(context.tool),
 	};
 
 	let used: CallTarget[] = [];
@@ -238,7 +251,9 @@ export async function evaluateToolCall(input: EvaluateToolCallInput): Promise<To
 			session.toolCalls
 				.filter((call) => call.toolCallId !== context.toolCallId && hasRun(call))
 				.map((call): CallTarget => {
-					const identity = input.describeTool?.(session.agentId, call.toolName);
+					const identity = call.tool
+						? identify(call.tool)
+						: input.describeTool?.(session.agentId, call.toolName);
 					return {
 						agentId: session.agentId,
 						toolName: call.toolName,

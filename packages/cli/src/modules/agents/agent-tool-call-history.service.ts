@@ -1,9 +1,45 @@
-import type { PolicedSession, PolicedToolCallRecord } from '@n8n/decorators';
+import { sanitizeToolName } from '@n8n/agents';
+import type { PolicedSession, PolicedTool, PolicedToolCallRecord } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
 import type { AgentExecution } from './entities/agent-execution.entity';
+import type { TimelineEvent } from './execution-recorder';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+
+/**
+ * The runtime runs an MCP tool under `<server>_<tool>`, with characters replaced that a tool
+ * name cannot have. So this is the tool name as far as the runtime name shows it.
+ */
+function storedMcpToolName(toolName: string, mcpServerName: string): string | undefined {
+	const prefix = `${sanitizeToolName(mcpServerName)}_`;
+	return toolName.startsWith(prefix) ? toolName.slice(prefix.length) : undefined;
+}
+
+/**
+ * What a stored turn knows about the tool of a call. The timeline keeps the node type and the
+ * workflow of a call, and the MCP server once the call has a result. A call with none of
+ * these is a custom tool or a built-in tool, which has a name only.
+ */
+function storedTool(event: TimelineEvent & { type: 'tool-call' }): PolicedTool {
+	const { name, mcpServerName } = event;
+	if (mcpServerName !== undefined) {
+		const mcpToolName = storedMcpToolName(name, mcpServerName);
+		return { name, mcpServerName, ...(mcpToolName !== undefined && { mcpToolName }) };
+	}
+	if (event.kind === 'tool') return { name };
+
+	return {
+		name,
+		metadata: {
+			kind: event.kind,
+			...(event.nodeType !== undefined && { nodeType: event.nodeType }),
+			...(event.nodeTypeVersion !== undefined && { nodeTypeVersion: event.nodeTypeVersion }),
+			...(event.nodeParameters !== undefined && { nodeParameters: event.nodeParameters }),
+			...(event.workflowId !== undefined && { workflowId: event.workflowId }),
+		},
+	};
+}
 
 function storedToolCalls(executions: AgentExecution[]): PolicedToolCallRecord[] {
 	return executions.flatMap((execution) =>
@@ -13,6 +49,7 @@ function storedToolCalls(executions: AgentExecution[]): PolicedToolCallRecord[] 
 						{
 							toolCallId: event.toolCallId,
 							toolName: event.name,
+							tool: storedTool(event),
 							input: event.input,
 							status: event.canceled ? 'canceled' : event.success ? 'success' : 'error',
 							output: event.output,

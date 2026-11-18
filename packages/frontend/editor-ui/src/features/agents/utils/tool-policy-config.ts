@@ -50,6 +50,7 @@ export type ToolPolicyOptionSource =
 	| { type: 'node'; name: string }
 	| { type: 'workflow'; name: string }
 	| { type: 'mcpServer'; name: string }
+	| { type: 'mcpTool'; server: string; tool: string }
 	| { type: 'nodeType'; nodeType: string }
 	| { type: 'category'; category: ToolPolicyCategory };
 
@@ -63,12 +64,23 @@ export interface ToolPolicySelectorOption {
 export function toolPolicySelectorKey(selector: ToolPolicySelector): string {
 	if (selector.kind !== 'tool') return JSON.stringify([selector.kind, selector.value]);
 	const { ref } = selector;
-	return JSON.stringify(['tool', ref.type, ref.type === 'workflow' ? ref.workflowId : ref.name]);
+	if (ref.type === 'workflow') return JSON.stringify(['tool', ref.type, ref.workflowId]);
+	// One tool of an MCP server has a key of its own, next to the key of the whole server.
+	if (ref.type === 'mcpServer' && ref.tool !== undefined) {
+		return JSON.stringify(['tool', ref.type, ref.name, ref.tool]);
+	}
+	return JSON.stringify(['tool', ref.type, ref.name]);
 }
 
-/** The tools, MCP servers, and node types of the agent that a rule can select. */
+/**
+ * The tools, MCP servers, and node types of the agent that a rule can select.
+ *
+ * `mcpServerTools` holds the tool names of each MCP server whose list is loaded. The config
+ * does not have them. A server without a list has only the option for all of its tools.
+ */
 export function buildToolPolicyOptions(
 	config: Pick<AgentJsonConfig, 'tools' | 'mcpServers'> | null,
+	mcpServerTools: Readonly<Record<string, readonly string[]>> = {},
 ): ToolPolicySelectorOption[] {
 	const options: ToolPolicySelectorOption[] = [];
 	const nodeTypes = new Set<string>();
@@ -101,6 +113,12 @@ export function buildToolPolicyOptions(
 			{ kind: 'tool', ref: { type: 'mcpServer', name: server.name } },
 			{ type: 'mcpServer', name: server.name },
 		);
+		for (const tool of mcpServerTools[server.name] ?? []) {
+			add(
+				{ kind: 'tool', ref: { type: 'mcpServer', name: server.name, tool } },
+				{ type: 'mcpTool', server: server.name, tool },
+			);
+		}
 	}
 	for (const nodeType of nodeTypes) {
 		add({ kind: 'nodeType', value: nodeType }, { type: 'nodeType', nodeType });

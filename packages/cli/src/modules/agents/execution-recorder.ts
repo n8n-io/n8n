@@ -250,6 +250,8 @@ export type TimelineEvent =
 			 * detail viewer can show what the node was set up to do.
 			 */
 			nodeParameters?: Record<string, unknown>;
+			/** Configured name of the MCP server that the tool belongs to. Set when the call has a result. */
+			mcpServerName?: string;
 			childTrace?: PersistedChildTrace;
 			/** Host-only data from the tool's `toTraceOutput`, e.g. recalled memory entry ids. */
 			traceOutput?: unknown;
@@ -769,6 +771,7 @@ export class ExecutionRecorder {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
 			if (canceled) pendingTimeline.canceled = true;
+			if (chunk.mcpServerName !== undefined) pendingTimeline.mcpServerName = chunk.mcpServerName;
 			if (traceOutput !== undefined) pendingTimeline.traceOutput = traceOutput;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
@@ -802,6 +805,7 @@ export class ExecutionRecorder {
 			endTime: now,
 			success: !isError,
 			...(canceled ? { canceled: true } : {}),
+			...(chunk.mcpServerName !== undefined ? { mcpServerName: chunk.mcpServerName } : {}),
 			...(traceOutput !== undefined ? { traceOutput } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
