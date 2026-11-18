@@ -443,7 +443,6 @@ export class ToolCallRunner {
 						{
 							runId,
 							persistence,
-							...(this.deps.loadSkill ? { loadSkill: this.deps.loadSkill } : {}),
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,

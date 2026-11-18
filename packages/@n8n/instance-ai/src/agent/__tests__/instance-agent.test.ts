@@ -52,7 +52,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	createContextCueProvider: vi.fn(() => vi.fn()),
 	parseAblatedContextCues: vi.fn(() => []),
 	whenSkillLoads: vi.fn(() => vi.fn()),
-	whileSkillActive: vi.fn(() => vi.fn()),
+	whileSkillLoaded: vi.fn(() => vi.fn()),
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),
