@@ -23,6 +23,8 @@ export interface TankRegion {
 	bounds: TankBounds;
 	/** Drawn around the tank, outside `bounds`. */
 	frame: FrameStyle;
+	/** The one tank of the single view, which holds the whole instance. */
+	single?: boolean;
 }
 
 function boundsOf(size: Size): TankBounds {
@@ -255,5 +257,5 @@ export function regionAt(regions: TankRegion[], x: number, y: number): TankRegio
 
 /** The single tank fills the whole world. */
 export function singleRegion(id: string, size: Size): TankRegion {
-	return { id, label: '', x: 0, y: 0, bounds: boundsOf(size), frame: 'none' };
+	return { id, label: '', x: 0, y: 0, bounds: boundsOf(size), frame: 'none', single: true };
 }

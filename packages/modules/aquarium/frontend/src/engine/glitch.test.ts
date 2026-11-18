@@ -1,4 +1,5 @@
-import { GLITCH_STAGES, glitchStageAt, shimmerProgressAt } from './glitch';
+import { TOXIC_BUBBLES } from '../aquarium.constants';
+import { GLITCH_STAGES, glitchStageAt, shimmerProgressAt, toxicBubbleAt } from './glitch';
 
 describe('glitchStageAt', () => {
 	it('shows the four glitch stages at the start of each cycle, then nothing', () => {
@@ -29,5 +30,23 @@ describe('shimmerProgressAt', () => {
 
 	it('gives each creature its own timing', () => {
 		expect(shimmerProgressAt(0, 0)).not.toBe(shimmerProgressAt(0, 37));
+	});
+});
+
+describe('toxicBubbleAt', () => {
+	it('shows each bubble of a burst for its life, one after the other, then nothing', () => {
+		const seed = 0;
+		expect(toxicBubbleAt(0, seed, 0)).toBe(0);
+		expect(toxicBubbleAt(0, seed, 1)).toBe(-1);
+		expect(toxicBubbleAt(TOXIC_BUBBLES.gapSeconds, seed, 1)).toBeCloseTo(0);
+		expect(toxicBubbleAt(TOXIC_BUBBLES.lifeSeconds / 2, seed, 0)).toBeCloseTo(0.5);
+		expect(toxicBubbleAt(TOXIC_BUBBLES.everySeconds - 0.01, seed, 0)).toBe(-1);
+	});
+
+	it('repeats every burst, and gives creatures their own timing', () => {
+		expect(toxicBubbleAt(TOXIC_BUBBLES.everySeconds + 0.2, 0, 0)).toBeCloseTo(
+			toxicBubbleAt(0.2, 0, 0),
+		);
+		expect(toxicBubbleAt(0.2, 0, 0)).not.toBe(toxicBubbleAt(0.2, 37, 0));
 	});
 });

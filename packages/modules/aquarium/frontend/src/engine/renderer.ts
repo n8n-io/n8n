@@ -1,14 +1,18 @@
-import { CAT_OBSERVER, PROP_LAYOUT, SHIMMER, ZOOM } from '../aquarium.constants';
+import { CAT_OBSERVER, PROP_LAYOUT, SCENERY, SHIMMER, ZOOM } from '../aquarium.constants';
 import {
 	isPropDead,
 	layoutProps,
+	layoutScenery,
 	tankFailureShare,
 	tankHealthOf,
 	tankScaleOf,
 	type PlacedProp,
+	type PlacedScenery,
 	type TankHealth,
+	type TankScenery,
 } from '../decor/decor';
 import type { PropDefinition } from '../decor/props';
+import { BIG_VOLCANO_CRATER } from '../decor/scenery';
 import { hashString } from '../species/species.registry';
 import type { PixelSprite } from '../species/species.types';
 import type { Camera, Size } from './camera';
@@ -106,6 +110,23 @@ const SAND: Record<TankHealth, { base: string; speck: string; light: string }> =
 	critical: { base: '#4f4a3d', speck: '#3c382e', light: '#615b4b' },
 };
 const SEAWEED = ['#2f8f4e', '#3fa65c', '#267a42'];
+
+/** Corals bleach in a failing tank and die in a critical one. The volcano follows them. */
+const SCENERY_HEALTH: Record<TankHealth, { toward: string; amount: number }> = {
+	positive: { toward: '#ffffff', amount: 0 },
+	neutral: { toward: '#ffffff', amount: 0 },
+	negative: { toward: '#d8d2bc', amount: 0.45 },
+	critical: { toward: '#1d2a2b', amount: 0.6 },
+};
+/** Plume bubbles for each tank health: a failing tank sputters, a critical one is extinct. */
+const PLUME_RATE: Record<TankHealth, number> = {
+	positive: 1,
+	neutral: 0.8,
+	negative: 0.4,
+	critical: 0,
+};
+const PLUME_EMBER = '#f6b728';
+const PLUME_BUBBLE = 'rgba(220, 240, 255, 0.75)';
 const AMBIENT_BUBBLE = 'rgba(220, 240, 255, 0.6)';
 /** Fills the view outside the tanks: the wall between project tanks, and space around the world. */
 const OUTSIDE_WORLD = '#011113';
@@ -123,6 +144,12 @@ interface Plant {
 	phase: number;
 	/** Pixel multiplier: big tanks draw thicker plants. */
 	scale: number;
+}
+
+/** Scenery depends on the tank size, and the single tank always gets a volcano. */
+function sceneryKeyOf(region: TankRegion): string {
+	const size = `${region.bounds.width}x${region.bounds.height}`;
+	return region.single ? `${size}-single` : size;
 }
 
 function createCanvas(width: number, height: number): HTMLCanvasElement {
@@ -161,6 +188,9 @@ export class AquariumRenderer {
 	private readonly stillOverlays = new Map<string, HTMLCanvasElement>();
 
 	private readonly propsByTank = new Map<string, PlacedProp[]>();
+
+	/** Keyed by `sceneryKeyOf()`, like the backgrounds that the scenery is painted into. */
+	private readonly sceneryBySize = new Map<string, TankScenery>();
 
 	/** Bone versions of the species sprites, made the first time a species dies. */
 	private readonly skeletons = new Map<string, PixelSprite>();
@@ -208,13 +238,24 @@ export class AquariumRenderer {
 		this.regions = regions;
 		const sizeKeys = new Set<string>();
 		const tankIds = new Set<string>();
+		const sceneryKeys = new Set<string>();
 		for (const region of regions) {
 			const key = `${region.bounds.width}x${region.bounds.height}`;
+			const sceneryKey = sceneryKeyOf(region);
 			sizeKeys.add(key);
+			sceneryKeys.add(sceneryKey);
 			tankIds.add(region.id);
 			if (!this.lightRays.has(key)) this.lightRays.set(key, this.drawLightRays(region.bounds));
+			let scenery = this.sceneryBySize.get(sceneryKey);
+			if (!scenery) {
+				scenery = layoutScenery(region.bounds, key, region.single === true);
+				this.sceneryBySize.set(sceneryKey, scenery);
+			}
 			this.plantsByTank.set(region.id, this.layoutPlants(region.bounds, region.id));
-			this.propsByTank.set(region.id, layoutProps(region.bounds, region.id));
+			this.propsByTank.set(
+				region.id,
+				layoutProps(region.bounds, region.id, scenery.volcano !== undefined),
+			);
 
 			const frameKey = `${region.id}|${region.frame}|${key}`;
 			const frame = this.framesByTank.get(frameKey);
@@ -225,8 +266,11 @@ export class AquariumRenderer {
 			tankIds.add(frameKey);
 		}
 		for (const key of this.backgrounds.keys())
-			if (!sizeKeys.has(key.slice(0, key.indexOf('|')))) this.backgrounds.delete(key);
+			if (!sceneryKeys.has(key.slice(0, key.indexOf('|')))) this.backgrounds.delete(key);
 		for (const key of this.lightRays.keys()) if (!sizeKeys.has(key)) this.lightRays.delete(key);
+		for (const key of this.sceneryBySize.keys()) {
+			if (!sceneryKeys.has(key)) this.sceneryBySize.delete(key);
+		}
 		for (const id of this.plantsByTank.keys()) if (!tankIds.has(id)) this.plantsByTank.delete(id);
 		for (const id of this.propsByTank.keys()) if (!tankIds.has(id)) this.propsByTank.delete(id);
 		for (const key of this.framesByTank.keys())
@@ -377,7 +421,8 @@ export class AquariumRenderer {
 		const scale = tankScaleOf(region.bounds);
 
 		const { width, height } = region.bounds;
-		const background = this.backgroundFor(region.bounds, sizeKey, health, waterScale);
+		const sceneryKey = sceneryKeyOf(region);
+		const background = this.backgroundFor(region.bounds, sceneryKey, health, waterScale);
 		ctx.drawImage(background, 0, 0, width, height);
 		const rays = this.lightRays.get(sizeKey);
 		if (rays) {
@@ -397,6 +442,7 @@ export class AquariumRenderer {
 				view.right + CULL_MARGIN,
 			);
 			this.drawAmbientBubbles(region.bounds, time);
+			this.drawPlume(ctx, region.bounds, this.sceneryBySize.get(sceneryKey), health, time);
 			this.drawSurface(ctx, region.bounds, health, scale, time, view.left, view.right);
 		} else {
 			// Same layers, at rest: plants and surface sit above the props and the light rays.
@@ -412,7 +458,8 @@ export class AquariumRenderer {
 			if (!visible) continue;
 			this.drawCreature(creature);
 			for (const effectId of creature.traits.effects) {
-				getEffect(effectId)?.draw(ctx, creature, time);
+				const effect = getEffect(effectId);
+				if (effect && (detailed || !effect.detailOnly)) effect.draw(ctx, creature, time);
 			}
 			if (creature.entity.key === highlightKey) this.drawHighlight(creature);
 		}
@@ -494,7 +541,7 @@ export class AquariumRenderer {
 			y = 0;
 		}
 		if (scrambled) {
-			// A green ghost copy behind the scrambled fish, like a broken screen.
+			// A ghost copy behind the scrambled fish, like a broken screen.
 			ctx.globalAlpha = 0.5;
 			ctx.drawImage(frame, x - 2, y, creature.width, creature.height);
 			ctx.globalAlpha = 1;
@@ -709,23 +756,29 @@ export class AquariumRenderer {
 		return this.waterScale;
 	}
 
-	/** Paints a background the first time a tank of this size has this health and water scale. */
+	/** Paints a background the first time a tank of this kind has this health and water scale. */
 	private backgroundFor(
 		bounds: TankBounds,
-		sizeKey: string,
+		sceneryKey: string,
 		health: TankHealth,
 		scale: number,
 	): HTMLCanvasElement {
-		const key = `${sizeKey}|${health}|${scale}`;
+		const key = `${sceneryKey}|${health}|${scale}`;
 		const cached = this.backgrounds.get(key);
 		if (cached) return cached;
-		const background = this.drawBackground(bounds, health, scale);
+		const scenery = this.sceneryBySize.get(sceneryKey);
+		const background = this.drawBackground(bounds, health, scale, scenery);
 		this.backgrounds.set(key, background);
 		return background;
 	}
 
 	/** `scale` is background pixels for each logical pixel. Each background pixel is one dither cell. */
-	private drawBackground(bounds: TankBounds, health: TankHealth, scale: number): HTMLCanvasElement {
+	private drawBackground(
+		bounds: TankBounds,
+		health: TankHealth,
+		scale: number,
+		scenery: TankScenery | undefined,
+	): HTMLCanvasElement {
 		const width = Math.max(1, Math.round(bounds.width * scale));
 		const height = Math.max(1, Math.round(bounds.height * scale));
 		const floor = Math.min(height, Math.round(bounds.floor * scale));
@@ -744,12 +797,19 @@ export class AquariumRenderer {
 
 		const deepest = Math.max(1, floor - 1);
 		const black: Rgb = [0, 0, 0];
+		const rowWater: Rgb[] = [];
 		for (let y = 0; y < floor; y++) {
 			const depth = (y / deepest) ** WATER_DEPTH_CURVE * (water.length - 1);
 			const band = Math.min(water.length - 2, Math.floor(depth));
 			const mix = depth - band;
 			const upper = water[band] ?? black;
 			const lower = water[band + 1] ?? black;
+			// The blend that the dither pattern stands for, so scenery can fade into the water.
+			rowWater.push([
+				Math.round(upper[0] + (lower[0] - upper[0]) * mix),
+				Math.round(upper[1] + (lower[1] - upper[1]) * mix),
+				Math.round(upper[2] + (lower[2] - upper[2]) * mix),
+			]);
 			for (let x = 0; x < width; x++) {
 				const threshold = ((BAYER_4[(y % 4) * 4 + (x % 4)] ?? 0) + 0.5) / 16;
 				put(x, y, mix > threshold ? lower : upper);
@@ -766,11 +826,98 @@ export class AquariumRenderer {
 			}
 		}
 
+		if (scenery) {
+			const paint = (placed: PlacedScenery, fade: number) =>
+				this.paintScenery(put, bounds, { width, height, scale }, placed, health, fade, rowWater);
+			if (scenery.volcano) paint(scenery.volcano, SCENERY.volcanoFade);
+			for (const coral of scenery.corals) paint(coral, SCENERY.coralFade);
+		}
+
 		ctx.putImageData(image, 0, 0);
 		return canvas;
 	}
 
-	/** Plants and the water surface at rest, for tanks that are too small on screen to animate. */
+	/**
+	 * Paints one scenery sprite into the background pixels. It stands on the sand, takes the health
+	 * of the tank, and mixes with the water of its row, except where it glows. The background has
+	 * `canvas.scale` pixels for each logical pixel, so each sprite pixel covers a block of them.
+	 */
+	private paintScenery(
+		put: (x: number, y: number, colour: Rgb) => void,
+		bounds: TankBounds,
+		canvas: { width: number; height: number; scale: number },
+		placed: PlacedScenery,
+		health: TankHealth,
+		fade: number,
+		rowWater: Rgb[],
+	): void {
+		const { sprite, glow = [] } = placed.scenery;
+		const rows = sprite.frames[0] ?? [];
+		const size = placed.scale;
+		const top = bounds.floor + size - rows.length * size;
+		const tone = SCENERY_HEALTH[health];
+		const toward = rgbOf(tone.toward);
+		const blend = (a: Rgb, b: Rgb, t: number): Rgb => [
+			Math.round(a[0] + (b[0] - a[0]) * t),
+			Math.round(a[1] + (b[1] - a[1]) * t),
+			Math.round(a[2] + (b[2] - a[2]) * t),
+		];
+		const colours = new Map<string, Rgb>();
+		for (const [key, hex] of Object.entries(sprite.palette)) {
+			colours.set(key, blend(rgbOf(hex), toward, tone.amount));
+		}
+		const toCanvas = (logical: number) => Math.round(logical * canvas.scale);
+
+		rows.forEach((row, sy) => {
+			const fromY = Math.max(0, toCanvas(top + sy * size));
+			const toY = Math.min(canvas.height, toCanvas(top + (sy + 1) * size));
+			[...row].forEach((char, sx) => {
+				const colour = colours.get(char);
+				if (!colour) return;
+				const fromX = Math.max(0, toCanvas(placed.x + sx * size));
+				const toX = Math.min(canvas.width, toCanvas(placed.x + (sx + 1) * size));
+				for (let y = fromY; y < toY; y++) {
+					const water = rowWater[Math.min(y, rowWater.length - 1)];
+					const shown = water && !glow.includes(char) ? blend(colour, water, fade) : colour;
+					for (let x = fromX; x < toX; x++) put(x, y, shown);
+				}
+			});
+		});
+	}
+
+	/** Bubbles rise from the crater of the big volcano. Embers glow for a moment as they leave. */
+	private drawPlume(
+		ctx: CanvasRenderingContext2D,
+		bounds: TankBounds,
+		scenery: TankScenery | undefined,
+		health: TankHealth,
+		time: number,
+	): void {
+		const volcano = scenery?.volcano;
+		const rate = PLUME_RATE[health];
+		if (!volcano || rate === 0) return;
+		const { scale } = volcano;
+		const height = (volcano.scenery.sprite.frames[0]?.length ?? 0) * scale;
+		const craterX = volcano.x + BIG_VOLCANO_CRATER.x * scale;
+		const craterY = bounds.floor + scale - height + BIG_VOLCANO_CRATER.y * scale;
+		const bubbles = Math.max(1, Math.round(SCENERY.plumeBubbles * rate));
+		const rise = craterY * 0.75;
+		for (let i = 0; i < bubbles; i++) {
+			const progress = ((((time * rate) / SCENERY.plumeSeconds + i / bubbles) % 1) + 1) % 1;
+			// Small like the ambient bubbles, and only a little bigger at a huge volcano.
+			const size = (progress < 0.25 ? 1 : 2) * Math.max(1, Math.floor(scale / 4));
+			const sway = Math.round(Math.sin(progress * 9 + i * 1.7) * (1 + progress * 3));
+			ctx.fillStyle = progress < 0.12 ? PLUME_EMBER : PLUME_BUBBLE;
+			ctx.fillRect(
+				Math.round(craterX + sway * scale - size / 2),
+				Math.round(craterY - progress * rise),
+				size,
+				size,
+			);
+		}
+	}
+
+	/** Plants, the plume and the water surface at rest, for tanks too small on screen to animate. */
 	private stillOverlayFor(region: TankRegion, health: TankHealth): HTMLCanvasElement {
 		const key = `${region.id}|${region.bounds.width}x${region.bounds.height}|${health}`;
 		const cached = this.stillOverlays.get(key);
@@ -785,6 +932,7 @@ export class AquariumRenderer {
 			0,
 			region.bounds.width,
 		);
+		this.drawPlume(ctx, region.bounds, this.sceneryBySize.get(sceneryKeyOf(region)), health, 0);
 		this.drawSurface(
 			ctx,
 			region.bounds,

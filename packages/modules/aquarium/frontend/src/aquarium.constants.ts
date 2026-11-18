@@ -53,6 +53,26 @@ export const PROJECT_LABEL_MIN_WIDTH = 72;
 /** Pointer movement in CSS pixels after which a press becomes a drag and not a click. */
 export const DRAG_THRESHOLD = 4;
 
+/** Corals and a big volcano behind the furniture. They take the tank scale (`PROP_LAYOUT`). */
+export const SCENERY = {
+	/** Tank width for each coral, at scale 1. */
+	coralSpacing: 34,
+	/** Share of the water colour mixed into the corals, so they stay behind the furniture. */
+	coralFade: 0.3,
+	/** The volcano is at most this share of the tank height and of the tank width. */
+	volcanoMaxShare: 0.5,
+	/** Share of project tanks that get a volcano. The single tank always gets one. */
+	volcanoChance: 0.4,
+	/** A project tank volcano is this share of its largest size or more, chosen per tank. */
+	volcanoMinSizeShare: 0.6,
+	/** The volcano is further back than the corals, so the water hides more of it. */
+	volcanoFade: 0.45,
+	/** Bubbles in the plume of the volcano at one time. */
+	plumeBubbles: 10,
+	/** Seconds for one plume bubble to rise. */
+	plumeSeconds: 4,
+} as const;
+
 /** Height of the sand floor, in logical pixels. */
 export const SAND_HEIGHT = 10;
 
@@ -122,8 +142,38 @@ export const TANK_HEALTH = {
 	critical: 0.5,
 } as const;
 
-/** One fixed colour, so the renderer caches one tinted sprite for each species. */
-export const SICK_TINT = '#2f5a26';
+/** Ripples in the water behind a swimming creature. Drawn only from `ZOOM.detail`. */
+export const WAKE = {
+	/** Ripples behind a creature at one time. */
+	count: 4,
+	/** Seconds that one ripple lives, from the tail until it fades out. */
+	lifeSeconds: 1.2,
+	/** A creature slower than this, in logical pixels per second, leaves no wake. */
+	minSpeed: 3,
+	/** Speed at which the wake is fully visible. */
+	fullSpeed: 12,
+	/** Opacity of a new ripple at full speed. */
+	alpha: 0.85,
+	color: '#dcf0ff',
+} as const;
+
+/** A sick creature lets out a short burst of toxic bubbles now and then. */
+export const TOXIC_BUBBLES = {
+	/** Seconds between two bursts, on the creature's own clock. */
+	everySeconds: 2.6,
+	/** Seconds that one bubble lives, from the mouth until it pops. */
+	lifeSeconds: 1.6,
+	/** Bubbles in one burst. */
+	count: 3,
+	/** Seconds between two bubbles of one burst. */
+	gapSeconds: 0.18,
+	/** Pixels that a bubble rises before it pops. */
+	rise: 16,
+	lime: '#a6e64d',
+	shade: '#a6c75b',
+	shine: '#e8ffb0',
+	pop: '#477c60',
+} as const;
 
 /** A sick creature glitches about once in this many seconds, on its own irregular clock. */
 export const SICK_GLITCH_EVERY_SECONDS = 1.6;

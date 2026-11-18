@@ -68,7 +68,7 @@ The species says what an entity is and how big it is. Speed says how busy it is.
 | Data | Meaning | Look | Status |
 | --- | --- | --- | --- |
 | Node count, plus a little for run time | How complex the workflow is | Species by size: minnow, tetra, angelfish, shark, whale | Built. Open: size from node count only |
-| Execution count | How busy it is | Resting swim speed on a log scale. One run lifts it from `SWIM_SPEED.min` to `SWIM_SPEED.ranMin`. Bubbles from 10 runs | Built |
+| Execution count | How busy it is | Resting swim speed on a log scale. One run lifts it from `SWIM_SPEED.min` to `SWIM_SPEED.ranMin`. Bubbles from 10 runs. Zoomed in, a swimming creature leaves a wake of ripples that grows with its speed (`wakeEffect`) | Built |
 | No runs and no paused runs | Not in use | Stands still with no animation and slightly faded colours until a live run starts (`stillRule`, `isResting`, `toFaded`). Agents still move | Built |
 | Live run rate | Busy right now | Faster swimming, fins and bubbles. A wave of gold sweeps over it while a run is in progress (`shimmerRule`, `shimmerProgressAt`) | Built |
 | Tiny or small workflow with 100 or more runs, among the busiest 2% | A busy little helper | A penguin (`penguinRule`, `busyWorkflowKeys`). It overrides the turtle | Built |
@@ -85,7 +85,7 @@ Health comes from failures. The worse a workflow does, the less its fish acts li
 | --- | --- | --- | --- |
 | 0% failures, with 10 or more runs | Positive | A golden glint or sparkle | Planned |
 | Under 20% failures, or fewer than 10 runs | Neutral | Normal colours | Built |
-| 20–50% failures | Negative | Sick: glitches dark green often (3 px jump, scrambled rows, a green ghost) and swims at 40% speed (`sickRule`, `glitchStageAt`) | Built |
+| 20–50% failures | Negative | Sick: glitches often (3 px jump, scrambled rows, a ghost copy), lets out a burst of toxic green bubbles now and then, and swims at 40% speed (`sickRule`, `glitchStageAt`, `toxicBubblesEffect`) | Built |
 | Over 50% failures, with 10 or more runs | Critical | Belly-up: the sprite upside down at the surface, with a 1 px bob (`bellyUpRule`). It overrides sick | Built |
 | Every run failed, with 10 or more runs | Critical | A skeleton: the species in bone colours with ribs, barely moving, with a rattle (`skeletonRule`, `toSkeleton`). It recovers when a run succeeds | Built |
 | Failures in the last 60 s | Recent health | Hooked by a fishing line | Planned |
@@ -126,13 +126,19 @@ counts of its workflows added up, and the status of the live poll.
 
 | Data | State | Look | Status |
 | --- | --- | --- | --- |
-| All workflows healthy | Positive | Saturated colours. Background items, such as a volcano and seaweed, are animated and working | Planned |
-| Many failures across workflows | Negative | Murky green water. Background items lag or show construction signs | Planned |
-| Most workflows failing | Critical | Dark, gloomy and broken | Planned |
+| All workflows healthy | Positive | Saturated colours. Background items, such as a volcano and seaweed, are animated and working. Built: bright corals, and a big volcano with a full bubble plume (`layoutScenery`, `volcanoScaleOf`, `drawPlume`) | Partly |
+| Many failures across workflows | Negative | Murky green water. Background items lag or show construction signs. Built: bleached corals and volcano, and a slow, thin plume | Partly |
+| Most workflows failing | Critical | Dark, gloomy and broken. Built: dark, dead corals, and an extinct volcano with no plume | Partly |
 | The live poll fails, for example during an upgrade | The instance is unreachable | A drained tank, fish lying on their side | Planned |
 
 The renderer draws the water once and caches it. Use a few fixed water palettes, not a colour from
 a continuous value.
+
+The background corals and the big volcano (`src/decor/scenery.ts`) are part of that cached water.
+`layoutScenery()` places them from the tank size, because the cache key is the size. The volcano
+grows with the tank, up to half its height or width, whichever is smaller. The single tank always
+gets the largest one. Fewer than half of the project tanks get one, at a size between 60% and 100%
+of their largest (`volcanoScaleOf()`). A tank with a big volcano gets no small volcano prop.
 
 ## Map
 
@@ -150,6 +156,7 @@ a continuous value.
 | Which projects get a tank | `src/engine/projects.ts`, `SMALL_PROJECTS` in `src/aquarium.constants.ts` |
 | Tank frames (styles, colours, textures) | `src/engine/frames.ts` |
 | Background and sprite drawing | `src/engine/renderer.ts` |
+| Background corals and the big volcano | `src/decor/scenery.ts`, `layoutScenery()` in `src/decor/decor.ts`, `SCENERY` in `src/aquarium.constants.ts` |
 | Tooltip, hover, click | `src/components/AquariumTank.vue` |
 | Page header, demo switch, warnings | `src/views/AquariumView.vue` |
 | Sidebar link (in the shell) | `packages/frontend/editor-ui/src/app/components/MainSidebar.vue` |
@@ -182,7 +189,7 @@ The same entity always gets the same species.
 ### Show a new metric
 
 `sickRule` in `src/engine/traits.ts` is a worked example: a failure rate over
-`SICK_FAILURE_RATE` gives a green glitch and a lower `speedFactor`. Copy its shape.
+`SICK_FAILURE_RATE` gives a glitch, toxic bubbles and a lower `speedFactor`. Copy its shape.
 
 1. If no source gives the value, add a field to `EntityMetrics`. Set its default in
    `emptyMetrics()` in `src/sources/source.utils.ts`. Set the value in a source mapper.
@@ -235,6 +242,8 @@ The tooltip in `AquariumTank.vue` shows the counts, so you can compare your effe
 1. Implement `CreatureEffect` in `src/engine/effects.ts`.
 2. Add it to the effect registry in the same file.
 3. Add its id to `traits.effects` from a trait rule. Do not add it from the renderer.
+4. Set `detailOnly` when the effect is too small to see below `ZOOM.detail`. The renderer then
+   skips it in zoomed-out views, where hundreds of tanks show.
 
 ### Add a frame style
 
@@ -316,7 +325,8 @@ Each rule gets the traits of the rules before it. `speciesRule` reads `sizeTier`
 - Per-frame cost grows with the number of visible tanks. Something drawn pixel by pixel in each
   tank each frame, like the wave crest, is cheap in one tank and slow in 500.
 - Below `ZOOM.detail`, draw animated scenery from a cached still image. See `stillOverlayFor()` in
-  `renderer.ts`.
+  `renderer.ts`. The volcano plume has a still frame there too.
+- Paint static scenery into the cached background (`paintScenery()`), not on top of it each frame.
 - Paint cached images through `ImageData`, not one `fillRect` for each pixel. Tank sizes from the
   treemap are almost all different, so a cache by size helps little.
 - Measure in the browser with the internal data set in project view before and after a change.

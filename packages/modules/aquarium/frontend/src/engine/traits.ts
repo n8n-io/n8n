@@ -4,7 +4,6 @@ import {
 	SICK_FAILURE_RATE,
 	SICK_GLITCH_EVERY_SECONDS,
 	SICK_SPEED_FACTOR,
-	SICK_TINT,
 	SKELETON_SPEED_FACTOR,
 	BELLY_UP_SPEED_FACTOR,
 	BIG_WHALE,
@@ -104,18 +103,31 @@ export const bigWhaleRule: TraitRule = (entity, traits) =>
 export const securityRule: TraitRule = (entity, traits) =>
 	(entity.metrics.securityRisks ?? 0) > 0 ? { ...traits, watchedByCat: true } : traits;
 
+export const WAKE_EFFECT = 'wake';
+
+/** Every creature leaves a wake while it swims. The effect skips creatures that do not swim. */
+export const wakeRule: TraitRule = (_entity, traits) => ({
+	...traits,
+	effects: [...traits.effects, WAKE_EFFECT],
+});
+
 /** An agent holds one seaweed strand for each skill. */
 export const skillStrandsRule: TraitRule = (entity, traits) =>
 	entity.kind === 'agent' ? { ...traits, effects: [...traits.effects, 'skillStrands'] } : traits;
 
-/** A creature that fails often glitches green now and then, and swims slowly. */
+export const TOXIC_BUBBLES_EFFECT = 'toxicBubbles';
+
+const withoutToxicBubbles = (effects: string[]) =>
+	effects.filter((id) => id !== TOXIC_BUBBLES_EFFECT);
+
+/** A creature that fails often glitches now and then, lets out toxic bubbles, and swims slowly. */
 export const sickRule: TraitRule = (entity, traits) =>
 	failureRateOf(entity.metrics) > SICK_FAILURE_RATE
 		? {
 				...traits,
-				tint: SICK_TINT,
 				glitchEverySeconds: SICK_GLITCH_EVERY_SECONDS,
 				speedFactor: SICK_SPEED_FACTOR,
+				effects: [...traits.effects, TOXIC_BUBBLES_EFFECT],
 			}
 		: traits;
 
@@ -129,6 +141,7 @@ export const bellyUpRule: TraitRule = (entity, traits) =>
 				tint: undefined,
 				glitchEverySeconds: undefined,
 				speedFactor: BELLY_UP_SPEED_FACTOR,
+				effects: withoutToxicBubbles(traits.effects),
 			}
 		: traits;
 
@@ -145,6 +158,7 @@ export const skeletonRule: TraitRule = (entity, traits) =>
 				tint: undefined,
 				glitchEverySeconds: undefined,
 				speedFactor: SKELETON_SPEED_FACTOR,
+				effects: withoutToxicBubbles(traits.effects),
 			}
 		: traits;
 
@@ -186,6 +200,7 @@ export const defaultTraitRules: TraitRule[] = [
 	bigWhaleRule,
 	speedRule,
 	bubblesRule,
+	wakeRule,
 	securityRule,
 	skillStrandsRule,
 	sickRule,

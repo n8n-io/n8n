@@ -1,9 +1,18 @@
-import { PROP_LAYOUT, TANK_HEALTH } from '../aquarium.constants';
+import { PROP_LAYOUT, SCENERY, TANK_HEALTH } from '../aquarium.constants';
 import type { TankBounds } from '../engine/simulation';
 import { emptyMetrics } from '../sources/source.utils';
 import { spriteSize, validateSprite } from '../species/species.types';
-import { isPropDead, layoutProps, tankFailureShare, tankHealthOf, tankScaleOf } from './decor';
+import {
+	isPropDead,
+	layoutProps,
+	layoutScenery,
+	tankFailureShare,
+	tankHealthOf,
+	tankScaleOf,
+	volcanoScaleOf,
+} from './decor';
 import { PROPS } from './props';
+import { BIG_VOLCANO, BIG_VOLCANO_CRATER, CORALS } from './scenery';
 
 const tank = (width: number): TankBounds => ({ width, height: 120, floor: 110 });
 
@@ -91,5 +100,93 @@ describe('isPropDead', () => {
 		expect(deadAt(0)).toBe(0);
 		expect(deadAt(0.5)).toBeGreaterThanOrEqual(deadAt(0.2));
 		expect(deadAt(1)).toBe(props.length);
+	});
+});
+
+describe('scenery', () => {
+	it.each(CORALS.map((coral, index) => [index, coral] as const))(
+		'coral %d has a valid sprite',
+		(_, coral) => {
+			expect(validateSprite(coral.sprite)).toEqual([]);
+		},
+	);
+
+	it('has a valid volcano with lava at its crater', () => {
+		expect(validateSprite(BIG_VOLCANO.sprite)).toEqual([]);
+		const crater = BIG_VOLCANO.sprite.frames[0]?.[BIG_VOLCANO_CRATER.y]?.[BIG_VOLCANO_CRATER.x];
+		expect(BIG_VOLCANO.glow).toContain(crater);
+	});
+});
+
+describe('volcanoScaleOf', () => {
+	const volcano = spriteSize(BIG_VOLCANO.sprite);
+	const seeds = Array.from({ length: 400 }, (_, i) => `seed-${i}`);
+
+	it('gives the single tank the largest volcano that fits in half its height and width', () => {
+		// Half the height allows 4, half the width allows 5: the smaller one wins.
+		const bounds = { width: volcano.width * 10, height: volcano.height * 8, floor: 0 };
+		expect(volcanoScaleOf(bounds, 'a', true)).toBe(4);
+		expect(volcanoScaleOf({ ...bounds, width: volcano.width * 6 }, 'a', true)).toBe(3);
+	});
+
+	it('gives no volcano to a tank too small for one at half its size', () => {
+		const small = { width: volcano.width * 2 - 1, height: volcano.height * 10, floor: 0 };
+		expect(volcanoScaleOf(small, 'a', true)).toBe(0);
+	});
+
+	it('gives a volcano to fewer than half of the project tanks, a bit smaller or at full size', () => {
+		const bounds = { width: volcano.width * 20, height: volcano.height * 20, floor: 0 };
+		const scales = seeds.map((seed) => volcanoScaleOf(bounds, seed, false));
+		const withVolcano = scales.filter((scale) => scale > 0);
+
+		expect(withVolcano.length).toBeGreaterThan(0);
+		expect(withVolcano.length).toBeLessThan(seeds.length / 2);
+		for (const scale of withVolcano) {
+			expect(scale).toBeLessThanOrEqual(10);
+			expect(scale).toBeGreaterThanOrEqual(Math.round(10 * SCENERY.volcanoMinSizeShare));
+		}
+		expect(new Set(withVolcano).size).toBeGreaterThan(1);
+	});
+});
+
+describe('layoutScenery', () => {
+	const bounds = { width: 400, height: 210, floor: 200 };
+
+	it('gives a tank of one size the same scenery each time', () => {
+		expect(layoutScenery(bounds, '400x210')).toEqual(layoutScenery(bounds, '400x210'));
+	});
+
+	it('always gives the single tank a volcano when it fits', () => {
+		expect(layoutScenery(bounds, 'a', true).volcano).toBeDefined();
+	});
+
+	it('keeps the volcano and the corals inside the tank', () => {
+		for (const width of [96, 250, 400, 1_000]) {
+			const tank = { width, height: 250, floor: 240 };
+			for (const single of [true, false]) {
+				const { volcano, corals } = layoutScenery(tank, `seed-${width}`, single);
+				for (const placed of [...corals, ...(volcano ? [volcano] : [])]) {
+					const placedWidth = spriteSize(placed.scenery.sprite).width * placed.scale;
+					expect(placed.x).toBeGreaterThanOrEqual(0);
+					expect(placed.x + placedWidth).toBeLessThanOrEqual(width);
+				}
+			}
+		}
+	});
+
+	it('gives wide tanks more corals', () => {
+		expect(layoutScenery({ ...bounds, width: 1_000 }, 'a').corals.length).toBeGreaterThan(
+			layoutScenery({ ...bounds, width: 100 }, 'a').corals.length,
+		);
+	});
+});
+
+describe('layoutProps with a big volcano', () => {
+	it('leaves out the small volcano prop', () => {
+		const tank = { width: 2_000, height: 300, floor: 290 };
+		for (const seed of ['a', 'b', 'c', 'd', 'e']) {
+			const ids = layoutProps(tank, seed, true).map((placed) => placed.prop.id);
+			expect(ids).not.toContain('volcano');
+		}
 	});
 });

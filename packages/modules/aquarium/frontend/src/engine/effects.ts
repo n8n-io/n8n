@@ -1,10 +1,14 @@
-import { MAX_SWIM_SPEED } from '../aquarium.constants';
+import { MAX_SWIM_SPEED, TOXIC_BUBBLES, WAKE } from '../aquarium.constants';
 import { hashString } from '../species/species.registry';
+import { toxicBubbleAt } from './glitch';
 import { isAsleep, type Creature } from './simulation';
+import { TOXIC_BUBBLES_EFFECT, WAKE_EFFECT } from './traits';
 
 /** Draws extra pixels for a creature after its sprite. Must not keep state between frames. */
 export interface CreatureEffect {
 	id: string;
+	/** Draw only from `ZOOM.detail`: too small to see further out, and it costs each frame. */
+	detailOnly?: boolean;
 	draw(ctx: CanvasRenderingContext2D, creature: Creature, time: number): void;
 }
 
@@ -27,6 +31,97 @@ export const bubblesEffect: CreatureEffect = {
 			const x = mouthX + creature.facing * progress * 2 + Math.sin(progress * 6 + i);
 			const y = mouthY - progress * BUBBLE_RISE;
 			ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+		}
+	},
+};
+
+/** How far wake ripple `index` has moved from the tail, from 0 to 1. */
+export function wakeProgress(age: number, index: number): number {
+	return (age / WAKE.lifeSeconds + index / WAKE.count) % 1;
+}
+
+/**
+ * Ripple arcs, curved like "(", trail behind a swimming creature. A ripple stays where it was
+ * made while the creature swims on, so it moves back at the swim speed, grows and fades.
+ */
+export const wakeEffect: CreatureEffect = {
+	id: WAKE_EFFECT,
+	detailOnly: true,
+	draw(ctx, creature) {
+		const { traits, species } = creature;
+		if (species.motion !== 'swim' || traits.bellyUp || isAsleep(creature)) return;
+		if (creature.speed < WAKE.minSpeed) return;
+
+		const strength = Math.min(1, creature.speed / WAKE.fullSpeed);
+		const tailX = creature.facing === 1 ? creature.x - 1 : creature.x + creature.width;
+		const tailY = Math.round(creature.y + creature.height / 2);
+		ctx.fillStyle = WAKE.color;
+		for (let i = 0; i < WAKE.count; i++) {
+			// Age, not tank time, so wakes are out of step, and reduced motion stops them.
+			const progress = wakeProgress(creature.age, i);
+			const back = 1 + progress * WAKE.lifeSeconds * creature.speed;
+			const x = Math.round(tailX - creature.facing * back);
+			const radius = (1 + Math.round(progress * 2)) * traits.scale;
+			// Fades slowly at first, so the newest ripples read clearly.
+			ctx.globalAlpha = WAKE.alpha * strength * (1 - progress * progress);
+			for (let dy = -radius; dy <= radius; dy++) {
+				const bend = Math.round((dy * dy) / (radius * 2));
+				ctx.fillRect(x + creature.facing * bend, tailY + dy, 1, 1);
+			}
+		}
+		ctx.globalAlpha = 1;
+	},
+};
+
+/** Toxic bubble looks as it rises: a speck, a small bubble, a ring, then a pop. `.` is clear. */
+const TOXIC_STAGES = [
+	{ until: 0.2, rows: ['l'] },
+	{ until: 0.5, rows: ['hl', 'ls'] },
+	{ until: 0.9, rows: ['.hl.', 'l..s', 'l..s', '.ss.'] },
+	{ until: 1, rows: ['p..p', '....', '....', 'p..p'] },
+];
+const TOXIC_PALETTE: Record<string, string> = {
+	l: TOXIC_BUBBLES.lime,
+	s: TOXIC_BUBBLES.shade,
+	h: TOXIC_BUBBLES.shine,
+	p: TOXIC_BUBBLES.pop,
+};
+
+/** A sick creature lets out a burst of suspicious green bubbles now and then. */
+export const toxicBubblesEffect: CreatureEffect = {
+	id: TOXIC_BUBBLES_EFFECT,
+	draw(ctx, creature) {
+		const scale = creature.traits.scale;
+		const mouthRow = creature.species.mouthRow ?? creature.height / scale / 2;
+		const mouthX = creature.facing === 1 ? creature.x + creature.width : creature.x - 1;
+		const mouthY = creature.y + mouthRow * scale;
+		const seed = hashString(creature.entity.id);
+
+		for (let i = 0; i < TOXIC_BUBBLES.count; i++) {
+			// Age, not tank time, so bursts are out of step, and reduced motion stops them.
+			const progress = toxicBubbleAt(creature.age, seed, i);
+			if (progress < 0) continue;
+			let rows: readonly string[] = [];
+			for (const stage of TOXIC_STAGES) {
+				if (progress < stage.until) {
+					rows = stage.rows;
+					break;
+				}
+			}
+			const half = Math.floor((rows[0]?.length ?? 1) / 2);
+			const x = Math.round(
+				mouthX + creature.facing * (1 + i) + Math.sin(progress * 7 + i * 2) * 1.5 - half,
+			);
+			const y = Math.round(mouthY - progress * TOXIC_BUBBLES.rise - i - half);
+			for (let dy = 0; dy < rows.length; dy++) {
+				const row = rows[dy] ?? '';
+				for (let dx = 0; dx < row.length; dx++) {
+					const color = TOXIC_PALETTE[row[dx] ?? '.'];
+					if (!color) continue;
+					ctx.fillStyle = color;
+					ctx.fillRect(x + dx, y + dy, 1, 1);
+				}
+			}
 		}
 	},
 };
@@ -175,6 +270,8 @@ export const remoraEffect: CreatureEffect = {
 
 const registry = new Map<string, CreatureEffect>([
 	[bubblesEffect.id, bubblesEffect],
+	[toxicBubblesEffect.id, toxicBubblesEffect],
+	[wakeEffect.id, wakeEffect],
 	[skillStrandsEffect.id, skillStrandsEffect],
 	[zzzEffect.id, zzzEffect],
 	[remoraEffect.id, remoraEffect],

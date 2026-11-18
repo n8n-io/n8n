@@ -1,7 +1,6 @@
 import {
 	SICK_GLITCH_EVERY_SECONDS,
 	SICK_SPEED_FACTOR,
-	SICK_TINT,
 	SKELETON_SPEED_FACTOR,
 	BELLY_UP_SPEED_FACTOR,
 	BIG_WHALE,
@@ -53,23 +52,30 @@ describe('deriveTraits', () => {
 		expect(deriveTraits(entity({ executionCount: 100 })).effects).toContain('bubbles');
 	});
 
+	it('gives every creature a wake', () => {
+		expect(deriveTraits(entity({})).effects).toContain('wake');
+		expect(deriveTraits(entity({}, 'agent')).effects).toContain('wake');
+	});
+
 	it('puts a watching cat only on creatures with a security risk', () => {
 		expect(deriveTraits(entity({ securityRisks: 0 })).watchedByCat).toBeUndefined();
 		expect(deriveTraits(entity({})).watchedByCat).toBeUndefined();
 		expect(deriveTraits(entity({ securityRisks: 2 })).watchedByCat).toBe(true);
 	});
 
-	it('makes creatures that fail often glitch green and swim slowly', () => {
+	it('makes creatures that fail often glitch, let out toxic bubbles and swim slowly', () => {
 		const healthy = deriveTraits(entity({ executionCount: 100, failedCount: 10 }));
 		const sick = deriveTraits(entity({ executionCount: 100, failedCount: 45 }));
 
-		expect(healthy).not.toHaveProperty('tint');
+		expect(healthy).not.toHaveProperty('glitchEverySeconds');
 		expect(healthy).not.toHaveProperty('speedFactor');
+		expect(healthy.effects).not.toContain('toxicBubbles');
 		expect(sick).toMatchObject({
-			tint: SICK_TINT,
 			glitchEverySeconds: SICK_GLITCH_EVERY_SECONDS,
 			speedFactor: SICK_SPEED_FACTOR,
 		});
+		expect(sick.tint).toBeUndefined();
+		expect(sick.effects).toContain('toxicBubbles');
 	});
 
 	it('turns a creature whose every run failed into a skeleton, over the sick look', () => {
@@ -78,6 +84,7 @@ describe('deriveTraits', () => {
 		expect(skeleton).toMatchObject({ skeleton: true, speedFactor: SKELETON_SPEED_FACTOR });
 		expect(skeleton.tint).toBeUndefined();
 		expect(skeleton.glitchEverySeconds).toBeUndefined();
+		expect(skeleton.effects).not.toContain('toxicBubbles');
 	});
 
 	it('waits for enough runs before it shows a skeleton, and lets it recover', () => {
@@ -102,6 +109,7 @@ describe('deriveTraits', () => {
 		expect(bellyUp).toMatchObject({ bellyUp: true, speedFactor: BELLY_UP_SPEED_FACTOR });
 		expect(bellyUp.tint).toBeUndefined();
 		expect(bellyUp.shimmer).toBeUndefined();
+		expect(bellyUp.effects).not.toContain('toxicBubbles');
 		expect(sick.bellyUp).toBeUndefined();
 	});
 
