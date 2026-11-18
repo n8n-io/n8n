@@ -3,6 +3,7 @@ import type {
 	AvailableTypesResponse,
 	CredentialTransferPreview,
 	CredentialTypePolicyEffectivePublicDto,
+	CredentialTypeUsageResponse,
 	FolderTransferPreview,
 	InstanceTypeAccessResponse,
 	PolicyEffectivePublicDto,
@@ -68,6 +69,12 @@ export async function fetchInstanceAccess(
 	kind: RestrictedTypeKind,
 ): Promise<InstanceTypeAccessResponse> {
 	return await makeRestApiRequest(context, 'GET', `${INSTANCE_POLICY_ENDPOINT[kind]}/access`);
+}
+
+export async function fetchCredentialTypeUsage(
+	context: IRestApiContext,
+): Promise<CredentialTypeUsageResponse> {
+	return await makeRestApiRequest(context, 'GET', '/credential-type-policies/usage');
 }
 
 export type CredentialTypeSummary = {
