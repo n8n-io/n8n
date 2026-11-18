@@ -1,0 +1,22 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_8ea9e9a836804e::t_ca132a80264122 1402
+  s_8ea9e9a836804e::t_f471743acd1c04 1456
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_8ea9e9a836804e::t_73e735558474da 417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c478c4452c2cd9ebc36860cf387c971169acb9ed",
+  "prompts": {},
+  "sessions": {
+    "s_8ea9e9a836804e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80f763e1-b1ae-4391-8be2-bcc8416abd8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

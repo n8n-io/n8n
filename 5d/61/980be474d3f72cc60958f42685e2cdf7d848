@@ -1,0 +1,44 @@
+packages/core/src/execution-engine/__tests__/workflow-execute.test.ts
+  s_dfe3f914c8bb46::t_79db84dd0ff59e 2601
+  s_dfe3f914c8bb46::t_d3ca820fc1b298 2602,2605
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_33852536738524::t_9fb2be900af53c 1043,1048
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  s_33852536738524::t_d33eb20fe8a45d 686-689,691,694,696,698-700
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  s_33852536738524::t_dff813a1ca49ac 59-61
+packages/cli/src/workflow-helpers.ts
+  s_33852536738524::t_3b96a2d51fbfd0 488-489,503,515,596,605
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_33852536738524::t_c61c9d12889dc4 457-467,486-490,496-497,508-513,522-530
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_33852536738524::t_079584290f339e 57-65,251-259,362
+packages/core/src/execution-engine/workflow-execute.ts
+  s_33852536738524::t_d4293dd2eab12d 1555
+packages/workflow/src/interfaces.ts
+  s_33852536738524::t_03b09275018827 3672-3677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d61980be474d3f72cc60958f42685e2cdf7d848",
+  "prompts": {},
+  "sessions": {
+    "s_33852536738524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daf37cb4-9789-425a-abe6-81e7366ae405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_f47d4602e7ba0b::t_ffe57235dbf1a8 8
+  s_f47d4602e7ba0b::t_61df4fbb5d0413 61-64
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_f47d4602e7ba0b::t_ecc3f51e630632 122-131,133-136,186-191
+packages/cli/test/integration/public-api/agents.test.ts
+  s_f47d4602e7ba0b::t_b346bfe75b17b6 9,196,372,387-407,466
+packages/@n8n/api-types/src/agents/dto.ts
+  s_f47d4602e7ba0b::t_3ec892be235238 444-447,450-454
+  s_f47d4602e7ba0b::t_fe7a2a3f86ab4f 34
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_f47d4602e7ba0b::t_ffe57235dbf1a8 5,41
+packages/cli/src/modules/agents/__tests__/agent-response.mapper.test.ts
+  s_f47d4602e7ba0b::t_ffe57235dbf1a8 6,73
+packages/cli/src/public-api/v1/handlers/agents/spec/paths/getAgent.generated.yml
+  ai_agent 114-136,152
+packages/cli/src/public-api/v1/handlers/agents/spec/paths/createAgent.generated.yml
+  ai_agent 151-173,189
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_f47d4602e7ba0b::t_61df4fbb5d0413 503-506
+  s_f47d4602e7ba0b::t_967ea4d52ec8ad 454-502,507-522
+packages/cli/src/public-api/v1/controllers/agents.public.controller.ts
+  s_f47d4602e7ba0b::t_fe7a2a3f86ab4f 89,116
+packages/cli/src/public-api/v1/controllers/__tests__/agents.public.controller.test.ts
+  s_f47d4602e7ba0b::t_ffe57235dbf1a8 11,131,149,155,271,276,286
+packages/cli/src/modules/agents/agent-response.mapper.ts
+  s_f47d4602e7ba0b::t_fe7a2a3f86ab4f 8,11-12,19-31,85,90-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e1e4d74db353b91ee92e3c0defaeb13bffbe825",
+  "prompts": {},
+  "sessions": {
+    "s_f47d4602e7ba0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d536-382e-7c22-8084-f34bb0a03002",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

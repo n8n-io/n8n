@@ -1,0 +1,21 @@
+packages/cli/test/integration/commands/credentials.cmd.test.ts
+  s_8340704519ff52::t_d2a344f1fb3394 20
+packages/cli/test/integration/commands/export/credentials.test.ts
+  s_8340704519ff52::t_d2a344f1fb3394 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b1feb261d3e6df0701921dcea62140e197bce10",
+  "prompts": {},
+  "sessions": {
+    "s_8340704519ff52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1e6d307-a24c-4961-ae92-c92aee21b928",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

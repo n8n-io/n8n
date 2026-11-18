@@ -1,0 +1,19 @@
+docker/images/n8n/Dockerfile
+  s_4c40d2b6e8f2b4::t_32a18b77c4293c 1,6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6ef6670d526b937e148652d29c90ddf68c7cd7e",
+  "prompts": {},
+  "sessions": {
+    "s_4c40d2b6e8f2b4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1b76f89cffeGsOF1KG811wC7H",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
