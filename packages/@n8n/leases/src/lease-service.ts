@@ -1,4 +1,9 @@
-import { DuplicateLeaseKindError, InvalidLeaseKindError, UnknownLeaseKindError } from './errors';
+import {
+	DuplicateLeaseKindError,
+	InvalidLeaseKindError,
+	InvalidLeaseKindOptionsError,
+	UnknownLeaseKindError,
+} from './errors';
 import type { LeaseProvider } from './provider';
 import { DEFAULT_LEASE_KIND_OPTIONS, MAX_LEASE_KIND_LENGTH } from './types';
 import type { LeaseKind, LeaseKindOptions, LeaseStatus } from './types';
@@ -14,7 +19,8 @@ export class LeaseService<TTransaction> {
 	constructor(private readonly provider: LeaseProvider<TTransaction>) {}
 
 	/**
-	 * Register a kind with the provider. Rejects when the name is invalid or already registered.
+	 * Register a kind with the provider. Rejects when the name is invalid or already registered,
+	 * or when a numeric option is not a positive integer.
 	 * When the provider fails, the kind is not registered and can be registered again.
 	 * Until the provider accepts the kind, `changed`, `syncAll` and `status` treat it as unknown.
 	 */
@@ -30,6 +36,16 @@ export class LeaseService<TTransaction> {
 			startTimeoutSeconds = DEFAULT_LEASE_KIND_OPTIONS.startTimeoutSeconds,
 			maxFailedStarts = DEFAULT_LEASE_KIND_OPTIONS.maxFailedStarts,
 		} = kind.options ?? {};
+		const checks: Array<[string, number | null | undefined]> = [
+			['leaseSeconds', leaseSeconds],
+			['startTimeoutSeconds', startTimeoutSeconds],
+			['maxFailedStarts', maxFailedStarts],
+		];
+		for (const [option, value] of checks) {
+			if (typeof value === 'number' && !(Number.isInteger(value) && value > 0)) {
+				throw new InvalidLeaseKindOptionsError(name, option, value);
+			}
+		}
 		const options: LeaseKindOptions = { startTimeoutSeconds, maxFailedStarts };
 		if (leaseSeconds !== undefined) options.leaseSeconds = leaseSeconds;
 

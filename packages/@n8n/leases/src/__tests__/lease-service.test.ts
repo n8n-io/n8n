@@ -1,4 +1,9 @@
-import { DuplicateLeaseKindError, InvalidLeaseKindError, UnknownLeaseKindError } from '../errors';
+import {
+	DuplicateLeaseKindError,
+	InvalidLeaseKindError,
+	InvalidLeaseKindOptionsError,
+	UnknownLeaseKindError,
+} from '../errors';
 import * as leases from '../index';
 import { LeaseService } from '../lease-service';
 import type { LeaseProvider } from '../provider';
@@ -152,6 +157,21 @@ describe('LeaseService', () => {
 			});
 		});
 
+		it.each([
+			['leaseSeconds', 0],
+			['leaseSeconds', 1.5],
+			['startTimeoutSeconds', -1],
+			['startTimeoutSeconds', Number.NaN],
+			['startTimeoutSeconds', Number.POSITIVE_INFINITY],
+			['maxFailedStarts', 0],
+		] as const)('rejects %s %j', async (option, value) => {
+			await expect(
+				service.registerKind(makeKind({ options: { [option]: value } })),
+			).rejects.toThrow(InvalidLeaseKindOptionsError);
+			expect(provider.registerSource).not.toHaveBeenCalled();
+			expect(provider.registerHolder).not.toHaveBeenCalled();
+		});
+
 		it('keeps a null maxFailedStarts', async () => {
 			await service.registerKind(makeKind({ options: { maxFailedStarts: null } }));
 
@@ -282,7 +302,9 @@ describe('package exports', () => {
 		expect(leases.InvalidLeaseKindError).toBe(InvalidLeaseKindError);
 		expect(leases.DuplicateLeaseKindError).toBe(DuplicateLeaseKindError);
 		expect(leases.UnknownLeaseKindError).toBe(UnknownLeaseKindError);
+		expect(leases.InvalidLeaseKindOptionsError).toBe(InvalidLeaseKindOptionsError);
 		expect(new leases.InvalidLeaseKindError('x')).toBeInstanceOf(Error);
+		expect(new leases.InvalidLeaseKindOptionsError('x', 'leaseSeconds', 0)).toBeInstanceOf(Error);
 		expect(new leases.DuplicateLeaseKindError('x')).toBeInstanceOf(Error);
 		expect(new leases.UnknownLeaseKindError('x')).toBeInstanceOf(Error);
 	});

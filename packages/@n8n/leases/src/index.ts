@@ -1,6 +1,7 @@
 export {
 	DuplicateLeaseKindError,
 	InvalidLeaseKindError,
+	InvalidLeaseKindOptionsError,
 	LeaseEndedError,
 	UnknownLeaseKindError,
 } from './errors';
