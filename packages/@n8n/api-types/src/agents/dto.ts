@@ -12,6 +12,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
 import {
+	AGENT_MCP_INTEGRATION_TYPE,
 	AgentApprovalSchema,
 	AgentTeamsSettingsSchema,
 	WEBHOOK_INTEGRATION_TYPE,
@@ -97,6 +98,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'whatsapp',
 	'teams',
 	'webhook',
+	'mcp_server',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -931,12 +933,13 @@ const agentConnectIntegrationShape = {
 
 /**
  * Channels whose own config check decides whether the entry holds a
- * credential: n8n Chat never does, and a webhook does only for some
+ * credential: n8n Chat and MCP never do, and a webhook does only for some
  * authentications.
  */
 const CREDENTIAL_OPTIONAL_TYPES: ReadonlySet<string> = new Set([
 	N8N_CHAT_INTEGRATION_TYPE,
 	WEBHOOK_INTEGRATION_TYPE,
+	AGENT_MCP_INTEGRATION_TYPE,
 ]);
 
 /**

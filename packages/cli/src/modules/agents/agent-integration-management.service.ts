@@ -485,7 +485,7 @@ function withDraftValues(requested: unknown, current: AgentIntegrationConfig[]):
 	const draft = findDraftIntegration(current, requested.type);
 	if (!draft || !isCredentialAgentIntegration(draft)) return requested;
 	return {
-		...(draft.settings !== undefined ? { settings: draft.settings } : {}),
+		...('settings' in draft && draft.settings !== undefined ? { settings: draft.settings } : {}),
 		...(draft.approval !== undefined ? { approval: draft.approval } : {}),
 		...requested,
 	};

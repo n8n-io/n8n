@@ -46,6 +46,15 @@ export class AgentsModule implements ModuleInterface {
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./integrations/platforms/webhook/webhook-channel.controller.js');
+		await import('./integrations/platforms/mcp-server/mcp-server-channel.controller.js');
+		// Each agent with an MCP server channel is an OAuth protected resource of its own.
+		const { ProtectedResourceRegistry } = await import('@n8n/backend-services/auth');
+		const { McpServerResourceResolver } = await import(
+			'./integrations/platforms/mcp-server/mcp-server-resource.resolver.js'
+		);
+		Container.get(ProtectedResourceRegistry).registerResolver(
+			Container.get(McpServerResourceResolver),
+		);
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
 		await import('./agent-whatsapp-integrations.controller.js');
@@ -141,6 +150,9 @@ export class AgentsModule implements ModuleInterface {
 		const { WebhookIntegration } = await import(
 			'./integrations/platforms/webhook/webhook-integration.js'
 		);
+		const { McpServerIntegration } = await import(
+			'./integrations/platforms/mcp-server/mcp-server-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
@@ -150,6 +162,7 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 		registry.register(Container.get(WebhookIntegration));
+		registry.register(Container.get(McpServerIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
 		// current role calls for.

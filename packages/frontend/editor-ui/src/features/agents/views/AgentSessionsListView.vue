@@ -174,6 +174,8 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 			return { icon: 'message-square', label: i18n.baseText('agentSessions.origin.n8nChat') };
 		case 'webhook':
 			return { icon: 'plug', label: i18n.baseText('agentSessions.origin.webhook') };
+		case 'mcp_server':
+			return { icon: 'mcp', label: i18n.baseText('agentSessions.origin.mcpServer') };
 		case 'slack':
 		case 'telegram':
 		case 'linear':

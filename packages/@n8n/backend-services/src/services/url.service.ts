@@ -29,6 +29,11 @@ export class UrlService {
 		return `${base}/${this.globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}`;
 	}
 
+	/** The URL of the agent's MCP server channel. It is also the OAuth resource URL of the channel. */
+	getAgentMcpUrl(agentId: string) {
+		return `${this.getAgentWebhookUrl(agentId)}/mcp`;
+	}
+
 	getTestWebhookBaseUrl() {
 		let base = this.globalConfig.webhookUrl || this.getInstanceBaseUrl();
 		if (!base.endsWith('/')) base += '/';

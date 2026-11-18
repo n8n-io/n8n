@@ -144,6 +144,8 @@ const triggerIcon = computed((): IconName => {
 			return 'message-square';
 		case 'webhook':
 			return 'plug';
+		case 'mcp_server':
+			return 'mcp';
 		default:
 			return 'bolt-filled';
 	}
@@ -164,6 +166,9 @@ const triggerLabel = computed((): string => {
 	}
 	if (source === 'webhook') {
 		return i18n.baseText('agentSessions.origin.webhook');
+	}
+	if (source === 'mcp_server') {
+		return i18n.baseText('agentSessions.origin.mcpServer');
 	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });

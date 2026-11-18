@@ -233,6 +233,12 @@ export function webhookAuthentication(integration: {
 	return settings.success ? settings.data.authentication : undefined;
 }
 
+/**
+ * The MCP channel serves the published agent as an MCP server at its own URL.
+ * Callers sign in with their n8n account over OAuth, so the entry holds no credential.
+ */
+export const AGENT_MCP_INTEGRATION_TYPE = 'mcp_server' as const;
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
@@ -309,6 +315,14 @@ const webhookIntegration = z.object({
 	approval,
 });
 
+const mcpIntegration = z
+	.object({
+		type: z.literal(AGENT_MCP_INTEGRATION_TYPE),
+		credentialId: z.literal('').default(''),
+		approval,
+	})
+	.strict();
+
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 /** Draft config variant that allows cleared stale credential IDs. */
@@ -316,11 +330,14 @@ export const AgentIntegrationConfigSchema = z.discriminatedUnion('type', [
 	...draftCredentialIntegrations,
 	n8nChatIntegration,
 	webhookIntegration,
+	mcpIntegration,
 ]);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
 
 export type AgentWebhookIntegrationConfig = z.infer<typeof webhookIntegration>;
+
+export type AgentMcpIntegrationConfig = z.infer<typeof mcpIntegration>;
 
 export type CredentialAgentIntegrationConfig = Exclude<
 	AgentIntegrationConfig,

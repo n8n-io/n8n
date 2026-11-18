@@ -1,4 +1,8 @@
-import { N8N_CHAT_INTEGRATION_TYPE, type AgentIntegrationDisconnectWarning } from '@n8n/api-types';
+import {
+	AGENT_MCP_INTEGRATION_TYPE,
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentIntegrationDisconnectWarning,
+} from '@n8n/api-types';
 import { N8nButton } from '@n8n/design-system';
 import { h, readonly, ref } from 'vue';
 
@@ -6,6 +10,7 @@ import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue
 import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.vue';
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
+import AgentChannelMcpServerSetup from './mcpServer/AgentChannelMcpServerSetup.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
 import AgentChannelN8nChatView from './n8nChat/AgentChannelN8nChatView.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
@@ -235,6 +240,14 @@ const platforms = {
 		getListDescription: ({ text }) => text('agents.channels.webhook.listDescription'),
 		disconnectConfirmationComponent: AgentChannelWebhookRemoveConfirmation,
 		shouldConfirmDisconnect: () => true,
+	},
+	// One view for setup and edit: both show the URL and the client config.
+	[AGENT_MCP_INTEGRATION_TYPE]: {
+		type: AGENT_MCP_INTEGRATION_TYPE,
+		setupComponent: AgentChannelMcpServerSetup,
+		editComponent: AgentChannelMcpServerSetup,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getListDescription: ({ text }) => text('agents.channels.mcpServer.listDescription'),
 	},
 	[N8N_CHAT_INTEGRATION_TYPE]: {
 		type: N8N_CHAT_INTEGRATION_TYPE,

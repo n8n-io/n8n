@@ -44,6 +44,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
+		/** Shown to channel views, for example as the MCP server name in client configs. */
+		agentName?: string;
 		isPublished?: boolean;
 		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
@@ -427,6 +429,7 @@ function handleChannelDisconnected(channelType: string) {
 			v-model:open="channelModalOpen"
 			v-model:view="channelModalView"
 			:agent-id="agentId"
+			:agent-name="agentName"
 			:project-id="projectId"
 			:is-published="isPublished"
 			:disabled="props.disabled"

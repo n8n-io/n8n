@@ -1,4 +1,5 @@
 import {
+	AGENT_MCP_INTEGRATION_TYPE,
 	isCredentialAgentIntegration,
 	WEBHOOK_INTEGRATION_TYPE,
 	webhookAuthentication,
@@ -13,7 +14,8 @@ import {
  *
  * A platform channel (Slack, Telegram, …) holds a credential and runs a platform
  * connection. n8n Chat has neither. A webhook has no connection, and holds a
- * credential only when its authentication needs one.
+ * credential only when its authentication needs one. The MCP channel has no
+ * connection and no credential: callers sign in with their n8n account.
  */
 
 /** True while no model has been chosen yet (setup pending). */
@@ -26,9 +28,13 @@ export function hasChannelRuntime(
 	integration: AgentIntegrationConfig,
 ): integration is Exclude<
 	CredentialAgentIntegrationConfig,
-	{ type: typeof WEBHOOK_INTEGRATION_TYPE }
+	{ type: typeof WEBHOOK_INTEGRATION_TYPE | typeof AGENT_MCP_INTEGRATION_TYPE }
 > {
-	return isCredentialAgentIntegration(integration) && integration.type !== WEBHOOK_INTEGRATION_TYPE;
+	return (
+		isCredentialAgentIntegration(integration) &&
+		integration.type !== WEBHOOK_INTEGRATION_TYPE &&
+		integration.type !== AGENT_MCP_INTEGRATION_TYPE
+	);
 }
 
 /** Whether the channel entry must hold a credential to be set up. */
@@ -39,7 +45,7 @@ export function integrationNeedsCredential(integration: {
 	if (integration.type === WEBHOOK_INTEGRATION_TYPE) {
 		return webhookAuthentication(integration) !== 'none';
 	}
-	return integration.type !== 'n8n_chat';
+	return integration.type !== 'n8n_chat' && integration.type !== AGENT_MCP_INTEGRATION_TYPE;
 }
 
 /** True while no credential is connected yet, or a webhook has no authentication yet (setup pending). */
@@ -75,5 +81,7 @@ export function reuseIntegrationSetup(
 		// The authentication and its credential belong together.
 		return { ...source, credentialId: existing.credentialId, settings: existing.settings };
 	}
+	// The MCP server channel holds no credential, so there is no setup to reuse.
+	if (source.type === AGENT_MCP_INTEGRATION_TYPE) return source;
 	return { ...source, credentialId: existing.credentialId };
 }

@@ -32,6 +32,7 @@ export type ChannelView = AgentChannelView;
 interface Props {
 	open: boolean;
 	agentId: string;
+	agentName?: string;
 	projectId: string;
 	view: ChannelView;
 	disabled?: boolean;
@@ -733,7 +734,7 @@ watch(
 					:saved-settings="integrationSettings[currentIntegration.type]"
 					:saved-credential-id="connectedCredentials[currentIntegration.type] ?? ''"
 					:is-published="isPublished"
-					:agent-name="agentId"
+					:agent-name="agentName || agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
 					:ensure-agent-persisted="ensureAgentPersisted"
