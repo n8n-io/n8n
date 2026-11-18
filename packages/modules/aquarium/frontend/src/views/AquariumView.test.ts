@@ -43,7 +43,14 @@ const datasetJson = JSON.stringify({
 			id: '1',
 			kind: 'workflow',
 			name: 'From file',
-			metrics: { complexity: 3, executionCount: 10, failedCount: 0, averageRunTimeMs: 100 },
+			metrics: {
+				complexity: 3,
+				executionCount: 10,
+				failedCount: 0,
+				averageRunTimeMs: 100,
+				waitingCount: 0,
+				finishedCount: 0,
+			},
 		},
 	],
 });

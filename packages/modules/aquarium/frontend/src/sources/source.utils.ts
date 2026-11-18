@@ -12,7 +12,14 @@ export function entityKey(kind: EntityKind, id: string): string {
 }
 
 export function emptyMetrics(): EntityMetrics {
-	return { complexity: 0, executionCount: 0, failedCount: 0, averageRunTimeMs: 0 };
+	return {
+		complexity: 0,
+		executionCount: 0,
+		failedCount: 0,
+		averageRunTimeMs: 0,
+		waitingCount: 0,
+		finishedCount: 0,
+	};
 }
 
 export interface LoadResult {

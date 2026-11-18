@@ -13,6 +13,7 @@ import { ActivityTracker } from './activity-tracker';
 import {
 	ACTIVITY_WINDOW_SECONDS,
 	MAX_RUNNING_MS,
+	MAX_WAITING_MS,
 	PRUNE_INTERVAL_MS,
 	READABLE_WORKFLOWS_CACHE_MS,
 } from './aquarium.constants';
@@ -23,7 +24,11 @@ import {
  */
 @Service()
 export class AquariumActivityService {
-	private readonly tracker = new ActivityTracker(ACTIVITY_WINDOW_SECONDS, MAX_RUNNING_MS);
+	private readonly tracker = new ActivityTracker(
+		ACTIVITY_WINDOW_SECONDS,
+		MAX_RUNNING_MS,
+		MAX_WAITING_MS,
+	);
 
 	private readonly readableCache = new Map<string, { ids: Set<string>; expiresAt: number }>();
 

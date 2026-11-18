@@ -5,7 +5,7 @@ import {
 	DATASET_MAX_AGENTS,
 	DATASET_MAX_WORKFLOWS,
 } from '../aquarium.constants';
-import type { AquariumEntity, EntityProject } from '../aquarium.types';
+import type { AquariumEntity, EntityProject, WorkflowDesign } from '../aquarium.types';
 import { entityKey } from './source.utils';
 
 /** Entities from a file, for example a scrape of another instance. Lives in memory only. */
@@ -34,6 +34,32 @@ function projectsOf(raw: unknown): Map<string, EntityProject> {
 	return projects;
 }
 
+/** Reads a design written by `analyzeWorkflow`. Returns `undefined` when a field is missing. */
+function designOf(raw: unknown): WorkflowDesign | undefined {
+	if (!isRecord(raw)) return undefined;
+	const counts = [
+		'nodeCount',
+		'codeNodeCount',
+		'branchNodeCount',
+		'disabledNodeCount',
+		'duplicateNodeCount',
+		'subWorkflowCallCount',
+		'waitNodeCount',
+	] as const;
+	if (counts.some((key) => typeof raw[key] !== 'number')) return undefined;
+	if (typeof raw.hasErrorWorkflow !== 'boolean') return undefined;
+	return {
+		nodeCount: count(raw.nodeCount),
+		codeNodeCount: count(raw.codeNodeCount),
+		branchNodeCount: count(raw.branchNodeCount),
+		disabledNodeCount: count(raw.disabledNodeCount),
+		duplicateNodeCount: count(raw.duplicateNodeCount),
+		subWorkflowCallCount: count(raw.subWorkflowCallCount),
+		waitNodeCount: count(raw.waitNodeCount),
+		hasErrorWorkflow: raw.hasErrorWorkflow,
+	};
+}
+
 /** Ids from another instance do not exist here, so the entity gets no route. */
 function toEntity(raw: unknown, projects: Map<string, EntityProject>): AquariumEntity | undefined {
 	if (!isRecord(raw)) return undefined;
@@ -48,17 +74,25 @@ function toEntity(raw: unknown, projects: Map<string, EntityProject>): AquariumE
 	const project = projectId
 		? (projects.get(projectId) ?? { id: projectId, name: projectId })
 		: undefined;
+	const design = kind === 'workflow' ? designOf(raw.design) : undefined;
 	return {
 		key: entityKey(kind, id),
 		id,
 		kind,
 		name,
 		...(project ? { project } : {}),
+		...(design ? { design } : {}),
 		metrics: {
 			complexity: Math.max(1, count(metrics.complexity)),
 			executionCount,
 			failedCount: Math.min(executionCount, count(metrics.failedCount)),
 			averageRunTimeMs: count(metrics.averageRunTimeMs),
+			waitingCount: Math.min(executionCount, count(metrics.waitingCount)),
+			// Older files have no `finishedCount`. Their counts include paused runs.
+			finishedCount:
+				typeof metrics.finishedCount === 'number'
+					? count(metrics.finishedCount)
+					: Math.max(0, executionCount - count(metrics.waitingCount)),
 		},
 	};
 }

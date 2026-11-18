@@ -110,6 +110,40 @@ set is loaded, it replaces the live and the demo entities, and the page sends no
 
 The parser is `src/sources/dataset.ts`.
 
+## Workflow build and waiting
+
+Each workflow has a `design` (`WorkflowDesign`), read from its nodes and settings by
+`analyzeWorkflow()` in `src/engine/design.ts`. The live list asks for `nodes` and `settings`. Data
+sets carry the same `design`, made by the same function.
+
+| Data | Where | Meaning |
+| --- | --- | --- |
+| `design.hasErrorWorkflow` | Workflow settings | A workflow runs when this one fails. |
+| `design.waitNodeCount` | Nodes | Wait and Form nodes, and nodes that send and wait for a reply. The workflow pauses by design. |
+| `metrics.waitingCount` | Executions sample | Runs that are paused now. |
+| `metrics.finishedCount` | Executions sample, insights | Runs that ended. Compare paused runs with this, not with `executionCount`. |
+| `allRunsWaiting(metrics, activity)` | Computed | Every recent run is paused and none has ended. Live activity decides when it has runs. |
+| `activity.waiting`, `activity.paused` | Live endpoint | Runs paused now, and pauses in the last minute. |
+| `maintainabilityOf(design)` | Computed | A score from 0 to 100, and the factors that cost points. |
+
+A paused run is not a failure. `failureRateOf()` counts only `error` and `crashed`, and
+`waitingShareOf()` gives the share of paused runs, so a workflow that waits a lot is not shown as
+sick.
+
+The maintainability score starts at 100. `MAINTAINABILITY_RULES` takes points off, each up to a
+maximum:
+
+| Factor | Counts | Free | Points for each one more | Max |
+| --- | --- | --- | --- | --- |
+| `size` | Nodes, only when the workflow calls no sub-workflow | 20 | 1 | 25 |
+| `code` | Code, Function and AI code nodes | 1 | 4 | 20 |
+| `duplicates` | Nodes with the same type and parameters as an earlier node | 0 | 5 | 20 |
+| `disabled` | Disabled nodes | 0 | 3 | 15 |
+| `branching` | If, Switch and Merge nodes | 3 | 2 | 20 |
+
+The popup shows the score, its main issue, the error workflow, paused runs, and "All runs
+paused, not broken" when every run waits.
+
 ## Live activity
 
 The store polls `GET /rest/aquarium/activity` every 2 seconds while the page is open and the tab

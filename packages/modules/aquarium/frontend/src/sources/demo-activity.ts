@@ -42,6 +42,9 @@ export function simulateActivity(
 		const failed = Math.round(
 			(started * entity.metrics.failedCount) / entity.metrics.executionCount,
 		);
+		const paused = Math.round(
+			(started * entity.metrics.waitingCount) / entity.metrics.executionCount,
+		);
 		// Little's law: runs in progress = start rate × run time.
 		const running = Math.round(
 			(rateAt(entity, currentSecond) * entity.metrics.averageRunTimeMs) / 1000,
@@ -49,8 +52,11 @@ export function simulateActivity(
 		byKey.set(entity.key, {
 			running,
 			started,
-			succeeded: started - failed,
+			// A paused run has not ended yet, so it is neither a success nor a failure.
+			succeeded: Math.max(0, started - failed - paused),
 			failed,
+			waiting: entity.metrics.waitingCount,
+			paused,
 			startedPerSecond,
 			lastEventAt: now,
 		});

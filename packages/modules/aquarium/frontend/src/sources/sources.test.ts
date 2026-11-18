@@ -35,6 +35,8 @@ describe('loadFromSources', () => {
 			executionCount: 50,
 			failedCount: 1,
 			averageRunTimeMs: 0,
+			waitingCount: 0,
+			finishedCount: 0,
 		});
 	});
 
@@ -80,6 +82,25 @@ describe('source mappers', () => {
 		expect(entity.metrics.complexity).toBe(1);
 	});
 
+	it('reads the build and the error workflow of a workflow', () => {
+		const entity = toWorkflowEntity({
+			id: 'w',
+			name: 'W',
+			nodes: [
+				{ type: 'n8n-nodes-base.code', parameters: { jsCode: 'x' } },
+				{ type: 'n8n-nodes-base.wait', parameters: {} },
+			],
+			settings: { errorWorkflow: 'handler' },
+		});
+
+		expect(entity.design).toMatchObject({
+			nodeCount: 2,
+			codeNodeCount: 1,
+			waitNodeCount: 1,
+			hasErrorWorkflow: true,
+		});
+	});
+
 	it('reads the owning project of a workflow and an agent', () => {
 		const project = { id: 'p1', name: 'Sales', type: 'team' };
 
@@ -119,10 +140,22 @@ describe('source mappers', () => {
 				stoppedAt: new Date(300),
 			},
 			{ id: '3', workflowId: 'w', status: 'running', startedAt: new Date(0) },
+			{ id: '4', workflowId: 'w', status: 'waiting', startedAt: new Date(0) },
 		]);
 
+		// The paused run counts as waiting, not as a failure.
 		expect(patches).toEqual([
-			{ key: 'workflow:w', metrics: { executionCount: 3, failedCount: 1, averageRunTimeMs: 200 } },
+			{
+				key: 'workflow:w',
+				metrics: {
+					executionCount: 4,
+					failedCount: 1,
+					averageRunTimeMs: 200,
+					waitingCount: 1,
+					// Success and error ended. Running and waiting did not.
+					finishedCount: 2,
+				},
+			},
 		]);
 	});
 
@@ -150,7 +183,10 @@ describe('source mappers', () => {
 		});
 
 		expect(patches).toEqual([
-			{ key: 'workflow:w', metrics: { executionCount: 10, failedCount: 2, averageRunTimeMs: 100 } },
+			{
+				key: 'workflow:w',
+				metrics: { executionCount: 10, finishedCount: 10, failedCount: 2, averageRunTimeMs: 100 },
+			},
 		]);
 	});
 

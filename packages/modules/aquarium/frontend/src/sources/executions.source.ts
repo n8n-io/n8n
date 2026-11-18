@@ -14,14 +14,26 @@ type ExecutionSample = Pick<
 >;
 
 const FAILED_STATUSES = new Set(['error', 'crashed']);
+const FINISHED_STATUSES = new Set(['success', 'error', 'crashed', 'canceled']);
 
 export function toExecutionPatches(executions: ExecutionSample[]): EntityMetricsPatch[] {
-	const byWorkflow = new Map<string, { count: number; failed: number; runTimes: number[] }>();
+	const byWorkflow = new Map<
+		string,
+		{ count: number; failed: number; waiting: number; finished: number; runTimes: number[] }
+	>();
 
 	for (const execution of executions) {
-		const stats = byWorkflow.get(execution.workflowId) ?? { count: 0, failed: 0, runTimes: [] };
+		const stats = byWorkflow.get(execution.workflowId) ?? {
+			count: 0,
+			failed: 0,
+			waiting: 0,
+			finished: 0,
+			runTimes: [],
+		};
 		stats.count++;
 		if (FAILED_STATUSES.has(execution.status)) stats.failed++;
+		if (execution.status === 'waiting') stats.waiting++;
+		if (FINISHED_STATUSES.has(execution.status)) stats.finished++;
 		if (execution.startedAt && execution.stoppedAt) {
 			const runTime =
 				new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime();
@@ -35,6 +47,8 @@ export function toExecutionPatches(executions: ExecutionSample[]): EntityMetrics
 		metrics: {
 			executionCount: stats.count,
 			failedCount: stats.failed,
+			waitingCount: stats.waiting,
+			finishedCount: stats.finished,
 			averageRunTimeMs: stats.runTimes.length
 				? stats.runTimes.reduce((sum, value) => sum + value, 0) / stats.runTimes.length
 				: 0,

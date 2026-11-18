@@ -130,6 +130,42 @@ describe('AquariumTank', () => {
 		expect(queryByTestId('aquarium-tooltip-open')).not.toBeInTheDocument();
 	});
 
+	it('shows the build, the error workflow and paused runs of a workflow', async () => {
+		const { move, getByTestId } = await setup({
+			...workflow,
+			metrics: { ...workflow.metrics, executionCount: 10, waitingCount: 4, finishedCount: 0 },
+			design: {
+				nodeCount: 6,
+				codeNodeCount: 4,
+				branchNodeCount: 0,
+				disabledNodeCount: 0,
+				duplicateNodeCount: 0,
+				subWorkflowCallCount: 0,
+				waitNodeCount: 1,
+				hasErrorWorkflow: true,
+			},
+		});
+
+		await move('creature');
+		const popup = getByTestId('aquarium-tooltip');
+
+		expect(popup).toHaveTextContent('Maintainability88/100');
+		expect(popup).toHaveTextContent('Main issueMany Code nodes');
+		expect(popup).toHaveTextContent('Error workflowYes');
+		expect(popup).toHaveTextContent('Paused runs4');
+	});
+
+	it('reports a workflow whose runs are all paused', async () => {
+		const { move, getByTestId } = await setup({
+			...workflow,
+			metrics: { ...workflow.metrics, executionCount: 5, waitingCount: 5, finishedCount: 0 },
+		});
+
+		await move('creature');
+
+		expect(getByTestId('aquarium-tooltip')).toHaveTextContent('StateAll runs paused, not broken');
+	});
+
 	it('rounds the average run time to whole milliseconds', async () => {
 		const { move, getByTestId } = await setup({
 			...workflow,

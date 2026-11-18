@@ -23,6 +23,7 @@ extend the module, and which rules to obey.
 | Page header, demo switch, warnings | `src/views/AquariumView.vue` |
 | Sidebar link (in the shell) | `packages/frontend/editor-ui/src/app/components/MainSidebar.vue` |
 | Fake data for development | `src/sources/demo.source.ts` |
+| Workflow build, maintainability score | `src/engine/design.ts` |
 | Data set files (parse, limits) | `src/sources/dataset.ts`, `src/aquarium.constants.ts` |
 | Simulated activity (demo and data set) | `src/sources/demo-activity.ts` |
 | Live activity (polling, demo activity) | `src/aquarium.store.ts`, `src/sources/activity.source.ts`, `src/sources/demo-activity.ts` |
@@ -62,6 +63,24 @@ The same entity always gets the same species.
 5. Add a row to the tooltip in `AquariumTank.vue` if a user must see the number.
 6. Give some entities in `demo.source.ts` values that show the new look.
 7. Add a test in `traits.test.ts`.
+
+### Show the workflow build or waiting
+
+The data is ready. A presentation change needs only a trait rule or an effect.
+
+- `entity.design` has the counts of a workflow (`WorkflowDesign`). It is `undefined` for agents
+  and when a source has no nodes.
+- `maintainabilityOf(entity.design)` gives `score` (0 to 100) and `factors`, biggest first. Read
+  it in a trait rule: it changes only when the entity list changes.
+- `entity.design.hasErrorWorkflow` is `true` when a workflow runs on failure.
+- Paused runs are `entity.metrics.waitingCount` (sample) and `creature.activity.waiting` (live).
+  Use `waitingShareOf()` for the share, and `allRunsWaiting(metrics, activity)` to know that every
+  run is paused. Compare paused runs with `finishedCount`, never with `executionCount`: insights
+  replace `executionCount` with ended runs only.
+- Never show waiting as sick. A workflow that waits a lot works as it should.
+- `DEMO_ENTITIES` covers each case: "Contract approvals" has only paused runs, "Sync CRM contacts"
+  waits a lot, "Lead enrichment" has a low
+  score, and "Data warehouse ETL" is big but uses sub-workflows.
 
 ### Show live activity
 

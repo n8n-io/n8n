@@ -2,13 +2,14 @@ import { ActivityTracker } from '../activity-tracker';
 
 const WINDOW = 60;
 const MAX_RUNNING = 10 * 60 * 1000;
+const MAX_WAITING = 60 * 60 * 1000;
 const T0 = 1_700_000_000_000;
 
 describe('ActivityTracker', () => {
 	let tracker: ActivityTracker;
 
 	beforeEach(() => {
-		tracker = new ActivityTracker(WINDOW, MAX_RUNNING);
+		tracker = new ActivityTracker(WINDOW, MAX_RUNNING, MAX_WAITING);
 	});
 
 	it('counts a run as running until it ends', () => {
@@ -20,6 +21,8 @@ describe('ActivityTracker', () => {
 				started: 1,
 				succeeded: 0,
 				failed: 0,
+				waiting: 0,
+				paused: 0,
 				startedPerSecond: new Array(WINDOW).fill(0),
 				lastEventAt: T0,
 			},
@@ -39,6 +42,32 @@ describe('ActivityTracker', () => {
 		tracker.recordEnded('wf', 'e1', status, T0);
 
 		expect(tracker.snapshot(T0)[0]).toMatchObject({ running: 0, succeeded: 0, failed });
+	});
+
+	it('counts a paused run as waiting and not as a failure, until it goes on', () => {
+		tracker.recordStarted('wf', 'e1', T0);
+		tracker.recordEnded('wf', 'e1', 'waiting', T0 + 100);
+
+		expect(tracker.snapshot(T0 + 100)[0]).toMatchObject({
+			running: 0,
+			waiting: 1,
+			paused: 1,
+			failed: 0,
+		});
+
+		tracker.recordResumed('wf', 'e1', T0 + 5_000);
+		expect(tracker.snapshot(T0 + 5_000)[0]).toMatchObject({ running: 1, waiting: 0 });
+
+		tracker.recordEnded('wf', 'e1', 'success', T0 + 6_000);
+		expect(tracker.snapshot(T0 + 6_000)[0]).toMatchObject({ waiting: 0, succeeded: 1 });
+	});
+
+	it('keeps a workflow with paused runs after the window, and drops stale pauses', () => {
+		tracker.recordStarted('wf', 'e1', T0);
+		tracker.recordEnded('wf', 'e1', 'waiting', T0);
+
+		expect(tracker.snapshot(T0 + (WINDOW + 10) * 1000)[0]).toMatchObject({ waiting: 1, paused: 0 });
+		expect(tracker.snapshot(T0 + MAX_WAITING + 1)).toEqual([]);
 	});
 
 	it('does not count a resumed run as a new run', () => {

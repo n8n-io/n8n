@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { onKeyStroke, usePreferredReducedMotion, useRafFn, useResizeObserver } from '@vueuse/core';
 import { computed, onMounted, ref, shallowRef, triggerRef, watch } from 'vue';
 
@@ -30,8 +30,9 @@ import {
 	type TankContent,
 	type TankRegion,
 } from '../engine/layout';
+import { maintainabilityOf, type MaintainabilityFactorId } from '../engine/design';
 import { AquariumRenderer } from '../engine/renderer';
-import { failureRateOf, recentRate } from '../engine/scaling';
+import { allRunsWaiting, failureRateOf, recentRate } from '../engine/scaling';
 import {
 	findCreatureAt,
 	spawnCreature,
@@ -389,8 +390,12 @@ function liveRows(key: string): Array<[string, string]> {
 	if (windowSeconds === 0) return [];
 	const activity = props.activity?.byKey.get(key);
 	const interpolate = { seconds: String(windowSeconds) };
+	const paused: Array<[string, string]> = activity?.waiting
+		? [[i18n.baseText('aquarium.tooltip.pausedNow'), String(activity.waiting)]]
+		: [];
 	return [
 		[i18n.baseText('aquarium.tooltip.runningNow'), String(activity?.running ?? 0)],
+		...paused,
 		[
 			i18n.baseText('aquarium.tooltip.runsPerSecond', {
 				interpolate: { seconds: String(LIVE_SPEED.rateSeconds) },
@@ -403,6 +408,45 @@ function liveRows(key: string): Array<[string, string]> {
 			String(activity?.failed ?? 0),
 		],
 	];
+}
+
+const FACTOR_LABELS: Record<MaintainabilityFactorId, BaseTextKey> = {
+	size: 'aquarium.maintainability.size',
+	code: 'aquarium.maintainability.code',
+	duplicates: 'aquarium.maintainability.duplicates',
+	disabled: 'aquarium.maintainability.disabled',
+	branching: 'aquarium.maintainability.branching',
+};
+
+/** Rows from the workflow build: maintainability, error workflow, and paused runs. */
+function designRows(entity: AquariumEntity): Array<[string, string]> {
+	const rows: Array<[string, string]> = [];
+	if (allRunsWaiting(entity.metrics, props.activity?.byKey.get(entity.key))) {
+		rows.push([i18n.baseText('aquarium.tooltip.state'), i18n.baseText('aquarium.state.allPaused')]);
+	}
+	if (entity.metrics.waitingCount > 0) {
+		rows.push([
+			i18n.baseText('aquarium.tooltip.pausedRuns'),
+			entity.metrics.waitingCount.toLocaleString(),
+		]);
+	}
+	const { design } = entity;
+	if (!design) return rows;
+
+	const report = maintainabilityOf(design);
+	const [mainIssue] = report.factors;
+	rows.push([i18n.baseText('aquarium.tooltip.maintainability'), `${report.score}/100`]);
+	if (mainIssue) {
+		rows.push([
+			i18n.baseText('aquarium.tooltip.mainIssue'),
+			i18n.baseText(FACTOR_LABELS[mainIssue.id]),
+		]);
+	}
+	rows.push([
+		i18n.baseText('aquarium.tooltip.errorWorkflow'),
+		i18n.baseText(design.hasErrorWorkflow ? 'generic.yes' : 'generic.no'),
+	]);
+	return rows;
 }
 
 const tooltip = computed(() => {
@@ -438,6 +482,7 @@ const tooltip = computed(() => {
 			...(metrics.securityRisks
 				? [[i18n.baseText('aquarium.tooltip.securityRisks'), String(metrics.securityRisks)]]
 				: []),
+			...designRows(creature.entity),
 			...liveRows(creature.entity.key),
 		],
 	};

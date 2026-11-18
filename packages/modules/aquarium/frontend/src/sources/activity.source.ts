@@ -15,6 +15,8 @@ export function toActivitySnapshot(activity: AquariumActivity): ActivitySnapshot
 					started: workflow.started,
 					succeeded: workflow.succeeded,
 					failed: workflow.failed,
+					waiting: workflow.waiting,
+					paused: workflow.paused,
 					startedPerSecond: workflow.startedPerSecond,
 					lastEventAt: Date.parse(workflow.lastEventAt),
 				},

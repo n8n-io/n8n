@@ -22,6 +22,32 @@ export interface EntityMetrics {
 	averageRunTimeMs: number;
 	/** Security checks that the workflow fails, from 0 to 3. Undefined when not checked. */
 	securityRisks?: number;
+	/** Runs that are paused, waiting to go on. They are not failures. */
+	waitingCount: number;
+	/**
+	 * Runs that ended: success, error, crash or cancel. Sources count runs in different ways, so
+	 * compare paused runs with this, not with `executionCount`.
+	 */
+	finishedCount: number;
+}
+
+/** How a workflow is built. Read from its nodes and settings; see `engine/design.ts`. */
+export interface WorkflowDesign {
+	/** Nodes without sticky notes. */
+	nodeCount: number;
+	/** Code, Function and AI code nodes. */
+	codeNodeCount: number;
+	/** If, Switch and Merge nodes. */
+	branchNodeCount: number;
+	disabledNodeCount: number;
+	/** Nodes with the same type and parameters as an earlier node: likely copy and paste. */
+	duplicateNodeCount: number;
+	/** Execute Workflow nodes and workflow tools. */
+	subWorkflowCallCount: number;
+	/** Wait and Form nodes, and nodes that send and wait for a reply. */
+	waitNodeCount: number;
+	/** A workflow runs when this one fails. */
+	hasErrorWorkflow: boolean;
 }
 
 /** One workflow or agent in the tank. */
@@ -35,6 +61,8 @@ export interface AquariumEntity {
 	route?: RouteLocationRaw;
 	/** The project that owns the entity. Entities without one share a tank in project view. */
 	project?: EntityProject;
+	/** Only for workflows, when the source has their nodes. */
+	design?: WorkflowDesign;
 	metrics: EntityMetrics;
 }
 
@@ -49,6 +77,10 @@ export interface EntityActivity {
 	started: number;
 	succeeded: number;
 	failed: number;
+	/** Runs that are paused now, waiting to go on. Not a failure. */
+	waiting: number;
+	/** Pauses in the window. */
+	paused: number;
 	/** Starts in each full second of the window, oldest first. The current second is not in it. */
 	startedPerSecond: number[];
 	/** Time of the last start or end, in ms. */

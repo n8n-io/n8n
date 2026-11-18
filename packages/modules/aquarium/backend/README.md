@@ -11,13 +11,14 @@ with `N8N_DISABLED_MODULES=aquarium`. The frontend hides the aquarium when the m
 | --- | --- |
 | `workflowExecuteBefore` | Marks the run as running and counts a start. |
 | `workflowExecuteResume` | Marks a run that continues after a wait as running again. It is not a new start. |
-| `workflowExecuteAfter` | Ends the run and counts a success (`success`) or a failure (`error`, `crashed`). |
+| `workflowExecuteAfter` | Ends the run and counts a success (`success`) or a failure (`error`, `crashed`). A run that ends `waiting` is paused: it counts as `waiting` and in `paused`, not as a failure, until it resumes or ends. |
 
 `ActivityTracker` keeps the counts in memory, in one-second buckets for the last 60 seconds. The
 response also gives the starts of each full second (`startedPerSecond`), so a client can see a
 change in rate within seconds. The
 memory does not grow with the run rate. Workflows with no run and no event in the window are
-dropped. A run with no end after 6 hours is dropped.
+dropped. A run with no end after 6 hours is dropped. A paused run with no resume after 7 days is
+dropped, because another main instance can resume it without this one knowing.
 
 `GET /rest/aquarium/activity` returns the counts for the workflows that the user can read
 (`workflow:read`). The readable workflow ids of a user are cached for 15 seconds. When nothing ran,

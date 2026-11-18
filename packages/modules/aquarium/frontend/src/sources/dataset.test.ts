@@ -15,7 +15,14 @@ const workflow = (id: string, executionCount: number, extra: Record<string, unkn
 	name: `Workflow ${id}`,
 	projectId: 'p1',
 	nodeTypes: ['n8n-nodes-base.webhook'],
-	metrics: { complexity: 4, executionCount, failedCount: 1, averageRunTimeMs: 500 },
+	metrics: {
+		complexity: 4,
+		executionCount,
+		failedCount: 1,
+		averageRunTimeMs: 500,
+		waitingCount: 0,
+		finishedCount: 0,
+	},
 	...extra,
 });
 
@@ -43,8 +50,50 @@ describe('parseDataset', () => {
 			kind: 'workflow',
 			name: 'Workflow 1',
 			project: { id: 'p1', name: 'Project 1' },
-			metrics: { complexity: 4, executionCount: 10, failedCount: 1, averageRunTimeMs: 500 },
+			metrics: {
+				complexity: 4,
+				executionCount: 10,
+				failedCount: 1,
+				averageRunTimeMs: 500,
+				waitingCount: 0,
+				finishedCount: 0,
+			},
 		});
+	});
+
+	it('reads a complete design, and ignores an incomplete one', () => {
+		const design = {
+			nodeCount: 8,
+			codeNodeCount: 2,
+			branchNodeCount: 1,
+			disabledNodeCount: 0,
+			duplicateNodeCount: 1,
+			subWorkflowCallCount: 0,
+			waitNodeCount: 1,
+			hasErrorWorkflow: true,
+		};
+		const dataset = parseDataset({
+			entities: [workflow('1', 5, { design }), workflow('2', 3, { design: { nodeCount: 3 } })],
+		});
+
+		expect(dataset?.entities[0].design).toEqual(design);
+		expect(dataset?.entities[1].design).toBeUndefined();
+	});
+
+	it('reads finished runs, or works them out for older files', () => {
+		const withField = parseDataset({
+			entities: [
+				workflow('1', 5, {
+					metrics: { executionCount: 5, waitingCount: 2, finishedCount: 3 },
+				}),
+			],
+		});
+		const older = parseDataset({
+			entities: [workflow('1', 5, { metrics: { executionCount: 5, waitingCount: 5 } })],
+		});
+
+		expect(withField?.entities[0].metrics.finishedCount).toBe(3);
+		expect(older?.entities[0].metrics.finishedCount).toBe(0);
 	});
 
 	it('names a project that the file does not list by its id', () => {
@@ -61,6 +110,8 @@ describe('parseDataset', () => {
 			executionCount: 0,
 			failedCount: 0,
 			averageRunTimeMs: 0,
+			waitingCount: 0,
+			finishedCount: 0,
 		});
 	});
 

@@ -3,6 +3,7 @@ import { getFullApiResponse } from '@n8n/rest-api-client';
 import { STICKY_NODE_TYPE } from 'n8n-workflow';
 
 import type { AquariumEntity, EntitySource } from '../aquarium.types';
+import { analyzeWorkflow, type AnalyzedNode } from '../engine/design';
 import { emptyMetrics, entityKey } from './source.utils';
 
 const MAX_WORKFLOWS = 200;
@@ -10,7 +11,8 @@ const MAX_WORKFLOWS = 200;
 interface WorkflowListItem {
 	id: string;
 	name: string;
-	nodes?: Array<{ type: string }>;
+	nodes?: AnalyzedNode[];
+	settings?: unknown;
 	/** Present when the list selects `ownedBy`. */
 	homeProject?: { id: string; name: string; type: string } | null;
 }
@@ -32,6 +34,7 @@ export function toWorkflowEntity(workflow: WorkflowListItem): AquariumEntity {
 					},
 				}
 			: {}),
+		design: analyzeWorkflow(workflow.nodes ?? [], workflow.settings),
 		metrics: { ...emptyMetrics(), complexity: nodeCount },
 	};
 }
@@ -45,7 +48,7 @@ export const workflowsSource: EntitySource = {
 			'/workflows',
 			{
 				filter: { isArchived: false },
-				select: JSON.stringify(['id', 'name', 'nodes', 'ownedBy']),
+				select: JSON.stringify(['id', 'name', 'nodes', 'settings', 'ownedBy']),
 				sortBy: 'updatedAt:desc',
 				take: MAX_WORKFLOWS,
 			},

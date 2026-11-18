@@ -103,6 +103,8 @@ describe('simulation', () => {
 			started: perSecond * 60,
 			succeeded: perSecond * 60,
 			failed: 0,
+			waiting: 0,
+			paused: 0,
 			startedPerSecond: new Array(60).fill(perSecond),
 			lastEventAt: 0,
 		});

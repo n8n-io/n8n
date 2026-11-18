@@ -15,6 +15,8 @@ export function toInsightsPatches(insights: InsightsByWorkflow): EntityMetricsPa
 						key: entityKey('workflow', row.workflowId),
 						metrics: {
 							executionCount: row.total,
+							// Insights record a run when it ends, so every run they count has finished.
+							finishedCount: row.total,
 							failedCount: row.failed,
 							averageRunTimeMs: row.averageRunTime,
 						},

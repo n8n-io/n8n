@@ -120,6 +120,16 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
+		test('should allow selecting workflow nodes and settings together', async () => {
+			mockReq.query = { select: '["id", "nodes", "settings"]' };
+
+			await selectListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toEqual({
+				select: { id: true, nodes: true, settings: true },
+			});
+		});
+
 		test('ignore invalid select', async () => {
 			mockReq.query = { select: '["name", "foo"]' };
 

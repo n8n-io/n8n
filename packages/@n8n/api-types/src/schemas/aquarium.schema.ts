@@ -8,6 +8,10 @@ export const aquariumWorkflowActivitySchema = z.object({
 	started: z.number(),
 	succeeded: z.number(),
 	failed: z.number(),
+	/** Runs that are paused now, waiting to go on (Wait node, form, approval). Not a failure. */
+	waiting: z.number(),
+	/** Pauses in the window. */
+	paused: z.number(),
 	/** Starts in each full second of the window, oldest first. The current second is not in it. */
 	startedPerSecond: z.array(z.number()),
 	/** ISO timestamp of the last start or end. */

@@ -14,6 +14,8 @@ describe('toActivitySnapshot', () => {
 					started: 5,
 					succeeded: 3,
 					failed: 1,
+					waiting: 0,
+					paused: 0,
 					startedPerSecond: [1, 2, 2],
 					lastEventAt: '2026-11-18T09:59:59.000Z',
 				},
@@ -26,6 +28,8 @@ describe('toActivitySnapshot', () => {
 			started: 5,
 			succeeded: 3,
 			failed: 1,
+			waiting: 0,
+			paused: 0,
 			startedPerSecond: [1, 2, 2],
 			lastEventAt: Date.parse('2026-11-18T09:59:59.000Z'),
 		});
@@ -40,7 +44,7 @@ describe('demoActivity', () => {
 		expect(snapshot.byKey.size).toBeGreaterThan(0);
 		for (const [key, activity] of snapshot.byKey) {
 			expect(keys.has(key)).toBe(true);
-			expect(activity.succeeded + activity.failed).toBe(activity.started);
+			expect(activity.succeeded + activity.failed + activity.paused).toBe(activity.started);
 			expect(activity.startedPerSecond).toHaveLength(snapshot.windowSeconds);
 			expect(activity.started).toBe(activity.startedPerSecond.reduce((a, b) => a + b, 0));
 		}
@@ -75,7 +79,14 @@ describe('datasetActivity', () => {
 		kind: 'workflow' as const,
 		name: 'Busy',
 		// 7200 runs in 2 hours: 1 run each second on average, each run 2 s long.
-		metrics: { complexity: 3, executionCount: 7200, failedCount: 720, averageRunTimeMs: 2000 },
+		metrics: {
+			complexity: 3,
+			executionCount: 7200,
+			failedCount: 720,
+			averageRunTimeMs: 2000,
+			waitingCount: 0,
+			finishedCount: 0,
+		},
 	};
 
 	it('follows the real rate of the data set on average', () => {
