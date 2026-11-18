@@ -113,23 +113,6 @@ const panelItemId = computed(() =>
 const panelItem = computed(() => railItemById(panelItemId.value));
 const panelSections = computed(() => sectionsFor(panelItem.value?.id));
 
-// A new item fades its content in, so the panel does not jump from one list to the next. The
-// panel background stays, and only a panel that stays open fades: a panel that opens has its
-// own transition.
-const dockedPanel = useTemplateRef('dockedPanel');
-const floatingPanel = useTemplateRef('floatingPanel');
-const PANEL_SWITCH_FADE: KeyframeAnimationOptions = {
-	duration: 125,
-	easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-};
-watch([panelItemId, isDocked], ([itemId, docked], [previousId, wasDocked]) => {
-	if (!itemId || !previousId || itemId === previousId || docked !== wasDocked) return;
-	const panel = (docked ? dockedPanel.value : floatingPanel.value)?.$el;
-	// Test DOMs have no Web Animations API.
-	if (!(panel instanceof HTMLElement) || typeof panel.animate !== 'function') return;
-	panel.animate([{ opacity: 0 }, { opacity: 1 }], PANEL_SWITCH_FADE);
-});
-
 const mainItems = computed(() => railItems.value.filter((item) => item.group === 'main'));
 const projectItems = computed(() => railItems.value.filter((item) => item.group === 'project'));
 const footerItems = computed(() => railItems.value.filter((item) => item.group === 'footer'));
@@ -443,7 +426,6 @@ onBeforeUnmount(() => {
 
 		<div v-if="isDocked && panelItem" :class="$style.docked" data-test-id="app-nav-docked">
 			<AppNavigationPanel
-				ref="dockedPanel"
 				:title="panelItem.label"
 				:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 				:sections="panelSections"
@@ -474,7 +456,6 @@ onBeforeUnmount(() => {
 				@mouseleave="peek.onLeave"
 			>
 				<AppNavigationPanel
-					ref="floatingPanel"
 					:title="panelItem.label"
 					:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 					:sections="panelSections"
