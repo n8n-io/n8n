@@ -12,6 +12,9 @@ import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmpty
 import ResourcesListLoadingState from '@/app/components/layouts/ResourcesListLoadingState.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
+import OverviewModeSwitch from '@/features/pages/components/OverviewModeSwitch.vue';
+import ProjectDocumentationOverview from '@/features/pages/components/ProjectDocumentationOverview.vue';
+import { useOverviewMode } from '@/features/pages/composables/useOverviewMode';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
@@ -189,6 +192,7 @@ const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
+const { mode: overviewMode } = useOverviewMode();
 const { next: nextFetch } = useLatestFetch();
 const { fetchDependencyCounts } = useDependencies();
 const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
@@ -2299,6 +2303,7 @@ const onNameSubmit = async (name: string) => {
 		data-test-id="workflows-onboarding-loading"
 	/>
 	<EmptyStateLayout v-else-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
+	<ProjectDocumentationOverview v-else-if="overviewMode === 'docs'" />
 
 	<ResourcesListLayout
 		v-else
@@ -2335,6 +2340,7 @@ const onNameSubmit = async (name: string) => {
 					time-range="week"
 				/>
 			</ProjectHeader>
+			<OverviewModeSwitch />
 		</template>
 		<template #callout>
 			<WontExecuteCallout
