@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/pages/components/UpdatePageWithAiButton.vue
+  s_f27bda1bd0c713::t_990d0daf876489 1-45
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f27bda1bd0c713::t_990d0daf876489 1828,1853,1903-1904,1929
+packages/modules/page/frontend/src/views/PagesView.vue
+  ai_agent 49,208
+packages/frontend/editor-ui/src/features/pages/composables/useUpdatePageWithAi.ts
+  s_f27bda1bd0c713::t_990d0daf876489 1-57
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_f27bda1bd0c713::t_990d0daf876489 32,43-44,86-87
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 3443-3445
+packages/frontend/editor-ui/src/features/pages/components/PagePeekPanel.vue
+  ai_agent 12,59-64,108
+packages/frontend/editor-ui/src/features/pages/components/UpdatePageWithAiButton.test.ts
+  s_f27bda1bd0c713::t_b06bc63a210cd0 1-89
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_f27bda1bd0c713::t_990d0daf876489 60-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b012037ddfbcd689ae304dd3a7718ffc0e2b3c77",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
