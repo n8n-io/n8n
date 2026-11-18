@@ -5,8 +5,7 @@ import type { UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { UrlService, PushProxy } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { UrlService, PushProxy, TelemetryProxy } from '@n8n/backend-services';
 
 import {
 	CDP_TOKEN_HEADER,
@@ -111,7 +110,7 @@ describe('InstanceAiBrowserSessionService', () => {
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const globalConfig = mock<GlobalConfig>({ port: 5678 });
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	let service: InstanceAiBrowserSessionService;
 
 	beforeEach(() => {

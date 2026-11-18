@@ -13,7 +13,7 @@ import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
@@ -99,7 +99,7 @@ function setup() {
 	);
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -224,6 +224,18 @@ describe('AssistantAgentProvider', () => {
 			approved: true,
 		});
 		expect(provider.normalizeResumeData({ other: 'shape' })).toEqual({ other: 'shape' });
+	});
+
+	it('tracks a user stop on the Agents runtime', () => {
+		const { provider, telemetry } = setup();
+
+		provider.onUserStoppedTurn({ agentId: 'assistant', threadId: 'thread-1', userId: 'user-1' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+			user_id: 'user-1',
+			thread_id: 'thread-1',
+			runtime: 'agents',
+		});
 	});
 
 	describe('onBeforeThreadDeletion', () => {

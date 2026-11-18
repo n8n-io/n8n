@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -17,7 +18,6 @@ import { nanoid } from 'nanoid';
 import { PushProxy } from '@n8n/backend-services';
 
 import { AiService } from '@/services/ai.service';
-import { Telemetry } from '@/telemetry';
 
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
@@ -88,7 +88,7 @@ export class InstanceAiCreditService {
 	constructor(
 		logger: Logger,
 		private readonly aiService: AiService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: PushProxy,
 		private readonly threadRepo: InstanceAiThreadRepository,

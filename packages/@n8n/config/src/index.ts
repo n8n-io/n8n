@@ -32,6 +32,7 @@ import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
+import { LeasesConfig } from './configs/leases.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MemoryGuardConfig } from './configs/memory-guard.config';
@@ -121,6 +122,7 @@ export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
 export { RedisConfig } from './configs/redis.config';
 export { SchedulerConfig } from './configs/scheduler.config';
+export { LeasesConfig } from './configs/leases.config';
 export { EndpointsConfig, PrometheusMetricsConfig };
 
 const protocolSchema = z.enum(['http', 'https']);
@@ -211,6 +213,9 @@ export class GlobalConfig {
 
 	@Nested
 	scheduler: SchedulerConfig;
+
+	@Nested
+	leases: LeasesConfig;
 
 	@Nested
 	generic: GenericConfig;

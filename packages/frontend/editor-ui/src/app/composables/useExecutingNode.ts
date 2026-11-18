@@ -1,5 +1,5 @@
-import { ref, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import { ref, type Ref } from 'vue';
+import { isEngineV2ExecutionId } from '@/features/execution/executions/executions.utils';
 
 interface ExecutingNodeRefs {
 	executingNode: Ref<string[]>;
@@ -96,15 +96,15 @@ function createConcurrentNodeStrategy({
  * Tracks the nodes rendered as executing (the per-node loading spinner).
  *
  * A v1 run shows only the latest node. An engine v2 run shows every node that
- * is running. The first node of a run reads `engineType` to select the
- * strategy. The strategy stays fixed until `clearNodeExecutionQueue`.
+ * is running. The first node of a run reads the engine from its execution ID
+ * to select the strategy, because the workflow's engine setting does not
+ * tell which engine ran an execution. The strategy stays fixed until
+ * `clearNodeExecutionQueue`.
  *
  * `executingNode` stays an array for its consumers' sake. The push handlers
  * pass each event's `executionIndex`, which pairs a run's start and finish.
  */
-export function useExecutingNode(
-	options: { engineType?: MaybeRefOrGetter<IWorkflowSettings['engineType']> } = {},
-) {
+export function useExecutingNode() {
 	const executingNode = ref<string[]>([]);
 	/**
 	 * The node for the "waiting for next" state. On v1, the node that started
@@ -114,11 +114,15 @@ export function useExecutingNode(
 	// Null until the first node of a run selects a strategy.
 	let strategy: ExecutingNodeStrategy | null = null;
 
-	function addExecutingNode(nodeName: string, sequenceNumber: number, executionIndex?: number) {
-		strategy ??=
-			toValue(options.engineType) === 'v2'
-				? createConcurrentNodeStrategy({ executingNode, lastAddedExecutingNode })
-				: createLatestNodeStrategy({ executingNode, lastAddedExecutingNode });
+	function addExecutingNode(
+		nodeName: string,
+		executionId: string,
+		sequenceNumber: number,
+		executionIndex?: number,
+	) {
+		strategy ??= isEngineV2ExecutionId(executionId)
+			? createConcurrentNodeStrategy({ executingNode, lastAddedExecutingNode })
+			: createLatestNodeStrategy({ executingNode, lastAddedExecutingNode });
 		strategy.add(nodeName, sequenceNumber, executionIndex);
 	}
 
