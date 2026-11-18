@@ -113,6 +113,23 @@ const panelItemId = computed(() =>
 const panelItem = computed(() => railItemById(panelItemId.value));
 const panelSections = computed(() => sectionsFor(panelItem.value?.id));
 
+// A new item fades its content in, so the panel does not jump from one list to the next. The
+// panel background stays, and only a panel that stays open fades: a panel that opens has its
+// own transition.
+const dockedPanel = useTemplateRef('dockedPanel');
+const floatingPanel = useTemplateRef('floatingPanel');
+const PANEL_SWITCH_FADE: KeyframeAnimationOptions = {
+	duration: 125,
+	easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+};
+watch([panelItemId, isDocked], ([itemId, docked], [previousId, wasDocked]) => {
+	if (!itemId || !previousId || itemId === previousId || docked !== wasDocked) return;
+	const panel = (docked ? dockedPanel.value : floatingPanel.value)?.$el;
+	// Test DOMs have no Web Animations API.
+	if (!(panel instanceof HTMLElement) || typeof panel.animate !== 'function') return;
+	panel.animate([{ opacity: 0 }, { opacity: 1 }], PANEL_SWITCH_FADE);
+});
+
 const mainItems = computed(() => railItems.value.filter((item) => item.group === 'main'));
 const projectItems = computed(() => railItems.value.filter((item) => item.group === 'project'));
 const footerItems = computed(() => railItems.value.filter((item) => item.group === 'footer'));
@@ -416,6 +433,7 @@ onBeforeUnmount(() => {
 
 		<div v-if="isDocked && panelItem" :class="$style.docked" data-test-id="app-nav-docked">
 			<AppNavigationPanel
+				ref="dockedPanel"
 				:title="panelItem.label"
 				:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 				:sections="panelSections"
@@ -435,8 +453,8 @@ onBeforeUnmount(() => {
 		<Transition
 			:enter-from-class="$style.floatingHidden"
 			:leave-to-class="$style.floatingHidden"
-			:enter-active-class="$style.floatingAnimating"
-			:leave-active-class="$style.floatingAnimating"
+			:enter-active-class="$style.floatingEntering"
+			:leave-active-class="$style.floatingLeaving"
 		>
 			<div
 				v-if="!isDocked && panelItem"
@@ -446,6 +464,7 @@ onBeforeUnmount(() => {
 				@mouseleave="peek.onLeave"
 			>
 				<AppNavigationPanel
+					ref="floatingPanel"
 					:title="panelItem.label"
 					:show-logo="panelItem.id === ASSISTANT_ITEM_ID"
 					:sections="panelSections"
@@ -607,25 +626,35 @@ $panel-width: 240px;
 	background-color: var(--app-shell--nav-panel--color--background);
 	box-shadow: var(--shadow--md);
 	overflow: hidden;
+	// It slides out from the rail, so it grows from the rail's edge.
+	transform-origin: left center;
 }
 
-.floatingAnimating {
+// Opens on hover many times a day, so the motion stays short and small. It closes faster
+// than it opens: closing is the app's response, not something to watch.
+.floatingEntering {
 	transition:
-		opacity var(--duration--snappy) var(--easing--ease-out),
-		transform var(--duration--snappy) var(--easing--ease-out);
+		opacity 160ms var(--easing--ease-out-quint),
+		transform 160ms var(--easing--ease-out-quint);
+}
+
+.floatingLeaving {
+	transition:
+		opacity 125ms var(--easing--ease-out-quint),
+		transform 125ms var(--easing--ease-out-quint);
 }
 
 .floatingHidden {
 	opacity: 0;
-	transform: translateX(calc(var(--spacing--4xs) * -1));
+	transform: translateX(calc(var(--spacing--3xs) * -1)) scale(0.98);
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.railItem,
-	.floatingAnimating {
+	.railItem {
 		transition: none;
 	}
 
+	// Keeps the fade, which tells that the panel opens, and drops the movement.
 	.floatingHidden {
 		transform: none;
 	}
