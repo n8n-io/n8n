@@ -1,0 +1,23 @@
+packages/@n8n/db/src/repositories/workflow-publication-retry-state.repository.ts
+  s_40f8b037f3bcf9::t_6490080c1e3d9f 12,15,18
+  s_40f8b037f3bcf9::t_8f0acf6691678d 2
+  s_40f8b037f3bcf9::t_5066a114944d6e 11,14,17
+packages/cli/test/integration/workflows/workflow-publication-retry.test.ts
+  s_40f8b037f3bcf9::t_8bbdc42aca3c0a 451,455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cf4eb1946ad7abf91f8925de04cde94e253587d",
+  "prompts": {},
+  "sessions": {
+    "s_40f8b037f3bcf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66c65aaf-9fbc-4586-9b3f-bc033bff0f2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
