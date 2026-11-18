@@ -418,6 +418,12 @@ const REFUSALS: Array<{ code: string; when: (c: Case) => boolean }> = [
 	},
 	{
 		code: 'code-node-reference',
+		when: (c) =>
+			(c.chain === 'drop' || c.chain === 'reverse') &&
+			/\$node\s*\[\s*['"]/.test(c.code),
+	},
+	{
+		code: 'code-node-reference',
 		when: (c) => /\.pairedItem\b(?!\()/.test(c.code) && c.code.includes('$("Source")'),
 	},
 	{
