@@ -27,7 +27,7 @@ function asObject(value: JSONValue): JSONObject {
 
 function agentAnswer(json: JSONValue): JSONValue {
 	const object = asObject(json);
-	return typeof object.output === 'string' ? object.output : json;
+	return 'output' in object ? (object.output ?? null) : json;
 }
 
 @Service()

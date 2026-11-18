@@ -135,9 +135,11 @@ export class DeterminismAnalysisService {
 		source: DeterminismSource,
 		userId: string | null,
 	): Promise<User | null> {
-		const actorId =
-			userId ?? (await this.ownershipService.getPersonalProjectOwnerCached(source.projectId))?.id;
-		if (!actorId) return null;
-		return await this.userRepository.findOne({ where: { id: actorId }, relations: ['role'] });
+		const loadWithRole = async (id: string) =>
+			await this.userRepository.findOne({ where: { id }, relations: ['role'] });
+		const user = userId ? await loadWithRole(userId) : null;
+		if (user) return user;
+		const owner = await this.ownershipService.getPersonalProjectOwnerCached(source.projectId);
+		return owner ? await loadWithRole(owner.id) : null;
 	}
 }
