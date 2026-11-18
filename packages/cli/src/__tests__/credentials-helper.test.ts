@@ -42,6 +42,7 @@ vi.mock('n8n-nodes-base/credentials/common/token-request', () => ({
 
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { RuntimeCredentialsResolver } from '@/credentials/runtime-credentials-resolver';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -60,6 +61,7 @@ describe('CredentialsHelper', () => {
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const mockLogger = mock<any>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const runtimeCredentialsResolver = mock<RuntimeCredentialsResolver>();
 	// Use a real instance of DynamicCredentialsProxy so setResolverProvider works
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
 
@@ -95,6 +97,7 @@ describe('CredentialsHelper', () => {
 		externalSecretsConfig,
 		mock<AiGatewayService>(),
 		policyEnforcementService,
+		runtimeCredentialsResolver,
 	);
 
 	describe('getCredentials', () => {
@@ -194,6 +197,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			const result = await helper.applyDefaultsAndOverwrites(
@@ -240,6 +244,7 @@ describe('CredentialsHelper', () => {
 					externalSecretsConfig,
 					mock<AiGatewayService>(),
 					policyEnforcementService,
+					runtimeCredentialsResolver,
 				);
 			};
 
@@ -327,6 +332,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			await expect(
@@ -371,6 +377,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 			const externalSecretsProxy =
 				mock<NonNullable<IWorkflowExecuteAdditionalData['externalSecretsProxy']>>();
@@ -451,6 +458,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			// Region left at its default: neither `region` nor `url` was persisted.
@@ -511,6 +519,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			const result = await helper.applyDefaultsAndOverwrites(
@@ -603,6 +612,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 		};
 
@@ -719,6 +729,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			const result = await helper.applyDefaultsAndOverwrites(
@@ -761,6 +772,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 		const registerType = (credentialType: ICredentialType) =>
@@ -1442,6 +1454,7 @@ describe('CredentialsHelper', () => {
 					externalSecretsConfig,
 					mock<AiGatewayService>(),
 					policyEnforcementService,
+					runtimeCredentialsResolver,
 				);
 				credentialsRepository.update.mockClear();
 				credentialsRepository.findOneByOrFail.mockResolvedValue({
@@ -1884,6 +1897,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				aiGatewayService,
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
@@ -1930,6 +1944,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				aiGatewayService,
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
@@ -1978,6 +1993,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				aiGatewayService,
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			const syntheticCred = {
@@ -2027,6 +2043,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				aiGatewayService,
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			aiGatewayService.getSyntheticCredential.mockResolvedValue({ apiKey: 'mock-jwt' });
@@ -2077,6 +2094,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				aiGatewayService,
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			aiGatewayService.getSyntheticCredential.mockResolvedValue({ apiKey: 'mock-jwt' });
@@ -2351,6 +2369,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
@@ -2769,6 +2788,7 @@ describe('CredentialsHelper', () => {
 				mock<ExternalSecretsConfig>(),
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 
 		// The loader sets the class's `supportedNodes` to short names (e.g. "restrictedConsumer");
@@ -3578,6 +3598,7 @@ describe('CredentialsHelper', () => {
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
 				policyEnforcementService,
+				runtimeCredentialsResolver,
 			);
 		});
 

@@ -3468,6 +3468,8 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
+	/** Values a trigger request carried, resolvable only inside admin-managed credentials. */
+	$runtimeCredentials?: IDataObject;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };
 	/** @deprecated */

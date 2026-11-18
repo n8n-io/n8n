@@ -13,7 +13,7 @@
  *     CSV list of aliases and emits one item per alias.
  */
 
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { ExecutionRepository, type IWorkflowDb, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -34,6 +34,8 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { saveCredential } from '../shared/db/credentials';
+import { LicenseMocker } from '../shared/license';
 import { createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
@@ -106,9 +108,33 @@ const runtimeCredentialEcho: INodeType = {
 	},
 };
 
+// Registered under the HTTP Request type, because only nodes that enforce domain
+// restrictions may resolve `$runtimeCredentials`.
+const CONSUMER_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+
+const credentialConsumer: INodeType = {
+	description: {
+		displayName: 'Credential Consumer',
+		name: 'httpRequest',
+		group: ['transform'],
+		version: 1,
+		description: 'Returns the header that its Header Auth credential resolves to',
+		defaults: { name: 'Consumer' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: [{ name: 'httpHeaderAuth', required: true }],
+		properties: [],
+	},
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const credentials = await this.getCredentials('httpHeaderAuth');
+		return [[{ json: { headerName: credentials.name, headerValue: credentials.value } }]];
+	},
+};
+
 const NODE_TYPES: INodeTypeData = {
 	[TRIGGER_NODE_TYPE]: { type: testSensitiveTrigger, sourcePath: '' },
 	[ECHO_NODE_TYPE]: { type: runtimeCredentialEcho, sourcePath: '' },
+	[CONSUMER_NODE_TYPE]: { type: credentialConsumer, sourcePath: '' },
 };
 
 // ---------------------------------------------------------------------------
@@ -161,10 +187,41 @@ function buildWorkflow() {
 	};
 }
 
+function buildConsumerWorkflow(credential: { id: string; name: string }) {
+	return {
+		name: 'Runtime Credentials Consumer',
+		nodes: [
+			{
+				id: uuid(),
+				name: 'Trigger',
+				type: TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			},
+			{
+				id: uuid(),
+				name: 'Consumer',
+				type: CONSUMER_NODE_TYPE,
+				typeVersion: 1,
+				position: [200, 0] as [number, number],
+				parameters: {},
+				credentials: { httpHeaderAuth: credential },
+			},
+		],
+		connections: {
+			Trigger: {
+				main: [[{ node: 'Consumer', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+		},
+	};
+}
+
 function buildExecutionData(triggerNode: INode): IRunExecutionData {
 	const startItem: IExecuteData = {
 		node: triggerNode,
-		data: { main: [[{ json: { ...TRIGGER_PAYLOAD } }]] },
+		// Deep copy: the strip clears values in place, so a shallow copy leaks into the next test.
+		data: { main: [[{ json: structuredClone(TRIGGER_PAYLOAD) }]] },
 		source: null,
 	};
 	return createRunExecutionData({
@@ -201,6 +258,9 @@ describe('runtime-credentials module — integration', () => {
 		await Container.get(ExecutionContextHookRegistry).init();
 
 		await utils.initNodeTypes(NODE_TYPES);
+		await utils.initCredentialsTypes();
+		// Decrypting a credential consults the license state (external secrets).
+		new LicenseMocker().mockLicenseState(Container.get(LicenseState));
 		await utils.initBinaryDataService();
 
 		owner = await createOwner();
@@ -209,7 +269,12 @@ describe('runtime-credentials module — integration', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['ExecutionEntity', 'WorkflowEntity']);
+		await testDb.truncate([
+			'ExecutionEntity',
+			'WorkflowEntity',
+			'SharedCredentials',
+			'CredentialsEntity',
+		]);
 	});
 
 	afterAll(async () => {
@@ -218,11 +283,12 @@ describe('runtime-credentials module — integration', () => {
 		delete process.env.N8N_SECURITY_SENSITIVE_FIELD_RULES;
 	});
 
-	async function waitForExecution(executionId: string, timeout = 10_000): Promise<void> {
+	async function waitForExecution(executionId: string, timeout = 5_000): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
 			const execution = await executionRepository.findOneBy({ id: executionId });
-			if (execution?.finished) return;
+			// A failed run never sets `finished`, so wait for any final status.
+			if (execution && ['success', 'error', 'crashed'].includes(execution.status)) return;
 			await new Promise((r) => setTimeout(r, 50));
 		}
 		throw new Error(`Execution ${executionId} did not complete within ${timeout}ms`);
@@ -297,5 +363,71 @@ describe('runtime-credentials module — integration', () => {
 		expect(typeof secureArtifacts).toBe('string');
 		expect(secureArtifacts as string).not.toContain('secret-A');
 		expect(secureArtifacts as string).not.toContain('pw-B');
+	});
+	describe('$runtimeCredentials in credentials', () => {
+		async function runConsumer(credentialOverrides: {
+			isGlobal: boolean;
+			allowedHttpRequestDomains: string;
+		}) {
+			const credential = await saveCredential(
+				{
+					name: 'Inbound auth (runtime)',
+					type: 'httpHeaderAuth',
+					isGlobal: credentialOverrides.isGlobal,
+					data: {
+						name: 'Authorization',
+						value: '={{ $runtimeCredentials.apiKey }}',
+						allowedHttpRequestDomains: credentialOverrides.allowedHttpRequestDomains,
+						allowedDomains: 'api.partner.test',
+					},
+				} as Parameters<typeof saveCredential>[0],
+				{ user: owner, role: 'credential:owner' },
+			);
+			const workflow = await createWorkflow(
+				buildConsumerWorkflow({ id: credential.id, name: credential.name }) as Partial<IWorkflowDb>,
+				owner,
+			);
+			const triggerNode = workflow.nodes.find((n) => n.name === 'Trigger') as INode;
+
+			const executionId = await workflowRunner.run(
+				{
+					workflowData: workflow,
+					userId: owner.id,
+					executionMode: 'webhook',
+					executionData: buildExecutionData(triggerNode),
+				},
+				true,
+			);
+			await waitForExecution(executionId);
+			return await loadExecution(executionId);
+		}
+
+		it('resolves the stripped trigger value in an admin-managed credential', async () => {
+			const execution = await runConsumer({ isGlobal: true, allowedHttpRequestDomains: 'domains' });
+
+			expect(execution.data.resultData.error?.message).toBeUndefined();
+			expect(execution.status).toBe('success');
+			const output = execution.data.resultData.runData.Consumer?.[0]?.data?.main?.[0]?.[0]?.json;
+			expect(output).toEqual({ headerName: 'Authorization', headerValue: 'secret-A' });
+		});
+
+		it.each([
+			[
+				'a credential that is not global',
+				{ isGlobal: false, allowedHttpRequestDomains: 'domains' },
+				'available to all users',
+			],
+			[
+				'a credential without a domain restriction',
+				{ isGlobal: true, allowedHttpRequestDomains: 'all' },
+				'specific domains',
+			],
+		])('fails the execution for %s', async (_name, overrides, message) => {
+			const execution = await runConsumer(overrides);
+
+			expect(execution.status).toBe('error');
+			expect(execution.data.resultData.error?.message).toContain(message);
+			expect(JSON.stringify(execution.data.resultData.runData)).not.toContain('secret-A');
+		});
 	});
 });

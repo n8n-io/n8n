@@ -115,6 +115,7 @@ export { WorkflowVersionedSettingsService } from './workflows/workflow-versioned
 export {
 	RuntimeCredentialProxyService,
 	type RuntimeCredentialProvider,
+	type RuntimeCredentialValues,
 } from './services/runtime-credential-proxy.service';
 export {
 	InstanceRegistryProxyService,
