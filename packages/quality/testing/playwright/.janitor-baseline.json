@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-27T03:21:27.407Z",
-	"totalViolations": 52,
+	"generated": "2026-11-18T00:13:57.018Z",
+	"totalViolations": 49,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -129,28 +129,6 @@
 				"line": 143,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
-			}
-		],
-		"pages/WorkflowSettingsModal.ts": [
-			{
-				"rule": "scope-lockdown",
-				"line": 84,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 92,
-				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "d38a3afc984b"
-			}
-		],
-		"pages/WorkflowSharingModal.ts": [
-			{
-				"rule": "scope-lockdown",
-				"line": 15,
-				"message": "WorkflowSharingModal: Unscoped locator - use this.container instead of this.page",
-				"hash": "32955f46012b"
 			}
 		],
 		"tests/e2e/chat-hub/chat-hub-attachment.spec.ts": [
