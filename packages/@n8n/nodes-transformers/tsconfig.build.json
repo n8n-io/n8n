@@ -1,0 +1,10 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/modern/tsconfig.cjs.go.json"],
+	"compilerOptions": {
+		"outDir": "dist",
+		"declaration": true,
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+	},
+	"include": ["engine/**/*.ts", "nodes/**/*.ts"],
+	"exclude": ["node_modules"]
+}

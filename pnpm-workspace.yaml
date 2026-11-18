@@ -387,6 +387,7 @@ overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
   '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
   sharp: npm:empty-npm-package@1.0.0
+  onnxruntime-node: npm:onnxruntime-web@1.31.0-dev.20260914-8d85527a0
   ast-types: 0.16.1
   baseline-browser-mapping: ^2.11.0
   '@azure/identity': 4.13.0

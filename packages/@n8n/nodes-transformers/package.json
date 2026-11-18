@@ -1,0 +1,42 @@
+{
+  "name": "@n8n/n8n-nodes-transformers",
+  "version": "0.1.0",
+  "description": "Nodes that train local classifiers on frozen embedding models with transformers.js",
+  "main": "index.js",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm run watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --build tsconfig.build.json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
+    "build:unchecked": "tsc --build tsconfig.build.json --noCheck && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint nodes engine --quiet",
+    "lint:fix": "eslint nodes engine --fix",
+    "watch": "tsc-watch -p tsconfig.build.json --onSuccess \"pnpm n8n-generate-metadata\""
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [],
+    "nodes": [
+      "dist/nodes/LearningSwitch/LearningSwitch.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@typescript/native": "catalog:typescript-tooling",
+    "typescript": "catalog:typescript-tooling"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.2",
+    "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
+    "@napi-rs/image": "catalog:",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*"
+  }
+}

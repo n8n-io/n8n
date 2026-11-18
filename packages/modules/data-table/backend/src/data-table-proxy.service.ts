@@ -40,6 +40,7 @@ const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTableTool',
 	'n8n-nodes-base.evaluationTrigger',
 	'n8n-nodes-base.evaluation',
+	'@n8n/n8n-nodes-transformers.learningSwitch',
 ] as const;
 
 type AllowedNode = (typeof ALLOWED_NODES)[number];

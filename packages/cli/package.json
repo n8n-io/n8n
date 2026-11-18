@@ -189,6 +189,7 @@
     "@n8n/mcp-apps": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/n8n-nodes-langchain": "workspace:*",
+    "@n8n/n8n-nodes-transformers": "workspace:*",
     "@n8n/node-engine-compatibility": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/scheduler": "workspace:*",

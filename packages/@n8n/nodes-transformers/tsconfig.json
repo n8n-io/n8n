@@ -1,0 +1,14 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
+	],
+	"compilerOptions": {
+		"types": ["node"]
+	},
+	"include": ["engine/**/*.ts", "nodes/**/*.ts"],
+	"references": [
+		{ "path": "../../core/tsconfig.build.json" },
+		{ "path": "../../workflow/tsconfig.build.cjs.json" }
+	]
+}
