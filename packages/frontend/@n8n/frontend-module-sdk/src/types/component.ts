@@ -1,6 +1,6 @@
 import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
 import type { DatatableColumn } from '@n8n/design-system';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import type { INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
 
 /**
  * UI a module renders but does not own.
@@ -27,8 +27,8 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * itself and renders nothing when insights are not available to the user.
  * `resources-list-layout` is the shared resource list page (search, sort, pagination, empty
  * state). It takes the props and slots of the shell's `ResourcesListLayout`.
- * `node-type-icon` is the icon of a node type. It takes `nodeType` (the node type description) and `size`.
- * `credential-type-icon` is the icon of a credential type. It takes `credentialTypeName` and `size`.
+ * `node-type-icon` is the icon of a node type. It takes `SlotNodeTypeIconProps`.
+ * `credential-type-icon` is the icon of a credential type. It takes `SlotCredentialTypeIconProps`.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'
@@ -89,6 +89,16 @@ export type SlotCodeDiffProps = {
 
 export type SlotPromotionChangesProps = {
 	reviewId: string;
+};
+
+export type SlotNodeTypeIconProps = {
+	nodeType: INodeTypeDescription | null;
+	size?: number;
+};
+
+export type SlotCredentialTypeIconProps = {
+	credentialTypeName: string;
+	size?: number;
 };
 
 /**
