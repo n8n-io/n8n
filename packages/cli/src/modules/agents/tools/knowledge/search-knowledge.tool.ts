@@ -2,7 +2,11 @@ import { Tool } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
-import type { KnowledgeRetriever } from '@/modules/knowledge/knowledge-retriever';
+import type {
+	KnowledgePreparationWait,
+	KnowledgeRetrievalObserver,
+	KnowledgeRetriever,
+} from '@/modules/knowledge/knowledge-retriever';
 import {
 	findKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -105,6 +109,29 @@ function withFileUploadedAt(
 	}
 
 	return { ...result, readFile: { fileId: output.fileId, uploadedAt: output.createdAt } };
+}
+
+/** Keeps the wait that the retriever reports for one call. */
+function observePreparationWait() {
+	const observed: { wait?: KnowledgePreparationWait } = {};
+	const observer: KnowledgeRetrievalObserver = {
+		onPreparationWait: (wait) => {
+			observed.wait = wait;
+		},
+	};
+
+	return { observer, observed };
+}
+
+function withPreparationWait(
+	result: KnowledgeToolCallResult,
+	wait: KnowledgePreparationWait | undefined,
+): KnowledgeToolCallResult {
+	if (!wait) {
+		return result;
+	}
+
+	return { ...result, preparationWait: wait };
 }
 
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {
@@ -324,11 +351,15 @@ export function createKnowledgeRetrievalTools({
 		.input(searchKnowledgeTextInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_search');
+			const preparation = observePreparationWait();
 			const startedAt = Date.now();
-			const output = await runKnowledgeTool(async () => await retriever.searchText(scope, input));
+			const output = await runKnowledgeTool(
+				async () => await retriever.searchText(scope, input, preparation.observer),
+			);
 			const durationMs = Date.now() - startedAt;
 			const result = toKnowledgeToolCallResult(output, toSearchKnowledgeTextModelOutput);
-			finishToolCall(withSearchStats(result, output, durationMs));
+			const resultWithStats = withSearchStats(result, output, durationMs);
+			finishToolCall(withPreparationWait(resultWithStats, preparation.observed.wait));
 			return output;
 		})
 		.toModelOutput(toSearchKnowledgeTextModelOutput);
@@ -340,9 +371,13 @@ export function createKnowledgeRetrievalTools({
 		.input(readKnowledgeFileInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_read');
-			const output = await runKnowledgeTool(async () => await retriever.readFile(scope, input));
+			const preparation = observePreparationWait();
+			const output = await runKnowledgeTool(
+				async () => await retriever.readFile(scope, input, preparation.observer),
+			);
 			const result = toKnowledgeToolCallResult(output, toReadKnowledgeFileModelOutput);
-			finishToolCall(withFileUploadedAt(result, output));
+			const resultWithFile = withFileUploadedAt(result, output);
+			finishToolCall(withPreparationWait(resultWithFile, preparation.observed.wait));
 			return output;
 		})
 		.toModelOutput(toReadKnowledgeFileModelOutput);

@@ -1,4 +1,5 @@
 import {
+	type ExecutionLedgerBacklogStats,
 	type ExecutionLedgerEndedFacts,
 	type ExecutionLedgerStartedFacts,
 	type ExecutionLedgerWriter,
@@ -34,6 +35,10 @@ export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
 
 		await this.repository.append(toEndedRow(facts, projectId, uuidv7()), ctx);
 		return true;
+	}
+
+	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
+		return await this.repository.getBacklogStats();
 	}
 
 	/**

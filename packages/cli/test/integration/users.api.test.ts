@@ -306,6 +306,21 @@ describe('GET /users', () => {
 				expect(_response.body.data.items).toHaveLength(0);
 			});
 
+			test('should match each fullText term against any name or email field', async () => {
+				const search = async (fullText: string) => {
+					const response = await ownerAgent
+						.get('/users')
+						.query({ filter: JSON.stringify({ fullText }) })
+						.expect(200);
+					return response.body.data.items.map((user: PublicUser) => user.email);
+				};
+
+				expect(await search('member1lastname MEMBER1FIRSTNAME')).toEqual([member1.email]);
+				expect(await search('  member1firstname  ')).toEqual([member1.email]);
+				expect(await search('member1firstname member2lastname')).toEqual([]);
+				expect(await search('member_firstname')).toEqual([]);
+			});
+
 			test('should filter users by ids', async () => {
 				const response = await ownerAgent
 					.get('/users')

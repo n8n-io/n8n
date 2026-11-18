@@ -1167,6 +1167,7 @@ export class TelemetryEventRelay extends EventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 		failureReason,
+		source,
 	}: RelayEventMap['community-package-installed']) {
 		this.telemetry.track('cnr package install finished', {
 			user_id: user.id,
@@ -1178,6 +1179,7 @@ export class TelemetryEventRelay extends EventRelay {
 			package_author: packageAuthor,
 			package_author_email: packageAuthorEmail,
 			failure_reason: failureReason,
+			source,
 		});
 	}
 

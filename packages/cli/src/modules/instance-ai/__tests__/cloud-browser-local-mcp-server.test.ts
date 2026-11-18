@@ -70,6 +70,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		} as unknown as ToolDefinition;
 		const connection = {
 			isConnected: true,
+			getConnection: () => ({ activePageId: 'page-1' }),
 			connect: vi.fn().mockResolvedValue(undefined),
 			disconnect: vi.fn().mockResolvedValue(undefined),
 		};
@@ -216,6 +217,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		};
 		const domainRequest = (host: string) => ({
 			toolGroup: 'browser',
+			kind: 'host',
 			resource: host,
 			description: `Browser: ${host}`,
 			options: ['denyOnce', 'allowOnce', 'allowForSession'],
@@ -361,6 +363,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(confirmationRequest(result)).toEqual({
 					toolGroup: 'browser',
+					kind: 'credential-write',
 					resource: 'credentials',
 					description: 'Create credential "Acme API"',
 					options: ['denyOnce', 'allowOnce'],
@@ -627,6 +630,63 @@ describe('CloudBrowserLocalMcpServer', () => {
 	});
 
 	describe('other browser tools', () => {
+		it('refuses a call on a tab other than the active one', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			const result = await server.callTool({
+				name: 'browser_click',
+				arguments: { ref: 'e1', pageId: 'page-2' },
+			});
+
+			expect(result).toEqual({
+				content: [
+					{
+						type: 'text',
+						text: 'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.',
+					},
+				],
+				isError: true,
+			});
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('refuses a call with a pageId when the connection is gone', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			toolkits[0].connection.getConnection = () => {
+				throw new Error('Not connected');
+			};
+
+			const result = await server.callTool({
+				name: 'browser_click',
+				arguments: { ref: 'e1', pageId: 'page-1' },
+			});
+
+			expect(result).toEqual({
+				content: [
+					{
+						type: 'text',
+						text: 'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.',
+					},
+				],
+				isError: true,
+			});
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('runs a call that names the active tab', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			await server.callTool({ name: 'browser_click', arguments: { ref: 'e1', pageId: 'page-1' } });
+
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).toHaveBeenCalled();
+		});
+
 		it('asks for browser_start_session when no session is open', async () => {
 			const { server } = setup();
 
@@ -860,6 +920,111 @@ describe('CloudBrowserLocalMcpServer', () => {
 			await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
 
 			expect(sessionProvider.releaseSession).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('getLiveView', () => {
+		it('has no session before the agent opens one', async () => {
+			const { server } = setup();
+
+			expect(await server.getLiveView()).toEqual({ status: 'no-session' });
+		});
+
+		it('is starting while the session opens', async () => {
+			const { server, sessionProvider, start } = setup();
+			let openSession!: () => void;
+			sessionProvider.createSession.mockImplementationOnce(async () => {
+				await new Promise<void>((resolve) => (openSession = resolve));
+				return { id: 'sess-1', connectUrl: 'wss://connect/1' };
+			});
+
+			const started = start({ url: 'https://example.com' });
+			await vi.waitFor(() => expect(sessionProvider.createSession).toHaveBeenCalled());
+
+			expect(await server.getLiveView()).toEqual({ status: 'starting' });
+			openSession();
+			await started;
+		});
+
+		it('has no session after a session failed to open', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.createSession.mockRejectedValueOnce(new Error('HTTP 502'));
+
+			const result = await start({ url: 'https://example.com' });
+
+			expect(result.isError).toBe(true);
+			expect(await server.getLiveView()).toEqual({ status: 'no-session' });
+		});
+
+		it('rejects when the live view link cannot be fetched', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockRejectedValue(new Error('HTTP 502'));
+			await start({ url: 'https://example.com' });
+
+			await expect(server.getLiveView()).rejects.toThrow('HTTP 502');
+		});
+
+		it("returns the session's live view link", async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+			await start({ url: 'https://example.com' });
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+			});
+			expect(sessionProvider.getSessionLiveViewUrl).toHaveBeenCalledWith(scope, 'sess-1');
+		});
+
+		it('is starting when a new session replaced the one it asked about', async () => {
+			const { server, sessionProvider, start } = setup();
+			await start({ url: 'https://example.com' });
+			sessionProvider.createSession.mockResolvedValueOnce({
+				id: 'sess-2',
+				connectUrl: 'wss://connect/2',
+			});
+			sessionProvider.getSessionLiveViewUrl.mockImplementation(async (_scope, sessionId) => {
+				// The agent opens a new session while the gateway answers for the first one.
+				if (sessionId === 'sess-1') await start({ url: 'https://example.org' });
+				return `https://live.example.com/${sessionId}`;
+			});
+
+			expect(await server.getLiveView()).toEqual({ status: 'starting' });
+		});
+
+		it('is disconnected when the connection dropped', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			toolkits[0].connection.isConnected = false;
+
+			expect(await server.getLiveView()).toEqual({
+				status: 'disconnected',
+				reason: 'connectionLost',
+			});
+		});
+
+		it('is not found once the task released its browser', async () => {
+			const { server, start } = setup();
+			await start({ url: 'https://example.com' });
+			await server.release();
+
+			expect(await server.getLiveView()).toEqual({ status: 'not-found' });
+		});
+
+		describe('after an idle timeout', () => {
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
+
+			it('is disconnected', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				expect(await server.getLiveView()).toEqual({
+					status: 'disconnected',
+					reason: 'idleTimeout',
+				});
+			});
 		});
 	});
 });

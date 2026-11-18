@@ -10,6 +10,7 @@ import {
 	AgentChatResumeDto,
 	type AgentThreadUsageResponse,
 	ListSystemAgentThreadsQueryDto,
+	AgentChatMessagesQueryDto,
 	RenameSystemAgentThreadDto,
 	SystemAgentChatQueryDto,
 	type SystemAgentThreadSummary,
@@ -32,6 +33,7 @@ import type { AgentExecutionThreadKeyset } from '../repositories/agent-execution
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import { isOlderChatHistoryPage, parseChatHistoryPage } from '../utils/chat-history-page';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
 import { SystemAgentExecutionService } from './system-agent-execution.service';
@@ -243,15 +245,20 @@ export class SystemAgentChatController {
 	@Get('/:agentId/chat/:threadId/messages')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
+		_res: Response,
+		@Query query: AgentChatMessagesQueryDto = {},
 	): Promise<AgentChatMessagesResponse> {
 		const { agentId, threadId } = req.params;
+		const page = parseChatHistoryPage(query);
 		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
 		const history = await this.orchestrator.getConversationHistory({
 			threadId: thread.id,
 			projectId: thread.projectId,
 			agentId,
 			userId: req.user.id,
+			page,
 		});
+		if (isOlderChatHistoryPage(page)) return threadMessagesResponse(history, null);
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, thread.id);
 		return threadMessagesResponse(
 			history,
