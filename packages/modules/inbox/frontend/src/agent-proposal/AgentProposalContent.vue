@@ -282,17 +282,20 @@ function onTabChange(tab: string) {
 	background-color: var(--color--neutral-500);
 }
 
-/* Match the tab row of workflow reviews. */
 .tabRow {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-	padding-bottom: var(--review-tab-bar--indicator-overhang);
 	border-bottom: var(--border);
 
 	> :global(.n8n-tabs) {
-		transform: translateY(var(--spacing--sm));
+		align-self: flex-end;
+		margin-bottom: calc(-1 * var(--border-width));
+	}
+
+	[role='tablist'] {
+		align-items: flex-end;
 	}
 }
 
