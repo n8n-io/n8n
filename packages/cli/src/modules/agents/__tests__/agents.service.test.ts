@@ -173,6 +173,10 @@ function makeService() {
 
 	const agentServiceAccount = mock<AgentServiceAccountService>();
 	const approvalCleanup = mock<AgentApprovalCleanupService>();
+	const folderService = mock<FolderService>();
+	const licenseState = mock<LicenseState>();
+	licenseState.isFoldersLicensed.mockReturnValue(true);
+
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,

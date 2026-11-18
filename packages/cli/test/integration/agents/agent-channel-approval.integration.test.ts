@@ -169,17 +169,47 @@ describe('Durable channel approval lifecycle', () => {
 	afterEach(() => vi.restoreAllMocks());
 
 	it.each([
-		{ approved: true, destination: 'user', method: 'channel' },
-		{ approved: false, destination: 'user', method: 'channel' },
-		{ approved: true, destination: 'user', method: 'channel', deferResume: true },
-		{ approved: true, destination: 'channel', method: 'channel' },
-		{ approved: false, destination: 'channel', method: 'channel' },
-		{ approved: true, destination: 'channel', method: 'workflow' },
-		{ approved: false, destination: 'channel', method: 'workflow' },
-		{ approved: true, destination: 'channel', method: 'workflow', sequence: true },
-		{ approved: false, destination: 'channel', method: 'workflow', sequence: true },
-		{ approved: false, destination: 'channel', method: 'channel', cancelled: true },
-		{ approved: false, destination: 'channel', method: 'workflow', cancelled: true },
+		{ label: 'single review', approved: true, destination: 'user', method: 'channel' },
+		{ label: 'single review', approved: false, destination: 'user', method: 'channel' },
+		{
+			label: 'deferred resume',
+			approved: true,
+			destination: 'user',
+			method: 'channel',
+			deferResume: true,
+		},
+		{ label: 'single review', approved: true, destination: 'channel', method: 'channel' },
+		{ label: 'single review', approved: false, destination: 'channel', method: 'channel' },
+		{ label: 'single review', approved: true, destination: 'channel', method: 'workflow' },
+		{ label: 'single review', approved: false, destination: 'channel', method: 'workflow' },
+		{
+			label: 'review sequence',
+			approved: true,
+			destination: 'channel',
+			method: 'workflow',
+			sequence: true,
+		},
+		{
+			label: 'review sequence',
+			approved: false,
+			destination: 'channel',
+			method: 'workflow',
+			sequence: true,
+		},
+		{
+			label: 'cancelled review',
+			approved: false,
+			destination: 'channel',
+			method: 'channel',
+			cancelled: true,
+		},
+		{
+			label: 'cancelled review',
+			approved: false,
+			destination: 'channel',
+			method: 'workflow',
+			cancelled: true,
+		},
 	] as const)(
 		'resumes a $method approval to a $destination with approved=$approved ($label)',
 		async (scenario) => {

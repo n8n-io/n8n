@@ -10,7 +10,10 @@ import type { INode, IRunExecutionData, IExecuteData } from 'n8n-workflow';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ResponseWaitTracker } from '@/executions/response-wait-tracker.service';
-import { AgentChannelHitlService } from '../agent-channel-hitl.service';
+import {
+	AgentChannelHitlService,
+	APPROVAL_JOB_LOOKUP_DELAYS_MS,
+} from '../agent-channel-hitl.service';
 import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegration,
@@ -28,6 +31,7 @@ function setup() {
 	const executions = mock<ExecutionPersistence>();
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const tracker = mock<ResponseWaitTracker>();
+	tracker.respond.mockResolvedValue(true);
 	Container.set(ResponseWaitTracker, tracker);
 	const registry = new ChatIntegrationRegistry();
 	// A plain object: `mock()` wraps the shared adapter again in every test.
@@ -218,7 +222,7 @@ it('reads the job again when the response arrives before the job is saved', asyn
 		await vi.advanceTimersByTimeAsync(APPROVAL_JOB_LOOKUP_DELAYS_MS[0]);
 		expect(await result).toBe(true);
 		expect(jobs.findWorkflowJobByExecutionId).toHaveBeenCalledTimes(2);
-		expect(tracker.startExecution).toHaveBeenCalledOnce();
+		expect(tracker.respond).toHaveBeenCalledOnce();
 	} finally {
 		vi.useRealTimers();
 	}
@@ -237,7 +241,7 @@ it('does not resume when the job stays missing', async () => {
 		expect(jobs.findWorkflowJobByExecutionId).toHaveBeenCalledTimes(
 			APPROVAL_JOB_LOOKUP_DELAYS_MS.length + 1,
 		);
-		expect(tracker.startExecution).not.toHaveBeenCalled();
+		expect(tracker.respond).not.toHaveBeenCalled();
 	} finally {
 		vi.useRealTimers();
 	}
@@ -245,9 +249,9 @@ it('does not resume when the job stays missing', async () => {
 
 it('reports the response as unavailable when the resume is refused', async () => {
 	const { tracker, respond } = setup();
-	tracker.startExecution.mockResolvedValue(false);
+	tracker.respond.mockResolvedValue(false);
 	expect(await respond()).toBe('unavailable');
-	expect(tracker.startExecution).toHaveBeenCalledOnce();
+	expect(tracker.respond).toHaveBeenCalledOnce();
 });
 
 it('treats a concurrent response as already handled', async () => {

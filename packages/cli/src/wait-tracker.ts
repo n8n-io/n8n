@@ -146,10 +146,7 @@ export class WaitTracker {
 	}
 
 	/** Resolves `false` when the resume-attempt limit refuses the resume. */
-	async startExecution(
-		executionId: string,
-		nodeResponse?: { nodeId: string; data: INodeExecutionData[] },
-	): Promise<boolean> {
+	async startExecution(executionId: string): Promise<boolean> {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
@@ -158,21 +155,18 @@ export class WaitTracker {
 		if (this.resuming.has(executionId)) throw new ExecutionAlreadyResumingError(executionId);
 		this.resuming.add(executionId);
 		try {
-			return await this.resumeExecution(executionId, nodeResponse);
+			return await this.resumeExecution(executionId);
 		} finally {
 			this.resuming.delete(executionId);
 		}
 	}
 
-	private async resumeExecution(
-		executionId: string,
-		nodeResponse?: { nodeId: string; data: INodeExecutionData[] },
-	): Promise<boolean> {
+	private async resumeExecution(executionId: string): Promise<boolean> {
 		const claim = await this.resumeAttemptService.claim(executionId, 'waiting');
 		if (!claim.granted) return false;
 
 		try {
-			await this.loadAndRun(executionId, nodeResponse);
+			await this.loadAndRun(executionId);
 			return true;
 		} catch (error) {
 			// A failure that repeats on every poll keeps its attempt, so the limit stops it

@@ -92,8 +92,9 @@ export class AgentChannelHitlService {
 
 		const approved = reference.decision === 'a';
 		const { ResponseWaitTracker } = await import('@/executions/response-wait-tracker.service.js');
+		let resumed: boolean;
 		try {
-			await Container.get(ResponseWaitTracker).respond(reference.executionId, {
+			resumed = await Container.get(ResponseWaitTracker).respond(reference.executionId, {
 				nodeId: node.id,
 				data: [
 					{
