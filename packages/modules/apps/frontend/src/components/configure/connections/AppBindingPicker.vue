@@ -50,6 +50,16 @@ const selected = ref<BindableResource>();
 const permissions = ref<BindingPermission[]>([]);
 
 const config = computed(() => BINDING_KINDS[props.kind]);
+const allRowsConfirmed = ref(false);
+const changesEveryRow = computed(
+	() =>
+		props.kind === 'dataTable' &&
+		!selected.value?.rowRule &&
+		permissions.value.some((permission) => permission === 'update' || permission === 'delete'),
+);
+const canAdd = computed(
+	() => permissions.value.length > 0 && (!changesEveryRow.value || allRowsConfirmed.value),
+);
 const moreResults = computed(() => Math.max(0, resourceCount.value - resources.value.length));
 
 async function fetchResources(query: string) {
@@ -112,6 +122,7 @@ function choose(resource: BindableResource) {
 	}
 	selected.value = resource;
 	permissions.value = [...config.value.defaultPermissions];
+	allRowsConfirmed.value = false;
 }
 
 function toggle(permission: BindingPermission, checked: boolean) {
@@ -151,9 +162,29 @@ onScopeDispose(() => {
 						:data-test-id="`app-binding-picker-permission-${permission}`"
 						@update:model-value="toggle(permission, $event)"
 					/>
+					<N8nText
+						v-if="kind === 'dataTable'"
+						size="small"
+						color="text-light"
+						data-test-id="app-binding-picker-row-access"
+					>
+						{{
+							selected.rowRule
+								? i18n.baseText('apps.configure.connections.rowAccess.own', {
+										interpolate: { column: selected.rowRule.column },
+									})
+								: i18n.baseText('apps.configure.connections.rowAccess.all')
+						}}
+					</N8nText>
+					<N8nCheckbox
+						v-if="changesEveryRow"
+						v-model="allRowsConfirmed"
+						:label="i18n.baseText('apps.configure.connections.rowAccess.confirmAll')"
+						data-test-id="app-binding-picker-confirm-all-rows"
+					/>
 					<N8nButton
 						size="small"
-						:disabled="permissions.length === 0"
+						:disabled="!canAdd"
 						data-test-id="app-binding-picker-confirm"
 						@click="add(selected, permissions)"
 					>

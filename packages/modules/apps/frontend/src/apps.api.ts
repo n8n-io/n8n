@@ -11,6 +11,7 @@ import {
 	type PublishAppDto,
 	type RestoreAppVersionDto,
 	type UpdateAppDto,
+	type DataTableRowRule,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -146,7 +147,8 @@ export async function setAppBindings(
 	});
 }
 
-export type BindableResource = { id: string; name: string };
+/** `rowRule` is set for a data table only. `null` means every visitor sees every row. */
+export type BindableResource = { id: string; name: string; rowRule?: DataTableRowRule | null };
 export type BindableResourceList = { data: BindableResource[]; count: number };
 
 const BINDABLE_RESOURCE_LIMIT = 100;
@@ -215,7 +217,14 @@ export async function listBindableResources(
 		projectId,
 		sanitizeLikeQuery(query),
 	);
-	return { data: data.map(({ id, name }) => ({ id, name })), count };
+	return {
+		data: data.map(({ id, name, rowRule }) => ({
+			id,
+			name,
+			...(kind === 'dataTable' ? { rowRule: rowRule ?? null } : {}),
+		})),
+		count,
+	};
 }
 
 export async function unpublishApp(

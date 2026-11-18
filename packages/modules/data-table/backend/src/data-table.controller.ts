@@ -9,6 +9,7 @@ import {
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
 	RenameDataTableColumnDto,
+	SetDataTableRowRuleDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -39,6 +40,7 @@ import {
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import { assertSchemaWriteAccess } from './data-table-permissions';
+import { DataTableRowRuleService } from './data-table-row-rule.service';
 import { DataTableService } from './data-table.service';
 import { managementRowAccess } from './data-table.types';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
@@ -53,6 +55,7 @@ export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly rowRuleService: DataTableRowRuleService,
 	) {}
 
 	private handleDataTableColumnOperationError(e: unknown): never {
@@ -154,6 +157,38 @@ export class DataTableController {
 			} else {
 				throw e;
 			}
+		}
+	}
+
+	@Patch('/:dataTableId/row-rule')
+	@ProjectScope('dataTable:update')
+	async setRowRule(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: SetDataTableRowRuleDto,
+	) {
+		assertSchemaWriteAccess(this.instanceWriteAccess);
+		try {
+			return await this.rowRuleService.setRowRule(dataTableId, req.params.projectId, dto.rowRule);
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError) throw new NotFoundError(e.message);
+			return this.handleDataTableColumnOperationError(e);
+		}
+	}
+
+	@Get('/:dataTableId/row-rule/impact')
+	@ProjectScope('dataTable:update')
+	async getRowRuleImpact(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+	) {
+		try {
+			return await this.rowRuleService.getImpact(dataTableId, req.params.projectId);
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError) throw new NotFoundError(e.message);
+			throw e;
 		}
 	}
 

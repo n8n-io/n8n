@@ -4,6 +4,7 @@ export * from './data-table-column.repository';
 export type { DataTableEventMap } from './data-table-events';
 export * from './data-table-proxy.service';
 export * from './data-table-rows.repository';
+export * from './data-table-row-rule.service';
 export * from './data-table-size-validator.service';
 export * from './data-table.entity';
 export * from './data-table.repository';

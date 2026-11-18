@@ -8,7 +8,7 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import type { DataTablesSizeResult } from 'n8n-workflow';
-import type { DataTableListSortBy } from '@n8n/api-types';
+import type { DataTableListSortBy, DataTableRowRule, DataTableRowRuleImpact } from '@n8n/api-types';
 
 export const fetchDataTablesApi = async (
 	context: IRestApiContext,
@@ -87,6 +87,32 @@ export const updateDataTableApi = async (
 		{
 			name,
 		},
+	);
+};
+
+export const setDataTableRowRuleApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	rowRule: DataTableRowRule | null,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/row-rule`,
+		{ rowRule },
+	);
+};
+
+export const getDataTableRowRuleImpactApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+) => {
+	return await makeRestApiRequest<DataTableRowRuleImpact>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/row-rule/impact`,
 	);
 };
 

@@ -135,12 +135,26 @@ describe('apps.api', () => {
 	it('lists the data tables of a project', async () => {
 		vi.mocked(makeRestApiRequest).mockResolvedValue({
 			count: 1,
-			data: [{ id: 't1', name: 'Tasks' }],
+			data: [
+				{ id: 't1', name: 'Tasks' },
+				{
+					id: 't2',
+					name: 'Leads',
+					rowRule: { column: 'owner', match: 'id', runsWithoutUser: 'deny' },
+				},
+			],
 		});
 
 		expect(await listBindableResources(context, 'project-1', 'dataTable', likeQuery)).toEqual({
 			count: 1,
-			data: [{ id: 't1', name: 'Tasks' }],
+			data: [
+				{ id: 't1', name: 'Tasks', rowRule: null },
+				{
+					id: 't2',
+					name: 'Leads',
+					rowRule: { column: 'owner', match: 'id', runsWithoutUser: 'deny' },
+				},
+			],
 		});
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			context,

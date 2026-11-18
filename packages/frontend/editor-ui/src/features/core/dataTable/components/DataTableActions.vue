@@ -7,6 +7,7 @@ import {
 	DATA_TABLE_CARD_ACTIONS,
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
 	IMPORT_CSV_MODAL_KEY,
+	ROW_ACCESS_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
 
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
@@ -22,6 +23,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
 import ImportCsvModal from './ImportCsvModal.vue';
+import RowAccessModal from './RowAccessModal.vue';
 type Props = {
 	dataTable: DataTable;
 	/** Locks rename and delete, for example on a protected instance. Row actions stay available. */
@@ -55,6 +57,7 @@ const telemetry = useTelemetry();
 
 const downloadModalKey = computed(() => `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${props.dataTable.id}`);
 const importCsvModalKey = computed(() => `${IMPORT_CSV_MODAL_KEY}-${props.dataTable.id}`);
+const rowAccessModalKey = computed(() => `${ROW_ACCESS_MODAL_KEY}-${props.dataTable.id}`);
 
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const schemaReadOnlyTooltip = props.schemaReadOnly ? getProtectedInstanceTooltip() : undefined;
@@ -68,6 +71,12 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
 			disabled: !dataTableStore.projectPermissions.dataTable.readRow,
+		},
+		{
+			label: i18n.baseText('dataTable.rowAccess'),
+			value: DATA_TABLE_CARD_ACTIONS.ROW_ACCESS,
+			disabled: !dataTableStore.projectPermissions.dataTable.update || props.schemaReadOnly,
+			tooltip: schemaReadOnlyTooltip,
 		},
 		{
 			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')
@@ -107,6 +116,10 @@ const onAction = async (action: string) => {
 		}
 		case DATA_TABLE_CARD_ACTIONS.IMPORT_CSV: {
 			uiStore.openModal(importCsvModalKey.value);
+			break;
+		}
+		case DATA_TABLE_CARD_ACTIONS.ROW_ACCESS: {
+			uiStore.openModal(rowAccessModalKey.value);
 			break;
 		}
 		case DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV: {
@@ -194,6 +207,11 @@ const deleteDataTable = async () => {
 			:data-table="dataTable"
 			@imported="emit('imported')"
 			@close="() => uiStore.closeModal(importCsvModalKey)"
+		/>
+		<RowAccessModal
+			:modal-name="rowAccessModalKey"
+			:data-table="dataTable"
+			@close="() => uiStore.closeModal(rowAccessModalKey)"
 		/>
 	</div>
 </template>

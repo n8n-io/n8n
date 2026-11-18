@@ -509,6 +509,7 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
+export { SetDataTableRowRuleDto } from './data-table/set-data-table-row-rule.dto';
 export {
 	ClearDataTableRowsResponsePublicDto,
 	CreateDataTableColumnPublicDto,

@@ -3,6 +3,7 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { DataTableRowRuleService } from '../data-table-row-rule.service';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { managementRowAccess, type RowAccess } from '../data-table.types';
@@ -198,6 +199,43 @@ describe('data table row rule', () => {
 			await expect(
 				names({ kind: 'actor', actor: { id: 'alice-id', email: null } }),
 			).rejects.toThrow(DataTableRowAccessError);
+		});
+	});
+
+	describe('setting the rule', () => {
+		const rule: DataTableRowRule = { column: 'owner', match: 'id', runsWithoutUser: 'deny' };
+
+		it('applies a rule on a text column', async () => {
+			await Container.get(DataTableRowRuleService).setRowRule(tableId, project.id, rule);
+
+			expect(await names(bob)).toEqual(['b1']);
+		});
+
+		it('refuses an unknown column', async () => {
+			await expect(
+				Container.get(DataTableRowRuleService).setRowRule(tableId, project.id, {
+					...rule,
+					column: 'missing',
+				}),
+			).rejects.toThrow(DataTableValidationError);
+		});
+
+		it('refuses a column that is not text', async () => {
+			await service.addColumn(tableId, project.id, { name: 'score', type: 'number' });
+
+			await expect(
+				Container.get(DataTableRowRuleService).setRowRule(tableId, project.id, {
+					...rule,
+					column: 'score',
+				}),
+			).rejects.toThrow(DataTableValidationError);
+		});
+
+		it('removes the rule', async () => {
+			await setRule(rule);
+			await Container.get(DataTableRowRuleService).setRowRule(tableId, project.id, null);
+
+			expect(await names(bob)).toEqual(['a1', 'a2', 'b1', 'nobody']);
 		});
 	});
 

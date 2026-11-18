@@ -1,3 +1,5 @@
+import type { DataTableRowRule } from '@n8n/api-types';
+
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
 export type DataTable = {
@@ -9,6 +11,8 @@ export type DataTable = {
 	updatedAt: string;
 	projectId: string;
 	project?: Project;
+	/** Limits people to their own rows. `null` or missing means everyone sees all rows. */
+	rowRule?: DataTableRowRule | null;
 };
 
 // Single sources of truth for supported types

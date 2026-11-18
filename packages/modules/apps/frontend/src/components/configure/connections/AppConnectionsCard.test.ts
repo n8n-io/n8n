@@ -205,6 +205,46 @@ describe('AppConnectionsCard', () => {
 		);
 	});
 
+	it('asks to confirm that every visitor can change every row of a table without row access', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(listBindableResources).mockResolvedValue({
+			count: 1,
+			data: [{ id: 't2', name: 'Orders', rowRule: null }],
+		});
+		const { findByTestId, getByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-add-dataTable'));
+		await userEvent.click(await findByTestId('app-binding-picker-item-t2'));
+		await userEvent.click(await findByTestId('app-binding-picker-permission-update'));
+
+		expect(getByTestId('app-binding-picker-confirm')).toBeDisabled();
+		await userEvent.click(getByTestId('app-binding-picker-confirm-all-rows'));
+		expect(getByTestId('app-binding-picker-confirm')).toBeEnabled();
+	});
+
+	it('needs no confirmation for a table with row access', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(listBindableResources).mockResolvedValue({
+			count: 1,
+			data: [
+				{
+					id: 't2',
+					name: 'Orders',
+					rowRule: { column: 'owner', match: 'id', runsWithoutUser: 'deny' },
+				},
+			],
+		});
+		const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-add-dataTable'));
+		await userEvent.click(await findByTestId('app-binding-picker-item-t2'));
+		await userEvent.click(await findByTestId('app-binding-picker-permission-update'));
+
+		expect(getByTestId('app-binding-picker-row-access')).toHaveTextContent('owner');
+		expect(queryByTestId('app-binding-picker-confirm-all-rows')).not.toBeInTheDocument();
+		expect(getByTestId('app-binding-picker-confirm')).toBeEnabled();
+	});
+
 	it('saves permission changes when the binding popover closes', async () => {
 		providePermissions(['app:update']);
 		const { findByTestId } = renderComponent();

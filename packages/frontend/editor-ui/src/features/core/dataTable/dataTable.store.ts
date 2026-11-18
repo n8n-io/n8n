@@ -7,6 +7,8 @@ import {
 	createDataTableApi,
 	deleteDataTableApi,
 	updateDataTableApi,
+	setDataTableRowRuleApi,
+	getDataTableRowRuleImpactApi,
 	addDataTableColumnApi,
 	deleteDataTableColumnApi,
 	moveDataTableColumnApi,
@@ -32,7 +34,7 @@ import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import type { DataTableListSortBy } from '@n8n/api-types';
+import type { DataTableListSortBy, DataTableRowRule } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -220,6 +222,19 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		}
 		return updated;
 	};
+
+	const setRowRule = async (
+		dataTableId: string,
+		projectId: string,
+		rowRule: DataTableRowRule | null,
+	) => {
+		await setDataTableRowRuleApi(rootStore.restApiContext, dataTableId, projectId, rowRule);
+		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
+		if (index !== -1) dataTables.value[index] = { ...dataTables.value[index], rowRule };
+	};
+
+	const fetchRowRuleImpact = async (dataTableId: string, projectId: string) =>
+		await getDataTableRowRuleImpactApi(rootStore.restApiContext, dataTableId, projectId);
 
 	const fetchDataTableDetails = async (dataTableId: string, projectId: string) => {
 		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, undefined, {
@@ -440,6 +455,8 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	return {
 		dataTables,
 		totalCount,
+		setRowRule,
+		fetchRowRuleImpact,
 		fetchDataTables,
 		fetchDataTableSize,
 		dataTableSize: computed(() => dataTableSize.value),

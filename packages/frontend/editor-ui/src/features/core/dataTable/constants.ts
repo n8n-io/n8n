@@ -28,11 +28,13 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	DOWNLOAD_CSV: 'download-csv',
 	FAVORITE: 'favorite',
 	IMPORT_CSV: 'import-csv',
+	ROW_ACCESS: 'row-access',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';
 export const DOWNLOAD_DATA_TABLE_MODAL_KEY = 'downloadDataTableModal';
 export const IMPORT_CSV_MODAL_KEY = 'importCsvModal';
+export const ROW_ACCESS_MODAL_KEY = 'dataTableRowAccessModal';
 
 export const DEFAULT_ID_COLUMN_NAME = 'id';
 

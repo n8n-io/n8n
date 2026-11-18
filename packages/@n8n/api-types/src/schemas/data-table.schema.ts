@@ -42,6 +42,11 @@ export const dataTableRowRuleSchema = z.object({
 });
 export type DataTableRowRule = z.infer<typeof dataTableRowRuleSchema>;
 
+/** A published workflow that uses a table and has a trigger without a verified n8n user. */
+export type DataTableRowRuleImpact = {
+	workflowsWithoutUser: Array<{ id: string; name: string }>;
+};
+
 export const dataTableSchema = z.object({
 	id: dataTableIdSchema,
 	name: dataTableNameSchema,
