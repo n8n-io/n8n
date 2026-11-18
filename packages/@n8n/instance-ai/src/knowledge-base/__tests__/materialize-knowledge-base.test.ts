@@ -24,9 +24,7 @@ function createSandboxWorkspace(files: Map<string, string>): {
 		filesystem: {
 			provider: 'local',
 			writeFile: vi.fn(async (path: string, content: string | Buffer) => {
-				const text = Buffer.isBuffer(content) ? content.toString('utf-8') : content;
-				writes.set(path, text);
-				files.set(path, text);
+				writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 				await Promise.resolve();
 			}),
 			mkdir: vi.fn(async () => await Promise.resolve()),
@@ -41,13 +39,6 @@ function createSandboxWorkspace(files: Map<string, string>): {
 							? { exitCode: 1, stdout: '', stderr: 'missing' }
 							: { exitCode: 0, stdout: content, stderr: '' },
 					);
-				}
-
-				const removeMatch = /^rm -rf '([^']+)'$/.exec(command);
-				if (removeMatch) {
-					for (const path of [...files.keys()]) {
-						if (path.startsWith(`${removeMatch[1]}/`)) files.delete(path);
-					}
 				}
 
 				return await Promise.resolve({ exitCode: 0, stdout: '', stderr: '' });
@@ -228,44 +219,5 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 
 		expect(materialized.contentHash).toBe(bundle.contentHash);
 		expect(writes.size).toBe(0);
-	});
-
-	it('removes files that the current bundle does not contain when the manifest is stale', async () => {
-		const kbDir = `${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}`;
-		const files = new Map<string, string>([
-			[`${kbDir}/${KNOWLEDGE_BASE_MANIFEST_FILE}`, '{"schemaVersion":4,"contentHash":"stale"}'],
-			[`${kbDir}/templates/index.json`, '{"entries":[]}'],
-			[`${kbDir}/templates/old-template.ts`, 'export default {};'],
-			[`${ROOT}/src/workflow.ts`, 'export default {};'],
-		]);
-		const { workspace } = createSandboxWorkspace(files);
-
-		const bundle = await materializeKnowledgeBaseIntoWorkspace({
-			logger: mockLogger,
-			workspace,
-			root: ROOT,
-		});
-
-		expect([...files.keys()].filter((path) => path.startsWith(`${kbDir}/templates/`))).toEqual([]);
-		expect(files.get(bundle.manifestPath)).toBe(bundle.files.get(bundle.manifestPath));
-		expect(files.has(`${ROOT}/src/workflow.ts`)).toBe(true);
-	});
-
-	it('still writes the bundle when clearing the old directory fails', async () => {
-		const { workspace, writes } = createSandboxWorkspace(new Map());
-		const executeCommand = vi.mocked(workspace.sandbox!.executeCommand!);
-		const defaultImplementation = executeCommand.getMockImplementation();
-		executeCommand.mockImplementation(async (command, ...rest) => {
-			if (command.startsWith('rm -rf')) throw new Error('sandbox unavailable');
-			return await defaultImplementation!(command, ...rest);
-		});
-
-		const bundle = await materializeKnowledgeBaseIntoWorkspace({
-			logger: mockLogger,
-			workspace,
-			root: ROOT,
-		});
-
-		expect(writes.has(bundle.manifestPath)).toBe(true);
 	});
 });

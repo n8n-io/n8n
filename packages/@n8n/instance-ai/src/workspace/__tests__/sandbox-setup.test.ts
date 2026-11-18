@@ -602,8 +602,6 @@ describe('setupSandboxWorkspace', () => {
 
 		expect(initialized).toBe(false);
 		expect(installCommandsFrom(runInSandbox)).toEqual([]);
-		const commands = runInSandbox.mock.calls.map(([, command]) => command);
-		expect(commands).toContain("rm -rf '/sandbox/knowledge-base'");
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
 		expect(writtenPaths).toContain('/sandbox/knowledge-base/.manifest.json');

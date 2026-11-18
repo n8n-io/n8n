@@ -13,7 +13,6 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { join as posixJoin } from 'node:path/posix';
 
-import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
 import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
@@ -22,7 +21,7 @@ import {
 	materializeWorkspaceBundle,
 	type VerifiedWorkspaceBundles,
 } from '../workspace/prebaked-workspace-bundle';
-import { escapeSingleQuotes, runInSandbox, type SandboxWorkspace } from '../workspace/sandbox-fs';
+import type { SandboxWorkspace } from '../workspace/sandbox-fs';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
 import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
@@ -257,32 +256,6 @@ export async function buildKnowledgeBaseWorkspaceBundle(
 
 const KNOWLEDGE_BASE_FILE_LABEL = 'Knowledge base file';
 
-/**
- * Bundle writes only add or overwrite files. Clear the directory first so that
- * files from an older bundle (for example removed sections) do not stay behind.
- */
-async function clearKnowledgeBaseDirectory(
-	options: MaterializeKnowledgeBaseOptions,
-): Promise<void> {
-	if (!options.workspace.sandbox) return;
-
-	const rootDir = posixJoin(options.root, SANDBOX_KNOWLEDGE_BASE_DIR);
-	// Best effort: a failed cleanup leaves old files, but the write must still run.
-	try {
-		const result = await runInSandbox(options.workspace, `rm -rf '${escapeSingleQuotes(rootDir)}'`);
-		if (result.exitCode === 0) return;
-		options.logger.warn('Failed to clear the knowledge base directory before a write', {
-			rootDir,
-			stderr: result.stderr.slice(0, 500),
-		});
-	} catch (error) {
-		options.logger.warn('Failed to clear the knowledge base directory before a write', {
-			rootDir,
-			error: formatErrorForLog(error),
-		});
-	}
-}
-
 export async function loadPrebakedKnowledgeBaseBundle(
 	options: MaterializeKnowledgeBaseOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
@@ -319,7 +292,6 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 				logger: options.logger,
 				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
 				buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
-				beforeWrite: async () => await clearKnowledgeBaseDirectory(options),
 				bundleHash: (bundle) => bundle.contentHash,
 			});
 		},

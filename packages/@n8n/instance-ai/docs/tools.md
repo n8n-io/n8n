@@ -1415,9 +1415,7 @@ The tree is written by `src/knowledge-base/materialize-knowledge-base.ts`, which
 sources best practices and some reference material from
 `@n8n/workflow-sdk/prompts/*` and additional reference documents from the local
 `knowledge-base/reference/` directory. It also writes a workspace manifest
-alongside the root index. When the manifest hash does not match, the sync
-removes the whole `knowledge-base/` directory before it writes, so files from
-an older bundle do not stay in the sandbox.
+alongside the root index.
 
 Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
 sandbox) to consult these before planning or building non-trivial workflows.
