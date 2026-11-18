@@ -33,10 +33,11 @@ describe('InstanceAiCloudBrowserService', () => {
 	const domainGate: BrowserDomainGate = { tracker: mock<DomainAccessTracker>(), runId: 'run-1' };
 	let release: ReturnType<typeof vi.spyOn>;
 	let aiGatewayBrowserUseService: ReturnType<typeof mock<AiGatewayBrowserUseService>>;
+	let logger: ReturnType<typeof mock<Logger>>;
 	let instanceSettings: { isMultiMain: boolean };
 
 	beforeEach(() => {
-		const logger = mock<Logger>();
+		logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		aiGatewayBrowserUseService = mock<AiGatewayBrowserUseService>();
 		aiGatewayBrowserUseService.isGatewayBrowserUseEnabled.mockReturnValue(true);
@@ -195,11 +196,13 @@ describe('InstanceAiCloudBrowserService', () => {
 			vi.spyOn(server, 'getLiveView').mockResolvedValue({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
 			});
 
 			expect(await service.getLiveView('user-1', 'thread-1', 'task-1')).toEqual({
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
 			});
 		});
 
@@ -220,6 +223,72 @@ describe('InstanceAiCloudBrowserService', () => {
 			expect(await service.getLiveView('user-1', 'thread-1', 'task-1')).toEqual({
 				status: 'not-found',
 			});
+		});
+	});
+
+	describe('giveControlToUser', () => {
+		it("passes on the server's answer to its owner", async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const giveControlToUser = vi
+				.spyOn(server, 'giveControlToUser')
+				.mockReturnValue('No browser session is open.');
+
+			expect(service.giveControlToUser('user-1', 'thread-1', 'task-1')).toBe(
+				'No browser session is open.',
+			);
+			expect(giveControlToUser).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['another user', 'user-2', 'thread-1'],
+			['another thread', 'user-1', 'thread-2'],
+		])('says the task is not running for %s', async (_, userId, threadId) => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const giveControlToUser = vi.spyOn(server, 'giveControlToUser');
+
+			expect(service.giveControlToUser(userId, threadId, 'task-1')).toBe(
+				'This browser task is not running.',
+			);
+			expect(giveControlToUser).not.toHaveBeenCalled();
+		});
+
+		it('says the task is not running for a task with no server', () => {
+			expect(service.giveControlToUser('user-1', 'thread-1', 'task-1')).toBe(
+				'This browser task is not running.',
+			);
+		});
+	});
+
+	describe('returnControlToAgent', () => {
+		it('passes the note to the server of its owner', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const returnControlToAgent = vi
+				.spyOn(server, 'returnControlToAgent')
+				.mockReturnValue(undefined);
+
+			expect(
+				service.returnControlToAgent('user-1', 'thread-1', 'task-1', 'Signed in'),
+			).toBeUndefined();
+			expect(returnControlToAgent).toHaveBeenCalledWith('Signed in');
+		});
+
+		it.each([
+			['another user', 'user-2', 'thread-1'],
+			['another thread', 'user-1', 'thread-2'],
+		])('says the task is not running for %s', async (_, userId, threadId) => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const returnControlToAgent = vi.spyOn(server, 'returnControlToAgent');
+
+			expect(service.returnControlToAgent(userId, threadId, 'task-1')).toBe(
+				'This browser task is not running.',
+			);
+			expect(returnControlToAgent).not.toHaveBeenCalled();
+		});
+
+		it('says the task is not running for a task with no server', () => {
+			expect(service.returnControlToAgent('user-1', 'thread-1', 'task-1')).toBe(
+				'This browser task is not running.',
+			);
 		});
 	});
 
@@ -296,13 +365,16 @@ describe('InstanceAiCloudBrowserService', () => {
 		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
 		const { sessionProvider, scope } = server['options'];
 
-		await expect(sessionProvider.createSession(scope)).resolves.toEqual(session);
+		await expect(sessionProvider.createSession(scope, { proxyCountry: 'DE' })).resolves.toEqual(
+			session,
+		);
 		await sessionProvider.releaseSession(scope, 'sess-1');
 
 		const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' };
 		expect(aiGatewayBrowserUseService.createSession).toHaveBeenCalledWith({
 			userId: 'user-1',
 			attribution,
+			proxyCountry: 'DE',
 		});
 		expect(aiGatewayBrowserUseService.releaseSession).toHaveBeenCalledWith({
 			userId: 'user-1',
@@ -311,9 +383,44 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 	});
 
+	it("gives a session the country that the gateway's region is in", async () => {
+		aiGatewayBrowserUseService.createSession.mockResolvedValue({
+			id: 'sess-1',
+			connectUrl: 'wss://connect',
+			region: 'eu-central-1',
+		});
+		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+		const { sessionProvider, scope } = server['options'];
+
+		await expect(sessionProvider.createSession(scope)).resolves.toStrictEqual({
+			id: 'sess-1',
+			connectUrl: 'wss://connect',
+			regionCountry: 'DE',
+		});
+	});
+
+	it.each([undefined, 'mars-north-1', 'constructor'])(
+		'gives a session no country for the region %s',
+		async (region) => {
+			aiGatewayBrowserUseService.createSession.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect',
+				region,
+			});
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const { sessionProvider, scope } = server['options'];
+
+			await expect(sessionProvider.createSession(scope)).resolves.toStrictEqual({
+				id: 'sess-1',
+				connectUrl: 'wss://connect',
+			});
+		},
+	);
+
 	it("gets a session's live view link through the gateway for the task", async () => {
 		aiGatewayBrowserUseService.getLiveView.mockResolvedValue({
 			debuggerFullscreenUrl: 'https://live.example.com/1',
+			pages: [],
 		});
 		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
 		const { sessionProvider, scope } = server['options'];
@@ -325,6 +432,52 @@ describe('InstanceAiCloudBrowserService', () => {
 			userId: 'user-1',
 			attribution: { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' },
 			sessionId: 'sess-1',
+		});
+	});
+
+	describe('live view of a window', () => {
+		const pages = [
+			{ id: 'TARGET-1', debuggerFullscreenUrl: 'https://live.example.com/tab-1' },
+			{ id: 'TARGET-2', debuggerFullscreenUrl: 'https://live.example.com/tab-2' },
+		];
+
+		beforeEach(() => {
+			aiGatewayBrowserUseService.getLiveView.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages,
+			});
+		});
+
+		it('gets the live view of the tab with the target id', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const { sessionProvider, scope } = server['options'];
+
+			await expect(
+				sessionProvider.getSessionLiveViewUrl(scope, 'sess-1', 'TARGET-2'),
+			).resolves.toBe('https://live.example.com/tab-2');
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('gets the first tab and logs a warning when no tab has the target id', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const { sessionProvider, scope } = server['options'];
+
+			await expect(
+				sessionProvider.getSessionLiveViewUrl(scope, 'sess-1', 'TARGET-9'),
+			).resolves.toBe('https://live.example.com/1');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Cloud browser window not found in its live view, showing the first tab',
+				{ taskId: 'task-1', tabCount: 2 },
+			);
+		});
+
+		it('gets the first tab without a target id', async () => {
+			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+			const { sessionProvider, scope } = server['options'];
+
+			await expect(sessionProvider.getSessionLiveViewUrl(scope, 'sess-1')).resolves.toBe(
+				'https://live.example.com/1',
+			);
 		});
 	});
 });

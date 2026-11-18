@@ -4,12 +4,14 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { InstanceAiMemoryService } from '@/modules/instance-ai/instance-ai-memory.service';
 import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
 import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -53,6 +55,7 @@ async function seedPreference(userId: string, content: string) {
 }
 
 beforeAll(async () => {
+	Container.get(ModuleRegistry).settings.set('mcp', { mcpAccessEnabled: true });
 	owner = await createMember();
 	otherUser = await createMember();
 	ownerAgent = testServer.authAgentFor(owner);
@@ -114,6 +117,18 @@ describe('POST /instance-ai/threads/:threadId/preferences/:preferenceId/undo', (
 			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/undo`)
 			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID })
 			.expect(403);
+
+		expect(await preferenceRepository().findOneBy({ id: preference.id })).not.toBeNull();
+	});
+
+	test('answers 404 while preferences are off', async () => {
+		const preference = await seedPreference(owner.id, 'Use British English.');
+		vi.spyOn(Container.get(AiPreferenceSettingsService), 'isEnabled', 'get').mockReturnValue(false);
+
+		await ownerAgent
+			.post(`/instance-ai/threads/${THREAD_ID}/preferences/${preference.id}/undo`)
+			.send({ runId: RUN_ID, toolCallId: TOOL_CALL_ID })
+			.expect(404);
 
 		expect(await preferenceRepository().findOneBy({ id: preference.id })).not.toBeNull();
 	});

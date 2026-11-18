@@ -1404,8 +1404,9 @@ onMounted(async () => {
 	text-align: center;
 }
 
+// Wide enough to keep the "Based on" source of each card on one line.
 .recommended {
-	max-width: 48rem;
+	max-width: 58rem;
 	margin: var(--spacing--xs) 0;
 }
 </style>

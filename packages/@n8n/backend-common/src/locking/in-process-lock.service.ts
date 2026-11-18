@@ -58,6 +58,13 @@ export class InProcessLockService implements ILockService {
 			return this.createReleaseFn(lockId, lockState, token);
 		}
 
+		// A zero wait means one attempt. Do not queue, or a release can hand over the lock.
+		if (timeoutMs !== undefined && timeoutMs <= 0) {
+			throw new LockAcquisitionTimeoutError(
+				`Timed out waiting for lock '${lockId}' after ${timeoutMs}ms`,
+			);
+		}
+
 		// Race the lock-release signal against an optional timeout.
 		//
 		// Node.js is single-threaded: `resolver` (called by releaseLock) and

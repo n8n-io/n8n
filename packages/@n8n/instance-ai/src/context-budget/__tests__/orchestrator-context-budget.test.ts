@@ -22,7 +22,7 @@ const CEILINGS = {
 	buildSkills: 117_000,
 };
 
-/** The skills that a typical workflow build loads and keeps for the rest of the thread. */
+/** The skills that a typical workflow build loads in a thread. */
 const BUILD_SKILLS = ['intent-recognition', 'workflow-builder', 'post-build-flow'];
 
 async function measureDefaultProfile() {

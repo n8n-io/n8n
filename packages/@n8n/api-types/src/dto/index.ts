@@ -203,6 +203,7 @@ export {
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
 export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
+export { AiPreferenceSettingsRequestDto } from './ai-preference/ai-preference-settings-request.dto';
 export {
 	AiPreferenceListQueryDto,
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
