@@ -91,6 +91,10 @@ export function linearLookups(
 	if (assignee && assignee !== 'me') found.push({ tool: 'get_user', args: { query: assignee } });
 	const parent = text(args.parentId);
 	if (parent) found.push({ tool: 'get_issue', args: { id: parent } });
+	// The issue that the call works on: `id` of save_issue, `issueId` of the comment tools. Without
+	// its real copy the gym makes a stub issue with no title.
+	const target = tool === 'save_issue' ? text(args.id) : text(args.issueId);
+	if (target) found.push({ tool: 'get_issue', args: { id: target } });
 	const labels = [args.label, ...(Array.isArray(args.labels) ? args.labels : [args.labels])]
 		.flatMap((l) => text(l) ?? [])
 		.slice(0, MAX_LABELS);

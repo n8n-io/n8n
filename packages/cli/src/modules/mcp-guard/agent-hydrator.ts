@@ -118,7 +118,7 @@ export class AgentHydrator implements Hydrator {
 			return true;
 		} catch (e) {
 			// Tool name and error only. Never log args or real data.
-			Container.get(Logger).warn(`mcp-guard hydration agent failed for ${toolName}: ${errText(e)}`);
+			Container.get(Logger).warn(`mcp-guard hydration agent failed for ${toolName}`);
 			return false;
 		}
 	}

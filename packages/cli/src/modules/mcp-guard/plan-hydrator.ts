@@ -247,7 +247,7 @@ export class PlanHydrator implements Hydrator {
 			return ok;
 		} catch (e) {
 			// Tool name and error only. Never log args or real data.
-			Container.get(Logger).warn(`mcp-guard plan hydration failed for ${toolName}: ${errText(e)}`);
+			Container.get(Logger).warn(`mcp-guard plan hydration failed for ${toolName}`);
 			return false;
 		}
 	}
@@ -287,10 +287,8 @@ export class PlanHydrator implements Hydrator {
 		const shallow = verify !== undefined && !DETAIL_TOOL.test(tool);
 		let problem = await this.apply(plan, ctx, verify, MAX_REPAIRS === 0, trace, shallow);
 		for (let repair = 0; problem !== undefined && repair < MAX_REPAIRS; repair++) {
-			// The gym's error names a path and a rule. Cut the request line, so the rule fits.
-			const shown = problem.replace(/gym POST \S+ failed: \d+ /, '').slice(0, 400);
 			Container.get(Logger).info(
-				`mcp-guard plan problem: ${shown}; overlay shape ${JSON.stringify(shapeOf(plan.overlay)).slice(0, 700)}`,
+				`mcp-guard plan problem; overlay shape ${JSON.stringify(shapeOf(plan.overlay)).slice(0, 700)}`,
 			);
 			// Pointers that name nothing are dropped, so the gym can get less than the plan said.
 			const sent = JSON.stringify(trace.sent ?? null).slice(0, MAX_SHOWN);
@@ -313,11 +311,11 @@ export class PlanHydrator implements Hydrator {
 				try {
 					const res = await gym.callTool(tool, args);
 					Container.get(Logger).info(
-						`mcp-guard plan gym check ${tool}: ${res.isError ? 'error' : 'answer'}, ${resultText(res).slice(0, 80)}`,
+						`mcp-guard plan gym check ${tool}: ${res.isError ? 'error' : 'answer'}`,
 					);
 					return !res.isError && resultText(res).trim() !== '';
 				} catch (e) {
-					Container.get(Logger).info(`mcp-guard plan gym check ${tool} failed: ${errText(e)}`);
+					Container.get(Logger).info(`mcp-guard plan gym check ${tool} failed`);
 					return false;
 				}
 			}),
