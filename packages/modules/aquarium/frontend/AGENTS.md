@@ -4,6 +4,134 @@
 `/aquarium`. Read `README.md` for the data flow and the data sources. This file tells you how to
 extend the module, and which rules to obey.
 
+## Design principles
+
+Read this section before you add or change a look.
+
+### What the aquarium is for
+
+The aquarium is a one-look view of an n8n instance: what people built, and how it runs. A person
+must feel the overall health before they read a number.
+
+- **The vibe is the health.** The water, the background and how lively the tank is show the overall
+  health. A healthy tank is bright and busy. A struggling tank is murky, slow and broken.
+- **Each creature tells one story.** A creature is one workflow or agent. It shows how big it is,
+  how busy it is, how healthy it is and how it is set up.
+- **It is for everyone.** A person who does not build workflows must see that something is wrong,
+  and which creature to click.
+- **The numbers are one click away.** A look starts a question. The tooltip and the workflow answer
+  it.
+- **It is not a dashboard.** Choose a playful interpretation over an exact chart.
+
+### Rules for every look
+
+1. Use only data that a source loads. If no source gives a value, do not guess it. Treat an unknown
+   value as Neutral.
+2. Put a number behind every look. Add a tooltip row for the number that sets the look.
+3. Neutral is the default. A missing good practice, for example no error workflow or no sticky
+   notes, is Neutral, not Negative.
+4. Use a failure rate only when the workflow has 10 or more runs.
+5. Waiting is not failing. A paused run is not an error. Time in a Wait node must not make a
+   creature look heavy.
+6. One creature never changes the background. A tank uses the counts of all its workflows: its
+   project in project view, or the whole instance in the single tank.
+7. Show only what the viewer can read. Backend endpoints return only the workflows that the user
+   can read (`workflow:read`).
+8. Use a small, fixed set of colours and looks. The renderer caches each species and tint pair.
+9. Drive animation from `creature.age`. Creatures then move out of step, and reduced motion stops
+   them.
+10. Put each threshold in `aquarium.constants.ts`. The thresholds are starting points.
+11. Give each new look a demo entity in `demo.source.ts`.
+
+### Look and feel
+
+The aquarium is a tiny, living and deeply unserious world. It must feel like a forgotten browser
+game from 2004.
+
+- Use hand-made pixel art with clear silhouettes, a small palette with deliberate accents, crisp
+  pixels, expressive faces, exaggerated proportions and short loops with a lot of character.
+- Do not use polished mobile-game art, vector shapes, gradients, blur, glossy effects, realistic
+  physics, or assets that do not match in resolution, light or perspective.
+- More character, fewer pixels. More playful interpretation, less literal representation.
+- Make the world feel alive, even when nothing happens. Keep the visual rules consistent, even when
+  the creatures are not.
+
+### Looks
+
+**Built** means it is in the code. **Planned** means the team agreed it. **Open** means the team did
+not agree it yet.
+
+#### Creatures
+
+The species says what an entity is and how big it is. Speed says how busy it is.
+
+| Data | Meaning | Look | Status |
+| --- | --- | --- | --- |
+| Node count, plus a little for run time | How complex the workflow is | Species by size: minnow, tetra, angelfish, shark, whale | Built. Open: size from node count only |
+| Execution count | How busy it is | Resting swim speed on a log scale. Bubbles from 10 runs | Built |
+| Live run rate | Busy right now | Faster swimming, fins and bubbles | Built |
+| Small workflow with many runs | A busy little helper | A fast minnow. Planned: a school of fish | Partly |
+| Agent | It exists, with a number of skills | A drifting jellyfish or octopus. Planned: a seahorse that holds its own clump of seaweed, one strand for each skill, coloured by the skill id | Partly |
+| Many workflows | A large instance | Zoom and pan, and a tank for each project | Built |
+
+Agents stay Neutral and static until a source gives agent run stats.
+
+#### Fish health
+
+Health comes from failures. The worse a workflow does, the less its fish acts like a fish.
+
+| Data | State | Look | Status |
+| --- | --- | --- | --- |
+| 0% failures, with 10 or more runs | Positive | A golden glint or sparkle | Planned |
+| Under 20% failures, or fewer than 10 runs | Neutral | Normal colours | Built |
+| 20–50% failures | Negative | Sick: blinks green and swims at 40% speed (`sickRule`). Planned: glitches like a 90s game sprite | Partly |
+| Over 50% failures | Critical | Belly-up, floating at the top | Planned |
+| Every run failed, with 10 or more runs | Critical | A skeleton or zombie fish | Planned |
+| Failures in the last 60 s | Recent health | Hooked by a fishing line | Planned |
+| A run that waits now | Paused, not broken | Asleep on the sand | Planned. The data is ready |
+
+- `speedFactor` also cuts the live speed boost, so a sick fish is slow everywhere.
+- A fish is asleep when one or more of its runs are paused now (`metrics.waitingCount`,
+  `activity.waiting`). Do not use only the latest run. See "Show the workflow build or waiting".
+
+#### Fish traits
+
+Traits say how a workflow is set up. A trait adds an accessory or a companion. It never changes
+health.
+
+| Data | Meaning | Look | Status |
+| --- | --- | --- | --- |
+| Security risk: an unprotected webhook, an expression in a SQL query, or an Execute Command or SSH node | Negative: exposed | A cat in a diving helmet watches the fish (`securityRule`, `catEffect`) | Partly: proof of concept |
+| Error workflow set (`design.hasErrorWorkflow`) | Positive: failures are handled | A remora or pilot fish companion. No error workflow stays Neutral | Planned. The data is ready |
+| Build quality (`maintainabilityOf()`): big with no sub-workflows, many Code nodes, copy-pasted nodes, disabled leftovers, many If, Switch and Merge nodes | Negative: hard to maintain | A really big whale | Planned. The data is ready |
+| Redaction on | Neutral: private data | Glasses | Open |
+| Credentials used | Connected to many services | Bling | Open |
+| Many saved versions | Changed a lot | A turtle | Open |
+| Published or draft | Live, or not yet | To decide | Open |
+| Sticky notes | Neutral: documentation | No look | Planned |
+
+- The security checks are in `../backend/src/security-checks.ts`. They copy the node type lists of
+  the security audit in `packages/cli/src/security-audit`, because a module cannot import from the
+  CLI package. Keep the two lists the same.
+- Do not flag HTTP Request or Code nodes as a security risk. The audit lists them, but almost every
+  workflow has them.
+
+#### Whole tank
+
+Each tank's background shows the health of the creatures in that tank. In project view, each tank
+shows the health of its own project. The single tank shows the whole instance. A tank uses the
+counts of its workflows added up, and the status of the live poll.
+
+| Data | State | Look | Status |
+| --- | --- | --- | --- |
+| All workflows healthy | Positive | Saturated colours. Background items, such as a volcano and seaweed, are animated and working | Planned |
+| Many failures across workflows | Negative | Murky green water. Background items lag or show construction signs | Planned |
+| Most workflows failing | Critical | Dark, gloomy and broken | Planned |
+| The live poll fails, for example during an upgrade | The instance is unreachable | A drained tank, fish lying on their side | Planned |
+
+The renderer draws the water once and caches it. Use a few fixed water palettes, not a colour from
+a continuous value.
+
 ## Map
 
 | You want to change | File |
@@ -28,6 +156,7 @@ extend the module, and which rules to obey.
 | Simulated activity (demo and data set) | `src/sources/demo-activity.ts` |
 | Live activity (polling, demo activity) | `src/aquarium.store.ts`, `src/sources/activity.source.ts`, `src/sources/demo-activity.ts` |
 | Live activity (backend counts) | `../backend/src/` |
+| Security risks (backend checks) | `../backend/src/security-checks.ts`, `src/sources/security.source.ts` |
 
 ## Recipes
 
