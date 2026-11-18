@@ -5,11 +5,13 @@ import { useI18n } from '@n8n/i18n';
 import TaskCard from '../../components/TaskCard/TaskCard.vue';
 import TaskPanelLayout from '../../components/TaskPanelLayout/TaskPanelLayout.vue';
 import { useTaskInbox } from '../../composables/useTaskInbox';
+import { useTaskLinks } from '../../composables/useTaskLinks';
 import { useTaskSelection } from '../../composables/useTaskSelection';
 
 const i18n = useI18n();
 const { tasks } = useTaskInbox();
 const { selectedTaskId, selectTask } = useTaskSelection();
+const { taskLocation } = useTaskLinks();
 </script>
 
 <template>
