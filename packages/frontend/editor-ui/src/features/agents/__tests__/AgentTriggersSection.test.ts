@@ -119,6 +119,8 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+const reloadTasksSpy = vi.hoisted(() => vi.fn());
+
 const n8nChatFlag = vi.hoisted(() => ({ value: false }));
 const triggerRedesignFlag = vi.hoisted(() => ({ value: false }));
 vi.mock('../composables/useAgentTriggerRedesignFlag', async () => {
@@ -151,7 +153,7 @@ vi.mock('../channels/whatsapp/useWhatsAppMetaStatus', () => ({
 vi.mock('../components/AgentChannelModal.vue', () => ({
 	default: {
 		name: 'AgentChannelModal',
-		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription'],
+		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription', 'task'],
 		template:
 			'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" :data-is-published="isPublished" :data-view="view" :data-saved-description="savedDescription" />',
 	},
@@ -184,7 +186,8 @@ function mountSection(
 				AgentTriggersList: {
 					name: 'AgentTriggersList',
 					props: ['channels', 'ensureAgentPersisted'],
-					emits: ['add-channel', 'open-channel'],
+					emits: ['add-channel', 'open-channel', 'open-task'],
+					methods: { reloadTasks: reloadTasksSpy },
 					template:
 						'<div data-testid="agent-triggers-list-stub"><button data-testid="agent-triggers-add-trigger" /><button data-testid="add-trigger-item-channel" @click="$emit(\'add-channel\')" /></div>',
 				},
@@ -549,6 +552,25 @@ describe('AgentTriggersSection', () => {
 			await flushPromises();
 
 			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(true);
+		});
+
+		it('opens the task in the modal and reloads the list after save', async () => {
+			const task = { id: 'task-1', name: 'Daily summary', enabled: true };
+			const wrapper = mountSection();
+
+			wrapper.findComponent({ name: 'AgentTriggersList' }).vm.$emit('open-task', task);
+			await flushPromises();
+
+			const modal = wrapper.findComponent({ name: 'AgentChannelModal' });
+			expect(modal.props('view')).toBe('schedule_edit');
+			expect(modal.props('task')).toEqual(task);
+			expect(reloadTasksSpy).not.toHaveBeenCalled();
+
+			modal.vm.$emit('tasks-changed');
+			await flushPromises();
+
+			expect(reloadTasksSpy).toHaveBeenCalledTimes(1);
+			expect(wrapper.emitted('tasks-changed')).toHaveLength(1);
 		});
 
 		it('shows the row add buttons and no add trigger menu when the flag is off', () => {
