@@ -264,7 +264,11 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			project: { id: string; name: string; type: 'team' } | undefined,
 			threadId: string,
 			loadHistory: () => Promise<unknown[]>,
-		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
+		) => Promise<{
+			block: string | undefined;
+			payload: AiPreferencesAppliedPayload;
+			noneSaved?: true;
+		}>;
 		aiPreferenceService: { getApplicable: Mock };
 		agentMemory: ThreadMemoryMock;
 		logger: { warn: Mock };
@@ -458,6 +462,33 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 
 		expect(turn.block).toContain('- Keep replies short.');
 		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
+	});
+
+	it('marks a turn as none saved when nothing is saved and the thread carries no block', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
+
+		const turn = await resolvePreferences(service, undefined);
+
+		expect(turn.noneSaved).toBe(true);
+	});
+
+	it('does not mark a turn as none saved when preferences apply', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(turn.noneSaved).toBeUndefined();
+	});
+
+	it('does not mark a turn as none saved when the read fails', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
+
+		const turn = await resolvePreferences(service, undefined);
+
+		expect(turn.noneSaved).toBeUndefined();
 	});
 
 	it('publishes an empty payload when the read fails, without touching the history', async () => {
@@ -662,6 +693,8 @@ async function buildOpeningTurn(
 		message?: string;
 		fileAttachments?: unknown[];
 		context?: Record<string, unknown>;
+		builder?: Record<string, unknown>;
+		environment?: Record<string, unknown>;
 	} = {},
 ) {
 	const conversationHistory = {
@@ -674,8 +707,10 @@ async function buildOpeningTurn(
 		conversationHistory,
 		instanceContextEnabled: false,
 		skillScope: {},
+		...params.environment,
 	} as unknown as AssistantTurnEnvironment;
-	const { fullMessage } = await createTurnBuilder().buildInput(
+	const builder = Object.assign(createTurnBuilder(), params.builder);
+	const { fullMessage } = await builder.buildInput(
 		environment,
 		{ eventBus: { publish: vi.fn() } } as never,
 		{
@@ -820,5 +855,67 @@ describe('AssistantTurnInputBuilder — approval mode', () => {
 	it('adds nothing about approvals in Manual mode', async () => {
 		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread));
 		expect(fullMessage).not.toContain(APPROVAL_MODE_OPEN_TAG);
+	});
+});
+
+describe('AssistantTurnInputBuilder — empty preferences note', () => {
+	const openedThread = { title: 'Test rows', metadata: { [OPENED_METADATA_KEY]: true } };
+	const noteBlock = '<preferences-note>\nNote.\n</preferences-note>';
+
+	function createNoteBuilder(noneSaved: boolean) {
+		const takeNote = vi.fn(async () => noteBlock);
+		const builder = {
+			resolveAiPreferencesTurn: vi.fn(async () => ({
+				block: undefined,
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+				...(noneSaved ? { noneSaved: true } : {}),
+			})),
+			preferencesNoteService: { takeNote },
+		};
+		return { builder, takeNote };
+	}
+
+	it('adds the note when nothing is saved', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {} },
+			environment: { preferencesNoteVariant: 'variant' },
+		});
+
+		expect(takeNote).toHaveBeenCalledWith({ id: 'user-1' }, 'variant', 'thread-1');
+		expect(fullMessage).toContain(noteBlock);
+	});
+
+	it('does not take a note when preferences are saved', async () => {
+		const { builder, takeNote } = createNoteBuilder(false);
+
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {} },
+		});
+
+		expect(takeNote).not.toHaveBeenCalled();
+		expect(fullMessage).not.toContain(noteBlock);
+	});
+
+	it('does not take a note when saving preferences is blocked', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+
+		await buildOpeningTurn(createMemory(openedThread), {
+			builder,
+			context: { aiPreferenceService: {}, permissions: { createPreference: 'blocked' } },
+		});
+
+		expect(takeNote).not.toHaveBeenCalled();
+	});
+
+	it('does not take a note when preferences are off', async () => {
+		const { builder, takeNote } = createNoteBuilder(true);
+
+		await buildOpeningTurn(createMemory(openedThread), { builder });
+
+		expect(takeNote).not.toHaveBeenCalled();
 	});
 });

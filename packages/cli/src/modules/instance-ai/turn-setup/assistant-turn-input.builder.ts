@@ -57,6 +57,7 @@ import {
 	shouldTraceContextInjection,
 	type InstanceContextResult,
 } from '../instance-context.service';
+import { InstanceAiPreferencesNoteService } from '../instance-ai-preferences-note.service';
 import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
@@ -183,7 +184,11 @@ export interface AssistantTurnInput {
 	turnHadFileAttachments: boolean;
 	instanceContext: InstanceContextResult;
 	contextInjection: InstanceContextInjection;
-	aiPreferencesTurn?: { block: string | undefined; payload: AiPreferencesAppliedPayload };
+	aiPreferencesTurn?: {
+		block: string | undefined;
+		payload: AiPreferencesAppliedPayload;
+		noneSaved?: true;
+	};
 }
 
 /**
@@ -234,6 +239,7 @@ export class AssistantTurnInputBuilder {
 		private readonly skillsService: InstanceAiSkillsService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly preferencesNoteService: InstanceAiPreferencesNoteService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -276,6 +282,7 @@ export class AssistantTurnInputBuilder {
 			conversationHistory,
 			instanceContextEnabled,
 			skillScope,
+			preferencesNoteVariant,
 		} = environment;
 		const { eventBus } = runtime;
 		const {
@@ -495,6 +502,13 @@ export class AssistantTurnInputBuilder {
 			resumeReason === undefined
 				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
 				: undefined;
+		const canSavePreferences =
+			context.aiPreferenceService !== undefined &&
+			context.permissions?.createPreference !== 'blocked';
+		const preferencesNoteBlock =
+			aiPreferencesTurn?.noneSaved && canSavePreferences
+				? await this.preferencesNoteService.takeNote(user, preferencesNoteVariant, threadId)
+				: undefined;
 		const threadContextBlock = buildThreadContextBlock([
 			instanceContext.state === 'injected' ? instanceContext.block : '',
 			// The onboarding skill rides the opening turn, so it fires without a `load_skill` call
@@ -511,6 +525,7 @@ export class AssistantTurnInputBuilder {
 				: undefined,
 			pastConversationsSection ? buildPastConversationsBlock(pastConversationsSection) : undefined,
 			aiPreferencesTurn?.block,
+			preferencesNoteBlock,
 			resumeReason === undefined && context.approvalReviewer
 				? buildAutoApprovalModeBlock()
 				: undefined,
@@ -678,7 +693,11 @@ export class AssistantTurnInputBuilder {
 		project: ProjectSummary | undefined,
 		threadId: string,
 		loadHistory: () => Promise<AgentDbMessage[]>,
-	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
+	): Promise<{
+		block: string | undefined;
+		payload: AiPreferencesAppliedPayload;
+		noneSaved?: true;
+	}> {
 		const resolved = await this.bestEffort(
 			'Assistant failed to read the AI preferences for this turn',
 			{ userId },
@@ -718,6 +737,7 @@ export class AssistantTurnInputBuilder {
 					renderedLength: 0,
 					injectedThisTurn: false,
 				}),
+				noneSaved: true,
 			};
 		}
 

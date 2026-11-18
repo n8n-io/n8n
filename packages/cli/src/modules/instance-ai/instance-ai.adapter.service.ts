@@ -21,6 +21,7 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
@@ -442,6 +443,7 @@ export interface InstanceAiFeatureFlags {
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
+	preferencesNoteVariant?: string;
 }
 
 @Service()
@@ -844,6 +846,7 @@ export class InstanceAiAdapterService {
 			// Leave unreadable flags unassigned.
 		}
 		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
+		const preferencesNoteVariant = flags[INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG];
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -865,6 +868,7 @@ export class InstanceAiAdapterService {
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
+			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
 	}
 
