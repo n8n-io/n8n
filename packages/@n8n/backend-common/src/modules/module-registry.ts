@@ -98,6 +98,7 @@ export class ModuleRegistry {
 		'scim',
 		'type-availability-policies',
 		'execution-limits',
+		'branding',
 	];
 
 	private readonly activeModules: string[] = [];

@@ -122,6 +122,8 @@ const ResourceCenterView = async () =>
 
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
+const BrandingSettingsView = async () =>
+	await import('@/features/settings/branding/BrandingSettings.vue');
 
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -712,6 +714,24 @@ export const routes: RouteRecordRaw[] = [
 							return {
 								feature: 'security',
 							};
+						},
+					},
+				},
+			},
+			{
+				path: 'branding',
+				name: VIEWS.BRANDING_SETTINGS,
+				component: BrandingSettingsView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						// Proof of concept: the backend route uses the same scope.
+						rbac: { scope: ['securitySettings:manage'] },
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return { feature: 'branding' };
 						},
 					},
 				},

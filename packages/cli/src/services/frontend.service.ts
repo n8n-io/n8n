@@ -24,6 +24,7 @@ import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-co
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
+import { BrandingService } from '@/modules/branding/branding.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { InboxService } from '@/modules/inbox/inbox.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
@@ -111,6 +112,9 @@ export type PublicFrontendSettings = {
 	/** Lets the editor know the active backend modules before its first request */
 	activeModules: FrontendSettings['activeModules'];
 
+	/** Applies the instance accent color on the sign-in page and before the first paint */
+	branding: FrontendSettings['branding'];
+
 	mfa?: {
 		enabled: boolean;
 		enforced: boolean;
@@ -148,6 +152,7 @@ export class FrontendService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly inboxService: InboxService,
+		private readonly brandingService: BrandingService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -674,6 +679,9 @@ export class FrontendService {
 		this.settings.inbox = this.moduleRegistry.isActive('inbox')
 			? await this.inboxService.getSettings()
 			: { enabled: false, availableTypes: [], failedTypes: [] };
+		this.settings.branding = this.moduleRegistry.isActive('branding')
+			? await this.brandingService.getSettings()
+			: { accentColor: null };
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
@@ -739,6 +747,7 @@ export class FrontendService {
 			communityNodesEnabled,
 			activeModules,
 			expressionEngine,
+			branding,
 		} = await this.getSettings();
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
@@ -765,6 +774,7 @@ export class FrontendService {
 			communityNodesEnabled,
 			activeModules,
 			expressionEngine,
+			branding,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;

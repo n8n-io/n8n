@@ -80,6 +80,11 @@ export interface IEnterpriseSettings {
 	workflowReviews: boolean;
 }
 
+export interface BrandingSettings {
+	/** The instance accent color as `#rrggbb`. `null` keeps the n8n default. */
+	accentColor: string | null;
+}
+
 export interface FrontendSettings {
 	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
@@ -235,6 +240,7 @@ export interface FrontendSettings {
 	};
 	workflowReviews?: WorkflowReviewsPolicy;
 	inbox?: InboxSettings;
+	branding?: BrandingSettings;
 	folders: {
 		enabled: boolean;
 	};

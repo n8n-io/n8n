@@ -901,3 +901,4 @@ export {
 } from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';
+export { UpdateBrandingDto } from './branding/update-branding.dto';

@@ -24,6 +24,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
+import { applyAccentColor } from '@/app/utils/accentColor';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -124,6 +125,9 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The embedded settings carry the instance accent color, so it applies before the first paint.
+watch(() => settingsStore.settings.branding?.accentColor, applyAccentColor, { immediate: true });
 
 const layoutRef = ref<Element | null>(null);
 

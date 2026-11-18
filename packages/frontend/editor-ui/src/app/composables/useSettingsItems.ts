@@ -71,6 +71,17 @@ export function useSettingsItems() {
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
 				route: { to: { name: VIEWS.PERSONAL_SETTINGS } },
 			},
+			// General
+			{
+				id: 'settings-branding',
+				order: 10,
+				section: 'general',
+				icon: 'palette',
+				label: i18n.baseText('settings.branding'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.BRANDING_SETTINGS),
+				route: { to: { name: VIEWS.BRANDING_SETTINGS } },
+			},
 			// People & access
 			{
 				id: 'settings-users',
