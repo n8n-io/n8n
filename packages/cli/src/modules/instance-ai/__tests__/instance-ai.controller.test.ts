@@ -1061,6 +1061,7 @@ describe('InstanceAiController', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
 				user_id: USER_ID,
 				thread_id: THREAD_ID,
+				runtime: 'instance-ai',
 			});
 		});
 

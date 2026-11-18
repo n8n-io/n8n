@@ -238,7 +238,7 @@ describe('agent-run-reducer', () => {
 				name: 'Writing',
 				version: 'v2',
 				change: 'updated',
-				content: 'Use the revised writing instructions.',
+				content: 'Skill "Writing" changed after you loaded it.',
 			},
 		};
 		reduceEvent(state, event);

@@ -116,7 +116,7 @@ describe('PackageDirectoryInventoryReader', () => {
 			{
 				path: 'projects/alpha-p1/folders/f1/folder.json',
 				projectId: 'p1',
-				folder: { id: 'f1', name: 'F1', parentFolderId: null },
+				folder: { id: 'f1', name: 'F1', parentFolderId: null, resourceType: 'workflow' },
 			},
 		]);
 		expect(inventory.credentials).toEqual([

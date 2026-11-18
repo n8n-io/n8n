@@ -7,3 +7,4 @@ export {
 	type LoggedCall,
 	type TaskConsole,
 } from './task-console';
+export { createTaskData, type TaskData } from './task-data';
