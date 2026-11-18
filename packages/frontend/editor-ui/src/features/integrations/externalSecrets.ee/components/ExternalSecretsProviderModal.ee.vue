@@ -195,9 +195,8 @@ function onDialogOpenUpdate(open: boolean) {
 <template>
 	<N8nDialog
 		:open="modalOpen"
-		size="large"
+		size="2xlarge"
 		:show-close-button="false"
-		:container-class="$style.providerDialog"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogHeader v-if="provider">
@@ -210,7 +209,6 @@ function onDialogOpenUpdate(open: boolean) {
 				</div>
 				<div :class="$style.providerActions">
 					<ExternalSecretsProviderConnectionSwitch
-						class="mr-s"
 						:disabled="
 							(connectionState === 'initializing' || connectionState === 'error') &&
 							!provider.connected
@@ -319,11 +317,6 @@ function onDialogOpenUpdate(open: boolean) {
 	}
 }
 
-.providerDialog.providerDialog {
-	/* Previous shell width. No spacing token for 812px. */
-	--dialog--max-width: min(812px, calc(100dvw - var(--spacing--lg)));
-}
-
 .header {
 	display: flex;
 	flex-direction: row;
@@ -350,10 +343,5 @@ function onDialogOpenUpdate(open: boolean) {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-
-	:global([data-test-id='dialog-close-button']) {
-		position: static;
-		margin-left: var(--spacing--xs);
-	}
 }
 </style>
