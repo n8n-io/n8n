@@ -11,7 +11,7 @@ import type { AddressInfo } from 'node:net';
 
 import { runOracle } from '../../convert/__tests__/behaviour/oracle-engine.ts';
 import { convertWorkflow } from '../../convert/index.ts';
-import { runReference } from '../../reference/runner.ts';
+import { jsonCopy, runReference } from '../../reference/runner.ts';
 
 interface Case {
 	name: string;
@@ -187,7 +187,7 @@ function workflow(c: Case) {
  * by its kind only.
  */
 function comparable(value: unknown): unknown {
-	return mask(JSON.parse(JSON.stringify(value)) as unknown);
+	return mask(jsonCopy(value));
 }
 
 function mask(value: unknown): unknown {
