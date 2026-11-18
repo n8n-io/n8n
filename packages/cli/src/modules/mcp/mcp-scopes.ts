@@ -28,6 +28,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_workflow_history',
 		'get_workflow_version',
 		'get_workflow_versions_diff',
+		'get_workflow_as_code',
 		// Read-only builder support tools
 		'search_nodes',
 		'get_node_types',
@@ -48,6 +49,14 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'workflow:write': [
 		'create_workflow_from_code',
 		'update_workflow',
+		// The build sandbox (PoC): a workspace of the caller, and builds from its sources
+		'open_workspace',
+		'workspace_read_file',
+		'workspace_write_file',
+		'workspace_str_replace_file',
+		'workspace_list_files',
+		'workspace_execute_command',
+		'build_workflow',
 		'archive_workflow',
 		'restore_workflow_version',
 		'publish_workflow',
@@ -188,6 +197,15 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'create_folder',
 	'update_folder',
 	'move_workflows_to_folder',
+	// The build sandbox (PoC), also gated on the instance-ai module and a sandbox
+	'open_workspace',
+	'workspace_read_file',
+	'workspace_write_file',
+	'workspace_str_replace_file',
+	'workspace_list_files',
+	'workspace_execute_command',
+	'build_workflow',
+	'get_workflow_as_code',
 ]);
 
 /**
@@ -199,6 +217,23 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
  * by `isCommunityNodeInstallAvailable` in mcp-tool-availability.test.ts.
  */
 export const COMMUNITY_PACKAGE_TOOLS: ReadonlySet<string> = new Set(['install_community_node']);
+
+/**
+ * Tools of the build sandbox (PoC): need the builder, the `instance-ai` module
+ * and a sandbox enabled for the caller. Excluded from the "every mapped tool is
+ * registered" drift guard like {@link AGENT_TOOLS}: a bare service under test
+ * has no sandbox.
+ */
+export const WORKSPACE_TOOLS: ReadonlySet<string> = new Set([
+	'open_workspace',
+	'workspace_read_file',
+	'workspace_write_file',
+	'workspace_str_replace_file',
+	'workspace_list_files',
+	'workspace_execute_command',
+	'build_workflow',
+	'get_workflow_as_code',
+]);
 
 /** Context tools that also require the instance-ai module. */
 export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([

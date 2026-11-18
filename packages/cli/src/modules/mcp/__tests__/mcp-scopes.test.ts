@@ -40,6 +40,7 @@ import {
 	INSTANCE_CONTEXT_TOOLS,
 	MIGRATION_REPORT_TOOLS,
 	SKILL_TOOLS,
+	WORKSPACE_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
@@ -425,7 +426,8 @@ describe('McpService scope enforcement', () => {
 				!SKILL_TOOLS.has(name) &&
 				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
 				!INSTANCE_CONTEXT_TOOLS.has(name) &&
-				!MIGRATION_REPORT_TOOLS.has(name),
+				!MIGRATION_REPORT_TOOLS.has(name) &&
+				!WORKSPACE_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
@@ -666,7 +668,9 @@ describe('McpService scope enforcement', () => {
 		// Community-package tools are builder-gated but register in neither
 		// service here, because this harness has the module inactive. Their
 		// builder gating is asserted in install-community-node.registration.test.ts.
-		const expected = [...BUILDER_TOOLS].filter((name) => !COMMUNITY_PACKAGE_TOOLS.has(name)).sort();
+		const expected = [...BUILDER_TOOLS]
+			.filter((name) => !COMMUNITY_PACKAGE_TOOLS.has(name) && !WORKSPACE_TOOLS.has(name))
+			.sort();
 		expect(gated).toEqual(expected);
 	});
 
@@ -793,9 +797,13 @@ describe('McpService scope enforcement', () => {
 		});
 
 		// Instance-context tools ride on this scope but need their own flag and the `instance-ai`
-		// module, neither of which is on here.
+		// module, neither of which is on here. The workspace tools need a sandbox as well.
 		expect(getRegisteredToolNames(server)).toEqual(
-			new Set(TOOLS_BY_SCOPE['workflow:read'].filter((name) => !INSTANCE_CONTEXT_TOOLS.has(name))),
+			new Set(
+				TOOLS_BY_SCOPE['workflow:read'].filter(
+					(name) => !INSTANCE_CONTEXT_TOOLS.has(name) && !WORKSPACE_TOOLS.has(name),
+				),
+			),
 		);
 	});
 

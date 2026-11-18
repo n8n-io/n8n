@@ -12,6 +12,8 @@ import z from 'zod';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { INodeTypes } from 'n8n-workflow';
+import type { ValidationWarning } from '@n8n/ai-workflow-builder';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -69,6 +71,11 @@ export type CreateWorkflowFromCodeToolOptions = {
 	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 	/** Whether this session can call the install tool; steers the warning text. */
 	installToolAvailable?: boolean;
+	/**
+	 * PoC: replaces the host parse of `code` with a workflow compiled elsewhere
+	 * (the sandbox `build_workflow` tool). The rest of the creation path is the same.
+	 */
+	compiledWorkflow?: { workflow: WorkflowJSON; warnings: ValidationWarning[] };
 };
 
 function normalizeWorkflowDescription(description?: string) {
@@ -407,8 +414,8 @@ export const createCreateWorkflowFromCodeTool = (
 				generatePinData: false,
 				nodeTypesProvider: nodeTypes,
 			});
-			const strippedCode = stripImportStatements(code);
-			const result = await handler.parseAndValidate(strippedCode);
+			const result =
+				options.compiledWorkflow ?? (await handler.parseAndValidate(stripImportStatements(code)));
 			await validateScheduleTriggerIntervals(result.workflow.nodes);
 
 			const workflowJson = result.workflow;

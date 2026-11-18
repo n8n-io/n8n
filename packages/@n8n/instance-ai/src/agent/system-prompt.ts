@@ -39,14 +39,24 @@ interface SystemPromptOptions {
 	instanceMcpInstructions?: string;
 	/** PoC: the server's `create_workflow_from_code` and `update_workflow` are the build path. */
 	instanceMcpBuildPath?: boolean;
+	/** PoC: the server's workspace tools (`open_workspace`, `build_workflow`, …) are the build sandbox. */
+	instanceMcpWorkspace?: boolean;
 }
 
-function getInstanceMcpSection(instructions: string, buildPath: boolean): string {
-	const buildNote = buildPath
+function getInstanceMcpSection(
+	instructions: string,
+	buildPath: boolean,
+	workspace: boolean,
+): string {
+	const buildNote = workspace
 		? `
 
+Workflows are built in the server's workspace, which is bound to this conversation: call \`open_workspace\` once, write the source to \`src/workflows/<name>.workflow.ts\` with \`workspace_write_file\`, and save it with \`build_workflow\` and that \`filePath\`. To change a saved workflow, call \`get_workflow_as_code\`, write the code to a file, edit it with \`workspace_str_replace_file\`, and call \`build_workflow\` with the same \`workflowId\`. The knowledge base (\`knowledge-base/index.json\`) and the node type catalog (\`node-types/index.txt\`) are files of the workspace. After a workflow is created or changed, call \`setup_workflow\` with \`includeAllNodes: true\` so the user can connect credentials, then test it with \`workflow_builder_executions\` only when the user asks.`
+		: buildPath
+			? `
+
 Workflows are built through these tools: write the workflow SDK code and pass it to \`create_workflow_from_code\`; change an existing workflow with \`update_workflow\` operations. Do not write workflow files to the workspace for this. After a workflow is created or changed, call \`setup_workflow\` with \`includeAllNodes: true\` so the user can connect credentials, then test it with \`workflow_builder_executions\` only when the user asks.`
-		: '';
+			: '';
 	return `## Instance MCP tools
 
 Some n8n tools in the tool catalog come from the instance MCP server, the same server external MCP clients use. The server describes how to use them:
@@ -336,6 +346,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			setupPanelEnabled,
 			instanceMcpInstructions,
 			instanceMcpBuildPath,
+			instanceMcpWorkspace,
 		} = options;
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load the skills that match it. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
@@ -349,7 +360,7 @@ ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
-${instanceMcpInstructions ? getInstanceMcpSection(instanceMcpInstructions, instanceMcpBuildPath === true) : ''}
+${instanceMcpInstructions ? getInstanceMcpSection(instanceMcpInstructions, instanceMcpBuildPath === true, instanceMcpWorkspace === true) : ''}
 ${communicationStyleSection}
 
 ## Capability Honesty

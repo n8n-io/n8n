@@ -79,6 +79,10 @@ import {
 import { runWithMcpCallerPolicy, type McpCallerPolicy } from './mcp-caller-policy';
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import { getMcpToolGroup, MCP_TOOL_GROUP_META_KEY } from './mcp-tool-groups';
+import { McpWorkspaceService } from './mcp-workspace.service';
+import { createBuildWorkflowTool } from './tools/workspace/build-workflow.tool';
+import { createGetWorkflowAsCodeTool } from './tools/workspace/get-workflow-as-code.tool';
+import { registerWorkspaceTools } from './tools/workspace/workspace-tools';
 import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
@@ -573,6 +577,10 @@ export class McpService {
 						this.moduleRegistry.isActive('instance-ai') &&
 						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
+					isWorkspaceEnabled:
+						builderInstructionsEnabled &&
+						(allowedToolNames?.has('build_workflow') ?? true) &&
+						(await Container.get(McpWorkspaceService).isAvailable(user)),
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
@@ -1252,6 +1260,40 @@ export class McpService {
 		registerIfAllowed(restoreVersionTool);
 
 		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable, ctx);
+
+		// PoC: the Assistant's build sandbox over MCP. Needs the instance-ai module and
+		// a sandbox enabled for this user; every other client builds with code inline.
+		// Resolved here, not injected: the tests build this service positionally.
+		const workspaceService = Container.get(McpWorkspaceService);
+		if (await workspaceService.isAvailable(user)) {
+			registerWorkspaceTools(registerIfAllowed, user, workspaceService);
+			registerIfAllowed(
+				createBuildWorkflowTool(
+					user,
+					{
+						workspaceService,
+						workflowCreationService: this.workflowCreationService,
+						workflowFinderService: this.workflowFinderService,
+						workflowService: this.workflowService,
+						collaborationService: this.collaborationService,
+						urlService: this.urlService,
+						telemetry: this.telemetry,
+						nodeTypes: this.nodeTypes,
+						credentialsService: this.credentialsService,
+						projectRepository: this.projectRepository,
+						dataTableOps,
+						aiGatewayService: this.aiGatewayService,
+						createOptions: uninstalledNodeOptions,
+						logger: this.logger,
+						postSaveMetrics: this.postSaveMetrics,
+					},
+					ctx,
+				),
+			);
+			registerIfAllowed(
+				createGetWorkflowAsCodeTool(user, this.workflowFinderService, this.workflowHistoryService),
+			);
+		}
 
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({

@@ -259,6 +259,7 @@ export async function createInstanceAgent(
 			instanceMcpInstructions:
 				instanceMcpTools.size > 0 ? context.instanceMcpServer?.instructions : undefined,
 			instanceMcpBuildPath: instanceMcpTools.has('create_workflow_from_code'),
+			instanceMcpWorkspace: instanceMcpTools.has('build_workflow'),
 		},
 	);
 

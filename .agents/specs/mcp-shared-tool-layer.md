@@ -102,7 +102,7 @@ milestone proves it.
 | Guidance | native | `server/discover.instructions`, resources | **partial.** M1: `instructions` render as a prompt section when instance tools are active. The `workflow-builder` skill still names the native tools; the model has to map them through `find_tools`. Measured in M3 |
 | Workflow artifact tab | extension | `structuredContent.workflowId` → `onArtifactChanged` | **yes, by convention.** M3: the bridge reads `workflowId`/`name` from the `structuredContent` of `create_workflow_from_code` and `update_workflow` and announces the artifact; no `_meta` needed because the output schema already names the workflow |
 | Thread state (file bindings, setup state, loop verdicts) | client-side | stays in Assistant orchestration tools | **partial.** M3: thread ownership of a created workflow and the admin `createWorkflow: blocked` rule are client-side decorators in the bridge. File bindings and the build→verify→debug loop have no equivalent: the MCP build is one call with the code inline, and verification is not run after it |
-| Workspace and sandbox build loop | not native | identity-keyed workspace tools (M4) | ? |
+| Workspace and sandbox build loop | not native | identity-keyed workspace tools (M4) | **yes, as tools.** M4: `open_workspace`, `workspace_read_file/write_file/str_replace_file/list_files/execute_command`, `build_workflow` and `get_workflow_as_code` expose the Assistant's sandbox to every client. The protocol carries no session, so the caller names its workspace (`workspaceKey`); the Assistant binds the key to its thread in the bridge and hides the parameter from the model. One sandbox per `(user, key)`, hashed into the sandbox identity |
 | Legacy tool names in persisted threads | client-side | alias map; out of scope | - |
 | Auth, scopes, rate limits | native over HTTP; bypassed in-process | scopes passed to `getServer` | **partial.** M1: scopes work as for OAuth clients. Per-resource exposure (`availableInMCP`) is a third-party policy the protocol has no word for; the server needs a trusted first-party marker on the auth context (`firstParty`), set by the host |
 | Telemetry attribution | native | `clientInfo.name = 'n8n-assistant'` | ? |
@@ -211,6 +211,10 @@ packages/@n8n/instance-ai/src/
 packages/@n8n/instance-ai/src/tools/
   instance-mcp-elicitation.ts       # M2: input_required → card payloads, policy, answers
 packages/cli/src/modules/mcp/
+  mcp-workspace.service.ts          # M4: (user, key) workspaces on the Assistant's sandbox service
+  tools/workspace/workspace-tools.ts        # M4: open_workspace + the SDK workspace tools over MCP
+  tools/workspace/build-workflow.tool.ts    # M4: sandbox compile → create or confirmed replace
+  tools/workspace/get-workflow-as-code.tool.ts   # M4: SDK code of a saved workflow
   mcp-tool-groups.ts                # M1: _meta['n8n/group'] per tool
   mcp-caller-policy.ts              # M1: first-party caller policy (AsyncLocalStorage)
   mcp-confirmation.service.ts       # M2: elicitation before a write, signed requestState
@@ -235,7 +239,7 @@ packages/cli/src/modules/instance-ai/turn-setup/
 - [x] M2: bridge suspend/resume, grants and judge, `questions` card mapping
 - [x] M3: build through `create_workflow_from_code`; eval delta (manual, see findings)
 - [ ] M3: `build_workflow({ files })` compile service → folded into M4 (same identity-keyed sandbox)
-- [ ] M4: identity-keyed sandbox, workspace tools over MCP, Assistant on MCP only
+- [x] M4: identity-keyed sandbox, workspace tools over MCP, Assistant on MCP only (manual run pending)
 - [ ] M5: HTTP loopback (optional)
 - [ ] Fill in the capability matrix and the gap list
 
@@ -329,6 +333,34 @@ packages/cli/src/modules/instance-ai/turn-setup/
 - The compile service (`build_workflow({ files })` in a sandbox) needs the same
   identity-keyed sandbox as M4, so it moves there.
 
+## Findings (M4)
+
+- The sandbox needed no new lifecycle: the Assistant's `InstanceAiSandboxService`
+  keys entries by an opaque "thread id", so an MCP workspace is
+  `mcp-<sha256(userId, key)[0:24]>` in the same cache, with the same settings
+  invalidation, expiry and provider reclamation. The hash keeps Daytona names
+  under 63 characters; a cut name must never merge two users' workspaces.
+- The workspace tools are the `@n8n/agents` workspace tools themselves,
+  created per call against the caller's scoped workspace and invoked by name.
+  The MCP schemas mirror the SDK's; the path scoping is the SDK's.
+- `build_workflow` reuses the Assistant's compiler (`compileWorkflowSource`:
+  tsx in the sandbox, host re-validation) and the server's own create path
+  (`create_workflow_from_code` takes a `compiledWorkflow` option). A replace
+  of a saved workflow (`workflowId`) is a confirmed `edit-workflow`, with node
+  ids, positions and setup values of kept nodes preserved
+  (`prepareWorkflowForSave`).
+- Statelessness shows up as a parameter: every workspace tool takes a
+  `workspaceKey`. A generic client passes the key `open_workspace` returned;
+  the Assistant's bridge injects its thread id and removes the parameter from
+  the schema the model sees. This is the one place the bridge rewrites a
+  server schema.
+- `build_workflow({ files })` is the compile service: it writes the sources
+  into the caller's workspace and builds the entry, so a client without a
+  filesystem gets the full toolchain in one call.
+- The Assistant now runs on the MCP surface for discovery, reads, lifecycle,
+  building and the workspace. Still native: `setup_workflow`, executions,
+  credentials, data tables, `execute_node`, and the harness tools.
+
 ## Native tools swapped so far
 
 | Native tool | Instance MCP tool(s) |
@@ -337,6 +369,7 @@ packages/cli/src/modules/instance-ai/turn-setup/
 | `list_workflows`, `get_workflow`, `list_workflow_versions`, `get_workflow_node_usage` | `search_workflows`, `get_workflow_details`, `get_workflow_history`, `get_workflow_version`, `get_workflow_versions_diff`, `get_node_usage` |
 | `publish_workflow`, `unpublish_workflow`, `archive_workflow`, `restore_workflow_version` | the same names, confirmed through multi-round-trip elicitation |
 | `workflow_builder_build_workflow`, `get_workflow_as_code`, `validate_workflow` | `create_workflow_from_code`, `update_workflow` (edits confirmed through elicitation), `validate_workflow` (code) |
+| the `@n8n/agents` workspace tools (sandbox) | `open_workspace`, `workspace_*`, `build_workflow`, `get_workflow_as_code` over MCP, keyed by the thread |
 
 Kept native: `setup_workflow`, `unarchive_workflow`,
 `update_workflow_version`, `execute_node`, `search_models`, executions,

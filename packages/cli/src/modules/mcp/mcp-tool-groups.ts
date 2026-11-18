@@ -46,6 +46,14 @@ const GROUP_OVERRIDES: Record<string, string> = {
 	expand_instance_activity: 'instance',
 	get_dependencies: 'instance',
 	list_workflow_tags: 'instance',
+	open_workspace: 'workspace',
+	workspace_read_file: 'workspace',
+	workspace_write_file: 'workspace',
+	workspace_str_replace_file: 'workspace',
+	workspace_list_files: 'workspace',
+	workspace_execute_command: 'workspace',
+	build_workflow: 'workspace',
+	get_workflow_as_code: 'workspace',
 };
 
 const GROUP_BY_TOOL = new Map<string, string>();

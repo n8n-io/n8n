@@ -224,6 +224,15 @@ export const INSTANCE_MCP_TOOLS_IN_USE: ReadonlySet<string> = new Set<string>([
 	'create_workflow_from_code',
 	'update_workflow',
 	'validate_workflow',
+	// the build sandbox, keyed by the thread
+	'open_workspace',
+	'workspace_read_file',
+	'workspace_write_file',
+	'workspace_str_replace_file',
+	'workspace_list_files',
+	'workspace_execute_command',
+	'build_workflow',
+	'get_workflow_as_code',
 ]);
 
 const NODE_TOOL_NAMES: readonly string[] = [
@@ -269,6 +278,7 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	agents: 'build and configure standalone n8n Agents',
 	instance:
 		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
+	workspace: 'read, write and run files in the build sandbox, and build workflows from its sources',
 };
 
 /** Returns the description of a tool group, or undefined when it has none. */

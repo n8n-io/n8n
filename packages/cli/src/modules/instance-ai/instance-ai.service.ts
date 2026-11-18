@@ -395,6 +395,14 @@ export class InstanceAiService {
 	/** Owns the per-thread runtime sandbox/workspace lifecycle. */
 	private readonly sandboxService: InstanceAiSandboxService;
 
+	/**
+	 * PoC: the instance MCP server's workspace tools share the Assistant's sandbox
+	 * lifecycle (cache, settings invalidation, expiry) under their own keys.
+	 */
+	getSandboxService(): InstanceAiSandboxService {
+		return this.sandboxService;
+	}
+
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 

@@ -65,6 +65,11 @@ export type McpInstructionsOptions = {
 	 */
 	migrationReportTargetVersion?: string;
 	credentialDescriptionsEnabled?: boolean;
+	/**
+	 * PoC: whether the build sandbox tools (`open_workspace`, `workspace_*`,
+	 * `build_workflow`, `get_workflow_as_code`) are registered for this caller.
+	 */
+	isWorkspaceEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -74,6 +79,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isInstanceContextEnabled = false,
 		isUserPreferencesEnabled = false,
 		migrationReportTargetVersion,
+		isWorkspaceEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -161,6 +167,8 @@ To build an Agent, first call get_agent_builder_reference (or read n8n://agents/
 
 Agent conversations and runs are not workflow executions: get_workflow_execution and search_workflow_executions cover workflow executions only, including workflows an Agent invokes as tools.`;
 
+	const WORKSPACE_INSTRUCTIONS = `Build sandbox: this server also gives you a workspace, a sandbox with the n8n Workflow SDK installed and typed for this instance. Prefer it over ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} when you have no local toolchain, when a workflow needs more than one source file, or when you want the compiler's errors before saving. Steps: (1) call open_workspace once and keep the workspaceKey it returns; (2) read knowledge-base/index.json with workspace_read_file for the SDK reference, best practices and example templates, and node-types/index.txt to search node types; (3) write the source to src/workflows/<name>.workflow.ts with workspace_write_file (the file exports the workflow as default); (4) call build_workflow with workspaceKey and filePath: it compiles the source with tsx, validates the result and saves it, and returns the errors to fix when it fails; (5) to edit a saved workflow, call get_workflow_as_code, write the code to a file, change it with workspace_str_replace_file, and call build_workflow with the same workflowId. workspace_execute_command runs shell commands in the sandbox, for example to type-check a source with npx tsc.`;
+
 	return [
 		INTRO,
 		USER_PREFERENCES_HINT,
@@ -169,6 +177,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
+		isBuilderEnabled && isWorkspaceEnabled ? WORKSPACE_INSTRUCTIONS : '',
 	]
 		.filter(Boolean)
 		.join('\n\n');

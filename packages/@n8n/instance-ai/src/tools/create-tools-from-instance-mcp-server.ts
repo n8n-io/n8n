@@ -16,6 +16,7 @@ import type {
 	InstanceMcpCallToolResult,
 	InstanceMcpInputRequiredResult,
 	InstanceMcpServer,
+	InstanceMcpToolDefinition,
 } from '../types';
 import {
 	approvalSuspendPayload,
@@ -78,7 +79,31 @@ const BLOCKING_PERMISSION_BY_TOOL: Readonly<Record<string, keyof InstanceAiPermi
 const WORKFLOW_WRITE_TOOLS: ReadonlySet<string> = new Set([
 	'create_workflow_from_code',
 	'update_workflow',
+	'build_workflow',
 ]);
+
+/** The server names a caller's workspace by key; the Assistant binds it to its thread. */
+const WORKSPACE_KEY_PARAM = 'workspaceKey';
+
+/**
+ * Hides `workspaceKey` from the model: the server is stateless and asks the
+ * caller to name its workspace, the Assistant always means the thread's.
+ */
+function withoutWorkspaceKey(schema: InstanceMcpToolDefinition['inputSchema']): {
+	schema: InstanceMcpToolDefinition['inputSchema'];
+	bound: boolean;
+} {
+	const properties = isRecord(schema.properties) ? schema.properties : undefined;
+	if (!properties || !(WORKSPACE_KEY_PARAM in properties)) return { schema, bound: false };
+	const { [WORKSPACE_KEY_PARAM]: _hidden, ...rest } = properties;
+	const required = Array.isArray(schema.required)
+		? schema.required.filter((name) => name !== WORKSPACE_KEY_PARAM)
+		: undefined;
+	return {
+		schema: { ...schema, properties: rest, ...(required ? { required } : {}) },
+		bound: true,
+	};
+}
 
 /**
  * What the native build tool did after a save and the protocol cannot carry:
@@ -146,13 +171,21 @@ export function createToolsFromInstanceMcpServer({
 		const group = definition._meta?.[INSTANCE_MCP_GROUP_META_KEY];
 		if (typeof group === 'string') groups.set(toolName, group);
 
+		const { schema: inputSchema, bound: bindsWorkspace } = withoutWorkspaceKey(
+			definition.inputSchema,
+		);
 		const tool = new Tool(toolName)
 			.description(definition.description ?? toolName)
-			.input(definition.inputSchema)
+			.input(inputSchema)
 			.suspend(elicitationSuspendSchema)
 			.resume(elicitationResumeSchema)
 			.handler(async (input: unknown, ctx: BridgeToolContext) => {
-				const args = isRecord(input) ? input : {};
+				const args = {
+					...(isRecord(input) ? input : {}),
+					...(bindsWorkspace && context.threadId
+						? { [WORKSPACE_KEY_PARAM]: context.threadId }
+						: {}),
+				};
 				const call = async (
 					retry?: Pick<InstanceMcpCallToolOptions, 'inputResponses' | 'requestState'>,
 				) =>
