@@ -191,7 +191,7 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 
 .headerAction {
 	// Quieter than the title, so the panel's name stays the first thing to read.
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 
 	&:hover,
 	&:focus-visible {
