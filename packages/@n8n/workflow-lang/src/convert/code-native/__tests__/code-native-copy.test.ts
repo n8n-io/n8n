@@ -3,12 +3,13 @@
  * without a copy only when the code provably changes nothing and the list is plain JSON
  * from a parse. The results must stay those of n8n's Code node, which always gets copies.
  */
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { hostRunners } from '../../__tests__/behaviour/compare.ts';
 import { allItemsCode, eachItemCode } from '../../code-node.ts';
 import { convertWorkflow } from '../../index.ts';
 import { runReference, useUtc } from '../../../reference/runner.ts';
+import { nativeCode, runnerCode, startRunner, taskRunnerAvailable } from './runner-oracle.ts';
 import { runModule } from '../../../testing/vm.ts';
 import { checkTranslation } from '../check.ts';
 import type { CodeMode } from '../translate.ts';
@@ -361,6 +362,41 @@ describe('a native Code node without a copy of its input', () => {
 		expect(blockOf(out.source, 'Writer')).toContain(COPIED);
 	});
 
+	it('runs code that changes an item and reads it through $input natively', async () => {
+		const wf = {
+			name: 'Views',
+			nodes: [
+				hook,
+				code('Make', 'return [{ json: { id: 1, tags: ["a"] } }];'),
+				code(
+					'Change',
+					'items[0].json.id = 7;\nitems[0].json.tags.push("b");\nreturn [{ json: { id: $input.all()[0].json.id, json: $json.tags, tags: $input.first().json.tags } }];',
+				),
+			],
+			connections: chain(['Hook', 'Make', 'Change']),
+		};
+		const { items } = await run(wf, {});
+		expect(items('Change')).toEqual([{ id: 7, json: ['a', 'b'], tags: ['a', 'b'] }]);
+	});
+
+	it('keeps code that changes the list itself in the host', () => {
+		const wf = {
+			name: 'Views of the list',
+			nodes: [
+				hook,
+				code('Make', 'return [{ json: { id: 1 } }];'),
+				code(
+					'Change',
+					'items.push({ json: { id: 2 } });\nreturn [{ json: { n: $input.all().length } }];',
+				),
+			],
+			connections: chain(['Hook', 'Make', 'Change']),
+		};
+		const out = convertWorkflow(wf);
+		expect(out.ok).toBe(true);
+		expect(out.fallbackNodes).toEqual(['Change']);
+	});
+
 	it('keeps the copy of the items of other nodes', async () => {
 		const wf = {
 			name: 'Other nodes',
@@ -379,5 +415,94 @@ describe('a native Code node without a copy of its input', () => {
 		expect(blockOf(source, 'Same')).not.toContain(COPIED);
 		// As v1: the items of another node are other objects than the input items.
 		expect(items('Same')).toEqual([{ same: false, list: [1] }]);
+	});
+});
+
+/**
+ * Code that reads the input items both directly (`items`, `item`) and through the views of
+ * v1 that keep a write for themselves (`$input`, `$json`, `$items()`). A write through a
+ * direct view is visible through the views, because they read the item before they write it.
+ * A write through a view is not visible through the direct view. Native code has one list,
+ * so only the first form has a native form.
+ */
+const CROSS_VIEW: Array<[string, CodeMode, string]> = [
+	[
+		'a write through items, read through the views',
+		'all',
+		'items[0].json.a = 99;\nreturn [{ json: { all: $input.all()[0].json.a, first: $input.first().json.a, json: $json.a } }];',
+	],
+	[
+		'a nested field through items',
+		'all',
+		'items[0].json.address.city = "Rome";\nreturn [{ json: { city: $input.all()[0].json.address.city } }];',
+	],
+	[
+		'a list of an item through items',
+		'all',
+		'items[0].json.tags.push("new");\nreturn [{ json: { tags: $input.all()[0].json.tags } }];',
+	],
+	[
+		'a change through a variable of an item',
+		'all',
+		'const first = items[0].json;\nfirst.a = 5;\nreturn [{ json: { all: $input.all()[0].json.a, json: $json.a } }];',
+	],
+	[
+		'a change in a loop over the items',
+		'all',
+		'for (const i of items) i.json.seen = true;\nreturn [{ json: { seen: $input.all()[0].json.seen } }];',
+	],
+	[
+		'the item of each mode, read as $json',
+		'each',
+		'item.json.a = 99;\nreturn { json: { json: $json.a, item: $input.item.json.a } };',
+	],
+];
+
+/** Writes through a view: the direct view keeps the item before the change. */
+const VIEW_WRITES: Array<[string, string]> = [
+	['$input.all()', '$input.all()[0].json.a = 99;\nreturn [{ json: { a: items[0].json.a } }];'],
+	['$input.first()', '$input.first().json.a = 99;\nreturn [{ json: { a: items[0].json.a } }];'],
+	['$json', '$json.a = 99;\nreturn [{ json: { a: items[0].json.a } }];'],
+	['$items()', '$items()[0].json.a = 99;\nreturn [{ json: { a: items[0].json.a } }];'],
+	[
+		'a variable of $input.all()',
+		'const all = $input.all();\nall[0].json.a = 99;\nreturn [{ json: { a: items[0].json.a } }];',
+	],
+	[
+		'a whole json of a view',
+		'$input.all()[0].json = { a: 9 };\nreturn [{ json: { a: items[0].json.a } }];',
+	],
+	[
+		'a list of a view',
+		'$input.all().push({ json: { a: 3 } });\nreturn [{ json: { n: items.length } }];',
+	],
+	[
+		'an item that the code adds to the list',
+		'items.push({ json: { a: 3 } });\nreturn [{ json: { n: $input.all().length } }];',
+	],
+	[
+		'a sort of the list',
+		'items.sort((x, y) => y.json.a - x.json.a);\nreturn [{ json: { first: $input.all()[0].json.a } }];',
+	],
+	['a removed item', 'delete items[0];\nreturn [{ json: { first: $input.all()[0].json.a } }];'],
+	[
+		'another item at an index',
+		'items[1] = { json: { a: 9 } };\nreturn [{ json: { a: $input.all()[1].json.a } }];',
+	],
+];
+
+describe.skipIf(!taskRunnerAvailable())('the views of the input items against n8n', () => {
+	beforeAll(async () => await startRunner(), 120_000);
+
+	it.each(CROSS_VIEW)('gives the result of v1 for %s', async (_name, mode, code) => {
+		const runner = await runnerCode(code, mode, rows.map(({ $binary: _b, ...json }) => ({ json })));
+		expect(nativeCode(code, mode, rows.map(({ $binary: _b, ...json }) => ({ json })))).toEqual(runner);
+	});
+
+	it.each(VIEW_WRITES)('keeps a write through %s in the host', (_name, code) => {
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false });
+		expect(t.ok ? [] : t.blockers.map((b) => b.feature)).toContain(
+			'items and $input in code that changes items',
+		);
 	});
 });

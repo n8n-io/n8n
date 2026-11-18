@@ -143,7 +143,7 @@ export interface Translation {
 	/** True when the code can change objects that it gets, so it needs copies. */
 	mutates: boolean;
 	/**
-	 * True when the code provably changes no object that it gets (\`provesReadOnly\`): then it
+	 * True when the code provably changes no object that it gets (\`proveReadOnly\`): then it
 	 * can read an input list that is plain JSON without a copy.
 	 */
 	readOnly: boolean;
@@ -785,6 +785,20 @@ const THIS_ARG_METHODS = new Set([
 /** Functions of `Object` that change nothing. */
 const OBJECT_READERS = new Set(['keys', 'values', 'entries', 'fromEntries', 'hasOwn', 'is']);
 
+/** What the proof of `proveReadOnly` gives. */
+interface ReadOnlyProof {
+	/** True when the code changes no object that it gets. */
+	readOnly: boolean;
+	/**
+	 * True when a change of the code can give another value through a view of the input items
+	 * of v1 (`$input`, `$json`, `$items()`, `$binary`) than through the view that the code has
+	 * directly (`items`, `item`), or when the proof cannot follow a change. v1 keeps a write
+	 * through a view for that view, and its view holds the list as it was before the code ran:
+	 * a change of the list itself is not there.
+	 */
+	viewWrite: boolean;
+}
+
 /**
  * True when the code provably changes no object that it gets: not an input item, not a
  * part of one, not an item of another node.
@@ -798,7 +812,7 @@ const OBJECT_READERS = new Set(['keys', 'values', 'entries', 'fromEntries', 'has
  * method name, a `this` argument) and `this` itself give "not proven". The proof errs to
  * "not proven": then the code gets copies.
  */
-function provesReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode): boolean {
+function proveReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode): ReadOnlyProof {
 	const free = (id: ts.Identifier): boolean => {
 		const sym = checker.getSymbolAtLocation(id);
 		return sym === undefined || (sym.declarations ?? []).length === 0;
@@ -870,13 +884,57 @@ function provesReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode):
 
 	const ownVars = new Set<ts.Symbol>();
 	const otherVars = new Set<ts.Symbol>();
+	/** Variables that hold a view of the input items that v1 copies when the code writes it. */
+	const viewVars = new Set<ts.Symbol>();
+	/**
+	 * True when the value is a view of the input items that v1 copies when the code writes it:
+	 * `$input`, `$json`, `$items()` and `$binary`, or a variable that holds one of them.
+	 */
+	const copiedView = (e: ts.Expression): boolean => {
+		const x = stripParens(e);
+		if (ts.isIdentifier(x)) {
+			if (free(x)) {
+				return x.text === '$input' || x.text === '$json' || x.text === '$items' || x.text === '$binary';
+			}
+			const sym = checker.getSymbolAtLocation(x);
+			return sym !== undefined && viewVars.has(sym);
+		}
+		if (
+			ts.isPropertyAccessExpression(x) ||
+			ts.isElementAccessExpression(x) ||
+			ts.isNonNullExpression(x) ||
+			ts.isCallExpression(x)
+		) {
+			// The root of the read: `$input.all()[0].json` reads the list of `$input`.
+			return copiedView(x.expression);
+		}
+		return false;
+	};
 	const holds = (name: ts.Identifier, value: ts.Expression | undefined) => {
 		const sym = checker.getSymbolAtLocation(name);
 		if (sym === undefined) return;
 		if (value !== undefined && own(value)) ownVars.add(sym);
 		else otherVars.add(sym);
+		if (value !== undefined && copiedView(value)) viewVars.add(sym);
+	};
+	/**
+	 * True when a change of this value is a change of the list of the input items itself: v1's
+	 * views keep the list as it was before the code ran, so a push, a sort or another item at
+	 * an index is not there. A change inside an item is there: the views hold the item itself.
+	 */
+	const listChange = (target: ts.Expression): boolean => {
+		const x = stripParens(target);
+		if (isItems(x)) return true;
+		if (
+			(ts.isPropertyAccessExpression(x) || ts.isElementAccessExpression(x)) &&
+			isItems(stripParens(x.expression))
+		) {
+			return true;
+		}
+		return false;
 	};
 	const changed: ts.Expression[] = [];
+	let viewWrite = false;
 	let proven = true;
 	/** The value whose property an assignment, an update or a `delete` changes. */
 	const changes = (target: ts.Expression): void => {
@@ -907,6 +965,8 @@ function provesReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode):
 			if (op >= ts.SyntaxKind.FirstAssignment && op <= ts.SyntaxKind.LastAssignment) {
 				const left = stripParens(n.left);
 				if (ts.isIdentifier(left)) {
+					// A new list or a new item in the direct view: the views keep the old one.
+					if (isItems(left) || (mode === 'each' && freeNamed(left, 'item'))) viewWrite = true;
 					holds(left, op === ts.SyntaxKind.EqualsToken ? n.right : undefined);
 				} else changes(left);
 			}
@@ -991,15 +1051,19 @@ function provesReadOnly(root: ts.Node, checker: ts.TypeChecker, mode: CodeMode):
 		ts.forEachChild(n, visit);
 	};
 	visit(root);
-	if (!proven) return false;
+	// A change that this proof cannot follow can go through any view.
+	if (!proven) return { readOnly: false, viewWrite: true };
 	for (const target of changed) {
 		const x = stripParens(target);
+		if (copiedView(x) || listChange(x)) viewWrite = true;
 		if (isItems(x) || own(x)) continue;
-		if (!ts.isIdentifier(x)) return false;
+		if (!ts.isIdentifier(x)) return { readOnly: false, viewWrite };
 		const sym = checker.getSymbolAtLocation(x);
-		if (sym === undefined || !ownVars.has(sym) || otherVars.has(sym)) return false;
+		if (sym === undefined || !ownVars.has(sym) || otherVars.has(sym)) {
+			return { readOnly: false, viewWrite };
+		}
 	}
-	return true;
+	return { readOnly: true, viewWrite };
 }
 
 /** True when the code names the input items both as \`items\` or \`item\` and through \`$input\`, \`$json\` or \`$items()\`. */
@@ -1063,6 +1127,9 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		edits.push({ start: at, end: at, text: code, order });
 
 	const helpers = new Set<string>();
+	let readOnlyProofCache: ReadOnlyProof | undefined;
+	const readOnlyProof = (): ReadOnlyProof =>
+		(readOnlyProofCache ??= proveReadOnly(root, checker, input.mode));
 	/** `Translation.handsOver`, and the feature of the first form that set it. */
 	let handsOver: string | null = null;
 	const handOver = (feature: string): void => {
@@ -2776,7 +2843,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		);
 	};
 
-	/** True when the code provably changes no input (\`provesReadOnly\`): then no input value is a Date. */
+	/** True when the code provably changes no input (\`proveReadOnly\`): then no input value is a Date. */
 	let inputsStay: boolean | undefined;
 	/** Methods of a list that give each item to their callback as its first parameter. */
 	const ITEM_CALLBACKS = new Set(['map', 'forEach', 'filter', 'find', 'some', 'every', 'flatMap']);
@@ -2964,8 +3031,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 		}
 		if (!isInputValue(x, 0)) return false;
-		inputsStay ??= provesReadOnly(root, checker, input.mode);
-		return inputsStay;
+		inputsStay ??= readOnlyProof().readOnly;
+		return inputsStay === true;
 	};
 
 	/**
@@ -6275,12 +6342,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 	if (Array.isArray(parseErrors) && parseErrors.length > 0) {
 		block('translation syntax', 'The native form does not parse.');
 	}
-	const readOnly = provesReadOnly(root, checker, input.mode);
+	const readOnly = readOnlyProof().readOnly;
 	// In v1, \`$input\`, \`$json\` and \`$items()\` give the input items through copies that
 	// take a change only for themselves, and \`items\` and \`item\` give the items themselves. So a
 	// change through the first is not seen through the second. Native code has one list:
 	// code that uses both and can change an item stays in the host.
-	if (!input.nodeCode && input.kind === 'code' && !readOnly && usesBothItemViews(root, checker)) {
+	if (!input.nodeCode && input.kind === 'code' && readOnlyProof().viewWrite && usesBothItemViews(root, checker)) {
 		blockers.push({
 			feature: 'items and $input in code that changes items',
 			message:
