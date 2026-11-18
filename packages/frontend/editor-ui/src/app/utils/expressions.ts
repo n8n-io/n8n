@@ -3,6 +3,7 @@ import type { ResolvableState } from '@/app/types/expressions';
 import type { Result } from '@n8n/utils/result';
 import { ExpressionError, ExpressionParser, isExpression, type IPinData } from 'n8n-workflow';
 import { isObject } from '@/app/utils/objectUtils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export { isExpression };
 
@@ -120,6 +121,49 @@ export const getExternalSecretPreview = (
 			return undefined;
 	}
 };
+
+const RUNTIME_CREDENTIAL_REFERENCE = /\$runtimeCredentials\b/;
+
+/**
+ * Lists the aliases that an expression reads from `$runtimeCredentials`. A reference that
+ * does not read a literal key, e.g. `$runtimeCredentials[$vars.x]`, is listed as `null`.
+ */
+export const getRuntimeCredentialReferences = (expression: string): Array<string | null> => {
+	const references: Array<string | null> = [];
+
+	for (const { type, text: code } of ExpressionParser.splitExpression(expression)) {
+		if (type === 'text') continue;
+
+		const [, ...afterReferences] = code.split(RUNTIME_CREDENTIAL_REFERENCE);
+		for (const afterReference of afterReferences) {
+			const { keys } = readLiteralKeys(afterReference);
+			references.push(keys[0] ?? null);
+		}
+	}
+
+	return references;
+};
+
+/**
+ * Runtime values exist only during an execution, so the editor cannot resolve them.
+ * Shows a placeholder for a known alias and a warning for an unknown one.
+ */
+export const getRuntimeCredentialPreview = (
+	expression: string,
+	aliases: string[],
+): { text: string; exists: boolean } | undefined => {
+	const references = getRuntimeCredentialReferences(expression);
+	if (references.length === 0) return undefined;
+
+	const allKnown = references.every((alias) => alias !== null && aliases.includes(alias));
+	return allKnown
+		? { text: i18n.baseText('expressionModalInput.runtimeCredentialDuringExecution'), exists: true }
+		: { text: i18n.baseText('expressionModalInput.runtimeCredentialNotFound'), exists: false };
+};
+
+/** Aliases from the admin rules. Read only after login, when module settings are loaded. */
+export const runtimeCredentialAliases = (): string[] =>
+	useSettingsStore().moduleSettings['runtime-credentials']?.aliases ?? [];
 
 export const isEmptyExpression = (expr: string) => {
 	return /\{\{\s*\}\}/.test(expr);

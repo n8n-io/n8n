@@ -41,6 +41,8 @@ import type {
 import {
 	getExpressionErrorMessage,
 	getExternalSecretPreview,
+	getRuntimeCredentialPreview,
+	runtimeCredentialAliases,
 	getResolvableState,
 	referencesExecutionData,
 } from '@/app/utils/expressions';
@@ -459,7 +461,8 @@ export const useExpressionEditor = ({
 
 		if (result.resolved === undefined) {
 			const secretPreview = isCredentialModal
-				? getExternalSecretPreview(resolvable, toValue(additionalData).$secrets)
+				? (getExternalSecretPreview(resolvable, toValue(additionalData).$secrets) ??
+					getRuntimeCredentialPreview(resolvable, runtimeCredentialAliases()))
 				: undefined;
 
 			if (secretPreview) {

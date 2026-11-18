@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, watch } from 'vue';
+import { getRuntimeCredentialReferences, isExpression } from '@/app/utils/expressions';
 
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
@@ -180,6 +181,18 @@ const isHomeTeamProject = computed(
 		credentialsStore.getCredentialById(`${props.credentialId}`)?.homeProject?.type ===
 		ProjectTypes.Team,
 );
+/** Aliases that the credential fields read from `$runtimeCredentials`. */
+const runtimeCredentialAliasesInUse = computed(() => {
+	const aliases = new Set<string>();
+	for (const value of Object.values(props.credentialData ?? {})) {
+		if (typeof value !== 'string' || !isExpression(value)) continue;
+		for (const alias of getRuntimeCredentialReferences(value)) {
+			if (alias) aliases.add(alias);
+		}
+	}
+	return [...aliases];
+});
+
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
 	const activeNode = ndvStore.value.activeNode;
@@ -499,6 +512,18 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
 						</N8nLink>
 					</template>
+				</N8nCallout>
+
+				<N8nCallout
+					v-if="runtimeCredentialAliasesInUse.length"
+					theme="info"
+					data-test-id="credential-runtime-values-callout"
+				>
+					{{
+						i18n.baseText('credentialEdit.credentialConfig.runtimeValues', {
+							interpolate: { aliases: runtimeCredentialAliasesInUse.join(', ') },
+						})
+					}}
 				</N8nCallout>
 
 				<template v-if="canWrite">

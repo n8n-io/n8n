@@ -12,6 +12,7 @@ import {
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import {
 	METADATA_SECTION,
@@ -101,28 +102,41 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	}
 
 	if (isCredentialsModalOpen()) {
-		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
-			? [
-					{
-						label: '$vars',
-						section: METADATA_SECTION,
-						info: createInfoBoxRenderer({
-							name: '$vars',
-							returnType: 'Object',
-							description: i18n.baseText('codeNodeEditor.completer.$vars'),
-						}),
-					},
-					{
-						label: '$secrets',
-						section: METADATA_SECTION,
-						info: createInfoBoxRenderer({
-							name: '$secrets',
-							returnType: 'Object',
-							description: i18n.baseText('codeNodeEditor.completer.$secrets'),
-						}),
-					},
-				]
-			: [];
+		const credentialOptions: Completion[] = [];
+		if (useExternalSecretsStore().isEnterpriseExternalSecretsEnabled) {
+			credentialOptions.push(
+				{
+					label: '$vars',
+					section: METADATA_SECTION,
+					info: createInfoBoxRenderer({
+						name: '$vars',
+						returnType: 'Object',
+						description: i18n.baseText('codeNodeEditor.completer.$vars'),
+					}),
+				},
+				{
+					label: '$secrets',
+					section: METADATA_SECTION,
+					info: createInfoBoxRenderer({
+						name: '$secrets',
+						returnType: 'Object',
+						description: i18n.baseText('codeNodeEditor.completer.$secrets'),
+					}),
+				},
+			);
+		}
+		if (useSettingsStore().moduleSettings['runtime-credentials']?.enabled) {
+			credentialOptions.push({
+				label: '$runtimeCredentials',
+				section: METADATA_SECTION,
+				info: createInfoBoxRenderer({
+					name: '$runtimeCredentials',
+					returnType: 'Object',
+					description: i18n.baseText('codeNodeEditor.completer.$runtimeCredentials'),
+				}),
+			});
+		}
+		return credentialOptions;
 	}
 
 	if (!hasActiveNode(workflowDocumentId, targetNodeParameterContext)) {

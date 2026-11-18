@@ -454,6 +454,37 @@ describe('Resolution-based completions', () => {
 		});
 	});
 
+	describe('runtime credentials', () => {
+		beforeEach(() => {
+			uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
+			settingsStore.moduleSettings = {
+				'runtime-credentials': { enabled: true, aliases: ['tenant_key', 'partner_token'] },
+			};
+		});
+
+		test('should offer $runtimeCredentials in a credential field', async () => {
+			const result = await completions('{{ $runt| }}');
+
+			expect(result?.map((option) => option.label)).toContain('$runtimeCredentials');
+		});
+
+		test('should not offer $runtimeCredentials when the feature is off', async () => {
+			settingsStore.moduleSettings = {
+				'runtime-credentials': { enabled: false, aliases: [] },
+			};
+
+			const result = await completions('{{ $runt| }}');
+
+			expect(result?.map((option) => option.label) ?? []).not.toContain('$runtimeCredentials');
+		});
+
+		test('should return the admin aliases for: {{ $runtimeCredentials.| }}', async () => {
+			const result = await completions('{{ $runtimeCredentials.| }}');
+
+			expect(result?.map((option) => option.label)).toEqual(['tenant_key', 'partner_token']);
+		});
+	});
+
 	describe('references', () => {
 		const { $input, $ } = mockProxy;
 

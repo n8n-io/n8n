@@ -3,6 +3,8 @@ import {
 	completeExpressionSyntax,
 	getExpressionErrorMessage,
 	getExternalSecretPreview,
+	getRuntimeCredentialPreview,
+	getRuntimeCredentialReferences,
 	isPairedItemNotOnBranchError,
 	shouldConvertToExpression,
 	removeExpressionPrefix,
@@ -36,6 +38,44 @@ describe('Utils: Expressions', () => {
 				nodeCause: 'out3',
 			});
 			expect(getExpressionErrorMessage(error, {})).toBe('‘out3’ is on another branch');
+		});
+	});
+
+	describe('getRuntimeCredentialReferences()', () => {
+		it.each([
+			['={{ $runtimeCredentials.tenant_key }}', ['tenant_key']],
+			["=Bearer {{ $runtimeCredentials['tenant_key'] }}", ['tenant_key']],
+			['={{ $runtimeCredentials.a + $runtimeCredentials.b }}', ['a', 'b']],
+			['={{ $runtimeCredentials[$vars.key] }}', [null]],
+			['={{ $secrets.vault.key }}', []],
+			['=$runtimeCredentials.tenant_key outside a block', []],
+		])('should read the aliases in "%s"', (expression, expected) => {
+			expect(getRuntimeCredentialReferences(expression)).toEqual(expected);
+		});
+	});
+
+	describe('getRuntimeCredentialPreview()', () => {
+		const aliases = ['tenant_key', 'partner_token'];
+
+		it('should defer a known alias to the execution', () => {
+			expect(
+				getRuntimeCredentialPreview('=Bearer {{ $runtimeCredentials.tenant_key }}', aliases),
+			).toEqual({ text: '[runtime value, set during the execution]', exists: true });
+		});
+
+		it.each([
+			'={{ $runtimeCredentials.unknown }}',
+			'={{ $runtimeCredentials.tenant_key + $runtimeCredentials.unknown }}',
+			'={{ $runtimeCredentials[$vars.key] }}',
+		])('should report an alias that no rule defines in "%s"', (expression) => {
+			expect(getRuntimeCredentialPreview(expression, aliases)).toEqual({
+				text: '[no admin rule defines this runtime value]',
+				exists: false,
+			});
+		});
+
+		it('should leave expressions without runtime values alone', () => {
+			expect(getRuntimeCredentialPreview('={{ $json.id }}', aliases)).toBeUndefined();
 		});
 	});
 

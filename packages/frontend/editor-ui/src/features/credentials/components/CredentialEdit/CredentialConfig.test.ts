@@ -94,6 +94,39 @@ describe('CredentialConfig', () => {
 		).toBeInTheDocument();
 	});
 
+	it('should explain runtime values when a field reads $runtimeCredentials', () => {
+		renderComponent(
+			{
+				props: {
+					isManaged: false,
+					credentialData: {
+						name: 'x-api-key',
+						value: '={{ $runtimeCredentials.tenant_key }}',
+					} as ICredentialDataDecryptedObject,
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(screen.getByTestId('credential-runtime-values-callout')).toHaveTextContent(
+			'This credential reads tenant_key from the trigger request',
+		);
+	});
+
+	it('should not explain runtime values for a credential without them', () => {
+		renderComponent(
+			{
+				props: {
+					isManaged: false,
+					credentialData: { value: '={{ $secrets.vault.key }}' } as ICredentialDataDecryptedObject,
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(screen.queryByTestId('credential-runtime-values-callout')).not.toBeInTheDocument();
+	});
+
 	it('should not display a warning when isManaged is false', async () => {
 		renderComponent({ props: { isManaged: false } }, { merge: true });
 		expect(

@@ -2,6 +2,8 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	getExternalSecretPreview,
+	getRuntimeCredentialPreview,
+	runtimeCredentialAliases,
 	isExpression as isExpressionUtil,
 	isSingleResolvable,
 	referencesExecutionData,
@@ -120,7 +122,8 @@ export function useResolvedExpression({
 				resolved.result === undefined &&
 				toValue(isForCredential) &&
 				typeof expressionString === 'string'
-					? getExternalSecretPreview(expressionString, toValue(additionalData)?.$secrets)
+					? (getExternalSecretPreview(expressionString, toValue(additionalData)?.$secrets) ??
+						getRuntimeCredentialPreview(expressionString, runtimeCredentialAliases()))
 					: undefined;
 
 			// Redaction empties the item data, so an expression that reads it resolves
