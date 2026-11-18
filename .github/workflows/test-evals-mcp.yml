@@ -147,6 +147,46 @@ jobs:
           # This job uploads artifacts and needs no token after checkout.
           persist-credentials: false
 
+      - name: Probe Code Mode in claude -p
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          CLAUDE_CODE_EXPERIMENTAL_CODE_MODE: '1'
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude --version
+          mkdir -p "$RUNNER_TEMP/probe" && cd "$RUNNER_TEMP/probe"
+          echo '{ "enableAllProjectMcpServers": true }' > settings.json
+          mkdir -p "$HOME/.claude" && cp settings.json "$HOME/.claude/settings.json"
+          echo '{"mcpServers":{"everything":{"type":"stdio","command":"npx","args":["-y","@modelcontextprotocol/server-everything"]}}}' > mcp.json
+          for model in claude-opus-4-8 claude-opus-5-5; do
+            echo "=== model=$model"
+            claude -p "Call the echo tool of the MCP server three times, with the messages a, b and c. If you can write code that calls several tools in one step, do that. Then reply with the three echoes." \
+              --model "$model" --mcp-config mcp.json --strict-mcp-config \
+              --allowedTools mcp__everything REPL \
+              --output-format stream-json --verbose < /dev/null > "out-$model.jsonl" 2> "err-$model.txt" || true
+            tail -5 "err-$model.txt"
+            python3 - "out-$model.jsonl" <<'EOF'
+          import json, sys
+          for line in open(sys.argv[1]):
+              try:
+                  event = json.loads(line)
+              except ValueError:
+                  print('RAW', line[:300]); continue
+              if event.get('type') == 'system' and event.get('subtype') == 'init':
+                  print('version', event.get('claude_code_version'), 'model', event.get('model'))
+                  print('REPL present:', 'REPL' in event.get('tools', []))
+                  print('tools:', event.get('tools'))
+              elif event.get('type') == 'assistant':
+                  for block in event['message'].get('content', []):
+                      if block.get('type') == 'tool_use':
+                          print('tool_use', block['name'], json.dumps(block.get('input'))[:600])
+              elif event.get('type') == 'result':
+                  print('result', event.get('is_error'), event.get('num_turns'), event.get('total_cost_usd'), str(event.get('result'))[:300])
+          EOF
+          done
+          echo "::error::Probe only. The eval suite does not run on this branch."
+          exit 1
+
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
         with:
