@@ -1,4 +1,4 @@
-import { request } from '@playwright/test';
+import { expect, request } from '@playwright/test';
 
 import { ApiHelpers } from './services/api-helper';
 
@@ -19,14 +19,21 @@ async function globalSetup() {
 	}
 
 	console.log(`🔄 Resetting database for ${n8nBaseUrl}...`);
-	// Quick hack till we find out a better health check for the database reset command!
-	await new Promise((resolve) => setTimeout(resolve, 3000));
 	// Create standalone API request context
 	const requestContext = await request.newContext({
 		baseURL: n8nBaseUrl,
 	});
 
 	try {
+		await expect
+			.poll(
+				async () => {
+					const response = await requestContext.get('/rest/e2e/env-feature-flags');
+					return response.status();
+				},
+				{ message: 'Waiting for n8n E2E routes to be ready', timeout: 20_000 },
+			)
+			.toBe(200);
 		const api = new ApiHelpers(requestContext);
 		await api.resetDatabase();
 		console.log('✅ Database reset completed successfully');
