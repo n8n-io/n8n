@@ -1,4 +1,8 @@
-import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
+import type {
+	DataTableRowRule,
+	SourceControlledFile,
+	WorkflowPublishBlockedDetails,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowEntity } from '@n8n/db';
 import {
@@ -1676,6 +1680,7 @@ export class SourceControlImportService {
 				const existingColumnIds = new Set(existingColumns.map((c) => c.id));
 				const existingColumnNameMap = new Map(existingColumns.map((c) => [c.id, c.name]));
 				const importedColumnIds = new Set(dataTable.columns.map((c) => c.id));
+				const rowRule = this.rowRuleAfterPull(existingDataTable, existingColumns, dataTable);
 
 				// Wrap all DDL + metadata operations in a transaction
 				await this.dataTableRepository.manager.transaction(async (trx) => {
@@ -1747,6 +1752,8 @@ export class SourceControlImportService {
 						}
 					}
 
+					if (rowRule) await trx.update(DataTable, { id: dataTable.id }, { rowRule });
+
 					// Create physical table for new data tables
 					if (isNewTable) {
 						await this.dataTableDDLService.createTableWithColumns(
@@ -1766,6 +1773,33 @@ export class SourceControlImportService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * The local row rule with its columns followed through renames, matched by
+	 * column id. A pull that drops or retypes a rule column is refused, so the
+	 * rule never ends up on a different column.
+	 */
+	private rowRuleAfterPull(
+		existingTable: DataTable | null,
+		existingColumns: Array<Pick<DataTableColumn, 'id' | 'name'>>,
+		incoming: ExportableDataTable,
+	): DataTableRowRule | null {
+		const rule = existingTable?.rowRule;
+		if (!rule) return null;
+		return {
+			...rule,
+			conditions: rule.conditions.map((condition) => {
+				const id = existingColumns.find(({ name }) => name === condition.column)?.id;
+				const column = incoming.columns.find((candidate) => candidate.id === id);
+				if (!column || column.type !== 'string') {
+					throw new UserError(
+						`Column "${condition.column}" of data table "${incoming.name}" is used by its row access rule. Remove the rule before pulling a change to this column.`,
+					);
+				}
+				return { ...condition, column: column.name };
+			}),
+		};
 	}
 
 	/**

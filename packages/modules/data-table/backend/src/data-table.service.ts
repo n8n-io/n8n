@@ -853,13 +853,14 @@ export class DataTableService {
 			);
 		}
 
-		const needsProjects =
-			rule.projectMembersSeeAll || rule.conditions.some(({ match }) => match === 'project');
+		const needsProjects = rule.conditions.some(({ match }) => match === 'project');
 		const projectIds = needsProjects
 			? ((await this.projectRelationRepository.findProjectIdsByUserIds([actor.id])).get(actor.id) ??
 				[])
 			: [];
-		if (rule.projectMembersSeeAll && projectIds.includes(table.projectId)) return null;
+		if (rule.projectMembersSeeAll && (await this.mayReadAllRows(actor.id, table.projectId))) {
+			return null;
+		}
 
 		return {
 			conditions: rule.conditions.map(({ column, match }) => {
@@ -873,6 +874,12 @@ export class DataTableService {
 				return { column, match, values: [value] };
 			}),
 		};
+	}
+
+	/** Only a project role that may read table rows counts, not, for example, a chat user. */
+	private async mayReadAllRows(userId: string, projectId: string) {
+		const roles = await this.roleService.rolesWithScope('project', ['dataTable:readRow']);
+		return await this.projectRelationRepository.hasAnyRoleInProject(userId, projectId, roles);
 	}
 
 	/** Sets the owner columns and checks that the new row belongs to the actor. */
