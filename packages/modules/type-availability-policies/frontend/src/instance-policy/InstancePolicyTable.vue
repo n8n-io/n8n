@@ -241,13 +241,20 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 			:pin-columns="1"
 			:pagination="false"
 			data-test-id="instance-policy-table"
+			:row-props="{ class: $style.row }"
 			@click:row="onRowClick"
 		>
 			<template #[`item.displayName`]="{ item }">
-				<div :class="$style.name">
-					<N8nNodeIcon v-bind="item.icon" :size="20" />
-					<N8nText color="text-dark" bold>{{ item.displayName }}</N8nText>
-				</div>
+				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
+				<button
+					type="button"
+					:class="$style.name"
+					:data-test-id="`instance-policy-open-${item.name}`"
+					@click.stop="emit('open', item.name)"
+				>
+					<N8nNodeIcon v-bind="item.icon" :size="20" :class="$style.nameIcon" />
+					<N8nText color="text-dark" bold :class="$style.nameText">{{ item.displayName }}</N8nText>
+				</button>
 			</template>
 			<template #[`item.access`]="{ item }">
 				<N8nDropdownMenu
@@ -298,6 +305,8 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .table {
 	display: flex;
 	flex-direction: column;
@@ -322,11 +331,43 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	margin-inline-start: auto;
 }
 
+.row {
+	cursor: pointer;
+}
+
 .name,
 .readOnly {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.name {
+	/* The cell clips a wider button, and the focus ring with it, so a long name truncates instead. */
+	max-width: 100%;
+	padding: var(--spacing--5xs);
+	border: none;
+	border-radius: var(--radius);
+	background: none;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+
+	&:focus-visible {
+		@include focus.focus-ring;
+		/* The table cell clips what lies outside the button, so the ring sits inside the padding. */
+		outline-offset: calc(-1 * var(--focus--border-width));
+	}
+}
+
+.nameIcon {
+	flex-shrink: 0;
+}
+
+.nameText {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .footer {
