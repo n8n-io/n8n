@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-context.ts
+  s_9a68a3421d1c44::t_673616534660ff 96,98-102,108-112
+  s_9a68a3421d1c44::t_8fe3e9b649c4bc 130,133-134
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_9a68a3421d1c44::t_6651419ba262d0 3614-3633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb6866f1fda29bc69c3e045b56545690be237b0a",
+  "prompts": {},
+  "sessions": {
+    "s_9a68a3421d1c44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d96fec8-e953-49f4-ade0-3c1b03c4b690",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
