@@ -14,6 +14,7 @@ import {
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import type { ExecutionToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
+import type { IBinaryKeyData } from 'n8n-workflow';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -97,6 +98,28 @@ const runAction = z.object({
 		),
 });
 
+const MOCK_INPUT_DESCRIPTION =
+	'Items to feed the target node, as `{ json }` items, skipping every node above it. Good for ' +
+	'studying one node on its own: probing an edge case, or holding the input ' +
+	'still while upstream data changes between runs. The result shows the node ' +
+	'handles THIS input; it shows nothing about what the workflow really ' +
+	'produces, so use reuseExecutionId or a chain run when that is the ' +
+	'question. This does not make a write node safe: the node still runs for ' +
+	'real, only its input is invented.';
+
+const mockInputItem = z.object({ json: z.record(z.unknown()) });
+
+// Only when the host can pass files to runs. See `actionSchemaFor`.
+const mockInputItemWithFiles = mockInputItem.extend({
+	files: z
+		.record(z.string(), z.string())
+		.optional()
+		.describe(
+			'Files of this conversation to give this item as binary data. ' +
+				'Key = binary property name (usually "data"), value = fileId.',
+		),
+});
+
 const runStepAction = z.object({
 	action: z
 		.literal('run-step')
@@ -125,18 +148,7 @@ const runStepAction = z.object({
 				'it is the fastest option and the input is real. The execution must belong ' +
 				'to the same workflow.',
 		),
-	mockInput: z
-		.array(z.record(z.unknown()))
-		.optional()
-		.describe(
-			'Items to feed the target node, skipping every node above it. Good for ' +
-				'studying one node on its own: probing an edge case, or holding the input ' +
-				'still while upstream data changes between runs. The result shows the node ' +
-				'handles THIS input; it shows nothing about what the workflow really ' +
-				'produces, so use reuseExecutionId or a chain run when that is the ' +
-				'question. This does not make a write node safe: the node still runs for ' +
-				'real, only its input is invented.',
-		),
+	mockInput: z.array(mockInputItemWithFiles).optional().describe(MOCK_INPUT_DESCRIPTION),
 	toolArguments: z
 		.union([z.string(), z.record(z.unknown())])
 		.optional()
@@ -468,9 +480,20 @@ async function handleRunStep(
 		await context.grantSessionToolApproval?.(stepGrantKey);
 	}
 
+	const workflowFiles = workflowFilesOf(context);
+	let mockInput: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
+	if (input.mockInput) {
+		mockInput = [];
+		for (const { json, files } of input.mockInput) {
+			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
+			if (error) return { executionId: '', status: 'error' as const, error };
+			mockInput.push(binary ? { json, binary } : { json });
+		}
+	}
+
 	return await context.executionService.runStep(input.workflowId, input.nodeName, {
 		reuseExecutionId: input.reuseExecutionId,
-		mockInput: input.mockInput,
+		mockInput,
 		toolArguments: input.toolArguments,
 		versionId: input.versionId,
 		timeout: input.timeout,
@@ -609,6 +632,11 @@ function actionSchemaFor(
 	if (workflowFilesOf(context)) return ACTION_SCHEMAS[action];
 	if (action === 'run') return runAction.omit({ files: true });
 	if (action === 'get-node-output') return getNodeOutputAction.omit({ storeFiles: true });
+	if (action === 'run-step') {
+		return runStepAction.extend({
+			mockInput: z.array(mockInputItem).optional().describe(MOCK_INPUT_DESCRIPTION),
+		});
+	}
 	return ACTION_SCHEMAS[action];
 }
 
