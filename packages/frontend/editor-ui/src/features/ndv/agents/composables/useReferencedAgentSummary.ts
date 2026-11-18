@@ -5,7 +5,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { INodeUi } from '@/Interface';
 
 import { agentsEventBus, type AgentUpdatedEvent } from '@/features/agents/agents.eventBus';
-import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
+import { getReferencedAgentId, isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import { readAgentSource } from '@/features/agents/utils/inlineAgent';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
@@ -39,12 +39,7 @@ export function useReferencedAgentSummary(activeNode: MaybeRefOrGetter<INodeUi |
 		// Inline mode idles the loader; a leftover agentId param (retained so
 		// mode toggling is non-destructive) must not keep fetching.
 		if (readAgentSource(node) === 'inline') return '';
-		const param = node?.parameters?.agentId;
-		if (param && typeof param === 'object' && 'value' in param) {
-			const { value } = param as { value?: unknown };
-			if (typeof value === 'string') return value;
-		}
-		return '';
+		return getReferencedAgentId(node?.parameters?.agentId);
 	});
 
 	const { config, loading, repoint, fetchConfig } = useAgentConfig();

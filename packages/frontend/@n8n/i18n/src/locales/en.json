@@ -7700,6 +7700,7 @@
 	"agentNode.card.moreChips": "+{count}",
 	"agentNode.card.loadError": "Couldn’t load agent details",
 	"agentNode.card.noModel": "No model selected",
+	"agentNode.card.dynamicAgent": "Agent set by an expression",
 	"agentNode.ndv.banner.suffix": ". Alternatively, fill in the form below.",
 	"agentNode.ndv.section.agent": "Agent",
 	"agentNode.ndv.referenced.editInBuilder": "Edit agent",

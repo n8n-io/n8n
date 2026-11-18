@@ -274,6 +274,23 @@ describe('CanvasNodeAgent', () => {
 		expect(openBuilderSpy).toHaveBeenCalledWith('proj-1', 'agent-1');
 	});
 
+	it('treats an expression as a run-time agent: no fetch, no builder link, no picker', async () => {
+		const { getByTestId, queryByTestId, emitted } = renderWithAgent(
+			"={{ $('Trigger').item.json.assignee.id }}",
+		);
+
+		expect(getByTestId('canvas-node-agent-dynamic')).toHaveTextContent(
+			'Agent set by an expression',
+		);
+		expect(summaryAgentIdHolder.value?.value).toBe('');
+		expect(queryByTestId('canvas-node-agent-open')).toBeNull();
+		expect(queryByTestId('agent-picker-stub')).toBeNull();
+
+		// The node is configured, so a double-click still opens the NDV.
+		await fireEvent.dblClick(getByTestId('canvas-node-agent'));
+		expect(emitted('activate')).toBeTruthy();
+	});
+
 	it('emits activate (opens NDV) on double-click', async () => {
 		const { getByTestId, emitted } = renderWithAgent('agent-1');
 

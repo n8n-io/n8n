@@ -1,5 +1,6 @@
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { GRID_SIZE, snapToGrid } from '@/app/utils/nodeViewUtils';
+import { isExpression, isResourceLocatorValue } from 'n8n-workflow';
 
 /**
  * Whether the node gets the rich AI Agent experience — the canvas agent card
@@ -11,6 +12,21 @@ export function isAgentNodeV2(
 	node: { type: string; typeVersion?: number } | null | undefined,
 ): boolean {
 	return node?.type === MESSAGE_AN_AGENT_NODE_TYPE && (node.typeVersion ?? 0) >= 2;
+}
+
+/** Whether the node's `agentId` parameter is an expression, so the agent is known only at run time. */
+export function isDynamicAgentReference(agentIdParam: unknown): boolean {
+	return isResourceLocatorValue(agentIdParam) && isExpression(agentIdParam.value);
+}
+
+/**
+ * The id of the saved agent that the node's `agentId` parameter references.
+ * Empty for an expression: the editor has no agent to load or open.
+ */
+export function getReferencedAgentId(agentIdParam: unknown): string {
+	if (!isResourceLocatorValue(agentIdParam) || isDynamicAgentReference(agentIdParam)) return '';
+	const { value } = agentIdParam;
+	return typeof value === 'string' ? value : String(value ?? '');
 }
 
 // Rendered width of the v2 AI Agent canvas card. CanvasNodeAgent.vue binds its
