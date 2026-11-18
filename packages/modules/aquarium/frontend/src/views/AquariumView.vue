@@ -130,6 +130,7 @@ watch(isDemo, load);
 		<div :class="$style.tank">
 			<AquariumTank
 				:entities="visibleEntities"
+				:instance-entities="store.entities"
 				:activity="store.activity"
 				:grouping="grouping"
 				:top-inset="tankTopInset"

@@ -10,6 +10,7 @@ import {
 	TANK_HEALTH,
 } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
+import { nessie } from '../species/creatures/nessie';
 import { penguin } from '../species/creatures/penguin';
 import { turtle } from '../species/creatures/turtle';
 import { whale } from '../species/creatures/whale';
@@ -36,6 +37,8 @@ export interface TraitContext {
 	oldWorkflowKeys: ReadonlySet<string>;
 	/** Keys of workflows that run more than the rest. See `busyWorkflowKeys()`. */
 	busyWorkflowKeys: ReadonlySet<string>;
+	/** The one Loch Ness monster of the whole instance. See `nessieKey()`. */
+	nessieKey?: string;
 }
 
 export const EMPTY_TRAIT_CONTEXT: TraitContext = {
@@ -98,6 +101,10 @@ export const bigWhaleRule: TraitRule = (entity, traits) =>
 				lookAround: true,
 			}
 		: traits;
+
+/** The biggest really big whale of the instance is the Loch Ness monster. */
+export const nessieRule: TraitRule = (entity, traits, context) =>
+	context.nessieKey === entity.key ? { ...traits, speciesId: nessie.id } : traits;
 
 /** A cat on the tank frame watches a creature that fails a security check. */
 export const securityRule: TraitRule = (entity, traits) =>
@@ -188,8 +195,8 @@ export const stillRule: TraitRule = (entity, traits) =>
 		: traits;
 
 /**
- * Order matters: `speciesRule` reads the tier from `sizeRule`. `turtleRule`, `penguinRule` and
- * then `bigWhaleRule` override the species. `bellyUpRule` overrides `sickRule`, `skeletonRule`
+ * Order matters: `speciesRule` reads the tier from `sizeRule`. `turtleRule`, `penguinRule`,
+ * `bigWhaleRule` and then `nessieRule` override the species. `bellyUpRule` overrides `sickRule`, `skeletonRule`
  * overrides both, and `shimmerRule` reads all three.
  */
 export const defaultTraitRules: TraitRule[] = [
@@ -198,6 +205,7 @@ export const defaultTraitRules: TraitRule[] = [
 	turtleRule,
 	penguinRule,
 	bigWhaleRule,
+	nessieRule,
 	speedRule,
 	bubblesRule,
 	wakeRule,

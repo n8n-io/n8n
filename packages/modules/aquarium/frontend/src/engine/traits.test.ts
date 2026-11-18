@@ -151,6 +151,21 @@ describe('deriveTraits', () => {
 		expect(deriveTraits(tidy).lookAround).toBeUndefined();
 	});
 
+	it('turns only the workflow in the context into the Loch Ness monster', () => {
+		const tangled = {
+			...entity({ complexity: 22, executionCount: 2_000 }),
+			design: { ...analyzeWorkflow([]), nodeCount: 22, duplicateNodeCount: 4, branchNodeCount: 9 },
+		};
+		const context = { ...EMPTY_TRAIT_CONTEXT, nessieKey: tangled.key };
+
+		expect(deriveTraits(tangled, defaultTraitRules, context)).toMatchObject({
+			speciesId: 'nessie',
+			scale: BIG_WHALE.scale,
+			lookAround: true,
+		});
+		expect(deriveTraits(tangled).speciesId).toBe('whale');
+	});
+
 	it('applies extra rules after the default rules', () => {
 		const sickRule: TraitRule = (e, traits) =>
 			failureRateOf(e.metrics) > 0.5 ? { ...traits, tint: '#00ff00' } : traits;

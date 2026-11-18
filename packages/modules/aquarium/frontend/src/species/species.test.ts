@@ -1,8 +1,10 @@
 import type { EntityKind } from '../aquarium.types';
 import { SIZE_TIERS } from '../engine/scaling';
 import { builtinSpecies } from './builtin';
+import { nessie } from './creatures/nessie';
+import { whale } from './creatures/whale';
 import { pickSpecies } from './species.registry';
-import { defineSpecies, validateSprite } from './species.types';
+import { defineSpecies, spriteSize, validateSprite } from './species.types';
 
 describe('built-in species', () => {
 	it.each(builtinSpecies.map((species) => [species.id, species]))(
@@ -17,7 +19,7 @@ describe('built-in species', () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	it.each(['turtle', 'penguin'])(
+	it.each(['turtle', 'penguin', 'nessie'])(
 		'never picks the %s on its own: only a trait rule sets it',
 		(id) => {
 			for (const kind of ['workflow', 'agent'] as const) {
@@ -29,6 +31,13 @@ describe('built-in species', () => {
 			}
 		},
 	);
+
+	it('draws Nessie at least twice as large as the whale', () => {
+		const big = spriteSize(nessie.sprite);
+		const small = spriteSize(whale.sprite);
+		expect(big.width).toBeGreaterThanOrEqual(small.width * 2);
+		expect(big.height).toBeGreaterThanOrEqual(small.height * 2);
+	});
 
 	it.each<EntityKind>(['workflow', 'agent'])('has a species for every %s size tier', (kind) => {
 		for (const tier of SIZE_TIERS) {

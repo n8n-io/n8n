@@ -44,6 +44,7 @@ import {
 } from '../engine/simulation';
 import { oldWorkflowKeys } from '../engine/age';
 import { busyWorkflowKeys } from '../engine/busy';
+import { nessieKey } from '../engine/nessie';
 import {
 	defaultTraitRules,
 	deriveTraits,
@@ -56,13 +57,21 @@ import { spriteSize, type SpeciesDefinition } from '../species/species.types';
 const props = withDefaults(
 	defineProps<{
 		entities: AquariumEntity[];
+		/** All entities of the instance, for traits that only one creature in it can have. */
+		instanceEntities?: AquariumEntity[];
 		activity?: ActivitySnapshot;
 		rules?: TraitRule[];
 		grouping?: TankGrouping;
 		/** CSS pixels at the top that page UI covers. Project view fits its tanks below them. */
 		topInset?: number;
 	}>(),
-	{ activity: undefined, rules: () => defaultTraitRules, grouping: 'single', topInset: 0 },
+	{
+		instanceEntities: undefined,
+		activity: undefined,
+		rules: () => defaultTraitRules,
+		grouping: 'single',
+		topInset: 0,
+	},
 );
 
 const SINGLE_TANK_ID = 'all';
@@ -172,6 +181,7 @@ function syncCreatures() {
 	const context: TraitContext = {
 		oldWorkflowKeys: oldWorkflowKeys(props.entities, Date.now()),
 		busyWorkflowKeys: busyWorkflowKeys(props.entities),
+		nessieKey: nessieKey(props.instanceEntities ?? props.entities),
 	};
 
 	for (const entity of props.entities) {
@@ -256,7 +266,7 @@ onMounted(() => {
 useResizeObserver(containerRef, resize);
 
 watch(
-	() => [props.entities, props.rules],
+	() => [props.entities, props.instanceEntities, props.rules],
 	() => {
 		syncCreatures();
 		applyActivity();
