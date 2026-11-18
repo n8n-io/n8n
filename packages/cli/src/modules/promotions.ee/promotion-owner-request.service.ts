@@ -300,12 +300,11 @@ export class PromotionOwnerRequestService {
 		const credentialSatisfied = (request: PromotionOwnerRequest) => {
 			const credential = credentials.get(request.resourceId);
 			if (!credential) return false;
+			if (credential.isGlobal) return true;
+			// Before the first Apply of the consumer, this instance does not hold it. Its project
+			// is then not known here, so the request stays open until the consumer arrives.
 			const consumerProjectId = consumers.get(request.consumerWorkflowId)?.id;
-			return (
-				consumerProjectId === undefined ||
-				credential.isGlobal ||
-				credential.projectIds.includes(consumerProjectId)
-			);
+			return consumerProjectId !== undefined && credential.projectIds.includes(consumerProjectId);
 		};
 		return requests
 			.filter((r) =>
@@ -402,10 +401,12 @@ export class PromotionOwnerRequestService {
 				target.id,
 			);
 			if (destinationOwner?.type === 'team') {
+				// The recipients own the credential here, so they may read its name on this instance.
+				const onInstance = (await this.targetLookup.credentials([target.id])).get(target.id);
 				return {
 					consumerProjectId: consumer.projectId,
 					consumer: consumer.content,
-					owner: { projectId: destinationOwner.id, resourceName: null },
+					owner: { projectId: destinationOwner.id, resourceName: onInstance?.name ?? null },
 				};
 			}
 		}
