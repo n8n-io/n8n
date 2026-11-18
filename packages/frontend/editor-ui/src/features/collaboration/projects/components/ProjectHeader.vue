@@ -488,6 +488,7 @@ const sectionDescription = computed(() => {
 });
 
 const projectDescription = computed(() => {
+	if (props.hideDescription) return null;
 	if (projectPages.isProjectsSubPage) {
 		return projectsStore.currentProject?.description;
 	}

@@ -43,7 +43,8 @@ watch(projectId, load, { immediate: true });
 <template>
 	<PageViewLayout>
 		<template #header>
-			<ProjectHeader />
+			<!-- The project page below replaces the short project description. -->
+			<ProjectHeader hide-description />
 		</template>
 
 		<div :class="$style.content" data-testid="project-docs">

@@ -1891,6 +1891,7 @@
 	"docPages.empty.readOnly": "Nobody has written this page yet.",
 	"docPages.empty.writeManually": "Write it yourself",
 	"docPages.projectPage.error": "Could not load the project page",
+	"docPages.projectPage.title": "About this project",
 	"docPages.projectPage.empty.heading": "Write about this project",
 	"docPages.projectPage.empty.description": "Explain what this project does, who owns it and where to start. AI can write a first draft from the pages below.",
 	"docPages.projectPage.summarize": "Summarize with AI",

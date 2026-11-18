@@ -106,7 +106,37 @@ async function summarize() {
 		:class="$style.page"
 		data-testid="doc-project-page"
 	>
-		<div v-if="generating" :class="$style.generating" data-testid="doc-project-page-generating">
+		<header :class="$style.bar">
+			<span :class="$style.label">
+				<N8nIcon icon="book-open" size="small" />
+				{{ i18n.baseText('docPages.projectPage.title') }}
+			</span>
+			<div v-if="canEdit && !isEmpty && !generating" :class="$style.actions">
+				<span
+					v-if="saveStatus !== 'idle'"
+					:class="$style.status"
+					data-testid="doc-project-page-save-status"
+				>
+					{{
+						saveStatus === 'saving'
+							? i18n.baseText('docPages.saving')
+							: i18n.baseText('docPages.saved')
+					}}
+				</span>
+				<N8nButton
+					v-if="canSummarize"
+					variant="ghost"
+					size="xsmall"
+					data-testid="doc-project-page-resummarize"
+					@click="summarize"
+				>
+					<N8nIcon icon="sparkles" size="small" />
+					{{ i18n.baseText('docPages.projectPage.summarize') }}
+				</N8nButton>
+			</div>
+		</header>
+
+		<div v-if="generating" :class="$style.body" data-testid="doc-project-page-generating">
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('docPages.generating') }}
 			</N8nText>
@@ -115,12 +145,9 @@ async function summarize() {
 
 		<div
 			v-else-if="isEmpty && !writeManually"
-			:class="$style.empty"
+			:class="[$style.body, $style.empty]"
 			data-testid="doc-project-page-empty"
 		>
-			<span :class="$style.emptyIcon">
-				<N8nIcon icon="notebook-pen" size="large" />
-			</span>
 			<div :class="$style.emptyText">
 				<N8nHeading tag="h2" size="medium" bold>
 					{{ i18n.baseText('docPages.projectPage.empty.heading') }}
@@ -129,7 +156,7 @@ async function summarize() {
 					{{ i18n.baseText('docPages.projectPage.empty.description') }}
 				</N8nText>
 			</div>
-			<div :class="$style.emptyActions">
+			<div :class="$style.actions">
 				<N8nButton
 					v-if="canSummarize"
 					variant="solid"
@@ -152,89 +179,77 @@ async function summarize() {
 			</div>
 		</div>
 
-		<template v-else>
-			<div v-if="canEdit" :class="$style.toolbar">
-				<N8nText
-					v-if="saveStatus !== 'idle'"
-					size="small"
-					color="text-light"
-					data-testid="doc-project-page-save-status"
-				>
-					{{
-						saveStatus === 'saving'
-							? i18n.baseText('docPages.saving')
-							: i18n.baseText('docPages.saved')
-					}}
-				</N8nText>
-				<N8nButton
-					v-if="canSummarize"
-					variant="ghost"
-					size="small"
-					data-testid="doc-project-page-resummarize"
-					@click="summarize"
-				>
-					<N8nIcon icon="sparkles" size="small" />
-					{{ i18n.baseText('docPages.projectPage.summarize') }}
-				</N8nButton>
-			</div>
-			<DocPageEditor
-				:key="`${page.id}-${editorVersion}`"
-				:content="page.content"
-				:markdown="page.markdown"
-				:editable="canEdit"
-				:project-id="page.projectId"
-				:create-child-page="createChildPage"
-				@update:content="onContentUpdate"
-			/>
-		</template>
+		<DocPageEditor
+			v-else
+			:key="`${page.id}-${editorVersion}`"
+			:class="$style.body"
+			:content="page.content"
+			:markdown="page.markdown"
+			:editable="canEdit"
+			:project-id="page.projectId"
+			:create-child-page="createChildPage"
+			@update:content="onContentUpdate"
+		/>
 	</section>
 </template>
 
 <style lang="scss" module>
+// Framed like the tables below, so the page and the tables read as one set.
 .page {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+	// The drag handle of the editor sits in this inset, left of each block.
+	--doc-project-page--inset: var(--spacing--xl);
+
+	border: var(--border-width) var(--border-style) var(--border-color);
+	border-radius: var(--radius--md);
+	background: var(--background--surface);
+	overflow: hidden;
 }
 
-.toolbar {
+// Same height and type as a table header row.
+.bar {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	min-height: var(--height--lg);
+	padding: var(--spacing--4xs) var(--spacing--3xs) var(--spacing--4xs)
+		var(--doc-project-page--inset);
+	border-bottom: var(--border-width) var(--border-style) var(--border-color);
+	background: var(--background--subtle);
+}
+
+.label {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+}
+
+.actions {
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	opacity: 0.6;
-	transition: opacity var(--duration--snappy) var(--easing--ease-out);
-
-	.page:hover &,
-	&:focus-within {
-		opacity: 1;
-	}
 }
 
-.generating {
+.status {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+}
+
+.body {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	padding: var(--spacing--sm) var(--doc-project-page--inset) var(--spacing--md);
 }
 
 .empty {
-	display: flex;
-	align-items: center;
+	flex-direction: row;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--md);
-	border: var(--border-width) dashed var(--border-color);
-	border-radius: var(--radius--lg);
-}
-
-.emptyIcon {
-	display: grid;
-	place-items: center;
-	width: var(--height--2xl);
-	height: var(--height--2xl);
-	border-radius: var(--radius--md);
-	background: color-mix(in srgb, var(--color--purple-500) 14%, transparent);
-	color: var(--color--purple-600);
 }
 
 .emptyText {
@@ -242,16 +257,5 @@ async function summarize() {
 	flex: 1 1 16rem;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-}
-
-.emptyActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.toolbar {
-		transition: none;
-	}
 }
 </style>
