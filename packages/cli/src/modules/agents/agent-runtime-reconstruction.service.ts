@@ -17,7 +17,6 @@ import {
 } from '@n8n/agents';
 import {
 	GUARDED_CALL_TIMEOUT_MS,
-	isGuardedUrl,
 	isMcpGuardActive,
 	withMcpGuard,
 } from '../mcp-guard/mcp-guard-fetch';
@@ -966,8 +965,8 @@ export class AgentRuntimeReconstructionService {
 				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
-				// A guarded call can wait for a hydration. Give it more time than the MCP SDK default.
-				...(guardActive && isGuardedUrl(server.url) && { callTimeoutMs: GUARDED_CALL_TIMEOUT_MS }),
+				// A guarded call can wait for a hydration. Give every call of the chat more time than the MCP SDK default.
+				...(guardActive && { callTimeoutMs: GUARDED_CALL_TIMEOUT_MS }),
 				// Test chat only, when enabled: Linear and Notion MCP go through the read-only guard.
 				proxyFetch: guardActive
 					? withMcpGuard(aiMcpFetch, memoryOwnerAgentId, {

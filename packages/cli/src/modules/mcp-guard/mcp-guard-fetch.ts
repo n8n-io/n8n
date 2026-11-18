@@ -3,18 +3,15 @@ import { Container } from '@n8n/di';
 import { currentChatId } from './chat-scope';
 import type { HydrationModel } from './hydration-llm';
 import { McpGuardService } from './mcp-guard.service';
-import { GUARD_PROFILES } from './services';
+import { GUARD_PROFILES, guardMode } from './services';
 
 type FetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 const GUARDED_HOSTS: ReadonlySet<string> = new Set(GUARD_PROFILES.map((p) => p.host));
 
-/**
- * Test chats send Linear and Notion MCP calls to the guard when MCP_GUARD_ENABLED is `true`.
- * An evaluation run has its own MCP fetch. It never goes to the guard.
- */
+/** Test chats send Linear and Notion MCP calls to the guard when it is on. An evaluation run has its own MCP fetch and never uses it. */
 export const isMcpGuardActive = (runType: string | undefined, hasInstrumentedFetch: boolean) =>
-	runType === 'test' && !hasInstrumentedFetch && process.env.MCP_GUARD_ENABLED === 'true';
+	runType === 'test' && !hasInstrumentedFetch && guardMode() !== undefined;
 
 /** How long a guarded tool call may take. A call can wait for a hydration, which can need several model turns. */
 export const GUARDED_CALL_TIMEOUT_MS = 5 * 60 * 1000;

@@ -69,14 +69,18 @@ describe('isGuardedUrl', () => {
 describe('isMcpGuardActive', () => {
 	afterEach(() => vi.unstubAllEnvs());
 
-	it('should be off unless MCP_GUARD_ENABLED is true', () => {
+	it('should be off unless MCP_GUARD_HYDRATION is plan or agent', () => {
 		expect(isMcpGuardActive('test', false)).toBe(false);
-		vi.stubEnv('MCP_GUARD_ENABLED', 'true');
+		vi.stubEnv('MCP_GUARD_HYDRATION', 'true');
+		expect(isMcpGuardActive('test', false)).toBe(false);
+		vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');
+		expect(isMcpGuardActive('test', false)).toBe(true);
+		vi.stubEnv('MCP_GUARD_HYDRATION', 'agent');
 		expect(isMcpGuardActive('test', false)).toBe(true);
 	});
 
 	it('should stay off outside a test chat and for an instrumented fetch', () => {
-		vi.stubEnv('MCP_GUARD_ENABLED', 'true');
+		vi.stubEnv('MCP_GUARD_HYDRATION', 'plan');
 		expect(isMcpGuardActive('production', false)).toBe(false);
 		expect(isMcpGuardActive(undefined, false)).toBe(false);
 		expect(isMcpGuardActive('test', true)).toBe(false);

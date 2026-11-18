@@ -7,7 +7,7 @@ import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { PlanHydrator } from './plan-hydrator';
 import { createMcpCaller, type McpCaller } from './mcp-upstream';
 import { GuardRouter, type Hydrator } from './router';
-import type { GuardServiceProfile } from './services';
+import { guardMode, type GuardServiceProfile } from './services';
 
 export interface Run {
 	tenant: string;
@@ -90,7 +90,7 @@ export class RunRegistry {
 		return run;
 	}
 
-	// MCP_GUARD_HYDRATION picks the hydrator: plan (default) or agent. Both use the model of the agent under test.
+	// MCP_GUARD_HYDRATION picks the hydrator: plan or agent. Both use the model of the agent under test.
 	private createHydrator(
 		profile: GuardServiceProfile,
 		tenant: string,
@@ -99,7 +99,7 @@ export class RunRegistry {
 		model: HydrationModel,
 	): Hydrator {
 		const { admin } = this.cfg;
-		if (process.env.MCP_GUARD_HYDRATION === 'agent') {
+		if (guardMode() === 'agent') {
 			return new AgentHydrator({
 				admin,
 				tenant,
