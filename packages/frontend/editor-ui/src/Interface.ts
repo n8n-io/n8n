@@ -978,6 +978,7 @@ export type ThemePalette =
 	| 'dracula'
 	| 'high-contrast-light'
 	| 'github-dark-high-contrast'
+	| 'gruvbox-light-hard'
 	| 'gruvbox-dark-hard'
 	| 'oxocarbon'
 	| 'cyberdream'

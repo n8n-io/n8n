@@ -777,6 +777,104 @@ body[data-palette='gruvbox-dark-hard'] {
 	@include dark-preset($gruvbox-dark-hard);
 }
 
+// https://github.com/morhetz/gruvbox (light, hard contrast). Light mode uses the faded accents.
+$gruvbox-light-hard: (
+	bg: #f9f5d7,
+	bg0: #fbf1c7,
+	bg1: #ebdbb2,
+	bg2: #d5c4a1,
+	bg3: #bdae93,
+	bg4: #a89984,
+	fg4: #7c6f64,
+	fg3: #665c54,
+	fg2: #504945,
+	fg1: #3c3836,
+	fg0: #282828,
+	fg0-hard: #1d2021,
+	border-subtle: #7c6f64,
+	border: #665c54,
+	border-strong: #3c3836,
+	hover: #ebdbb2,
+	active: #d5c4a1,
+	focus: #076678,
+	primary: #af3a03,
+	red: #9d0006,
+	// The faded green (#79740e) and yellow (#b57614) are below 4.5:1 on the background. These are
+	// the same hues, one step darker.
+	green: #767107,
+	yellow: #9a6200,
+	blue: #076678,
+	purple: #8f3f71,
+	aqua: #427b58,
+	code-string: #767107,
+	code-primitive: #8f3f71,
+	code-keyword: #9d0006,
+	code-parameter: #076678,
+	code-function: #427b58,
+	code-invalid: #9d0006,
+	// Gruvbox comments are gray (#928374). That is 3.4:1, too low for this preset.
+	code-comment: #665c54,
+);
+
+body[data-palette='gruvbox-light-hard'] {
+	$c: $gruvbox-light-hard;
+	$bg: map.get($c, bg);
+	$bg0: map.get($c, bg0);
+	$bg1: map.get($c, bg1);
+	$fg0: map.get($c, fg0);
+
+	// Neutral: the hard background is the surface. The text steps are Gruvbox's dark tones.
+	--color--neutral-white: #{$bg};
+	--color--neutral-50: #{color.mix($bg, $bg0, 50%)};
+	--color--neutral-100: #{color.mix($bg0, $bg1, 70%)};
+	--color--neutral-125: #{color.mix($bg0, $bg1, 50%)};
+	--color--neutral-150: #{$bg1};
+	--color--neutral-200: #{color.mix($bg1, map.get($c, bg2), 50%)};
+	--color--neutral-250: #{map.get($c, bg2)};
+	--color--neutral-300: #{map.get($c, bg3)};
+	--color--neutral-400: #{map.get($c, bg4)};
+	--color--neutral-500: #{map.get($c, fg4)};
+	--color--neutral-600: #{map.get($c, fg3)};
+	--color--neutral-700: #{map.get($c, fg2)};
+	--color--neutral-750: #{color.mix(map.get($c, fg2), map.get($c, fg1), 50%)};
+	--color--neutral-800: #{map.get($c, fg1)};
+	--color--neutral-850: #{color.mix(map.get($c, fg1), $fg0, 50%)};
+	--color--neutral-900: #{$fg0};
+	--color--neutral-950: #{map.get($c, fg0-hard)};
+
+	$light: $bg;
+	$dark: map.get($c, fg0-hard);
+	// n8n calls the brand ramp pink. Gruvbox uses orange as its accent.
+	@include ramp('pink', map.get($c, primary), $light, $dark);
+	@include ramp('orange', map.get($c, primary), $light, $dark);
+	@include ramp('red', map.get($c, red), $light, $dark);
+	@include ramp('green', map.get($c, green), $light, $dark);
+	@include ramp('yellow', map.get($c, yellow), $light, $dark);
+	@include ramp('gold', map.get($c, yellow), $light, $dark);
+	@include ramp('blue', map.get($c, blue), $light, $dark);
+	@include ramp('purple', map.get($c, purple), $light, $dark);
+	@include ramp('mint', map.get($c, aqua), $light, $dark);
+
+	// `[data-theme='light']` already declares all the semantic tokens on the body.
+	@include high-contrast-semantics($c);
+
+	--focus--outline-color: #{map.get($c, focus)};
+	--focus--border-color: #{map.get($c, focus)};
+	--border-color--stronger: #{$fg0};
+	--color--foreground--shade-2: #{$fg0};
+
+	// The solid button and the brand fill are deep. Their labels take the background.
+	--text-color--inverse: #{$bg};
+	--icon-color--inverse: #{$bg};
+	--background--inverse: #{$fg0};
+
+	--canvas--dot--color: #{map.get($c, bg4)};
+	// Light mode reads these from the 200 step, which is a fill here. Use the text steps, like dark mode.
+	--icon-color--subtle: var(--color--neutral-500);
+	--color--text--tint-2: var(--color--neutral-600);
+	--code--gutter--color--foreground: var(--color--neutral-600);
+}
+
 body[data-palette='catppuccin-mocha'] {
 	@include dark-preset($catppuccin-mocha);
 }

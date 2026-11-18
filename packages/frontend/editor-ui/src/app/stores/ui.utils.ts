@@ -25,7 +25,7 @@ export const THEME_FAMILIES: Record<
 	dracula: { dark: 'dracula' },
 	// The dark variant is the GitHub Dark High Contrast palette.
 	'high-contrast': { light: 'high-contrast-light', dark: 'github-dark-high-contrast' },
-	gruvbox: { dark: 'gruvbox-dark-hard' },
+	gruvbox: { light: 'gruvbox-light-hard', dark: 'gruvbox-dark-hard' },
 	oxocarbon: { dark: 'oxocarbon' },
 	cyberdream: { dark: 'cyberdream' },
 	moonfly: { dark: 'moonfly' },
