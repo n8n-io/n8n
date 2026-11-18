@@ -1,3 +1,5 @@
+import { UnexpectedError } from 'n8n-workflow';
+
 import type { SortKey } from './types';
 
 const INTEGER = /^-?\d+$/;
@@ -12,7 +14,7 @@ export const toSortKey = (value: unknown): SortKey => {
 		return toSortKey(BigInt(value.trim()));
 	const asNumber = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
 	if (typeof asNumber === 'number' && !Number.isNaN(asNumber)) return asNumber;
-	throw new Error(`The sort key ${String(value)} is not a number`);
+	throw new UnexpectedError(`The sort key ${String(value)} is not a number`);
 };
 
 export const compareSortKeys = (a: SortKey, b: SortKey) => (a < b ? -1 : a > b ? 1 : 0);
