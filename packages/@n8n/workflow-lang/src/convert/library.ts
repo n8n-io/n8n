@@ -105,6 +105,12 @@ type Adapter = (
  */
 const FILE_NODES = new Set(['n8n-nodes-base.extractFromFile', 'n8n-nodes-base.convertToFile']);
 
+/**
+ * Nodes without a request that hand a form that they cannot prove over to the host in the same
+ * run (`RUNS_IN_HOST` of the library node).
+ */
+const MARKED_NODES = new Set([...FILE_NODES, 'n8n-nodes-base.xml']);
+
 /** The parameters of `names` that the node has, so a stale parameter of another operation is not sent. */
 function pick(p: Record<string, unknown>, names: string[]): Record<string, unknown> {
 	return Object.fromEntries(names.filter((name) => p[name] !== undefined).map((n) => [n, p[n]]));
@@ -140,6 +146,18 @@ export const ADAPTERS: Record<string, Adapter> = {
 			...pick(p, ['options']),
 			itemIndex: '={{ $itemIndex }}',
 		};
+	},
+	// The XML node converts in two modes. A library node covers `jsonToxml`, which becomes the
+	// operation of the call. A call in the mode `xmlToJson` keeps its parameters, so the
+	// `supports` list refuses it at compile time and the node runs in the host.
+	'n8n-nodes-base.xml': (p) => {
+		if (p.mode !== 'jsonToxml') return p;
+		const out: Record<string, unknown> = {
+			operation: 'jsonToxml',
+			dataPropertyName: p.dataPropertyName ?? 'data',
+		};
+		if (p.options !== undefined) out.options = p.options;
+		return out;
 	},
 	'n8n-nodes-base.convertToFile': (p, version) => {
 		const operation = p.operation ?? 'csv';
@@ -1331,7 +1349,7 @@ export function lowerLibrary(c: NodeContext): void {
 		(!c.node.onError && c.node.continueOnFail === true);
 	const inexact = continues && !errorItemIsExact(type, adapted);
 	// In the mode `combined` v1 keeps binary data in the JSON of the item.
-	const combined = FILE_NODES.has(type) && c.scope.binaryMode === 'combined';
+	const combined = MARKED_NODES.has(type) && c.scope.binaryMode === 'combined';
 	const unsupported =
 		(support && !librarySupports(support, adapted)) || older || noToken || inexact || combined;
 	// The caller says that the node runs in the host (`NodeSources.runsInHost`): a limit of
@@ -1460,9 +1478,10 @@ export function lowerLibrary(c: NodeContext): void {
 		);
 		return;
 	}
-	// A file node hands a file without an exact compiled form over to the host. These nodes
-	// send no request, so the host form runs the v1 node for all items again.
-	if (FILE_NODES.has(type)) {
+	// A file node hands a file without an exact compiled form over to the host, and an XML node
+	// hands an item whose text has no proof over to the host. These nodes send no request, so
+	// the host form runs the v1 node for all items again.
+	if (MARKED_NODES.has(type)) {
 		const inHost = (to: NodeContext) => lowerHostNode(to, 1, [['host', raw("'fallback'")]]);
 		const hostForm = hostFormOf(c, inHost);
 		if (hostForm === null) return inHost(c);
