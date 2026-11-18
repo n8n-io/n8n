@@ -565,7 +565,7 @@ it.each([undefined, false, true])(
 	async (includeArchived) => {
 		const folder = await createFolder(project, { name: 'Support', resourceType: 'agent' });
 		await repository.update(parent.id, { parentFolderId: folder.id, isArchived: true });
-		const active = await repository.save({
+		const active = await createAgent({
 			id: 'active',
 			name: 'Active',
 			projectId: project.id,

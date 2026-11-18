@@ -1524,7 +1524,7 @@ it('imports Agent placement and empty folders and preserves additional Agent res
 		resourceType: 'agent',
 		homeProject: project,
 	});
-	await agents.save({
+	await createAgent({
 		id: 'additional-agent',
 		name: 'Keep',
 		projectId: project.id,
@@ -1638,7 +1638,7 @@ it('round-trips nested Agent placement and empty folders through the archive API
 		parentFolder: parent,
 	});
 	const empty = await createFolder(project, { name: 'Empty', resourceType: 'agent' });
-	const agent = await agents.save({
+	const agent = await createAgent({
 		id: 'roundtrip-agent',
 		name: 'Support Agent',
 		projectId: project.id,

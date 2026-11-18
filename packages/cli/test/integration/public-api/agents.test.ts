@@ -846,7 +846,7 @@ describe('PUT /agents/:agentId', () => {
 		const personalProject: Project = await Container.get(
 			ProjectRepository,
 		).getPersonalProjectForUserOrFail(member.id);
-		await agentRepository.save({
+		await createTestAgent({
 			id: 'agent-empty',
 			name: 'Empty Agent',
 			projectId: personalProject.id,
@@ -938,7 +938,7 @@ describe('PUT /agents/:agentId', () => {
 		const personalProject: Project = await Container.get(
 			ProjectRepository,
 		).getPersonalProjectForUserOrFail(member.id);
-		await agentRepository.save({
+		await createTestAgent({
 			id: 'agent-kept',
 			name: 'My Agent',
 			projectId: personalProject.id,
@@ -969,7 +969,7 @@ describe('PUT /agents/:agentId', () => {
 
 		const teamProject = await createTeamProject('Test Project', owner);
 		await linkUserToProject(member, teamProject, customRole.slug);
-		const agent = await agentRepository.save({
+		const agent = await createTestAgent({
 			id: 'agent-kept',
 			name: 'My Agent',
 			projectId: teamProject.id,

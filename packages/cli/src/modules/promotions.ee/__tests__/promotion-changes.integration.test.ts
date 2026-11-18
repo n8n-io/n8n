@@ -214,21 +214,19 @@ it.each(['whole', 'selection'] as const)(
 			project,
 		);
 		const agents = Container.get(AgentRepository);
-		await agents.save([
-			{
-				id: 'active-agent',
-				name: 'Active Agent',
-				projectId: project.id,
-				parentFolderId: nested.id,
-			},
-			{
-				id: 'archived-agent',
-				name: 'Archived Agent',
-				projectId: project.id,
-				parentFolderId: agentFolder.id,
-				isArchived: true,
-			},
-		]);
+		await createAgent({
+			id: 'active-agent',
+			name: 'Active Agent',
+			projectId: project.id,
+			parentFolderId: nested.id,
+		});
+		await createAgent({
+			id: 'archived-agent',
+			name: 'Archived Agent',
+			projectId: project.id,
+			parentFolderId: agentFolder.id,
+			isArchived: true,
+		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		const service = Container.get(PromotionsService);
 		const options = { commitMessage: 'Workflow changes', canExportVariableValues: true };
