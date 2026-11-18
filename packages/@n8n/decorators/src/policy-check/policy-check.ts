@@ -1,4 +1,9 @@
-import type { McpToolAnnotations, PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
+import type {
+	McpToolAnnotations,
+	PolicyCheckFailure,
+	PolicyViolation,
+	ToolPolicy,
+} from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
@@ -202,6 +207,12 @@ export type PreToolExecutionContext = {
 	/** The input that the tool handler receives, after schema validation. */
 	readonly input: unknown;
 	readonly resumed: boolean;
+	/**
+	 * The tool policy of the agent, from the config that its runtime was built with. So a
+	 * draft run has the draft policy and a published run has the published one. `null` when
+	 * the agent has none.
+	 */
+	readonly toolPolicy: ToolPolicy | null;
 	/**
 	 * The tool calls that the run holds in memory, oldest first, with this call last or among
 	 * the last as `pending`. It costs no query, but it can miss older turns of the session.

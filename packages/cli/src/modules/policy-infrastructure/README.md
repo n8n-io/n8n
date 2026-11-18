@@ -130,7 +130,7 @@ Each point hands its check a different context. The types are in
 | `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
 | `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
-| `preToolExecution`  | `PreToolExecutionContext`  | `agentId`, `projectId`, `threadId`, `agentExecutionId`, `runId`, `toolCallId`, `tool`, `input`, `resumed`, `runToolCalls()`, `sessionHistory()` |
+| `preToolExecution`  | `PreToolExecutionContext`  | `agentId`, `projectId`, `threadId`, `agentExecutionId`, `runId`, `toolCallId`, `tool`, `input`, `resumed`, `toolPolicy`, `runToolCalls()`, `sessionHistory()` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
 `nodes`. Nothing else, so a check cannot start to depend on unrelated fields.
@@ -189,6 +189,10 @@ This includes a call that suspended and resumes, for example after an approval.
   A custom tool and a built-in tool have a name only.
 - **`input` is not redacted.** The audit line records the tool name and the tool
   call id, not the input.
+- **`toolPolicy` is the policy of the agent that runs.** It comes from the config
+  that the runtime was built with, so a draft run has the draft policy and a
+  published run has the published one. It is `null` when the agent has none. A
+  sub-agent has the policy of its own config, not the policy of its parent.
 - **`runToolCalls()` is the history that costs nothing.** It returns the tool
   calls that the run holds in memory, with their results. It can miss older
   turns, because the run does not always load the whole session.

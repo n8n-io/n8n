@@ -102,6 +102,7 @@ function context(
 		tool,
 		input: {},
 		resumed: false,
+		toolPolicy: null,
 		runToolCalls: () => [...history, current],
 		sessionHistory,
 	};

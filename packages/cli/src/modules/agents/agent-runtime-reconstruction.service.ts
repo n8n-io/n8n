@@ -861,7 +861,11 @@ export class AgentRuntimeReconstructionService {
 		});
 		// Every runtime of a first-class agent is built here, so each one gets the hook.
 		reconstructed.preToolExecution(
-			this.agentPolicyService.preToolExecutionHook(projectId, memoryOwnerAgentId),
+			this.agentPolicyService.preToolExecutionHook(
+				projectId,
+				memoryOwnerAgentId,
+				config.config?.guardrails?.toolPolicy ?? null,
+			),
 		);
 		return {
 			agent: reconstructed,

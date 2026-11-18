@@ -13,6 +13,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	type AgentJsonConfig,
+	type ToolPolicy,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
@@ -332,14 +333,28 @@ describe('AgentRuntimeReconstructionService — tool call policy', () => {
 		buildFromJsonMock.mockImplementation(async () => builtAgent);
 	});
 
-	it('gives each runtime the tool call policy hook of its agent', async () => {
+	const toolPolicy: ToolPolicy = {
+		defaultAction: 'allow',
+		rules: [
+			{
+				id: 'no-outbound',
+				action: 'deny',
+				tools: [{ kind: 'category', value: 'sendsDataOut' }],
+			},
+		],
+	};
+
+	it.each([
+		['the tool policy of the config that it runs', { guardrails: { toolPolicy } }, toolPolicy],
+		['no tool policy when the config has none', undefined, null],
+	])('gives each runtime the hook of its agent with %s', async (_name, config, expected) => {
 		const hook = vi.fn();
 		const agentPolicyService = mock<AgentPolicyService>();
 		agentPolicyService.preToolExecutionHook.mockReturnValue(hook);
 		const service = makeReconstructionService({ agentPolicyService });
 
 		await service.reconstructFromAgentEntity(
-			storedRunSource(makeAgentEntity()),
+			storedRunSource(makeAgentEntity(config)),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -347,6 +362,7 @@ describe('AgentRuntimeReconstructionService — tool call policy', () => {
 		expect(agentPolicyService.preToolExecutionHook).toHaveBeenCalledExactlyOnceWith(
 			'project-1',
 			'agent-1',
+			expected,
 		);
 		expect(builtAgent.preToolExecution).toHaveBeenCalledExactlyOnceWith(hook);
 	});

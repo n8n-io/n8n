@@ -539,6 +539,7 @@ describe('PolicyDecisionService', () => {
 				tool: { name: 'send_message' },
 				input: { text: 'hi' },
 				resumed: false,
+				toolPolicy: null,
 				runToolCalls: () => [],
 				sessionHistory: async () => await Promise.resolve([]),
 			};

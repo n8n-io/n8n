@@ -1,5 +1,5 @@
 import type { ContentToolCall, PreToolExecution } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, ToolPolicy } from '@n8n/api-types';
 import type { PolicedToolCallRecord, PolicedWorkflow, PolicyDecision } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -116,10 +116,15 @@ export class AgentPolicyService {
 	/**
 	 * The hook that asks the policy before each tool call of one agent runtime.
 	 *
-	 * A runtime is cached and shared between runs, so the hook holds only the agent and its
-	 * project. What changes for each run comes from the call.
+	 * A runtime is cached and shared between runs, so the hook holds only what is fixed when
+	 * the runtime is built: the agent, its project and its tool policy. What changes for each
+	 * run comes from the call.
 	 */
-	preToolExecutionHook(projectId: string, agentId: string): PreToolExecution {
+	preToolExecutionHook(
+		projectId: string,
+		agentId: string,
+		toolPolicy: ToolPolicy | null,
+	): PreToolExecution {
 		return async ({ toolCallId, runId, tool, input, resumed, persistence, runToolCalls }) => {
 			const threadId = persistence?.threadId ?? null;
 			const policedRunToolCalls = () => runToolCalls().map(toPolicedToolCall);
@@ -135,6 +140,7 @@ export class AgentPolicyService {
 						tool,
 						input,
 						resumed,
+						toolPolicy,
 						runToolCalls: policedRunToolCalls,
 						sessionHistory: async () =>
 							await this.toolCallHistory.sessionHistory(threadId, agentId, policedRunToolCalls()),

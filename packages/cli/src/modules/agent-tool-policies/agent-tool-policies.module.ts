@@ -11,6 +11,6 @@ import { BackendModule } from '@n8n/decorators';
 export class AgentToolPoliciesModule implements ModuleInterface {
 	async init() {
 		// Imported for its side effect: `@PolicyCheck` registers the check on class definition.
-		await import('./tool-call-log.check.js');
+		await import('./tool-policy.check.js');
 	}
 }
