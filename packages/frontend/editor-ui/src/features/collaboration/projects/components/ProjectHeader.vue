@@ -70,7 +70,12 @@ async function onToggleProjectFavorite() {
 
 const projectPages = useProjectPages();
 
-const props = defineProps<SlotProjectHeaderProps>();
+const props = defineProps<
+	SlotProjectHeaderProps & {
+		/** Hides the project description under the name. */
+		hideDescription?: boolean;
+	}
+>();
 
 const emit = defineEmits<{
 	createFolder: [];

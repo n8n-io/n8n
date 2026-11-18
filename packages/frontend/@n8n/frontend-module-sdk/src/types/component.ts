@@ -109,8 +109,6 @@ export type SlotProjectHeaderMainButton =
 export type SlotProjectHeaderProps = {
 	hasActiveCallouts?: boolean;
 	mainButton?: SlotProjectHeaderMainButton;
-	/** Hides the project description under the name. */
-	hideDescription?: boolean;
 };
 
 /** The search and filter values of the `resources-list-layout` slot. */
