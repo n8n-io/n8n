@@ -1036,7 +1036,7 @@ describe('createEngineRequests', () => {
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
 				extra: 123,
-				_n8nOriginalToolArg: { tool: 'user-value' },
+				_n8nOriginalToolArg: { argumentKeys: ['tool', 'extra'], tool: 'user-value' },
 			});
 		});
 
@@ -1089,11 +1089,11 @@ describe('createEngineRequests', () => {
 				tool: 'MCP_Client_search',
 				toolCallId: 'user-id',
 				query: 'test',
-				_n8nOriginalToolArg: { toolCallId: 'user-id' },
+				_n8nOriginalToolArg: { argumentKeys: ['toolCallId', 'query'], toolCallId: 'user-id' },
 			});
 		});
 
-		it('does not stash when user `tool` is absent', () => {
+		it('records original argument keys when user `tool` is absent', () => {
 			const tools = [
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
@@ -1116,8 +1116,8 @@ describe('createEngineRequests', () => {
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
 				extra: 123,
+				_n8nOriginalToolArg: { argumentKeys: ['extra'] },
 			});
-			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
 		});
 
 		it('discards an incoming stash key before stashing the user `tool` argument', () => {
@@ -1142,7 +1142,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
-				_n8nOriginalToolArg: { tool: 'user' },
+				_n8nOriginalToolArg: { argumentKeys: ['tool', 'extra'], tool: 'user' },
 				extra: 1,
 			});
 		});
@@ -1169,7 +1169,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
-				_n8nOriginalToolArg: { tool: 'REAL' },
+				_n8nOriginalToolArg: { argumentKeys: ['tool'], tool: 'REAL' },
 			});
 			expect(JSON.stringify(result)).not.toContain('INJECTED');
 		});
@@ -1194,7 +1194,11 @@ describe('createEngineRequests', () => {
 			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
-			expect(result[0].input).toEqual({ tool: 'MCP_Client_search', extra: 1 });
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 1,
+				_n8nOriginalToolArg: { argumentKeys: ['extra'] },
+			});
 			expect(JSON.stringify(result)).not.toContain('INJECTED');
 		});
 
@@ -1223,7 +1227,7 @@ describe('createEngineRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
-				_n8nOriginalToolArg: { tool: value },
+				_n8nOriginalToolArg: { argumentKeys: ['tool'], tool: value },
 			});
 		});
 
@@ -1276,11 +1280,14 @@ describe('createEngineRequests', () => {
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
 				extra: 1,
-				_n8nOriginalToolArg: { tool: { nested: 'value' } },
+				_n8nOriginalToolArg: {
+					argumentKeys: ['tool', 'extra'],
+					tool: { nested: 'value' },
+				},
 			});
 		});
 
-		it('stashes only for colliding tool calls in a batch', () => {
+		it('records original argument keys for each MCP tool call in a batch', () => {
 			const tools = [
 				createMockTool('MCP_Client_search', {
 					sourceNodeName: 'MCP_Client',
@@ -1313,13 +1320,13 @@ describe('createEngineRequests', () => {
 			expect(result[0].input).toEqual({
 				tool: 'MCP_Client_search',
 				extra: 'one',
-				_n8nOriginalToolArg: { tool: 'a' },
+				_n8nOriginalToolArg: { argumentKeys: ['tool', 'extra'], tool: 'a' },
 			});
 			expect(result[1].input).toEqual({
 				tool: 'MCP_Client_other',
 				extra: 'two',
+				_n8nOriginalToolArg: { argumentKeys: ['extra'] },
 			});
-			expect('_n8nOriginalToolArg' in (result[1].input as Record<string, unknown>)).toBe(false);
 		});
 	});
 
