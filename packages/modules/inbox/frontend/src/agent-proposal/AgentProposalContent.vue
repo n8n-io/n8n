@@ -295,7 +295,11 @@ function onTabChange(tab: string) {
 	}
 
 	[role='tablist'] {
-		align-items: flex-end;
+		align-items: stretch;
+	}
+
+	[role='tab'] {
+		height: 100%;
 	}
 }
 
