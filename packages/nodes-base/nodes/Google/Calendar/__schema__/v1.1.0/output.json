@@ -67,6 +67,9 @@
 		"kind": {
 			"type": "string"
 		},
+		"location": {
+			"type": "string"
+		},
 		"organizer": {
 			"properties": {
 				"email": {

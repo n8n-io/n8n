@@ -26,7 +26,7 @@
 					"type": "array"
 				}
 			},
-			"type": "object"
+			"type": ["object", "string"]
 		},
 		"headers": {
 			"properties": {
@@ -76,6 +76,12 @@
 					"type": "string"
 				},
 				"to": {
+					"type": "string"
+				},
+				"x-gm-message-state": {
+					"type": "string"
+				},
+				"x-google-dkim-signature": {
 					"type": "string"
 				},
 				"x-received": {

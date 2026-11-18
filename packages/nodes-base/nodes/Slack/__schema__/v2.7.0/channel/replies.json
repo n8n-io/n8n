@@ -32,7 +32,10 @@
 											"type": {
 												"type": "string"
 											},
-											"url": {
+											"unicode": {
+												"type": "string"
+											},
+											"user_id": {
 												"type": "string"
 											}
 										},
@@ -58,46 +61,6 @@
 		},
 		"bot_id": {
 			"type": "string"
-		},
-		"bot_profile": {
-			"properties": {
-				"app_id": {
-					"type": "string"
-				},
-				"deleted": {
-					"type": "boolean"
-				},
-				"icons": {
-					"properties": {
-						"image_36": {
-							"type": "string"
-						},
-						"image_48": {
-							"type": "string"
-						},
-						"image_72": {
-							"type": "string"
-						}
-					},
-					"type": "object"
-				},
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"team_id": {
-					"type": "string"
-				},
-				"updated": {
-					"type": "number"
-				},
-				"user_id": {
-					"type": "string"
-				}
-			},
-			"type": "object"
 		},
 		"client_msg_id": {
 			"type": "string"

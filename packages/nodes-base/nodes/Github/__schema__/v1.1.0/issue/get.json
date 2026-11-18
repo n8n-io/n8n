@@ -132,7 +132,7 @@
 			"type": "string"
 		},
 		"body": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"closed_at": {
 			"type": ["null", "string"]
@@ -233,10 +233,6 @@
 				}
 			},
 			"type": "object"
-		},
-		"issue_field_values": {
-			"items": {},
-			"type": "array"
 		},
 		"labels": {
 			"items": {
@@ -482,7 +478,6 @@
 		"title": {
 			"type": "string"
 		},
-		"type": {},
 		"updated_at": {
 			"type": "string"
 		},

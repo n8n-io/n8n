@@ -67,6 +67,9 @@
 				"serviceTier": {
 					"type": "string"
 				},
+				"thoughtsTokenCount": {
+					"type": "number"
+				},
 				"totalTokenCount": {
 					"type": "number"
 				}

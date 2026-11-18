@@ -1,7 +1,9 @@
 {
 	"additionalProperties": true,
 	"properties": {
-		"AccountNumber": {},
+		"AccountNumber": {
+			"type": ["null", "string"]
+		},
 		"AccountSource": {
 			"type": ["null", "string"]
 		},
@@ -22,13 +24,10 @@
 		"BillingAddress": {
 			"properties": {
 				"city": {
-					"type": ["null", "string"]
+					"type": "string"
 				},
 				"country": {
 					"type": ["null", "string"]
-				},
-				"countryCode": {
-					"type": "string"
 				},
 				"geocodeAccuracy": {
 					"type": ["null", "string"]
@@ -45,9 +44,6 @@
 				"state": {
 					"type": ["null", "string"]
 				},
-				"stateCode": {
-					"type": ["null", "string"]
-				},
 				"street": {
 					"type": ["null", "string"]
 				}
@@ -58,9 +54,6 @@
 			"type": ["null", "string"]
 		},
 		"BillingCountry": {
-			"type": ["null", "string"]
-		},
-		"BillingCountryCode": {
 			"type": ["null", "string"]
 		},
 		"BillingGeocodeAccuracy": {
@@ -78,9 +71,6 @@
 		"BillingState": {
 			"type": ["null", "string"]
 		},
-		"BillingStateCode": {
-			"type": ["null", "string"]
-		},
 		"BillingStreet": {
 			"type": ["null", "string"]
 		},
@@ -88,9 +78,6 @@
 			"type": "string"
 		},
 		"CreatedDate": {
-			"type": "string"
-		},
-		"CurrencyIsoCode": {
 			"type": "string"
 		},
 		"Description": {
@@ -138,7 +125,9 @@
 		"OwnerId": {
 			"type": "string"
 		},
-		"Ownership": {},
+		"Ownership": {
+			"type": ["null", "string"]
+		},
 		"ParentId": {
 			"type": ["null", "string"]
 		},
@@ -148,7 +137,9 @@
 		"PhotoUrl": {
 			"type": "string"
 		},
-		"Rating": {},
+		"Rating": {
+			"type": ["null", "string"]
+		},
 		"RecordTypeId": {
 			"type": ["null", "string"]
 		},
@@ -161,7 +152,7 @@
 					"type": ["null", "string"]
 				},
 				"countryCode": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"geocodeAccuracy": {
 					"type": ["null", "string"]
@@ -215,9 +206,7 @@
 			"type": ["null", "string"]
 		},
 		"SicDesc": {},
-		"Site": {
-			"type": ["null", "string"]
-		},
+		"Site": {},
 		"SystemModstamp": {
 			"type": "string"
 		},

@@ -10,6 +10,9 @@
 						"id": {
 							"type": "number"
 						},
+						"last_name": {
+							"type": "string"
+						},
 						"type": {
 							"type": "string"
 						}
@@ -31,6 +34,9 @@
 							"type": "boolean"
 						},
 						"language_code": {
+							"type": "string"
+						},
+						"last_name": {
 							"type": "string"
 						}
 					},

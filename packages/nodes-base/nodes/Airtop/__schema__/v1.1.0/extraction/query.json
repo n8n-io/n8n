@@ -3,14 +3,18 @@
 		"data": {
 			"properties": {
 				"modelResponse": {
-					"type": "string"
+					"properties": {
+						"details": {
+							"type": "string"
+						},
+						"success": {
+							"type": "boolean"
+						}
+					},
+					"type": ["object", "string"]
 				}
 			},
 			"type": "object"
-		},
-		"errors": {
-			"items": {},
-			"type": "array"
 		},
 		"meta": {
 			"properties": {
@@ -41,14 +45,7 @@
 			"type": "string"
 		},
 		"warnings": {
-			"items": {
-				"properties": {
-					"message": {
-						"type": "string"
-					}
-				},
-				"type": "object"
-			},
+			"items": {},
 			"type": "array"
 		},
 		"windowId": {

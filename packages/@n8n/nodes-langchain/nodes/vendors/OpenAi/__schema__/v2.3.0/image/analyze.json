@@ -1,23 +1,6 @@
 {
 	"properties": {
 		"content": {
-			"items": {
-				"properties": {
-					"text": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					}
-				},
-				"type": "object"
-			},
-			"type": "array"
-		},
-		"role": {
-			"type": "string"
-		},
-		"type": {
 			"type": "string"
 		}
 	},

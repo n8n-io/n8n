@@ -6,6 +6,12 @@
 		"form-submissions": {
 			"items": {
 				"properties": {
+					"contact-associated-by": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
 					"conversion-id": {
 						"type": "string"
 					},

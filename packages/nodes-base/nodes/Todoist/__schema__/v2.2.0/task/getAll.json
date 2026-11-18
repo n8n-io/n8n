@@ -44,11 +44,23 @@
 				"string": {
 					"type": "string"
 				},
-				"timezone": {}
+				"timezone": {
+					"type": ["null", "string"]
+				}
 			},
 			"type": ["null", "object"]
 		},
-		"duration": {},
+		"duration": {
+			"properties": {
+				"amount": {
+					"type": "number"
+				},
+				"unit": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
 		"id": {
 			"type": "string"
 		},

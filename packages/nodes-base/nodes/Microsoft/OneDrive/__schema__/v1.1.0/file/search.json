@@ -1,13 +1,23 @@
 {
 	"properties": {
+		"commentSettings": {
+			"properties": {
+				"commentingDisabled": {
+					"properties": {
+						"isDisabled": {
+							"type": "boolean"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
 		"createdBy": {
 			"properties": {
 				"user": {
 					"properties": {
 						"displayName": {
-							"type": "string"
-						},
-						"email": {
 							"type": "string"
 						}
 					},
@@ -21,9 +31,6 @@
 		},
 		"file": {
 			"properties": {
-				"hashes": {
-					"type": "object"
-				},
 				"mimeType": {
 					"type": "string"
 				}
@@ -50,9 +57,6 @@
 					"properties": {
 						"displayName": {
 							"type": "string"
-						},
-						"email": {
-							"type": "string"
 						}
 					},
 					"type": "object"
@@ -77,7 +81,7 @@
 				"id": {
 					"type": "string"
 				},
-				"siteId": {
+				"path": {
 					"type": "string"
 				}
 			},

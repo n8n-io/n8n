@@ -26,10 +26,10 @@
 		"CreatedDate": {
 			"type": "string"
 		},
-		"Department": {},
-		"Description": {
+		"Department": {
 			"type": ["null", "string"]
 		},
+		"Description": {},
 		"DoNotCall": {
 			"type": "boolean"
 		},
@@ -48,16 +48,13 @@
 		"FirstName": {
 			"type": ["null", "string"]
 		},
-		"GenderIdentity": {},
 		"HasOptedOutOfEmail": {
 			"type": "boolean"
 		},
 		"HasOptedOutOfFax": {
 			"type": "boolean"
 		},
-		"HomePhone": {
-			"type": ["null", "string"]
-		},
+		"HomePhone": {},
 		"Id": {
 			"type": "string"
 		},
@@ -150,6 +147,7 @@
 			"type": ["null", "string"]
 		},
 		"MasterRecordId": {},
+		"MiddleName": {},
 		"MobilePhone": {
 			"type": ["null", "string"]
 		},
@@ -197,11 +195,14 @@
 		"PhotoUrl": {
 			"type": "string"
 		},
-		"Pronouns": {},
+		"RecordTypeId": {
+			"type": "string"
+		},
 		"ReportsToId": {},
 		"Salutation": {
 			"type": ["null", "string"]
 		},
+		"Suffix": {},
 		"SystemModstamp": {
 			"type": "string"
 		},

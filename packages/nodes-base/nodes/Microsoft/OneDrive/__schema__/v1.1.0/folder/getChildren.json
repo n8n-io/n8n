@@ -33,6 +33,9 @@
 		"createdDateTime": {
 			"type": "string"
 		},
+		"cTag": {
+			"type": "string"
+		},
 		"eTag": {
 			"type": "string"
 		},

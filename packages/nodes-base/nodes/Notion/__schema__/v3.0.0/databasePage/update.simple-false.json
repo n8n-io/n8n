@@ -17,17 +17,6 @@
 		},
 		"icon": {
 			"properties": {
-				"icon": {
-					"properties": {
-						"color": {
-							"type": "string"
-						},
-						"name": {
-							"type": "string"
-						}
-					},
-					"type": "object"
-				},
 				"type": {
 					"type": "string"
 				}

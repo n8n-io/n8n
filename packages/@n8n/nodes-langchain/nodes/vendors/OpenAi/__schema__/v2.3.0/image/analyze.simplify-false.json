@@ -108,7 +108,9 @@
 				"effort": {
 					"type": ["null", "string"]
 				},
-				"summary": {}
+				"summary": {
+					"type": ["null", "string"]
+				}
 			},
 			"type": "object"
 		},

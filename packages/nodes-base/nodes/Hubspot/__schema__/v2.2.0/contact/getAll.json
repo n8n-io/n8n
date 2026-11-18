@@ -89,92 +89,11 @@
 			"type": "boolean"
 		},
 		"merge-audits": {
-			"items": {
-				"properties": {
-					"canonical-vid": {
-						"type": "number"
-					},
-					"entity-id": {
-						"type": "string"
-					},
-					"first-name": {
-						"type": "string"
-					},
-					"is-reverted": {
-						"type": "boolean"
-					},
-					"last-name": {
-						"type": "string"
-					},
-					"merged_from_email": {
-						"properties": {
-							"data-sensitivity": {},
-							"is-encrypted": {},
-							"selected": {
-								"type": "boolean"
-							},
-							"source-id": {
-								"type": "string"
-							},
-							"source-label": {},
-							"source-type": {
-								"type": "string"
-							},
-							"timestamp": {
-								"type": "number"
-							},
-							"updated-by-user-id": {},
-							"value": {
-								"type": "string"
-							}
-						},
-						"type": "object"
-					},
-					"merged_to_email": {
-						"properties": {
-							"data-sensitivity": {},
-							"is-encrypted": {},
-							"selected": {
-								"type": "boolean"
-							},
-							"source-id": {
-								"type": "string"
-							},
-							"source-label": {},
-							"source-type": {
-								"type": "string"
-							},
-							"timestamp": {
-								"type": "number"
-							},
-							"updated-by-user-id": {},
-							"value": {
-								"type": "string"
-							}
-						},
-						"type": "object"
-					},
-					"num-properties-moved": {
-						"type": "number"
-					},
-					"primary-vid-to-merge": {
-						"type": "number"
-					},
-					"timestamp": {
-						"type": "number"
-					},
-					"vid-to-merge": {
-						"type": "number"
-					}
-				},
-				"type": "object"
-			},
+			"items": {},
 			"type": "array"
 		},
 		"merged-vids": {
-			"items": {
-				"type": "number"
-			},
+			"items": {},
 			"type": "array"
 		},
 		"portal-id": {
@@ -183,6 +102,14 @@
 		"properties": {
 			"additionalProperties": true,
 			"properties": {
+				"email": {
+					"properties": {
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
 				"firstname": {
 					"properties": {
 						"value": {

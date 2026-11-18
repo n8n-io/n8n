@@ -7,23 +7,6 @@
 			"items": {
 				"properties": {
 					"after": {
-						"properties": {
-							"color": {
-								"type": "string"
-							},
-							"orderindex": {
-								"type": "number"
-							},
-							"status": {
-								"type": "string"
-							},
-							"type": {
-								"type": "string"
-							}
-						},
-						"type": ["null", "object", "string"]
-					},
-					"before": {
 						"items": {
 							"properties": {
 								"creator": {
@@ -52,13 +35,30 @@
 								"type": "number"
 							},
 							"status": {
-								"type": ["null", "string"]
+								"type": "string"
 							},
 							"type": {
 								"type": "string"
 							}
 						},
 						"type": ["array", "null", "object", "string"]
+					},
+					"before": {
+						"properties": {
+							"color": {
+								"type": "string"
+							},
+							"orderindex": {
+								"type": "number"
+							},
+							"status": {
+								"type": ["null", "string"]
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": ["null", "object"]
 					},
 					"data": {
 						"properties": {
@@ -89,7 +89,7 @@
 					"user": {
 						"properties": {
 							"color": {
-								"type": ["null", "string"]
+								"type": "string"
 							},
 							"email": {
 								"type": "string"
@@ -104,10 +104,10 @@
 								"type": ["null", "string"]
 							},
 							"role": {
-								"type": ["null", "number"]
+								"type": "number"
 							},
 							"role_subtype": {
-								"type": ["null", "number"]
+								"type": "number"
 							},
 							"username": {
 								"type": "string"

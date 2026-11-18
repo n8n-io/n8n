@@ -11,6 +11,9 @@
 				}
 			},
 			"type": "object"
+		},
+		"Id": {
+			"type": "string"
 		}
 	},
 	"type": "object"

@@ -3,11 +3,17 @@
 		"payload": {
 			"additionalProperties": true,
 			"properties": {
+				"aud": {
+					"type": "string"
+				},
 				"exp": {
 					"type": "number"
 				},
 				"iat": {
 					"type": "number"
+				},
+				"iss": {
+					"type": "string"
 				}
 			},
 			"type": "object"

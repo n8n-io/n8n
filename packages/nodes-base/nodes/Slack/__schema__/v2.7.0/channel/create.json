@@ -36,9 +36,6 @@
 		"is_mpim": {
 			"type": "boolean"
 		},
-		"is_open": {
-			"type": "boolean"
-		},
 		"is_org_shared": {
 			"type": "boolean"
 		},
@@ -75,9 +72,6 @@
 		},
 		"priority": {
 			"type": "number"
-		},
-		"properties": {
-			"type": "object"
 		},
 		"purpose": {
 			"properties": {

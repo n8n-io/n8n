@@ -28,7 +28,7 @@
 			"type": "object"
 		},
 		"dealId": {
-			"type": "number"
+			"type": ["number", "string"]
 		},
 		"isDeleted": {
 			"type": "boolean"
@@ -45,7 +45,7 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
 							"type": "number"
@@ -81,9 +81,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -96,7 +93,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"days_to_close": {
 					"properties": {
@@ -140,9 +137,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -163,7 +157,7 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
 							"type": "number"
@@ -197,9 +191,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -222,7 +213,7 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
 							"type": "number"
@@ -273,7 +264,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_all_owner_ids": {
 					"properties": {
@@ -315,9 +306,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -937,9 +925,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -994,9 +979,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -1055,9 +1037,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -1112,9 +1091,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -1173,68 +1149,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"value": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
-							"type": "array"
-						}
-					},
-					"type": "object"
-				},
-				"hs_created_by_user_id": {
-					"properties": {
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "number"
-						},
-						"updatedByUserId": {
-							"type": "number"
-						},
-						"value": {
-							"type": "string"
-						},
-						"versions": {
-							"items": {
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"requestId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"sourceUpstreamDeployable": {
-										"type": "string"
-									},
-									"sourceVid": {
-										"items": {},
-										"type": "array"
-									},
-									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -1291,9 +1205,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -1348,9 +1259,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -1522,9 +1430,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -1579,9 +1484,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -1640,9 +1542,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -1697,9 +1596,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -1758,9 +1654,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -1817,9 +1710,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -1874,9 +1764,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -1983,9 +1870,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -2011,7 +1895,9 @@
 						"timestamp": {
 							"type": "number"
 						},
-						"updatedByUserId": {},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
 						"value": {
 							"type": "string"
 						},
@@ -2020,9 +1906,6 @@
 								"properties": {
 									"name": {
 										"type": "string"
-									},
-									"persistenceTimestamp": {
-										"type": "number"
 									},
 									"requestId": {
 										"type": "string"
@@ -2042,6 +1925,9 @@
 									},
 									"timestamp": {
 										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
 									},
 									"value": {
 										"type": "string"
@@ -2065,7 +1951,9 @@
 						"timestamp": {
 							"type": "number"
 						},
-						"updatedByUserId": {},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
 						"value": {
 							"type": "string"
 						},
@@ -2103,7 +1991,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_num_associated_active_deal_registrations": {
 					"properties": {
@@ -2145,9 +2033,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -2206,9 +2091,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -2263,9 +2145,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -2380,9 +2259,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -2437,9 +2313,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -2498,9 +2371,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -2555,9 +2425,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -2672,9 +2539,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -2729,9 +2593,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -2841,9 +2702,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -2900,68 +2758,6 @@
 									"timestamp": {
 										"type": "number"
 									},
-									"updatedByUserId": {
-										"type": "number"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
-									},
-									"value": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
-							"type": "array"
-						}
-					},
-					"type": "object"
-				},
-				"hs_object_source_user_id": {
-					"properties": {
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": "string"
-						},
-						"timestamp": {
-							"type": "number"
-						},
-						"updatedByUserId": {
-							"type": "number"
-						},
-						"value": {
-							"type": "string"
-						},
-						"versions": {
-							"items": {
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"requestId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"sourceUpstreamDeployable": {
-										"type": "string"
-									},
-									"sourceVid": {
-										"items": {},
-										"type": "array"
-									},
-									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
-										"type": "number"
-									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -3016,9 +2812,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -3223,6 +3016,9 @@
 									"name": {
 										"type": "string"
 									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
 									"source": {
 										"type": "string"
 									},
@@ -3238,9 +3034,6 @@
 									},
 									"timestamp": {
 										"type": "number"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
 									},
 									"value": {
 										"type": "string"
@@ -3293,9 +3086,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -3697,9 +3487,6 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "number"
-									},
-									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {

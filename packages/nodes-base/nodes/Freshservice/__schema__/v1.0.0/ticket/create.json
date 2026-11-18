@@ -13,15 +13,11 @@
 			"type": "string"
 		},
 		"custom_fields": {
-			"properties": {
-				"business_impact": {},
-				"impacted_locations": {},
-				"major_incident_type": {},
-				"no_of_customers_impacted": {}
-			},
 			"type": "object"
 		},
-		"department_id": {},
+		"department_id": {
+			"type": ["null", "number"]
+		},
 		"description": {
 			"type": "string"
 		},
@@ -29,10 +25,6 @@
 			"type": "string"
 		},
 		"due_by": {
-			"type": "string"
-		},
-		"effort_score": {},
-		"effort_score_level": {
 			"type": "string"
 		},
 		"email_config_id": {},
@@ -60,14 +52,6 @@
 		"priority": {
 			"type": "number"
 		},
-		"quality_score": {},
-		"quality_score_level": {
-			"type": "string"
-		},
-		"reliability_score": {},
-		"reliability_score_level": {
-			"type": "string"
-		},
 		"reply_cc_emails": {
 			"items": {},
 			"type": "array"
@@ -81,7 +65,6 @@
 		"resolution_notes": {},
 		"resolution_notes_html": {},
 		"responder_id": {},
-		"skillset_id": {},
 		"source": {
 			"type": "number"
 		},
@@ -111,12 +94,6 @@
 		},
 		"workspace_id": {
 			"type": "number"
-		},
-		"xla_policy_id": {},
-		"xla_policy_name": {},
-		"xla_score": {},
-		"xla_score_level": {
-			"type": "string"
 		}
 	},
 	"type": "object"

@@ -169,11 +169,6 @@
 			"type": "string"
 		},
 		"metadata": {
-			"properties": {
-				"videoCallUrl": {
-					"type": "string"
-				}
-			},
 			"type": "object"
 		},
 		"oneTimePassword": {},
@@ -296,9 +291,6 @@
 				},
 				"notes": {
 					"properties": {
-						"isHidden": {
-							"type": "boolean"
-						},
 						"label": {
 							"type": "string"
 						},

@@ -15,7 +15,17 @@
 		"created_time": {
 			"type": "string"
 		},
-		"icon": {},
+		"icon": {
+			"properties": {
+				"emoji": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
 		"id": {
 			"type": "string"
 		},

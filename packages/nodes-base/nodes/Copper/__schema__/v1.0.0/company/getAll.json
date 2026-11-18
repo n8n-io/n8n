@@ -27,20 +27,6 @@
 			"type": ["null", "number"]
 		},
 		"custom_fields": {
-			"items": {
-				"properties": {
-					"custom_field_definition_id": {
-						"type": "number"
-					},
-					"value": {
-						"items": {
-							"type": "number"
-						},
-						"type": ["array", "boolean", "null", "number", "string"]
-					}
-				},
-				"type": "object"
-			},
 			"type": "array"
 		},
 		"date_created": {

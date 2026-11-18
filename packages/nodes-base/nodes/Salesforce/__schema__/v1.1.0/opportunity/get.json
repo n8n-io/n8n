@@ -4,9 +4,6 @@
 		"AccountId": {
 			"type": ["null", "string"]
 		},
-		"AgeInDays": {
-			"type": "number"
-		},
 		"Amount": {
 			"type": ["null", "number"]
 		},
@@ -21,16 +18,16 @@
 			},
 			"type": "object"
 		},
-		"CampaignId": {},
+		"CampaignId": {
+			"type": ["null", "string"]
+		},
 		"CloseDate": {
 			"type": "string"
 		},
 		"ContactId": {
 			"type": ["null", "string"]
 		},
-		"ContractId": {
-			"type": ["null", "string"]
-		},
+		"ContractId": {},
 		"CreatedById": {
 			"type": "string"
 		},
@@ -76,9 +73,6 @@
 		"IsDeleted": {
 			"type": "boolean"
 		},
-		"IsPriorityRecord": {
-			"type": "boolean"
-		},
 		"IsPrivate": {
 			"type": "boolean"
 		},
@@ -87,9 +81,6 @@
 		},
 		"LastActivityDate": {
 			"type": ["null", "string"]
-		},
-		"LastActivityInDays": {
-			"type": ["null", "number"]
 		},
 		"LastAmountChangedHistoryId": {
 			"type": ["null", "string"]
@@ -109,9 +100,6 @@
 		"LastStageChangeDate": {
 			"type": ["null", "string"]
 		},
-		"LastStageChangeInDays": {
-			"type": "number"
-		},
 		"LastViewedDate": {
 			"type": ["null", "string"]
 		},
@@ -121,9 +109,7 @@
 		"Name": {
 			"type": "string"
 		},
-		"NextStep": {
-			"type": ["null", "string"]
-		},
+		"NextStep": {},
 		"OwnerId": {
 			"type": "string"
 		},
@@ -137,7 +123,7 @@
 			"type": "number"
 		},
 		"RecordTypeId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"StageName": {
 			"type": "string"

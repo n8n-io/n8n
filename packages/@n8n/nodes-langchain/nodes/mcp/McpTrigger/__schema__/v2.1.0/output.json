@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"headers": {
 			"properties": {
@@ -83,6 +84,21 @@
 		"mcpToolCall": {
 			"properties": {
 				"arguments": {
+					"additionalProperties": true,
+					"properties": {
+						"action": {
+							"type": "string"
+						},
+						"chatInput": {
+							"type": "string"
+						},
+						"sessionId": {
+							"type": "string"
+						},
+						"toolCallId": {
+							"type": "string"
+						}
+					},
 					"type": "object"
 				},
 				"sourceNodeName": {

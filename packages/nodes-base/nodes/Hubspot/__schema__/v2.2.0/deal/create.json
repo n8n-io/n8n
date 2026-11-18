@@ -85,7 +85,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"days_to_close": {
 					"properties": {
@@ -187,7 +187,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"dealstage": {
 					"properties": {
@@ -238,7 +238,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_closed_amount": {
 					"properties": {
@@ -1102,7 +1102,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_num_associated_active_deal_registrations": {
 					"properties": {
@@ -1612,7 +1612,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_object_source": {
 					"properties": {
@@ -2173,7 +2173,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				}
 			},
 			"type": "object"

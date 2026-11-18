@@ -27,6 +27,9 @@
 				},
 				"builderVariant": {
 					"type": "string"
+				},
+				"templateCredsSetupCompleted": {
+					"type": "boolean"
 				}
 			},
 			"type": ["null", "object"]
@@ -61,6 +64,20 @@
 			"items": {
 				"properties": {
 					"credentials": {
+						"additionalProperties": true,
+						"properties": {
+							"n8nApi": {
+								"properties": {
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
 						"type": "object"
 					},
 					"id": {
@@ -69,14 +86,94 @@
 					"name": {
 						"type": "string"
 					},
-					"onError": {
-						"type": "string"
-					},
 					"parameters": {
 						"additionalProperties": true,
 						"properties": {
+							"assignments": {
+								"properties": {
+									"assignments": {
+										"items": {
+											"properties": {
+												"id": {
+													"type": "string"
+												},
+												"name": {
+													"type": "string"
+												},
+												"type": {
+													"type": "string"
+												},
+												"value": {
+													"type": ["number", "string"]
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									}
+								},
+								"type": "object"
+							},
 							"authentication": {
 								"type": "string"
+							},
+							"columns": {
+								"properties": {
+									"attemptToConvertTypes": {
+										"type": "boolean"
+									},
+									"convertFieldsToString": {
+										"type": "boolean"
+									},
+									"mappingMode": {
+										"type": "string"
+									},
+									"matchingColumns": {
+										"items": {
+											"type": "string"
+										},
+										"type": "array"
+									},
+									"schema": {
+										"items": {
+											"properties": {
+												"canBeUsedToMatch": {
+													"type": "boolean"
+												},
+												"defaultMatch": {
+													"type": "boolean"
+												},
+												"display": {
+													"type": "boolean"
+												},
+												"displayName": {
+													"type": "string"
+												},
+												"id": {
+													"type": "string"
+												},
+												"readOnly": {
+													"type": "boolean"
+												},
+												"removed": {
+													"type": "boolean"
+												},
+												"required": {
+													"type": "boolean"
+												},
+												"type": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									},
+									"value": {
+										"type": "object"
+									}
+								},
+								"type": "object"
 							},
 							"conditions": {
 								"properties": {
@@ -137,9 +234,6 @@
 							"content": {
 								"type": "string"
 							},
-							"height": {
-								"type": "number"
-							},
 							"jsCode": {
 								"type": "string"
 							},
@@ -151,9 +245,6 @@
 							},
 							"options": {
 								"type": "object"
-							},
-							"resource": {
-								"type": "string"
 							},
 							"rule": {
 								"properties": {

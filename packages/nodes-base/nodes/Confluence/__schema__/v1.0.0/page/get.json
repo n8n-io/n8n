@@ -24,6 +24,7 @@
 			"type": "string"
 		},
 		"body": {
+			"additionalProperties": true,
 			"properties": {
 				"storage": {
 					"properties": {

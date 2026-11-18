@@ -1,8 +1,5 @@
 {
 	"properties": {
-		"commentsViewMode": {
-			"type": "string"
-		},
 		"layouts": {
 			"items": {
 				"properties": {
@@ -33,23 +30,6 @@
 										},
 										"imageProperties": {
 											"properties": {
-												"cropProperties": {
-													"properties": {
-														"bottomOffset": {
-															"type": "number"
-														},
-														"leftOffset": {
-															"type": "number"
-														},
-														"rightOffset": {
-															"type": "number"
-														},
-														"topOffset": {
-															"type": "number"
-														}
-													},
-													"type": "object"
-												},
 												"outline": {
 													"properties": {
 														"dashStyle": {
@@ -300,6 +280,20 @@
 																},
 																"color": {
 																	"properties": {
+																		"rgbColor": {
+																			"properties": {
+																				"blue": {
+																					"type": "number"
+																				},
+																				"green": {
+																					"type": "number"
+																				},
+																				"red": {
+																					"type": "number"
+																				}
+																			},
+																			"type": "object"
+																		},
 																		"themeColor": {
 																			"type": "string"
 																		}
@@ -328,481 +322,6 @@
 																	"type": "string"
 																},
 																"nestingLevel": {
-																	"properties": {
-																		"0": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"1": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"2": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"3": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"4": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"5": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"6": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"7": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"8": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"rgbColor": {
-																											"properties": {
-																												"blue": {
-																													"type": "number"
-																												},
-																												"green": {
-																													"type": "number"
-																												},
-																												"red": {
-																													"type": "number"
-																												}
-																											},
-																											"type": "object"
-																										},
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		}
-																	},
 																	"type": "object"
 																}
 															},
@@ -820,6 +339,35 @@
 																		"type": "string"
 																	},
 																	"style": {
+																		"properties": {
+																			"foregroundColor": {
+																				"properties": {
+																					"opaqueColor": {
+																						"properties": {
+																							"rgbColor": {
+																								"properties": {
+																									"blue": {
+																										"type": "number"
+																									},
+																									"green": {
+																										"type": "number"
+																									},
+																									"red": {
+																										"type": "number"
+																									}
+																								},
+																								"type": "object"
+																							},
+																							"themeColor": {
+																								"type": "string"
+																							}
+																						},
+																						"type": "object"
+																					}
+																				},
+																				"type": "object"
+																			}
+																		},
 																		"type": "object"
 																	},
 																	"type": {
@@ -858,8 +406,35 @@
 																			"direction": {
 																				"type": "string"
 																			},
+																			"indentFirstLine": {
+																				"properties": {
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"indentStart": {
+																				"properties": {
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
+																			},
 																			"lineSpacing": {
 																				"type": "number"
+																			},
+																			"spaceAbove": {
+																				"properties": {
+																					"magnitude": {
+																						"type": "number"
+																					},
+																					"unit": {
+																						"type": "string"
+																					}
+																				},
+																				"type": "object"
 																			},
 																			"spaceBelow": {
 																				"properties": {
@@ -890,6 +465,9 @@
 																		"properties": {
 																			"bold": {
 																				"type": "boolean"
+																			},
+																			"fontFamily": {
+																				"type": "string"
 																			},
 																			"fontSize": {
 																				"properties": {
@@ -925,6 +503,20 @@
 																							}
 																						},
 																						"type": "object"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"smallCaps": {
+																				"type": "boolean"
+																			},
+																			"weightedFontFamily": {
+																				"properties": {
+																					"fontFamily": {
+																						"type": "string"
+																					},
+																					"weight": {
+																						"type": "number"
 																					}
 																				},
 																				"type": "object"
@@ -1004,6 +596,36 @@
 								"properties": {
 									"propertyState": {
 										"type": "string"
+									},
+									"solidFill": {
+										"properties": {
+											"alpha": {
+												"type": "number"
+											},
+											"color": {
+												"properties": {
+													"rgbColor": {
+														"properties": {
+															"blue": {
+																"type": "number"
+															},
+															"green": {
+																"type": "number"
+															},
+															"red": {
+																"type": "number"
+															}
+														},
+														"type": "object"
+													},
+													"themeColor": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
 									}
 								},
 								"type": "object"
@@ -1212,629 +834,6 @@
 																	"type": "string"
 																},
 																"nestingLevel": {
-																	"properties": {
-																		"0": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"1": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"2": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"3": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"4": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"5": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"6": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"7": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		},
-																		"8": {
-																			"properties": {
-																				"bulletStyle": {
-																					"properties": {
-																						"backgroundColor": {
-																							"type": "object"
-																						},
-																						"baselineOffset": {
-																							"type": "string"
-																						},
-																						"bold": {
-																							"type": "boolean"
-																						},
-																						"fontFamily": {
-																							"type": "string"
-																						},
-																						"fontSize": {
-																							"properties": {
-																								"magnitude": {
-																									"type": "number"
-																								},
-																								"unit": {
-																									"type": "string"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"foregroundColor": {
-																							"properties": {
-																								"opaqueColor": {
-																									"properties": {
-																										"themeColor": {
-																											"type": "string"
-																										}
-																									},
-																									"type": "object"
-																								}
-																							},
-																							"type": "object"
-																						},
-																						"italic": {
-																							"type": "boolean"
-																						},
-																						"smallCaps": {
-																							"type": "boolean"
-																						},
-																						"strikethrough": {
-																							"type": "boolean"
-																						},
-																						"underline": {
-																							"type": "boolean"
-																						},
-																						"weightedFontFamily": {
-																							"properties": {
-																								"fontFamily": {
-																									"type": "string"
-																								},
-																								"weight": {
-																									"type": "number"
-																								}
-																							},
-																							"type": "object"
-																						}
-																					},
-																					"type": "object"
-																				}
-																			},
-																			"type": "object"
-																		}
-																	},
 																	"type": "object"
 																}
 															},
@@ -1879,7 +878,6 @@
 																			"foregroundColor": {
 																				"properties": {
 																					"opaqueColor": {
-																						"additionalProperties": true,
 																						"properties": {
 																							"themeColor": {
 																								"type": "string"
@@ -2393,629 +1391,6 @@
 																"type": "string"
 															},
 															"nestingLevel": {
-																"properties": {
-																	"0": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"1": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"2": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"3": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"4": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"5": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"6": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"7": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	},
-																	"8": {
-																		"properties": {
-																			"bulletStyle": {
-																				"properties": {
-																					"backgroundColor": {
-																						"type": "object"
-																					},
-																					"baselineOffset": {
-																						"type": "string"
-																					},
-																					"bold": {
-																						"type": "boolean"
-																					},
-																					"fontFamily": {
-																						"type": "string"
-																					},
-																					"fontSize": {
-																						"properties": {
-																							"magnitude": {
-																								"type": "number"
-																							},
-																							"unit": {
-																								"type": "string"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"foregroundColor": {
-																						"properties": {
-																							"opaqueColor": {
-																								"properties": {
-																									"rgbColor": {
-																										"type": "object"
-																									}
-																								},
-																								"type": "object"
-																							}
-																						},
-																						"type": "object"
-																					},
-																					"italic": {
-																						"type": "boolean"
-																					},
-																					"smallCaps": {
-																						"type": "boolean"
-																					},
-																					"strikethrough": {
-																						"type": "boolean"
-																					},
-																					"underline": {
-																						"type": "boolean"
-																					},
-																					"weightedFontFamily": {
-																						"properties": {
-																							"fontFamily": {
-																								"type": "string"
-																							},
-																							"weight": {
-																								"type": "number"
-																							}
-																						},
-																						"type": "object"
-																					}
-																				},
-																				"type": "object"
-																			}
-																		},
-																		"type": "object"
-																	}
-																},
 																"type": "object"
 															}
 														},
@@ -3365,6 +1740,9 @@
 					"pageElements": {
 						"items": {
 							"properties": {
+								"description": {
+									"type": "string"
+								},
 								"image": {
 									"properties": {
 										"contentUrl": {
@@ -3404,6 +1782,17 @@
 																		"color": {
 																			"properties": {
 																				"rgbColor": {
+																					"properties": {
+																						"blue": {
+																							"type": "number"
+																						},
+																						"green": {
+																							"type": "number"
+																						},
+																						"red": {
+																							"type": "number"
+																						}
+																					},
 																					"type": "object"
 																				},
 																				"themeColor": {
@@ -3528,6 +1917,9 @@
 																			"properties": {
 																				"rgbColor": {
 																					"type": "object"
+																				},
+																				"themeColor": {
+																					"type": "string"
 																				}
 																			},
 																			"type": "object"
@@ -3630,6 +2022,9 @@
 																				}
 																			},
 																			"type": "object"
+																		},
+																		"themeColor": {
+																			"type": "string"
 																		}
 																	},
 																	"type": "object"
@@ -3648,6 +2043,9 @@
 										},
 										"text": {
 											"properties": {
+												"lists": {
+													"type": "object"
+												},
 												"textElements": {
 													"items": {
 														"properties": {
@@ -3656,6 +2054,80 @@
 															},
 															"paragraphMarker": {
 																"properties": {
+																	"bullet": {
+																		"properties": {
+																			"bulletStyle": {
+																				"properties": {
+																					"bold": {
+																						"type": "boolean"
+																					},
+																					"fontFamily": {
+																						"type": "string"
+																					},
+																					"fontSize": {
+																						"properties": {
+																							"magnitude": {
+																								"type": "number"
+																							},
+																							"unit": {
+																								"type": "string"
+																							}
+																						},
+																						"type": "object"
+																					},
+																					"foregroundColor": {
+																						"properties": {
+																							"opaqueColor": {
+																								"properties": {
+																									"rgbColor": {
+																										"properties": {
+																											"blue": {
+																												"type": "number"
+																											},
+																											"green": {
+																												"type": "number"
+																											},
+																											"red": {
+																												"type": "number"
+																											}
+																										},
+																										"type": "object"
+																									},
+																									"themeColor": {
+																										"type": "string"
+																									}
+																								},
+																								"type": "object"
+																							}
+																						},
+																						"type": "object"
+																					},
+																					"underline": {
+																						"type": "boolean"
+																					},
+																					"weightedFontFamily": {
+																						"properties": {
+																							"fontFamily": {
+																								"type": "string"
+																							},
+																							"weight": {
+																								"type": "number"
+																							}
+																						},
+																						"type": "object"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"glyph": {
+																				"type": "string"
+																			},
+																			"listId": {
+																				"type": "string"
+																			}
+																		},
+																		"type": "object"
+																	},
 																	"style": {
 																		"properties": {
 																			"alignment": {
@@ -3880,6 +2352,36 @@
 								"properties": {
 									"propertyState": {
 										"type": "string"
+									},
+									"solidFill": {
+										"properties": {
+											"alpha": {
+												"type": "number"
+											},
+											"color": {
+												"properties": {
+													"rgbColor": {
+														"properties": {
+															"blue": {
+																"type": "number"
+															},
+															"green": {
+																"type": "number"
+															},
+															"red": {
+																"type": "number"
+															}
+														},
+														"type": "object"
+													},
+													"themeColor": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
 									}
 								},
 								"type": "object"
@@ -3969,6 +2471,105 @@
 														},
 														"shapeType": {
 															"type": "string"
+														},
+														"text": {
+															"properties": {
+																"textElements": {
+																	"items": {
+																		"properties": {
+																			"endIndex": {
+																				"type": "number"
+																			},
+																			"paragraphMarker": {
+																				"properties": {
+																					"style": {
+																						"properties": {
+																							"alignment": {
+																								"type": "string"
+																							},
+																							"direction": {
+																								"type": "string"
+																							},
+																							"indentFirstLine": {
+																								"properties": {
+																									"unit": {
+																										"type": "string"
+																									}
+																								},
+																								"type": "object"
+																							},
+																							"indentStart": {
+																								"properties": {
+																									"unit": {
+																										"type": "string"
+																									}
+																								},
+																								"type": "object"
+																							},
+																							"lineSpacing": {
+																								"type": "number"
+																							},
+																							"spaceAbove": {
+																								"properties": {
+																									"unit": {
+																										"type": "string"
+																									}
+																								},
+																								"type": "object"
+																							},
+																							"spaceBelow": {
+																								"properties": {
+																									"unit": {
+																										"type": "string"
+																									}
+																								},
+																								"type": "object"
+																							},
+																							"spacingMode": {
+																								"type": "string"
+																							}
+																						},
+																						"type": "object"
+																					}
+																				},
+																				"type": "object"
+																			},
+																			"startIndex": {
+																				"type": "number"
+																			},
+																			"textRun": {
+																				"properties": {
+																					"content": {
+																						"type": "string"
+																					},
+																					"style": {
+																						"properties": {
+																							"foregroundColor": {
+																								"properties": {
+																									"opaqueColor": {
+																										"properties": {
+																											"themeColor": {
+																												"type": "string"
+																											}
+																										},
+																										"type": "object"
+																									}
+																								},
+																								"type": "object"
+																							}
+																						},
+																						"type": "object"
+																					}
+																				},
+																				"type": "object"
+																			}
+																		},
+																		"type": "object"
+																	},
+																	"type": "array"
+																}
+															},
+															"type": "object"
 														}
 													},
 													"type": "object"

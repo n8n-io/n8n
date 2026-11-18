@@ -80,6 +80,9 @@
 											"direction": {
 												"type": "string"
 											},
+											"keepWithNext": {
+												"type": "boolean"
+											},
 											"namedStyleType": {
 												"type": "string"
 											},

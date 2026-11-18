@@ -4,11 +4,6 @@
 			"items": {},
 			"properties": {
 				"metadata": {
-					"properties": {
-						"type": {
-							"type": "string"
-						}
-					},
 					"type": "object"
 				}
 			},

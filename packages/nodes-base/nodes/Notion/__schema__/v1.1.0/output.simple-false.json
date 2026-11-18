@@ -72,7 +72,9 @@
 		"properties": {
 			"type": "object"
 		},
-		"public_url": {},
+		"public_url": {
+			"type": ["null", "string"]
+		},
 		"url": {
 			"type": "string"
 		}

@@ -36,9 +36,6 @@
 		"is_mpim": {
 			"type": "boolean"
 		},
-		"is_open": {
-			"type": "boolean"
-		},
 		"is_org_shared": {
 			"type": "boolean"
 		},
@@ -69,38 +66,16 @@
 			"items": {},
 			"type": "array"
 		},
+		"previous_names": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
 		"properties": {
 			"properties": {
-				"tabs": {
-					"items": {
-						"properties": {
-							"id": {
-								"type": "string"
-							},
-							"label": {
-								"type": "string"
-							},
-							"type": {
-								"type": "string"
-							}
-						},
-						"type": "object"
-					},
-					"type": "array"
-				},
-				"tabz": {
-					"items": {
-						"properties": {
-							"id": {
-								"type": "string"
-							},
-							"type": {
-								"type": "string"
-							}
-						},
-						"type": "object"
-					},
-					"type": "array"
+				"use_case": {
+					"type": "string"
 				}
 			},
 			"type": "object"

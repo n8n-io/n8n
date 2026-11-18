@@ -1,17 +1,11 @@
 {
 	"properties": {
-		"AcceptedDate": {
-			"type": "string"
-		},
 		"ApplyTaxAfterDiscount": {
 			"type": "boolean"
 		},
 		"BillAddr": {
 			"properties": {
 				"City": {
-					"type": "string"
-				},
-				"Country": {
 					"type": "string"
 				},
 				"CountrySubDivisionCode": {
@@ -33,14 +27,6 @@
 			"type": "object"
 		},
 		"BillEmail": {
-			"properties": {
-				"Address": {
-					"type": "string"
-				}
-			},
-			"type": "object"
-		},
-		"BillEmailCc": {
 			"properties": {
 				"Address": {
 					"type": "string"
@@ -162,14 +148,6 @@
 							"Qty": {
 								"type": "number"
 							},
-							"TaxClassificationRef": {
-								"properties": {
-									"value": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
 							"TaxCodeRef": {
 								"properties": {
 									"value": {
@@ -220,11 +198,14 @@
 		"PrintStatus": {
 			"type": "string"
 		},
-		"PrivateNote": {
-			"type": "string"
-		},
 		"ShipAddr": {
 			"properties": {
+				"City": {
+					"type": "string"
+				},
+				"CountrySubDivisionCode": {
+					"type": "string"
+				},
 				"Id": {
 					"type": "string"
 				},
@@ -236,27 +217,15 @@
 				},
 				"Line3": {
 					"type": "string"
-				},
-				"Line4": {
-					"type": "string"
-				},
-				"Line5": {
-					"type": "string"
 				}
 			},
 			"type": "object"
-		},
-		"ShipDate": {
-			"type": "string"
 		},
 		"sparse": {
 			"type": "boolean"
 		},
 		"SyncToken": {
 			"type": "string"
-		},
-		"TaxExemptionRef": {
-			"type": "object"
 		},
 		"TotalAmt": {
 			"type": "number"
@@ -307,14 +276,6 @@
 				},
 				"TotalTax": {
 					"type": "number"
-				},
-				"TxnTaxCodeRef": {
-					"properties": {
-						"value": {
-							"type": "string"
-						}
-					},
-					"type": "object"
 				}
 			},
 			"type": "object"

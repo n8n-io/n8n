@@ -1,13 +1,6 @@
 {
 	"properties": {
-		"access_programs": {
-			"properties": {
-				"cyber": {
-					"type": "string"
-				}
-			},
-			"type": ["null", "object"]
-		},
+		"access_programs": {},
 		"background": {
 			"type": "boolean"
 		},
@@ -20,7 +13,7 @@
 			"type": "object"
 		},
 		"completed_at": {
-			"type": ["null", "number"]
+			"type": "number"
 		},
 		"created_at": {
 			"type": "number"
@@ -31,23 +24,14 @@
 		"id": {
 			"type": "string"
 		},
-		"incomplete_details": {
-			"properties": {
-				"reason": {
-					"type": "string"
-				}
-			},
-			"type": ["null", "object"]
-		},
+		"incomplete_details": {},
 		"instructions": {
 			"type": ["null", "string"]
 		},
 		"max_output_tokens": {
 			"type": ["null", "number"]
 		},
-		"max_tool_calls": {
-			"type": ["null", "number"]
-		},
+		"max_tool_calls": {},
 		"metadata": {
 			"type": "object"
 		},
@@ -108,9 +92,6 @@
 					"id": {
 						"type": "string"
 					},
-					"phase": {
-						"type": "string"
-					},
 					"role": {
 						"type": "string"
 					},
@@ -118,17 +99,7 @@
 						"type": "string"
 					},
 					"summary": {
-						"items": {
-							"properties": {
-								"text": {
-									"type": "string"
-								},
-								"type": {
-									"type": "string"
-								}
-							},
-							"type": "object"
-						},
+						"items": {},
 						"type": "array"
 					},
 					"type": {

@@ -457,7 +457,9 @@
 		"state": {
 			"type": "string"
 		},
-		"state_reason": {},
+		"state_reason": {
+			"type": ["null", "string"]
+		},
 		"sub_issues_summary": {
 			"properties": {
 				"completed": {

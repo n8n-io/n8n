@@ -17,6 +17,9 @@
 		},
 		"database_parent": {
 			"properties": {
+				"page_id": {
+					"type": "string"
+				},
 				"type": {
 					"type": "string"
 				}
@@ -73,16 +76,8 @@
 		},
 		"icon": {
 			"properties": {
-				"icon": {
-					"properties": {
-						"color": {
-							"type": "string"
-						},
-						"name": {
-							"type": "string"
-						}
-					},
-					"type": "object"
+				"emoji": {
+					"type": "string"
 				},
 				"type": {
 					"type": "string"

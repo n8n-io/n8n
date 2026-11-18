@@ -4,13 +4,7 @@
 		"content": {
 			"items": {
 				"properties": {
-					"signature": {
-						"type": "string"
-					},
 					"text": {
-						"type": "string"
-					},
-					"thinking": {
 						"type": "string"
 					},
 					"type": {

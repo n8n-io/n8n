@@ -74,23 +74,6 @@
 		},
 		"properties": {
 			"properties": {
-				"canvas": {
-					"properties": {
-						"file_id": {
-							"type": "string"
-						},
-						"is_empty": {
-							"type": "boolean"
-						},
-						"is_migrated": {
-							"type": "boolean"
-						},
-						"quip_thread_id": {
-							"type": "string"
-						}
-					},
-					"type": "object"
-				},
 				"is_dormant": {
 					"type": "boolean"
 				},
@@ -155,9 +138,6 @@
 						"type": "object"
 					},
 					"type": "array"
-				},
-				"use_case": {
-					"type": "string"
 				}
 			},
 			"type": "object"

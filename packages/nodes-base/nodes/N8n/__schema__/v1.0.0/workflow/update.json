@@ -20,7 +20,26 @@
 				"description": {},
 				"name": {},
 				"nodeGroups": {
-					"items": {},
+					"items": {
+						"properties": {
+							"description": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"nodeIds": {
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							}
+						},
+						"type": "object"
+					},
 					"type": "array"
 				},
 				"nodes": {
@@ -68,6 +87,12 @@
 									},
 									"columns": {
 										"properties": {
+											"attemptToConvertTypes": {
+												"type": "boolean"
+											},
+											"convertFieldsToString": {
+												"type": "boolean"
+											},
 											"mappingMode": {
 												"type": "string"
 											},
@@ -107,6 +132,12 @@
 												"type": "array"
 											},
 											"value": {
+												"additionalProperties": true,
+												"properties": {
+													"status": {
+														"type": "string"
+													}
+												},
 												"type": "object"
 											}
 										},
@@ -204,6 +235,9 @@
 										},
 										"type": "object"
 									},
+									"genericAuthType": {
+										"type": "string"
+									},
 									"headerParameters": {
 										"properties": {
 											"parameters": {
@@ -232,6 +266,9 @@
 									"jsonBody": {
 										"type": "string"
 									},
+									"matchType": {
+										"type": "string"
+									},
 									"method": {
 										"type": "string"
 									},
@@ -251,9 +288,6 @@
 												"properties": {
 													"response": {
 														"properties": {
-															"fullResponse": {
-																"type": "boolean"
-															},
 															"neverError": {
 																"type": "boolean"
 															},
@@ -275,25 +309,6 @@
 										},
 										"type": "object"
 									},
-									"queryParameters": {
-										"properties": {
-											"parameters": {
-												"items": {
-													"properties": {
-														"name": {
-															"type": "string"
-														},
-														"value": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												},
-												"type": "array"
-											}
-										},
-										"type": "object"
-									},
 									"resource": {
 										"type": "string"
 									},
@@ -304,9 +319,6 @@
 										"type": "boolean"
 									},
 									"sendHeaders": {
-										"type": "boolean"
-									},
-									"sendQuery": {
 										"type": "boolean"
 									},
 									"specifyBody": {
@@ -344,7 +356,9 @@
 												"type": "string"
 											},
 											"matchingColumns": {
-												"items": {},
+												"items": {
+													"type": "string"
+												},
 												"type": "array"
 											},
 											"schema": {
@@ -365,9 +379,6 @@
 														"id": {
 															"type": "string"
 														},
-														"removed": {
-															"type": "boolean"
-														},
 														"required": {
 															"type": "boolean"
 														},
@@ -381,20 +392,6 @@
 											},
 											"value": {
 												"type": "object"
-											},
-											"values": {
-												"items": {
-													"properties": {
-														"name": {
-															"type": "string"
-														},
-														"type": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												},
-												"type": "array"
 											}
 										},
 										"type": "object"
@@ -501,6 +498,9 @@
 		"nodeGroups": {
 			"items": {
 				"properties": {
+					"description": {
+						"type": "string"
+					},
 					"id": {
 						"type": "string"
 					},
@@ -525,20 +525,6 @@
 						"type": "boolean"
 					},
 					"credentials": {
-						"additionalProperties": true,
-						"properties": {
-							"openAiApi": {
-								"properties": {
-									"id": {
-										"type": "string"
-									},
-									"name": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							}
-						},
 						"type": "object"
 					},
 					"executeOnce": {
@@ -557,12 +543,19 @@
 						"type": "string"
 					},
 					"parameters": {
+						"additionalProperties": true,
 						"properties": {
 							"authentication": {
 								"type": "string"
 							},
 							"columns": {
 								"properties": {
+									"attemptToConvertTypes": {
+										"type": "boolean"
+									},
+									"convertFieldsToString": {
+										"type": "boolean"
+									},
 									"mappingMode": {
 										"type": "string"
 									},
@@ -589,6 +582,9 @@
 												},
 												"id": {
 													"type": "string"
+												},
+												"removed": {
+													"type": "boolean"
 												},
 												"required": {
 													"type": "boolean"
@@ -663,20 +659,6 @@
 								},
 								"type": "object"
 							},
-							"dataTableId": {
-								"properties": {
-									"__rl": {
-										"type": "boolean"
-									},
-									"mode": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
 							"filters": {
 								"properties": {
 									"conditions": {
@@ -699,55 +681,11 @@
 								},
 								"type": "object"
 							},
-							"headerParameters": {
-								"properties": {
-									"parameters": {
-										"items": {
-											"properties": {
-												"name": {
-													"type": "string"
-												},
-												"value": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"type": "array"
-									}
-								},
-								"type": "object"
-							},
-							"inputSource": {
-								"type": "string"
-							},
 							"jsCode": {
 								"type": "string"
 							},
 							"jsonBody": {
-								"properties": {
-									"query": {
-										"type": "string"
-									},
-									"variables": {
-										"properties": {
-											"after": {
-												"type": "string"
-											},
-											"id": {
-												"type": "string"
-											},
-											"queryId": {
-												"type": "string"
-											},
-											"segmentId": {
-												"type": "string"
-											}
-										},
-										"type": "object"
-									}
-								},
-								"type": ["object", "string"]
+								"type": "string"
 							},
 							"method": {
 								"type": "string"
@@ -768,9 +706,6 @@
 										"properties": {
 											"response": {
 												"properties": {
-													"fullResponse": {
-														"type": "boolean"
-													},
 													"neverError": {
 														"type": "boolean"
 													},
@@ -792,13 +727,7 @@
 							"resource": {
 								"type": "string"
 							},
-							"returnAll": {
-								"type": "boolean"
-							},
 							"sendBody": {
-								"type": "boolean"
-							},
-							"sendHeaders": {
 								"type": "boolean"
 							},
 							"specifyBody": {
@@ -811,6 +740,9 @@
 								"properties": {
 									"__rl": {
 										"type": "boolean"
+									},
+									"cachedResultName": {
+										"type": "string"
 									},
 									"mode": {
 										"type": "string"
@@ -833,7 +765,9 @@
 										"type": "string"
 									},
 									"matchingColumns": {
-										"items": {},
+										"items": {
+											"type": "string"
+										},
 										"type": "array"
 									},
 									"schema": {
@@ -867,20 +801,6 @@
 									},
 									"value": {
 										"type": "object"
-									},
-									"values": {
-										"items": {
-											"properties": {
-												"name": {
-													"type": "string"
-												},
-												"type": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"type": "array"
 									}
 								},
 								"type": "object"
@@ -922,7 +842,7 @@
 				"availableInMCP": {
 					"type": "boolean"
 				},
-				"callerPolicy": {
+				"binaryMode": {
 					"type": "string"
 				},
 				"executionOrder": {

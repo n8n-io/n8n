@@ -11,9 +11,6 @@
 						},
 						"type": "object"
 					},
-					"user_id": {
-						"type": "string"
-					},
 					"wa_id": {
 						"type": "string"
 					}
@@ -22,16 +19,10 @@
 			},
 			"type": "array"
 		},
-		"field": {
-			"type": "string"
-		},
 		"messages": {
 			"items": {
 				"properties": {
 					"from": {
-						"type": "string"
-					},
-					"from_user_id": {
 						"type": "string"
 					},
 					"id": {
@@ -60,14 +51,6 @@
 			"type": "string"
 		},
 		"metadata": {
-			"properties": {
-				"display_phone_number": {
-					"type": "string"
-				},
-				"phone_number_id": {
-					"type": "string"
-				}
-			},
 			"type": "object"
 		}
 	},

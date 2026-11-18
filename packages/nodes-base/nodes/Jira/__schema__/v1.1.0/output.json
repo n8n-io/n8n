@@ -53,13 +53,9 @@
 							},
 							"type": "object"
 						},
-						"aggregatetimeestimate": {
-							"type": ["null", "number"]
-						},
+						"aggregatetimeestimate": {},
 						"aggregatetimeoriginalestimate": {},
-						"aggregatetimespent": {
-							"type": ["null", "number"]
-						},
+						"aggregatetimespent": {},
 						"assignee": {
 							"properties": {
 								"accountId": {
@@ -101,11 +97,98 @@
 							"type": ["null", "object"]
 						},
 						"attachment": {
-							"items": {},
+							"items": {
+								"properties": {
+									"author": {
+										"properties": {
+											"accountId": {
+												"type": "string"
+											},
+											"accountType": {
+												"type": "string"
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"avatarUrls": {
+												"properties": {
+													"16x16": {
+														"type": "string"
+													},
+													"24x24": {
+														"type": "string"
+													},
+													"32x32": {
+														"type": "string"
+													},
+													"48x48": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"displayName": {
+												"type": "string"
+											},
+											"self": {
+												"type": "string"
+											},
+											"timeZone": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"content": {
+										"type": "string"
+									},
+									"created": {
+										"type": "string"
+									},
+									"filename": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"mimeType": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									},
+									"size": {
+										"type": "number"
+									},
+									"thumbnail": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
 							"type": "array"
 						},
 						"components": {
-							"items": {},
+							"items": {
+								"properties": {
+									"ari": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"metadata": {
+										"type": "object"
+									},
+									"name": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
 							"type": "array"
 						},
 						"created": {
@@ -151,80 +234,27 @@
 							},
 							"type": "object"
 						},
-						"customfield_10000": {
-							"type": "string"
-						},
-						"customfield_10001": {
-							"properties": {
-								"avatarUrl": {
-									"type": "string"
-								},
-								"id": {
-									"type": "string"
-								},
-								"isShared": {
-									"type": "boolean"
-								},
-								"isVerified": {
-									"type": "boolean"
-								},
-								"isVisible": {
-									"type": "boolean"
-								},
-								"name": {
-									"type": "string"
-								},
-								"title": {
-									"type": "string"
-								}
-							},
-							"type": ["null", "object"]
-						},
+						"customfield_10001": {},
 						"customfield_10015": {},
-						"customfield_10016": {},
 						"customfield_10019": {
-							"type": "string"
-						},
-						"customfield_10020": {
-							"items": {
-								"properties": {
-									"boardId": {
-										"type": "number"
-									},
-									"endDate": {
-										"type": "string"
-									},
-									"goal": {
-										"type": "string"
-									},
-									"id": {
-										"type": "number"
-									},
-									"name": {
-										"type": "string"
-									},
-									"startDate": {
-										"type": "string"
-									},
-									"state": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
-							"type": ["array", "null"]
+							"type": ["null", "string"]
 						},
 						"customfield_10021": {},
 						"description": {
 							"type": ["null", "string"]
 						},
-						"duedate": {},
+						"duedate": {
+							"type": ["null", "string"]
+						},
 						"environment": {},
 						"fixVersions": {
 							"items": {
 								"properties": {
 									"archived": {
 										"type": "boolean"
+									},
+									"description": {
+										"type": "string"
 									},
 									"id": {
 										"type": "string"
@@ -234,6 +264,9 @@
 									},
 									"released": {
 										"type": "boolean"
+									},
+									"releaseDate": {
+										"type": "string"
 									},
 									"self": {
 										"type": "string"
@@ -247,26 +280,12 @@
 							"items": {},
 							"type": "array"
 						},
-						"issuerestriction": {
-							"properties": {
-								"issuerestrictions": {
-									"type": "object"
-								},
-								"shouldDisplay": {
-									"type": "boolean"
-								}
-							},
-							"type": "object"
-						},
 						"issuetype": {
 							"properties": {
 								"avatarId": {
 									"type": "number"
 								},
 								"description": {
-									"type": "string"
-								},
-								"entityId": {
 									"type": "string"
 								},
 								"hierarchyLevel": {
@@ -314,7 +333,7 @@
 									"type": "string"
 								}
 							},
-							"type": "object"
+							"type": ["null", "object"]
 						},
 						"progress": {
 							"properties": {
@@ -407,26 +426,8 @@
 							},
 							"type": "object"
 						},
-						"resolution": {
-							"properties": {
-								"description": {
-									"type": "string"
-								},
-								"id": {
-									"type": "string"
-								},
-								"name": {
-									"type": "string"
-								},
-								"self": {
-									"type": "string"
-								}
-							},
-							"type": ["null", "object"]
-						},
-						"resolutiondate": {
-							"type": ["null", "string"]
-						},
+						"resolution": {},
+						"resolutiondate": {},
 						"security": {},
 						"status": {
 							"properties": {
@@ -498,13 +499,9 @@
 						"summary": {
 							"type": "string"
 						},
-						"timeestimate": {
-							"type": ["null", "number"]
-						},
+						"timeestimate": {},
 						"timeoriginalestimate": {},
-						"timespent": {
-							"type": ["null", "number"]
-						},
+						"timespent": {},
 						"timetracking": {
 							"type": "object"
 						},

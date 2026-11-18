@@ -106,6 +106,30 @@
 					"last-name": {
 						"type": "string"
 					},
+					"merged_from_email": {
+						"properties": {
+							"data-sensitivity": {},
+							"is-encrypted": {},
+							"selected": {
+								"type": "boolean"
+							},
+							"source-id": {
+								"type": "string"
+							},
+							"source-label": {},
+							"source-type": {
+								"type": "string"
+							},
+							"timestamp": {
+								"type": "number"
+							},
+							"updated-by-user-id": {},
+							"value": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
 					"merged_to_email": {
 						"properties": {
 							"data-sensitivity": {},
@@ -123,9 +147,7 @@
 							"timestamp": {
 								"type": "number"
 							},
-							"updated-by-user-id": {
-								"type": ["null", "number"]
-							},
+							"updated-by-user-id": {},
 							"value": {
 								"type": "string"
 							}

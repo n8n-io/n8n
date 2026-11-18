@@ -25,9 +25,6 @@
 		"position": {
 			"type": ["null", "string"]
 		},
-		"provenance": {
-			"type": ["null", "string"]
-		},
 		"score": {
 			"type": ["null", "number"]
 		},

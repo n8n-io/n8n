@@ -1137,57 +1137,6 @@
 						}
 					},
 					"type": "object"
-				},
-				"website": {
-					"properties": {
-						"source": {
-							"type": "string"
-						},
-						"sourceId": {
-							"type": ["null", "string"]
-						},
-						"timestamp": {
-							"type": "number"
-						},
-						"updatedByUserId": {},
-						"value": {
-							"type": "string"
-						},
-						"versions": {
-							"items": {
-								"properties": {
-									"name": {
-										"type": "string"
-									},
-									"requestId": {
-										"type": "string"
-									},
-									"source": {
-										"type": "string"
-									},
-									"sourceId": {
-										"type": "string"
-									},
-									"sourceUpstreamDeployable": {
-										"type": "string"
-									},
-									"sourceVid": {
-										"items": {},
-										"type": "array"
-									},
-									"timestamp": {
-										"type": "number"
-									},
-									"value": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
-							"type": "array"
-						}
-					},
-					"type": "object"
 				}
 			},
 			"type": "object"

@@ -137,33 +137,6 @@
 			},
 			"type": "object"
 		},
-		"shared": {
-			"properties": {
-				"owner": {
-					"properties": {
-						"user": {
-							"properties": {
-								"displayName": {
-									"type": "string"
-								},
-								"email": {
-									"type": "string"
-								},
-								"id": {
-									"type": "string"
-								}
-							},
-							"type": "object"
-						}
-					},
-					"type": "object"
-				},
-				"scope": {
-					"type": "string"
-				}
-			},
-			"type": "object"
-		},
 		"size": {
 			"type": "number"
 		},

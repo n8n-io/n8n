@@ -13,6 +13,9 @@
 						"id": {
 							"type": "number"
 						},
+						"last_name": {
+							"type": "string"
+						},
 						"type": {
 							"type": "string"
 						}

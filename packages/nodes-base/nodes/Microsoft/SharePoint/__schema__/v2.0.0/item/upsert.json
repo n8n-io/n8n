@@ -23,6 +23,12 @@
 					"properties": {
 						"displayName": {
 							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
 						}
 					},
 					"type": "object"
@@ -127,6 +133,12 @@
 				"user": {
 					"properties": {
 						"displayName": {
+							"type": "string"
+						},
+						"email": {
+							"type": "string"
+						},
+						"id": {
 							"type": "string"
 						}
 					},

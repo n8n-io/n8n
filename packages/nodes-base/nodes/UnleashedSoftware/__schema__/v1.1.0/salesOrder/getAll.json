@@ -72,30 +72,13 @@
 		"DeliveryCity": {
 			"type": ["null", "string"]
 		},
-		"DeliveryContact": {
-			"properties": {
-				"EmailAddress": {
-					"type": "string"
-				},
-				"FirstName": {
-					"type": ["null", "string"]
-				},
-				"Guid": {
-					"type": "string"
-				},
-				"LastName": {
-					"type": ["null", "string"]
-				},
-				"MobilePhone": {},
-				"OfficePhone": {},
-				"PhoneNumber": {}
-			},
-			"type": ["null", "object"]
-		},
+		"DeliveryContact": {},
 		"DeliveryCountry": {
 			"type": ["null", "string"]
 		},
-		"DeliveryInstruction": {},
+		"DeliveryInstruction": {
+			"type": ["null", "string"]
+		},
 		"DeliveryMethod": {
 			"type": ["null", "string"]
 		},
@@ -297,7 +280,7 @@
 					"type": "boolean"
 				},
 				"Description": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"Guid": {
 					"type": "string"
@@ -309,7 +292,7 @@
 					"type": "boolean"
 				},
 				"LastModifiedOn": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"Obsolete": {
 					"type": "boolean"

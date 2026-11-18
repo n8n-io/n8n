@@ -13,9 +13,6 @@
 				},
 				"configuration": {
 					"properties": {
-						"baseProfileId": {
-							"type": "string"
-						},
 						"recordingState": {
 							"type": "string"
 						},

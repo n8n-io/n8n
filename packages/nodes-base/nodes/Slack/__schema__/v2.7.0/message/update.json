@@ -17,19 +17,36 @@
 							"elements": {
 								"items": {
 									"properties": {
-										"text": {
-											"properties": {
-												"emoji": {
-													"type": "boolean"
+										"elements": {
+											"items": {
+												"properties": {
+													"name": {
+														"type": "string"
+													},
+													"style": {
+														"properties": {
+															"bold": {
+																"type": "boolean"
+															},
+															"italic": {
+																"type": "boolean"
+															}
+														},
+														"type": "object"
+													},
+													"text": {
+														"type": "string"
+													},
+													"type": {
+														"type": "string"
+													},
+													"unicode": {
+														"type": "string"
+													}
 												},
-												"text": {
-													"type": "string"
-												},
-												"type": {
-													"type": "string"
-												}
+												"type": "object"
 											},
-											"type": ["object", "string"]
+											"type": "array"
 										},
 										"type": {
 											"type": "string"

@@ -33,9 +33,7 @@
 			},
 			"type": "array"
 		},
-		"database_type": {
-			"type": ["null", "string"]
-		},
+		"database_type": {},
 		"description": {
 			"items": {
 				"properties": {

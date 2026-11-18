@@ -148,9 +148,6 @@
 			"properties": {
 				"cost": {
 					"properties": {
-						"cache_creation_cost": {
-							"type": "number"
-						},
 						"currency": {
 							"type": "string"
 						},
@@ -171,12 +168,6 @@
 				},
 				"input_tokens_details": {
 					"properties": {
-						"cache_creation_input_tokens": {
-							"type": "number"
-						},
-						"cache_read_input_tokens": {
-							"type": "number"
-						},
 						"cached_tokens": {
 							"type": "number"
 						}

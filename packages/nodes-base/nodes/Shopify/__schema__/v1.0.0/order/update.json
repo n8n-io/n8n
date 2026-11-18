@@ -17,9 +17,7 @@
 				"city": {
 					"type": "string"
 				},
-				"company": {
-					"type": ["null", "string"]
-				},
+				"company": {},
 				"country": {
 					"type": "string"
 				},
@@ -62,8 +60,12 @@
 		"buyer_accepts_marketing": {
 			"type": "boolean"
 		},
-		"cancel_reason": {},
-		"cancelled_at": {},
+		"cancel_reason": {
+			"type": ["null", "string"]
+		},
+		"cancelled_at": {
+			"type": ["null", "string"]
+		},
 		"cart_token": {
 			"type": ["null", "string"]
 		},
@@ -101,7 +103,7 @@
 			"type": "boolean"
 		},
 		"contact_email": {
-			"type": ["null", "string"]
+			"type": "string"
 		},
 		"created_at": {
 			"type": "string"
@@ -253,9 +255,7 @@
 						"city": {
 							"type": ["null", "string"]
 						},
-						"company": {
-							"type": ["null", "string"]
-						},
+						"company": {},
 						"country": {
 							"type": "string"
 						},
@@ -299,7 +299,7 @@
 					"type": "object"
 				},
 				"email": {
-					"type": ["null", "string"]
+					"type": "string"
 				},
 				"email_marketing_consent": {
 					"properties": {
@@ -316,7 +316,7 @@
 					"type": ["null", "object"]
 				},
 				"first_name": {
-					"type": ["null", "string"]
+					"type": "string"
 				},
 				"id": {
 					"type": "number"
@@ -515,7 +515,7 @@
 									"type": "string"
 								},
 								"fulfillment_status": {
-									"type": ["null", "string"]
+									"type": "string"
 								},
 								"gift_card": {
 									"type": "boolean"
@@ -528,36 +528,6 @@
 								},
 								"name": {
 									"type": "string"
-								},
-								"pre_tax_price": {
-									"type": "string"
-								},
-								"pre_tax_price_set": {
-									"properties": {
-										"presentment_money": {
-											"properties": {
-												"amount": {
-													"type": "string"
-												},
-												"currency_code": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"shop_money": {
-											"properties": {
-												"amount": {
-													"type": "string"
-												},
-												"currency_code": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										}
-									},
-									"type": "object"
 								},
 								"price": {
 									"type": "string"
@@ -596,7 +566,17 @@
 									"type": "number"
 								},
 								"properties": {
-									"items": {},
+									"items": {
+										"properties": {
+											"name": {
+												"type": "string"
+											},
+											"value": {
+												"type": ["number", "string"]
+											}
+										},
+										"type": "object"
+									},
 									"type": "array"
 								},
 								"quantity": {
@@ -606,7 +586,7 @@
 									"type": "boolean"
 								},
 								"sku": {
-									"type": "string"
+									"type": ["null", "string"]
 								},
 								"tax_lines": {
 									"items": {
@@ -730,25 +710,15 @@
 					"status": {
 						"type": "string"
 					},
-					"tracking_company": {
-						"type": ["null", "string"]
-					},
-					"tracking_number": {
-						"type": ["null", "string"]
-					},
+					"tracking_company": {},
+					"tracking_number": {},
 					"tracking_numbers": {
-						"items": {
-							"type": "string"
-						},
+						"items": {},
 						"type": "array"
 					},
-					"tracking_url": {
-						"type": ["null", "string"]
-					},
+					"tracking_url": {},
 					"tracking_urls": {
-						"items": {
-							"type": "string"
-						},
+						"items": {},
 						"type": "array"
 					},
 					"updated_at": {
@@ -888,7 +858,7 @@
 									"type": "string"
 								},
 								"value": {
-									"type": "string"
+									"type": ["number", "string"]
 								}
 							},
 							"type": "object"
@@ -1004,9 +974,7 @@
 			},
 			"type": "array"
 		},
-		"location_id": {
-			"type": ["null", "number"]
-		},
+		"location_id": {},
 		"merchant_business_entity_id": {
 			"type": "string"
 		},
@@ -1035,7 +1003,7 @@
 			"type": "number"
 		},
 		"order_number": {
-			"type": "number"
+			"type": ["number", "string"]
 		},
 		"order_status_url": {
 			"type": "string"
@@ -1083,86 +1051,7 @@
 						"type": "string"
 					},
 					"order_adjustments": {
-						"items": {
-							"properties": {
-								"amount": {
-									"type": "string"
-								},
-								"amount_set": {
-									"properties": {
-										"presentment_money": {
-											"properties": {
-												"amount": {
-													"type": "string"
-												},
-												"currency_code": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"shop_money": {
-											"properties": {
-												"amount": {
-													"type": "string"
-												},
-												"currency_code": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										}
-									},
-									"type": "object"
-								},
-								"id": {
-									"type": "number"
-								},
-								"kind": {
-									"type": "string"
-								},
-								"order_id": {
-									"type": "number"
-								},
-								"reason": {
-									"type": "string"
-								},
-								"refund_id": {
-									"type": "number"
-								},
-								"tax_amount": {
-									"type": "string"
-								},
-								"tax_amount_set": {
-									"properties": {
-										"presentment_money": {
-											"properties": {
-												"amount": {
-													"type": "string"
-												},
-												"currency_code": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"shop_money": {
-											"properties": {
-												"amount": {
-													"type": "string"
-												},
-												"currency_code": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										}
-									},
-									"type": "object"
-								}
-							},
-							"type": "object"
-						},
+						"items": {},
 						"type": "array"
 					},
 					"order_id": {
@@ -1190,7 +1079,44 @@
 											"type": "number"
 										},
 										"discount_allocations": {
-											"items": {},
+											"items": {
+												"properties": {
+													"amount": {
+														"type": "string"
+													},
+													"amount_set": {
+														"properties": {
+															"presentment_money": {
+																"properties": {
+																	"amount": {
+																		"type": "string"
+																	},
+																	"currency_code": {
+																		"type": "string"
+																	}
+																},
+																"type": "object"
+															},
+															"shop_money": {
+																"properties": {
+																	"amount": {
+																		"type": "string"
+																	},
+																	"currency_code": {
+																		"type": "string"
+																	}
+																},
+																"type": "object"
+															}
+														},
+														"type": "object"
+													},
+													"discount_application_index": {
+														"type": "number"
+													}
+												},
+												"type": "object"
+											},
 											"type": "array"
 										},
 										"duties": {
@@ -1203,9 +1129,7 @@
 										"fulfillment_service": {
 											"type": "string"
 										},
-										"fulfillment_status": {
-											"type": "string"
-										},
+										"fulfillment_status": {},
 										"gift_card": {
 											"type": "boolean"
 										},
@@ -1217,36 +1141,6 @@
 										},
 										"name": {
 											"type": "string"
-										},
-										"pre_tax_price": {
-											"type": "string"
-										},
-										"pre_tax_price_set": {
-											"properties": {
-												"presentment_money": {
-													"properties": {
-														"amount": {
-															"type": "string"
-														},
-														"currency_code": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												},
-												"shop_money": {
-													"properties": {
-														"amount": {
-															"type": "string"
-														},
-														"currency_code": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												}
-											},
-											"type": "object"
 										},
 										"price": {
 											"type": "string"
@@ -1386,9 +1280,7 @@
 										"variant_inventory_management": {
 											"type": "string"
 										},
-										"variant_title": {
-											"type": "string"
-										},
+										"variant_title": {},
 										"vendor": {
 											"type": "string"
 										}
@@ -1503,69 +1395,7 @@
 						"type": "object"
 					},
 					"transactions": {
-						"items": {
-							"properties": {
-								"admin_graphql_api_id": {
-									"type": "string"
-								},
-								"amount": {
-									"type": "string"
-								},
-								"authorization": {},
-								"created_at": {
-									"type": "string"
-								},
-								"currency": {
-									"type": "string"
-								},
-								"device_id": {},
-								"error_code": {},
-								"gateway": {
-									"type": "string"
-								},
-								"id": {
-									"type": "number"
-								},
-								"kind": {
-									"type": "string"
-								},
-								"location_id": {},
-								"message": {},
-								"order_id": {
-									"type": "number"
-								},
-								"parent_id": {
-									"type": "number"
-								},
-								"payment_id": {
-									"type": "string"
-								},
-								"processed_at": {
-									"type": "string"
-								},
-								"receipt": {
-									"properties": {
-										"refund_id": {
-											"type": "string"
-										}
-									},
-									"type": "object"
-								},
-								"source_name": {
-									"type": "string"
-								},
-								"status": {
-									"type": "string"
-								},
-								"test": {
-									"type": "boolean"
-								},
-								"user_id": {
-									"type": "number"
-								}
-							},
-							"type": "object"
-						},
+						"items": {},
 						"type": "array"
 					},
 					"user_id": {
@@ -1587,9 +1417,7 @@
 				"city": {
 					"type": "string"
 				},
-				"company": {
-					"type": ["null", "string"]
-				},
+				"company": {},
 				"country": {
 					"type": "string"
 				},
@@ -1629,9 +1457,7 @@
 		"shipping_lines": {
 			"items": {
 				"properties": {
-					"carrier_identifier": {
-						"type": ["null", "string"]
-					},
+					"carrier_identifier": {},
 					"code": {
 						"type": "string"
 					},
@@ -1675,9 +1501,7 @@
 					"is_removed": {
 						"type": "boolean"
 					},
-					"phone": {
-						"type": ["null", "string"]
-					},
+					"phone": {},
 					"price": {
 						"type": "string"
 					},

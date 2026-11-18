@@ -12,7 +12,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["object", "string"]
 		},
 		"bodyPreview": {
 			"type": "string"
@@ -44,6 +44,9 @@
 			"type": "boolean"
 		},
 		"id": {
+			"type": "string"
+		},
+		"receivedDateTime": {
 			"type": "string"
 		},
 		"subject": {

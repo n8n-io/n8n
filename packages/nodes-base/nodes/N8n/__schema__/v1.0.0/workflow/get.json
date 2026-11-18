@@ -145,6 +145,12 @@
 												"type": "array"
 											},
 											"value": {
+												"additionalProperties": true,
+												"properties": {
+													"status": {
+														"type": "string"
+													}
+												},
 												"type": ["null", "object"]
 											}
 										},
@@ -206,19 +212,41 @@
 										},
 										"type": "object"
 									},
+									"content": {
+										"type": "string"
+									},
 									"dataTableId": {
 										"properties": {
 											"__rl": {
 												"type": "boolean"
-											},
-											"cachedResultName": {
-												"type": "string"
 											},
 											"mode": {
 												"type": "string"
 											},
 											"value": {
 												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"filters": {
+										"properties": {
+											"conditions": {
+												"items": {
+													"properties": {
+														"condition": {
+															"type": "string"
+														},
+														"keyName": {
+															"type": "string"
+														},
+														"keyValue": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"type": "array"
 											}
 										},
 										"type": "object"
@@ -241,9 +269,6 @@
 											}
 										},
 										"type": "object"
-									},
-									"httpMethod": {
-										"type": "string"
 									},
 									"jsCode": {
 										"type": "string"
@@ -312,9 +337,6 @@
 									"specifyBody": {
 										"type": "string"
 									},
-									"text": {
-										"type": "string"
-									},
 									"url": {
 										"type": "string"
 									},
@@ -366,9 +388,6 @@
 														},
 														"id": {
 															"type": "string"
-														},
-														"removed": {
-															"type": "boolean"
 														},
 														"required": {
 															"type": "boolean"
@@ -666,8 +685,41 @@
 								},
 								"type": "object"
 							},
-							"httpMethod": {
-								"type": "string"
+							"dataTableId": {
+								"properties": {
+									"__rl": {
+										"type": "boolean"
+									},
+									"mode": {
+										"type": "string"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"filters": {
+								"properties": {
+									"conditions": {
+										"items": {
+											"properties": {
+												"condition": {
+													"type": "string"
+												},
+												"keyName": {
+													"type": "string"
+												},
+												"keyValue": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									}
+								},
+								"type": "object"
 							},
 							"jsCode": {
 								"type": "string"
@@ -711,9 +763,6 @@
 									},
 									"timeout": {
 										"type": ["number", "string"]
-									},
-									"waitForSubWorkflow": {
-										"type": "boolean"
 									}
 								},
 								"type": "object"
@@ -779,26 +828,6 @@
 			},
 			"type": "array"
 		},
-		"parentFolder": {
-			"properties": {
-				"createdAt": {
-					"type": "string"
-				},
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				},
-				"parentFolderId": {
-					"type": ["null", "string"]
-				},
-				"updatedAt": {
-					"type": "string"
-				}
-			},
-			"type": ["null", "object"]
-		},
 		"pinData": {
 			"type": ["null", "object"]
 		},
@@ -808,9 +837,6 @@
 					"type": "boolean"
 				},
 				"binaryMode": {
-					"type": "string"
-				},
-				"callerPolicy": {
 					"type": "string"
 				},
 				"errorWorkflow": {

@@ -3,42 +3,6 @@
 		"@odata.etag": {
 			"type": "string"
 		},
-		"contentType": {
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"type": "object"
-		},
-		"createdBy": {
-			"properties": {
-				"user": {
-					"properties": {
-						"displayName": {
-							"type": "string"
-						},
-						"email": {
-							"type": "string"
-						},
-						"id": {
-							"type": "string"
-						}
-					},
-					"type": "object"
-				}
-			},
-			"type": "object"
-		},
-		"createdDateTime": {
-			"type": "string"
-		},
-		"eTag": {
-			"type": "string"
-		},
 		"fields": {
 			"additionalProperties": true,
 			"properties": {
@@ -58,6 +22,12 @@
 					"type": "string"
 				},
 				"@odata.etag": {
+					"type": "string"
+				},
+				"AppAuthorLookupId": {
+					"type": "string"
+				},
+				"AppEditorLookupId": {
 					"type": "string"
 				},
 				"Attachments": {
@@ -107,50 +77,6 @@
 		},
 		"id": {
 			"type": "string"
-		},
-		"lastModifiedBy": {
-			"properties": {
-				"application": {
-					"properties": {
-						"displayName": {
-							"type": "string"
-						},
-						"id": {
-							"type": "string"
-						}
-					},
-					"type": "object"
-				},
-				"user": {
-					"properties": {
-						"displayName": {
-							"type": "string"
-						},
-						"email": {
-							"type": "string"
-						},
-						"id": {
-							"type": "string"
-						}
-					},
-					"type": "object"
-				}
-			},
-			"type": "object"
-		},
-		"lastModifiedDateTime": {
-			"type": "string"
-		},
-		"parentReference": {
-			"properties": {
-				"id": {
-					"type": "string"
-				},
-				"siteId": {
-					"type": "string"
-				}
-			},
-			"type": "object"
 		},
 		"webUrl": {
 			"type": "string"

@@ -69,14 +69,6 @@
 		},
 		"lastModifiedBy": {
 			"properties": {
-				"application": {
-					"properties": {
-						"displayName": {
-							"type": "string"
-						}
-					},
-					"type": "object"
-				},
 				"user": {
 					"properties": {
 						"displayName": {

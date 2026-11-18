@@ -23,20 +23,6 @@
 		"reviewId": {
 			"type": "string"
 		},
-		"reviewReply": {
-			"properties": {
-				"comment": {
-					"type": "string"
-				},
-				"reviewReplyState": {
-					"type": "string"
-				},
-				"updateTime": {
-					"type": "string"
-				}
-			},
-			"type": "object"
-		},
 		"reviewReplyUrl": {
 			"type": "string"
 		},

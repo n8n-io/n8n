@@ -38,7 +38,6 @@
 		"description": {
 			"type": "string"
 		},
-		"icon": {},
 		"id": {
 			"type": "string"
 		},

@@ -114,9 +114,6 @@
 				"deg": {
 					"type": "number"
 				},
-				"gust": {
-					"type": "number"
-				},
 				"speed": {
 					"type": "number"
 				}

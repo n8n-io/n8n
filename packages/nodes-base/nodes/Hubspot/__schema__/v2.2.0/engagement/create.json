@@ -73,7 +73,9 @@
 					"type": "boolean"
 				},
 				"allAccessibleTeamIds": {
-					"items": {},
+					"items": {
+						"type": "number"
+					},
 					"type": "array"
 				},
 				"bodyPreview": {
@@ -111,17 +113,6 @@
 			"type": "object"
 		},
 		"metadata": {
-			"properties": {
-				"body": {
-					"type": "string"
-				},
-				"status": {
-					"type": "string"
-				},
-				"subject": {
-					"type": "string"
-				}
-			},
 			"type": "object"
 		},
 		"scheduledTasks": {

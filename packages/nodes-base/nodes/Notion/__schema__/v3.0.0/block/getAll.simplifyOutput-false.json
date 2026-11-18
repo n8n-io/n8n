@@ -17,64 +17,6 @@
 		"has_children": {
 			"type": "boolean"
 		},
-		"heading_2": {
-			"properties": {
-				"color": {
-					"type": "string"
-				},
-				"is_toggleable": {
-					"type": "boolean"
-				},
-				"rich_text": {
-					"items": {
-						"properties": {
-							"annotations": {
-								"properties": {
-									"bold": {
-										"type": "boolean"
-									},
-									"code": {
-										"type": "boolean"
-									},
-									"color": {
-										"type": "string"
-									},
-									"italic": {
-										"type": "boolean"
-									},
-									"strikethrough": {
-										"type": "boolean"
-									},
-									"underline": {
-										"type": "boolean"
-									}
-								},
-								"type": "object"
-							},
-							"href": {},
-							"plain_text": {
-								"type": "string"
-							},
-							"text": {
-								"properties": {
-									"content": {
-										"type": "string"
-									},
-									"link": {}
-								},
-								"type": "object"
-							},
-							"type": {
-								"type": "string"
-							}
-						},
-						"type": "object"
-					},
-					"type": "array"
-				}
-			},
-			"type": "object"
-		},
 		"id": {
 			"type": "string"
 		},

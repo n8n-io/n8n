@@ -49,14 +49,8 @@
 				"nodes": {
 					"items": {
 						"properties": {
-							"alwaysOutputData": {
-								"type": "boolean"
-							},
 							"credentials": {
 								"type": "object"
-							},
-							"executeOnce": {
-								"type": "boolean"
 							},
 							"id": {
 								"type": "string"
@@ -64,37 +58,9 @@
 							"name": {
 								"type": "string"
 							},
-							"onError": {
-								"type": "string"
-							},
 							"parameters": {
 								"additionalProperties": true,
 								"properties": {
-									"assignments": {
-										"properties": {
-											"assignments": {
-												"items": {
-													"properties": {
-														"id": {
-															"type": "string"
-														},
-														"name": {
-															"type": "string"
-														},
-														"type": {
-															"type": "string"
-														},
-														"value": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												},
-												"type": "array"
-											}
-										},
-										"type": "object"
-									},
 									"authentication": {
 										"type": "string"
 									},
@@ -154,47 +120,7 @@
 										},
 										"type": "object"
 									},
-									"dataTableId": {
-										"properties": {
-											"__rl": {
-												"type": "boolean"
-											},
-											"mode": {
-												"type": "string"
-											},
-											"value": {
-												"type": "string"
-											}
-										},
-										"type": "object"
-									},
-									"filters": {
-										"additionalProperties": true,
-										"properties": {
-											"conditions": {
-												"items": {
-													"properties": {
-														"condition": {
-															"type": "string"
-														},
-														"keyName": {
-															"type": "string"
-														},
-														"keyValue": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												},
-												"type": "array"
-											}
-										},
-										"type": "object"
-									},
 									"jsCode": {
-										"type": "string"
-									},
-									"matchType": {
 										"type": "string"
 									},
 									"mode": {
@@ -204,111 +130,10 @@
 										"type": "string"
 									},
 									"options": {
-										"additionalProperties": true,
-										"properties": {
-											"waitForSubWorkflow": {
-												"type": "boolean"
-											}
-										},
 										"type": "object"
 									},
-									"resource": {
+									"url": {
 										"type": "string"
-									},
-									"returnAll": {
-										"type": "boolean"
-									},
-									"workflowId": {
-										"properties": {
-											"__rl": {
-												"type": "boolean"
-											},
-											"mode": {
-												"type": "string"
-											},
-											"value": {
-												"type": "string"
-											}
-										},
-										"type": "object"
-									},
-									"workflowInputs": {
-										"properties": {
-											"attemptToConvertTypes": {
-												"type": "boolean"
-											},
-											"convertFieldsToString": {
-												"type": "boolean"
-											},
-											"mappingMode": {
-												"type": "string"
-											},
-											"matchingColumns": {
-												"items": {
-													"type": "string"
-												},
-												"type": "array"
-											},
-											"schema": {
-												"items": {
-													"properties": {
-														"canBeUsedToMatch": {
-															"type": "boolean"
-														},
-														"defaultMatch": {
-															"type": "boolean"
-														},
-														"display": {
-															"type": "boolean"
-														},
-														"displayName": {
-															"type": "string"
-														},
-														"id": {
-															"type": "string"
-														},
-														"removed": {
-															"type": "boolean"
-														},
-														"required": {
-															"type": "boolean"
-														},
-														"type": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												},
-												"type": "array"
-											},
-											"value": {
-												"additionalProperties": true,
-												"properties": {
-													"mode": {
-														"type": "string"
-													},
-													"seller_id": {
-														"type": "string"
-													}
-												},
-												"type": "object"
-											},
-											"values": {
-												"items": {
-													"properties": {
-														"name": {
-															"type": "string"
-														},
-														"type": {
-															"type": "string"
-														}
-													},
-													"type": "object"
-												},
-												"type": "array"
-											}
-										},
-										"type": "object"
 									}
 								},
 								"type": "object"
@@ -396,6 +221,9 @@
 				},
 				"builderVariant": {
 					"type": "string"
+				},
+				"templateCredsSetupCompleted": {
+					"type": "boolean"
 				}
 			},
 			"type": ["null", "object"]
@@ -429,14 +257,8 @@
 		"nodes": {
 			"items": {
 				"properties": {
-					"alwaysOutputData": {
-						"type": "boolean"
-					},
 					"credentials": {
 						"type": "object"
-					},
-					"executeOnce": {
-						"type": "boolean"
 					},
 					"id": {
 						"type": "string"
@@ -444,37 +266,9 @@
 					"name": {
 						"type": "string"
 					},
-					"onError": {
-						"type": "string"
-					},
 					"parameters": {
 						"additionalProperties": true,
 						"properties": {
-							"assignments": {
-								"properties": {
-									"assignments": {
-										"items": {
-											"properties": {
-												"id": {
-													"type": "string"
-												},
-												"name": {
-													"type": "string"
-												},
-												"type": {
-													"type": "string"
-												},
-												"value": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"type": "array"
-									}
-								},
-								"type": "object"
-							},
 							"authentication": {
 								"type": "string"
 							},
@@ -534,47 +328,7 @@
 								},
 								"type": "object"
 							},
-							"dataTableId": {
-								"properties": {
-									"__rl": {
-										"type": "boolean"
-									},
-									"mode": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
-							"filters": {
-								"additionalProperties": true,
-								"properties": {
-									"conditions": {
-										"items": {
-											"properties": {
-												"condition": {
-													"type": "string"
-												},
-												"keyName": {
-													"type": "string"
-												},
-												"keyValue": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"type": "array"
-									}
-								},
-								"type": "object"
-							},
 							"jsCode": {
-								"type": "string"
-							},
-							"matchType": {
 								"type": "string"
 							},
 							"mode": {
@@ -584,111 +338,10 @@
 								"type": "string"
 							},
 							"options": {
-								"additionalProperties": true,
-								"properties": {
-									"waitForSubWorkflow": {
-										"type": "boolean"
-									}
-								},
 								"type": "object"
 							},
-							"resource": {
+							"url": {
 								"type": "string"
-							},
-							"returnAll": {
-								"type": "boolean"
-							},
-							"workflowId": {
-								"properties": {
-									"__rl": {
-										"type": "boolean"
-									},
-									"mode": {
-										"type": "string"
-									},
-									"value": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							},
-							"workflowInputs": {
-								"properties": {
-									"attemptToConvertTypes": {
-										"type": "boolean"
-									},
-									"convertFieldsToString": {
-										"type": "boolean"
-									},
-									"mappingMode": {
-										"type": "string"
-									},
-									"matchingColumns": {
-										"items": {
-											"type": "string"
-										},
-										"type": "array"
-									},
-									"schema": {
-										"items": {
-											"properties": {
-												"canBeUsedToMatch": {
-													"type": "boolean"
-												},
-												"defaultMatch": {
-													"type": "boolean"
-												},
-												"display": {
-													"type": "boolean"
-												},
-												"displayName": {
-													"type": "string"
-												},
-												"id": {
-													"type": "string"
-												},
-												"removed": {
-													"type": "boolean"
-												},
-												"required": {
-													"type": "boolean"
-												},
-												"type": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"type": "array"
-									},
-									"value": {
-										"additionalProperties": true,
-										"properties": {
-											"mode": {
-												"type": "string"
-											},
-											"seller_id": {
-												"type": "string"
-											}
-										},
-										"type": "object"
-									},
-									"values": {
-										"items": {
-											"properties": {
-												"name": {
-													"type": "string"
-												},
-												"type": {
-													"type": "string"
-												}
-											},
-											"type": "object"
-										},
-										"type": "array"
-									}
-								},
-								"type": "object"
 							}
 						},
 						"type": "object"
@@ -720,6 +373,9 @@
 			"properties": {
 				"availableInMCP": {
 					"type": "boolean"
+				},
+				"binaryMode": {
+					"type": "string"
 				},
 				"executionOrder": {
 					"type": "string"

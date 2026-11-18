@@ -11,10 +11,22 @@
 			},
 			"type": "object"
 		},
+		"Company": {
+			"type": ["null", "string"]
+		},
+		"Email": {
+			"type": ["null", "string"]
+		},
+		"FirstName": {
+			"type": ["null", "string"]
+		},
 		"Id": {
 			"type": "string"
 		},
 		"LastModifiedDate": {
+			"type": "string"
+		},
+		"LastName": {
 			"type": "string"
 		}
 	},

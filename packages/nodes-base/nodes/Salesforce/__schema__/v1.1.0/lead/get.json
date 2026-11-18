@@ -1,15 +1,15 @@
 {
 	"additionalProperties": true,
 	"properties": {
-		"ActivityMetricId": {
-			"type": ["null", "string"]
-		},
 		"Address": {
 			"properties": {
 				"city": {
 					"type": ["null", "string"]
 				},
 				"country": {
+					"type": ["null", "string"]
+				},
+				"countryCode": {
 					"type": ["null", "string"]
 				},
 				"geocodeAccuracy": {},
@@ -23,6 +23,9 @@
 					"type": ["null", "string"]
 				},
 				"state": {
+					"type": ["null", "string"]
+				},
+				"stateCode": {
 					"type": ["null", "string"]
 				},
 				"street": {
@@ -49,7 +52,7 @@
 			"type": ["null", "string"]
 		},
 		"Company": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"ConvertedAccountId": {
 			"type": ["null", "string"]
@@ -60,8 +63,13 @@
 		"ConvertedDate": {
 			"type": ["null", "string"]
 		},
-		"ConvertedOpportunityId": {},
+		"ConvertedOpportunityId": {
+			"type": ["null", "string"]
+		},
 		"Country": {
+			"type": ["null", "string"]
+		},
+		"CountryCode": {
 			"type": ["null", "string"]
 		},
 		"CreatedById": {
@@ -70,14 +78,8 @@
 		"CreatedDate": {
 			"type": "string"
 		},
-		"CurrencyIsoCode": {
-			"type": "string"
-		},
 		"Description": {
 			"type": ["null", "string"]
-		},
-		"DoNotCall": {
-			"type": "boolean"
 		},
 		"Email": {
 			"type": ["null", "string"]
@@ -88,18 +90,14 @@
 		"EmailBouncedReason": {
 			"type": ["null", "string"]
 		},
-		"Fax": {},
-		"FirstName": {
+		"Fax": {
 			"type": ["null", "string"]
 		},
-		"GCLID__c": {
+		"FirstName": {
 			"type": ["null", "string"]
 		},
 		"GeocodeAccuracy": {},
 		"HasOptedOutOfEmail": {
-			"type": "boolean"
-		},
-		"HasOptedOutOfFax": {
 			"type": "boolean"
 		},
 		"Id": {
@@ -138,9 +136,6 @@
 		"LastReferencedDate": {
 			"type": ["null", "string"]
 		},
-		"LastTransferDate": {
-			"type": "string"
-		},
 		"LastViewedDate": {
 			"type": ["null", "string"]
 		},
@@ -178,13 +173,13 @@
 		"Rating": {
 			"type": ["null", "string"]
 		},
-		"RecordTypeId": {
-			"type": "string"
-		},
 		"Salutation": {
 			"type": ["null", "string"]
 		},
 		"State": {
+			"type": ["null", "string"]
+		},
+		"StateCode": {
 			"type": ["null", "string"]
 		},
 		"Status": {

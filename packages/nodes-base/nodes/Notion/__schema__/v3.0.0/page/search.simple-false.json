@@ -2,11 +2,8 @@
 	"properties": {
 		"cover": {
 			"properties": {
-				"file": {
+				"external": {
 					"properties": {
-						"expiry_time": {
-							"type": "string"
-						},
 						"url": {
 							"type": "string"
 						}
@@ -88,6 +85,67 @@
 			"type": "object"
 		},
 		"properties": {
+			"additionalProperties": true,
+			"properties": {
+				"title": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"title": {
+							"items": {
+								"properties": {
+									"annotations": {
+										"properties": {
+											"bold": {
+												"type": "boolean"
+											},
+											"code": {
+												"type": "boolean"
+											},
+											"color": {
+												"type": "string"
+											},
+											"italic": {
+												"type": "boolean"
+											},
+											"strikethrough": {
+												"type": "boolean"
+											},
+											"underline": {
+												"type": "boolean"
+											}
+										},
+										"type": "object"
+									},
+									"href": {},
+									"plain_text": {
+										"type": "string"
+									},
+									"text": {
+										"properties": {
+											"content": {
+												"type": "string"
+											},
+											"link": {}
+										},
+										"type": "object"
+									},
+									"type": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
 			"type": "object"
 		},
 		"public_url": {

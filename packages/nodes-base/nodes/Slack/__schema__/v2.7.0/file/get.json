@@ -76,12 +76,6 @@
 		"name": {
 			"type": "string"
 		},
-		"original_h": {
-			"type": "number"
-		},
-		"original_w": {
-			"type": "number"
-		},
 		"permalink": {
 			"type": "string"
 		},
@@ -104,27 +98,6 @@
 		},
 		"size": {
 			"type": "number"
-		},
-		"thumb_160": {
-			"type": "string"
-		},
-		"thumb_360": {
-			"type": "string"
-		},
-		"thumb_360_h": {
-			"type": "number"
-		},
-		"thumb_360_w": {
-			"type": "number"
-		},
-		"thumb_64": {
-			"type": "string"
-		},
-		"thumb_80": {
-			"type": "string"
-		},
-		"thumb_tiny": {
-			"type": "string"
 		},
 		"timestamp": {
 			"type": "number"

@@ -28,7 +28,9 @@
 			"type": "string"
 		},
 		"groups": {
-			"items": {},
+			"items": {
+				"type": "string"
+			},
 			"type": "array"
 		},
 		"has_more_shares": {

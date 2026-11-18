@@ -9,16 +9,10 @@
 					"content_type": {
 						"type": "string"
 					},
-					"duration_secs": {
-						"type": "number"
-					},
 					"filename": {
 						"type": "string"
 					},
 					"id": {
-						"type": "string"
-					},
-					"original_content_type": {
 						"type": "string"
 					},
 					"proxy_url": {
@@ -75,11 +69,48 @@
 					},
 					"type": ["null", "object"]
 				},
-				"collectibles": {},
+				"collectibles": {
+					"properties": {
+						"nameplate": {
+							"properties": {
+								"asset": {
+									"type": "string"
+								},
+								"label": {
+									"type": "string"
+								},
+								"palette": {
+									"type": "string"
+								},
+								"sku_id": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": ["null", "object"]
+				},
 				"discriminator": {
 					"type": "string"
 				},
-				"display_name_styles": {},
+				"display_name_styles": {
+					"properties": {
+						"colors": {
+							"items": {
+								"type": "number"
+							},
+							"type": "array"
+						},
+						"effect_id": {
+							"type": "number"
+						},
+						"font_id": {
+							"type": "number"
+						}
+					},
+					"type": ["null", "object"]
+				},
 				"flags": {
 					"type": "number"
 				},
@@ -111,7 +142,8 @@
 				},
 				"username": {
 					"type": "string"
-				}
+				},
+				"vad_colors": {}
 			},
 			"type": "object"
 		},
@@ -173,9 +205,6 @@
 					"description": {
 						"type": "string"
 					},
-					"title": {
-						"type": "string"
-					},
 					"type": {
 						"type": "string"
 					}
@@ -194,9 +223,7 @@
 			"type": "boolean"
 		},
 		"mention_roles": {
-			"items": {
-				"type": "string"
-			},
+			"items": {},
 			"type": "array"
 		},
 		"mentions": {
@@ -204,28 +231,26 @@
 				"properties": {
 					"accent_color": {},
 					"avatar": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
-					"avatar_decoration_data": {},
-					"banner": {},
-					"banner_color": {},
-					"clan": {
+					"avatar_decoration_data": {
 						"properties": {
-							"badge": {
+							"asset": {
 								"type": "string"
 							},
-							"identity_enabled": {
-								"type": "boolean"
-							},
-							"identity_guild_id": {
-								"type": "string"
-							},
-							"tag": {
+							"expires_at": {},
+							"sku_id": {
 								"type": "string"
 							}
 						},
-						"type": "object"
+						"type": ["null", "object"]
 					},
+					"banner": {},
+					"banner_color": {},
+					"bot": {
+						"type": "boolean"
+					},
+					"clan": {},
 					"collectibles": {},
 					"discriminator": {
 						"type": "string"
@@ -235,34 +260,19 @@
 						"type": "number"
 					},
 					"global_name": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"id": {
 						"type": "string"
 					},
-					"primary_guild": {
-						"properties": {
-							"badge": {
-								"type": "string"
-							},
-							"identity_enabled": {
-								"type": "boolean"
-							},
-							"identity_guild_id": {
-								"type": "string"
-							},
-							"tag": {
-								"type": "string"
-							}
-						},
-						"type": "object"
-					},
+					"primary_guild": {},
 					"public_flags": {
 						"type": "number"
 					},
 					"username": {
 						"type": "string"
-					}
+					},
+					"vad_colors": {}
 				},
 				"type": "object"
 			},

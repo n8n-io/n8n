@@ -47,6 +47,9 @@
 		},
 		"file": {
 			"properties": {
+				"fileExtension": {
+					"type": "string"
+				},
 				"hashes": {
 					"properties": {
 						"quickXorHash": {

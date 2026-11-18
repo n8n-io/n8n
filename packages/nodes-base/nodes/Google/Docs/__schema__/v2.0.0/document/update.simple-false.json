@@ -8,6 +8,16 @@
 		},
 		"replies": {
 			"items": {
+				"properties": {
+					"replaceAllText": {
+						"properties": {
+							"occurrencesChanged": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					}
+				},
 				"type": "object"
 			},
 			"type": "array"

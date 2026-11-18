@@ -36,14 +36,7 @@
 		"storedAt": {
 			"type": "string"
 		},
-		"tracingContext": {
-			"properties": {
-				"traceparent": {
-					"type": "string"
-				}
-			},
-			"type": ["null", "object"]
-		},
+		"tracingContext": {},
 		"usedPrivateCredentials": {
 			"type": "boolean"
 		},

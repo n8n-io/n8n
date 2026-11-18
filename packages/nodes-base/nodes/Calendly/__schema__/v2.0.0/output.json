@@ -115,7 +115,7 @@
 						"location": {
 							"properties": {
 								"join_url": {
-									"type": ["null", "string"]
+									"type": "string"
 								},
 								"status": {
 									"type": "string"
@@ -152,23 +152,19 @@
 				"status": {
 					"type": "string"
 				},
-				"text_reminder_number": {},
+				"text_reminder_number": {
+					"type": ["null", "string"]
+				},
 				"timezone": {
 					"type": "string"
 				},
 				"tracking": {
 					"properties": {
 						"salesforce_uuid": {},
-						"utm_campaign": {
-							"type": ["null", "string"]
-						},
+						"utm_campaign": {},
 						"utm_content": {},
-						"utm_medium": {
-							"type": ["null", "string"]
-						},
-						"utm_source": {
-							"type": ["null", "string"]
-						},
+						"utm_medium": {},
+						"utm_source": {},
 						"utm_term": {}
 					},
 					"type": "object"

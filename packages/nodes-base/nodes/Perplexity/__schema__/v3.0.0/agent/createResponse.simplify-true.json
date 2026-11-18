@@ -1,19 +1,5 @@
 {
 	"properties": {
-		"citations": {
-			"items": {
-				"properties": {
-					"title": {
-						"type": "string"
-					},
-					"url": {
-						"type": "string"
-					}
-				},
-				"type": "object"
-			},
-			"type": "array"
-		},
 		"id": {
 			"type": "string"
 		},
@@ -27,12 +13,6 @@
 			"properties": {
 				"cost": {
 					"properties": {
-						"cache_creation_cost": {
-							"type": "number"
-						},
-						"cache_read_cost": {
-							"type": "number"
-						},
 						"currency": {
 							"type": "string"
 						},
@@ -41,17 +21,6 @@
 						},
 						"output_cost": {
 							"type": "number"
-						},
-						"tool_calls_cost": {
-							"type": "number"
-						},
-						"tool_calls_cost_details": {
-							"properties": {
-								"search_web": {
-									"type": "number"
-								}
-							},
-							"type": "object"
 						},
 						"total_cost": {
 							"type": "number"
@@ -64,12 +33,6 @@
 				},
 				"input_tokens_details": {
 					"properties": {
-						"cache_creation_input_tokens": {
-							"type": "number"
-						},
-						"cache_read_input_tokens": {
-							"type": "number"
-						},
 						"cached_tokens": {
 							"type": "number"
 						}
@@ -83,22 +46,6 @@
 					"properties": {
 						"reasoning_tokens": {
 							"type": "number"
-						}
-					},
-					"type": "object"
-				},
-				"tool_calls_details": {
-					"properties": {
-						"search_web": {
-							"properties": {
-								"cost_usd": {
-									"type": "number"
-								},
-								"invocation": {
-									"type": "number"
-								}
-							},
-							"type": "object"
 						}
 					},
 					"type": "object"

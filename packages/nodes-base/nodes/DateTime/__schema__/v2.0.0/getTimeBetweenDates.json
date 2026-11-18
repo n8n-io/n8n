@@ -2,6 +2,7 @@
 	"additionalProperties": true,
 	"properties": {
 		"timeDifference": {
+			"additionalProperties": true,
 			"properties": {
 				"days": {
 					"type": "number"

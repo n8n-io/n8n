@@ -1,37 +1,52 @@
 {
 	"properties": {
-		"api_version": {
-			"type": "string"
-		},
 		"created": {
 			"type": "number"
 		},
 		"data": {
 			"properties": {
 				"object": {
+					"additionalProperties": true,
 					"properties": {
-						"amount": {
-							"type": "number"
-						},
-						"application": {},
-						"application_fee_amount": {},
-						"created": {
-							"type": "number"
-						},
 						"currency": {
 							"type": "string"
 						},
 						"customer": {
-							"type": ["null", "string"]
-						},
-						"description": {
-							"type": ["null", "string"]
+							"properties": {
+								"address": {
+									"properties": {
+										"city": {
+											"type": "string"
+										},
+										"country": {
+											"type": "string"
+										},
+										"line1": {
+											"type": "string"
+										},
+										"postal_code": {
+											"type": "string"
+										},
+										"state": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"email": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								}
+							},
+							"type": ["null", "object", "string"]
 						},
 						"id": {
 							"type": "string"
-						},
-						"livemode": {
-							"type": "boolean"
 						},
 						"metadata": {
 							"type": "object"
@@ -39,16 +54,9 @@
 						"object": {
 							"type": "string"
 						},
-						"on_behalf_of": {},
-						"payment_intent": {
-							"type": ["null", "string"]
-						},
-						"shipping": {},
-						"statement_descriptor": {},
 						"status": {
 							"type": "string"
-						},
-						"transfer_data": {}
+						}
 					},
 					"type": "object"
 				}
@@ -63,20 +71,6 @@
 		},
 		"object": {
 			"type": "string"
-		},
-		"pending_webhooks": {
-			"type": "number"
-		},
-		"request": {
-			"properties": {
-				"id": {
-					"type": ["null", "string"]
-				},
-				"idempotency_key": {
-					"type": ["null", "string"]
-				}
-			},
-			"type": ["null", "object"]
 		},
 		"type": {
 			"type": "string"

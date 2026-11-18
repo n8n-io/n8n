@@ -20,6 +20,9 @@
 											},
 											"url": {
 												"type": "string"
+											},
+											"user_id": {
+												"type": "string"
 											}
 										},
 										"type": "object"
@@ -42,16 +45,16 @@
 			},
 			"type": "array"
 		},
-		"bot_id": {
-			"type": "string"
-		},
-		"subtype": {
+		"client_msg_id": {
 			"type": "string"
 		},
 		"team": {
 			"type": "string"
 		},
 		"text": {
+			"type": "string"
+		},
+		"thread_ts": {
 			"type": "string"
 		},
 		"ts": {

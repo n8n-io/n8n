@@ -15,17 +15,6 @@
 			"type": "string"
 		},
 		"metadata": {
-			"properties": {
-				"currencyCode": {
-					"type": "string"
-				},
-				"schemaRestrictionResponse": {
-					"type": "object"
-				},
-				"timeZone": {
-					"type": "string"
-				}
-			},
 			"type": "object"
 		},
 		"metricHeaders": {

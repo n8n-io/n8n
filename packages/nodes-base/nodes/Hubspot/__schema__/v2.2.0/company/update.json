@@ -1,27 +1,11 @@
 {
 	"properties": {
 		"additionalDomains": {
-			"items": {
-				"properties": {
-					"domain": {
-						"type": "string"
-					},
-					"source": {
-						"type": "string"
-					},
-					"sourceId": {
-						"type": "string"
-					},
-					"timestamp": {
-						"type": "number"
-					}
-				},
-				"type": "object"
-			},
+			"items": {},
 			"type": "array"
 		},
 		"companyId": {
-			"type": "number"
+			"type": ["number", "string"]
 		},
 		"isDeleted": {
 			"type": "boolean"
@@ -71,9 +55,7 @@
 										"type": "string"
 									},
 									"sourceVid": {
-										"items": {
-											"type": "number"
-										},
+										"items": {},
 										"type": "array"
 									},
 									"timestamp": {
@@ -129,9 +111,7 @@
 										"type": "string"
 									},
 									"sourceVid": {
-										"items": {
-											"type": "number"
-										},
+										"items": {},
 										"type": "array"
 									},
 									"timestamp": {
@@ -193,6 +173,9 @@
 									"timestamp": {
 										"type": "number"
 									},
+									"updatedByUserId": {
+										"type": "number"
+									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
 									},
@@ -247,6 +230,9 @@
 										"type": "array"
 									},
 									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -361,9 +347,6 @@
 									},
 									"timestamp": {
 										"type": "number"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
 									},
 									"value": {
 										"type": "string"
@@ -636,9 +619,7 @@
 										"type": "string"
 									},
 									"sourceVid": {
-										"items": {
-											"type": "number"
-										},
+										"items": {},
 										"type": "array"
 									},
 									"timestamp": {
@@ -723,7 +704,7 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": ["null", "string"]
+							"type": "string"
 						},
 						"timestamp": {
 							"type": "number"
@@ -757,6 +738,9 @@
 										"type": "array"
 									},
 									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
 										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
@@ -796,8 +780,8 @@
 									"name": {
 										"type": "string"
 									},
-									"requestId": {
-										"type": "string"
+									"persistenceTimestamp": {
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -814,9 +798,6 @@
 									},
 									"timestamp": {
 										"type": "number"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
 									},
 									"value": {
 										"type": "string"
@@ -852,8 +833,8 @@
 									"name": {
 										"type": "string"
 									},
-									"requestId": {
-										"type": "string"
+									"persistenceTimestamp": {
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -870,9 +851,6 @@
 									},
 									"timestamp": {
 										"type": "number"
-									},
-									"useTimestampAsPersistenceTimestamp": {
-										"type": "boolean"
 									},
 									"value": {
 										"type": "string"
@@ -891,7 +869,7 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": ["null", "string"]
+							"type": "string"
 						},
 						"timestamp": {
 							"type": "number"
@@ -921,9 +899,7 @@
 										"type": "string"
 									},
 									"sourceVid": {
-										"items": {
-											"type": "number"
-										},
+										"items": {},
 										"type": "array"
 									},
 									"timestamp": {
@@ -952,7 +928,7 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": ["null", "string"]
+							"type": "string"
 						},
 						"timestamp": {
 							"type": "number"
@@ -982,9 +958,7 @@
 										"type": "string"
 									},
 									"sourceVid": {
-										"items": {
-											"type": "number"
-										},
+										"items": {},
 										"type": "array"
 									},
 									"timestamp": {
@@ -1099,9 +1073,7 @@
 										"type": "string"
 									},
 									"sourceVid": {
-										"items": {
-											"type": "number"
-										},
+										"items": {},
 										"type": "array"
 									},
 									"timestamp": {

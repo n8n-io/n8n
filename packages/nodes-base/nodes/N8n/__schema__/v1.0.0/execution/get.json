@@ -29,6 +29,23 @@
 													"items": {
 														"properties": {
 															"json": {
+																"properties": {
+																	"description": {
+																		"type": "string"
+																	},
+																	"email": {
+																		"type": "string"
+																	},
+																	"id": {
+																		"type": ["number", "string"]
+																	},
+																	"name": {
+																		"type": "string"
+																	},
+																	"phone": {
+																		"type": "string"
+																	}
+																},
 																"type": "object"
 															},
 															"pairedItem": {
@@ -52,6 +69,41 @@
 									"node": {
 										"properties": {
 											"credentials": {
+												"properties": {
+													"httpCustomAuth": {
+														"properties": {
+															"id": {
+																"type": "string"
+															},
+															"name": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													},
+													"postgres": {
+														"properties": {
+															"id": {
+																"type": "string"
+															},
+															"name": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													},
+													"twilioApi": {
+														"properties": {
+															"id": {
+																"type": "string"
+															},
+															"name": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													}
+												},
 												"type": "object"
 											},
 											"id": {
@@ -61,7 +113,6 @@
 												"type": "string"
 											},
 											"parameters": {
-												"additionalProperties": true,
 												"properties": {
 													"jsCode": {
 														"type": "string"
@@ -79,7 +130,15 @@
 														"type": "string"
 													},
 													"options": {
+														"properties": {
+															"queryReplacement": {
+																"type": "string"
+															}
+														},
 														"type": "object"
+													},
+													"resource": {
+														"type": "string"
 													}
 												},
 												"type": "object"
@@ -231,9 +290,6 @@
 			"properties": {
 				"traceparent": {
 					"type": "string"
-				},
-				"tracestate": {
-					"type": "string"
 				}
 			},
 			"type": ["null", "object"]
@@ -241,9 +297,7 @@
 		"usedPrivateCredentials": {
 			"type": "boolean"
 		},
-		"waitTill": {
-			"type": ["null", "string"]
-		},
+		"waitTill": {},
 		"workflowData": {
 			"properties": {
 				"connections": {
@@ -287,9 +341,6 @@
 							"credentials": {
 								"type": "object"
 							},
-							"executeOnce": {
-								"type": "boolean"
-							},
 							"id": {
 								"type": "string"
 							},
@@ -304,6 +355,9 @@
 								"properties": {
 									"authentication": {
 										"type": "string"
+									},
+									"color": {
+										"type": ["number", "string"]
 									},
 									"columns": {
 										"properties": {
@@ -339,9 +393,6 @@
 														},
 														"id": {
 															"type": "string"
-														},
-														"readOnly": {
-															"type": "boolean"
 														},
 														"removed": {
 															"type": "boolean"
@@ -419,6 +470,9 @@
 										},
 										"type": "object"
 									},
+									"content": {
+										"type": "string"
+									},
 									"contentType": {
 										"type": "string"
 									},
@@ -443,6 +497,7 @@
 										"type": "object"
 									},
 									"filters": {
+										"additionalProperties": true,
 										"properties": {
 											"conditions": {
 												"items": {
@@ -489,6 +544,9 @@
 									"height": {
 										"type": "number"
 									},
+									"httpMethod": {
+										"type": "string"
+									},
 									"infoMessage": {
 										"type": "string"
 									},
@@ -497,9 +555,6 @@
 									},
 									"language": {
 										"type": "string"
-									},
-									"limit": {
-										"type": "number"
 									},
 									"looseTypeValidation": {
 										"type": "boolean"
@@ -513,6 +568,9 @@
 									"mode": {
 										"type": "string"
 									},
+									"multipleMethods": {
+										"type": "boolean"
+									},
 									"notice": {
 										"type": "string"
 									},
@@ -522,28 +580,6 @@
 									"options": {
 										"additionalProperties": true,
 										"properties": {
-											"response": {
-												"properties": {
-													"response": {
-														"properties": {
-															"fullResponse": {
-																"type": "boolean"
-															},
-															"neverError": {
-																"type": "boolean"
-															},
-															"outputPropertyName": {
-																"type": "string"
-															},
-															"responseFormat": {
-																"type": "string"
-															}
-														},
-														"type": "object"
-													}
-												},
-												"type": "object"
-											},
 											"timeout": {
 												"type": "number"
 											}
@@ -552,6 +588,9 @@
 									},
 									"orderBy": {
 										"type": "boolean"
+									},
+									"path": {
+										"type": "string"
 									},
 									"provideSslCertificates": {
 										"type": "boolean"
@@ -580,6 +619,9 @@
 									"specifyHeaders": {
 										"type": "string"
 									},
+									"text": {
+										"type": "string"
+									},
 									"url": {
 										"type": "string"
 									},
@@ -594,9 +636,6 @@
 									"type": "number"
 								},
 								"type": "array"
-							},
-							"retryOnFail": {
-								"type": "boolean"
 							},
 							"type": {
 								"type": "string"
@@ -620,6 +659,9 @@
 						"binaryMode": {
 							"type": "string"
 						},
+						"errorWorkflow": {
+							"type": "string"
+						},
 						"executionOrder": {
 							"type": "string"
 						}
@@ -633,7 +675,7 @@
 			"type": "string"
 		},
 		"workflowVersionId": {
-			"type": ["null", "string"]
+			"type": "string"
 		}
 	},
 	"type": "object"

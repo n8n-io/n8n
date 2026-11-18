@@ -80,9 +80,7 @@
 		"order_key": {
 			"type": "string"
 		},
-		"parent_id": {
-			"type": ["null", "string"]
-		},
+		"parent_id": {},
 		"postponed_count": {
 			"type": "number"
 		},

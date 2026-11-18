@@ -202,8 +202,12 @@
 		},
 		"auto_merge": {
 			"properties": {
-				"commit_message": {},
-				"commit_title": {},
+				"commit_message": {
+					"type": "string"
+				},
+				"commit_title": {
+					"type": "string"
+				},
 				"enabled_by": {
 					"properties": {
 						"avatar_url": {
@@ -1139,7 +1143,7 @@
 			"type": "boolean"
 		},
 		"merge_commit_sha": {
-			"type": ["null", "string"]
+			"type": "string"
 		},
 		"merged_at": {
 			"type": ["null", "string"]
@@ -1291,7 +1295,7 @@
 								"type": "string"
 							}
 						},
-						"type": ["null", "object"]
+						"type": "object"
 					},
 					"permission": {
 						"type": "string"

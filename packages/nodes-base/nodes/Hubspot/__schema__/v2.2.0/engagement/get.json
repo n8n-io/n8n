@@ -132,69 +132,6 @@
 			"type": "object"
 		},
 		"metadata": {
-			"additionalProperties": true,
-			"properties": {
-				"bcc": {
-					"items": {},
-					"type": "array"
-				},
-				"cc": {
-					"items": {},
-					"type": "array"
-				},
-				"html": {
-					"type": "string"
-				},
-				"ownerIdsBcc": {
-					"items": {},
-					"type": "array"
-				},
-				"ownerIdsCc": {
-					"items": {},
-					"type": "array"
-				},
-				"ownerIdsFrom": {
-					"items": {
-						"type": "number"
-					},
-					"type": "array"
-				},
-				"ownerIdsTo": {
-					"items": {},
-					"type": "array"
-				},
-				"pendingInlineImageIds": {
-					"items": {},
-					"type": "array"
-				},
-				"status": {
-					"type": "string"
-				},
-				"to": {
-					"items": {
-						"properties": {
-							"email": {
-								"type": "string"
-							},
-							"firstName": {
-								"type": "string"
-							},
-							"lastName": {
-								"type": "string"
-							},
-							"raw": {
-								"type": "string"
-							}
-						},
-						"type": "object"
-					},
-					"type": "array"
-				},
-				"validationSkipped": {
-					"items": {},
-					"type": "array"
-				}
-			},
 			"type": "object"
 		}
 	},

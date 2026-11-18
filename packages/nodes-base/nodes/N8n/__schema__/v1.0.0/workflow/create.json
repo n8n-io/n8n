@@ -29,9 +29,6 @@
 		"nodes": {
 			"items": {
 				"properties": {
-					"alwaysOutputData": {
-						"type": "boolean"
-					},
 					"credentials": {
 						"type": "object"
 					},
@@ -39,6 +36,9 @@
 						"type": "string"
 					},
 					"name": {
+						"type": "string"
+					},
+					"notes": {
 						"type": "string"
 					},
 					"onError": {
@@ -106,9 +106,6 @@
 								},
 								"type": "object"
 							},
-							"inputSource": {
-								"type": "string"
-							},
 							"jsCode": {
 								"type": "string"
 							},
@@ -130,25 +127,14 @@
 							"options": {
 								"additionalProperties": true,
 								"properties": {
-									"response": {
-										"properties": {
-											"response": {
-												"additionalProperties": true,
-												"properties": {
-													"responseFormat": {
-														"type": "string"
-													}
-												},
-												"type": "object"
-											}
-										},
-										"type": "object"
-									},
 									"timeout": {
 										"type": "number"
 									}
 								},
 								"type": "object"
+							},
+							"resource": {
+								"type": "string"
 							},
 							"sendBody": {
 								"type": "boolean"
@@ -185,11 +171,9 @@
 		"parentFolder": {},
 		"pinData": {},
 		"settings": {
+			"additionalProperties": true,
 			"properties": {
 				"executionOrder": {
-					"type": "string"
-				},
-				"timezone": {
 					"type": "string"
 				}
 			},

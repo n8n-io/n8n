@@ -47,10 +47,12 @@
 							},
 							"type": "object"
 						},
-						"old": {
-							"additionalProperties": true,
+						"list": {
 							"properties": {
-								"idList": {
+								"id": {
+									"type": "string"
+								},
+								"name": {
 									"type": "string"
 								}
 							},
@@ -115,7 +117,44 @@
 				"idMemberCreator": {
 					"type": "string"
 				},
-				"limits": {},
+				"limits": {
+					"properties": {
+						"reactions": {
+							"properties": {
+								"perAction": {
+									"properties": {
+										"disableAt": {
+											"type": "number"
+										},
+										"status": {
+											"type": "string"
+										},
+										"warnAt": {
+											"type": "number"
+										}
+									},
+									"type": "object"
+								},
+								"uniquePerAction": {
+									"properties": {
+										"disableAt": {
+											"type": "number"
+										},
+										"status": {
+											"type": "string"
+										},
+										"warnAt": {
+											"type": "number"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": ["null", "object"]
+				},
 				"memberCreator": {
 					"properties": {
 						"activityBlocked": {
@@ -165,14 +204,7 @@
 				"desc": {
 					"type": "string"
 				},
-				"descData": {
-					"properties": {
-						"emoji": {
-							"type": "object"
-						}
-					},
-					"type": ["null", "object"]
-				},
+				"descData": {},
 				"id": {
 					"type": "string"
 				},
@@ -296,14 +328,10 @@
 						"backgroundColor": {
 							"type": ["null", "string"]
 						},
-						"backgroundDarkColor": {
-							"type": ["null", "string"]
-						},
-						"backgroundDarkImage": {
-							"type": ["null", "string"]
-						},
+						"backgroundDarkColor": {},
+						"backgroundDarkImage": {},
 						"backgroundImage": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"backgroundImageScaled": {
 							"items": {

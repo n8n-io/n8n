@@ -62,17 +62,6 @@
 		"status": {
 			"type": "string"
 		},
-		"verification": {
-			"properties": {
-				"date": {
-					"type": "string"
-				},
-				"status": {
-					"type": "string"
-				}
-			},
-			"type": "object"
-		},
 		"webmail": {
 			"type": "boolean"
 		}

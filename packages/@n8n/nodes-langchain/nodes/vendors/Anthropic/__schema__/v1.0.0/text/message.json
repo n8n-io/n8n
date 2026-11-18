@@ -19,6 +19,9 @@
 				"type": "object"
 			},
 			"type": "array"
+		},
+		"merged_response": {
+			"type": "string"
 		}
 	},
 	"type": "object"

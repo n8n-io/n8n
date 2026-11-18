@@ -24,9 +24,7 @@
 				"custom_fields": {
 					"type": "object"
 				},
-				"expected_close_date": {
-					"type": ["null", "string"]
-				},
+				"expected_close_date": {},
 				"first_won_time": {
 					"type": ["null", "string"]
 				},
@@ -42,8 +40,12 @@
 					},
 					"type": "array"
 				},
-				"lost_reason": {},
-				"lost_time": {},
+				"lost_reason": {
+					"type": ["null", "string"]
+				},
+				"lost_time": {
+					"type": ["null", "string"]
+				},
 				"org_id": {
 					"type": ["null", "number"]
 				},
@@ -62,9 +64,7 @@
 				"pipeline_id": {
 					"type": "number"
 				},
-				"probability": {
-					"type": ["null", "number"]
-				},
+				"probability": {},
 				"stage_change_time": {
 					"type": ["null", "string"]
 				},
@@ -119,7 +119,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "string"
+					"type": ["number", "string"]
 				},
 				"is_bulk_edit": {
 					"type": "boolean"
@@ -152,11 +152,6 @@
 			"type": "object"
 		},
 		"previous": {
-			"properties": {
-				"custom_fields": {
-					"type": "object"
-				}
-			},
 			"type": ["null", "object"]
 		}
 	},

@@ -77,7 +77,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"createdate": {
 					"properties": {
@@ -142,7 +142,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_helpdesk_sort_timestamp": {
 					"properties": {
@@ -592,7 +592,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_num_associated_companies": {
 					"properties": {
@@ -1112,7 +1112,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_pipeline_stage": {
 					"properties": {
@@ -1177,7 +1177,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				},
 				"hs_ticket_id": {
 					"properties": {
@@ -1502,7 +1502,7 @@
 							"type": "array"
 						}
 					},
-					"type": "object"
+					"type": ["object", "string"]
 				}
 			},
 			"type": "object"

@@ -1,9 +1,0 @@
-{
-	"additionalProperties": true,
-	"properties": {
-		"status": {
-			"type": "string"
-		}
-	},
-	"type": "object"
-}
