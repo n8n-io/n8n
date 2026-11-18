@@ -58,7 +58,7 @@ it('lists attached tools with icons and shows selected tools as removable pills'
 		expect.objectContaining({ label: 'Custom action', icon: { type: 'icon', value: 'code' } }),
 		expect.objectContaining({ label: 'Server', icon: { type: 'icon', value: 'mcp' } }),
 	]);
-	expect(wrapper.text()).toContain('Before tools');
+	expect(wrapper.text()).toContain('Which tools require this review');
 	await wrapper.setProps({ modelValue: ['tool:node:send_message', 'tool:workflow:Write'] });
 	const tags = wrapper.findAll('[data-testid="agent-hitl-tool-pill"]');
 	expect(tags.map((tag) => tag.element.tagName)).toEqual(['SPAN', 'SPAN']);

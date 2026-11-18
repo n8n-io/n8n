@@ -113,3 +113,19 @@ it('closes the configuration modal when the edit lock turns on', async () => {
 	await wrapper.setProps({ disabled: true });
 	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
 });
+
+it('keeps a new review draft open when its Agent is saved for channel setup', async () => {
+	const wrapper = render();
+	const persist = vi.fn(async () => {
+		await wrapper.setProps({ agentUnsaved: false });
+	});
+	await wrapper.setProps({ agentUnsaved: true, ensureAgentPersisted: persist });
+	await wrapper.get('[data-testid="agent-hitl-add"]').trigger('click');
+	const context = wrapper.getComponent(AgentHitlConfigurationModal).props('context');
+	expect(context.agentId).toBeUndefined();
+	await context.ensureAgentPersisted?.();
+	expect(context.agentId).toBe('agent');
+	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(true);
+	context.onChannelsChanged?.();
+	expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+});

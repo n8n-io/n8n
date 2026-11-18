@@ -412,11 +412,15 @@ defineExpose({ onSetupTaskAction });
 					<div :class="$style.settingsCards">
 						<AgentHitlPanel
 							v-if="settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE)"
-							:agent-id="agentUnsaved ? '' : agentId"
+							:agent-id="agentId"
+							:agent-unsaved="agentUnsaved"
+							:is-published="isPublished"
+							:ensure-agent-persisted="ensureAgentPersisted"
 							:config="localConfig"
 							:custom-tools="agent?.tools"
 							:project-id="projectId"
 							:disabled="childrenDisabled"
+							@agent-changed="emit('agent-changed')"
 							@update:config="emit('update:config', $event)"
 						/>
 						<AgentBudgetPanel

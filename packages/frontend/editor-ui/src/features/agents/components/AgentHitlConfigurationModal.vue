@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useElementSize } from '@vueuse/core';
 import { v4 as uuid } from 'uuid';
@@ -13,14 +13,14 @@ import {
 	N8nInput,
 	N8nSettingsRowGroup,
 	N8nSelect2,
-	N8nSwitch,
-	type SelectOptionBase,
-	N8nText,
+	N8nSegmentControl,
+	type SelectItem,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	AGENT_DECISION_TRIGGER_NODE_TYPE,
+	AgentHitlChannelSchema,
 	type AgentHitlChannelDescriptor,
 	type AgentHitlConfiguration,
 	type AgentHitlOption,
@@ -33,10 +33,13 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getAgentHitlChannels, getAgentHitlChannelOptions } from '../composables/useAgentApi';
 import type { AgentHitlContext } from './agent-hitl.types';
 import AgentModal from './modals/AgentModal.vue';
+import type { ChannelView } from './AgentChannelModal.vue';
 import AgentFormSettingRow from './AgentFormSettingRow.vue';
 import AgentHitlDestinationPicker from './AgentHitlDestinationPicker.vue';
 import AgentHitlToolsSelect from './AgentHitlToolsSelect.vue';
-import { hitlConfigurationToolKeys } from '../utils/hitlConfiguration';
+import { hitlConfigurationToolKeys, hitlToolKeys } from '../utils/hitlConfiguration';
+
+const AgentChannelModal = defineAsyncComponent(() => import('./AgentChannelModal.vue'));
 
 const props = defineProps<{
 	projectId: string;
@@ -85,16 +88,72 @@ function channelLabel(item: AgentHitlChannelDescriptor) {
 	const connections = channels.value.filter((other) => other.channel === item.channel);
 	return connections.length > 1 ? `${item.label} ${connections.indexOf(item) + 1}` : item.label;
 }
-const channelItems = computed<SelectOptionBase[]>(() =>
-	channels.value.map((item) => ({
+const channelSelectOpen = ref(false);
+const channelModalOpen = ref(false);
+const channelModalView = ref<ChannelView>('list');
+const openingChannel = ref(false);
+let connectedChannel: string | undefined;
+let channelsChanged = false;
+const channelItems = computed<SelectItem[]>(() => [
+	{
+		value: '__create_review_channel__',
+		label: i18n.baseText('agents.hitl.createChannel'),
+		icon: 'plus',
+		onSelect: (event: Event) => {
+			event.preventDefault();
+			channelSelectOpen.value = false;
+			void createChannel();
+		},
+	},
+	...(channels.value.length ? [{ type: 'separator' as const }] : []),
+	...channels.value.map((item) => ({
 		value: `${item.channel}:${item.credentialId}`,
 		label: channelLabel(item),
 		icon: item.channel,
 	})),
-);
-function updateMethod(value: boolean) {
-	if (value && !channels.value.length) return;
-	method.value = value ? 'channel' : 'workflow';
+]);
+function updateMethod(value: unknown) {
+	if (value === 'workflow' || value === 'channel') method.value = value;
+}
+async function createChannel() {
+	if (openingChannel.value) return;
+	openingChannel.value = true;
+	try {
+		await props.context.ensureAgentPersisted?.();
+		await nextTick();
+		if (!props.context.getConfig()) return;
+		if (!props.context.agentId) throw new Error(i18n.baseText('agents.hitl.channelAgentRequired'));
+		channelModalView.value = 'list';
+		channelModalOpen.value = true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+	} finally {
+		openingChannel.value = false;
+	}
+}
+watch(channelModalOpen, async (open, wasOpen) => {
+	if (open || !wasOpen || !props.context.agentId) return;
+	loading.value = true;
+	try {
+		if (channelsChanged) await props.context.onChannelsChanged?.();
+		channels.value = await getAgentHitlChannels(
+			rootStore.restApiContext,
+			props.projectId,
+			props.context.agentId,
+		);
+		const added = channels.value.find((item) => item.channel === connectedChannel);
+		if (added) channelKey.value = `${added.channel}:${added.credentialId}`;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.hitl.loadFailed'));
+	} finally {
+		connectedChannel = undefined;
+		channelsChanged = false;
+		loading.value = false;
+	}
+});
+function channelConnected(type: string) {
+	connectedChannel = type;
+	channelsChanged = true;
 }
 function updateExpiry(value: unknown) {
 	if (typeof value !== 'string') return;
@@ -124,11 +183,6 @@ const telegramId = ref(
 		? props.configuration.recipient.id
 		: '',
 );
-const recipientHelp = {
-	slack: 'agents.hitl.slackChannelHelp',
-	telegram: 'agents.hitl.telegramHelp',
-	discord: 'agents.hitl.discordUserHelp',
-} as const;
 const channelFields = computed(() => {
 	const selectedChannel = channel.value;
 	if (!selectedChannel) return [];
@@ -138,10 +192,6 @@ const channelFields = computed(() => {
 		.map((field) => ({
 			...field,
 			label: i18n.baseText(field.name === 'guild' ? 'agents.hitl.server' : 'agents.hitl.recipient'),
-			description:
-				field.name === 'recipient'
-					? i18n.baseText(recipientHelp[selectedChannel.channel])
-					: undefined,
 		}));
 });
 function updateDestination(field: 'guild' | 'recipient', value: AgentHitlOption | undefined) {
@@ -199,6 +249,8 @@ const saveDisabledReason = computed(() => {
 	return '';
 });
 const workflowSelectOpen = ref(false);
+const advancedExpanded = ref(false);
+const hasTools = computed(() => hitlToolKeys(props.context.getConfig()).length > 0);
 const selectedToolKeys = ref([
 	...new Set([
 		...hitlConfigurationToolKeys(props.context.getConfig(), props.configuration?.id),
@@ -345,7 +397,8 @@ async function loadOptions(field: 'guild' | 'recipient', query: string, cursor?:
 	);
 }
 function save() {
-	if (saveDisabledReason.value || creating.value) return;
+	if (saveDisabledReason.value || creating.value || openingChannel.value || channelModalOpen.value)
+		return;
 	const base = {
 		id: props.configuration?.id ?? `review_${generateNanoId()}`,
 		name: name.value.trim(),
@@ -379,204 +432,225 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 </script>
 
 <template>
-	<AgentModal
-		:open="true"
-		v-model:title="name"
-		editable-title
-		:busy="creating"
-		stacked
-		@update:open="emit('close')"
-	>
-		<div ref="fieldsRef" :class="$style.fields">
-			<div :class="$style.destinationSettings">
-				<AgentFormSettingRow
-					:title="i18n.baseText('agents.hitl.method')"
-					control-id="agent-hitl-method"
-					:class="{ [$style.stackedMethodRow]: rowLayout === 'vertical' }"
-				>
-					<div :class="$style.methodChoices">
-						<N8nText :color="method === 'workflow' ? 'text-dark' : 'text-light'">{{
-							i18n.baseText('agents.hitl.workflowMethod')
-						}}</N8nText>
-						<N8nSwitch
+	<div>
+		<AgentModal
+			:open="true"
+			v-model:title="name"
+			editable-title
+			:busy="creating || openingChannel"
+			:trap-focus="!channelModalOpen"
+			:disable-outside-pointer-events="!channelModalOpen"
+			stacked
+			@update:open="emit('close')"
+		>
+			<div ref="fieldsRef" :class="$style.fields">
+				<div :class="$style.destinationSettings">
+					<AgentFormSettingRow
+						:title="i18n.baseText('agents.hitl.method')"
+						:class="{ [$style.stackedMethodRow]: rowLayout === 'vertical' }"
+					>
+						<N8nSegmentControl
 							id="agent-hitl-method"
-							:model-value="method === 'channel'"
-							:disabled="loading || (!channels.length && method !== 'channel')"
+							:model-value="method"
+							:disabled="creating || openingChannel"
+							:options="[
+								{ value: 'workflow', label: i18n.baseText('agents.hitl.workflowMethod') },
+								{ value: 'channel', label: i18n.baseText('agents.hitl.channelMethod') },
+							]"
 							:aria-label="i18n.baseText('agents.hitl.method')"
 							data-testid="agent-hitl-method"
 							@update:model-value="updateMethod"
 						/>
-						<div :class="$style.channelMethodLabel">
-							<N8nText :color="method === 'channel' ? 'text-dark' : 'text-light'">{{
-								i18n.baseText('agents.hitl.channelMethod')
-							}}</N8nText>
-							<N8nText v-if="!loading && !channels.length" size="small" :class="$style.subtitle">{{
-								i18n.baseText('agents.hitl.noChannels')
-							}}</N8nText>
-						</div>
-					</div>
-				</AgentFormSettingRow>
-				<N8nSettingsRowGroup
-					:class="$style.settingsGroup"
-					data-testid="agent-hitl-destination-section"
-				>
-					<AgentFormSettingRow
-						v-if="method === 'workflow'"
-						:title="i18n.baseText('agents.hitl.workflow')"
-						:description="i18n.baseText('agents.hitl.workflowDescription')"
-						:layout="rowLayout"
-						action-max-width="66.666%"
-						:class="$style.sectionRow"
-					>
-						<div :class="$style.workflowRow">
-							<N8nCombobox2
-								size="large"
-								:model-value="workflowId || undefined"
-								v-model:open="workflowSelectOpen"
-								:items="workflowItems"
-								:loading="loading || creating"
-								:disabled="creating"
-								:teleported="false"
-								:aria-label="i18n.baseText('agents.hitl.workflow')"
-								:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
-								:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
-								data-testid="agent-hitl-workflow"
-								@update:model-value="updateWorkflow"
-							/>
-							<N8nIconButton
-								v-if="workflowHref"
-								icon="external-link"
-								variant="ghost"
-								size="small"
-								:href="workflowHref"
-								target="_blank"
-								rel="noopener noreferrer"
-								:title="i18n.baseText('agents.toolConfig.workflow.target.open')"
-								:aria-label="i18n.baseText('agents.toolConfig.workflow.target.open')"
-								data-testid="agent-hitl-workflow-open"
-							/>
-						</div>
 					</AgentFormSettingRow>
-					<template v-else>
+					<N8nSettingsRowGroup
+						:class="$style.settingsGroup"
+						data-testid="agent-hitl-destination-section"
+					>
 						<AgentFormSettingRow
-							:title="i18n.baseText('agents.hitl.channel')"
-							:description="i18n.baseText('agents.hitl.channelDescription')"
+							v-if="method === 'workflow'"
+							:title="i18n.baseText('agents.hitl.workflow')"
 							:layout="rowLayout"
 							action-max-width="66.666%"
 							:class="$style.sectionRow"
 						>
-							<N8nSelect2
-								:model-value="channelKey || undefined"
-								:items="channelItems"
-								:disabled="loading"
-								size="large"
-								:aria-label="i18n.baseText('agents.hitl.channel')"
-								:class="$style.control"
-								data-testid="agent-hitl-channel"
-								@update:model-value="updateChannel"
-							/>
+							<div :class="$style.resourceRow">
+								<N8nCombobox2
+									size="large"
+									:model-value="workflowId || undefined"
+									v-model:open="workflowSelectOpen"
+									:items="workflowItems"
+									:loading="loading || creating"
+									:disabled="creating"
+									:teleported="false"
+									:aria-label="i18n.baseText('agents.hitl.workflow')"
+									:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
+									:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
+									data-testid="agent-hitl-workflow"
+									@update:model-value="updateWorkflow"
+								/>
+								<N8nIconButton
+									v-if="workflowHref"
+									icon="external-link"
+									variant="ghost"
+									size="small"
+									:href="workflowHref"
+									target="_blank"
+									rel="noopener noreferrer"
+									:title="i18n.baseText('agents.toolConfig.workflow.target.open')"
+									:aria-label="i18n.baseText('agents.toolConfig.workflow.target.open')"
+									data-testid="agent-hitl-workflow-open"
+								/>
+							</div>
 						</AgentFormSettingRow>
-						<AgentFormSettingRow
-							v-for="field in channelFields"
-							:key="field.name"
-							:title="field.label"
-							:description="field.description"
-							:layout="rowLayout"
-							action-max-width="66.666%"
-							:class="$style.sectionRow"
-						>
-							<N8nInput
-								v-if="field.type === 'text'"
-								v-model="telegramId"
-								size="large"
-								inputmode="numeric"
-								:aria-label="field.label"
-								:class="$style.control"
-								data-testid="agent-hitl-telegram-user"
-							/>
-							<AgentHitlDestinationPicker
-								v-else
-								:key="`${channelKey}:${field.name}:${field.name === 'recipient' ? guild?.id : ''}`"
-								:model-value="field.name === 'guild' ? guild : recipient"
-								:class="$style.control"
-								:icon="field.name === 'guild' ? 'server' : 'hash'"
-								:label="field.label"
-								:load="(query, cursor) => loadOptions(field.name, query, cursor)"
-								@update:model-value="updateDestination(field.name, $event)"
-							/>
-						</AgentFormSettingRow>
-					</template>
-				</N8nSettingsRowGroup>
+						<template v-else>
+							<AgentFormSettingRow
+								:title="i18n.baseText('agents.hitl.channel')"
+								:layout="rowLayout"
+								action-max-width="66.666%"
+								:class="$style.sectionRow"
+							>
+								<div :class="$style.resourceRow">
+									<N8nSelect2
+										:model-value="channelKey || undefined"
+										v-model:open="channelSelectOpen"
+										:placeholder="i18n.baseText('agents.hitl.selectChannel')"
+										:teleported="false"
+										:items="channelItems"
+										:disabled="loading"
+										size="large"
+										:aria-label="i18n.baseText('agents.hitl.channel')"
+										data-testid="agent-hitl-channel"
+										@update:model-value="updateChannel"
+									/>
+								</div>
+							</AgentFormSettingRow>
+							<AgentFormSettingRow
+								v-for="field in channelFields"
+								:key="field.name"
+								:title="field.label"
+								:layout="rowLayout"
+								action-max-width="66.666%"
+								:class="$style.sectionRow"
+							>
+								<N8nInput
+									v-if="field.type === 'text'"
+									v-model="telegramId"
+									size="large"
+									inputmode="numeric"
+									:aria-label="field.label"
+									:class="$style.control"
+									data-testid="agent-hitl-telegram-user"
+								/>
+								<AgentHitlDestinationPicker
+									v-else
+									:key="`${channelKey}:${field.name}:${field.name === 'recipient' ? guild?.id : ''}`"
+									:model-value="field.name === 'guild' ? guild : recipient"
+									:class="$style.control"
+									:icon="field.name === 'guild' ? 'server' : 'hash'"
+									:label="field.label"
+									:load="(query, cursor) => loadOptions(field.name, query, cursor)"
+									@update:model-value="updateDestination(field.name, $event)"
+								/>
+							</AgentFormSettingRow>
+						</template>
+						<div>
+							<button
+								type="button"
+								:class="$style.advancedTrigger"
+								:aria-expanded="advancedExpanded"
+								aria-controls="agent-hitl-advanced-content"
+								data-testid="agent-hitl-advanced"
+								@click="advancedExpanded = !advancedExpanded"
+							>
+								{{ i18n.baseText('agents.hitl.advanced') }}
+								<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
+							</button>
+							<div
+								id="agent-hitl-advanced-content"
+								v-show="advancedExpanded"
+								:class="$style.advancedContent"
+							>
+								<AgentFormSettingRow
+									:title="i18n.baseText('agents.hitl.expiry')"
+									:layout="rowLayout"
+									action-max-width="66.666%"
+									:class="$style.sectionRow"
+								>
+									<N8nSelect2
+										:model-value="String(expirySeconds)"
+										@update:model-value="updateExpiry"
+										size="large"
+										:teleported="false"
+										:items="[
+											{ value: 'none', label: i18n.baseText('agents.hitl.expiry.none') },
+											{ value: '3600', label: i18n.baseText('agents.hitl.expiry.hour') },
+											{ value: '86400', label: i18n.baseText('agents.hitl.expiry.day') },
+											{ value: '604800', label: i18n.baseText('agents.hitl.expiry.week') },
+										]"
+										:aria-label="i18n.baseText('agents.hitl.expiry')"
+										:class="$style.control"
+										data-testid="agent-hitl-expiry"
+									/>
+								</AgentFormSettingRow>
+								<div v-if="hasTools" :class="$style.sectionRow">
+									<AgentHitlToolsSelect
+										embedded
+										:model-value="selectedToolKeys"
+										:config="context.getConfig()"
+										:get-custom-tool-name="context.getCustomToolName"
+										@update:model-value="updateTools"
+									/>
+								</div>
+							</div>
+						</div>
+					</N8nSettingsRowGroup>
+				</div>
 			</div>
-			<section
-				:class="$style.options"
-				:aria-label="i18n.baseText('agents.hitl.options')"
-				data-testid="agent-hitl-options-section"
-			>
-				<N8nText size="medium" bold>{{ i18n.baseText('agents.hitl.options') }}</N8nText>
-				<N8nSettingsRowGroup :class="$style.settingsGroup">
-					<AgentFormSettingRow
-						:title="i18n.baseText('agents.hitl.expiry')"
-						:description="i18n.baseText('agents.hitl.expiryDescription')"
-						:layout="rowLayout"
-						action-max-width="66.666%"
-						:class="$style.sectionRow"
+			<template v-if="configuration && !hideRemove" #footerLeft>
+				<N8nButton variant="ghost" data-testid="agent-hitl-remove" @click="emit('remove')">
+					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+					{{ i18n.baseText('agents.builder.tools.remove') }}
+				</N8nButton>
+			</template>
+			<template #footerActions>
+				<N8nTooltip as-child :disabled="!saveDisabledReason" :teleported="false">
+					<template #content>{{ saveDisabledReason }}</template>
+					<span
+						:class="$style.saveTrigger"
+						:tabindex="saveDisabledReason ? 0 : undefined"
+						data-testid="agent-hitl-save-trigger"
 					>
-						<N8nSelect2
-							:model-value="String(expirySeconds)"
-							@update:model-value="updateExpiry"
-							size="large"
-							:teleported="false"
-							:items="[
-								{ value: 'none', label: i18n.baseText('agents.hitl.expiry.none') },
-								{ value: '3600', label: i18n.baseText('agents.hitl.expiry.hour') },
-								{ value: '86400', label: i18n.baseText('agents.hitl.expiry.day') },
-								{ value: '604800', label: i18n.baseText('agents.hitl.expiry.week') },
-							]"
-							:aria-label="i18n.baseText('agents.hitl.expiry')"
-							:class="$style.control"
-							data-testid="agent-hitl-expiry"
+						<N8nButton
+							:label="i18n.baseText('agents.hitl.save')"
+							:disabled="
+								Boolean(saveDisabledReason) || creating || openingChannel || channelModalOpen
+							"
+							data-testid="agent-hitl-save"
+							@click="save"
 						/>
-					</AgentFormSettingRow>
-					<div :class="$style.sectionRow">
-						<AgentHitlToolsSelect
-							embedded
-							:model-value="selectedToolKeys"
-							:config="context.getConfig()"
-							:get-custom-tool-name="context.getCustomToolName"
-							@update:model-value="updateTools"
-						/>
-					</div>
-				</N8nSettingsRowGroup>
-			</section>
-		</div>
-		<template v-if="configuration && !hideRemove" #footerLeft>
-			<N8nButton variant="ghost" data-testid="agent-hitl-remove" @click="emit('remove')">
-				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-				{{ i18n.baseText('agents.builder.tools.remove') }}
-			</N8nButton>
-		</template>
-		<template #footerActions>
-			<N8nTooltip as-child :disabled="!saveDisabledReason" :teleported="false">
-				<template #content>{{ saveDisabledReason }}</template>
-				<span
-					:class="$style.saveTrigger"
-					:tabindex="saveDisabledReason ? 0 : undefined"
-					data-testid="agent-hitl-save-trigger"
-				>
-					<N8nButton
-						:label="i18n.baseText('agents.hitl.save')"
-						:disabled="Boolean(saveDisabledReason) || creating"
-						data-testid="agent-hitl-save"
-						@click="save"
-					/>
-				</span>
-			</N8nTooltip>
-		</template>
-	</AgentModal>
+					</span>
+				</N8nTooltip>
+			</template>
+		</AgentModal>
+		<AgentChannelModal
+			v-if="channelModalOpen && context.agentId"
+			v-model:open="channelModalOpen"
+			v-model:view="channelModalView"
+			:agent-id="context.agentId"
+			:is-published="context.isPublished"
+			:project-id="projectId"
+			:channel-types="AgentHitlChannelSchema.options"
+			stacked
+			@channel-connected="channelConnected"
+			@channel-disconnected="channelsChanged = true"
+			@agent-changed="channelsChanged = true"
+		/>
+	</div>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/focus';
+
 .destinationSettings {
 	display: flex;
 	flex-direction: column;
@@ -586,22 +660,20 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 	flex-direction: column;
 	align-items: flex-start;
 }
-.methodChoices {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-}
 .fields {
 	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
 }
-.workflowRow {
+.resourceRow {
+	// Reserve the workflow link column in both modes to keep the select widths equal.
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-columns: minmax(0, 1fr) var(--spacing--lg);
 	align-items: center;
 	gap: var(--spacing--2xs);
+	width: calc((100cqi - 2 * var(--spacing--md)) / 3 + var(--spacing--lg) + var(--spacing--2xs));
+	max-width: 100%;
 
 	> :first-child {
 		min-width: 0;
@@ -614,22 +686,8 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 		pointer-events: none;
 	}
 }
-.channelMethodLabel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	white-space: normal;
-}
-.subtitle {
-	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtler);
-}
-.options {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
 .settingsGroup {
+	border-radius: var(--radius--lg);
 	background: transparent;
 	overflow: visible;
 }
@@ -642,18 +700,40 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 		border-bottom: 0;
 	}
 }
+.advancedTrigger {
+	@include focus.focus-visible-ring;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: var(--spacing--sm) var(--spacing--md);
+	border: none;
+	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
+	background: transparent;
+	color: inherit;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	cursor: pointer;
 
-.control,
-.workflowRow {
-	width: max-content;
-	min-width: calc((100cqi - 2 * var(--spacing--md)) / 3);
+	&:hover {
+		background: var(--background--hover);
+	}
+
+	&[aria-expanded='true'] {
+		border-radius: 0;
+	}
+}
+.advancedContent {
+	border-top: var(--border);
+}
+.control {
+	width: calc((100cqi - 2 * var(--spacing--md)) / 3);
 	max-width: 100%;
 }
 .sectionRow[data-layout='vertical'] {
 	.control,
-	.workflowRow {
+	.resourceRow {
 		width: 100%;
-		min-width: 0;
 	}
 }
 </style>

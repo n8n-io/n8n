@@ -37,6 +37,9 @@ interface Props {
 	disabled?: boolean;
 	isPublished?: boolean;
 	simpleSetup?: boolean;
+	stacked?: boolean;
+	/** Restricts the picker when a caller supports only some platforms. */
+	channelTypes?: readonly string[];
 	ensureAgentPersisted?: () => Promise<void>;
 	/** n8n Chat's saved description, seeded into its view when opened. */
 	savedDescription?: string;
@@ -117,7 +120,11 @@ const isEditMode = computed(() => currentView.value.endsWith('_edit'));
 const isN8nChatSelected = computed(() => selectedChannelType.value === N8N_CHAT_INTEGRATION_TYPE);
 
 const { withN8nChat } = useN8nChatChannel();
-const channelList = computed(() => withN8nChat(catalog.value ?? []));
+const channelList = computed(() =>
+	withN8nChat(catalog.value ?? []).filter(
+		(channel) => !props.channelTypes || props.channelTypes.includes(channel.type),
+	),
+);
 const n8nChatAvailableLabel = computed(() => i18n.baseText('agents.channels.n8nChat.available'));
 const removeChannelLabel = computed(() =>
 	i18n.baseText(
@@ -660,6 +667,7 @@ watch(
 <template>
 	<AgentModalMultiStep
 		:open="open"
+		:stacked="stacked"
 		:step="currentStep"
 		:title="headerText"
 		:show-back="currentView !== 'list' && openedFromList"

@@ -148,6 +148,30 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		expect(modalData.approvalContext?.getConfig()).toBe(localConfig.value);
 	});
 
+	it('prepares the Agent before review channel setup and refreshes the same target', async () => {
+		const beforeAgentMutation = vi.fn().mockResolvedValue(undefined);
+		const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+		const refreshAgentAfterMutation = vi.fn().mockResolvedValue(true);
+		const agentId = ref('saved-agent');
+		const { uiStore, actions } = setup({
+			agentId,
+			beforeAgentMutation,
+			ensureAgentPersisted,
+			refreshAgentAfterMutation,
+		});
+		actions.onOpenAddToolModal();
+		const data = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		await data.approvalContext?.ensureAgentPersisted?.();
+		expect(beforeAgentMutation.mock.invocationCallOrder[0]).toBeLessThan(
+			ensureAgentPersisted.mock.invocationCallOrder[0],
+		);
+		await data.approvalContext?.onChannelsChanged?.();
+		expect(refreshAgentAfterMutation).toHaveBeenCalledWith('project-1', 'saved-agent');
+		agentId.value = 'another-agent';
+		await data.approvalContext?.onChannelsChanged?.();
+		expect(refreshAgentAfterMutation).toHaveBeenCalledOnce();
+	});
+
 	it('saves HITL tool attachments and keeps the open picker on the current tool config', () => {
 		const { uiStore, actions, localConfig, scheduleConfigUpdate } = setup({
 			agentId: ref('saved-agent'),

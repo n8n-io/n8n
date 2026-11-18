@@ -14,10 +14,16 @@ const props = defineProps<{
 	config: AgentJsonConfig | null;
 	projectId: string;
 	agentId: string;
+	agentUnsaved?: boolean;
+	isPublished?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 	disabled: boolean;
 	customTools?: Record<string, CustomToolEntry>;
 }>();
-const emit = defineEmits<{ 'update:config': [updates: Partial<AgentJsonConfig>] }>();
+const emit = defineEmits<{
+	'update:config': [updates: Partial<AgentJsonConfig>];
+	'agent-changed': [];
+}>();
 const i18n = useI18n();
 const editing = ref<AgentHitlConfiguration>();
 const modalOpen = ref(false);
@@ -29,11 +35,16 @@ function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 }
 const context = {
 	get agentId() {
-		return props.agentId;
+		return props.agentUnsaved ? undefined : props.agentId;
+	},
+	get isPublished() {
+		return props.isPublished;
 	},
 	getConfig: () => props.config,
 	getCustomToolName: (id: string) => props.customTools?.[id]?.descriptor.name,
 	saveConfiguration: save,
+	ensureAgentPersisted: () => props.ensureAgentPersisted?.() ?? Promise.resolve(),
+	onChannelsChanged: () => emit('agent-changed'),
 };
 watch(
 	() => props.agentId,

@@ -50,7 +50,7 @@ async function openMenu(wrapper: ReturnType<typeof render>['wrapper']) {
 }
 it('opens directly to review options with creation first and no input', async () => {
 	const { wrapper } = render();
-	expect(wrapper.text()).toContain('Reviewers');
+	expect(wrapper.text()).toContain('Human reviews');
 	const requester = wrapper.get('[data-testid="agent-review-requester"]');
 	expect(requester.text()).toBe('Ask user');
 	expect(requester.find('[data-icon="info"]').exists()).toBe(true);

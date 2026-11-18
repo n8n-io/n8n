@@ -163,12 +163,28 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function hitlContext() {
 		if (supportsToolApproval === false) return undefined;
 		const targetAgentId = agentId.value;
+		const targetProjectId = projectId.value;
+		const isCurrentTarget = () =>
+			agentId.value === targetAgentId && projectId.value === targetProjectId;
 		return {
 			agentId: targetAgentId,
-			getConfig: () => (agentId.value === targetAgentId ? localConfig.value : null),
+			get isPublished() {
+				return !!agent.value?.activeVersionId;
+			},
+			ensureAgentPersisted: async () => {
+				if (!isCurrentTarget()) return;
+				await beforeAgentMutation?.();
+				if (isCurrentTarget()) await ensureAgentPersisted?.();
+			},
+			onChannelsChanged: async () => {
+				if (isCurrentTarget()) {
+					await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+				}
+			},
+			getConfig: () => (isCurrentTarget() ? localConfig.value : null),
 			getCustomToolName: (id: string) => agent.value?.tools[id]?.descriptor.name,
 			saveConfiguration: (configuration: AgentHitlConfiguration, toolKeys?: string[]) => {
-				if (agentId.value !== targetAgentId) return;
+				if (!isCurrentTarget()) return;
 				scheduleConfigUpdate(hitlConfigurationUpdates(localConfig.value, configuration, toolKeys));
 			},
 		};
