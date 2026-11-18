@@ -148,6 +148,38 @@ function urlOf(c: Case): string {
 	return c.path === '/refused' ? `http://127.0.0.1:${closedPort}/x` : `${base}${c.path}`;
 }
 
+/** The workflow of a case with its own parameters and credential ids. */
+function workflowWith(
+	version: number,
+	onError: OnError,
+	parameters: Record<string, unknown>,
+	credentials: Record<string, { id: string; name: string }>,
+) {
+	return {
+		name: 'HTTP credential error item',
+		nodes: [
+			{
+				name: 'T',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				name: 'H',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: version,
+				position: [200, 0],
+				parameters,
+				credentials,
+				onError,
+			},
+		],
+		connections: { T: { main: [[{ node: 'H', type: 'main', index: 0 }]] } },
+		settings: { executionOrder: 'v1' },
+	};
+}
+
 function workflow(c: Case) {
 	return {
 		name: 'HTTP error item',
@@ -214,6 +246,11 @@ function listsOf(out: Awaited<ReturnType<typeof runReference>>): unknown[][] {
 				? (items as unknown[][])
 				: [items];
 		});
+}
+
+/** The output lists of v1's items, as `runOracle` gives them. */
+function listsOfV1(nodes: Record<string, unknown[][]>): unknown[][] {
+	return nodes.H ?? [];
 }
 
 /** The message of the first error item that v1 gave, for the runtime failure of the case. */
@@ -330,6 +367,144 @@ describe('HTTP Request error item of two items and v1', () => {
 			});
 			expect(out.status).toBe('ok');
 			expect(comparable(listsOf(out))).toEqual(comparable(v1.nodes.H ?? []));
+		},
+		40_000,
+	);
+});
+
+/**
+ * A credentials helper for the v1 engine of the run: it gives the credential data, and its
+ * `authenticate` changes nothing, because the requests of these cases carry no secret.
+ */
+function credentialHelper(data: Record<string, unknown>) {
+	return {
+		getParentTypes: () => [],
+		isCredentialUsableByNode: () => true,
+		authenticate: async (_credentials: unknown, _type: string, options: unknown) => options,
+		getDecrypted: async () => structuredClone(data),
+		updateCredentials: async () => {},
+		updateCredentialsOauthTokenData: async () => {},
+		preAuthentication: async () => undefined,
+		runPreAuthentication: async () => undefined,
+		getCredentialsProperties: () => [],
+	};
+}
+
+const GENERIC_CREDENTIALS: Array<{
+	label: string;
+	genericAuthType: string;
+	data: Record<string, unknown>;
+}> = [
+	{
+		label: 'generic header auth',
+		genericAuthType: 'httpHeaderAuth',
+		data: { name: 'X-Api-Key', value: 'v' },
+	},
+	{
+		label: 'generic basic auth',
+		genericAuthType: 'httpBasicAuth',
+		data: { user: 'u', password: 'p' },
+	},
+	{
+		label: 'generic query auth',
+		genericAuthType: 'httpQueryAuth',
+		data: { name: 'k', value: 'v' },
+	},
+];
+
+/** The cases of a credential: a generic credential (native) and a predefined one (refused). */
+describe('HTTP Request error item of a request with a credential and v1', () => {
+	it.each(
+		GENERIC_CREDENTIALS.flatMap((credential) =>
+			[4.2, 4.3, 4.4].flatMap((version) =>
+				['continueRegularOutput', 'continueErrorOutput'].map((onError) => ({
+					...credential,
+					version,
+					onError: onError as OnError,
+					label: `${credential.label}, version ${version}, ${onError}`,
+				})),
+			),
+		),
+	)(
+		'$label',
+		async (c) => {
+			log = [];
+			const parameters = {
+				url: `${base}/s400`,
+				authentication: 'genericCredentialType',
+				genericAuthType: c.genericAuthType,
+				options: {},
+			};
+			const wf = workflowWith(c.version, c.onError, parameters, {
+				[c.genericAuthType]: { id: 'case', name: 'case' },
+			});
+			const v1 = await runOracle(wf, {
+				start: 'T',
+				item: {},
+				mode: 'trigger',
+				timeoutMs: 20_000,
+				additionalData: { credentialsHelper: credentialHelper(c.data) },
+			});
+			const converted = convertWorkflow(wf, { trace: 'all' });
+			expect(converted.ok).toBe(true);
+			expect(converted.fallbackNodes ?? []).toEqual([]);
+			const out = await runReference(converted.source, {
+				trigger: { body: {} },
+				now: 0,
+				seed: 1,
+				effects: { H: log.map((s) => ({ status: s.status, headers: s.headers, body: s.body })) },
+				trace: true,
+			});
+			expect(out.status).toBe('ok');
+			expect(comparable(listsOf(out))).toEqual(comparable(v1.nodes.H ?? []));
+		},
+		40_000,
+	);
+
+	it.each(
+		[4.2, 4.3, 4.4].flatMap((version) =>
+			['continueRegularOutput', 'continueErrorOutput'].map((onError) => ({
+				version,
+				onError: onError as OnError,
+				label: `predefined credential, version ${version}, ${onError}`,
+			})),
+		),
+	)(
+		'$label runs in the fallback host: v1 wraps the failure in a NodeApiError',
+		async (c) => {
+			log = [];
+			const parameters = {
+				url: `${base}/s400`,
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'openAiApi',
+				options: {},
+			};
+			const wf = workflowWith(c.version, c.onError, parameters, {
+				openAiApi: { id: 'case', name: 'case' },
+			});
+			const v1 = await runOracle(wf, {
+				start: 'T',
+				item: {},
+				mode: 'trigger',
+				timeoutMs: 20_000,
+				additionalData: { credentialsHelper: credentialHelper({ apiKey: 'x' }) },
+			});
+			const saved = comparable(listsOfV1(v1.nodes)) as Array<
+				Array<{ error?: Record<string, unknown> }>
+			>;
+			const item = (saved.flat()[0] ?? {}) as { error?: Record<string, unknown> };
+			expect(item.error?.name).toBe('NodeApiError');
+			expect(Object.keys(item.error ?? {}).sort()).toEqual([
+				'cause',
+				'context',
+				'description',
+				'message',
+				'name',
+				'timestamp',
+			]);
+			expect(saved.flat().length).toBe(1);
+			const converted = convertWorkflow(wf, { trace: 'all' });
+			expect(converted.fallbackNodes ?? []).toContain('H');
 		},
 		40_000,
 	);

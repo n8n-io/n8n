@@ -2243,6 +2243,19 @@ function lowerHttpLibrary(c: NodeContext): void {
 		c.node.onError === 'continueErrorOutput' ||
 		(!c.node.onError && c.node.continueOnFail)
 	) {
+		// v1 wraps a failure of `requestWithAuthentication` in a NodeApiError, and the item then
+		// has `{ message, name, description, timestamp, context, cause }`. The library node has
+		// no form of that without the parent types of the credential. `requestOAuth1` and
+		// `requestOAuth2` throw the client's error, so a generic OAuth credential has no such
+		// form either.
+		const genericOAuth = p.genericAuthType === 'oAuth1Api' || p.genericAuthType === 'oAuth2Api';
+		if (p.authentication === 'predefinedCredentialType' || genericOAuth) {
+			throw new NodeFailure(
+				'http',
+				'The error item of a request that authenticates through this credential has no compiled form.',
+				'authentication',
+			);
+		}
 		entries.push(['errorItems', raw('true')]);
 	}
 	if (!(v >= 3 && serviceAccountToken(c, p, options, credentialType, entries))) {
