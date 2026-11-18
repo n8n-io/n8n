@@ -37,7 +37,8 @@ export function annotateDraft(draft: WorkflowJSON): WorkflowJSON {
 	const nodes = draft.nodes.filter((node) => node.type !== STICKY_NOTE_TYPE);
 	const groups: Group[] = [
 		{
-			title: 'Agent fallback',
+			// Sticky notes are nodes, so the title must not be FALLBACK_NODE_NAME.
+			title: 'Agent fallback steps',
 			color: 3,
 			members: nodes.filter(isFallback),
 		},
