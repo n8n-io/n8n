@@ -35,6 +35,12 @@ export const bubblesRule: TraitRule = (entity, traits) =>
 		? { ...traits, effects: [...traits.effects, 'bubbles'] }
 		: traits;
 
+/** A cat watches a creature that fails a security check. */
+export const securityRule: TraitRule = (entity, traits) =>
+	(entity.metrics.securityRisks ?? 0) > 0
+		? { ...traits, effects: [...traits.effects, 'cat'] }
+		: traits;
+
 /** A creature that fails often blinks green and swims slowly. */
 export const sickRule: TraitRule = (entity, traits) =>
 	failureRateOf(entity.metrics) > SICK_FAILURE_RATE
@@ -52,6 +58,7 @@ export const defaultTraitRules: TraitRule[] = [
 	speciesRule,
 	speedRule,
 	bubblesRule,
+	securityRule,
 	sickRule,
 ];
 

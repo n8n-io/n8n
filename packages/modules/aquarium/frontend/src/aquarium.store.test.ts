@@ -23,6 +23,10 @@ describe('useAquariumStore', () => {
 		await store.load();
 		expect(store.isPartial).toBe(false);
 
+		spy.mockResolvedValueOnce({ entities: [], failedSources: ['security'] });
+		await store.load();
+		expect(store.isPartial).toBe(false);
+
 		spy.mockResolvedValueOnce({ entities: [], failedSources: ['executions', 'insights'] });
 		await store.load();
 		expect(store.isPartial).toBe(true);

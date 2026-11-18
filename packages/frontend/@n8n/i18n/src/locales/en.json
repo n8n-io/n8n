@@ -498,6 +498,7 @@
 	"aquarium.tooltip.executions": "Executions",
 	"aquarium.tooltip.failureRate": "Failure rate",
 	"aquarium.tooltip.averageRunTime": "Average run time",
+	"aquarium.tooltip.securityRisks": "Security risks",
 	"aquarium.tooltip.open": "Open",
 	"aquarium.tooltip.runningNow": "Running now",
 	"aquarium.tooltip.runsPerSecond": "Runs per second (last {seconds} s)",

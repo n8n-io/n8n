@@ -9,7 +9,12 @@ import type {
 	EntitySource,
 	MetricsSource,
 } from './aquarium.types';
-import { demoEntitySources, liveEntitySources, liveMetricsSources } from './sources';
+import {
+	demoEntitySources,
+	liveEntitySources,
+	liveMetricsSources,
+	liveRunStatsSources,
+} from './sources';
 import { fetchActivity } from './sources/activity.source';
 import type { AquariumDataset } from './sources/dataset';
 import { datasetActivity, demoActivity } from './sources/demo-activity';
@@ -68,7 +73,9 @@ export const useAquariumStore = defineStore('aquarium', () => {
 			const failed = new Set(result.failedSources);
 			const allFailed = (sources: Array<{ id: string }>) =>
 				sources.length > 0 && sources.every((source) => failed.has(source.id));
-			isPartial.value = allFailed(entitySources) || allFailed(metricsSources);
+			// Without run stats every creature looks the same, so only those sources count here.
+			const runStatsSources = options.demo ? [] : liveRunStatsSources;
+			isPartial.value = allFailed(entitySources) || allFailed(runStatsSources);
 			hasLoaded.value = true;
 		} finally {
 			if (generation === loadGeneration) isLoading.value = false;

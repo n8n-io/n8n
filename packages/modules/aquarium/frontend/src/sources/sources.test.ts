@@ -2,6 +2,7 @@ import type { AquariumEntity, EntitySource, MetricsSource } from '../aquarium.ty
 import { toAgentEntity } from './agents.source';
 import { toExecutionPatches } from './executions.source';
 import { toInsightsPatches } from './insights.source';
+import { toSecurityPatches } from './security.source';
 import { emptyMetrics, loadFromSources } from './source.utils';
 import { toWorkflowEntity } from './workflows.source';
 
@@ -151,6 +152,14 @@ describe('source mappers', () => {
 		expect(patches).toEqual([
 			{ key: 'workflow:w', metrics: { executionCount: 10, failedCount: 2, averageRunTimeMs: 100 } },
 		]);
+	});
+
+	it('counts the security risks of each workflow', () => {
+		const patches = toSecurityPatches({
+			workflows: [{ workflowId: 'w', risks: ['unprotectedWebhook', 'shellAccess'] }],
+		});
+
+		expect(patches).toEqual([{ key: 'workflow:w', metrics: { securityRisks: 2 } }]);
 	});
 });
 

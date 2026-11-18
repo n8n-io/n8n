@@ -21,3 +21,26 @@ export const aquariumActivitySchema = z.object({
 	workflows: z.array(aquariumWorkflowActivitySchema),
 });
 export type AquariumActivity = z.infer<typeof aquariumActivitySchema>;
+
+export const aquariumSecurityRiskSchema = z.enum([
+	/** A published Webhook node with no authentication and no validating node after it. */
+	'unprotectedWebhook',
+	/** An expression in the query of a SQL "Execute Query" operation. */
+	'sqlExpression',
+	/** An Execute Command or SSH node. */
+	'shellAccess',
+]);
+export type AquariumSecurityRisk = z.infer<typeof aquariumSecurityRiskSchema>;
+
+export const aquariumWorkflowSecuritySchema = z.object({
+	workflowId: z.string(),
+	/** Each risk once, however many nodes have it. */
+	risks: z.array(aquariumSecurityRiskSchema),
+});
+export type AquariumWorkflowSecurity = z.infer<typeof aquariumWorkflowSecuritySchema>;
+
+export const aquariumSecuritySchema = z.object({
+	/** Only the workflows with one or more risks. */
+	workflows: z.array(aquariumWorkflowSecuritySchema),
+});
+export type AquariumSecurity = z.infer<typeof aquariumSecuritySchema>;

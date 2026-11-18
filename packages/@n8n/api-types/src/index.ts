@@ -267,9 +267,15 @@ export {
 
 export {
 	aquariumActivitySchema,
+	aquariumSecurityRiskSchema,
+	aquariumSecuritySchema,
 	aquariumWorkflowActivitySchema,
+	aquariumWorkflowSecuritySchema,
 	type AquariumActivity,
+	type AquariumSecurity,
+	type AquariumSecurityRisk,
 	type AquariumWorkflowActivity,
+	type AquariumWorkflowSecurity,
 } from './schemas/aquarium.schema';
 
 export {

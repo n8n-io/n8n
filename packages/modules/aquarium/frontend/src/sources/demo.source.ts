@@ -16,6 +16,7 @@ function demo(
 	executionCount: number,
 	failedCount: number,
 	averageRunTimeMs: number,
+	securityRisks?: number,
 ): AquariumEntity {
 	const id = `demo-${name.toLowerCase().replace(/\W+/g, '-')}`;
 	return {
@@ -24,7 +25,13 @@ function demo(
 		kind,
 		name,
 		project: DEMO_PROJECTS[project],
-		metrics: { complexity, executionCount, failedCount, averageRunTimeMs },
+		metrics: {
+			complexity,
+			executionCount,
+			failedCount,
+			averageRunTimeMs,
+			...(securityRisks === undefined ? {} : { securityRisks }),
+		},
 	};
 }
 
@@ -37,7 +44,7 @@ export const DEMO_ENTITIES: AquariumEntity[] = [
 	demo('Flaky scraper', 'data', 'workflow', 5, 400, 180, 3_000),
 	demo('Lead enrichment', 'sales', 'workflow', 22, 2_000, 100, 8_000),
 	demo('Data warehouse ETL', 'data', 'workflow', 45, 30, 3, 600_000),
-	demo('Webhook relay', 'ops', 'workflow', 3, 8_000, 0, 100),
+	demo('Webhook relay', 'ops', 'workflow', 3, 8_000, 0, 100, 1),
 	demo('Draft', 'ops', 'workflow', 1, 0, 0, 0),
 	demo('Error handler', 'ops', 'workflow', 4, 150, 0, 500),
 	demo('Support triage', 'support', 'agent', 3, 400, 12, 15_000),

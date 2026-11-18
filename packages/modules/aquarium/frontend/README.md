@@ -88,6 +88,7 @@ opens zoomed out to show all creatures.
 | `agents` | Agents, with skill count as complexity | No run stats yet |
 | `executions` | Execution count, failures and run time | Only the last 300 executions |
 | `insights` | The same metrics, but complete | Needs the insights dashboard license |
+| `security` | Security risks: unprotected webhooks, expressions in SQL queries, Execute Command and SSH nodes | Needs the `aquarium` backend module. Checks only the workflows that the user can read |
 
 `insights` comes after `executions`, so its values win when both are available.
 

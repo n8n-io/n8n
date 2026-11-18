@@ -435,6 +435,9 @@ const tooltip = computed(() => {
 				i18n.baseText('aquarium.tooltip.averageRunTime'),
 				i18n.displayTimer(Math.round(metrics.averageRunTimeMs), true),
 			],
+			...(metrics.securityRisks
+				? [[i18n.baseText('aquarium.tooltip.securityRisks'), String(metrics.securityRisks)]]
+				: []),
 			...liveRows(creature.entity.key),
 		],
 	};

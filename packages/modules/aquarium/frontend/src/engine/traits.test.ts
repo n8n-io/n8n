@@ -40,6 +40,12 @@ describe('deriveTraits', () => {
 		expect(deriveTraits(entity({ executionCount: 100 })).effects).toEqual(['bubbles']);
 	});
 
+	it('adds a watching cat only to creatures with a security risk', () => {
+		expect(deriveTraits(entity({ securityRisks: 0 })).effects).toEqual([]);
+		expect(deriveTraits(entity({})).effects).toEqual([]);
+		expect(deriveTraits(entity({ securityRisks: 2 })).effects).toEqual(['cat']);
+	});
+
 	it('makes creatures that fail often blink green and swim slowly', () => {
 		const healthy = deriveTraits(entity({ executionCount: 100, failedCount: 10 }));
 		const sick = deriveTraits(entity({ executionCount: 100, failedCount: 45 }));

@@ -20,6 +20,8 @@ export interface EntityMetrics {
 	executionCount: number;
 	failedCount: number;
 	averageRunTimeMs: number;
+	/** Security checks that the workflow fails, from 0 to 3. Undefined when not checked. */
+	securityRisks?: number;
 }
 
 /** One workflow or agent in the tank. */
