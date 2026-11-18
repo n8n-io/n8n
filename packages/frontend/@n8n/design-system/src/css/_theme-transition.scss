@@ -1,0 +1,24 @@
+@use 'mixins/motion';
+
+// A theme switch cross-fades the page through a view transition.
+// The old and the new layer must share one duration and one easing,
+// so that their opacities always add up to one. The group gets the same
+// duration, because the transition lasts as long as its longest animation.
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation-duration: var(--duration--snappy);
+	animation-timing-function: var(--easing--ease-in-out);
+
+	@include motion.reduced-motion;
+}
+
+// The overlay must not take the pointer from the page under it.
+// The command bar list keeps its hover and click while the fade runs.
+::view-transition,
+::view-transition-group(*),
+::view-transition-image-pair(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+	pointer-events: none;
+}

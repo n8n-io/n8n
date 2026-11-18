@@ -71,6 +71,14 @@ function copyFavicon(source: Window, target: Window) {
 	}
 }
 
+function syncBodyAttribute(target: Window, name: string, value: string | null) {
+	if (value) {
+		target.document.body.setAttribute(name, value);
+	} else {
+		target.document.body.removeAttribute(name);
+	}
+}
+
 /**
  * A composable that allows to pop out given content in child window
  */
@@ -104,16 +112,20 @@ export function usePopOutWindow({
 	const themeObserver = new MutationObserver(() => {
 		if (popOutWindow.value) {
 			const theme = document.body.getAttribute('data-theme');
-			if (theme) {
-				popOutWindow.value.document.body.setAttribute('data-theme', theme);
-			} else {
-				popOutWindow.value.document.body.removeAttribute('data-theme');
-			}
+			syncBodyAttribute(popOutWindow.value, 'data-theme', theme);
+			syncBodyAttribute(
+				popOutWindow.value,
+				'data-palette',
+				document.body.getAttribute('data-palette'),
+			);
 			popOutWindow.value.document.documentElement.style.colorScheme =
 				theme === 'dark' ? 'dark' : 'light';
 		}
 	});
-	themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] });
+	themeObserver.observe(document.body, {
+		attributes: true,
+		attributeFilter: ['data-theme', 'data-palette'],
+	});
 
 	provide(PopOutWindowKey, popOutWindow);
 	useProvideTooltipAppendTo(tooltipContainer);
@@ -154,11 +166,16 @@ export function usePopOutWindow({
 			}
 		}
 
-		// Copy the theme attribute so the pop-out window matches the main window
+		// Copy the theme attributes so the pop-out window matches the main window
 		const theme = document.body.getAttribute('data-theme');
 		if (theme) {
 			popOutWindow.value.document.body.setAttribute('data-theme', theme);
 		}
+		syncBodyAttribute(
+			popOutWindow.value,
+			'data-palette',
+			document.body.getAttribute('data-palette'),
+		);
 		// Hint the browser to use matching chrome (title bar, scrollbars, etc.)
 		popOutWindow.value.document.documentElement.style.colorScheme =
 			theme === 'dark' ? 'dark' : 'light';

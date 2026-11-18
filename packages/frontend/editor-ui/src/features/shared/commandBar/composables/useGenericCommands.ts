@@ -6,7 +6,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY, VIEWS, ABOUT_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { useBugReporting } from '@/app/composables/useBugReporting';
-import type { CommandGroup, CommandBarItem } from '../types';
+import { useThemeOptions } from '@/app/composables/useThemeOptions';
+import type { CommandGroup, CommandBarItem, ThemeCommandBarItem } from '../types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -16,6 +17,7 @@ const ITEM_ID = {
 	CHAT_HUB: 'chat-hub',
 	WHATS_NEW: 'whats-new',
 	SETTINGS: 'settings',
+	THEME: 'theme',
 	SIGN_OUT: 'sign-out',
 	TEMPLATES: 'templates',
 	VARIABLES: 'variables',
@@ -36,6 +38,31 @@ export function useGenericCommands(): CommandGroup {
 	const projectsStore = useProjectsStore();
 	const templatesStore = useTemplatesStore();
 	const { getReportingURL } = useBugReporting();
+	const themeOptions = useThemeOptions();
+
+	const themeCommands = computed<ThemeCommandBarItem[]>(() =>
+		themeOptions.value.map((option): ThemeCommandBarItem => {
+			const isCurrent = uiStore.theme === option.value;
+
+			return {
+				id: `${ITEM_ID.THEME}-${option.value}`,
+				// The command bar previews this theme while the item is highlighted.
+				theme: option.value,
+				title: option.label,
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: option.icon,
+					},
+				},
+				description: isCurrent ? i18n.baseText('commandBar.theme.current') : undefined,
+				descriptionIcon: isCurrent ? { type: 'icon', value: 'check' } : undefined,
+				handler: () => {
+					uiStore.setTheme(option.value);
+				},
+			};
+		}),
+	);
 
 	const genericCommands = computed<CommandBarItem[]>(() => [
 		{
@@ -225,6 +252,20 @@ export function useGenericCommands(): CommandGroup {
 				},
 			},
 			keywords: [i18n.baseText('mainSidebar.aboutN8n').toLowerCase()],
+		},
+		{
+			id: ITEM_ID.THEME,
+			title: i18n.baseText('commandBar.theme.change'),
+			section: i18n.baseText('commandBar.sections.general'),
+			placeholder: i18n.baseText('commandBar.theme.searchPlaceholder'),
+			children: themeCommands.value,
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'palette',
+				},
+			},
+			keywords: ['theme', 'dark', 'light', 'catppuccin', 'latte', 'dracula', 'appearance'],
 		},
 		{
 			id: ITEM_ID.SETTINGS,

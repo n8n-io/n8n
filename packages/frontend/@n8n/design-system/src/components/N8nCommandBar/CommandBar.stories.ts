@@ -132,7 +132,12 @@ export const Default: StoryFn = () => ({
 			query.value = '';
 		}
 
-		return { open, query, activeTab, tabs, sections, scope, onSelect, onBack };
+		// Fires with `null` when the user has no highlighted row, for example after closing.
+		function onHighlight(item: CommandBarItem | null) {
+			action('highlight')(item);
+		}
+
+		return { open, query, activeTab, tabs, sections, scope, onSelect, onBack, onHighlight };
 	},
 	template: `
 		<div>
@@ -146,6 +151,7 @@ export const Default: StoryFn = () => ({
 				:breadcrumb="scope?.title"
 				@select="onSelect"
 				@back="onBack"
+				@highlight="onHighlight"
 			/>
 		</div>
 	`,

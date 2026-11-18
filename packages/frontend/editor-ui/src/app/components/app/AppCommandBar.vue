@@ -4,6 +4,7 @@ import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
+import { useThemePreview } from '@/features/shared/commandBar/composables/useThemePreview';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -25,6 +26,8 @@ const {
 	back,
 	loadMore,
 } = useCommandBar();
+
+const { highlight } = useThemePreview();
 
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 
@@ -60,5 +63,6 @@ watch(isOpen, (open) => {
 		@select="select"
 		@back="back"
 		@load-more="loadMore"
+		@highlight="highlight"
 	/>
 </template>

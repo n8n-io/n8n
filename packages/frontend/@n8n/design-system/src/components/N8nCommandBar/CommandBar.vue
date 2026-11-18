@@ -47,6 +47,13 @@ const emit = defineEmits<{
 	select: [item: CommandBarItem, options: CommandBarSelectOptions];
 	back: [];
 	loadMore: [];
+	/**
+	 * The row the user highlighted with the arrow keys or the pointer.
+	 * It is `null` when the user has not highlighted a row. This includes the row
+	 * that is selected by default, and a closed bar, a new query, a new tab, or a new breadcrumb.
+	 * A parent can use it to preview an item before Enter, and undo the preview on `null`.
+	 */
+	highlight: [item: CommandBarItem | null];
 }>();
 
 const isOpen = defineModel<boolean>('open', { default: false });
@@ -106,6 +113,8 @@ const selectedRow = computed<CommandBarItemRow | undefined>(
 	() => itemRows.value[selectedIndex.value],
 );
 const selectedItem = computed(() => selectedRow.value?.item);
+// Only a row the user moved to counts. The default selection is not a highlight.
+const highlightedRow = computed(() => (selectedKey.value === null ? undefined : selectedRow.value));
 
 const showTabs = computed(() => props.tabs.length > 0 && !props.breadcrumb);
 const activeTabIndex = computed(() => props.tabs.findIndex((tab) => tab.id === activeTab.value));
@@ -324,11 +333,18 @@ function onGlobalKeydown(event: KeyboardEvent) {
 }
 
 watch(isOpen, async (open) => {
-	if (!open) return;
+	// Reset on close too, so a parent that previews the highlight gets `null` at once.
 	selectedKey.value = null;
+	if (!open) return;
 	await nextTick();
 	inputRef.value?.focus();
 });
+
+// Watch the row key, not the item: a new sections array must not repeat the event.
+watch(
+	() => highlightedRow.value?.key,
+	() => emit('highlight', highlightedRow.value?.item ?? null),
+);
 
 watch([query, activeTab, () => props.breadcrumb], () => {
 	selectedKey.value = null;
@@ -349,6 +365,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onGlobalKeydown, { capture: true });
+	if (highlightedRow.value) emit('highlight', null);
 });
 </script>
 

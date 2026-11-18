@@ -1,8 +1,10 @@
 @use 'sass:color';
 @use 'sass:map';
+@use './tokens';
 
 // Theme presets remap the primitive ramps on the body. The semantic tokens are declared again on
 // `body[data-theme]`, so they resolve against these values. A preset always sets `data-theme`.
+// `[data-theme='dark']` declares only the dark overrides. A dark preset declares all tokens again.
 
 $tint-weights: (
 	50: 10%,
@@ -31,6 +33,13 @@ $shade-weights: (
 	--color--#{$name}-500: #{$accent};
 	@each $step, $weight in $shade-weights {
 		--color--#{$name}-#{$step}: #{color.mix($accent, $dark, $weight)};
+	}
+}
+
+// Builds `--color--<name>-alpha-<step>` steps of one accent. The names match `_primitives.scss`.
+@mixin alpha-ramp($name, $accent, $steps) {
+	@each $step, $alpha in $steps {
+		--color--#{$name}-alpha-#{$step}: #{color.change($accent, $alpha: $alpha)};
 	}
 }
 /* stylelint-enable @n8n/css-var-naming */
@@ -88,4 +97,498 @@ body[data-palette='catppuccin-latte'] {
 	@include ramp('blue', map.get($c, blue), $light, $dark);
 	@include ramp('purple', map.get($c, lavender), $light, $dark);
 	@include ramp('mint', map.get($c, teal), $light, $dark);
+}
+
+// https://draculatheme.com/contribute
+$dracula: (
+	background: #282a36,
+	darker: #191a21,
+	current-line: #44475a,
+	foreground: #f8f8f2,
+	comment: #6272a4,
+	cyan: #8be9fd,
+	green: #50fa7b,
+	orange: #ffb86c,
+	pink: #ff79c6,
+	purple: #bd93f9,
+	red: #f55,
+	yellow: #f1fa8c,
+);
+
+body[data-palette='dracula'] {
+	$c: $dracula;
+	$bg: map.get($c, background);
+	$darker: map.get($c, darker);
+	$line: map.get($c, current-line);
+	$fg: map.get($c, foreground);
+	$comment: map.get($c, comment);
+
+	// Neutral: the foreground at the top, then the comment, the current line and the background.
+	--color--neutral-white: #{$fg};
+	--color--neutral-50: #{$fg};
+	--color--neutral-100: #{color.mix($fg, $comment, 94%)};
+	--color--neutral-125: #{color.mix($fg, $comment, 97%)};
+	--color--neutral-150: #{color.mix($fg, $comment, 90%)};
+	--color--neutral-200: #{color.mix($fg, $comment, 85%)};
+	--color--neutral-250: #{color.mix($fg, $comment, 80%)};
+	--color--neutral-300: #{color.mix($fg, $comment, 75%)};
+	--color--neutral-400: #{color.mix($fg, $comment, 55%)};
+	--color--neutral-500: #{color.mix($fg, $comment, 32%)};
+	--color--neutral-600: #{$comment};
+	--color--neutral-700: #{$line};
+	--color--neutral-750: #{color.mix($line, $bg, 85%)};
+	--color--neutral-800: #{color.mix($line, $bg, 40%)};
+	--color--neutral-850: #{color.mix($line, $bg, 20%)};
+	--color--neutral-900: #{$bg};
+	--color--neutral-950: #{$darker};
+	--color--neutral-black: #{color.mix($darker, #000, 70%)};
+
+	$light: $fg;
+	$dark: $darker;
+	// n8n calls the brand ramp pink. Dracula uses purple as its main accent.
+	@include ramp('pink', map.get($c, purple), $light, $dark);
+	// The secondary ramp is called purple. Dracula pink keeps it apart from the brand.
+	@include ramp('purple', map.get($c, pink), $light, $dark);
+	@include ramp('green', map.get($c, green), $light, $dark);
+	@include ramp('red', map.get($c, red), $light, $dark);
+	@include ramp('yellow', map.get($c, yellow), $light, $dark);
+	@include ramp('orange', map.get($c, orange), $light, $dark);
+	// The warning tokens read the gold ramp.
+	@include ramp('gold', map.get($c, orange), $light, $dark);
+	// The info tokens read the blue ramp.
+	@include ramp('blue', map.get($c, cyan), $light, $dark);
+
+	@include alpha-ramp(
+		'orange',
+		map.get($c, orange),
+		(
+			100: 0.1,
+			150: 0.15,
+			200: 0.2,
+			300: 0.3,
+			400: 0.4,
+			500: 0.5,
+			600: 0.6,
+			700: 0.7,
+			800: 0.8,
+			900: 0.9,
+			950: 0.95,
+		)
+	);
+	@include alpha-ramp(
+		'green',
+		map.get($c, green),
+		(
+			100: 0.15,
+			200: 0.25,
+		)
+	);
+	@include alpha-ramp(
+		'purple',
+		map.get($c, pink),
+		(
+			100: 0.1,
+			200: 0.25,
+			300: 0.4,
+			400: 0.6,
+			500: 0.8,
+		)
+	);
+	@include alpha-ramp(
+		'red',
+		map.get($c, red),
+		(
+			'020': 0.2,
+		)
+	);
+	@include alpha-ramp(
+		'gold',
+		map.get($c, orange),
+		(
+			'020': 0.2,
+		)
+	);
+
+	// Declare all the semantic tokens again, so that they read the ramps above.
+	@include tokens.theme;
+	@include tokens.theme-dark;
+
+	// The solid button takes the brand accent. Its label stays dark on purple.
+	--color--primary: var(--color--pink-500);
+	--button--color--text--primary: var(--color--neutral-950);
+
+	// Syntax colours follow the Dracula specification.
+	--code-tags--string--color: #{map.get($c, yellow)};
+	--code-tags--regex--color: #{map.get($c, red)};
+	--code-tags--primitive--color: #{map.get($c, purple)};
+	--code-tags--keyword--color: #{map.get($c, pink)};
+	--code-tags--variable--color: #{$fg};
+	--code-tags--parameter--color: #{map.get($c, orange)};
+	--code-tags--function--color: #{map.get($c, green)};
+	--code-tags--constant--color: #{map.get($c, purple)};
+	--code-tags--property--color: #{map.get($c, cyan)};
+	--code-tags--type--color: #{map.get($c, cyan)};
+	--code-tags--class--color: #{map.get($c, cyan)};
+	--code-tags--heading--color: #{map.get($c, purple)};
+	--code-tags--invalid--color: #{map.get($c, red)};
+	--code-tags--comment--color: #{$comment};
+	--code--selection--color: #{color.change(map.get($c, purple), $alpha: 0.3)};
+}
+
+// High contrast presets. Surfaces are pure black or white and flat. Borders are solid and strong.
+// The focus ring is thick. Status colours keep their icons, so hue is not the only signal.
+// Text is at least 7:1 on every main surface. Borders and the focus ring are at least 3:1.
+// The map holds the colours that the ramps cannot give.
+// Nothing selects these presets yet. The preset ids are not in the theme type or the menus.
+$high-contrast-dark: (
+	border-subtle: #767676,
+	border: #9a9a9a,
+	border-strong: #c4c4c4,
+	// Hover and active fills are at least 3:1 on black. White text on them stays near 7:1.
+	hover: #5a5a5a,
+	active: #005ca0,
+	primary: #71b7ff,
+	green: #56d364,
+	yellow: #f2cc60,
+	orange: #ffa657,
+	red: #ff9492,
+	purple: #d2a8ff,
+	mint: #56e0cf,
+	code-string: #a5d6ff,
+	code-regex: #7ee787,
+	code-primitive: #79c0ff,
+	code-keyword: #ff9492,
+	code-parameter: #ffa657,
+	code-function: #d2a8ff,
+	code-invalid: #ffb3b1,
+	code-comment: #b8c0c8,
+);
+
+$high-contrast-light: (
+	border-subtle: #707070,
+	border: #595959,
+	border-strong: #333333,
+	// Hover and active fills are at least 3:1 on white. Black text on them stays near 7:1.
+	hover: #949494,
+	active: #6c90ec,
+	primary: #0b3fb0,
+	green: #0a6b2a,
+	yellow: #7a4a00,
+	orange: #a14000,
+	red: #a30014,
+	purple: #5a2dba,
+	mint: #006861,
+	code-string: #032f62,
+	code-primitive: #003e8a,
+	code-keyword: #a40e26,
+	code-parameter: #1a1a1a,
+	code-function: #512a97,
+	code-invalid: #82071e,
+	code-comment: #4a5159,
+);
+
+// Elevation does not carry meaning here. Borders do. The shadow tokens keep a valid value.
+// The light preset needs this too: its shadows resolve on `:root` and do not follow the body.
+@mixin high-contrast-flat($outline-color) {
+	--shadow-color: transparent;
+	--shadow-color--outline: #{$outline-color};
+	--shadow--outline: 0 0 0 1px var(--shadow-color--outline);
+	--shadow--2xs: 0 1px var(--shadow-color);
+	--shadow--xs: 0 1px 2px -1px var(--shadow-color);
+	--shadow--sm: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);
+	--shadow--md: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -4px var(--shadow-color);
+	--shadow--xl: 0 20px 25px -5px var(--shadow-color), 0 8px 10px -6px var(--shadow-color);
+	--shadow: 0 0 0 0 transparent;
+	--shadow--dark: 0 0 0 0 transparent;
+	--shadow--light: 0 0 0 0 transparent;
+	--shadow--card-hover: 0 0 0 0 transparent;
+}
+
+// Borders, focus, states and status colours. Both presets share the same token wiring.
+@mixin high-contrast-semantics($c) {
+	// Solid borders replace the low-alpha ones. The legacy foreground steps are mostly borders.
+	--border-color: #{map.get($c, border)};
+	--border-color--subtle: #{map.get($c, border-subtle)};
+	--border-color--strong: #{map.get($c, border-strong)};
+	--border-color--light: var(--border-color--subtle);
+	--border: var(--border-width, 1px) var(--border-style, solid) var(--border-color);
+	--color--foreground: var(--border-color);
+	--color--foreground--shade-1: var(--border-color--strong);
+
+	// The focus ring is thicker and solid. The legacy buttons read their own outline tokens.
+	--focus--border-width: 3px;
+	--button--outline-color--primary--focus: var(--focus--outline-color);
+	--button--outline-color--secondary--focus: var(--focus--outline-color);
+	--button--outline-color--highlight--focus: var(--focus--outline-color);
+	--button--outline-color--highlight-fill--focus: var(--focus--outline-color);
+	--button--outline-color--danger--focus: var(--focus--outline-color);
+
+	// Hover, active and selected states are solid fills, not faint alpha overlays.
+	--background--hover: #{map.get($c, hover)};
+	--background--active: #{map.get($c, active)};
+	--background--focus: #{map.get($c, active)};
+	--menu--color--background--hover: var(--background--hover);
+	--menu--color--background--active: var(--background--active);
+	--table--row--color--background--hover: var(--background--hover);
+
+	// Outlined parts need a visible edge.
+	--button--border-color--secondary: var(--border-color);
+	--tag--border-color: var(--border-color--subtle);
+	--tag--border-color--hover: var(--border-color);
+	--tag--border-color--active: var(--border-color--strong);
+	--switch--border-color: var(--border-color);
+	--canvas-node--border-color: var(--border-color--strong);
+	--execution-card--border-color--new: var(--border-color);
+	--execution-card--border-color--unknown: var(--border-color);
+	--execution-card--border-color--success: var(--color--green-500);
+	--execution-card--border-color--error: var(--color--red-500);
+	--execution-card--border-color--waiting: var(--color--purple-500);
+	--execution-card--border-color--running: var(--color--yellow-500);
+
+	// The accent colour is the link colour and the solid button fill. The ring marks the selected node.
+	--color--primary: var(--color--pink-500);
+	--canvas--color--selected: var(--color--pink-500);
+	--canvas--color--selected-transparent: #{color.change(map.get($c, primary), $alpha: 0.7)};
+
+	// Status colours: the border and the icon take the full accent. The text stays on the ramp.
+	--border-color--success: var(--color--green-500);
+	--icon-color--success: var(--color--green-500);
+	--border-color--warning: var(--color--yellow-500);
+	--icon-color--warning: var(--color--yellow-500);
+	--border-color--danger: var(--color--red-500);
+	--icon-color--danger: var(--color--red-500);
+	--border-color--info: var(--color--blue-500);
+	--icon-color--info: var(--color--blue-500);
+
+	// Syntax colours. Every one is at least 7:1 on the code background.
+	--code-tags--string--color: #{map.get($c, code-string)};
+	--code-tags--primitive--color: #{map.get($c, code-primitive)};
+	--code-tags--keyword--color: #{map.get($c, code-keyword)};
+	--code-tags--variable--color: #{map.get($c, code-primitive)};
+	--code-tags--parameter--color: #{map.get($c, code-parameter)};
+	--code-tags--function--color: #{map.get($c, code-function)};
+	--code-tags--constant--color: #{map.get($c, code-primitive)};
+	--code-tags--property--color: #{map.get($c, code-primitive)};
+	--code-tags--type--color: #{map.get($c, code-function)};
+	--code-tags--class--color: #{map.get($c, code-function)};
+	--code-tags--heading--color: #{map.get($c, code-primitive)};
+	--code-tags--invalid--color: #{map.get($c, code-invalid)};
+	--code-tags--comment--color: #{map.get($c, code-comment)};
+	--code--selection--color: #{color.change(map.get($c, primary), $alpha: 0.35)};
+}
+
+body[data-palette='high-contrast-dark'] {
+	$c: $high-contrast-dark;
+
+	// Neutral: text steps first, then surface steps. The two main surfaces are pure black.
+	--color--neutral-white: #fff;
+	--color--neutral-50: #fff;
+	--color--neutral-100: #f5f5f5;
+	--color--neutral-125: #f0f0f0;
+	--color--neutral-150: #ebebeb;
+	--color--neutral-200: #e0e0e0;
+	--color--neutral-250: #d6d6d6;
+	--color--neutral-300: #c8c8c8;
+	--color--neutral-400: #bdbdbd;
+	--color--neutral-500: #a8a8a8;
+	--color--neutral-600: #949494;
+	--color--neutral-700: #3a3a3a;
+	--color--neutral-750: #303030;
+	--color--neutral-800: #262626;
+	--color--neutral-850: #1a1a1a;
+	--color--neutral-900: #000;
+	--color--neutral-950: #000;
+
+	$light: #fff;
+	$dark: #000;
+	// n8n calls the brand ramp pink. Here it holds the accent.
+	@include ramp('pink', map.get($c, primary), $light, $dark);
+	@include ramp('purple', map.get($c, purple), $light, $dark);
+	@include ramp('green', map.get($c, green), $light, $dark);
+	@include ramp('red', map.get($c, red), $light, $dark);
+	@include ramp('yellow', map.get($c, yellow), $light, $dark);
+	@include ramp('orange', map.get($c, orange), $light, $dark);
+	@include ramp('gold', map.get($c, yellow), $light, $dark);
+	@include ramp('blue', map.get($c, primary), $light, $dark);
+	@include ramp('mint', map.get($c, mint), $light, $dark);
+
+	@include alpha-ramp(
+		'orange',
+		map.get($c, orange),
+		(
+			100: 0.1,
+			150: 0.15,
+			200: 0.2,
+			300: 0.3,
+			400: 0.4,
+			500: 0.5,
+			600: 0.6,
+			700: 0.7,
+			800: 0.8,
+			900: 0.9,
+			950: 0.95,
+		)
+	);
+	@include alpha-ramp(
+		'green',
+		map.get($c, green),
+		(
+			100: 0.15,
+			200: 0.25,
+		)
+	);
+	@include alpha-ramp(
+		'purple',
+		map.get($c, purple),
+		(
+			100: 0.1,
+			200: 0.25,
+			300: 0.4,
+			400: 0.6,
+			500: 0.8,
+		)
+	);
+	@include alpha-ramp(
+		'red',
+		map.get($c, red),
+		(
+			'020': 0.2,
+		)
+	);
+	@include alpha-ramp(
+		'gold',
+		map.get($c, yellow),
+		(
+			'020': 0.2,
+		)
+	);
+
+	// Declare all the semantic tokens again, so that they read the ramps above.
+	@include tokens.theme;
+	@include tokens.theme-dark;
+
+	@include high-contrast-semantics($c);
+	@include high-contrast-flat(var(--border-color));
+
+	--focus--outline-color: #fff;
+	--focus--border-color: #fff;
+	--border-color--stronger: #fff;
+	--color--foreground--shade-2: #fff;
+
+	// The solid button and the brand fill are bright. Their labels are black.
+	--text-color--inverse: #000;
+	--icon-color--inverse: #000;
+	--background--brand--hover: var(--color--pink-400);
+	--background--brand--active: var(--color--pink-300);
+	--button--color--text--primary: #000;
+	--button--color--text--success: #000;
+	--button--color--text--warning: #000;
+	--button--color--text--danger: #000;
+
+	--canvas--dot--color: #5a5a5a;
+	--dialog--overlay--color--background: #{color.change(#000, $alpha: 0.8)};
+}
+
+body[data-palette='high-contrast-light'] {
+	$c: $high-contrast-light;
+
+	// Neutral: the main surface is pure white. The text steps are near black.
+	--color--neutral-white: #fff;
+	--color--neutral-50: #fff;
+	--color--neutral-100: #f0f0f0;
+	--color--neutral-125: #ebebeb;
+	--color--neutral-150: #e6e6e6;
+	--color--neutral-200: #e0e0e0;
+	--color--neutral-250: #d0d0d0;
+	--color--neutral-300: #b0b0b0;
+	--color--neutral-400: #8a8a8a;
+	--color--neutral-500: #666;
+	--color--neutral-600: #4d4d4d;
+	--color--neutral-700: #333;
+	--color--neutral-750: #262626;
+	--color--neutral-800: #1a1a1a;
+	--color--neutral-850: #0d0d0d;
+	--color--neutral-900: #000;
+	--color--neutral-950: #000;
+
+	$light: #fff;
+	$dark: #000;
+	// n8n calls the brand ramp pink. Here it holds the accent.
+	@include ramp('pink', map.get($c, primary), $light, $dark);
+	@include ramp('purple', map.get($c, purple), $light, $dark);
+	@include ramp('green', map.get($c, green), $light, $dark);
+	@include ramp('red', map.get($c, red), $light, $dark);
+	@include ramp('yellow', map.get($c, yellow), $light, $dark);
+	@include ramp('orange', map.get($c, orange), $light, $dark);
+	@include ramp('gold', map.get($c, yellow), $light, $dark);
+	@include ramp('blue', map.get($c, primary), $light, $dark);
+	@include ramp('mint', map.get($c, mint), $light, $dark);
+
+	@include alpha-ramp(
+		'orange',
+		map.get($c, orange),
+		(
+			100: 0.1,
+			150: 0.15,
+			200: 0.2,
+			300: 0.3,
+			400: 0.4,
+			500: 0.5,
+			600: 0.6,
+			700: 0.7,
+			800: 0.8,
+			900: 0.9,
+			950: 0.95,
+		)
+	);
+	@include alpha-ramp(
+		'green',
+		map.get($c, green),
+		(
+			100: 0.15,
+			200: 0.25,
+		)
+	);
+	@include alpha-ramp(
+		'purple',
+		map.get($c, purple),
+		(
+			100: 0.1,
+			200: 0.25,
+			300: 0.4,
+			400: 0.6,
+			500: 0.8,
+		)
+	);
+	@include alpha-ramp(
+		'red',
+		map.get($c, red),
+		(
+			'020': 0.2,
+		)
+	);
+	@include alpha-ramp(
+		'gold',
+		map.get($c, yellow),
+		(
+			'020': 0.2,
+		)
+	);
+
+	// `[data-theme='light']` already declares all the semantic tokens on the body.
+	@include high-contrast-semantics($c);
+	@include high-contrast-flat(var(--border-color));
+
+	--focus--outline-color: #000;
+	--focus--border-color: #000;
+	--border-color--stronger: #000;
+	--color--foreground--shade-2: #000;
+
+	// The solid button and the brand fill are deep. Their labels are white.
+	--text-color--inverse: #fff;
+	--icon-color--inverse: #fff;
+	--background--inverse: #000;
+
+	--canvas--dot--color: #8a8a8a;
+	--code--gutter--color--foreground: var(--color--neutral-600);
 }

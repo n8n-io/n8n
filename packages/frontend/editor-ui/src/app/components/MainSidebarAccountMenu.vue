@@ -23,6 +23,7 @@ import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useThemeOptions } from '@/app/composables/useThemeOptions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -151,6 +152,19 @@ const helpEntries = computed<HelpEntry[]>(() => [
 	},
 ]);
 
+const themeOptions = useThemeOptions();
+const themeEntries = computed(() =>
+	themeOptions.value.map(
+		(option): DropdownMenuItemProps => ({
+			id: option.value,
+			testId: `main-sidebar-theme-${option.value}`,
+			label: option.label,
+			icon: { type: 'icon', value: option.icon },
+			checked: uiStore.theme === option.value,
+		}),
+	),
+);
+
 type AccountMenuItem = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.PLATFORM.USER_CLICKED_ACCOUNT_MENU_ITEM
 >['item'];
@@ -170,6 +184,11 @@ function onCloudConsole() {
 function onPersonalSettings() {
 	track('personal_settings');
 	void router.push({ name: VIEWS.PERSONAL_SETTINGS });
+}
+
+function onThemeSelect(id: string) {
+	const option = themeOptions.value.find(({ value }) => value === id);
+	if (option) uiStore.setTheme(option.value);
 }
 
 function onWhatsNew() {
@@ -316,6 +335,14 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 							:label="i18n.baseText('mainSidebar.personalSettings')"
 							:icon="{ type: 'icon', value: 'circle-user-round' }"
 							@select="onPersonalSettings"
+						/>
+						<N8nDropdownMenuItem
+							id="theme"
+							test-id="main-sidebar-account-theme"
+							:label="i18n.baseText('settings.personal.theme')"
+							:icon="{ type: 'icon', value: 'palette' }"
+							:children="themeEntries"
+							@select="onThemeSelect"
 						/>
 						<N8nDropdownMenuItem
 							v-if="hasWhatsNew"

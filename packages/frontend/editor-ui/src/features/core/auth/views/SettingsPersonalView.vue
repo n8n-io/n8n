@@ -4,6 +4,7 @@ import { ROLE, type Role, type ChangeEmailRequestDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useThemeOptions } from '@/app/composables/useThemeOptions';
 import type { ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { MFA_DOCS_URL, VALID_EMAIL_REGEX } from '@/app/constants';
@@ -235,22 +236,8 @@ function visibleError(field: ProfileField): string | undefined {
 	return touched[field] ? fieldErrors.value[field] : undefined;
 }
 
-const themeItems = computed(
-	(): Array<SelectOptionBase<ThemeOption>> => [
-		{
-			value: 'system',
-			label: i18n.baseText('settings.personal.theme.systemDefault'),
-			icon: 'monitor',
-		},
-		{ value: 'light', label: i18n.baseText('settings.personal.theme.light'), icon: 'sun' },
-		{ value: 'dark', label: i18n.baseText('settings.personal.theme.dark'), icon: 'moon' },
-		{
-			value: 'catppuccin-latte',
-			label: i18n.baseText('settings.personal.theme.catppuccinLatte'),
-			icon: 'palette',
-		},
-	],
-);
+const themeOptions = useThemeOptions();
+const themeItems = computed((): Array<SelectOptionBase<ThemeOption>> => themeOptions.value);
 
 function onThemeChange(value: SelectValue | undefined) {
 	const item = themeItems.value.find((option) => option.value === value);
