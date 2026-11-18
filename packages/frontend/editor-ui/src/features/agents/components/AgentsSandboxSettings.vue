@@ -70,11 +70,13 @@ onMounted(loadSettings);
 		<N8nSettingsRowGroup v-else>
 			<SandboxSettingsRow
 				v-if="hasSettingsModule && !isCloudManaged && hasLoaded"
+				data-settings-anchor="sandbox"
 				@configure="dialogOpen = true"
 				@enable="enableEnvironmentSandbox"
 			/>
 			<N8nSettingsRow
 				v-else
+				data-settings-anchor="sandbox"
 				:title="i18n.baseText('settings.n8nAgent.sandbox.label')"
 				:description="connectionDescription"
 				:max-description-lines="3"

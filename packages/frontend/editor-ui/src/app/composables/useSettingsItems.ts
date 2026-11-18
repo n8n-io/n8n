@@ -3,8 +3,12 @@ import { useUserHelpers } from './useUserHelpers';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 import { computed } from 'vue';
-import type { IMenuSettingItem, SettingsSectionId } from '@n8n/frontend-module-sdk';
-import { useI18n } from '@n8n/i18n';
+import {
+	splitSearchKeywords,
+	type IMenuSettingItem,
+	type SettingsSectionId,
+} from '@n8n/frontend-module-sdk';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -56,6 +60,14 @@ export function useSettingsItems() {
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
 
+	// Mirrors the conditions under which the secrets vault page shows the project roles switch.
+	const isExternalSecretsProjectRolesAvailable = () => {
+		const config = settingsStore.moduleSettings['external-secrets'];
+		return !!config && (config.multipleConnections || config.forProjects) && config.roleBasedAccess;
+	};
+
+	const keywords = (key: BaseTextKey) => splitSearchKeywords(i18n.baseText(key));
+
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
 		// `order` is the row inside the section, in steps of ten so a module can slot in between.
 		const shellItems: ShellSettingsItem[] = [
@@ -70,6 +82,54 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
 				route: { to: { name: VIEWS.PERSONAL_SETTINGS } },
+				searchEntries: [
+					{
+						anchor: 'profile-picture',
+						label: i18n.baseText('settings.personal.profilePicture'),
+						group: i18n.baseText('settings.personal.basicInformation'),
+						keywords: keywords('settings.search.keywords.profilePicture'),
+					},
+					{
+						anchor: 'first-name',
+						label: i18n.baseText('settings.personal.firstName'),
+						group: i18n.baseText('settings.personal.basicInformation'),
+						keywords: keywords('settings.search.keywords.name'),
+					},
+					{
+						anchor: 'last-name',
+						label: i18n.baseText('settings.personal.lastName'),
+						group: i18n.baseText('settings.personal.basicInformation'),
+						keywords: keywords('settings.search.keywords.name'),
+					},
+					{
+						anchor: 'email',
+						label: i18n.baseText('auth.email'),
+						group: i18n.baseText('settings.personal.basicInformation'),
+					},
+					{
+						anchor: 'role',
+						label: i18n.baseText('auth.role'),
+						group: i18n.baseText('settings.personal.basicInformation'),
+					},
+					{
+						anchor: 'password',
+						label: i18n.baseText('auth.password'),
+						group: i18n.baseText('settings.personal.security'),
+						keywords: keywords('settings.search.keywords.password'),
+					},
+					{
+						anchor: 'two-factor-authentication',
+						label: i18n.baseText('settings.personal.mfa.section.title'),
+						group: i18n.baseText('settings.personal.security'),
+						keywords: keywords('settings.search.keywords.twoFactorAuthentication'),
+					},
+					{
+						anchor: 'theme',
+						label: i18n.baseText('settings.personal.theme'),
+						group: i18n.baseText('settings.personal.personalisation'),
+						keywords: keywords('settings.search.keywords.theme'),
+					},
+				],
 			},
 			// People & access
 			{
@@ -81,6 +141,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
 				route: { to: { name: VIEWS.USERS_SETTINGS } },
+				searchKeywords: keywords('settings.search.keywords.users'),
 			},
 			{
 				id: 'settings-roles',
@@ -91,6 +152,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
 				route: { to: { name: VIEWS.ROLES_SETTINGS } },
+				searchKeywords: keywords('settings.search.keywords.roles'),
 			},
 			{
 				// One entry for how people sign in; SSO and LDAP are rows on this page.
@@ -102,6 +164,29 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.AUTHENTICATION_SETTINGS),
 				route: { to: { name: VIEWS.AUTHENTICATION_SETTINGS } },
+				searchEntries: [
+					{
+						anchor: 'sso',
+						label: i18n.baseText('settings.authentication.sso.title'),
+						group: i18n.baseText('settings.authentication.methods.title'),
+						keywords: keywords('settings.search.keywords.sso'),
+						available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
+					},
+					{
+						anchor: 'ldap',
+						label: i18n.baseText('settings.ldap'),
+						group: i18n.baseText('settings.authentication.methods.title'),
+						keywords: keywords('settings.search.keywords.ldap'),
+						available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
+					},
+					{
+						anchor: 'two-factor-authentication',
+						label: i18n.baseText('settings.authentication.mfa.title'),
+						group: i18n.baseText('settings.authentication.requirements.title'),
+						keywords: keywords('settings.search.keywords.twoFactorAuthentication'),
+						available: canUserAccessRouteByName(VIEWS.SECURITY_SETTINGS),
+					},
+				],
 			},
 			// AI (modules add MCP at 10, Assistant at 20, Agents at 30 and Chat at 70).
 			// Features come first. Chat is last because it is on its way out.
@@ -121,6 +206,16 @@ export function useSettingsItems() {
 					!settingsStore.isModuleActive(INSTANCE_AI_MODULE) &&
 					canUserAccessRouteByName(VIEWS.AI_SETTINGS),
 				route: { to: { name: VIEWS.AI_SETTINGS } },
+				searchEntries: [
+					{
+						anchor: 'send-schema',
+						label: i18n.baseText('settings.ai.allowSendingSchema.label'),
+					},
+					{
+						anchor: 'send-parameter-values',
+						label: i18n.baseText('settings.ai.allowSendingParameterValues.label'),
+					},
+				],
 			},
 			{
 				id: 'settings-context',
@@ -131,6 +226,16 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
 				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
+				searchEntries: [
+					{
+						anchor: 'preferences',
+						label: i18n.baseText('settings.context.preferences.title'),
+					},
+					{
+						anchor: 'skills',
+						label: i18n.baseText('settings.context.skills.title'),
+					},
+				],
 				preview: true,
 			},
 			// Integrations
@@ -143,6 +248,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: settingsStore.isPublicApiEnabled && canUserAccessRouteByName(VIEWS.API_SETTINGS),
 				route: { to: { name: VIEWS.API_SETTINGS } },
+				searchKeywords: keywords('settings.search.keywords.api'),
 			},
 			{
 				id: 'settings-community-nodes',
@@ -153,6 +259,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 				route: { to: { name: VIEWS.COMMUNITY_NODES } },
+				searchKeywords: keywords('settings.search.keywords.communityNodes'),
 			},
 			// Security
 			{
@@ -164,6 +271,54 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SECURITY_SETTINGS),
 				route: { to: { name: VIEWS.SECURITY_SETTINGS } },
+				searchEntries: [
+					{
+						anchor: 'enforce-two-factor-authentication',
+						label: i18n.baseText('settings.personal.mfa.enforce.title'),
+						group: i18n.baseText('settings.personal.mfa.enforce.message'),
+						keywords: keywords('settings.search.keywords.twoFactorAuthentication'),
+					},
+					{
+						anchor: 'data-redaction',
+						label: i18n.baseText('settings.security.dataRedaction.enforce.title'),
+						group: i18n.baseText('settings.security.dataRedaction.title'),
+						keywords: keywords('settings.search.keywords.dataRedaction'),
+					},
+					{
+						anchor: 'redact-executions',
+						label: i18n.baseText('settings.security.dataRedaction.scope.title'),
+						group: i18n.baseText('settings.security.dataRedaction.title'),
+						keywords: keywords('settings.search.keywords.dataRedaction'),
+					},
+					{
+						anchor: 'personal-space-sharing',
+						label: i18n.baseText('settings.security.personalSpace.sharing.title'),
+						group: i18n.baseText('settings.security.personalSpace.title'),
+					},
+					{
+						anchor: 'personal-space-publishing',
+						label: i18n.baseText('settings.security.personalSpace.publishing.title'),
+						group: i18n.baseText('settings.security.personalSpace.title'),
+					},
+					{
+						anchor: 'node-and-credential-policies',
+						label: i18n.baseText('settings.security.nodeAndCredentialPolicies.title'),
+						group: i18n.baseText('settings.security.nodeAndCredentialPolicies.section'),
+						keywords: keywords('settings.search.keywords.nodeAndCredentialPolicies'),
+					},
+					{
+						anchor: 'workflow-reviews',
+						label: i18n.baseText('settings.security.workflowReviews.enable.title'),
+						group: i18n.baseText('settings.security.workflowReviews.title'),
+						keywords: keywords('settings.search.keywords.workflowReviews'),
+					},
+					{
+						anchor: 'api-rate-limits',
+						label: i18n.baseText('settings.security.rateLimits.enable.title'),
+						group: i18n.baseText('settings.security.rateLimits.title'),
+						keywords: keywords('settings.search.keywords.apiRateLimits'),
+					},
+				],
 			},
 			{
 				id: 'settings-external-secrets',
@@ -174,6 +329,14 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS),
 				route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
+				searchKeywords: keywords('settings.search.keywords.externalSecrets'),
+				searchEntries: [
+					{
+						anchor: 'project-roles',
+						label: i18n.baseText('settings.externalSecrets.systemRoles.title'),
+						available: isExternalSecretsProjectRolesAvailable(),
+					},
+				],
 			},
 			{
 				id: 'settings-credential-resolvers',
@@ -184,6 +347,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.RESOLVERS),
 				route: { to: { name: VIEWS.RESOLVERS } },
+				searchKeywords: keywords('settings.search.keywords.credentialResolvers'),
 			},
 			{
 				id: 'settings-encryption-keys',
@@ -196,6 +360,7 @@ export function useSettingsItems() {
 					settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true &&
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
+				searchKeywords: keywords('settings.search.keywords.encryptionKeys'),
 			},
 			// Operations (modules add Promotions at 20, Log streaming at 40 and OpenTelemetry at 50)
 			{
@@ -207,6 +372,30 @@ export function useSettingsItems() {
 				position: 'top',
 				available: !isPromotionsEnabled.value && canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
+				searchKeywords: keywords('settings.search.keywords.sourceControl'),
+				searchEntries: [
+					{
+						anchor: 'git-configuration',
+						label: i18n.baseText('settings.sourceControl.gitConfig'),
+						keywords: keywords('settings.search.keywords.gitConfiguration'),
+					},
+					{
+						anchor: 'branch',
+						label: i18n.baseText('settings.sourceControl.branches'),
+						group: i18n.baseText('settings.sourceControl.instanceSettings'),
+					},
+					{
+						anchor: 'protected-instance',
+						label: i18n.baseText('settings.sourceControl.protected.bold'),
+						group: i18n.baseText('settings.sourceControl.instanceSettings'),
+						keywords: keywords('settings.search.keywords.protectedInstance'),
+					},
+					{
+						anchor: 'color',
+						label: i18n.baseText('settings.sourceControl.color'),
+						group: i18n.baseText('settings.sourceControl.instanceSettings'),
+					},
+				],
 			},
 			{
 				id: 'settings-workersview',
@@ -219,6 +408,7 @@ export function useSettingsItems() {
 					settingsStore.isQueueModeEnabled &&
 					hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
 				route: { to: { name: VIEWS.WORKER_VIEW } },
+				searchKeywords: keywords('settings.search.keywords.workers'),
 			},
 			{
 				id: 'settings-migration-report',
@@ -249,6 +439,7 @@ export function useSettingsItems() {
 				route: settingsStore.isAiGatewayCloudUbbEnabled
 					? undefined
 					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+				searchKeywords: keywords('settings.search.keywords.gatewayCredits'),
 				creditsTag:
 					balance.value !== undefined
 						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
@@ -265,6 +456,14 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USAGE),
 				route: { to: { name: VIEWS.USAGE } },
+				searchKeywords: keywords('settings.search.keywords.usage'),
+				searchEntries: [
+					{
+						anchor: 'activation-key',
+						label: i18n.baseText('settings.usageAndPlan.button.activation'),
+						keywords: keywords('settings.search.keywords.activationKey'),
+					},
+				],
 			},
 		];
 

@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 import SettingsSidebar from './SettingsSidebar.vue';
 
 const handleSettingsItemSelectMock = vi.hoisted(() => vi.fn());
@@ -31,6 +32,14 @@ vi.mock('../composables/useAiGateway', () => ({
 describe('SettingsSidebar', () => {
 	const renderComponent = createComponentRenderer(SettingsSidebar, {
 		pinia: createTestingPinia(),
+	});
+
+	it('opens the command bar with settings only from the search button', () => {
+		const emit = vi.spyOn(commandBarEventBus, 'emit');
+		const { getByTestId } = renderComponent();
+		getByTestId('settings-search-button').click();
+
+		expect(emit).toHaveBeenCalledWith('open-source', { sourceId: 'settings' });
 	});
 
 	it('delegates settings item clicks', () => {

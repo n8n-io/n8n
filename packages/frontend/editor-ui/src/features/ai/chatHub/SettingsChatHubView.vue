@@ -143,6 +143,7 @@ onMounted(async () => {
 		<N8nSettingsRowGroup>
 			<N8nSettingsEnableRow
 				data-test-id="chat-hub-enabled-row"
+				data-settings-anchor="enabled"
 				:title="i18n.baseText('settings.chatHub.enabled.label')"
 				:description="i18n.baseText('settings.chatHub.enabled.description')"
 				:enabled="isChatEnabled"
@@ -155,13 +156,17 @@ onMounted(async () => {
 		<template v-if="settingsStore.isChatFeatureEnabled">
 			<ChatProvidersTable
 				data-test-id="chat-providers-table"
+				data-settings-anchor="providers"
 				:settings="chatStore.settings"
 				:loading="chatStore.settingsLoading"
 				:disabled="disabled"
 				@edit-provider="onEditProvider"
 				@refresh="onRefreshWorkflows"
 			/>
-			<ChatSemanticSearchSettings v-if="isSemanticSearchEnabled" />
+			<ChatSemanticSearchSettings
+				v-if="isSemanticSearchEnabled"
+				data-settings-anchor="semantic-search"
+			/>
 		</template>
 	</div>
 </template>

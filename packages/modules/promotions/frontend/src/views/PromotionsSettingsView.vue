@@ -211,6 +211,7 @@ async function remove(environment: PromotionEnvironment) {
 							:connect-error="connectErrors.get(environments[direction].id)"
 							:can-connect="canConnect"
 							:data-test-id="`promotion-environment-card-${direction}`"
+							:data-settings-anchor="`${direction}-environment`"
 							@retry="retry(environments[direction])"
 							@edit="
 								router.push({
@@ -220,7 +221,7 @@ async function remove(environment: PromotionEnvironment) {
 							"
 							@remove="remove(environments[direction])"
 						/>
-						<div v-else :class="$style.column">
+						<div v-else :class="$style.column" :data-settings-anchor="`${direction}-environment`">
 							<N8nSettingsRow
 								:title="i18n.baseText(`settings.promotions.environments.${direction}.title`)"
 								:show-divider="false"
@@ -244,6 +245,7 @@ async function remove(environment: PromotionEnvironment) {
 			</N8nSettingsRowGroup>
 			<N8nSettingsRowGroup>
 				<N8nSettingsRow
+					data-settings-anchor="protected-instance"
 					:title="i18n.baseText('settings.sourceControl.protected.bold')"
 					:description="i18n.baseText('settings.promotions.protected.description')"
 				>

@@ -259,6 +259,7 @@ function goToUpgrade() {
 					v-if="isRoleBasedAccessEnabled"
 					class="mt-xl"
 					data-test-id="external-secrets-system-roles-toggle"
+					data-settings-anchor="project-roles"
 				>
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"

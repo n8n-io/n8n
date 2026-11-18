@@ -54,6 +54,7 @@ onMounted(() => {
 		<N8nSettingsSection>
 			<N8nSettingsRowGroup>
 				<N8nSettingsRow
+					data-settings-anchor="default-editor"
 					:title="i18n.baseText('experiments.openWorkflowInAssistant.setting.label')"
 					:description="i18n.baseText('experiments.openWorkflowInAssistant.setting.description')"
 				>

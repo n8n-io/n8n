@@ -188,6 +188,7 @@ function resetField(field: ProfileField) {
 const profileFields = computed(() => [
 	{
 		name: 'firstName' as const,
+		anchor: 'first-name',
 		title: i18n.baseText('settings.personal.firstName'),
 		type: 'text' as const,
 		autocomplete: 'given-name' as const,
@@ -196,6 +197,7 @@ const profileFields = computed(() => [
 	},
 	{
 		name: 'lastName' as const,
+		anchor: 'last-name',
 		title: i18n.baseText('settings.personal.lastName'),
 		type: 'text' as const,
 		autocomplete: 'family-name' as const,
@@ -204,6 +206,7 @@ const profileFields = computed(() => [
 	},
 	{
 		name: 'email' as const,
+		anchor: 'email',
 		title: i18n.baseText('auth.email'),
 		type: 'email' as const,
 		autocomplete: 'email' as const,
@@ -442,6 +445,7 @@ onBeforeUnmount(() => {
 					v-if="currentUser"
 					:title="i18n.baseText('settings.personal.profilePicture')"
 					data-test-id="personal-profile-picture-row"
+					data-settings-anchor="profile-picture"
 				>
 					<template #action>
 						<N8nAvatar
@@ -459,6 +463,7 @@ onBeforeUnmount(() => {
 					:description="field.editable ? undefined : lockedFieldDescription"
 					action-fill
 					:data-test-id="`personal-${field.name}-row`"
+					:data-settings-anchor="field.anchor"
 				>
 					<template #action>
 						<div
@@ -507,6 +512,7 @@ onBeforeUnmount(() => {
 					v-if="currentUser"
 					:title="i18n.baseText('auth.role')"
 					data-test-id="personal-role-row"
+					data-settings-anchor="role"
 				>
 					<template #action>
 						<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
@@ -534,6 +540,7 @@ onBeforeUnmount(() => {
 					v-if="isPersonalSecurityEnabled"
 					:title="i18n.baseText('auth.password')"
 					:description="i18n.baseText('settings.personal.password.description')"
+					data-settings-anchor="password"
 				>
 					<template #action>
 						<N8nButton
@@ -545,7 +552,11 @@ onBeforeUnmount(() => {
 						/>
 					</template>
 				</N8nSettingsRow>
-				<N8nSettingsRow v-if="canConfigureMfa" data-test-id="mfa-section">
+				<N8nSettingsRow
+					v-if="canConfigureMfa"
+					data-test-id="mfa-section"
+					data-settings-anchor="two-factor-authentication"
+				>
 					<template #info>
 						<N8nText bold size="medium" color="text-dark">
 							{{ i18n.baseText('settings.personal.mfa.section.title') }}
@@ -593,6 +604,7 @@ onBeforeUnmount(() => {
 				<N8nSettingsRow
 					:title="i18n.baseText('settings.personal.theme')"
 					:description="i18n.baseText('settings.personal.theme.description')"
+					data-settings-anchor="theme"
 				>
 					<template #action>
 						<N8nSelect2

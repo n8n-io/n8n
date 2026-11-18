@@ -4,7 +4,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 import AppCommandBar from './AppCommandBar.vue';
+
+const openSource = vi.fn();
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
@@ -29,6 +32,7 @@ vi.mock('@/features/shared/commandBar/composables/useCommandBar', () => ({
 		select: vi.fn(),
 		back: vi.fn(),
 		loadMore: vi.fn(),
+		openSource,
 	}),
 }));
 
@@ -48,6 +52,14 @@ describe('AppCommandBar', () => {
 		pinia = createTestingPinia();
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings = defaultSettings;
+	});
+
+	it('opens the command bar with one source when asked', () => {
+		const { unmount } = renderComponent({ pinia });
+		commandBarEventBus.emit('open-source', { sourceId: 'settings' });
+
+		expect(openSource).toHaveBeenCalledWith('settings');
+		unmount();
 	});
 
 	it('renders the command bar by default', () => {

@@ -81,6 +81,7 @@ onMounted(() => {
 					:title="i18n.baseText('settings.authentication.sso.title')"
 					:description="i18n.baseText('settings.authentication.sso.description')"
 					data-test-id="settings-authentication-sso-row"
+					data-settings-anchor="sso"
 					@click="openSso"
 				>
 					<template #action>
@@ -94,6 +95,7 @@ onMounted(() => {
 					:title="i18n.baseText('settings.ldap')"
 					:description="i18n.baseText('settings.authentication.ldap.description')"
 					data-test-id="settings-authentication-ldap-row"
+					data-settings-anchor="ldap"
 					@click="openLdap"
 				>
 					<template #action>
@@ -114,6 +116,7 @@ onMounted(() => {
 					:title="i18n.baseText('settings.authentication.mfa.title')"
 					:description="i18n.baseText('settings.authentication.mfa.description')"
 					data-test-id="settings-authentication-mfa-row"
+					data-settings-anchor="two-factor-authentication"
 					@click="openPolicies"
 				>
 					<template #action>

@@ -64,7 +64,7 @@ onMounted(async () => {
 			<N8nText v-n8n-html="aiSettingsDescription" size="small" color="text-light" />
 		</div>
 		<div :class="$style.content">
-			<div :class="$style.checkboxContainer">
+			<div :class="$style.checkboxContainer" data-settings-anchor="send-schema">
 				<N8nCheckbox
 					v-model="allowSendingSchema"
 					:disabled="true"
@@ -74,7 +74,7 @@ onMounted(async () => {
 					{{ i18n.baseText('settings.ai.allowSendingSchema.description') }}
 				</N8nText>
 			</div>
-			<div :class="$style.checkboxContainer">
+			<div :class="$style.checkboxContainer" data-settings-anchor="send-parameter-values">
 				<N8nCheckbox
 					:model-value="allowSendingParameterValues"
 					:disabled="allowSendingParameterValues"

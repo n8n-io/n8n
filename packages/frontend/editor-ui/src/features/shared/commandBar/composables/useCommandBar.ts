@@ -36,6 +36,7 @@ import { useContextCommands } from './useContextCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import { useInstanceAiCommands } from './useInstanceAiCommands';
+import { useSettingsNavigationCommands } from './useSettingsNavigationCommands';
 import { useAgentNavigationCommands } from './useAgentNavigationCommands';
 import { rankItems } from '../commandBar.utils';
 import type {
@@ -138,11 +139,14 @@ export function useCommandBar() {
 	const recentResourcesGroup = useRecentResources();
 	const chatHubCommandGroup = useChatHubCommands();
 	const instanceAiCommandGroup = useInstanceAiCommands();
+	const settingsNavigationGroup = useSettingsNavigationCommands();
 
 	const isOpen = ref(false);
 	const query = ref('');
 	const remoteQuery = ref('');
 	const activeTab = ref(ALL_TAB);
+	/** Set when the command bar opens with the results of one source only. */
+	const lockedSourceId = ref<string>();
 	const scopeStack = shallowRef<CommandBarScope[]>([]);
 	const results = shallowRef<Record<string, SourceResults>>({});
 	const localLimits = shallowRef<Record<string, number>>({});
@@ -151,6 +155,9 @@ export function useCommandBar() {
 
 	const routeName = computed(() => String(router.currentRoute.value.name ?? ''));
 	const isCanvasView = computed(() => CANVAS_VIEWS.includes(routeName.value));
+	const isSettingsView = computed(() =>
+		router.currentRoute.value.matched.some((record) => record.name === VIEWS.SETTINGS),
+	);
 
 	const contextualGroups = computed<CommandGroup[]>(() => {
 		if (isCanvasView.value) return [nodeCommandGroup, workflowCommandGroup];
@@ -164,6 +171,7 @@ export function useCommandBar() {
 		if (CREDENTIAL_VIEWS.includes(routeName.value)) return credentialNavigationGroup;
 		if (DATA_TABLE_VIEWS.includes(routeName.value)) return dataTableNavigationGroup;
 		if (AGENT_VIEWS.includes(routeName.value)) return agentNavigationGroup;
+		if (isSettingsView.value) return settingsNavigationGroup;
 		return undefined;
 	});
 
@@ -174,6 +182,7 @@ export function useCommandBar() {
 			projectNavigationGroup,
 			credentialNavigationGroup,
 			dataTableNavigationGroup,
+			settingsNavigationGroup,
 		];
 		const leading = leadingNavigationGroup.value;
 		return leading ? [leading, ...groups.filter((group) => group !== leading)] : groups;
@@ -196,11 +205,17 @@ export function useCommandBar() {
 
 	const actions = computed(() => actionGroups.value.flatMap((group) => group.commands.value));
 
-	const tabs = computed<CommandBarTab[]>(() => [
-		{ id: ALL_TAB, label: i18n.baseText('commandBar.tabs.all') },
-		...sources.value.map((source) => ({ id: source.id, label: source.title })),
-		{ id: ACTIONS_TAB, label: i18n.baseText('commandBar.tabs.actions') },
-	]);
+	const lockedSource = computed(() => sources.value.find(({ id }) => id === lockedSourceId.value));
+
+	const tabs = computed<CommandBarTab[]>(() =>
+		lockedSourceId.value
+			? []
+			: [
+					{ id: ALL_TAB, label: i18n.baseText('commandBar.tabs.all') },
+					...sources.value.map((source) => ({ id: source.id, label: source.title })),
+					{ id: ACTIONS_TAB, label: i18n.baseText('commandBar.tabs.actions') },
+				],
+	);
 
 	const scope = computed(() => {
 		let candidates = actions.value;
@@ -412,7 +427,10 @@ export function useCommandBar() {
 	});
 
 	const placeholder = computed(
-		() => scope.value?.placeholder ?? i18n.baseText('commandBar.placeholder'),
+		() =>
+			scope.value?.placeholder ??
+			lockedSource.value?.placeholder ??
+			i18n.baseText('commandBar.placeholder'),
 	);
 
 	const breadcrumb = computed(() => scope.value?.title);
@@ -482,18 +500,28 @@ export function useCommandBar() {
 		);
 	}
 
+	function openSource(sourceId: string) {
+		lockedSourceId.value = sourceId;
+		activeTab.value = sourceId;
+		isOpen.value = true;
+	}
+
 	watch(isOpen, (open) => {
-		if (!open) return;
+		if (!open) {
+			lockedSourceId.value = undefined;
+			return;
+		}
 
 		query.value = '';
 		remoteQuery.value = '';
-		activeTab.value = ALL_TAB;
+		activeTab.value = lockedSourceId.value ?? ALL_TAB;
 		scopeStack.value = [];
 		results.value = {};
 		void initialize();
 	});
 
 	watch(tabs, (availableTabs) => {
+		if (lockedSourceId.value) return;
 		if (!availableTabs.some(({ id }) => id === activeTab.value)) {
 			activeTab.value = ALL_TAB;
 		}
@@ -512,5 +540,6 @@ export function useCommandBar() {
 		select,
 		back,
 		loadMore,
+		openSource,
 	};
 }

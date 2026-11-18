@@ -2,12 +2,22 @@
 import { onMounted } from 'vue';
 import { ABOUT_MODAL_KEY } from '@/app/constants';
 
-import { N8nButton, N8nIcon, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nMenuItem,
+	N8nScrollArea,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useSettingsItems } from '../composables/useSettingsItems';
 import { useAiGateway } from '../composables/useAiGateway';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
+import { SETTINGS_COMMAND_SOURCE_ID } from '@/features/shared/commandBar/composables/useSettingsNavigationCommands';
 
 const emit = defineEmits<{
 	return: [];
@@ -23,6 +33,10 @@ const { fetchWallet, isEnabled } = useAiGateway();
 onMounted(() => {
 	if (isEnabled.value) void fetchWallet();
 });
+
+function openSettingsSearch() {
+	commandBarEventBus.emit('open-source', { sourceId: SETTINGS_COMMAND_SOURCE_ID });
+}
 </script>
 
 <template>
@@ -34,6 +48,17 @@ onMounted(() => {
 				</div>
 				<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 			</div>
+			<N8nTooltip :content="i18n.baseText('settings.search')" placement="bottom" :show-after="500">
+				<N8nIconButton
+					variant="ghost"
+					size="small"
+					icon="search"
+					icon-size="large"
+					:aria-label="i18n.baseText('settings.search')"
+					data-test-id="settings-search-button"
+					@click.stop="openSettingsSearch"
+				/>
+			</N8nTooltip>
 		</div>
 		<!-- The back link stays put; only the links scroll, with faded edges showing there is more. -->
 		<N8nScrollArea edge-fade="y" :class="$style.scrollArea" data-test-id="settings-sidebar-scroll">
@@ -96,6 +121,9 @@ onMounted(() => {
 }
 
 .returnBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	/* Same horizontal inset as the links below, so the hover pill lines up with theirs. */
 	padding: var(--spacing--2xs) var(--spacing--3xs);
 	border-bottom: var(--border);
@@ -103,6 +131,7 @@ onMounted(() => {
 
 .returnButton {
 	/* Mirrors the N8nMenuItem box and hover so the back link reads as part of the list. */
+	flex: 1;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);

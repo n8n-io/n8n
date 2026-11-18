@@ -330,6 +330,7 @@ onBeforeUnmount(() => {
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
+						data-settings-anchor="status"
 						:title="i18n.baseText('settings.mcp.status.title')"
 						:description="i18n.baseText('settings.mcp.status.description')"
 					>
@@ -344,6 +345,7 @@ onBeforeUnmount(() => {
 					</N8nSettingsRow>
 					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the row and button; use title/description fallbacks, unwrap connectHint, and restore variant="outline". -->
 					<N8nSettingsRow
+						data-settings-anchor="connect-client"
 						:title="
 							discoveryOverrides?.clientTitle ?? i18n.baseText('settings.mcp.yourClient.title')
 						"
@@ -378,6 +380,7 @@ onBeforeUnmount(() => {
 						:description="i18n.baseText('settings.mcp.workflowsExposed.description')"
 						clickable
 						data-test-id="mcp-workflows-exposed-row"
+						data-settings-anchor="workflows-enabled"
 						@click="openWorkflowsView"
 					>
 						<template #action>
@@ -386,6 +389,7 @@ onBeforeUnmount(() => {
 					</N8nSettingsRow>
 					<N8nSettingsRow
 						v-if="canManageMcpInstance && isExposeAllOfferEnabled"
+						data-settings-anchor="auto-expose"
 						:title="i18n.baseText('settings.mcp.autoExpose.title')"
 						:description="i18n.baseText('settings.mcp.autoExpose.description')"
 					>
@@ -406,6 +410,7 @@ onBeforeUnmount(() => {
 						:description="i18n.baseText('settings.mcp.agentsExposed.description')"
 						clickable
 						data-test-id="mcp-agents-exposed-row"
+						data-settings-anchor="agents-enabled"
 						@click="openAgentsView"
 					>
 						<template #action>
@@ -419,6 +424,7 @@ onBeforeUnmount(() => {
 						:description="i18n.baseText('settings.mcp.callbackUrls.description')"
 						clickable
 						data-test-id="mcp-callback-urls-row"
+						data-settings-anchor="callback-urls"
 						@click="showCallbackUrlsDialog = true"
 					>
 						<template #action>
@@ -428,7 +434,10 @@ onBeforeUnmount(() => {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
-			<N8nSettingsSection :title="i18n.baseText('settings.mcp.connectedClients.title')">
+			<N8nSettingsSection
+				:title="i18n.baseText('settings.mcp.connectedClients.title')"
+				data-settings-anchor="connected-clients"
+			>
 				<N8nSettingsRowGroup v-if="previewClients.length > 0" data-test-id="mcp-clients-preview">
 					<McpConnectedClientRow
 						v-for="client in previewClients"

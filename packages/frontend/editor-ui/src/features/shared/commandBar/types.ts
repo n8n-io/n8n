@@ -18,6 +18,8 @@ interface CommandBarSourceBase {
 	id: string;
 	title: string;
 	isAvailable: () => boolean;
+	/** Search placeholder when the command bar opens with this source only */
+	placeholder?: string;
 }
 
 export interface CommandBarLocalSource extends CommandBarSourceBase {

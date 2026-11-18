@@ -1,6 +1,11 @@
 import type { PromotionDirection } from '@n8n/api-types';
 import { VIEWS } from '@n8n/frontend-constants/views';
-import { capabilities, capabilityRegistry, defineFrontendModule } from '@n8n/frontend-module-sdk';
+import {
+	capabilities,
+	capabilityRegistry,
+	defineFrontendModule,
+	splitSearchKeywords,
+} from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router';
@@ -60,6 +65,31 @@ export const PromotionsModule = defineFrontendModule({
 			icon: 'git-branch',
 			get label() {
 				return useI18n().baseText('settings.promotions.title');
+			},
+			get searchKeywords() {
+				return splitSearchKeywords(useI18n().baseText('settings.promotions.search.page'));
+			},
+			get searchEntries() {
+				const i18n = useI18n();
+				return [
+					{
+						anchor: 'promote-environment',
+						label: i18n.baseText('settings.promotions.environments.promote.title'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.promotions.search.promote')),
+					},
+					{
+						anchor: 'apply-environment',
+						label: i18n.baseText('settings.promotions.environments.apply.title'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.promotions.search.apply')),
+					},
+					{
+						anchor: 'protected-instance',
+						label: i18n.baseText('settings.sourceControl.protected.bold'),
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.promotions.search.protectedInstance'),
+						),
+					},
+				];
 			},
 			position: 'top',
 			route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },

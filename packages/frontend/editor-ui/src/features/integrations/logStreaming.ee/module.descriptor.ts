@@ -1,5 +1,5 @@
 import { VIEWS } from '@n8n/frontend-constants/views';
-import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule, splitSearchKeywords } from '@n8n/frontend-module-sdk';
 import { i18n } from '@n8n/i18n';
 import { EnterpriseEditionFeature } from '@/app/constants/enterprise';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -30,6 +30,9 @@ export const LogStreamingModule = defineFrontendModule({
 			icon: 'satellite-dish',
 			get label() {
 				return i18n.baseText('settings.log-streaming');
+			},
+			get searchKeywords() {
+				return splitSearchKeywords(i18n.baseText('settings.log-streaming.search.page'));
 			},
 			position: 'top',
 			route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },

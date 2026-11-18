@@ -488,6 +488,7 @@ async function handleDataSharingToggle(value: boolean) {
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow
+						data-settings-anchor="enabled"
 						:title="i18n.baseText('settings.n8nAgent.enable.label')"
 						:description="i18n.baseText('settings.n8nAgent.enable.description')"
 						:enabled="isSwitchOn"
@@ -502,6 +503,7 @@ async function handleDataSharingToggle(value: boolean) {
 						:class="{ [$style.dim]: isOff }"
 						:clickable="!isOff && isModelConfigured && !isModelReadOnly"
 						data-test-id="n8n-agent-model-row"
+						data-settings-anchor="model"
 						@click="openModelDialog"
 					>
 						<template #info>
@@ -540,6 +542,7 @@ async function handleDataSharingToggle(value: boolean) {
 
 					<SandboxSettingsRow
 						v-if="showSandboxRow"
+						data-settings-anchor="sandbox"
 						:class="{ [$style.dim]: isOff }"
 						:disabled="isOff"
 						@configure="openSandboxDialog"
@@ -561,6 +564,7 @@ async function handleDataSharingToggle(value: boolean) {
 						v-if="showCredentialsRows"
 						:clickable="!isOff && searchState !== 'notset' && !isSearchEnvManaged"
 						data-test-id="n8n-agent-search-row"
+						data-settings-anchor="web-search"
 						@click="openSearchDialog"
 					>
 						<template #info>
@@ -603,6 +607,7 @@ async function handleDataSharingToggle(value: boolean) {
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
+						data-settings-anchor="browser-use"
 						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
 						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"
 					>
@@ -626,6 +631,7 @@ async function handleDataSharingToggle(value: boolean) {
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
+						data-settings-anchor="mcp-access"
 						:title="i18n.baseText('settings.n8nAgent.mcpAccess.label')"
 						:description="i18n.baseText('settings.n8nAgent.mcpAccess.description')"
 					>
@@ -646,6 +652,7 @@ async function handleDataSharingToggle(value: boolean) {
 				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
 				:description="permissionsDescription"
+				data-settings-anchor="permissions"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
@@ -726,6 +733,7 @@ async function handleDataSharingToggle(value: boolean) {
 						:title="i18n.baseText('settings.ai.allowSendingSchema.label')"
 						:description="i18n.baseText('settings.ai.allowSendingSchema.description')"
 						data-test-id="n8n-agent-data-sharing-schema-row"
+						data-settings-anchor="send-schema"
 					>
 						<template #action>
 							<N8nSwitch
@@ -740,6 +748,7 @@ async function handleDataSharingToggle(value: boolean) {
 						:title="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
 						:description="i18n.baseText('settings.n8nAgent.dataSharing.values.description')"
 						data-test-id="n8n-agent-data-sharing-values-row"
+						data-settings-anchor="send-values"
 					>
 						<template #action>
 							<N8nSwitch

@@ -326,7 +326,7 @@ watch(connectionType, () => {
 					</template>
 				</I18nT>
 			</N8nText>
-			<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
+			<N8nHeading size="xlarge" tag="h2" class="mb-s" data-settings-anchor="git-configuration">{{
 				locale.baseText('settings.sourceControl.gitConfig')
 			}}</N8nHeading>
 
@@ -505,7 +505,7 @@ watch(connectionType, () => {
 			>
 
 			<div v-if="isConnected" data-test-id="source-control-connected-content">
-				<div :class="$style.group">
+				<div :class="$style.group" data-settings-anchor="branch">
 					<hr />
 					<N8nHeading size="xlarge" tag="h2" class="mb-s">{{
 						locale.baseText('settings.sourceControl.instanceSettings')
@@ -548,6 +548,7 @@ watch(connectionType, () => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 						data-test-id="source-control-read-only-checkbox"
+						data-settings-anchor="protected-instance"
 					>
 						<template #label>
 							<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
@@ -558,7 +559,7 @@ watch(connectionType, () => {
 						</template>
 					</N8nCheckbox>
 				</div>
-				<div :class="$style.group">
+				<div :class="$style.group" data-settings-anchor="color">
 					<label>{{ locale.baseText('settings.sourceControl.color') }}</label>
 					<div>
 						<N8nColorPicker v-model="sourceControlStore.preferences.branchColor" size="small" />

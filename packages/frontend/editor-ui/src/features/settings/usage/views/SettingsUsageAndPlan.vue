@@ -308,6 +308,7 @@ const openCommunityRegisterModal = () => {
 					v-if="canUserActivateLicense"
 					:class="$style.buttonTertiary"
 					size="large"
+					data-settings-anchor="activation-key"
 					@click="onAddActivationKey"
 				>
 					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>

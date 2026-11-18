@@ -158,7 +158,7 @@ function goToUpgrade() {
 		data-test-id="security-data-redaction-section"
 	>
 		<N8nSettingsRowGroup>
-			<N8nSettingsRow>
+			<N8nSettingsRow data-settings-anchor="data-redaction">
 				<template #info>
 					<N8nText :bold="true">
 						{{ i18n.baseText('settings.security.dataRedaction.enforce.title') }}
@@ -211,7 +211,11 @@ function goToUpgrade() {
 				</template>
 			</N8nSettingsRow>
 
-			<N8nSettingsRow v-if="!isLicensed || enforced" data-test-id="redaction-enforcement-scope-row">
+			<N8nSettingsRow
+				v-if="!isLicensed || enforced"
+				data-test-id="redaction-enforcement-scope-row"
+				data-settings-anchor="redact-executions"
+			>
 				<template #info>
 					<N8nText :bold="true">
 						{{ i18n.baseText('settings.security.dataRedaction.scope.title') }}

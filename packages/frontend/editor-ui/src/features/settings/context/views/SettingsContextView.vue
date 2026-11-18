@@ -93,6 +93,7 @@ onMounted(async () => {
 				:title="i18n.baseText('settings.context.preferences.title')"
 				:description="i18n.baseText('settings.context.preferences.subtitle')"
 				data-test-id="settings-context-preferences-row"
+				data-settings-anchor="preferences"
 				@click="openPreferences"
 			>
 				<template #action>
@@ -106,6 +107,7 @@ onMounted(async () => {
 				:title="i18n.baseText('settings.context.skills.title')"
 				:description="i18n.baseText('settings.context.skills.subtitle')"
 				data-test-id="settings-context-skills-row"
+				data-settings-anchor="skills"
 				@click="openSkills"
 			>
 				<template #action>
@@ -117,6 +119,7 @@ onMounted(async () => {
 				:title="i18n.baseText('settings.context.skills.title')"
 				:description="i18n.baseText('settings.context.comingSoon')"
 				data-test-id="settings-context-skills-row"
+				data-settings-anchor="skills"
 			/>
 		</N8nSettingsRowGroup>
 	</N8nSettingsLayout>

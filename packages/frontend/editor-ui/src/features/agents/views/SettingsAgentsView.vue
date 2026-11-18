@@ -80,6 +80,7 @@ onMounted(async () => {
 		<N8nSettingsSection v-else-if="settings">
 			<N8nSettingsRowGroup>
 				<N8nSettingsEnableRow
+					data-settings-anchor="enabled"
 					:title="i18n.baseText('settings.agents.enable.label')"
 					:description="i18n.baseText('settings.agents.enable.description')"
 					:enabled="settings.enabled"

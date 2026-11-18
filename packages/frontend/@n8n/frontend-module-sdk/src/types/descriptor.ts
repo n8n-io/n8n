@@ -51,6 +51,28 @@ export type IMenuSettingItem = IMenuItem & {
 	 * the first heading.
 	 */
 	section?: SettingsSectionId;
+	/**
+	 * @description Settings on the page that the command bar can find. Selecting one opens the
+	 * page and scrolls to the element with the matching `data-settings-anchor` attribute. Add an
+	 * entry for each setting that a user can look for by name.
+	 */
+	searchEntries?: SettingsSearchEntry[];
+	/** @description Other words that a user can type to find the page, e.g. "invite" for Users. */
+	searchKeywords?: string[];
+};
+
+/** A setting on a settings page that the command bar can find and scroll to. */
+export type SettingsSearchEntry = {
+	/** Value of the `data-settings-anchor` attribute on the setting. Unique on its page. */
+	anchor: string;
+	/** Name of the setting, usually the title of its row. */
+	label: string;
+	/** Heading of the group that contains the setting. Shown in the result breadcrumb. */
+	group?: string;
+	/** Other words that a user can type to find the setting, e.g. "dark mode" for Theme. */
+	keywords?: string[];
+	/** Set to `false` when the setting is not shown, e.g. because of the license. */
+	available?: boolean;
 };
 
 /**

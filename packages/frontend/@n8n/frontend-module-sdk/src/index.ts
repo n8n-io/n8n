@@ -4,6 +4,7 @@ export { defineFrontendModule } from './defineFrontendModule';
 export { assertUniqueRouteNames } from './routeNames';
 export { declareCapability } from './declareCapability';
 export { BUILT_IN_DISPLAY_MODES } from './runDataDisplayModes';
+export { splitSearchKeywords } from './settingsSearch';
 
 export * as modalRegistry from './registries/modalRegistry';
 export * from './registries/resourceRegistry';

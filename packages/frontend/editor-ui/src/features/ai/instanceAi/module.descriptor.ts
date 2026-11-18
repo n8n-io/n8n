@@ -5,7 +5,7 @@ import {
 	SELF_HEALING_CONFIGURATION_VIEW,
 	type SelfHealingLocation,
 } from '@n8n/frontend-constants/self-healing';
-import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule, splitSearchKeywords } from '@n8n/frontend-module-sdk';
 import type { LocationQuery, RouteLocationNormalized } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_MODALS } from './modals';
@@ -322,6 +322,97 @@ export const InstanceAiModule = defineFrontendModule({
 			icon: 'n8n-assistant',
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
+			get searchKeywords() {
+				return splitSearchKeywords(i18n.baseText('settings.n8nAgent.settingsSearch.page'));
+			},
+			get searchEntries() {
+				const canManage = canManageInstanceAi();
+				const capabilitiesGroup = i18n.baseText('settings.n8nAgent.capabilities.title');
+				const dataSharingGroup = i18n.baseText('settings.n8nAgent.dataSharing.title');
+				return [
+					{
+						anchor: 'enabled',
+						label: i18n.baseText('settings.n8nAgent.enable.label'),
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.enabled'),
+						),
+						available: canManage,
+					},
+					{
+						anchor: 'model',
+						label: i18n.baseText('settings.n8nAgent.modelCredential.label'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.n8nAgent.settingsSearch.model')),
+						available: canManage,
+					},
+					{
+						anchor: 'sandbox',
+						label: i18n.baseText('settings.n8nAgent.sandbox.label'),
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.sandbox'),
+						),
+						available: canManage,
+					},
+					{
+						// Experiment cleanup: remove with openWorkflowInAssistant.
+						anchor: 'default-editor',
+						label: i18n.baseText('experiments.openWorkflowInAssistant.setting.label'),
+						available: useOpenWorkflowInAssistantStore().isTreatment,
+					},
+					{
+						anchor: 'web-search',
+						label: i18n.baseText('settings.n8nAgent.search.label'),
+						group: capabilitiesGroup,
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.webSearch'),
+						),
+						available: canManage,
+					},
+					{
+						anchor: 'browser-use',
+						label: i18n.baseText('settings.n8nAgent.browserUse.label'),
+						group: capabilitiesGroup,
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.browserUse'),
+						),
+						available: canManage,
+					},
+					{
+						anchor: 'mcp-access',
+						label: i18n.baseText('settings.n8nAgent.mcpAccess.label'),
+						group: i18n.baseText('settings.n8nAgent.mcp.title'),
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.mcpAccess'),
+						),
+						available: canManage,
+					},
+					{
+						anchor: 'permissions',
+						label: i18n.baseText('settings.n8nAgent.permissions.title'),
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.permissions'),
+						),
+						available: canManage,
+					},
+					{
+						anchor: 'send-schema',
+						label: i18n.baseText('settings.ai.allowSendingSchema.label'),
+						group: dataSharingGroup,
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.dataSharing'),
+						),
+						available: canManage,
+					},
+					{
+						anchor: 'send-values',
+						label: i18n.baseText('settings.ai.allowSendingParameterValues.label'),
+						group: dataSharingGroup,
+						keywords: splitSearchKeywords(
+							i18n.baseText('settings.n8nAgent.settingsSearch.dataSharing'),
+						),
+						available: canManage,
+					},
+				];
+			},
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			get available() {
 				return hasInstanceAiSettingsContent();

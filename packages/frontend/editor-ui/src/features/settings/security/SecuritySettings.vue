@@ -221,7 +221,7 @@ const sharingCountText = computed(() => {
 			data-test-id="security-mfa-section"
 		>
 			<N8nSettingsRowGroup>
-				<N8nSettingsRow>
+				<N8nSettingsRow data-settings-anchor="enforce-two-factor-authentication">
 					<template #info>
 						<N8nText :bold="true">
 							{{ i18n.baseText('settings.personal.mfa.enforce.title') }}
@@ -279,7 +279,7 @@ const sharingCountText = computed(() => {
 			data-test-id="security-personal-space-section"
 		>
 			<N8nSettingsRowGroup>
-				<N8nSettingsRow>
+				<N8nSettingsRow data-settings-anchor="personal-space-sharing">
 					<template #info>
 						<N8nText :bold="true">
 							{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
@@ -338,7 +338,7 @@ const sharingCountText = computed(() => {
 			</N8nSettingsRowGroup>
 
 			<N8nSettingsRowGroup>
-				<N8nSettingsRow>
+				<N8nSettingsRow data-settings-anchor="personal-space-publishing">
 					<template #info>
 						<N8nText :bold="true">
 							{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
@@ -412,6 +412,7 @@ const sharingCountText = computed(() => {
 				<N8nSettingsRow
 					clickable
 					data-test-id="security-type-policies-row"
+					data-settings-anchor="node-and-credential-policies"
 					data-attr="security-type-policies-row"
 					@click="openTypePolicies"
 				>
@@ -435,6 +436,7 @@ const sharingCountText = computed(() => {
 			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
 			data-test-id="security-workflow-reviews-section"
+			data-settings-anchor="workflow-reviews"
 		>
 			<WorkflowReviewsSection
 				:initial-enabled="state.workflowReviewsEnabled"

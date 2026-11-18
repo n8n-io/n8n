@@ -1,4 +1,4 @@
-import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule, splitSearchKeywords } from '@n8n/frontend-module-sdk';
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
@@ -14,6 +14,9 @@ import {
 } from '@/features/ai/chatHub/constants';
 import { i18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
 const ChatWorkflowAgentsView = async () =>
@@ -200,6 +203,36 @@ export const ChatModule = defineFrontendModule({
 			icon: 'message-circle',
 			label: i18n.baseText('settings.chatHub'),
 			position: 'top',
+			get searchKeywords() {
+				return splitSearchKeywords(i18n.baseText('settings.chatHub.search.page'));
+			},
+			get searchEntries() {
+				const isChatFeatureEnabled = useSettingsStore().isChatFeatureEnabled;
+				return [
+					{
+						anchor: 'enabled',
+						label: i18n.baseText('settings.chatHub.enabled.label'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.chatHub.search.enabled')),
+					},
+					{
+						anchor: 'providers',
+						label: i18n.baseText('settings.chatHub.providers.table.title'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.chatHub.search.providers')),
+						available: isChatFeatureEnabled,
+					},
+					{
+						anchor: 'semantic-search',
+						label: i18n.baseText('settings.chatHub.semanticSearch.title'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.chatHub.search.semanticSearch')),
+						available:
+							isChatFeatureEnabled &&
+							usePostHog().isVariantEnabled(
+								CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
+								CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.variant,
+							),
+					},
+				];
+			},
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });

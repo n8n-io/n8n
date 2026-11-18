@@ -437,6 +437,7 @@ watch(
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow
+						data-settings-anchor="enabled"
 						:title="i18n.baseText('settings.opentelemetry.status.label')"
 						:description="statusDescription"
 						:enabled="displayedEnabled"
@@ -453,6 +454,7 @@ watch(
 				>
 					<N8nSettingsRowGroup>
 						<OtelSettingsRow
+							data-settings-anchor="protocol"
 							:title="i18n.baseText('settings.opentelemetry.exporterProtocol.label')"
 							:description="i18n.baseText('settings.opentelemetry.exporterProtocol.description')"
 							:env-tooltip="envTooltip('exporterProtocol')"
@@ -482,6 +484,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="endpoint"
 							:title="i18n.baseText('settings.opentelemetry.exporterEndpoint.label')"
 							:description="endpointDescription"
 							:env-tooltip="envTooltip('exporterEndpoint')"
@@ -499,6 +502,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="service-name"
 							:title="i18n.baseText('settings.opentelemetry.exporterServiceName.label')"
 							:description="i18n.baseText('settings.opentelemetry.exporterServiceName.description')"
 							:env-tooltip="envTooltip('exporterServiceName')"
@@ -518,6 +522,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="headers"
 							:title="i18n.baseText('settings.opentelemetry.exporterHeaders.label')"
 							:description="headersDescription"
 							:env-tooltip="envTooltip('exporterHeaders')"
@@ -593,6 +598,7 @@ watch(
 
 						<OtelSettingsRow
 							v-if="!isGrpc"
+							data-settings-anchor="trace-path"
 							:title="i18n.baseText('settings.opentelemetry.exporterTracingPath.label')"
 							:description="i18n.baseText('settings.opentelemetry.exporterTracingPath.description')"
 							:env-tooltip="envTooltip('exporterTracingPath')"
@@ -612,6 +618,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="connectivity-timeout"
 							:title="i18n.baseText('settings.opentelemetry.startupConnectivityTimeoutMs.label')"
 							:description="
 								i18n.baseText('settings.opentelemetry.startupConnectivityTimeoutMs.description')
@@ -640,6 +647,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="verify-configuration"
 							:title="i18n.baseText('settings.opentelemetry.testTrace.label')"
 							:description="testTraceSubtitle"
 							:description-error="otelStore.testState === 'error'"
@@ -678,6 +686,7 @@ watch(
 				<N8nSettingsSection :title="i18n.baseText('settings.opentelemetry.tracing.title')">
 					<N8nSettingsRowGroup>
 						<OtelSettingsRow
+							data-settings-anchor="sample-rate"
 							:title="i18n.baseText('settings.opentelemetry.tracesSampleRate.label')"
 							:description="
 								i18n.baseText('settings.opentelemetry.tracesSampleRate.description', {
@@ -710,6 +719,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="node-spans"
 							:title="i18n.baseText('settings.opentelemetry.includeNodeSpans.label')"
 							:description="i18n.baseText('settings.opentelemetry.includeNodeSpans.description')"
 							:env-tooltip="envTooltip('includeNodeSpans')"
@@ -725,6 +735,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="workflow-start-spans"
 							:title="i18n.baseText('settings.opentelemetry.emitWorkflowStartSpan.label')"
 							:description="
 								i18n.baseText('settings.opentelemetry.emitWorkflowStartSpan.description')
@@ -742,6 +753,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="node-start-spans"
 							:title="i18n.baseText('settings.opentelemetry.emitNodeStartSpan.label')"
 							:description="i18n.baseText('settings.opentelemetry.emitNodeStartSpan.description')"
 							:env-tooltip="envTooltip('emitNodeStartSpan')"
@@ -759,6 +771,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="outbound-trace-headers"
 							:title="i18n.baseText('settings.opentelemetry.injectOutbound.label')"
 							:description="i18n.baseText('settings.opentelemetry.injectOutbound.description')"
 							:env-tooltip="envTooltip('injectOutbound')"
@@ -774,6 +787,7 @@ watch(
 						</OtelSettingsRow>
 
 						<OtelSettingsRow
+							data-settings-anchor="published-workflows-only"
 							:title="i18n.baseText('settings.opentelemetry.productionExecutionsOnly.label')"
 							:description="
 								i18n.baseText('settings.opentelemetry.productionExecutionsOnly.description')

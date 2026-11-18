@@ -27,9 +27,14 @@ vi.mock('lodash/debounce', () => ({
 		Object.assign((...args: unknown[]) => fn(...args), { cancel: vi.fn() }),
 }));
 
-const currentRoute = ref<{ name: string; params: Record<string, string> }>({
+const currentRoute = ref<{
+	name: string;
+	params: Record<string, string>;
+	matched: Array<{ name: string }>;
+}>({
 	name: VIEWS.WORKFLOWS,
 	params: {},
+	matched: [],
 });
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ currentRoute }),
@@ -108,6 +113,8 @@ const genericCommands: CommandBarItem[] = [
 const workflows = createRemoteSource('workflows');
 const credentials = createRemoteSource('credentials', 3);
 const agents = createRemoteSource('agents', 2);
+const settings = createRemoteSource('settings', 2);
+const isSettingsAvailable = ref(false);
 const nodeEntries = ref<CommandBarItem[]>(items('node', 25));
 const assistantCommands = ref<CommandBarItem[]>([]);
 const recentInitialize = vi.fn().mockResolvedValue(undefined);
@@ -175,6 +182,16 @@ vi.mock('./useChatHubCommands', () => ({
 vi.mock('./useInstanceAiCommands', () => ({
 	useInstanceAiCommands: () => ({ commands: computed(() => assistantCommands.value) }),
 }));
+vi.mock('./useSettingsNavigationCommands', () => ({
+	useSettingsNavigationCommands: () =>
+		group([], {
+			source: {
+				...settings.source,
+				placeholder: 'Search settings',
+				isAvailable: () => isSettingsAvailable.value,
+			},
+		}),
+}));
 vi.mock('./useAgentNavigationCommands', () => ({
 	useAgentNavigationCommands: () => group([], { source: agents.source }),
 }));
@@ -210,7 +227,8 @@ describe('useCommandBar', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		workflows.search.mockReset();
-		currentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
+		currentRoute.value = { name: VIEWS.WORKFLOWS, params: {}, matched: [] };
+		isSettingsAvailable.value = false;
 		nodeEntries.value = items('node', 25);
 		assistantCommands.value = [];
 		renderCommandBar();
@@ -234,7 +252,7 @@ describe('useCommandBar', () => {
 			ACTIONS_TAB,
 		]);
 
-		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {}, matched: [] };
 		await nextTick();
 		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
 			ALL_TAB,
@@ -247,7 +265,7 @@ describe('useCommandBar', () => {
 	});
 
 	it('puts the source of the current view first', async () => {
-		currentRoute.value = { name: AGENTS_LIST_VIEW, params: {} };
+		currentRoute.value = { name: AGENTS_LIST_VIEW, params: {}, matched: [] };
 		await open();
 
 		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
@@ -257,6 +275,42 @@ describe('useCommandBar', () => {
 			'credentials',
 			ACTIONS_TAB,
 		]);
+	});
+
+	it('puts the settings source first on a settings page', async () => {
+		isSettingsAvailable.value = true;
+		currentRoute.value = {
+			name: VIEWS.PERSONAL_SETTINGS,
+			params: {},
+			matched: [{ name: VIEWS.SETTINGS }, { name: VIEWS.PERSONAL_SETTINGS }],
+		};
+		await open();
+
+		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
+			ALL_TAB,
+			'settings',
+			'workflows',
+			'agents',
+			'credentials',
+			ACTIONS_TAB,
+		]);
+	});
+
+	it('opens with the results of one source only', async () => {
+		isSettingsAvailable.value = true;
+		commandBar.openSource('settings');
+		await flushPromises();
+
+		expect(commandBar.tabs.value).toEqual([]);
+		expect(commandBar.activeTab.value).toBe('settings');
+		expect(commandBar.placeholder.value).toBe('Search settings');
+		expect(itemIds()).toEqual(['settings-0', 'settings-1']);
+
+		commandBar.isOpen.value = false;
+		await nextTick();
+		await open();
+		expect(commandBar.activeTab.value).toBe(ALL_TAB);
+		expect(commandBar.tabs.value.map(({ id }) => id)).toContain('settings');
 	});
 
 	it('shows recent items and all actions by section without a query', async () => {
@@ -272,7 +326,7 @@ describe('useCommandBar', () => {
 	});
 
 	it('adds contextual actions for the current view', async () => {
-		currentRoute.value = { name: VIEWS.EXECUTION_PREVIEW, params: {} };
+		currentRoute.value = { name: VIEWS.EXECUTION_PREVIEW, params: {}, matched: [] };
 		await open();
 
 		expect(itemIds()).toContain('delete-execution');
@@ -390,7 +444,7 @@ describe('useCommandBar', () => {
 	});
 
 	it('pages a local source and follows changes of its data', async () => {
-		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {}, matched: [] };
 		await open();
 		commandBar.activeTab.value = 'nodes';
 		await flushPromises();
@@ -406,7 +460,7 @@ describe('useCommandBar', () => {
 	});
 
 	it('opens the children of an item and restores the query on back', async () => {
-		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {}, matched: [] };
 		await open();
 		await search('sub');
 
@@ -462,7 +516,7 @@ describe('useCommandBar', () => {
 	});
 
 	it('tracks the parent of a child command', async () => {
-		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {}, matched: [] };
 		await open();
 		commandBar.select(subWorkflowAction, { newTab: false });
 
@@ -491,7 +545,7 @@ describe('useCommandBar', () => {
 	});
 
 	it('resets the query, tab and scope when it opens again', async () => {
-		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {}, matched: [] };
 		await open();
 		commandBar.activeTab.value = 'workflows';
 		commandBar.select(subWorkflowAction, { newTab: false });

@@ -113,7 +113,12 @@ async function save(next: PublicApiRateLimitSettings) {
 		data-test-id="rate-limits-section"
 	>
 		<N8nSettingsRowGroup>
-			<N8nSettingsRow :model-value="settings.enabled" expandable :disclosure="false">
+			<N8nSettingsRow
+				:model-value="settings.enabled"
+				expandable
+				:disclosure="false"
+				data-settings-anchor="api-rate-limits"
+			>
 				<template #info>
 					<N8nText :bold="true">
 						{{ i18n.baseText('settings.security.rateLimits.enable.title') }}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nCommandBar } from '@n8n/design-system';
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
@@ -24,6 +24,7 @@ const {
 	select,
 	back,
 	loadMore,
+	openSource,
 } = useCommandBar();
 
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
@@ -43,6 +44,13 @@ watch(isOpen, (open) => {
 		commandBarEventBus.emit('open');
 	}
 });
+
+function onOpenSource({ sourceId }: { sourceId: string }) {
+	if (showCommandBar.value) openSource(sourceId);
+}
+
+onMounted(() => commandBarEventBus.on('open-source', onOpenSource));
+onBeforeUnmount(() => commandBarEventBus.off('open-source', onOpenSource));
 </script>
 
 <template>

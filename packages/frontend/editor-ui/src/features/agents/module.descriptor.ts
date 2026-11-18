@@ -1,5 +1,5 @@
 import { VIEWS } from '@/app/constants';
-import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule, splitSearchKeywords } from '@n8n/frontend-module-sdk';
 import { i18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -168,6 +168,21 @@ export const AgentsModule = defineFrontendModule({
 			icon: 'robot',
 			label: i18n.baseText('settings.agents'),
 			position: 'top',
+			get searchEntries() {
+				return [
+					{
+						anchor: 'enabled',
+						label: i18n.baseText('settings.agents.enable.label'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.agents.search.enabled')),
+					},
+					{
+						anchor: 'sandbox',
+						label: i18n.baseText('settings.n8nAgent.sandbox.label'),
+						group: i18n.baseText('settings.agents.sandbox.title'),
+						keywords: splitSearchKeywords(i18n.baseText('settings.agents.search.sandbox')),
+					},
+				];
+			},
 			route: { to: { name: AGENTS_SETTINGS_VIEW } },
 			preview: true,
 			get available() {

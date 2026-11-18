@@ -44,6 +44,9 @@ export const AGENT_EVAL_RUN_POLL_MAX_ERRORS = 3;
 
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
+/** How long a settings page waits for a linked setting to render before it gives up. */
+export const SETTINGS_ANCHOR_WAIT_TIMEOUT = 5 * TIME.SECOND;
+
 export const AGENT_EXTERNAL_UPDATE_NOTICE_DURATION = 5 * TIME.MINUTE;
 
 /** Shows the summary fallback if background results never reach the agent. */
