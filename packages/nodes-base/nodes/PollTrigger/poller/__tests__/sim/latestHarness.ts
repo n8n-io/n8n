@@ -216,7 +216,12 @@ export async function runLatest(poll: Poll, sc: LScenario): Promise<LResult> {
 		const items = Array.isArray(res?.items) ? res.items : [];
 		if (items.length > cfg.maxItems) fail('R2', `${items.length} items > maxItems`);
 		if (items.length >= cfg.maxItems) why.add('maxItems hit');
-		const recs = items.map((it) => w.all.get(cfg.key(it))).filter((x): x is Rec => !!x);
+		const recs: Rec[] = [];
+		for (const it of items) {
+			const rec = w.all.get(cfg.key(it));
+			if (rec) recs.push(rec);
+			else fail('L2', `emitted an item that never existed: ${JSON.stringify(it)}`);
+		}
 		if (recs.length)
 			log(
 				`emit ${fmtSeqs(recs.map((x) => x.seq))}`,
