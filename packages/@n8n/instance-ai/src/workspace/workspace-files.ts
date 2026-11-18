@@ -153,13 +153,13 @@ async function readWorkspaceFileContent(
 }
 
 /**
- * Write a UTF-8 workspace file. Tries the workspace filesystem first with a
- * sandbox command fallback when the provider supports both.
+ * Write a workspace file: UTF-8 text, or bytes as they are. Tries the workspace
+ * filesystem first with a sandbox command fallback when the provider supports both.
  */
 export async function writeWorkspaceFile(
 	workspace: WorkspaceFileTarget,
 	filePath: string,
-	content: string,
+	content: string | Buffer,
 	options?: WorkspaceFileOptions,
 ): Promise<void> {
 	return await traceSandboxOperation(
@@ -182,7 +182,7 @@ export async function writeWorkspaceFile(
 async function writeWorkspaceFileContent(
 	workspace: WorkspaceFileTarget,
 	filePath: string,
-	content: string,
+	content: string | Buffer,
 	options?: WorkspaceFileOptions,
 ): Promise<WorkspaceFileTransport> {
 	const label = resourceLabel(options);

@@ -1711,6 +1711,11 @@ export interface InstanceAiStoredFile {
 	readContent(): Promise<Buffer | undefined>;
 }
 
+export interface InstanceAiSandboxFileImport {
+	/** Most bytes that one `import-files` call copies, for all files together. */
+	maxBytes: number;
+}
+
 export interface InstanceAiStoredFileReader {
 	/** Gives `undefined` when the thread has no such file. */
 	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
@@ -1917,6 +1922,11 @@ export interface InstanceAiContext {
 	 * and files from earlier messages stay readable.
 	 */
 	storedFiles?: InstanceAiStoredFileReader;
+	/**
+	 * Lets `import-files` copy stored files into the sandbox. The host sets it
+	 * only when the sandbox files feature is on, so its presence is the gate.
+	 */
+	sandboxFileImport?: InstanceAiSandboxFileImport;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */

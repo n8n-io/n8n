@@ -110,7 +110,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
 | `apps` | 6 |
-| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -1329,6 +1329,28 @@ Tabular results contain normalized column metadata, rows, row counts,
 pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
+
+## `import-files`
+
+Copy stored files of the thread into `inputs/` of the sandbox workspace, so the
+agent can work on them with the workspace tools. The registry adds the tool only
+when the host sets `storedFiles` and `sandboxFileImport` on the context and the
+turn has a workspace. Only the Assistant on the Agents runtime sets them. It
+sets `sandboxFileImport` only when the instance flag `137_agent_sandbox_files`
+is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
+`import_files` tool of project agents. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model when to use it.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `files` | array | yes | — | 1 to 20 items with `fileId` and an optional `path` |
+| `files[].fileId` | string | yes | — | Id of a stored file of the thread |
+| `files[].path` | string | no | file name | Path relative to `inputs/`. A leading `inputs/` is dropped |
+
+The tool checks every file, path and the total size before the first write, so
+a failed check copies nothing. It then writes one file at a time. The result
+lists each copied file with its absolute workspace path, and has an `error`
+when a file could not be copied.
 
 ## `ask_user`
 

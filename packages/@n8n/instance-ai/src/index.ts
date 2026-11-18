@@ -856,6 +856,7 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiSandboxFileImport,
 	InstanceAiStoredFile,
 	InstanceAiStoredFileReader,
 	InstanceAiSkillService,

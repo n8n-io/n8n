@@ -1,7 +1,7 @@
 import { ModelStreamStallError } from '@n8n/agents';
 import { ASSISTANT_TRACE_EVENT, ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from '@n8n/errors';
@@ -9,6 +9,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
 import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
@@ -101,6 +102,8 @@ function setup() {
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
 	const telemetry = mock<TelemetryProxy>();
+	const sandboxFiles = mock<AgentSandboxFilesService>();
+	sandboxFiles.isEnabled.mockResolvedValue(false);
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -117,8 +120,11 @@ function setup() {
 		userRepository,
 		turnOverrides,
 		telemetry,
+		sandboxFiles,
+		mock<AgentsConfig>({ maxImportMb: 200 }),
 	);
 	return {
+		sandboxFiles,
 		userRepository,
 		provider,
 		telemetry,
@@ -475,6 +481,20 @@ describe('AssistantAgentProvider', () => {
 			await expect(environment.context.storedFiles?.read('att-1')).resolves.toBe(stored);
 			await expect(environment.context.storedFiles?.read('other')).resolves.toBeUndefined();
 			expect(handle.input).toBe('Build a digest');
+		});
+
+		it('lets the Assistant import files into its sandbox only when the sandbox files flag is on', async () => {
+			const off = setup();
+			await off.provider.prepareTurn(startTurn());
+			expect(off.environment.context.sandboxFileImport).toBeUndefined();
+
+			const on = setup();
+			on.sandboxFiles.isEnabled.mockResolvedValue(true);
+			await on.provider.prepareTurn(startTurn());
+			// The import cap of project agents, N8N_AGENTS_FILES_MAX_IMPORT_MB.
+			expect(on.environment.context.sandboxFileImport).toEqual({
+				maxBytes: 200 * 1024 * 1024,
+			});
 		});
 
 		it('asks the model to inspect the files of a message without text', async () => {

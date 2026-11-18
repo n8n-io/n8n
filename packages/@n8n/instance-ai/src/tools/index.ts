@@ -24,6 +24,10 @@ const lazyMod = <T>(loader: () => T): (() => T) => {
 const loadParseFileTool = lazyMod(
 	() => require('./attachments/parse-file.tool') as typeof import('./attachments/parse-file.tool'),
 );
+const loadImportFilesTool = lazyMod(
+	() =>
+		require('./attachments/import-files.tool') as typeof import('./attachments/import-files.tool'),
+);
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
@@ -273,6 +277,22 @@ function getOrchestratorDomainToolFactories(
 			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
 			: () => loadParseFileTool().createParseFileTool(context),
 	]);
+
+	// The host sets `sandboxFileImport` only when the sandbox files feature is on. With
+	// stored files and the sandbox, it stays the same for the thread, so the tool list does too.
+	const { workspace, sandboxFileImport } = context;
+	if (storedFiles && workspace && sandboxFileImport) {
+		tools.push([
+			DOMAIN_TOOL_IDS.IMPORT_FILES,
+			() =>
+				loadImportFilesTool().createImportFilesTool(
+					context,
+					storedFiles,
+					workspace,
+					sandboxFileImport,
+				),
+		]);
+	}
 
 	return tools;
 }
