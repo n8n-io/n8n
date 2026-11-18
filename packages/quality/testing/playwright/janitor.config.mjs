@@ -63,6 +63,24 @@ export default defineConfig({
 				/^pages\/WorkflowSettingsModal\.ts:WorkflowSettingsModal: this\.page\.getByTestId\('workflow-settings-save-button'\)\.getByRole\('button'\)$/,
 				// The sharing select teleports its options to the body.
 				/^pages\/WorkflowSharingModal\.ts:WorkflowSharingModal: this\.page\.locator\('\.el-select-dropdown__item'\)\.filter\(\{ hasText: text \}\)$/,
+				// Dismiss the navigation menu with a click outside it.
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.locator\('body'\)\.click\(\)$/,
+				// This filter intersects with a menu item in the visible portal menu.
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.locator\('\[aria-haspopup="menu"\]'\)$/,
+				// Project links render in the main content header, outside the sidebar.
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByRole\('link', \{ name: 'Workflows' \}\)\.click\(\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByRole\('link', \{ name: 'Credentials' \}\)\.click\(\)$/,
+				// The account menu and its help submenu render in portals.
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-account-menu'\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-log-out'\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-account-help'\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-account-whats-new'\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-help-about'\)\.click\(\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('main-sidebar-account-cloud-console'\)$/,
+				// Global modals and banners render outside the sidebar.
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('about-modal'\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('banners-TRIAL'\)$/,
+				/^pages\/SidebarPage\.ts:SidebarPage: this\.page\.getByTestId\('whats-new-modal-next-versions-link'\)$/,
 			],
 		},
 		'selector-purity': { enabled: true, severity: 'error' },
