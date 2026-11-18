@@ -38,6 +38,17 @@ export interface GraphNode {
 	type: StepType;
 	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
+	/**
+	 * The node the user placed, when this node is one inner step of it. The
+	 * engine stores it and never reads it: readers use it to show the inner
+	 * steps as one node.
+	 */
+	scope?: GraphNodeScope;
+}
+
+export interface GraphNodeScope {
+	id: string;
+	name: string;
 }
 
 export interface GraphEdge {

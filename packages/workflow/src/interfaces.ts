@@ -3288,6 +3288,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	 */
 	skipNameGeneration?: boolean;
 	features?: NodeFeaturesDefinition;
+	/** The execution engines that can run the node. Absent means every engine. */
+	engines?: Array<'v1' | 'v2'>;
 	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
 	builderHint?: IBuilderHint;
 	/**

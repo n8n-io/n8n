@@ -1,7 +1,13 @@
 import { isBatchStepConfig } from '@n8n/engine';
 import type { BatchStepConfig, GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
-import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
-import { getChildNodes, isTriggerNodeType } from 'n8n-workflow';
+import type {
+	CompositeScope,
+	INode,
+	INodeConnections,
+	INodeTypes,
+	IWorkflowBase,
+} from 'n8n-workflow';
+import { expandComposites, getChildNodes, isTriggerNodeType } from 'n8n-workflow';
 
 import {
 	DEFAULT_BATCH_SIZE,
@@ -64,14 +70,23 @@ export interface ConvertOptions {
 	 * in for the trigger payload.
 	 */
 	allowNonTriggerRoot?: boolean;
+	/**
+	 * Node types to find composite nodes with. When set, every composite node is
+	 * expanded into its inner nodes first, and those nodes carry the composite as
+	 * their scope.
+	 */
+	nodeTypes?: INodeTypes;
+	/** Composite nodes to leave as they are, because their outputs are pinned. */
+	pinnedNodeNames?: Set<string>;
 }
 
 export class V1WorkflowConverter {
 	convert(
-		workflow: IWorkflowBase,
+		original: IWorkflowBase,
 		firedTriggerName?: string,
 		options: ConvertOptions = {},
 	): WorkflowGraph {
+		const { workflow, scopes } = withCompositesExpanded(original, options);
 		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName, options);
 		// Rooted first: a disabled node must not cut the reachable set short.
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
@@ -85,7 +100,12 @@ export class V1WorkflowConverter {
 			.filter((node) => node.disabled === true)
 			.map((node) => node.id);
 
-		const nodes = liveNodes.map((node) => this.toGraphNode(node, trigger?.id));
+		const nodes = liveNodes.map((node) => {
+			const graphNode = this.toGraphNode(node, trigger?.id);
+			const scope = scopes.get(node.name);
+			if (scope !== undefined) graphNode.scope = scope;
+			return graphNode;
+		});
 
 		let edges = this.toEdges(rooted);
 		edges = this.spliceOutDisabledNodes(edges, disabledNodeIds);
@@ -410,6 +430,19 @@ export class V1WorkflowConverter {
 
 		return sccs;
 	}
+}
+
+function withCompositesExpanded(
+	workflow: IWorkflowBase,
+	{ nodeTypes, pinnedNodeNames }: ConvertOptions,
+): { workflow: IWorkflowBase; scopes: Map<string, CompositeScope> } {
+	if (nodeTypes === undefined) return { workflow, scopes: new Map() };
+
+	const expanded = expandComposites(workflow, nodeTypes, { skip: pinnedNodeNames });
+	return {
+		workflow: { ...workflow, nodes: expanded.nodes, connections: expanded.connections },
+		scopes: expanded.scopes,
+	};
 }
 
 /**

@@ -1,0 +1,11 @@
+{
+	"node": "n8n-nodes-base.pollUntilDone",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {},
+	"alias": ["poll", "polling", "wait until", "retry until", "status", "job"],
+	"subcategories": {
+		"Core Nodes": ["Helpers", "Flow"]
+	}
+}

@@ -13,6 +13,7 @@ const graphNodeSchema = z.object({
 	name: z.string().min(1),
 	type: stepTypeSchema,
 	config: z.unknown().optional(),
+	scope: z.object({ id: z.string().min(1), name: z.string().min(1) }).optional(),
 });
 
 const graphEdgeSchema = z.object({

@@ -1,7 +1,9 @@
 import type { TriggerOutputs, WorkflowDocument, WorkflowGraph } from '@n8n/engine';
+import { Container } from '@n8n/di';
 import type { INodeExecutionData, IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
+import { NodeTypes } from '@/node-types';
 
 /** The part of an engine start that describes the workflow to run. */
 export interface EngineWorkflowPayload {
@@ -40,7 +42,11 @@ export async function toEngineWorkflowPayload({
 	const slots = toStepOutputs(triggerOutputs);
 
 	return {
-		graph: new V1WorkflowConverter().convert(graphSource, triggerName, { allowNonTriggerRoot }),
+		graph: new V1WorkflowConverter().convert(graphSource, triggerName, {
+			allowNonTriggerRoot,
+			nodeTypes: Container.get(NodeTypes),
+			pinnedNodeNames: new Set(Object.keys(pinData ?? {})),
+		}),
 		workflow: toWorkflowDocument(workflowData, pinData),
 		// The wire schema rejects an empty array; `null` is how "no slots" is sent.
 		triggerOutputs: slots.length === 0 ? null : slots,

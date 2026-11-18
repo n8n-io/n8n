@@ -92,6 +92,7 @@ export type {
 	BatchStepConfig,
 	GraphEdge,
 	GraphNode,
+	GraphNodeScope,
 	StepConfig,
 	StepType,
 	StoredWorkflowGraph,

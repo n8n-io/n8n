@@ -54,6 +54,7 @@ export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './highlighted-data';
 export * from './workflow';
+export * from './composite-node';
 export * from './workflow-checksum';
 export * from './workflow-data-proxy';
 export * from './workflow-data-proxy-env-provider';

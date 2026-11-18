@@ -21,6 +21,12 @@ import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflo
 aliases this package does not resolve, so both come from dist. */
 import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
 import { Set as SetNode } from 'n8n-nodes-base/dist/nodes/Set/Set.node';
+import { CompositeEntry } from 'n8n-nodes-base/dist/nodes/Composite/CompositeEntry.node';
+import { CompositeExit } from 'n8n-nodes-base/dist/nodes/Composite/CompositeExit.node';
+import { HttpRequest } from 'n8n-nodes-base/dist/nodes/HttpRequest/HttpRequest.node';
+import { PollUntilDone } from 'n8n-nodes-base/dist/nodes/PollUntilDone/PollUntilDone.node';
+import { Switch } from 'n8n-nodes-base/dist/nodes/Switch/Switch.node';
+import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import { SplitOut } from 'n8n-nodes-base/nodes/Transform/SplitOut/SplitOut.node';
 import type { IDataObject, INodeType, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
@@ -42,6 +48,12 @@ const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.merge', new Merge()],
 	['n8n-nodes-base.noOp', new NoOp()],
 	['n8n-nodes-base.splitOut', new SplitOut()],
+	['n8n-nodes-base.httpRequest', new HttpRequest()],
+	['n8n-nodes-base.switch', new Switch()],
+	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
+	['n8n-nodes-base.compositeEntry', new CompositeEntry()],
+	['n8n-nodes-base.compositeExit', new CompositeExit()],
+	['n8n-nodes-base.pollUntilDone', new PollUntilDone()],
 ]);
 
 export const realNodeTypes: INodeTypes = {
