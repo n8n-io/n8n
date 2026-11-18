@@ -1,0 +1,310 @@
+{
+	"id": "iyixhkvzLdwiLyGK",
+	"name": "Website uptime monitor",
+	"nodes": [
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000001",
+			"name": "Every 5 minutes",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 300],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes",
+							"minutesInterval": 5
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000002",
+			"name": "List of sites",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 300],
+			"parameters": {
+				"jsCode": "return ['https://example.com', 'https://app.example.com/health', 'https://api.example.com/status']\n  .map((url) => ({ json: { url } }));"
+			}
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000003",
+			"name": "Check site",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [440, 300],
+			"parameters": {
+				"url": "={{ $json.url }}",
+				"options": {
+					"timeout": 10000,
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true
+						}
+					}
+				}
+			}
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000004",
+			"name": "Is it down?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [660, 300],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.statusCode }}",
+							"rightValue": 400,
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000005",
+			"name": "Wait 1 minute",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [880, 200],
+			"parameters": {
+				"amount": 1,
+				"unit": "minutes"
+			},
+			"webhookId": "demo-uptime-wait"
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000006",
+			"name": "Check again",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1100, 200],
+			"parameters": {
+				"url": "={{ $('List of sites').item.json.url }}",
+				"options": {
+					"timeout": 10000,
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true
+						}
+					}
+				}
+			}
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000007",
+			"name": "Still down?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [1320, 200],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.statusCode }}",
+							"rightValue": 400,
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000008",
+			"name": "Alert #incidents",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1540, 100],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#incidents"
+				},
+				"text": "=:red_circle: {{ $('List of sites').item.json.url }} is down (HTTP {{ $json.statusCode }})",
+				"otherOptions": {}
+			},
+			"webhookId": "63236d75-3df5-42a2-93ae-3cd5b1b0fbf9"
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000009",
+			"name": "Open status page incident",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1760, 100],
+			"parameters": {
+				"url": "https://status.example.com/api/incidents",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {},
+				"method": "POST",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"name\": \"Outage\", \"component\": $('List of sites').item.json.url } }}"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			}
+		},
+		{
+			"id": "eeeeeeee-0000-4000-8000-000000000010",
+			"name": "Record check",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [1540, 420],
+			"parameters": {
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "UYQPjn1J6ddOJtHj"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": {}
+				}
+			}
+		}
+	],
+	"connections": {
+		"Every 5 minutes": {
+			"main": [
+				[
+					{
+						"node": "List of sites",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List of sites": {
+			"main": [
+				[
+					{
+						"node": "Check site",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check site": {
+			"main": [
+				[
+					{
+						"node": "Is it down?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is it down?": {
+			"main": [
+				[
+					{
+						"node": "Wait 1 minute",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Record check",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 1 minute": {
+			"main": [
+				[
+					{
+						"node": "Check again",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check again": {
+			"main": [
+				[
+					{
+						"node": "Still down?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Still down?": {
+			"main": [
+				[
+					{
+						"node": "Alert #incidents",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Record check",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Alert #incidents": {
+			"main": [
+				[
+					{
+						"node": "Open status page incident",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

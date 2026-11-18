@@ -1,0 +1,451 @@
+{
+	"id": "EUYn9IOMfboZzeyp",
+	"name": "Support ticket triage",
+	"nodes": [
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000001",
+			"name": "New ticket webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 300],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "support/tickets",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"webhookId": "demo-support-tickets"
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000002",
+			"name": "Validate payload",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [220, 300],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.body.email }}",
+							"rightValue": "",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							}
+						},
+						{
+							"id": "c2",
+							"leftValue": "={{ $json.body.message }}",
+							"rightValue": "",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000003",
+			"name": "Reject invalid ticket",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [440, 480],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ { \"error\": \"email and message are required\" } }}",
+				"options": {
+					"responseCode": 400
+				}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000004",
+			"name": "Look up customer",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [440, 200],
+			"parameters": {
+				"url": "=https://shop.example.com/api/customers?email={{ $json.body.email }}",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			},
+			"retryOnFail": true,
+			"maxTries": 3
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000005",
+			"name": "Fetch recent orders",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [660, 200],
+			"parameters": {
+				"url": "=https://shop.example.com/api/orders?customer={{ $json.id }}&limit=5",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000006",
+			"name": "Score urgency",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [880, 200],
+			"parameters": {
+				"jsCode": "const ticket = $('New ticket webhook').first().json.body;\nconst urgentWords = ['refund', 'broken', 'urgent', 'charged twice'];\nconst text = ticket.message.toLowerCase();\nconst hits = urgentWords.filter((word) => text.includes(word)).length;\nconst isVip = $('Look up customer').first().json.lifetimeValue > 5000;\nconst urgency = hits >= 2 || (hits >= 1 && isVip) ? 'high' : hits === 1 ? 'medium' : 'low';\nreturn [{ json: { ...ticket, urgency, isVip, orders: $input.all().map((item) => item.json) } }];"
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000007",
+			"name": "Route by urgency",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.2,
+			"position": [1100, 200],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "high",
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"leftValue": "={{ $json.urgency }}",
+										"rightValue": "high",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "medium",
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"leftValue": "={{ $json.urgency }}",
+										"rightValue": "medium",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra",
+					"renameFallbackOutput": "low"
+				}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000008",
+			"name": "Page on-call engineer",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1340, 20],
+			"parameters": {
+				"method": "POST",
+				"url": "https://events.pagerduty.example.com/v2/enqueue",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"summary\": \"Urgent ticket from \" + $json.email, \"severity\": \"critical\" } }}",
+				"options": {}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000009",
+			"name": "Post to #support-urgent",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1340, 200],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#support-urgent"
+				},
+				"text": "=:rotating_light: {{ $json.email }}: {{ $json.message }}",
+				"otherOptions": {}
+			},
+			"webhookId": "79ff1406-3cc9-4f77-a278-5a53d3c6325b"
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000010",
+			"name": "Add to daily digest",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1340, 380],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a1",
+							"name": "digest",
+							"type": "boolean",
+							"value": true
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000011",
+			"name": "Save ticket",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [1580, 200],
+			"parameters": {
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "UYQPjn1J6ddOJtHj"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": {}
+				}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000012",
+			"name": "Confirm receipt",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [1800, 200],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ { \"status\": \"received\", \"urgency\": $json.urgency } }}",
+				"options": {}
+			}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000013",
+			"name": "On workflow error",
+			"type": "n8n-nodes-base.errorTrigger",
+			"typeVersion": 1,
+			"position": [0, 720],
+			"parameters": {}
+		},
+		{
+			"id": "aaaaaaaa-0000-4000-8000-000000000014",
+			"name": "Alert #ops",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [220, 720],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#ops"
+				},
+				"text": "=Support triage failed: {{ $json.execution.error.message }}",
+				"otherOptions": {}
+			},
+			"webhookId": "6bba104b-61df-4b93-972d-3931c95cf774"
+		}
+	],
+	"connections": {
+		"New ticket webhook": {
+			"main": [
+				[
+					{
+						"node": "Validate payload",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Validate payload": {
+			"main": [
+				[
+					{
+						"node": "Look up customer",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Reject invalid ticket",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Look up customer": {
+			"main": [
+				[
+					{
+						"node": "Fetch recent orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch recent orders": {
+			"main": [
+				[
+					{
+						"node": "Score urgency",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Score urgency": {
+			"main": [
+				[
+					{
+						"node": "Route by urgency",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route by urgency": {
+			"main": [
+				[
+					{
+						"node": "Page on-call engineer",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Post to #support-urgent",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Post to #support-urgent",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add to daily digest",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Page on-call engineer": {
+			"main": [
+				[
+					{
+						"node": "Save ticket",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post to #support-urgent": {
+			"main": [
+				[
+					{
+						"node": "Save ticket",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add to daily digest": {
+			"main": [
+				[
+					{
+						"node": "Save ticket",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Save ticket": {
+			"main": [
+				[
+					{
+						"node": "Confirm receipt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On workflow error": {
+			"main": [
+				[
+					{
+						"node": "Alert #ops",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

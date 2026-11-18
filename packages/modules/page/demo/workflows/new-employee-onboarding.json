@@ -1,0 +1,240 @@
+{
+	"id": "daqE8knhbbFWupOE",
+	"name": "New employee onboarding",
+	"nodes": [
+		{
+			"id": "ffffffff-0000-4000-8000-000000000001",
+			"name": "HR system: new hire",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 300],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "hr/new-hire",
+				"options": {}
+			},
+			"webhookId": "demo-new-hire"
+		},
+		{
+			"id": "ffffffff-0000-4000-8000-000000000002",
+			"name": "Prepare profile",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 300],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a0",
+							"name": "email",
+							"type": "string",
+							"value": "={{ $json.body.firstName.toLowerCase() }}.{{ $json.body.lastName.toLowerCase() }}@example.com"
+						},
+						{
+							"id": "a1",
+							"name": "fullName",
+							"type": "string",
+							"value": "={{ $json.body.firstName }} {{ $json.body.lastName }}"
+						},
+						{
+							"id": "a2",
+							"name": "team",
+							"type": "string",
+							"value": "={{ $json.body.team }}"
+						},
+						{
+							"id": "a3",
+							"name": "startDate",
+							"type": "string",
+							"value": "={{ $json.body.startDate }}"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "ffffffff-0000-4000-8000-000000000003",
+			"name": "Create mailbox",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [440, 160],
+			"parameters": {
+				"url": "https://directory.example.com/api/users",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {},
+				"method": "POST",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"email\": $json.email, \"name\": $json.fullName } }}"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			},
+			"retryOnFail": true,
+			"maxTries": 3
+		},
+		{
+			"id": "ffffffff-0000-4000-8000-000000000004",
+			"name": "Order laptop",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [440, 300],
+			"parameters": {
+				"url": "https://it.example.com/api/orders",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {},
+				"method": "POST",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"for\": $json.email, \"kit\": $json.team === \"Engineering\" ? \"dev\" : \"standard\" } }}"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			}
+		},
+		{
+			"id": "ffffffff-0000-4000-8000-000000000005",
+			"name": "Invite to Slack channels",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [440, 440],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#people-ops"
+				},
+				"text": "=Please invite {{ $json.fullName }} to the {{ $json.team }} channels before {{ $json.startDate }}.",
+				"otherOptions": {}
+			},
+			"webhookId": "29046161-d2f5-4ecd-b8c3-45a13998ace4"
+		},
+		{
+			"id": "ffffffff-0000-4000-8000-000000000006",
+			"name": "Wait for start date",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [680, 300],
+			"parameters": {
+				"resume": "specificTime",
+				"dateTime": "={{ $('Prepare profile').item.json.startDate }}"
+			},
+			"webhookId": "demo-onboarding-wait"
+		},
+		{
+			"id": "ffffffff-0000-4000-8000-000000000007",
+			"name": "Send day-one email",
+			"type": "n8n-nodes-base.emailSend",
+			"typeVersion": 2.1,
+			"position": [900, 300],
+			"parameters": {
+				"fromEmail": "people@example.com",
+				"toEmail": "={{ $('Prepare profile').item.json.email }}",
+				"subject": "Welcome! Your first day",
+				"emailFormat": "text",
+				"text": "=Hi {{ $('Prepare profile').item.json.fullName }}, welcome aboard. Your buddy will meet you at 10:00.",
+				"options": {}
+			},
+			"webhookId": "9508f442-cc40-4f84-bdbc-23dd6371d863"
+		},
+		{
+			"id": "ffffffff-0000-4000-8000-000000000008",
+			"name": "Announce in #general",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1120, 300],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#general"
+				},
+				"text": "=Say hi to {{ $('Prepare profile').item.json.fullName }}, who joins {{ $('Prepare profile').item.json.team }} today :wave:",
+				"otherOptions": {}
+			},
+			"webhookId": "8d24a6bd-a19d-4696-9a01-92e757422bc3"
+		}
+	],
+	"connections": {
+		"HR system: new hire": {
+			"main": [
+				[
+					{
+						"node": "Prepare profile",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare profile": {
+			"main": [
+				[
+					{
+						"node": "Create mailbox",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Order laptop",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invite to Slack channels",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Order laptop": {
+			"main": [
+				[
+					{
+						"node": "Wait for start date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for start date": {
+			"main": [
+				[
+					{
+						"node": "Send day-one email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send day-one email": {
+			"main": [
+				[
+					{
+						"node": "Announce in #general",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

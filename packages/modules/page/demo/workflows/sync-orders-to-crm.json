@@ -1,0 +1,91 @@
+{
+	"id": "Vq9IdbMC7ITCRnFR",
+	"name": "Sync orders to CRM",
+	"nodes": [
+		{
+			"id": "11111111-1111-4111-8111-111111111111",
+			"name": "Every hour",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 0],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours"
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "22222222-2222-4222-8222-222222222222",
+			"name": "Fetch new orders",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 0],
+			"parameters": {
+				"url": "https://api.example.com/orders?status=new"
+			}
+		},
+		{
+			"id": "33333333-3333-4333-8333-333333333333",
+			"name": "Map to CRM fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"parameters": {}
+		},
+		{
+			"id": "aaaa1111-0000-4000-8000-000000000001",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [0, 260],
+			"parameters": {
+				"content": "/page/iRoCWjnrZRFPA8Fl",
+				"height": 460,
+				"width": 440
+			}
+		},
+		{
+			"id": "aaaa1111-0000-4000-8000-000000000002",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [520, 260],
+			"parameters": {
+				"content": "## Plain sticky note\nHover me, then use the page icon to link a page.",
+				"height": 200,
+				"width": 280
+			}
+		}
+	],
+	"connections": {
+		"Every hour": {
+			"main": [
+				[
+					{
+						"node": "Fetch new orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch new orders": {
+			"main": [
+				[
+					{
+						"node": "Map to CRM fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

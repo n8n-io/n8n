@@ -1,0 +1,22 @@
+{
+	"id": "CQaZgvB4DPVWIH5x",
+	"name": "Refund approval API",
+	"nodes": [
+		{
+			"id": "66666666-6666-4666-8666-666666666666",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"path": "refunds",
+				"httpMethod": "POST"
+			},
+			"webhookId": "fa9b08dd-703c-4040-9ab6-39bf07be9487"
+		}
+	],
+	"connections": {},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

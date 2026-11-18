@@ -1,0 +1,40 @@
+{
+	"id": "Gji9dw1jzWIxtenj",
+	"name": "Daily sales report",
+	"nodes": [
+		{
+			"id": "44444444-4444-4444-8444-444444444444",
+			"name": "Every morning",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "55555555-5555-4555-8555-555555555555",
+			"name": "Build report",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"parameters": {
+				"jsCode": "return items;"
+			}
+		}
+	],
+	"connections": {
+		"Every morning": {
+			"main": [
+				[
+					{
+						"node": "Build report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

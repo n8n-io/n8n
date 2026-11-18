@@ -1,0 +1,273 @@
+{
+	"id": "8PkZP1YAP1H9LSJT",
+	"name": "Invoice payment reminders",
+	"nodes": [
+		{
+			"id": "cccccccc-0000-4000-8000-000000000001",
+			"name": "Every weekday at 9",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 300],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "cronExpression",
+							"expression": "0 9 * * 1-5"
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000002",
+			"name": "Get unpaid invoices",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 300],
+			"parameters": {
+				"url": "https://billing.example.com/api/invoices?status=unpaid",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			},
+			"retryOnFail": true,
+			"maxTries": 3
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000003",
+			"name": "Keep overdue only",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [440, 300],
+			"parameters": {
+				"jsCode": "const DAY = 24 * 60 * 60 * 1000;\nreturn $input.all()\n  .map((item) => ({ ...item.json, daysLate: Math.floor((Date.now() - new Date(item.json.dueDate)) / DAY) }))\n  .filter((invoice) => invoice.daysLate > 0)\n  .map((invoice) => ({ json: invoice }));"
+			}
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000004",
+			"name": "For each invoice",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [660, 300],
+			"parameters": {
+				"options": {}
+			}
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000005",
+			"name": "More than 30 days late?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [880, 400],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.daysLate }}",
+							"rightValue": 30,
+							"operator": {
+								"type": "number",
+								"operation": "gt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000006",
+			"name": "Escalate to finance",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1100, 300],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#finance"
+				},
+				"text": "=Invoice {{ $json.number }} for {{ $json.customer }} is {{ $json.daysLate }} days late ({{ $json.amount }} EUR)",
+				"otherOptions": {}
+			},
+			"webhookId": "911f1857-57e2-453e-8167-790c5a6bba60"
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000007",
+			"name": "Send friendly reminder",
+			"type": "n8n-nodes-base.emailSend",
+			"typeVersion": 2.1,
+			"position": [1100, 500],
+			"parameters": {
+				"fromEmail": "billing@example.com",
+				"toEmail": "={{ $json.contactEmail }}",
+				"subject": "=Reminder: invoice {{ $json.number }}",
+				"emailFormat": "text",
+				"text": "=Hello, invoice {{ $json.number }} was due on {{ $json.dueDate }}. You can pay it here: {{ $json.paymentUrl }}",
+				"options": {}
+			},
+			"webhookId": "1a78b66d-8dab-4eed-9451-a7777ec65b5e"
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000008",
+			"name": "Mark reminder sent",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1340, 400],
+			"parameters": {
+				"url": "=https://billing.example.com/api/invoices/{{ $json.id }}/reminders",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {},
+				"method": "POST"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			}
+		},
+		{
+			"id": "cccccccc-0000-4000-8000-000000000009",
+			"name": "Post summary",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [880, 160],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#finance"
+				},
+				"text": "=Payment reminders done: {{ $input.all().length }} overdue invoices handled today.",
+				"otherOptions": {}
+			},
+			"webhookId": "54c7c0c5-de63-4699-9f1a-a3c11f293636"
+		}
+	],
+	"connections": {
+		"Every weekday at 9": {
+			"main": [
+				[
+					{
+						"node": "Get unpaid invoices",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get unpaid invoices": {
+			"main": [
+				[
+					{
+						"node": "Keep overdue only",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Keep overdue only": {
+			"main": [
+				[
+					{
+						"node": "For each invoice",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"For each invoice": {
+			"main": [
+				[
+					{
+						"node": "Post summary",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "More than 30 days late?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"More than 30 days late?": {
+			"main": [
+				[
+					{
+						"node": "Escalate to finance",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send friendly reminder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Escalate to finance": {
+			"main": [
+				[
+					{
+						"node": "Mark reminder sent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send friendly reminder": {
+			"main": [
+				[
+					{
+						"node": "Mark reminder sent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mark reminder sent": {
+			"main": [
+				[
+					{
+						"node": "For each invoice",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

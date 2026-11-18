@@ -1,0 +1,34 @@
+{
+	"projectId": "dkjNUq6msDo1qe7b",
+	"credential": {
+		"id": "WGs1zeDEifTjZuvN",
+		"name": "Orders API key",
+		"type": "httpHeaderAuth"
+	},
+	"dataTable": {
+		"id": "UYQPjn1J6ddOJtHj",
+		"name": "Orders",
+		"columns": [
+			{
+				"name": "orderId",
+				"type": "string"
+			},
+			{
+				"name": "amount",
+				"type": "number"
+			}
+		]
+	},
+	"pages": [
+		{
+			"id": "iRoCWjnrZRFPA8Fl",
+			"title": "Orders runbook",
+			"file": "orders-runbook.md"
+		},
+		{
+			"id": "TyUl05NOB2u0r5Ad",
+			"title": "Daily sales report",
+			"file": "daily-sales-report.md"
+		}
+	]
+}

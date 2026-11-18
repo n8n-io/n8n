@@ -1,0 +1,381 @@
+{
+	"id": "4S3UYna80HnT5pWA",
+	"name": "AI inbox assistant",
+	"nodes": [
+		{
+			"id": "dddddddd-0000-4000-8000-000000000001",
+			"name": "New email in support inbox",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 300],
+			"parameters": {
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				},
+				"filters": {
+					"labelIds": ["INBOX"]
+				},
+				"simple": true
+			}
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000002",
+			"name": "Classify and draft reply",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.7,
+			"position": [240, 300],
+			"parameters": {
+				"promptType": "define",
+				"text": "=Subject: {{ $json.subject }}\n\n{{ $json.snippet }}",
+				"options": {
+					"systemMessage": "You triage support email. Answer with JSON only: {\"category\": \"billing\" | \"bug\" | \"sales\" | \"spam\", \"draft\": \"<a short polite reply>\"}. Never promise a refund."
+				}
+			}
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000003",
+			"name": "Claude model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"typeVersion": 1.3,
+			"position": [240, 520],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-5-5"
+				},
+				"options": {
+					"temperature": 0.2
+				}
+			}
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000004",
+			"name": "Parse answer",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [520, 300],
+			"parameters": {
+				"jsCode": "const answer = JSON.parse($input.first().json.output);\nconst email = $('New email in support inbox').first().json;\nreturn [{ json: { ...email, ...answer } }];"
+			},
+			"onError": "continueErrorOutput"
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000005",
+			"name": "Route by category",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.2,
+			"position": [740, 300],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "billing",
+							"renameOutput": true,
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"leftValue": "={{ $json.category }}",
+										"rightValue": "billing",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"outputKey": "bug",
+							"renameOutput": true,
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"leftValue": "={{ $json.category }}",
+										"rightValue": "bug",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"outputKey": "sales",
+							"renameOutput": true,
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"leftValue": "={{ $json.category }}",
+										"rightValue": "sales",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra",
+					"renameFallbackOutput": "other"
+				}
+			}
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000006",
+			"name": "Forward to billing",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [980, 80],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#billing"
+				},
+				"text": "=Billing question from {{ $json.from }}: {{ $json.subject }}",
+				"otherOptions": {}
+			},
+			"webhookId": "554d65aa-c7c2-4d72-856b-37a195463754"
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000007",
+			"name": "Create bug ticket",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [980, 240],
+			"parameters": {
+				"url": "https://tracker.example.com/api/issues",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {},
+				"method": "POST",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"title\": $json.subject, \"body\": $json.snippet, \"label\": \"from-support\" } }}"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			}
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000008",
+			"name": "Notify account executive",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [980, 400],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#sales"
+				},
+				"text": "=Sales question from {{ $json.from }}: {{ $json.subject }}",
+				"otherOptions": {}
+			},
+			"webhookId": "ce275518-9744-4064-bb59-5e604296dcce"
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000009",
+			"name": "Archive spam",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [980, 560],
+			"parameters": {
+				"operation": "removeLabels",
+				"messageId": "={{ $json.id }}",
+				"labelIds": ["INBOX"]
+			},
+			"webhookId": "61c130a3-b854-4035-ad00-df98e63cb018"
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000010",
+			"name": "Save draft reply",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [1220, 240],
+			"parameters": {
+				"resource": "draft",
+				"subject": "=Re: {{ $json.subject }}",
+				"message": "={{ $json.draft }}",
+				"options": {
+					"threadId": "={{ $json.threadId }}"
+				}
+			},
+			"webhookId": "da52e898-0038-4198-b7c3-8654c187b880"
+		},
+		{
+			"id": "dddddddd-0000-4000-8000-000000000011",
+			"name": "Flag unparsed answer",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [740, 560],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#support-ops"
+				},
+				"text": "=The AI answer for \"{{ $json.subject }}\" was not valid JSON. Please triage by hand.",
+				"otherOptions": {}
+			},
+			"webhookId": "2a5972b5-65c1-4744-a2e5-08e55f68b236"
+		}
+	],
+	"connections": {
+		"New email in support inbox": {
+			"main": [
+				[
+					{
+						"node": "Classify and draft reply",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Claude model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Classify and draft reply",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Classify and draft reply": {
+			"main": [
+				[
+					{
+						"node": "Parse answer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse answer": {
+			"main": [
+				[
+					{
+						"node": "Route by category",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Flag unparsed answer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route by category": {
+			"main": [
+				[
+					{
+						"node": "Forward to billing",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Create bug ticket",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Notify account executive",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Archive spam",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Forward to billing": {
+			"main": [
+				[
+					{
+						"node": "Save draft reply",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create bug ticket": {
+			"main": [
+				[
+					{
+						"node": "Save draft reply",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notify account executive": {
+			"main": [
+				[
+					{
+						"node": "Save draft reply",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

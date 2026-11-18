@@ -1,0 +1,300 @@
+{
+	"id": "XSUR3Y5HX6tS8DYg",
+	"name": "Lead capture to CRM",
+	"nodes": [
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000001",
+			"name": "Contact form",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.2,
+			"position": [0, 300],
+			"parameters": {
+				"formTitle": "Talk to sales",
+				"formDescription": "We answer within one business day.",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Name",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Work email",
+							"fieldType": "email",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Company"
+						},
+						{
+							"fieldLabel": "Team size",
+							"fieldType": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"webhookId": "demo-lead-form"
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000002",
+			"name": "Enrich company",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [220, 300],
+			"parameters": {
+				"url": "=https://enrich.example.com/v1/companies?domain={{ $json[\"Work email\"].split(\"@\")[1] }}",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			},
+			"retryOnFail": true,
+			"maxTries": 3,
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000003",
+			"name": "Score lead",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [440, 300],
+			"parameters": {
+				"jsCode": "const form = $('Contact form').first().json;\nconst company = $input.first().json;\nconst sizeScore = (form['Team size'] ?? 0) >= 50 ? 50 : 10;\nconst fundingScore = company.fundingStage === 'series-b' ? 30 : 0;\nconst score = sizeScore + fundingScore;\nreturn [{ json: { ...form, company, score, tier: score >= 50 ? 'hot' : 'nurture' } }];"
+			}
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000004",
+			"name": "Is hot lead?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [660, 300],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.tier }}",
+							"rightValue": "hot",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000005",
+			"name": "Create deal in CRM",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [880, 180],
+			"parameters": {
+				"url": "https://crm.example.com/api/deals",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {},
+				"method": "POST",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"name\": $json.Company, \"contact\": $json[\"Work email\"], \"score\": $json.score } }}"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			}
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000006",
+			"name": "Notify #sales",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1100, 180],
+			"parameters": {
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "name",
+					"value": "#sales"
+				},
+				"text": "=:fire: Hot lead: {{ $json.Name }} from {{ $json.Company }} (score {{ $json.score }})",
+				"otherOptions": {}
+			},
+			"webhookId": "963913a4-536a-4a05-9b61-6662b9c9d76b"
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000007",
+			"name": "Add to nurture list",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [880, 420],
+			"parameters": {
+				"url": "https://crm.example.com/api/lists/nurture/members",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"options": {},
+				"method": "POST",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ { \"email\": $json[\"Work email\"] } }}"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "WGs1zeDEifTjZuvN",
+					"name": "Orders API key"
+				}
+			}
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000008",
+			"name": "Send welcome email",
+			"type": "n8n-nodes-base.emailSend",
+			"typeVersion": 2.1,
+			"position": [1100, 420],
+			"parameters": {
+				"fromEmail": "sales@example.com",
+				"toEmail": "={{ $json[\"Work email\"] }}",
+				"subject": "Thanks for reaching out",
+				"emailFormat": "text",
+				"text": "=Hi {{ $json.Name }}, thanks for your interest. Here is a short guide to get started.",
+				"options": {}
+			},
+			"webhookId": "386dfa3f-3ead-4f25-bc03-fc51254de47f"
+		},
+		{
+			"id": "bbbbbbbb-0000-4000-8000-000000000009",
+			"name": "Log lead",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [1340, 300],
+			"parameters": {
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "UYQPjn1J6ddOJtHj"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": {}
+				}
+			}
+		}
+	],
+	"connections": {
+		"Contact form": {
+			"main": [
+				[
+					{
+						"node": "Enrich company",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Enrich company": {
+			"main": [
+				[
+					{
+						"node": "Score lead",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Score lead": {
+			"main": [
+				[
+					{
+						"node": "Is hot lead?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is hot lead?": {
+			"main": [
+				[
+					{
+						"node": "Create deal in CRM",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add to nurture list",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create deal in CRM": {
+			"main": [
+				[
+					{
+						"node": "Notify #sales",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add to nurture list": {
+			"main": [
+				[
+					{
+						"node": "Send welcome email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notify #sales": {
+			"main": [
+				[
+					{
+						"node": "Log lead",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send welcome email": {
+			"main": [
+				[
+					{
+						"node": "Log lead",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
