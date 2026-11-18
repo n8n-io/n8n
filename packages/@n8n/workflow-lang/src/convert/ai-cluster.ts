@@ -720,9 +720,8 @@ function toolsAgent(
 	if (outputParser !== undefined) shared.outputParser = outputParser;
 	let tools: string[] | undefined;
 	if (toolSubs.length > 0) {
-		// The proof of the loop is for the node that stops, one item at a time, without a
-		// memory, on the Chat Completions API of OpenAI.
-		if (aiMemory !== undefined) return 'tools with a memory';
+		// The proof of the loop is for the node that stops, one item at a time, on the
+		// Chat Completions API of OpenAI, with or without a memory.
 		if (!stops) return 'tools with an error setting';
 		if (size !== 1) return 'tools with batches';
 		if (aiModel.provider !== 'openAi' && aiModel.provider !== 'openRouter') {

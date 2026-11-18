@@ -111,10 +111,14 @@ interface AiMemory {
 	window?: number;
 }
 
-/** One message of a session: the prompt of the user, or the answer of the agent. */
+/** One message of a session: a prompt, an answer, a tool call or a tool result. */
 interface StoredMessage {
 	ai: boolean;
 	text: string;
+	/** A tool call of the assistant (an `AIMessage` with `tool_calls` of LangChain). */
+	toolCalls?: Array<{ id: string; name: string; arguments: string }>;
+	/** The id of the matching call for a tool result (a `ToolMessage` of LangChain). */
+	toolCallId?: string;
 }
 
 /** One argument of a tool: a `$fromAI` call of the tool node (`src/convert/from-ai.ts`). */
@@ -240,7 +244,9 @@ interface ModelRequest {
 
 interface ChatMessage {
 	role: string;
-	content: string;
+	content: unknown;
+	tool_calls?: unknown[];
+	tool_call_id?: string;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -309,7 +315,27 @@ function chatMessages(
 		}
 		// The chat history of the memory comes after the system message.
 		for (const message of history) {
-			out.push({ role: message.ai ? 'assistant' : 'user', content: message.text });
+			if (message.ai) {
+				// An assistant message with tool calls, or a simple text answer.
+				out.push(
+					message.toolCalls !== undefined
+						? {
+								role: 'assistant',
+								content: message.text,
+								tool_calls: message.toolCalls.map((call) => ({
+									id: call.id,
+									type: 'function',
+									function: { name: call.name, arguments: call.arguments },
+								})),
+							}
+						: { role: 'assistant', content: message.text },
+				);
+			} else if (message.toolCallId !== undefined) {
+				// A tool result message.
+				out.push({ role: 'tool', content: message.text, tool_call_id: message.toolCallId });
+			} else {
+				out.push({ role: 'user', content: message.text });
+			}
 		}
 		out.push({ role: 'user', content: promptText(parameters.text) });
 		return out;
@@ -1465,6 +1491,16 @@ export default defineNode<ChainParameters>({
 				args: { sessionKey: session, input, output },
 			});
 		};
+		/** The agent with tools keeps the messages of a turn in the session. */
+		const rememberMessages = async (messages: StoredMessage[]): Promise<void> => {
+			if (session === undefined || messages.length === 0) return;
+			memoryRuns.push({ error: null });
+			await ctx.service({
+				service: 'chatMemory',
+				op: 'save',
+				args: { sessionKey: session, messages },
+			});
+		};
 
 		/**
 		 * One call of the Anthropic model. The credential type injects the key and the custom
@@ -1768,19 +1804,70 @@ export default defineNode<ChainParameters>({
 		const tools = agent ? parameters.tools : undefined;
 		if (tools !== undefined) {
 			const fail = (error: string | undefined, description?: string) => [
-				{ items: [], runs, parserRuns, error: error ?? '', description: description ?? '' },
+				{ items: [], runs, memoryRuns, parserRuns, error: error ?? '', description: description ?? '' },
 			];
 			const toolOf = (name: string): ToolSpec | undefined => {
 				for (const tool of tools) if (tool.name === name) return tool;
 				return undefined;
 			};
+			/** Convert messages from the `added` list to the stored form for the memory. */
+			const storedOf = (added: unknown[]): StoredMessage[] => {
+				const out: StoredMessage[] = [];
+				for (const msg of added) {
+					if (!isObject(msg)) continue;
+					const role = typeof msg.role === 'string' ? msg.role : '';
+					if (role === 'assistant') {
+						const tool_calls = msg.tool_calls;
+						if (Array.isArray(tool_calls)) {
+							out.push({
+								ai: true,
+								text: typeof msg.content === 'string' ? msg.content : '',
+								toolCalls: tool_calls.map((c: Record<string, unknown>) => ({
+									id: String(c.id ?? ''),
+									name: isObject(c.function) ? String(c.function?.name ?? '') : '',
+									arguments: isObject(c.function) ? String(c.function?.arguments ?? '') : '',
+								})),
+							});
+						} else {
+							out.push({ ai: true, text: typeof msg.content === 'string' ? msg.content : '' });
+						}
+					} else if (role === 'tool') {
+						out.push({
+							ai: false,
+							text: typeof msg.content === 'string' ? msg.content : '',
+							toolCallId: typeof msg.tool_call_id === 'string' ? msg.tool_call_id : undefined,
+						});
+					} else {
+						out.push({ ai: false, text: typeof msg.content === 'string' ? msg.content : '' });
+					}
+				}
+				return out;
+			};
+			/** Load the memory of one item, and save its prompt, tool calls and answer. */
+			const loadSave = async (
+				item: ItemParameters,
+				added: unknown[],
+				answer?: string,
+			) => {
+				if (session === undefined) return;
+				const input = promptText(item.text);
+				const output = answer ?? '';
+				if (version >= 3 && (input === '' || output === '')) return;
+				await rememberMessages([
+					{ ai: false, text: input },
+					...storedOf(added),
+					{ ai: true, text: output },
+				]);
+			};
+			// The chat history of the memory, loaded once per item.
+			let history: StoredMessage[] = [];
 			/** The request of an item: the tools, then the messages with the calls and results so far. */
 			const toolRequest = (item: ItemParameters, added: unknown[]): ModelRequest => {
 				const request = requestOf(
 					item,
 					ai,
 					true,
-					[],
+					history,
 					agentParser !== undefined ? FORMAT_INSTRUCTIONS : undefined,
 				);
 				const body: Record<string, unknown> = {};
@@ -1880,6 +1967,16 @@ export default defineNode<ChainParameters>({
 					const items: Item[] = [];
 					const calls: ToolCall[] = [];
 					let carried: AgentStep[] | undefined;
+					// Load the chat history from the memory, once for the execution.
+					if (session !== undefined) {
+						memoryRuns.push({ error: null });
+						const loaded = await ctx.service<{ messages?: StoredMessage[] }>({
+							service: 'chatMemory',
+							op: 'load',
+							args: { sessionKey: session },
+						});
+						history = loaded.messages ?? [];
+					}
 					for (let i = 0; i < batch.length; i++) {
 						const item = batch[i];
 						if (item.text === undefined) return fail('No prompt specified');
@@ -1936,6 +2033,7 @@ export default defineNode<ChainParameters>({
 							const outcome = parseAnswer(turn.parse.input, steps);
 							if (outcome.item === undefined) return fail(outcome.error, outcome.description);
 							items.push(outcome.item);
+							await loadSave(item, added, JSON.stringify(turn.parse.input));
 						} else if (turn.calls !== undefined) {
 							if (carried === undefined) carried = steps;
 							const text =
@@ -1967,14 +2065,15 @@ export default defineNode<ChainParameters>({
 							const output: Item = { output: turn.text ?? '' };
 							if (parameters.returnIntermediateSteps === true) output.intermediateSteps = steps;
 							items.push(output);
+							await loadSave(item, added, turn.text ?? '');
 						}
 						if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
 					}
-					if (carried === undefined) return [{ items, runs, parserRuns }];
+					if (carried === undefined) return [{ items, runs, memoryRuns, parserRuns }];
 					iteration++;
 					previous = carried;
 					if (calls.length > 0) {
-						return [{ items: [], runs, parserRuns, calls, state: { iteration, previous, calls } }];
+						return [{ items: [], runs, memoryRuns, parserRuns, calls, state: { iteration, previous, calls } }];
 					}
 					// The agent has none of the tools that the model calls: the engine has no step
 					// to run, and runs the node again.
@@ -1992,6 +2091,16 @@ export default defineNode<ChainParameters>({
 			for (let i = state.index ?? 0; i < batch.length; i++) {
 				const item = batch[i];
 				if (item.text === undefined) return fail('No prompt specified');
+				// Load the chat history from the memory, once for the item.
+				if (!resumed && session !== undefined) {
+					memoryRuns.push({ error: null });
+					const loaded = await ctx.service<{ messages?: StoredMessage[] }>({
+						service: 'chatMemory',
+						op: 'load',
+						args: { sessionKey: session },
+					});
+					history = loaded.messages ?? [];
+				}
 				for (let round = 0; ; round++) {
 					let stop = false;
 					if (resumed) {
@@ -2015,10 +2124,12 @@ export default defineNode<ChainParameters>({
 							const outcome = parseAnswer(turn.parse.input, []);
 							if (outcome.item === undefined) return fail(outcome.error, outcome.description);
 							items.push(outcome.item);
+							await loadSave(item, added, JSON.stringify(turn.parse.input));
 							break;
 						}
 						if (turn.calls === undefined) {
 							items.push({ output: turn.text ?? '' });
+							await loadSave(item, added, turn.text ?? '');
 							break;
 						}
 						turnCount++;
@@ -2095,7 +2206,7 @@ export default defineNode<ChainParameters>({
 				turnCount = 0;
 				if (i + 1 < batch.length && delay > 0) await ctx.wait({ duration: delay });
 			}
-			return [{ items, runs, parserRuns }];
+			return [{ items, runs, memoryRuns, parserRuns }];
 		}
 
 		for (let iteration = 0; ; iteration++) {

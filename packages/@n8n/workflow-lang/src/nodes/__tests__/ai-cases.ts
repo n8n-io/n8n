@@ -2948,6 +2948,23 @@ const TOOL_INPUT_GAPS = [
 export const TOOL_PENDING_CASES = ALL_TOOL_CASES.filter((c) => TOOL_INPUT_GAPS.includes(c.name));
 export const TOOL_CASES = ALL_TOOL_CASES.filter((c) => !TOOL_INPUT_GAPS.includes(c.name));
 
+/** The Tools Agent with tools and a memory: a simple tool and a conversation of one item. */
+export const TOOL_MEMORY_CASES: EquivalenceCase[] = [
+	...[2.2, 3.1].map((version) =>
+		agent(
+			`tools memory, version ${version}`,
+			version,
+			gpt,
+			[fetchA, page('A'), completion('The page is A')],
+			brief(version),
+			{
+				...withTools([httpTool]),
+				subNodes: [gpt, httpTool, customKey(`key-tool-mem-${version}`)],
+			},
+		),
+	),
+];
+
 function twoRounds(version: number): EquivalenceCase {
 	return agent(
 		`tools ${version}, two rounds`,
@@ -4045,6 +4062,7 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...MEMORY_CASES,
 	...TOOL_PROBE_CASES,
 	...TOOL_CASES,
+	...TOOL_MEMORY_CASES,
 	...AGENT_PARSER_CASES,
 	...TOOL_PARSER_CASES,
 	...PARSER_UNUSED_CASES,

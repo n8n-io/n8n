@@ -64,11 +64,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -89,12 +94,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -115,7 +124,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -127,7 +138,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, answer as text": {
 		"requests": [
@@ -164,11 +177,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -189,12 +207,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -215,7 +237,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -227,7 +251,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, answer as text with the output": {
 		"requests": [
@@ -264,11 +290,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -289,12 +320,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -315,7 +350,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -327,7 +364,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, answer that is not JSON": {
 		"requests": [
@@ -364,11 +403,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -389,7 +433,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -445,11 +491,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -470,7 +521,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -526,11 +579,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -551,12 +609,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -577,7 +639,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -589,7 +653,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, system message and two items": {
 		"requests": [
@@ -626,11 +692,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -683,11 +754,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -708,18 +784,25 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -746,13 +829,17 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -767,7 +854,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, unknown tool, then the answer": {
 		"requests": [
@@ -804,11 +894,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -861,11 +956,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -886,12 +986,17 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -915,7 +1020,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -927,7 +1034,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, two items, the second calls an unknown tool": {
 		"requests": [
@@ -964,11 +1073,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1021,11 +1135,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1078,11 +1197,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1135,11 +1259,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1160,18 +1289,27 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -1207,13 +1345,17 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -1228,7 +1370,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, tool arguments that are not JSON": {
 		"requests": [
@@ -1265,11 +1410,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1290,7 +1440,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -1341,11 +1493,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1398,11 +1555,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1455,11 +1617,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1512,11 +1679,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1569,11 +1741,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1626,11 +1803,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1651,7 +1833,14 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Model output doesn't fit required format"
@@ -1758,7 +1947,14 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, tool answer without the output": {
 		"requests": [
@@ -1795,11 +1991,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1820,7 +2021,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -1876,11 +2079,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1901,7 +2109,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -1957,11 +2167,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -1982,12 +2197,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -2008,7 +2227,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -2020,7 +2241,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, answers as text of every type": {
 		"requests": [
@@ -2057,11 +2280,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2114,11 +2342,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2171,11 +2404,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2228,11 +2466,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2285,11 +2528,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2342,11 +2590,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2367,7 +2620,14 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Model output doesn't fit required format"
@@ -2384,7 +2644,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -2450,7 +2712,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -2480,7 +2744,14 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, the tool and another call": {
 		"requests": [
@@ -2517,11 +2788,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2542,12 +2818,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -2568,7 +2848,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -2580,7 +2862,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, continue": {
 		"requests": [
@@ -2617,11 +2901,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2674,11 +2963,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2699,7 +2993,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Model output doesn't fit required format"
@@ -2707,7 +3004,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -2737,7 +3036,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -2752,7 +3053,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, error output": {
 		"requests": [
@@ -2789,11 +3093,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2846,11 +3155,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -2871,12 +3185,17 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -2903,7 +3222,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			],
@@ -2926,7 +3247,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, retry": {
 		"requests": [
@@ -2963,11 +3287,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -3020,11 +3349,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -3045,12 +3379,17 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -3077,7 +3416,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -3089,8 +3430,12 @@
 				}
 			]
 		],
-		"nodePaired": [true],
-		"waits": [10]
+		"nodePaired": [
+			true
+		],
+		"waits": [
+			10
+		]
 	},
 	"agent parser 3.1, every type of the schema": {
 		"requests": [
@@ -3128,7 +3473,10 @@
 												},
 												"mood": {
 													"type": "string",
-													"enum": ["good", "bad"]
+													"enum": [
+														"good",
+														"bad"
+													]
 												},
 												"inner": {
 													"type": "object",
@@ -3145,11 +3493,18 @@
 												},
 												"free": {}
 											},
-											"required": ["score", "active", "nothing", "mood"],
+											"required": [
+												"score",
+												"active",
+												"nothing",
+												"mood"
+											],
 											"additionalProperties": {}
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -3203,7 +3558,10 @@
 												},
 												"mood": {
 													"type": "string",
-													"enum": ["good", "bad"]
+													"enum": [
+														"good",
+														"bad"
+													]
 												},
 												"inner": {
 													"type": "object",
@@ -3220,11 +3578,18 @@
 												},
 												"free": {}
 											},
-											"required": ["score", "active", "nothing", "mood"],
+											"required": [
+												"score",
+												"active",
+												"nothing",
+												"mood"
+											],
 											"additionalProperties": {}
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -3245,7 +3610,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
@@ -3259,7 +3627,9 @@
 					"map": {
 						"k": 1
 					},
-					"free": [1],
+					"free": [
+						1
+					],
 					"more": "kept"
 				}
 			},
@@ -3299,7 +3669,9 @@
 						"map": {
 							"k": 1
 						},
-						"free": [1],
+						"free": [
+							1
+						],
 						"more": "kept"
 					}
 				},
@@ -3318,7 +3690,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, parser of version 1.2": {
 		"requests": [
@@ -3359,7 +3734,9 @@
 													}
 												}
 											},
-											"required": ["name"],
+											"required": [
+												"name"
+											],
 											"additionalProperties": false
 										}
 									},
@@ -3419,7 +3796,9 @@
 													}
 												}
 											},
-											"required": ["name"],
+											"required": [
+												"name"
+											],
 											"additionalProperties": false
 										}
 									},
@@ -3479,7 +3858,9 @@
 													}
 												}
 											},
-											"required": ["name"],
+											"required": [
+												"name"
+											],
 											"additionalProperties": false
 										}
 									},
@@ -3503,7 +3884,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{},
 			{
@@ -3571,7 +3956,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, responses, answer through the tool": {
 		"requests": [
@@ -3618,11 +4007,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							},
@@ -3634,12 +4028,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -3660,7 +4058,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -3672,7 +4072,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, responses, answers as text": {
 		"requests": [
@@ -3719,11 +4121,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							},
@@ -3777,11 +4184,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							},
@@ -3835,11 +4247,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							},
@@ -3893,11 +4310,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							},
@@ -3909,12 +4331,19 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -3965,7 +4394,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -3998,7 +4429,12 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, anthropic, answer through the tool": {
 		"requests": [
@@ -4034,11 +4470,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -4054,12 +4495,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -4080,7 +4525,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -4092,7 +4539,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, anthropic, answers as text": {
 		"requests": [
@@ -4128,11 +4577,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -4179,11 +4633,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -4230,11 +4689,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -4281,11 +4745,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -4301,12 +4770,19 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -4318,7 +4794,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -4360,7 +4838,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -4372,7 +4852,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -4396,7 +4878,12 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, gemini, answer through the tool": {
 		"requests": [
@@ -4434,10 +4921,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -4464,12 +4956,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -4490,7 +4986,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -4502,7 +5000,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, gemini, answers as text": {
 		"requests": [
@@ -4540,10 +5040,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -4603,10 +5108,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -4666,10 +5176,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -4729,10 +5244,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -4759,12 +5279,19 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -4776,7 +5303,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -4818,7 +5347,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -4830,7 +5361,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -4854,7 +5387,12 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 3.1, gemini, every type of the schema": {
 		"requests": [
@@ -4893,7 +5431,10 @@
 													},
 													"mood": {
 														"type": "string",
-														"enum": ["good", "bad"]
+														"enum": [
+															"good",
+															"bad"
+														]
 													},
 													"inner": {
 														"type": "object",
@@ -4908,10 +5449,17 @@
 													},
 													"free": {}
 												},
-												"required": ["score", "active", "nothing", "mood"]
+												"required": [
+													"score",
+													"active",
+													"nothing",
+													"mood"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -4938,7 +5486,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
@@ -4980,7 +5530,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, open router, answer through the tool": {
 		"requests": [
@@ -5016,11 +5568,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								}
@@ -5040,12 +5597,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -5066,7 +5627,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -5078,7 +5641,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, answer through the tool": {
 		"requests": [
@@ -5115,11 +5680,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5140,12 +5710,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -5166,7 +5740,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -5178,7 +5754,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, answer as text": {
 		"requests": [
@@ -5215,11 +5793,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5240,12 +5823,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -5266,7 +5853,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -5278,7 +5867,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, answer as text with the output": {
 		"requests": [
@@ -5315,11 +5906,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5340,12 +5936,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -5366,7 +5966,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -5378,7 +5980,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, answer that is not JSON": {
 		"requests": [
@@ -5415,11 +6019,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5440,7 +6049,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -5496,11 +6107,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5521,7 +6137,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -5577,11 +6195,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5602,12 +6225,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -5628,7 +6255,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -5640,7 +6269,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, system message and two items": {
 		"requests": [
@@ -5677,11 +6308,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5734,11 +6370,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5759,18 +6400,25 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -5797,13 +6445,17 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -5818,7 +6470,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, unknown tool, then the answer": {
 		"requests": [
@@ -5855,11 +6510,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5912,11 +6572,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -5956,12 +6621,17 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -5985,7 +6655,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -5997,7 +6669,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, two items, the second calls an unknown tool": {
 		"requests": [
@@ -6034,11 +6708,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6091,11 +6770,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6148,11 +6832,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6192,18 +6881,26 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -6233,13 +6930,17 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -6254,7 +6955,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, tool arguments that are not JSON": {
 		"requests": [
@@ -6291,11 +6995,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6316,7 +7025,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -6367,11 +7078,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6424,11 +7140,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6481,11 +7202,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6538,11 +7264,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6595,11 +7326,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6652,11 +7388,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6677,7 +7418,14 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Model output doesn't fit required format"
@@ -6784,7 +7532,14 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, tool answer without the output": {
 		"requests": [
@@ -6821,11 +7576,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6846,7 +7606,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -6902,11 +7664,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -6927,7 +7694,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -6983,11 +7752,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7008,12 +7782,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -7034,7 +7812,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -7046,7 +7826,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, answers as text of every type": {
 		"requests": [
@@ -7083,11 +7865,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7140,11 +7927,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7197,11 +7989,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7254,11 +8051,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7311,11 +8113,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7368,11 +8175,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7393,7 +8205,14 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Model output doesn't fit required format"
@@ -7410,7 +8229,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -7476,7 +8297,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -7506,7 +8329,14 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, the tool and another call": {
 		"requests": [
@@ -7543,11 +8373,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7568,12 +8403,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -7594,7 +8433,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -7606,7 +8447,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, continue": {
 		"requests": [
@@ -7643,11 +8486,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7700,11 +8548,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7725,7 +8578,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Model output doesn't fit required format"
@@ -7733,7 +8589,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -7763,7 +8621,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -7778,7 +8638,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, error output": {
 		"requests": [
@@ -7815,11 +8678,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7872,11 +8740,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -7897,12 +8770,17 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -7929,7 +8807,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			],
@@ -7952,7 +8832,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, retry": {
 		"requests": [
@@ -7989,11 +8872,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -8046,11 +8934,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -8071,12 +8964,17 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -8103,7 +9001,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -8115,8 +9015,12 @@
 				}
 			]
 		],
-		"nodePaired": [true],
-		"waits": [10]
+		"nodePaired": [
+			true
+		],
+		"waits": [
+			10
+		]
 	},
 	"agent parser 2.2, every type of the schema": {
 		"requests": [
@@ -8154,7 +9058,10 @@
 												},
 												"mood": {
 													"type": "string",
-													"enum": ["good", "bad"]
+													"enum": [
+														"good",
+														"bad"
+													]
 												},
 												"inner": {
 													"type": "object",
@@ -8171,11 +9078,18 @@
 												},
 												"free": {}
 											},
-											"required": ["score", "active", "nothing", "mood"],
+											"required": [
+												"score",
+												"active",
+												"nothing",
+												"mood"
+											],
 											"additionalProperties": {}
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -8229,7 +9143,10 @@
 												},
 												"mood": {
 													"type": "string",
-													"enum": ["good", "bad"]
+													"enum": [
+														"good",
+														"bad"
+													]
 												},
 												"inner": {
 													"type": "object",
@@ -8246,11 +9163,18 @@
 												},
 												"free": {}
 											},
-											"required": ["score", "active", "nothing", "mood"],
+											"required": [
+												"score",
+												"active",
+												"nothing",
+												"mood"
+											],
 											"additionalProperties": {}
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -8271,7 +9195,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
@@ -8285,7 +9212,9 @@
 					"map": {
 						"k": 1
 					},
-					"free": [1],
+					"free": [
+						1
+					],
 					"more": "kept"
 				}
 			},
@@ -8325,7 +9254,9 @@
 						"map": {
 							"k": 1
 						},
-						"free": [1],
+						"free": [
+							1
+						],
 						"more": "kept"
 					}
 				},
@@ -8344,7 +9275,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, parser of version 1.2": {
 		"requests": [
@@ -8385,7 +9319,9 @@
 													}
 												}
 											},
-											"required": ["name"],
+											"required": [
+												"name"
+											],
 											"additionalProperties": false
 										}
 									},
@@ -8445,7 +9381,9 @@
 													}
 												}
 											},
-											"required": ["name"],
+											"required": [
+												"name"
+											],
 											"additionalProperties": false
 										}
 									},
@@ -8505,7 +9443,9 @@
 													}
 												}
 											},
-											"required": ["name"],
+											"required": [
+												"name"
+											],
 											"additionalProperties": false
 										}
 									},
@@ -8529,7 +9469,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"output": [
 			{},
 			{
@@ -8597,7 +9541,11 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, anthropic, answer through the tool": {
 		"requests": [
@@ -8633,11 +9581,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -8653,12 +9606,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -8679,7 +9636,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -8691,7 +9650,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, anthropic, answers as text": {
 		"requests": [
@@ -8727,11 +9688,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -8778,11 +9744,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -8829,11 +9800,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -8880,11 +9856,16 @@
 												}
 											}
 										},
-										"required": ["state", "cities"],
+										"required": [
+											"state",
+											"cities"
+										],
 										"additionalProperties": false
 									}
 								},
-								"required": ["output"],
+								"required": [
+									"output"
+								],
 								"additionalProperties": false,
 								"$schema": "http://json-schema.org/draft-07/schema#"
 							}
@@ -8900,12 +9881,19 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -8917,7 +9905,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -8959,7 +9949,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -8971,7 +9963,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -8995,7 +9989,12 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, gemini, answer through the tool": {
 		"requests": [
@@ -9033,10 +10032,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -9063,12 +10067,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -9089,7 +10097,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -9101,7 +10111,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, gemini, answers as text": {
 		"requests": [
@@ -9139,10 +10151,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -9202,10 +10219,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -9265,10 +10287,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -9328,10 +10355,15 @@
 														}
 													}
 												},
-												"required": ["state", "cities"]
+												"required": [
+													"state",
+													"cities"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -9358,12 +10390,19 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -9375,7 +10414,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
@@ -9417,7 +10458,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -9429,7 +10472,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
@@ -9453,7 +10498,12 @@
 				}
 			]
 		],
-		"nodePaired": [true, true, true, true]
+		"nodePaired": [
+			true,
+			true,
+			true,
+			true
+		]
 	},
 	"agent parser 2.2, gemini, every type of the schema": {
 		"requests": [
@@ -9492,7 +10542,10 @@
 													},
 													"mood": {
 														"type": "string",
-														"enum": ["good", "bad"]
+														"enum": [
+															"good",
+															"bad"
+														]
 													},
 													"inner": {
 														"type": "object",
@@ -9507,10 +10560,17 @@
 													},
 													"free": {}
 												},
-												"required": ["score", "active", "nothing", "mood"]
+												"required": [
+													"score",
+													"active",
+													"nothing",
+													"mood"
+												]
 											}
 										},
-										"required": ["output"]
+										"required": [
+											"output"
+										]
 									}
 								}
 							]
@@ -9537,7 +10597,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
@@ -9579,7 +10641,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.2, open router, answer through the tool": {
 		"requests": [
@@ -9615,11 +10679,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								}
@@ -9639,12 +10708,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -9665,7 +10738,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -9677,7 +10752,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2, answer through the tool, with steps": {
 		"requests": [
@@ -9714,11 +10791,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -9739,12 +10821,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -9765,7 +10851,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -9777,7 +10865,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 2.1, answer through the tool, with steps": {
 		"requests": [
@@ -9814,11 +10904,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -9839,12 +10934,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -9865,7 +10964,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -9877,7 +10978,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3, answer through the tool, with steps": {
 		"requests": [
@@ -9914,11 +11017,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -9939,12 +11047,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				},
 				"intermediateSteps": []
 			}
@@ -9966,7 +11078,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					},
 					"intermediateSteps": []
 				}
@@ -9979,7 +11093,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent parser 3.1, answer as text, with steps": {
 		"requests": [
@@ -10016,11 +11132,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10041,12 +11162,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				},
 				"intermediateSteps": []
 			}
@@ -10068,7 +11193,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					},
 					"intermediateSteps": []
 				}
@@ -10081,7 +11208,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 3.1, answer through the tool": {
 		"requests": [
@@ -10110,7 +11239,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10138,11 +11269,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10196,7 +11332,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10224,11 +11362,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10280,7 +11423,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				},
 				"intermediateSteps": [
 					{
@@ -10309,7 +11454,10 @@
 										"additional_kwargs": {},
 										"response_metadata": {}
 									},
-									"lc_namespace": ["langchain_core", "messages"],
+									"lc_namespace": [
+										"langchain_core",
+										"messages"
+									],
 									"content": [],
 									"additional_kwargs": {},
 									"response_metadata": {},
@@ -10360,7 +11508,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					},
 					"intermediateSteps": [
 						{
@@ -10389,7 +11539,10 @@
 											"additional_kwargs": {},
 											"response_metadata": {}
 										},
-										"lc_namespace": ["langchain_core", "messages"],
+										"lc_namespace": [
+											"langchain_core",
+											"messages"
+										],
 										"content": [],
 										"additional_kwargs": {},
 										"response_metadata": {},
@@ -10423,7 +11576,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 3.1, answer as text": {
 		"requests": [
@@ -10452,7 +11607,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10480,11 +11637,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10538,7 +11700,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10566,11 +11730,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10622,7 +11791,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				},
 				"intermediateSteps": [
 					{
@@ -10651,7 +11822,10 @@
 										"additional_kwargs": {},
 										"response_metadata": {}
 									},
-									"lc_namespace": ["langchain_core", "messages"],
+									"lc_namespace": [
+										"langchain_core",
+										"messages"
+									],
 									"content": [],
 									"additional_kwargs": {},
 									"response_metadata": {},
@@ -10702,7 +11876,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					},
 					"intermediateSteps": [
 						{
@@ -10731,7 +11907,10 @@
 											"additional_kwargs": {},
 											"response_metadata": {}
 										},
-										"lc_namespace": ["langchain_core", "messages"],
+										"lc_namespace": [
+											"langchain_core",
+											"messages"
+										],
 										"content": [],
 										"additional_kwargs": {},
 										"response_metadata": {},
@@ -10765,7 +11944,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 3.1, the tool of the parser next to a call": {
 		"requests": [
@@ -10794,7 +11975,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10822,11 +12005,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10847,12 +12035,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				},
 				"intermediateSteps": []
 			}
@@ -10874,7 +12066,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					},
 					"intermediateSteps": []
 				}
@@ -10887,7 +12081,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 3.1, answer without a call": {
 		"requests": [
@@ -10916,7 +12112,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10944,11 +12142,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -10969,12 +12172,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -10995,7 +12202,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -11007,7 +12216,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 3.1, answer of another type": {
 		"requests": [
@@ -11036,7 +12247,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11064,11 +12277,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11122,7 +12340,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11150,11 +12370,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11257,7 +12482,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11285,11 +12512,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11334,7 +12566,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11362,11 +12596,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11420,7 +12659,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11448,11 +12689,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11497,7 +12743,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11525,11 +12773,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11583,14 +12836,18 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				},
 				"intermediateSteps": []
 			},
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				},
 				"intermediateSteps": [
 					{
@@ -11619,7 +12876,10 @@
 										"additional_kwargs": {},
 										"response_metadata": {}
 									},
-									"lc_namespace": ["langchain_core", "messages"],
+									"lc_namespace": [
+										"langchain_core",
+										"messages"
+									],
 									"content": [],
 									"additional_kwargs": {},
 									"response_metadata": {},
@@ -11682,14 +12942,18 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					},
 					"intermediateSteps": []
 				},
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					},
 					"intermediateSteps": [
 						{
@@ -11718,7 +12982,10 @@
 											"additional_kwargs": {},
 											"response_metadata": {}
 										},
-										"lc_namespace": ["langchain_core", "messages"],
+										"lc_namespace": [
+											"langchain_core",
+											"messages"
+										],
 										"content": [],
 										"additional_kwargs": {},
 										"response_metadata": {},
@@ -11755,7 +13022,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent tools and parser 2.2, answer through the tool": {
 		"requests": [
@@ -11784,7 +13054,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11812,11 +13084,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11870,7 +13147,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11898,11 +13177,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -11954,7 +13238,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -11983,7 +13269,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -11995,7 +13283,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 2.2, answer as text": {
 		"requests": [
@@ -12024,7 +13314,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12052,11 +13344,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12110,7 +13407,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12138,11 +13437,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12194,7 +13498,9 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -12223,7 +13529,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -12235,7 +13543,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 2.2, the tool of the parser next to a call": {
 		"requests": [
@@ -12264,7 +13574,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12292,11 +13604,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12317,12 +13634,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -12343,7 +13664,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -12355,7 +13678,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 2.2, answer without a call": {
 		"requests": [
@@ -12384,7 +13709,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12412,11 +13739,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12437,12 +13769,16 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -12463,7 +13799,9 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -12475,7 +13813,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools and parser 2.2, answer of another type": {
 		"requests": [
@@ -12504,7 +13844,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12532,11 +13874,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12590,7 +13937,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12618,11 +13967,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12725,7 +14079,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12753,11 +14109,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12802,7 +14163,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12830,11 +14193,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12888,7 +14256,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12916,11 +14286,16 @@
 													}
 												}
 											},
-											"required": ["state", "cities"],
+											"required": [
+												"state",
+												"cities"
+											],
 											"additionalProperties": false
 										}
 									},
-									"required": ["output"],
+									"required": [
+										"output"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								},
@@ -12973,13 +14348,17 @@
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			},
 			{
 				"output": {
 					"state": "Texas",
-					"cities": ["Austin"]
+					"cities": [
+						"Austin"
+					]
 				}
 			}
 		],
@@ -13014,13 +14393,17 @@
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				},
 				{
 					"output": {
 						"state": "Texas",
-						"cities": ["Austin"]
+						"cities": [
+							"Austin"
+						]
 					}
 				}
 			]
@@ -13035,7 +14418,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, true]
+		"nodePaired": [
+			true,
+			true
+		]
 	},
 	"agent tools 2.2, open router": {
 		"requests": [
@@ -13063,7 +14449,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								}
@@ -13115,7 +14503,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								}
@@ -13196,7 +14586,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent tools 3.1, open router": {
 		"requests": [
@@ -13224,7 +14616,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								}
@@ -13276,7 +14670,9 @@
 											"description": "The address of the page"
 										}
 									},
-									"required": ["url"],
+									"required": [
+										"url"
+									],
 									"additionalProperties": false,
 									"$schema": "http://json-schema.org/draft-07/schema#"
 								}
@@ -13353,7 +14749,10 @@
 										"additional_kwargs": {},
 										"response_metadata": {}
 									},
-									"lc_namespace": ["langchain_core", "messages"],
+									"lc_namespace": [
+										"langchain_core",
+										"messages"
+									],
 									"content": [],
 									"additional_kwargs": {},
 									"response_metadata": {},
@@ -13425,7 +14824,10 @@
 											"additional_kwargs": {},
 											"response_metadata": {}
 										},
-										"lc_namespace": ["langchain_core", "messages"],
+										"lc_namespace": [
+											"langchain_core",
+											"messages"
+										],
 										"content": [],
 										"additional_kwargs": {},
 										"response_metadata": {},
@@ -13459,7 +14861,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 3.1, parser parameter without a parser": {
 		"requests": [
@@ -13483,7 +14887,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "plain"
@@ -13510,7 +14916,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 2.2, parser parameter without a parser": {
 		"requests": [
@@ -13534,7 +14942,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "plain"
@@ -13561,7 +14971,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm 1.9, parser parameter without a parser": {
 		"requests": [
@@ -13585,7 +14997,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "plain"
@@ -13612,7 +15026,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm 1.4, parser parameter without a parser": {
 		"requests": [
@@ -13636,7 +15052,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "plain"
@@ -13663,7 +15081,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 3.1, parser without the parameter": {
 		"requests": [
@@ -13687,7 +15107,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "{\"output\":{\"state\":\"Texas\",\"cities\":[\"Austin\"]}}"
@@ -13714,7 +15136,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 2.2, parser without the parameter": {
 		"requests": [
@@ -13738,7 +15162,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "{\"output\":{\"state\":\"Texas\",\"cities\":[\"Austin\"]}}"
@@ -13765,7 +15191,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm 1.9, parser without the parameter": {
 		"requests": [
@@ -13789,7 +15217,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "{\"output\":{\"state\":\"Texas\",\"cities\":[\"Austin\"]}}"
@@ -13816,7 +15246,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm 1.4, parser without the parameter": {
 		"requests": [
@@ -13840,7 +15272,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "{\"output\":{\"state\":\"Texas\",\"cities\":[\"Austin\"]}}"
@@ -13867,7 +15301,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent gemini 1, default model": {
 		"requests": [
@@ -13896,7 +15332,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi"
@@ -13923,7 +15361,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm gemini 1, default model, failed": {
 		"requests": [
@@ -14096,7 +15536,15 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -14139,7 +15587,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi"
@@ -14166,7 +15616,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm gemini 1.1, default model, failed": {
 		"requests": [
@@ -14339,7 +15791,15 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -14382,7 +15842,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hi"
@@ -14409,7 +15871,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"chainLlm gemini 1.2, default model, failed": {
 		"requests": [
@@ -14582,7 +16046,15 @@
 				}
 			}
 		],
-		"wire": [null, null, null, null, null, null, null],
+		"wire": [
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -14620,7 +16092,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -14647,7 +16121,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 3, default prompt type": {
 		"requests": [
@@ -14671,7 +16147,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -14698,7 +16176,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 3.1, default prompt type": {
 		"requests": [
@@ -14722,7 +16202,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -14749,7 +16231,9 @@
 				}
 			]
 		],
-		"nodePaired": [true]
+		"nodePaired": [
+			true
+		]
 	},
 	"agent 3.1, default prompt type, missing": {
 		"requests": [],
@@ -14785,7 +16269,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "x"
@@ -14812,7 +16298,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm 1.7, default prompt type": {
 		"requests": [
@@ -14836,7 +16324,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "x"
@@ -14863,7 +16353,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm 1.4, default prompt type": {
 		"requests": [
@@ -14887,7 +16379,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "x"
@@ -14914,7 +16408,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"chainLlm file in the input item": {
 		"requests": [
@@ -14938,7 +16434,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"text": "x"
@@ -14965,7 +16463,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.6 stream, system message": {
 		"requests": [
@@ -14996,7 +16496,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15023,7 +16525,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.6 stream, two items": {
 		"requests": [
@@ -15080,7 +16584,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15119,7 +16626,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"agent 1.7 stream, system message": {
 		"requests": [
@@ -15150,7 +16660,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15177,7 +16689,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.7 stream, two items": {
 		"requests": [
@@ -15234,7 +16748,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15273,7 +16790,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"agent 1.8 stream, system message": {
 		"requests": [
@@ -15304,7 +16824,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15331,7 +16853,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.8 stream, two items": {
 		"requests": [
@@ -15388,7 +16912,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15427,7 +16954,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"agent 1.9 stream, system message": {
 		"requests": [
@@ -15458,7 +16988,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15485,7 +17017,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.9 stream, two items": {
 		"requests": [
@@ -15534,7 +17068,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "Hello"
@@ -15573,7 +17110,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, false]
+		"nodePaired": [
+			false,
+			false
+		]
 	},
 	"agent 1.7 stream, empty system message": {
 		"requests": [
@@ -15600,7 +17140,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -15627,7 +17169,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.7 stream, forms of the stream": {
 		"requests": [
@@ -15658,7 +17202,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "ABC"
@@ -15685,7 +17231,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.7 stream, empty answer": {
 		"requests": [
@@ -15716,7 +17264,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -15743,7 +17293,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.7 stream, model options": {
 		"requests": [
@@ -15776,7 +17328,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -15803,7 +17357,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.7 stream, failed": {
 		"requests": [
@@ -15834,7 +17390,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -15931,7 +17489,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -15976,7 +17538,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -16073,7 +17637,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -16144,7 +17712,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -16183,7 +17754,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"agent 1.7 stream, error output": {
 		"requests": [
@@ -16240,7 +17814,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -16281,7 +17858,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, true]
+		"nodePaired": [
+			false,
+			true
+		]
 	},
 	"agent 1.7 stream, retry": {
 		"requests": [
@@ -16338,7 +17918,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -16368,8 +17951,12 @@
 				}
 			]
 		],
-		"nodePaired": [false],
-		"waits": [10]
+		"nodePaired": [
+			false
+		],
+		"waits": [
+			10
+		]
 	},
 	"agent 1.7 stream, no prompt": {
 		"requests": [],
@@ -16412,7 +17999,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -16439,7 +18028,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.7 stream, open router": {
 		"requests": [
@@ -16469,7 +18060,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -16496,7 +18089,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.9 stream, empty system message": {
 		"requests": [
@@ -16523,7 +18118,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -16550,7 +18147,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.9 stream, forms of the stream": {
 		"requests": [
@@ -16577,7 +18176,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "ABC"
@@ -16604,7 +18205,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.9 stream, empty answer": {
 		"requests": [
@@ -16631,7 +18234,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": ""
@@ -16658,7 +18263,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.9 stream, model options": {
 		"requests": [
@@ -16687,7 +18294,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -16714,7 +18323,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.9 stream, failed": {
 		"requests": [
@@ -16741,7 +18352,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -16826,7 +18439,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -16867,7 +18484,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -16952,7 +18571,11 @@
 				}
 			}
 		],
-		"wire": [null, null, null],
+		"wire": [
+			null,
+			null,
+			null
+		],
 		"subRuns": {
 			"Model": [
 				{
@@ -17015,7 +18638,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"error": "Bad request - please check your parameters"
@@ -17054,7 +18680,10 @@
 				}
 			]
 		],
-		"nodePaired": [true, false]
+		"nodePaired": [
+			true,
+			false
+		]
 	},
 	"agent 1.9 stream, error output": {
 		"requests": [
@@ -17103,7 +18732,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -17144,7 +18776,10 @@
 				}
 			]
 		],
-		"nodePaired": [false, true]
+		"nodePaired": [
+			false,
+			true
+		]
 	},
 	"agent 1.9 stream, retry": {
 		"requests": [
@@ -17193,7 +18828,10 @@
 				}
 			}
 		],
-		"wire": [null, null],
+		"wire": [
+			null,
+			null
+		],
 		"output": [
 			{
 				"output": "ok"
@@ -17223,8 +18861,12 @@
 				}
 			]
 		],
-		"nodePaired": [false],
-		"waits": [10]
+		"nodePaired": [
+			false
+		],
+		"waits": [
+			10
+		]
 	},
 	"agent 1.9 stream, no prompt": {
 		"requests": [],
@@ -17263,7 +18905,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -17290,7 +18934,9 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
 	},
 	"agent 1.9 stream, open router": {
 		"requests": [
@@ -17316,7 +18962,9 @@
 				}
 			}
 		],
-		"wire": [null],
+		"wire": [
+			null
+		],
 		"output": [
 			{
 				"output": "x"
@@ -17343,6 +18991,474 @@
 				}
 			]
 		],
-		"nodePaired": [false]
+		"nodePaired": [
+			false
+		]
+	},
+	"agent tools memory, version 2.2": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": [
+										"url"
+									],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://example.com/a",
+				"qs": {},
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": [
+										"url"
+									],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						},
+						{
+							"role": "assistant",
+							"content": "",
+							"tool_calls": [
+								{
+									"id": "call_1",
+									"type": "function",
+									"function": {
+										"name": "Fetch_page",
+										"arguments": "{\"url\":\"https://example.com/a\"}"
+									}
+								}
+							]
+						},
+						{
+							"role": "tool",
+							"content": "[{\"data\":\"{\\\"title\\\":\\\"A\\\"}\"}]",
+							"tool_call_id": "call_1"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			{
+				"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7",
+				"userAgent": "n8n"
+			},
+			null
+		],
+		"output": [
+			{
+				"output": "The page is A"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Fetch page": [
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "The page is A"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true
+		]
+	},
+	"agent tools memory, version 3.1": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": [
+										"url"
+									],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://example.com/a",
+				"qs": {},
+				"headers": {
+					"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": false,
+					"tools": [
+						{
+							"type": "function",
+							"function": {
+								"name": "Fetch_page",
+								"description": "Gets a page",
+								"parameters": {
+									"type": "object",
+									"properties": {
+										"url": {
+											"type": "string",
+											"description": "The address of the page"
+										}
+									},
+									"required": [
+										"url"
+									],
+									"additionalProperties": false,
+									"$schema": "http://json-schema.org/draft-07/schema#"
+								},
+								"strict": false
+							}
+						}
+					],
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						},
+						{
+							"role": "assistant",
+							"content": [],
+							"tool_calls": [
+								{
+									"id": "call_1",
+									"type": "function",
+									"function": {
+										"name": "Fetch_page",
+										"arguments": "{\"url\":\"https://example.com/a\"}"
+									}
+								}
+							]
+						},
+						{
+							"role": "tool",
+							"content": "[{\"data\":\"{\\\"title\\\":\\\"A\\\"}\"}]",
+							"tool_call_id": "call_1"
+						}
+					]
+				}
+			}
+		],
+		"wire": [
+			null,
+			{
+				"accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7",
+				"userAgent": "n8n"
+			},
+			null
+		],
+		"output": [
+			{
+				"output": "The page is A",
+				"intermediateSteps": [
+					{
+						"action": {
+							"tool": "Fetch_page",
+							"toolInput": {
+								"url": "https://example.com/a"
+							},
+							"log": "Calling Fetch page",
+							"messageLog": [
+								{
+									"lc_serializable": true,
+									"lc_kwargs": {
+										"content": [],
+										"tool_calls": [
+											{
+												"id": "call_1",
+												"name": "Fetch_page",
+												"args": {
+													"url": "https://example.com/a"
+												},
+												"type": "tool_call"
+											}
+										],
+										"invalid_tool_calls": [],
+										"additional_kwargs": {},
+										"response_metadata": {}
+									},
+									"lc_namespace": [
+										"langchain_core",
+										"messages"
+									],
+									"content": [],
+									"additional_kwargs": {},
+									"response_metadata": {},
+									"type": "ai",
+									"tool_calls": [
+										{
+											"id": "call_1",
+											"name": "Fetch_page",
+											"args": {
+												"url": "https://example.com/a"
+											},
+											"type": "tool_call"
+										}
+									],
+									"invalid_tool_calls": []
+								}
+							],
+							"toolCallId": "call_1",
+							"type": "tool_call"
+						},
+						"observation": "[{\"data\":\"{\\\"title\\\":\\\"A\\\"}\"}]"
+					}
+				]
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			],
+			"Fetch page": [
+				{
+					"error": null
+				}
+			],
+			"Memory": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "The page is A",
+					"intermediateSteps": [
+						{
+							"action": {
+								"tool": "Fetch_page",
+								"toolInput": {
+									"url": "https://example.com/a"
+								},
+								"log": "Calling Fetch page",
+								"messageLog": [
+									{
+										"lc_serializable": true,
+										"lc_kwargs": {
+											"content": [],
+											"tool_calls": [
+												{
+													"id": "call_1",
+													"name": "Fetch_page",
+													"args": {
+														"url": "https://example.com/a"
+													},
+													"type": "tool_call"
+												}
+											],
+											"invalid_tool_calls": [],
+											"additional_kwargs": {},
+											"response_metadata": {}
+										},
+										"lc_namespace": [
+											"langchain_core",
+											"messages"
+										],
+										"content": [],
+										"additional_kwargs": {},
+										"response_metadata": {},
+										"type": "ai",
+										"tool_calls": [
+											{
+												"id": "call_1",
+												"name": "Fetch_page",
+												"args": {
+													"url": "https://example.com/a"
+												},
+												"type": "tool_call"
+											}
+										],
+										"invalid_tool_calls": []
+									}
+								],
+								"toolCallId": "call_1",
+								"type": "tool_call"
+							},
+							"observation": "[{\"data\":\"{\\\"title\\\":\\\"A\\\"}\"}]"
+						}
+					]
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [
+			true
+		]
 	}
 }
