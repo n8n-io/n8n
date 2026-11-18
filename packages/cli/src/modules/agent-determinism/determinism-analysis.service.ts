@@ -1,18 +1,24 @@
 import type { ModelConfig } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { UserRepository, WorkflowRepository, type User } from '@n8n/db';
+import { UserRepository, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import pLimit from 'p-limit';
 
 import { judgeWithModel } from '@/modules/agent-evals/agent-eval-judge';
 import { OwnershipService } from '@/services/ownership.service';
 
-import { MAX_COLLECTED_RUNS } from './agent-determinism.constants';
+import {
+	FEEDBACK_ROUNDS,
+	MAX_COLLECTED_RUNS,
+	VALIDATION_RUNS,
+} from './agent-determinism.constants';
 import {
 	RunClusterer,
 	RunCollector,
 	WorkflowTranslator,
 	type DeterminismSource,
+	type RecordedRun,
+	type ReplayFailure,
 } from './agent-determinism.contracts';
 import { DeterminismSourceRepository } from './database/determinism-source.repository';
 import { annotateDraft } from './draft-annotation';
@@ -25,10 +31,13 @@ import { DraftReplayRunner } from './draft-replay.runner';
 import { matchOutput, type TextJudge } from './output-match';
 import { redactJson, splitRuns } from './run-preparation';
 import { classifyRunDataSteps, sumRunDataTokens } from './step-classification';
+import { SCHEDULE_TRIGGER } from './trace-mining';
 
 @Service()
 export class DeterminismAnalysisService {
 	private readonly queue = pLimit(1);
+
+	private judgeModel: ModelConfig | null = null;
 
 	constructor(
 		private readonly sourceRepository: DeterminismSourceRepository,
@@ -75,41 +84,46 @@ export class DeterminismAnalysisService {
 		const [cluster] = this.clusterer.cluster(succeeded);
 		if (!cluster) throw new Error('No repeated tool sequence among the recorded runs');
 		const { train, holdout } = splitRuns(cluster.runs);
+		this.judgeModel = null;
+		const fallback = await this.buildFallback(source);
+		const draftFor = async (feedback?: ReplayFailure[]) =>
+			annotateDraft(
+				wrapWithGuards(
+					await this.translator.translate({ actor, source, cluster, trainRuns: train, feedback }),
+					train,
+					fallback,
+				),
+			);
+		let saved = await this.draftWriter.write(actor, source, await draftFor());
 
-		const translated = await this.translator.translate({
-			actor,
-			source,
-			cluster,
-			trainRuns: train,
-		});
-		const draft = annotateDraft(
-			wrapWithGuards(translated, train, await this.buildFallback(source)),
-		);
-		const saved = await this.draftWriter.write(actor, source, draft);
+		// Feedback: replay a few train runs and redraft with the ones the draft got wrong,
+		// as the lab script's `convert --feedback` does. The holdout stays unseen.
+		const step = Math.max(1, Math.floor(train.length / VALIDATION_RUNS));
+		const validation = train.filter((_, index) => index % step === 0).slice(0, VALIDATION_RUNS);
+		for (let round = 0; round < FEEDBACK_ROUNDS; round++) {
+			const failures: ReplayFailure[] = [];
+			for (const run of validation) {
+				const { matched, output } = await this.replayAndJudge(saved, run, actor, source);
+				if (!matched) failures.push({ run, got: output });
+			}
+			this.logger.info('Determinism draft validated', {
+				sourceId: source.id,
+				round,
+				failures: failures.length,
+				runs: validation.length,
+			});
+			if (failures.length === 0) break;
+			const redrafted = await draftFor(failures);
+			saved = await this.draftWriter.update(actor, saved, redrafted);
+		}
 
-		let model: ModelConfig | null = null;
 		const replayed: ReplayedRun[] = [];
 		for (const run of holdout) {
-			const { runData, output } = await this.replayRunner.replay(saved, run, actor.id);
-			const judge: TextJudge = async (expected, actual) => {
-				model ??= await this.modelResolver.resolve(actor, source.projectId);
-				if (!model) throw new Error('No model credential is available to judge text answers');
-				const verdict = await judgeWithModel(
-					model,
-					{
-						input: JSON.stringify(redactJson(run.input)),
-						output: actual,
-						criteria: null,
-						expectedOutput: expected,
-					},
-					this.logger,
-				);
-				return verdict.status === 'completed' && verdict.outcome === 'pass';
-			};
+			const { matched, runData } = await this.replayAndJudge(saved, run, actor, source);
 			replayed.push({
 				recorded: run.steps,
 				draft: classifyRunDataSteps(runData, saved),
-				matched: await matchOutput(run.output, output, judge),
+				matched,
 				recordedTokens: run.totalTokens,
 				draftTokens: sumRunDataTokens(runData),
 			});
@@ -122,6 +136,37 @@ export class DeterminismAnalysisService {
 			...result,
 		});
 		await this.sourceRepository.saveResult(source, saved.id, result);
+	}
+
+	/** Scheduled runs have no reader, so only their tool calls count; other runs also need the answer. */
+	private async replayAndJudge(
+		draft: WorkflowEntity,
+		run: RecordedRun,
+		actor: User,
+		source: DeterminismSource,
+	) {
+		const { runData, output, actionsMatch } = await this.replayRunner.replay(draft, run, actor.id);
+		const judge: TextJudge = async (expected, actual) => {
+			this.judgeModel ??= await this.modelResolver.resolve(actor, source.projectId);
+			if (!this.judgeModel) {
+				throw new Error('No model credential is available to judge text answers');
+			}
+			const verdict = await judgeWithModel(
+				this.judgeModel,
+				{
+					input: JSON.stringify(redactJson(run.input)),
+					output: actual,
+					criteria: null,
+					expectedOutput: expected,
+				},
+				this.logger,
+			);
+			return verdict.status === 'completed' && verdict.outcome === 'pass';
+		};
+		const matched =
+			actionsMatch &&
+			(run.trigger === SCHEDULE_TRIGGER || (await matchOutput(run.output, output, judge)));
+		return { matched, output, runData };
 	}
 
 	private async buildFallback(source: DeterminismSource) {

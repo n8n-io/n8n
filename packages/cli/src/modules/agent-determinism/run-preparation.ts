@@ -25,9 +25,9 @@ function redactRun(run: RecordedRun): RecordedRun {
 		input: input !== null && typeof input === 'object' && !Array.isArray(input) ? input : {},
 		output: redactJson(run.output),
 		toolCalls: run.toolCalls.map((call) => ({
-			name: call.name,
-			input: redactJson(call.input),
-			output: redactJson(call.output),
+			...call,
+			input: call.input === undefined ? undefined : redactJson(call.input),
+			output: call.output === undefined ? undefined : redactJson(call.output),
 		})),
 	};
 }

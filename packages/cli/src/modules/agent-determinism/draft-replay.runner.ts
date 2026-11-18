@@ -10,6 +10,8 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { DRAFT_OUTPUT_NODE_NAME, FALLBACK_NODE_NAME } from './agent-determinism.constants';
 import type { RecordedRun } from './agent-determinism.contracts';
 import { findTrigger } from './draft-guards';
+import { matchActions, toolNameOf } from './output-match';
+import { effectiveCalls } from './trace-mining';
 
 const SIDE_EFFECT_FREE_TYPES = new Set([
 	'n8n-nodes-base.if',
@@ -19,6 +21,7 @@ const SIDE_EFFECT_FREE_TYPES = new Set([
 	'n8n-nodes-base.merge',
 	'n8n-nodes-base.noOp',
 	'n8n-nodes-base.filter',
+	'n8n-nodes-base.splitOut',
 	'n8n-nodes-base.stickyNote',
 ]);
 const SIDE_EFFECT_FREE_PREFIXES = [
@@ -29,7 +32,7 @@ const SIDE_EFFECT_FREE_PREFIXES = [
 	'@n8n/n8n-nodes-langchain.outputParser',
 ];
 
-export type ReplayOutcome = { runData: IRunData; output: JSONValue | null };
+export type ReplayOutcome = { runData: IRunData; output: JSONValue | null; actionsMatch: boolean };
 
 function asItemJson(value: JSONValue): IDataObject {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -69,11 +72,27 @@ export class DraftReplayRunner {
 		const trigger = findTrigger(draft);
 		if (!trigger?.name) throw new Error('The draft has no trigger');
 
+		// Tools never run in replay: each tool node returns what the agent's calls returned.
+		// A node the run has no record for gets no items: the draft left the agent's path there.
+		const recorded = new Map<string, Array<{ json: IDataObject }>>();
+		for (const call of effectiveCalls(run.toolCalls)) {
+			const items = recorded.get(call.name) ?? [];
+			items.push({ json: asItemJson(call.output ?? null) });
+			recorded.set(call.name, items);
+		}
 		const pinData: Record<string, Array<{ json: IDataObject }>> = {
 			[trigger.name]: [{ json: asItemJson(run.input) }],
 			[FALLBACK_NODE_NAME]: [{ json: {} }],
 		};
-		for (const call of run.toolCalls) pinData[call.name] = [{ json: asItemJson(call.output) }];
+		const toolNodes = new Set<string>();
+		for (const node of draft.nodes) {
+			if (node.name in pinData || node.name.startsWith('Fallback: ')) continue;
+			const items = recorded.get(toolNameOf(node.name));
+			if (items || !isSideEffectFree(node)) {
+				pinData[node.name] = items ?? [];
+				toolNodes.add(node.name);
+			}
+		}
 		this.assertReplaySafe(draft, new Set(Object.keys(pinData)));
 
 		const data: IWorkflowExecutionDataProcess = {
@@ -87,7 +106,12 @@ export class DraftReplayRunner {
 		const result = await this.activeExecutions.getPostExecutePromise(executionId);
 		const runData = result?.data.resultData.runData ?? {};
 		const outputJson = runData[DRAFT_OUTPUT_NODE_NAME]?.at(-1)?.data?.main?.[0]?.[0]?.json;
+		const output = outputJson === undefined ? null : toJsonValue(outputJson.output ?? outputJson);
 
-		return { runData, output: outputJson === undefined ? null : toJsonValue(outputJson) };
+		return {
+			runData,
+			output,
+			actionsMatch: matchActions(draft, runData, run, toolNodes),
+		};
 	}
 }

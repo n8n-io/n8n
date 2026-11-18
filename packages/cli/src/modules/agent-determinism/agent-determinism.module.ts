@@ -10,15 +10,13 @@ export class AgentDeterminismModule implements ModuleInterface {
 		const { RunClusterer, RunCollector, WorkflowTranslator } = await import(
 			'./agent-determinism.contracts.js'
 		);
-		const { ToolSequenceClusterer } = await import('./tool-sequence-clusterer.js');
-		const { StubRunCollector } = await import('./stub-run-collector.js');
-		const { StubWorkflowTranslator } = await import('./stub-workflow-translator.js');
-		if (!Container.has(RunCollector)) Container.set(RunCollector, Container.get(StubRunCollector));
-		if (!Container.has(RunClusterer)) {
-			Container.set(RunClusterer, Container.get(ToolSequenceClusterer));
-		}
+		const { TraceRunClusterer } = await import('./trace-run-clusterer.js');
+		const { TraceRunCollector } = await import('./trace-run-collector.js');
+		const { TraceWorkflowTranslator } = await import('./trace-workflow-translator.js');
+		if (!Container.has(RunCollector)) Container.set(RunCollector, Container.get(TraceRunCollector));
+		if (!Container.has(RunClusterer)) Container.set(RunClusterer, Container.get(TraceRunClusterer));
 		if (!Container.has(WorkflowTranslator)) {
-			Container.set(WorkflowTranslator, Container.get(StubWorkflowTranslator));
+			Container.set(WorkflowTranslator, Container.get(TraceWorkflowTranslator));
 		}
 
 		const { DeterminismSourceRepository } = await import(

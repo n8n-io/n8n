@@ -22,6 +22,7 @@ const draft: WorkflowJSON = {
 
 const run = (input: RecordedRun['input'], output: RecordedRun['output']): RecordedRun => ({
 	id: 'run',
+	trigger: 'webhook',
 	succeeded: true,
 	input,
 	output,

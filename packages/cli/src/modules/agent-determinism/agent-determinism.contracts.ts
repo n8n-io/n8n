@@ -13,10 +13,21 @@ export type DeterminismSource = {
 
 export type StepCounts = { llmDecided: number; codeDecided: number };
 
-export type RecordedToolCall = { name: string; input: JSONValue; output: JSONValue };
+export type RecordedToolCall = {
+	name: string;
+	/** `undefined` when the source did not keep it (redacted data, or no `inputOverride`). */
+	input?: JSONValue;
+	output?: JSONValue;
+	/** False when the call failed, so a retry of the same tool counts as one step. */
+	ok: boolean;
+	/** Index of the model step that made the call. Calls of one step ran in parallel. */
+	step?: number;
+};
 
 export type RecordedRun = {
 	id: string;
+	/** How the run started: `schedule` for scheduled runs, else `chat`, `webhook` and so on. */
+	trigger: string;
 	succeeded: boolean;
 	input: JSONObject;
 	output: JSONValue;
@@ -32,11 +43,15 @@ export type RunCluster = {
 	trafficShare: number;
 };
 
+/** A train run that the previous draft got wrong in replay, with what the draft did. */
+export type ReplayFailure = { run: RecordedRun; got: JSONValue | null };
+
 export type TranslateRequest = {
 	actor: User;
 	source: DeterminismSource;
 	cluster: RunCluster;
 	trainRuns: RecordedRun[];
+	feedback?: ReplayFailure[];
 };
 
 export type DeterminismResult = {
