@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_74d7705e7f5665::t_828a03709160fe 106-108
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_74d7705e7f5665::t_828a03709160fe 3,174-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3d725e4e18c37c61fefc66b232e8ce2149c776fc",
+  "prompts": {},
+  "sessions": {
+    "s_74d7705e7f5665": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e1b7345-f87e-410f-9acb-bf0f0d710dca",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

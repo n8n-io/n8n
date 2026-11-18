@@ -1,0 +1,40 @@
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyTarget.vue
+  s_3dd47ea0104342::t_6e3694bd1e0c58 8-11,19-22,31-34,39
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_3dd47ea0104342::t_70bd38bedcc177 21
+  s_3dd47ea0104342::t_6c0b65cdc0cb67 102-104,108-112
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_8e67708fd347d2 11042,11111,11172-11173,11272,11275-11278,11303,11312-11314,11339-11343,11360,11362,11366,11368,11383-11385,11402-11404,11421-11422,11425-11429,11438,11443-11445,11509
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_3dd47ea0104342::t_70bd38bedcc177 286-295
+  s_3dd47ea0104342::t_5bde44e416a93c 296
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencySummary.vue
+  s_3dd47ea0104342::t_34cc4cfcd96675 8,20-21,60-72
+packages/modules/promotions/frontend/src/composables/usePromotionDependencyLabels.ts
+  s_3dd47ea0104342::t_cd8a953d6f3991 16-45,69-73,98-100,107-113,143-160,165-168,172-173,177-178,180-198,201,204-215,224-258,271,274
+  s_3dd47ea0104342::t_bfd89d4f29e247 169-171,174-176
+  s_3dd47ea0104342::t_6e3694bd1e0c58 216-223
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyReport.vue
+  s_3dd47ea0104342::t_e069d22cf88504 58-66,130-145,189-190,195,197,266-311,331,357
+packages/modules/promotions/frontend/src/promotionDependencies.ts
+  s_3dd47ea0104342::t_bfd89d4f29e247 269-271
+  s_3dd47ea0104342::t_8e033aed5ebfb4 154-181,247-248
+packages/modules/promotions/frontend/src/composables/usePromotionDependencies.ts
+  s_3dd47ea0104342::t_3a928502bbb134 6,72-76,128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2ff580d0e086fbb0d2b2234f7d7a47d2fb23229",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

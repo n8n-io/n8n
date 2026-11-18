@@ -1,0 +1,46 @@
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyTarget.vue
+  s_3dd47ea0104342::t_ea6d95c7dc2fa0 23-24,32-34
+packages/modules/promotions/frontend/src/promotionDependencies.ts
+  s_3dd47ea0104342::t_c914127f068e57 146,166-167,179,183-184,191,252,273-280
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyResultDialog.vue
+  s_3dd47ea0104342::t_ea6d95c7dc2fa0 43-44,47-62,114-130,306,309-310,321-327
+  s_3dd47ea0104342::t_4d0a1e3c9f9f73 328
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyConfirmations.vue
+  s_3dd47ea0104342::t_ea6d95c7dc2fa0 78,91,112-127,453-455
+  s_3dd47ea0104342::t_46fb2ceea9dd2c 456-457
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_68d7f0ca81901e 11314,11390,11427-11435,11449-11450,11508-11509
+packages/modules/promotions/frontend/src/composables/usePromotionDependencyLabels.ts
+  s_3dd47ea0104342::t_fe5aa070bc4795 10,32,38-43,142-147,161-163,165-171,174-190,196,199,253,275-277
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencySummary.vue
+  s_3dd47ea0104342::t_c914127f068e57 61,70-72
+  s_3dd47ea0104342::t_73943b32ea521e 73-74
+packages/modules/promotions/frontend/src/promotionApplyOutcome.ts
+  s_3dd47ea0104342::t_ea6d95c7dc2fa0 8,10,32-35,52-53,64,81-83
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3dd47ea0104342::t_1d668ecefd7079 277,283,369-371
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyReport.vue
+  s_3dd47ea0104342::t_ea6d95c7dc2fa0 63-64,148-150,318,321-322,343-363,368
+  s_3dd47ea0104342::t_976e0e763b128e 364-367,369
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_3dd47ea0104342::t_1d668ecefd7079 289-290,293
+  s_3dd47ea0104342::t_ea6d95c7dc2fa0 287-288
+packages/modules/promotions/frontend/src/composables/usePromotionDependencies.ts
+  s_3dd47ea0104342::t_95a00de60096e1 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12c85421f9682831c933a2b10be419d97c41156f",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

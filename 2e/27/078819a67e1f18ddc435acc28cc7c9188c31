@@ -1,0 +1,22 @@
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_eddaffdab6618f 1010-1063
+spike/ligo-1159/poc/README.md
+  s_3dd47ea0104342::t_eddaffdab6618f 175-178
+  s_3dd47ea0104342::t_ee82f43ca59b8e 1-174,179-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e27078819a67e1f18ddc435acc28cc7c9188c31",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

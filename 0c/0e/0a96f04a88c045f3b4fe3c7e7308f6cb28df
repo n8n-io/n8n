@@ -1,0 +1,34 @@
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3dd47ea0104342::t_68495881aa7602 827
+  s_3dd47ea0104342::t_57025928e43b05 2,16,22,719-826,828-853
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyEnvironmentSelection.generated.yml
+  s_3dd47ea0104342::t_b26ba4f9976b9f 1-136
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentChangeDetails.generated.yml
+  s_3dd47ea0104342::t_36157c334f1bd2 1-78
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentChanges.generated.yml
+  s_3dd47ea0104342::t_a6c0a3bb14e26f 1-221
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteEnvironmentSelection.generated.yml
+  s_3dd47ea0104342::t_6f00ca52b25685 1-104
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_3dd47ea0104342::t_f25ba9d9cc8af6 61
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_3dd47ea0104342::t_a8cec7b24733c1 332-343
+packages/cli/src/public-api/v1/shared/spec/schemas/promoteSelectionResultDto.generated.yml
+  s_3dd47ea0104342::t_4208681ff66cd5 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c0e0a96f04a88c045f3b4fe3c7e7308f6cb28df",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

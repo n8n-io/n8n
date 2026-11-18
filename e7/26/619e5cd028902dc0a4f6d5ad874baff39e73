@@ -1,0 +1,49 @@
+packages/cli/src/modules/promotions.ee/dependency-check/gap-confirmation.ts
+  s_3dd47ea0104342::t_f18960af59fb97 1-107
+packages/cli/src/modules/promotions.ee/dependency-check/apply-report.ts
+  s_3dd47ea0104342::t_255fd8b7086f2d 1-596
+packages/cli/src/modules/promotions.ee/dependency-check/dependency-check.types.ts
+  s_3dd47ea0104342::t_634d752a1486bc 1-214
+packages/cli/src/modules/promotions.ee/dependency-check/index.ts
+  s_3dd47ea0104342::t_929532001b3d3d 1-17
+packages/cli/src/modules/promotions.ee/dependency-check/branch-facts.reader.ts
+  s_3dd47ea0104342::t_2e5dcce9fd11b7 1-160
+packages/cli/src/modules/promotions.ee/dependency-check/promotion-dependency-check.service.ts
+  s_3dd47ea0104342::t_52b28aef516f5e 1-46
+packages/cli/src/modules/promotions.ee/dependency-check/apply-check-facts.service.ts
+  s_3dd47ea0104342::t_1ab328db0b3d16 1-10,12-393
+  s_3dd47ea0104342::t_8deaff3aa0f14c 11
+packages/cli/src/modules/promotions.ee/dependency-check/target-lookup.service.ts
+  s_3dd47ea0104342::t_ffe4486ffe3ff9 1-205
+  s_3dd47ea0104342::t_cc4e8727b38b2e 206-208
+packages/cli/src/modules/promotions.ee/dependency-check/dependency-check.shared.ts
+  s_3dd47ea0104342::t_65321058fea714 1-195
+packages/cli/src/modules/promotions.ee/dependency-check/open-review-facts.service.ts
+  s_3dd47ea0104342::t_7273c56f0074d7 1-58
+packages/cli/src/modules/promotions.ee/dependency-check/workflow-references.ts
+  s_3dd47ea0104342::t_2d57798f7b91fe 1-120,122-127
+  s_3dd47ea0104342::t_d2a4a0705ed317 121
+packages/cli/src/modules/promotions.ee/dependency-check/promote-report.ts
+  s_3dd47ea0104342::t_e2d010ed791b29 1-184
+packages/cli/src/modules/promotions.ee/dependency-check/promote-check-facts.service.ts
+  s_3dd47ea0104342::t_1cb7979a4db525 63
+  s_3dd47ea0104342::t_8deaff3aa0f14c 5
+  s_3dd47ea0104342::t_dec488093c78a8 1-4,6-62,64-254
+  s_3dd47ea0104342::t_e9de43d1da9a11 255-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e726619e5cd028902dc0a4f6d5ad874baff39e73",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
