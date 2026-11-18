@@ -67,11 +67,25 @@ export interface WebhookChannelReply {
 }
 
 /**
- * SPIKE (agent-chat-embed): the chat surface settings of the n8n Chat channel.
- * Shaped like a channel setting (the product puts it in the n8n_chat entry's
- * `settings`). Everything is off by default. Methods are independent; `public`
- * lets anyone in, the others still give an identity when enabled.
+ * SPIKE (agent-chat-embed): the chat surface settings of a channel. Shaped like a
+ * channel setting (the product puts it in the channel entry's `settings`).
+ * Everything is off by default. Methods are independent; `public` lets anyone
+ * in, the others still give an identity when enabled.
+ *
+ * Two surfaces, side by side for comparison:
+ * - `chat` on the API (webhook) channel: v1, each turn runs on the webhook path.
+ * - `n8n-chat` on the n8n Chat channel: option B, turns run on n8n Chat's
+ *   backend (message queue) as an external principal.
  */
+export const CHAT_SURFACES = ['chat', 'n8n-chat'] as const;
+export type ChatSurfaceName = (typeof CHAT_SURFACES)[number];
+export const isChatSurfaceName = (value: unknown): value is ChatSurfaceName =>
+	CHAT_SURFACES.includes(value as ChatSurfaceName);
+/** The channel whose published entry a surface needs. */
+const SURFACE_CHANNEL: Record<ChatSurfaceName, string> = {
+	chat: WEBHOOK_INTEGRATION_TYPE,
+	'n8n-chat': N8N_CHAT_INTEGRATION_TYPE,
+};
 export const CHAT_SURFACE_METHODS = ['n8nUsers', 'magicLinks', 'public'] as const;
 export type ChatSurfaceMethod = (typeof CHAT_SURFACE_METHODS)[number];
 const method = z.boolean().default(false);
@@ -79,6 +93,11 @@ export const ChatSurfaceSettingsSchema = z.object({
 	/** "Share outside n8n": off means no hosted page, no embed, 404 on every chat route. */
 	enabled: z.boolean().default(false),
 	methods: z.object({ n8nUsers: method, magicLinks: method, public: method }).default({}),
+	/**
+	 * Option B only. Features for identified principals (n8n users, invitees),
+	 * never for anonymous visitors of a public chat. Only `uploads` is built.
+	 */
+	features: z.object({ uploads: method }).default({}),
 });
 export type ChatSurfaceSettings = z.infer<typeof ChatSurfaceSettingsSchema>;
 interface StoredChatSurface extends ChatSurfaceSettings {
@@ -198,7 +217,7 @@ export class WebhookChannelService {
 		abortSignal: AbortSignal;
 	}): AsyncGenerator<Record<string, unknown>> {
 		try {
-			const page = await this.chatPage(request.agentId);
+			const page = await this.chatPage(request.agentId, 'chat');
 			if (!page)
 				throw new WebhookChannelError(404, 'agent_not_found', 'This agent has no chat page');
 			const { agent, surface } = page;
@@ -272,22 +291,28 @@ export class WebhookChannelService {
 
 	/**
 	 * SPIKE: the chat page of an agent, or undefined when there is none (404). It
-	 * needs the n8n Chat channel in the published version and "Share outside n8n" on.
+	 * needs the surface's channel in the published version and "Share outside n8n" on.
 	 */
-	async chatPage(agentId: string) {
-		const surface = await this.chatSurface(agentId);
+	async chatPage(agentId: string, name: ChatSurfaceName) {
+		const surface = await this.chatSurface(agentId, name);
 		if (!surface.enabled) return;
 		const agent = await this.agentRepository.findById(agentId);
-		const published = agent?.activeVersion?.schema?.integrations ?? [];
-		if (!agent || !published.some((entry) => entry.type === N8N_CHAT_INTEGRATION_TYPE)) return;
+		// The API channel lives in the agent's integrations (as `findChannel` reads it); n8n Chat in the published version.
+		const entries =
+			name === 'chat'
+				? (agent?.activeVersionId ? agent.integrations : []).filter(
+						(entry: AgentIntegrationConfig) => !isDraftIntegration(entry),
+					)
+				: (agent?.activeVersion?.schema?.integrations ?? []);
+		if (!agent || !entries.some((entry) => entry.type === SURFACE_CHANNEL[name])) return;
 		if (!(await this.settings.getEnabled())) return;
 		return { agent, surface };
 	}
 
 	// ponytail: stored in the settings table to keep the agent config schema untouched. Unlike
 	// the agent's behaviour it applies at once, without a publish (an access change must not wait).
-	async chatSurface(agentId: string): Promise<StoredChatSurface> {
-		const row = await this.settingsRepository.findByKey(`agentChatSurface.${agentId}`);
+	async chatSurface(agentId: string, name: ChatSurfaceName): Promise<StoredChatSurface> {
+		const row = await this.settingsRepository.findByKey(`agentChatSurface.${name}.${agentId}`);
 		const stored: Partial<StoredChatSurface> = row
 			? (JSON.parse(row.value) as StoredChatSurface)
 			: {};
@@ -298,9 +323,13 @@ export class WebhookChannelService {
 	}
 
 	/** Saves the settings. Turning a method (or the whole surface) off ends that method's chat sessions. */
-	async setChatSurface(agentId: string, input: unknown): Promise<ChatSurfaceSettings> {
+	async setChatSurface(
+		agentId: string,
+		name: ChatSurfaceName,
+		input: unknown,
+	): Promise<ChatSurfaceSettings> {
 		const next = ChatSurfaceSettingsSchema.parse(input);
-		const current = await this.chatSurface(agentId);
+		const current = await this.chatSurface(agentId, name);
 		const revokedBefore = { ...current.revokedBefore };
 		for (const name of CHAT_SURFACE_METHODS) {
 			const wasOn = current.enabled && current.methods[name];
@@ -308,7 +337,7 @@ export class WebhookChannelService {
 		}
 		const stored: StoredChatSurface = { ...next, revokedBefore };
 		await this.settingsRepository.upsertByKey(
-			`agentChatSurface.${agentId}`,
+			`agentChatSurface.${name}.${agentId}`,
 			JSON.stringify(stored),
 			false,
 			{},

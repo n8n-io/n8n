@@ -2,6 +2,7 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { QueuedUserChatMessage } from '../types/agent-queued-message';
 import {
 	draftChatMemoryResourceId,
+	externalChatMemoryResourceId,
 	productionChatMemoryResourceId,
 	systemChatMemoryResourceId,
 } from './agent-memory-scope';
@@ -12,12 +13,14 @@ export const PREVIEW_THREAD_SOURCES = ['', 'chat', 'n8n_chat'] as const;
 export const N8N_CHAT_PRODUCTION_SOURCE = 'n8n_chat_production' as const;
 /** Transcript source of a system-agent turn. It is not a Preview source. */
 export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
+/** SPIKE (agent-chat-embed): transcript source of a turn from an external chat principal. */
+export const EXTERNAL_CHAT_SOURCE = 'external_chat' as const;
 
 /**
  * The n8n UI chat that a person watches the turn in. Integrations and tasks have none.
  * `system` is the chat with a code-defined system agent.
  */
-export type AgentChatSurface = 'preview' | 'n8n-chat' | 'system';
+export type AgentChatSurface = 'preview' | 'n8n-chat' | 'system' | 'external';
 
 /** The chat surface that a queued user chat message runs on. */
 export function chatSurfaceForKind(kind: QueuedUserChatMessage['kind']): AgentChatSurface {
@@ -28,6 +31,8 @@ export function chatSurfaceForKind(kind: QueuedUserChatMessage['kind']): AgentCh
 			return 'system';
 		case 'preview':
 			return 'preview';
+		case 'external_chat':
+			return 'external';
 	}
 }
 
@@ -40,6 +45,8 @@ export function chatSurfaceMemoryResourceId(surface: AgentChatSurface, userId: s
 			return systemChatMemoryResourceId(userId);
 		case 'preview':
 			return draftChatMemoryResourceId(userId);
+		case 'external':
+			return externalChatMemoryResourceId(userId);
 	}
 }
 
@@ -53,7 +60,36 @@ export function threadBelongsTo(
 		thread.projectId === projectId &&
 		thread.agentId === agentId &&
 		(thread.accessScope === 'project' ||
-			(thread.accessScope === 'user' && thread.ownerId !== null && thread.ownerId === userId))
+			(thread.accessScope === 'user' && thread.ownerId !== null && thread.ownerId === userId) ||
+			isExternalThreadOf(thread, userId))
+	);
+}
+
+/**
+ * SPIKE (agent-chat-embed): the one ownership rule for sessions of external chat
+ * principals. Principal keys carry a prefix (`user-`, `invite-`, `anon-`), so
+ * they never equal an n8n user ID: an n8n user never matches an external thread.
+ */
+export function isExternalThreadOf(thread: AgentExecutionThread, principal: string): boolean {
+	return (
+		thread.accessScope === 'external' &&
+		thread.externalPrincipal !== null &&
+		thread.externalPrincipal === principal &&
+		/^(user|invite|anon)-/.test(principal)
+	);
+}
+
+/** SPIKE: an external principal can continue its own top-level session. */
+export function canContinueExternalThread(
+	thread: AgentExecutionThread,
+	principal: string,
+	isSystemAgent: boolean,
+): boolean {
+	return (
+		!isSystemAgent &&
+		isExternalThreadOf(thread, principal) &&
+		thread.parentThreadId === null &&
+		thread.taskId === null
 	);
 }
 
@@ -115,6 +151,8 @@ export function canContinueThreadOnSurface(
 			return canContinueSystemThread(thread, userId, isSystemAgent);
 		case 'preview':
 			return canContinueThreadInPreview(thread, userId, source, isSystemAgent);
+		case 'external':
+			return canContinueExternalThread(thread, userId, isSystemAgent);
 	}
 }
 

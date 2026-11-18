@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// SPIKE (agent-chat-embed): chat page link + embed snippet of the n8n Chat channel.
+// SPIKE (agent-chat-embed): chat page link + embed snippet of a channel.
+// `chat` sits in the API channel (v1, webhook path); `n8n-chat` in the n8n Chat
+// channel (option B, n8n Chat's backend as an external principal).
 // Copy is hard-coded, not i18n.
 import {
 	N8nButton,
@@ -16,15 +18,25 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
 
-const props = defineProps<{ projectId: string; agentId: string; isPublished: boolean }>();
+const props = defineProps<{
+	projectId: string;
+	agentId: string;
+	isPublished: boolean;
+	surface: 'chat' | 'n8n-chat';
+}>();
 const rootStore = useRootStore();
-const path = computed(() => `/projects/${props.projectId}/agents/v2/${props.agentId}/chat-page`);
+const isOptionB = computed(() => props.surface === 'n8n-chat');
+const path = computed(
+	() => `/projects/${props.projectId}/agents/v2/${props.agentId}/chat-pages/${props.surface}`,
+);
 
 // Shaped like the channel setting on the server (ChatSurfaceSettingsSchema). Everything off by default.
 type Method = 'n8nUsers' | 'magicLinks' | 'public';
+type Feature = 'uploads';
 interface Surface {
 	enabled: boolean;
 	methods: Record<Method, boolean>;
+	features?: Record<Feature, boolean>;
 }
 const METHODS: Array<{ key: Method; label: string; hint: string }> = [
 	{
@@ -44,6 +56,15 @@ const METHODS: Array<{ key: Method; label: string; hint: string }> = [
 	},
 ];
 const LATER = ['Email code', 'Passcode', 'Signed visitor token'];
+// Option B only. Only for n8n users and invitees, never for anonymous visitors.
+const FEATURES: Array<{ key: Feature; label: string; hint: string }> = [
+	{
+		key: 'uploads',
+		label: 'File uploads',
+		hint: 'Shows the 📎 button in the chat. One file per message, up to 2 MB: images, PDF, text or CSV. Off: the button is greyed out.',
+	},
+];
+const FEATURES_LATER = ['Background jobs', 'Show plans'];
 
 const chatUrl = ref('');
 const surface = ref<Surface>({
@@ -58,7 +79,7 @@ onMounted(async () => {
 		path.value,
 	);
 	chatUrl.value = page.url;
-	surface.value = { enabled: page.enabled, methods: page.methods };
+	surface.value = { enabled: page.enabled, methods: page.methods, features: page.features };
 	await loadInvites();
 });
 async function save(change: Partial<Surface>) {
@@ -72,6 +93,9 @@ async function save(change: Partial<Surface>) {
 }
 function setMethod(key: Method, on: boolean) {
 	void save({ methods: { ...surface.value.methods, [key]: on } });
+}
+function setFeature(key: Feature, on: boolean) {
+	void save({ features: { uploads: false, ...surface.value.features, [key]: on } });
 }
 
 // Magic links per recipient. The server writes the link to its log (spike: no email).
@@ -111,7 +135,9 @@ function inviteStatus(invite: Invite) {
 }
 
 // One tag: the bundle is served by this instance and mounts itself from its data attributes.
-const scriptUrl = computed(() => chatUrl.value.replace(/\/[^/]+\/chat$/, '/assets/agent-chat.js'));
+const scriptUrl = computed(() =>
+	chatUrl.value.replace(/\/[^/]+\/(chat|n8n-chat)$/, '/assets/agent-chat.js'),
+);
 const snippet = computed(
 	() => `<script src="${scriptUrl.value}" data-agent-url="${chatUrl.value}" defer></${'script'}>`,
 );
@@ -120,6 +146,13 @@ const { copy, copied } = useClipboard();
 
 <template>
 	<div v-if="chatUrl" :class="$style.share" data-testid="n8n-chat-share">
+		<N8nText size="small" color="text-light" data-testid="n8n-chat-variant">
+			{{
+				isOptionB
+					? 'Option B: turns run on n8n Chat’s backend as an external person: conversation kept after reload, messages queue while the agent answers, Stop button, optional file uploads (below).'
+					: 'v1: each turn runs on this API channel: one request per turn, a reload starts over, no queue, no Stop, no uploads. For those, use the chat page of the n8n Chat channel (option B).'
+			}}
+		</N8nText>
 		<N8nSwitch2
 			:model-value="surface.enabled"
 			label="Share outside n8n (spike)"
@@ -149,6 +182,30 @@ const { copy, copied } = useClipboard();
 					disabled
 				/>
 			</div>
+			<template v-if="isOptionB">
+				<N8nText size="small" bold>What signed-in people and invitees can do</N8nText>
+				<div :class="$style.methods" data-testid="n8n-chat-features">
+					<div v-for="feature in FEATURES" :key="feature.key">
+						<N8nCheckbox
+							:model-value="!!surface.features?.[feature.key]"
+							:label="feature.label"
+							:data-testid="`n8n-chat-feature-${feature.key}`"
+							@update:model-value="(on) => setFeature(feature.key, !!on)"
+						/>
+						<N8nText size="xsmall" color="text-light" :class="$style.hint">{{
+							feature.hint
+						}}</N8nText>
+					</div>
+					<N8nCheckbox
+						v-for="label in FEATURES_LATER"
+						:key="label"
+						:model-value="false"
+						:label="`${label} (coming later)`"
+						disabled
+					/>
+					<N8nText size="xsmall" color="text-light">Never for anonymous (public) visitors.</N8nText>
+				</div>
+			</template>
 			<N8nCallout v-if="noMethod" theme="warning" data-testid="n8n-chat-share-empty">
 				Choose at least one way in. Until then nobody can chat.
 			</N8nCallout>

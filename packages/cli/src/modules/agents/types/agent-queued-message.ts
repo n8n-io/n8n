@@ -23,7 +23,9 @@ interface QueuedMessageInput {
  * published agent. System runs a code-defined system agent.
  */
 export interface QueuedUserChatMessage extends QueuedMessageInput {
-	kind: 'preview' | 'n8n_chat' | 'system';
+	/** SPIKE (agent-chat-embed): `external_chat` runs the published agent for an external principal. */
+	kind: 'preview' | 'n8n_chat' | 'system' | 'external_chat';
+	/** The n8n user ID. For `external_chat`, the external principal key (never an n8n user ID). */
 	userId: string;
 	messageId?: string;
 	/** Turn options for a system agent. The queue keeps them opaque; the provider defines their shape. */

@@ -8,7 +8,11 @@
  *   { type: 'notice', text }            e.g. an action that needs approval
  *   { type: 'error', message, code? }
  *   { type: 'done' }
- * GET {base}/config  →  { name, methods, user, signInUrl, loginUrl }
+ * GET {base}/config  →  { name, methods, user, variant, features, signInUrl, loginUrl }
+ * Option B (variant `n8n-chat`) adds, on the durable queue of n8n Chat:
+ *   { type: 'queued', queueId } / { type: 'started', executionId }   a message waits, then runs
+ *   GET  {base}/conversations/{id}        →  { messages, activeExecutionId, pending }
+ *   POST {base}/conversations/{id}/stop   { executionId }
  * Auth (spike): without `methods.public` the caller needs an identity of an enabled method. Same origin (hosted page)
  * uses the n8n cookie. Another origin (embed) signs in in a popup on the
  * instance and polls POST {loginUrl}/{requestId} for a short-lived token, which
@@ -21,13 +25,24 @@ export type ChatEvent =
 	| { type: 'tool-end'; id: string }
 	| { type: 'notice'; text: string }
 	| { type: 'error'; message: string; code?: string }
-	| { type: 'done' };
+	| { type: 'queued'; queueId: string }
+	| { type: 'started'; executionId: string }
+	| { type: 'done'; executionId?: string };
 
 export interface ChatConfig {
 	name: string;
 	welcomeMessage?: string;
 	methods: { n8nUsers: boolean; magicLinks: boolean; public: boolean };
 	user: { name: string; kind?: 'n8n-user' | 'invite' } | null;
+	variant?: 'webhook' | 'n8n-chat';
+	features?: {
+		history: boolean;
+		queue: boolean;
+		stop: boolean;
+		uploads: boolean;
+		/** Why uploads are off for this caller: off in the channel, or an anonymous visitor. */
+		uploadsOff?: 'disabled' | 'anonymous';
+	};
 	signInUrl: string;
 	loginUrl: string;
 }
@@ -44,7 +59,11 @@ export async function fetchConfig(base: string, token?: string): Promise<ChatCon
 
 export async function* sendMessage(
 	base: string,
-	body: { message: string; conversationId?: string },
+	body: {
+		message: string;
+		conversationId?: string;
+		attachments?: Array<{ fileName: string; mimeType: string; data: string }>;
+	},
 	signal?: AbortSignal,
 	token?: string,
 ): AsyncGenerator<ChatEvent> {
@@ -122,6 +141,42 @@ export async function exchangeInvite(
 	const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
 	if (res.ok) return { ok: true, user: body.user as { name: string } };
 	return { ok: false, ...(body as { code: string }) };
+}
+
+export interface History {
+	messages: Array<{
+		role: 'user' | 'agent';
+		text: string;
+		tools: Array<{ id: string; name: string }>;
+		files: Array<{ name: string }>;
+		error: boolean;
+	}>;
+	activeExecutionId: string | null;
+	pending: Array<{ id: string; text: string }>;
+}
+
+/** Option B: the transcript of one of the caller's own conversations, or undefined when it is gone. */
+export async function fetchHistory(
+	base: string,
+	conversationId: string,
+	token?: string,
+): Promise<History | undefined> {
+	const res = await fetch(`${base}/conversations/${conversationId}`, { headers: auth(token) });
+	return res.ok ? ((await res.json()) as History) : undefined;
+}
+
+/** Option B: stops the running turn. Waiting messages stay queued. */
+export async function stopTurn(
+	base: string,
+	conversationId: string,
+	executionId: string,
+	token?: string,
+) {
+	await fetch(`${base}/conversations/${conversationId}/stop`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...auth(token) },
+		body: JSON.stringify({ executionId }),
+	});
 }
 
 export async function endSession(base: string) {

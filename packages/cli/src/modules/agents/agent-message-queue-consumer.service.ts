@@ -23,7 +23,12 @@ import { AgentMessageQueueRepository } from './repositories/agent-message-queue.
 import { canUseSystemAgent } from './system-agents/system-agent-access';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
-import { chatSurfaceForKind, type AgentChatSurface } from './utils/agent-thread-access';
+import {
+	chatSurfaceForKind,
+	EXTERNAL_CHAT_SOURCE,
+	type AgentChatSurface,
+} from './utils/agent-thread-access';
+import { hashAgentSandboxPrincipal } from './agent-sandbox-principal';
 
 @Service()
 export class AgentMessageQueueConsumer {
@@ -139,13 +144,17 @@ export class AgentMessageQueueConsumer {
 				if (signal.aborted) {
 					// Finalize the claimed execution without starting it after the lock expires.
 					controller.abort(new OperationalError('Agent execution startup lock was lost'));
-				} else if (claimed.payload.kind !== 'integration' && claimed.thread.ownerId) {
+				} else if (
+					claimed.payload.kind !== 'integration' &&
+					(claimed.thread.ownerId ?? claimed.thread.externalPrincipal)
+				) {
 					this.chatExecutionService.register(
 						{
 							projectId: claimed.thread.projectId,
 							agentId: claimed.thread.agentId,
 							threadId,
-							userId: claimed.thread.ownerId,
+							// An external session registers its principal key: Stop checks it like a user ID.
+							userId: (claimed.thread.ownerId ?? claimed.thread.externalPrincipal)!,
 							executionId: claimed.admission.executionId,
 							surface: chatSurfaceForKind(claimed.payload.kind),
 						},
@@ -184,7 +193,9 @@ export class AgentMessageQueueConsumer {
 
 		try {
 			if (surface && sender) {
-				const user = await this.getThreadOwner(thread, surface);
+				// SPIKE (agent-chat-embed): an external session has no n8n user. It runs like an integration turn.
+				const user =
+					surface === 'external' ? undefined : await this.getThreadOwner(thread, surface);
 				sender.send({
 					type: 'execution-started',
 					...(payload.kind !== 'integration' && payload.stopReportId ? { stopReport: true } : {}),
@@ -195,7 +206,9 @@ export class AgentMessageQueueConsumer {
 				});
 				signal.throwIfAborted();
 
-				if (payload.kind === 'system') {
+				if (!user) {
+					await this.consumeExternalChat(claim, signal, sender.send);
+				} else if (payload.kind === 'system') {
 					await this.systemAgentExecution.consume(claim, user, signal, sender.send);
 				} else if (payload.kind === 'n8n_chat') {
 					await this.consumeN8nChat(claim, user, signal, sender.send);
@@ -349,6 +362,61 @@ export class AgentMessageQueueConsumer {
 			if (chunk.type === 'tool-call-suspended' || chunk.type === 'error') completed = false;
 		}
 		if (completed) send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
+	}
+
+	/**
+	 * SPIKE (agent-chat-embed): a turn of an external chat principal. It runs the
+	 * published agent without an n8n user, with the agent's own access, as an
+	 * integration turn does. An action that waits for approval is cancelled, so it
+	 * cannot block the queue: external principals cannot approve actions yet.
+	 */
+	private async consumeExternalChat(
+		claim: ClaimedAgentMessage,
+		signal: AbortSignal,
+		send: (event: AgentSseEvent) => void,
+	): Promise<void> {
+		const { thread, admission, payload } = claim;
+		if (payload.kind !== 'external_chat' || !thread.externalPrincipal) return;
+		const options = (payload.options ?? {}) as { allowBackgroundTasks?: boolean };
+		const stream = this.orchestrator.executeForChatPublished({
+			agentId: thread.agentId,
+			projectId: thread.projectId,
+			message: payload.message,
+			memory: { threadId: thread.id, resourceId: payload.resourceId },
+			attachments: payload.attachments,
+			integrationType: EXTERNAL_CHAT_SOURCE,
+			access: {
+				accessScope: 'external',
+				ownerId: null,
+				externalPrincipal: thread.externalPrincipal,
+			},
+			sessionMode: 'existing',
+			sandboxPrincipalHash: hashAgentSandboxPrincipal({
+				type: 'project-session',
+				projectId: thread.projectId,
+				sessionId: thread.id,
+			}),
+			allowBackgroundTasks: options.allowBackgroundTasks === true,
+			admittedExecution: admission,
+			abortSignal: signal,
+		});
+		let suspended = false;
+		let failed = false;
+		for await (const chunk of stream) {
+			// Stop aborts the run: that ends the turn, it is not an agent error.
+			if (chunk.type === 'error' && signal.aborted) continue;
+			emitChunkEvents(chunk, send);
+			if (chunk.type === 'tool-call-suspended') suspended = true;
+			if (chunk.type === 'error') failed = true;
+		}
+		if (suspended) {
+			await this.chatExecutionService.cancelSessionSuspension(
+				thread.agentId,
+				thread.id,
+				admission.executionId,
+			);
+		}
+		if (!failed) send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
 	}
 
 	private async consumeIntegration(

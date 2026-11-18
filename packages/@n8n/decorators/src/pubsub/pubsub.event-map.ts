@@ -163,7 +163,7 @@ export type PubSubCommandMap = {
 		executionId: string;
 		userId: string;
 		/** Older mains read only `productionN8nChat`, so senders set both. */
-		surface?: 'preview' | 'n8n-chat' | 'system';
+		surface?: 'preview' | 'n8n-chat' | 'system' | 'external';
 		productionN8nChat?: boolean;
 	};
 

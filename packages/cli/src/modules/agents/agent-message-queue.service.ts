@@ -128,7 +128,9 @@ export class AgentMessageQueueService {
 						access:
 							payload.kind === 'integration'
 								? { accessScope: 'project', ownerId: null }
-								: { accessScope: 'user', ownerId: payload.userId },
+								: payload.kind === 'external_chat'
+									? { accessScope: 'external', ownerId: null, externalPrincipal: payload.userId }
+									: { accessScope: 'user', ownerId: payload.userId },
 					},
 					ctx,
 				);
@@ -652,7 +654,11 @@ export class AgentMessageQueueService {
 			agentId: thread.agentId,
 			agentName: thread.agentName,
 			projectId: thread.projectId,
-			access: { accessScope: thread.accessScope, ownerId: thread.ownerId },
+			access: {
+				accessScope: thread.accessScope,
+				ownerId: thread.ownerId,
+				externalPrincipal: thread.externalPrincipal,
+			},
 			sessionMode: 'existing',
 			queueItemId: item.id,
 			previewChat: item.payload.kind === 'preview',

@@ -10,7 +10,15 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { ChatPageInviteService } from './chat-page-invites.service';
-import { WebhookChannelService, type ChatPageUser } from './webhook-channel.service';
+import { ExternalChatService } from './external-chat.service';
+import { WebhookChannelError } from './responses-api';
+import {
+	accessError,
+	isChatSurfaceName,
+	WebhookChannelService,
+	type ChatPageUser,
+	type ChatSurfaceName,
+} from './webhook-channel.service';
 
 const agentsConfig = Container.get(AgentsConfig);
 const globalConfig = Container.get(GlobalConfig);
@@ -26,8 +34,9 @@ const TOKEN_TTL = 60 * 60 * 1000;
 const REQUEST_TTL = 3 * 60 * 1000;
 const chatTokens = new Map<
 	string,
-	{ user: ChatPageUser; agentId: string; expires: number; issued: number }
+	{ user: ChatPageUser; agentId: string; surface: ChatSurfaceName; expires: number; issued: number }
 >();
+type ChatRequest<P = object> = Request<{ agentId: string; surface: string } & P>;
 const loginRequests = new Map<string, { token: string; user: ChatPageUser; expires: number }>();
 
 /**
@@ -41,6 +50,7 @@ export class WebhookChannelController {
 		private readonly authService: AuthService,
 		private readonly urlService: UrlService,
 		private readonly invites: ChatPageInviteService,
+		private readonly externalChat: ExternalChatService,
 	) {}
 
 	// Public routes: do not add a scope decorator. The caller is not an n8n user,
@@ -74,18 +84,20 @@ export class WebhookChannelController {
 		res.type(file.type).sendFile(file.path);
 	}
 
-	@Get('/:agentId/chat', { skipAuth: true, allowBots: true, usesTemplates: true })
-	async chatPage(req: Request<{ agentId: string }>, res: Response) {
-		const page = await this.webhookChannel.chatPage(req.params.agentId);
+	// `:surface` is `chat` (API channel, v1: webhook path) or `n8n-chat` (n8n Chat
+	// channel, option B: n8n Chat's queue with an external principal).
+	@Get('/:agentId/:surface', { skipAuth: true, allowBots: true, usesTemplates: true })
+	async chatPage(req: ChatRequest, res: Response) {
+		const page = await this.page(req);
 		if (!page) {
 			res.status(404).send('This agent has no chat page.');
 			return;
 		}
 		res.setHeader('Content-Type', 'text/html; charset=utf-8');
-		res.send(chatPageHtml(page.agent.name));
+		res.send(chatPageHtml(page.agent.name, page.name));
 	}
 
-	@Options('/:agentId/chat/config', {
+	@Options('/:agentId/:surface/config', {
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
@@ -95,25 +107,35 @@ export class WebhookChannelController {
 		res.status(204).end();
 	}
 
-	@Get('/:agentId/chat/config', {
+	@Get('/:agentId/:surface/config', {
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
 		cors: CHAT_CORS,
 	})
-	async chatConfig(req: Request<{ agentId: string }>, res: Response) {
-		const { agentId } = req.params;
-		const page = await this.webhookChannel.chatPage(agentId);
+	async chatConfig(req: ChatRequest, res: Response) {
+		const page = await this.page(req);
 		if (!page) {
 			res.status(404).json({ message: 'This agent has no chat page' });
 			return;
 		}
-		const chatUrl = `${this.urlService.getAgentWebhookUrl(agentId)}/chat`;
-		const user = await this.chatUser(req);
+		const chatUrl = `${this.urlService.getAgentWebhookUrl(page.agent.id)}/${page.name}`;
+		const user = await this.chatUser(req, page.name);
+		const external = page.name === 'n8n-chat';
 		res.json({
 			name: page.agent.name,
 			methods: page.surface.methods,
 			user: user ? { name: user.name, kind: user.kind } : null,
+			// Option B: a durable queue, so history after a reload, queueing and Stop.
+			variant: external ? 'n8n-chat' : 'webhook',
+			features: external
+				? {
+						history: true,
+						queue: true,
+						stop: true,
+						...this.externalChat.features(page.surface, user),
+					}
+				: { history: false, queue: false, stop: false, uploads: false },
 			// Hosted page: same origin, so the n8n cookie works after a normal sign-in.
 			signInUrl: this.signInUrl(chatUrl),
 			// Embed: a popup signs in on the instance, the widget polls for a token.
@@ -121,7 +143,7 @@ export class WebhookChannelController {
 		});
 	}
 
-	@Options('/:agentId/chat/messages', {
+	@Options('/:agentId/:surface/messages', {
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
@@ -131,34 +153,114 @@ export class WebhookChannelController {
 		res.status(204).end();
 	}
 
-	@Post('/:agentId/chat/messages', {
+	@Post('/:agentId/:surface/messages', {
 		ipRateLimit: createIpRateLimit(agentsConfig.webhookChannelRateLimit),
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
 		cors: CHAT_CORS,
 	})
-	async chatMessage(req: Request<{ agentId: string }>, res: Response) {
-		if (!(await this.webhookChannel.chatPage(req.params.agentId))) {
+	async chatMessage(req: ChatRequest, res: Response) {
+		const page = await this.page(req);
+		if (!page) {
 			res.status(404).json({ code: 'agent_not_found', message: 'This agent has no chat page.' });
 			return;
 		}
-		const user = await this.chatUser(req);
+		const user = await this.chatUser(req, page.name);
 		res.status(200);
 		res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
-		for await (const event of this.webhookChannel.chat({
-			agentId: req.params.agentId,
-			body: req.body,
-			user,
-			abortSignal: abortOnClose(res),
-		})) {
+		const write = (event: object) => {
+			if (res.writableEnded || res.destroyed) return;
 			res.write(JSON.stringify(event) + '\n');
 			(res as Response & { flush?: () => void }).flush?.();
+		};
+		if (page.name === 'chat') {
+			for await (const event of this.webhookChannel.chat({
+				agentId: page.agent.id,
+				body: req.body,
+				user,
+				abortSignal: abortOnClose(res),
+			})) {
+				write(event);
+			}
+		} else {
+			try {
+				if (!user && !page.surface.methods.public) throw accessError(page.surface);
+				await this.externalChat.send({
+					agent: page.agent,
+					surface: page.surface,
+					user,
+					body: req.body,
+					write,
+					// A closed connection only detaches the stream: the queued turn continues.
+					abortSignal: closeSignal(res),
+				});
+			} catch (error) {
+				const channelError =
+					error instanceof WebhookChannelError
+						? error
+						: new WebhookChannelError(500, 'agent_error', 'The agent could not answer.');
+				write({ type: 'error', code: channelError.code, message: channelError.message });
+			}
 		}
 		res.end();
+	}
+
+	/** Option B: the transcript and waiting messages of the caller's own conversation. */
+	@Options('/:agentId/:surface/conversations/:conversationId', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
+	conversationPreflight(_req: Request, res: Response) {
+		res.status(204).end();
+	}
+
+	@Get('/:agentId/:surface/conversations/:conversationId', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
+	async conversation(req: ChatRequest<{ conversationId: string }>, res: Response) {
+		await this.externalRoute(
+			req,
+			res,
+			async (page, user) =>
+				await this.externalChat.history(page.agent, user, req.params.conversationId),
+		);
+	}
+
+	@Options('/:agentId/:surface/conversations/:conversationId/stop', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
+	stopPreflight(_req: Request, res: Response) {
+		res.status(204).end();
+	}
+
+	@Post('/:agentId/:surface/conversations/:conversationId/stop', {
+		ipRateLimit: createIpRateLimit(agentsConfig.webhookChannelRateLimit),
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+		cors: CHAT_CORS,
+	})
+	async stop(req: ChatRequest<{ conversationId: string }>, res: Response) {
+		await this.externalRoute(req, res, async (page, user) => ({
+			stopped: await this.externalChat.stop(
+				page.agent,
+				user,
+				req.params.conversationId,
+				(req.body as { executionId?: unknown } | undefined)?.executionId,
+			),
+		}));
 	}
 
 	/**
@@ -167,14 +269,13 @@ export class WebhookChannelController {
 	 * Signed in: it parks a short-lived chat token under the widget's request id.
 	 * Not signed in: it goes through the normal sign-in page and comes back.
 	 */
-	@Get('/:agentId/chat/login', { skipAuth: true, allowBots: true, usesTemplates: true })
+	@Get('/:agentId/:surface/login', { skipAuth: true, allowBots: true, usesTemplates: true })
 	async chatLogin(
-		req: Request<{ agentId: string }, unknown, unknown, { request?: string }>,
+		req: Request<{ agentId: string; surface: string }, unknown, unknown, { request?: string }>,
 		res: Response,
 	) {
-		const { agentId } = req.params;
 		const requestId = req.query.request ?? '';
-		const page = await this.webhookChannel.chatPage(agentId);
+		const page = await this.page(req);
 		if (!page?.surface.methods.n8nUsers) {
 			res.status(404).send('Sign-in with n8n is not enabled for this chat.');
 			return;
@@ -185,19 +286,26 @@ export class WebhookChannelController {
 		}
 		const user = await this.cookieUser(req);
 		if (!user) {
-			const back = `${this.urlService.getAgentWebhookUrl(agentId)}/chat/login?request=${requestId}`;
+			const back = `${this.urlService.getAgentWebhookUrl(page.agent.id)}/${page.name}/login?request=${requestId}`;
 			res.redirect(this.signInUrl(back));
 			return;
 		}
 		// ponytail: in-memory, single main only; the product stores tokens in the DB (or signs them).
 		const token = randomBytes(32).toString('base64url');
-		chatTokens.set(token, { user, agentId, expires: Date.now() + TOKEN_TTL, issued: Date.now() });
-		loginRequests.set(requestId, { token, user, expires: Date.now() + REQUEST_TTL });
+		const now = Date.now();
+		chatTokens.set(token, {
+			user,
+			agentId: page.agent.id,
+			surface: page.name,
+			expires: now + TOKEN_TTL,
+			issued: now,
+		});
+		loginRequests.set(requestId, { token, user, expires: now + REQUEST_TTL });
 		res.setHeader('Content-Type', 'text/html; charset=utf-8');
 		res.send(loginDoneHtml(user.name));
 	}
 
-	@Options('/:agentId/chat/login/:requestId', {
+	@Options('/:agentId/:surface/login/:requestId', {
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
@@ -208,7 +316,7 @@ export class WebhookChannelController {
 	}
 
 	/** SPIKE: the widget polls here until the popup has signed in. Hands the token out once. */
-	@Post('/:agentId/chat/login/:requestId', {
+	@Post('/:agentId/:surface/login/:requestId', {
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
@@ -229,42 +337,42 @@ export class WebhookChannelController {
 	 * session. If the browser already chats as someone else, it answers 409 and the
 	 * page asks before it replaces that session.
 	 */
-	@Post('/:agentId/chat/invite', {
+	@Post('/:agentId/:surface/invite', {
 		ipRateLimit: createIpRateLimit(agentsConfig.webhookChannelRateLimit),
 		skipAuth: true,
 		allowBots: true,
 		usesTemplates: true,
 	})
-	async chatInvite(req: Request<{ agentId: string }>, res: Response) {
-		const { agentId } = req.params;
+	async chatInvite(req: ChatRequest, res: Response) {
 		if (!isSameOriginChatCall(req)) {
 			res.status(403).json({ code: 'forbidden', message: 'Open the link in the chat page.' });
 			return;
 		}
 		const body = (req.body ?? {}) as { token?: unknown; replace?: unknown };
 		const token = typeof body.token === 'string' ? body.token : '';
-		const page = await this.webhookChannel.chatPage(agentId);
+		const page = await this.page(req);
 		if (!page) {
 			res.status(404).json({ code: 'agent_not_found', message: 'This agent has no chat page.' });
 			return;
 		}
+		const { agent, name } = page;
 		if (!page.surface.methods.magicLinks) {
 			res
 				.status(403)
 				.json({ code: 'method_disabled', message: 'Invite links are not enabled for this chat.' });
 			return;
 		}
-		const checked = await this.invites.check(agentId, token);
+		const checked = await this.invites.check(agent.id, name, token);
 		if (typeof checked === 'string') {
 			res.status(checked === 'invite_invalid' ? 404 : 410).json(inviteError(checked));
 			return;
 		}
-		const current = await this.chatUser(req);
+		const current = await this.chatUser(req, name);
 		if (current && current.key !== `invite-${checked.id}` && body.replace !== true) {
 			res.status(409).json({ code: 'session_exists', current: current.name, label: checked.label });
 			return;
 		}
-		const result = await this.invites.exchange(agentId, token);
+		const result = await this.invites.exchange(agent.id, name, token);
 		if (typeof result === 'string') {
 			res.status(410).json(inviteError(result));
 			return;
@@ -273,23 +381,62 @@ export class WebhookChannelController {
 			httpOnly: true,
 			sameSite: 'lax',
 			secure: globalConfig.auth.cookie.secure,
-			path: chatCookiePath(agentId),
+			path: chatCookiePath(agent.id, name),
 			maxAge: Date.parse(result.invite.expiresAt) - Date.now(),
 		});
 		res.json({ user: { name: result.invite.label, kind: 'invite' } });
 	}
 
 	/** SPIKE: ends a magic-link session on this browser. */
-	@Post('/:agentId/chat/logout', { skipAuth: true, allowBots: true, usesTemplates: true })
-	async chatLogout(req: Request<{ agentId: string }>, res: Response) {
-		if (!isSameOriginChatCall(req)) {
+	@Post('/:agentId/:surface/logout', { skipAuth: true, allowBots: true, usesTemplates: true })
+	async chatLogout(req: ChatRequest, res: Response) {
+		if (!isSameOriginChatCall(req) || !isChatSurfaceName(req.params.surface)) {
 			res.status(403).end();
 			return;
 		}
 		const session = readCookie(req, SESSION_COOKIE);
 		if (session) await this.invites.endSession(session);
-		res.clearCookie(SESSION_COOKIE, { path: chatCookiePath(req.params.agentId) });
+		res.clearCookie(SESSION_COOKIE, {
+			path: chatCookiePath(req.params.agentId, req.params.surface),
+		});
 		res.status(204).end();
+	}
+
+	/** The chat page of the request's agent and surface, or undefined (404). */
+	private async page(req: Request<{ agentId: string; surface: string }>) {
+		const name = req.params.surface;
+		if (!isChatSurfaceName(name)) return undefined;
+		const page = await this.webhookChannel.chatPage(req.params.agentId, name);
+		return page ? { ...page, name } : undefined;
+	}
+
+	/** Runs an option-B JSON route: 404 without a page, the access check, then the handler. */
+	private async externalRoute(
+		req: ChatRequest,
+		res: Response,
+		handle: (
+			page: NonNullable<Awaited<ReturnType<WebhookChannelController['page']>>>,
+			user: ChatPageUser | undefined,
+		) => Promise<unknown>,
+	) {
+		const page = await this.page(req);
+		if (!page || page.name !== 'n8n-chat') {
+			res.status(404).json({ code: 'agent_not_found', message: 'This agent has no chat page.' });
+			return;
+		}
+		try {
+			const user = await this.chatUser(req, page.name);
+			if (!user && !page.surface.methods.public) throw accessError(page.surface);
+			res.json(await handle(page, user));
+		} catch (error) {
+			const channelError =
+				error instanceof WebhookChannelError
+					? error
+					: new WebhookChannelError(500, 'agent_error', 'The request failed.');
+			res
+				.status(channelError.status)
+				.json({ code: channelError.code, message: channelError.message });
+		}
 	}
 
 	/**
@@ -298,15 +445,19 @@ export class WebhookChannelController {
 	 * another site cannot ride on them (security proposal [H2]). Only identities of
 	 * enabled methods count, and sessions issued before a method was turned off are dead.
 	 */
-	private async chatUser(req: Request<{ agentId: string }>): Promise<ChatPageUser | undefined> {
+	private async chatUser(
+		req: Request<{ agentId: string }>,
+		surface: ChatSurfaceName,
+	): Promise<ChatPageUser | undefined> {
 		const { agentId } = req.params;
-		const { methods, revokedBefore = {} } = await this.webhookChannel.chatSurface(agentId);
+		const { methods, revokedBefore = {} } = await this.webhookChannel.chatSurface(agentId, surface);
 		const bearer = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
 		if (bearer) {
 			const entry = chatTokens.get(bearer);
 			const valid =
 				methods.n8nUsers &&
 				entry?.agentId === agentId &&
+				entry.surface === surface &&
 				entry.expires > Date.now() &&
 				entry.issued > (revokedBefore.n8nUsers ?? 0);
 			return valid ? entry.user : undefined;
@@ -315,7 +466,7 @@ export class WebhookChannelController {
 		const session = readCookie(req, SESSION_COOKIE);
 		if (session && methods.magicLinks) {
 			const notBefore = revokedBefore.magicLinks ?? 0;
-			const invited = await this.invites.sessionUser(agentId, session, notBefore);
+			const invited = await this.invites.sessionUser(agentId, surface, session, notBefore);
 			if (invited) return invited;
 		}
 		return methods.n8nUsers ? await this.cookieUser(req) : undefined;
@@ -367,8 +518,8 @@ function isSameOriginChatCall(req: Request) {
 	return req.headers['x-n8n-chat'] === '1' && (site === undefined || site === 'same-origin');
 }
 
-const chatCookiePath = (agentId: string) =>
-	`/${globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}/chat`;
+const chatCookiePath = (agentId: string, surface: ChatSurfaceName) =>
+	`/${globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}/${surface}`;
 
 const INVITE_ERRORS = {
 	invite_invalid: 'This link is not valid. Ask the owner for a new one.',
@@ -376,6 +527,13 @@ const INVITE_ERRORS = {
 	invite_revoked: 'This link was revoked. Ask the owner for a new one.',
 };
 const inviteError = (code: keyof typeof INVITE_ERRORS) => ({ code, message: INVITE_ERRORS[code] });
+
+/** Fires when the client disconnects. Option B: only the stream ends, not the turn. */
+function closeSignal(res: Response) {
+	const closed = new AbortController();
+	res.on('close', () => closed.abort());
+	return closed.signal;
+}
 
 /** A client that disconnects stops the run. */
 function abortOnClose(res: Response) {
@@ -407,7 +565,7 @@ function loginDoneHtml(userName: string) {
 }
 
 /** SPIKE: the hosted chat page. It mounts @n8n/agent-chat in full-screen mode. */
-function chatPageHtml(agentName: string) {
+function chatPageHtml(agentName: string, surface: ChatSurfaceName) {
 	const escape = (value: string) => value.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 	return `<!doctype html>
 <html lang="en">
@@ -417,7 +575,7 @@ function chatPageHtml(agentName: string) {
 	<title>${escape(agentName)}</title>
 </head>
 <body>
-	<script src="../assets/agent-chat.js" data-agent-url="${escape('./chat')}" data-mode="fullscreen" data-theme="n8n"></script>
+	<script src="../assets/agent-chat.js" data-agent-url="${escape(`./${surface}`)}" data-mode="fullscreen" data-theme="n8n"></script>
 </body>
 </html>`;
 }

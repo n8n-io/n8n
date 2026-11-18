@@ -4,7 +4,7 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
-import type { ChatPageUser } from './webhook-channel.service';
+import type { ChatPageUser, ChatSurfaceName } from './webhook-channel.service';
 
 /**
  * SPIKE (agent-chat-embed): magic links per recipient for the chat page.
@@ -30,6 +30,9 @@ export type InviteFailure = 'invite_invalid' | 'invite_expired' | 'invite_revoke
 
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+/** Invites and sessions belong to one surface of one agent: a link for v1 does not open option B. */
+const scopeOf = (agentId: string, surface: ChatSurfaceName) =>
+	surface === 'chat' ? agentId : `${agentId}.${surface}`;
 
 @Service()
 export class ChatPageInviteService {
@@ -39,13 +42,15 @@ export class ChatPageInviteService {
 		private readonly logger: Logger,
 	) {}
 
-	async list(agentId: string): Promise<ChatPageInvite[]> {
-		const row = await this.settingsRepository.findByKey(`agentChatInvites.${agentId}`);
+	async list(agentId: string, surface: ChatSurfaceName): Promise<ChatPageInvite[]> {
+		const row = await this.settingsRepository.findByKey(
+			`agentChatInvites.${scopeOf(agentId, surface)}`,
+		);
 		return row ? (JSON.parse(row.value) as ChatPageInvite[]) : [];
 	}
 
 	/** Creates a link and writes it to the server log: the spike's stand-in for sending an email. */
-	async create(agentId: string, label: string, ttlMs = DEFAULT_TTL_MS) {
+	async create(agentId: string, surface: ChatSurfaceName, label: string, ttlMs = DEFAULT_TTL_MS) {
 		const token = randomBytes(32).toString('base64url');
 		const now = Date.now();
 		const invite: ChatPageInvite = {
@@ -57,45 +62,56 @@ export class ChatPageInviteService {
 			uses: 0,
 		};
 		// ponytail: read-modify-write of one JSON row; concurrent creates can lose one.
-		await this.save(agentId, [...(await this.list(agentId)), invite]);
+		await this.save(agentId, surface, [...(await this.list(agentId, surface)), invite]);
 		// The fragment never reaches servers, logs or Referer headers.
-		const link = `${this.urlService.getAgentWebhookUrl(agentId)}/chat#invite=${token}`;
+		const link = `${this.urlService.getAgentWebhookUrl(agentId)}/${surface}#invite=${token}`;
 		this.logger.warn(
 			`[SPIKE agent-chat-embed, DEV ONLY, no email sent] Magic link for "${label}" (expires ${invite.expiresAt}): ${link}`,
 		);
 		return invite;
 	}
 
-	async revoke(agentId: string, inviteId: string) {
-		const invites = await this.list(agentId);
+	async revoke(agentId: string, surface: ChatSurfaceName, inviteId: string) {
+		const invites = await this.list(agentId, surface);
 		const invite = invites.find((entry) => entry.id === inviteId);
 		if (invite && !invite.revokedAt) invite.revokedAt = new Date().toISOString();
-		await this.save(agentId, invites);
+		await this.save(agentId, surface, invites);
 	}
 
 	/** Checks a link token. Does not consume it: links are multi-use until expiry or revoke. */
-	async check(agentId: string, token: string): Promise<ChatPageInvite | InviteFailure> {
-		const invite = (await this.list(agentId)).find((entry) => entry.tokenHash === sha256(token));
+	async check(
+		agentId: string,
+		surface: ChatSurfaceName,
+		token: string,
+	): Promise<ChatPageInvite | InviteFailure> {
+		const invite = (await this.list(agentId, surface)).find(
+			(entry) => entry.tokenHash === sha256(token),
+		);
 		return invite ? this.state(invite) : 'invite_invalid';
 	}
 
 	/** Exchanges a link token for a new opaque session token. */
 	async exchange(
 		agentId: string,
+		surface: ChatSurfaceName,
 		token: string,
 	): Promise<{ session: string; invite: ChatPageInvite } | InviteFailure> {
-		const invites = await this.list(agentId);
+		const invites = await this.list(agentId, surface);
 		const invite = invites.find((entry) => entry.tokenHash === sha256(token));
 		if (!invite) return 'invite_invalid';
 		const state = this.state(invite);
 		if (typeof state === 'string') return state;
 		invite.uses += 1;
 		invite.lastUsedAt = new Date().toISOString();
-		await this.save(agentId, invites);
+		await this.save(agentId, surface, invites);
 		const session = randomBytes(32).toString('base64url');
 		await this.settingsRepository.upsertByKey(
 			`agentChatSession.${sha256(session)}`,
-			JSON.stringify({ agentId, inviteId: invite.id, issuedAt: Date.now() }),
+			JSON.stringify({
+				scope: scopeOf(agentId, surface),
+				inviteId: invite.id,
+				issuedAt: Date.now(),
+			}),
 			false,
 			{},
 		);
@@ -105,14 +121,18 @@ export class ChatPageInviteService {
 	/** The principal of a session, checked against the invite on every request (revoke and expiry apply at once). */
 	async sessionUser(
 		agentId: string,
+		surface: ChatSurfaceName,
 		session: string,
 		notBefore = 0,
 	): Promise<ChatPageUser | undefined> {
 		const row = await this.settingsRepository.findByKey(`agentChatSession.${sha256(session)}`);
 		if (!row) return undefined;
-		const entry = JSON.parse(row.value) as { agentId: string; inviteId: string; issuedAt?: number };
-		if (entry.agentId !== agentId || (entry.issuedAt ?? 0) <= notBefore) return undefined;
-		const invite = (await this.list(agentId)).find((candidate) => candidate.id === entry.inviteId);
+		const entry = JSON.parse(row.value) as { scope: string; inviteId: string; issuedAt?: number };
+		if (entry.scope !== scopeOf(agentId, surface) || (entry.issuedAt ?? 0) <= notBefore)
+			return undefined;
+		const invite = (await this.list(agentId, surface)).find(
+			(candidate) => candidate.id === entry.inviteId,
+		);
 		if (!invite || typeof this.state(invite) === 'string') return undefined;
 		return { key: `invite-${invite.id}`, kind: 'invite', name: invite.label };
 	}
@@ -127,9 +147,9 @@ export class ChatPageInviteService {
 		return invite;
 	}
 
-	private async save(agentId: string, invites: ChatPageInvite[]) {
+	private async save(agentId: string, surface: ChatSurfaceName, invites: ChatPageInvite[]) {
 		await this.settingsRepository.upsertByKey(
-			`agentChatInvites.${agentId}`,
+			`agentChatInvites.${scopeOf(agentId, surface)}`,
 			JSON.stringify(invites),
 			false,
 			{},

@@ -9,6 +9,7 @@
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
+| externalPrincipal | varchar(255) |  | true |  |  | Key of an external chat principal |
 | id | varchar(128) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_message_queue](public.agent_message_queue.md) [public.agent_plan](public.agent_plan.md) [public.agent_thread_grants](public.agent_thread_grants.md) |  |  |
 | ownerId | uuid |  | true |  | [public.user](public.user.md) | User who started this private session |
 | parentAgentId | varchar(36) |  | true |  |  | Saved agent id of the parent that delegated this subagent run. |
@@ -29,7 +30,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_execution_threads_accessScope | CHECK | CHECK ((("accessScope")::text = ANY ((ARRAY['user'::character varying, 'project'::character varying])::text[]))) |
+| CHK_agent_execution_threads_accessScope | CHECK | CHECK ((("accessScope")::text = ANY ((ARRAY['user'::character varying, 'project'::character varying, 'external'::character varying])::text[]))) |
 | FK_0468a9dc35597314e641d4722aa | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_0e2f8bf92a7a9c88b89670f701c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_agent_execution_threads_owner | FOREIGN KEY | FOREIGN KEY ("ownerId") REFERENCES "user"(id) ON DELETE SET NULL |
@@ -54,6 +55,7 @@
 | ---- | ---------- |
 | IDX_0468a9dc35597314e641d4722a | CREATE INDEX "IDX_0468a9dc35597314e641d4722a" ON public.agent_execution_threads USING btree ("agentId") |
 | IDX_0e2f8bf92a7a9c88b89670f701 | CREATE INDEX "IDX_0e2f8bf92a7a9c88b89670f701" ON public.agent_execution_threads USING btree ("projectId") |
+| IDX_agent_execution_threads_externalPrincipal | CREATE INDEX "IDX_agent_execution_threads_externalPrincipal" ON public.agent_execution_threads USING btree ("externalPrincipal") |
 | IDX_agent_execution_threads_ownerId | CREATE INDEX "IDX_agent_execution_threads_ownerId" ON public.agent_execution_threads USING btree ("ownerId") |
 | IDX_agent_execution_threads_taskVersionId | CREATE INDEX "IDX_agent_execution_threads_taskVersionId" ON public.agent_execution_threads USING btree ("taskVersionId") |
 | PK_22373dbf6ba6929d8ac50093309 | CREATE UNIQUE INDEX "PK_22373dbf6ba6929d8ac50093309" ON public.agent_execution_threads USING btree (id) |
@@ -78,6 +80,7 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
+  varchar_255_ externalPrincipal
   varchar_128_ id
   uuid ownerId FK
   varchar_36_ parentAgentId

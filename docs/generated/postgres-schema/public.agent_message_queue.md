@@ -116,6 +116,7 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
+  varchar_255_ externalPrincipal
   varchar_128_ id
   uuid ownerId FK
   varchar_36_ parentAgentId

@@ -2,6 +2,12 @@ const INTEGRATION_MEMORY_RESOURCE_PREFIX = 'integration:';
 const DRAFT_CHAT_MEMORY_RESOURCE_PREFIX = 'draft-chat:';
 const PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX = 'n8n-chat-production:';
 const SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX = 'system-chat:';
+const EXTERNAL_CHAT_MEMORY_RESOURCE_PREFIX = 'external-chat:';
+
+/** SPIKE (agent-chat-embed): memory of an external chat principal (invitee, visitor, user via the embed). */
+export function externalChatMemoryResourceId(principal: string): string {
+	return `${EXTERNAL_CHAT_MEMORY_RESOURCE_PREFIX}${principal}`;
+}
 
 export function draftChatMemoryResourceId(userId: string): string {
 	return `${DRAFT_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;

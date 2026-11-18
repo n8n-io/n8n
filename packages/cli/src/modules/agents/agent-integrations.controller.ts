@@ -22,7 +22,9 @@ import { deriveWhatsAppVerifyToken } from './integrations/integration-helpers';
 import { ChatPageInviteService } from './integrations/platforms/webhook/chat-page-invites.service';
 import {
 	ChatSurfaceSettingsSchema,
+	isChatSurfaceName,
 	WebhookChannelService,
+	type ChatSurfaceName,
 } from './integrations/platforms/webhook/webhook-channel.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
@@ -47,39 +49,50 @@ export class AgentIntegrationsController {
 		private readonly chatPageInvites: ChatPageInviteService,
 	) {}
 
-	// SPIKE (agent-chat-embed): chat page of the n8n Chat channel and who may use it.
-	@Get('/:agentId/chat-page')
+	// SPIKE (agent-chat-embed): the chat page of a channel and who may use it.
+	// `:surface` is `chat` (API channel, v1) or `n8n-chat` (n8n Chat channel, option B).
+	@Get('/:agentId/chat-pages/:surface')
 	@ProjectScope('agent:read')
-	async chatPage(_req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
-		const { enabled, methods } = await this.webhookChannel.chatSurface(agentId);
-		return { url: `${this.urlService.getAgentWebhookUrl(agentId)}/chat`, enabled, methods };
+	async chatPage(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('surface') surface: string,
+	) {
+		const name = chatSurfaceName(surface);
+		const { enabled, methods, features } = await this.webhookChannel.chatSurface(agentId, name);
+		const url = `${this.urlService.getAgentWebhookUrl(agentId)}/${name}`;
+		return { url, enabled, methods, ...(name === 'n8n-chat' ? { features } : {}) };
 	}
 
-	@Put('/:agentId/chat-page')
+	@Put('/:agentId/chat-pages/:surface')
 	@ProjectScope('agent:update')
 	async setChatPage(
 		req: AuthenticatedRequest<{ projectId: string }, unknown, unknown>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Param('surface') surface: string,
 	) {
+		const name = chatSurfaceName(surface);
 		const parsed = ChatSurfaceSettingsSchema.safeParse(req.body);
 		if (!parsed.success) throw new BadRequestError('Invalid chat surface settings');
-		return await this.webhookChannel.setChatSurface(agentId, parsed.data);
+		return await this.webhookChannel.setChatSurface(agentId, name, parsed.data);
 	}
 
 	// SPIKE (agent-chat-embed): magic links per recipient. The link goes to the server log, not to the client.
-	@Get('/:agentId/chat-page/invites')
+	@Get('/:agentId/chat-pages/:surface/invites')
 	@ProjectScope('agent:read')
 	async listChatPageInvites(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Param('surface') surface: string,
 	) {
-		const invites = await this.chatPageInvites.list(agentId);
+		const invites = await this.chatPageInvites.list(agentId, chatSurfaceName(surface));
 		return invites.map(({ tokenHash: _tokenHash, ...invite }) => invite);
 	}
 
-	@Post('/:agentId/chat-page/invites')
+	@Post('/:agentId/chat-pages/:surface/invites')
 	@ProjectScope('agent:update')
 	async createChatPageInvite(
 		req: AuthenticatedRequest<
@@ -89,7 +102,9 @@ export class AgentIntegrationsController {
 		>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Param('surface') surface: string,
 	) {
+		const name = chatSurfaceName(surface);
 		const label = typeof req.body?.label === 'string' ? req.body.label.trim().slice(0, 60) : '';
 		if (!label) throw new BadRequestError('A recipient name or email is required');
 		const seconds = Number(req.body?.expiresInSeconds);
@@ -98,21 +113,23 @@ export class AgentIntegrationsController {
 			Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 30 * 86400) * 1000 : undefined;
 		const { tokenHash: _tokenHash, ...invite } = await this.chatPageInvites.create(
 			agentId,
+			name,
 			label,
 			ttlMs,
 		);
 		return invite;
 	}
 
-	@Delete('/:agentId/chat-page/invites/:inviteId')
+	@Delete('/:agentId/chat-pages/:surface/invites/:inviteId')
 	@ProjectScope('agent:update')
 	async revokeChatPageInvite(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Param('surface') surface: string,
 		@Param('inviteId') inviteId: string,
 	) {
-		await this.chatPageInvites.revoke(agentId, inviteId);
+		await this.chatPageInvites.revoke(agentId, chatSurfaceName(surface), inviteId);
 		return { revoked: true };
 	}
 
@@ -391,4 +408,9 @@ export class AgentIntegrationsController {
 		const body = await webResponse.text();
 		res.send(body);
 	}
+}
+
+function chatSurfaceName(surface: string): ChatSurfaceName {
+	if (!isChatSurfaceName(surface)) throw new NotFoundError('Unknown chat surface');
+	return surface;
 }

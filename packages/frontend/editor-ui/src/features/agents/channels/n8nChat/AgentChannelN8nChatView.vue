@@ -50,6 +50,7 @@ defineExpose({ description });
 			/>
 		</div>
 		<AgentChannelN8nChatShare
+			surface="n8n-chat"
 			:project-id="projectId"
 			:agent-id="agentId"
 			:is-published="isPublished"

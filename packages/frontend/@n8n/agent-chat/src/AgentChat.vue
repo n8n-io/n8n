@@ -5,8 +5,10 @@ import {
 	endSession,
 	exchangeInvite,
 	fetchConfig,
+	fetchHistory,
 	loginWithPopup,
 	sendMessage,
+	stopTurn,
 	type ChatConfig,
 } from './api';
 import { renderMarkdown } from './markdown';
@@ -29,6 +31,9 @@ interface Message {
 	text: string;
 	tools: Tool[];
 	error?: boolean;
+	/** Option B: a message that waits in the queue until the running turn ends. */
+	queued?: boolean;
+	files?: string[];
 }
 
 const config = ref<ChatConfig>();
@@ -76,6 +81,11 @@ async function loadConfig() {
 		config.value = await fetchConfig(props.base, token.value);
 		// A token the server no longer knows (expired, restart): sign in again.
 		if (token.value && !config.value.user) signOut();
+		const stored = config.value.features?.history ? storedConversation() : undefined;
+		if (stored && !needsLogin.value && !messages.value.length) {
+			await loadHistory(stored);
+			restored.value = messages.value.length;
+		}
 	} catch (error) {
 		loadError.value = (error as Error).message;
 	}
@@ -151,36 +161,150 @@ async function signOut() {
 
 const scrollDown = () => nextTick(() => list.value?.scrollTo({ top: list.value.scrollHeight }));
 
+// Option B (n8n Chat backend): durable queue, history after a reload, Stop.
+const optionB = computed(() => config.value?.variant === 'n8n-chat');
+const features = computed(() => config.value?.features);
+const runningExecution = ref<string>();
+const attachment = ref<{ fileName: string; mimeType: string; data: string }>();
+const fileInput = ref<HTMLInputElement>();
+// The conversation survives a reload in this tab (option B). Bound to the identity it was made with.
+const conversationKey = `${storageKey}:conversation`;
+function rememberConversation(id?: string) {
+	try {
+		if (id)
+			sessionStorage.setItem(conversationKey, JSON.stringify({ id, who: signedInAs.value ?? '' }));
+		else sessionStorage.removeItem(conversationKey);
+	} catch {}
+}
+function storedConversation(): string | undefined {
+	try {
+		const entry = JSON.parse(sessionStorage.getItem(conversationKey) ?? 'null') as {
+			id: string;
+			who: string;
+		} | null;
+		return entry && entry.who === (signedInAs.value ?? '') ? entry.id : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+let polling: ReturnType<typeof setTimeout> | undefined;
+/** Option B: messages that came back from the server after a reload (shown once as a note). */
+const restored = ref(0);
+const uploadsHint = computed(() => {
+	if (features.value?.uploadsOff === 'anonymous')
+		return 'Sign in or open your invite link to attach files.';
+	if (features.value?.uploadsOff === 'disabled')
+		return 'File uploads are off for this chat. The owner can turn them on in the n8n Chat channel.';
+	return attachment.value ? `Attached: ${attachment.value.fileName}` : 'Attach a file (up to 2 MB)';
+});
+/** Option B: shows the recorded conversation; follows a running turn by reading again. */
+async function loadHistory(id: string) {
+	clearTimeout(polling);
+	const history = await fetchHistory(props.base, id, token.value);
+	if (!history) {
+		rememberConversation();
+		conversationId.value = undefined;
+		return;
+	}
+	conversationId.value = id;
+	messages.value = [
+		...history.messages.map((entry) => ({
+			role: entry.role,
+			text: entry.text,
+			tools: entry.tools.map((tool) => ({ ...tool, done: true })),
+			files: entry.files.map((file) => file.name),
+			error: entry.error,
+		})),
+		...history.pending.map((item) => ({
+			role: 'user' as const,
+			text: item.text,
+			tools: [],
+			queued: true,
+		})),
+	];
+	runningExecution.value = history.activeExecutionId ?? undefined;
+	scrollDown();
+	if (history.activeExecutionId || history.pending.length) {
+		polling = setTimeout(() => void loadHistory(id), 1500);
+	}
+}
+
+async function pickFile(event: Event) {
+	const file = (event.target as HTMLInputElement).files?.[0];
+	if (!file) return;
+	const bytes = new Uint8Array(await file.arrayBuffer());
+	let binary = '';
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	attachment.value = { fileName: file.name, mimeType: file.type, data: btoa(binary) };
+}
+
 async function send() {
 	const text = input.value.trim();
-	if (!text || busy.value) return;
+	const queueing = !!features.value?.queue;
+	if ((!text && !attachment.value) || (busy.value && !queueing)) return;
+	clearTimeout(polling);
 	input.value = '';
+	const files = attachment.value ? [attachment.value] : undefined;
+	attachment.value = undefined;
+	if (fileInput.value) fileInput.value.value = '';
+	const ask: Message = {
+		role: 'user',
+		text,
+		tools: [],
+		queued: busy.value,
+		files: files?.map((file) => file.fileName),
+	};
+	messages.value.push(ask);
+	// v1 answers at once. Option B answers when the queue starts the turn.
+	let reply: Message | undefined;
+	const startReply = () => {
+		messages.value.push({ role: 'agent', text: '', tools: [] });
+		reply = messages.value[messages.value.length - 1];
+	};
+	if (!queueing) startReply();
 	busy.value = true;
-	messages.value.push({ role: 'user', text, tools: [] });
-	messages.value.push({ role: 'agent', text: '', tools: [] });
-	const reply = messages.value[messages.value.length - 1];
 	scrollDown();
-	abort = new AbortController();
+	const controller = new AbortController();
+	abort = controller;
+	let finished = false;
 	try {
 		for await (const event of sendMessage(
 			props.base,
-			{ message: text, conversationId: conversationId.value },
-			abort.signal,
+			{ message: text, conversationId: conversationId.value, attachments: files },
+			controller.signal,
 			token.value,
 		)) {
-			if (event.type === 'conversation') conversationId.value = event.id;
-			else if (event.type === 'text') reply.text += event.delta;
+			if (event.type === 'conversation') {
+				conversationId.value = event.id;
+				if (optionB.value) rememberConversation(event.id);
+			} else if (event.type === 'started') {
+				ask.queued = false;
+				runningExecution.value = event.executionId;
+				startReply();
+			} else if (event.type === 'text') (reply ?? (startReply(), reply!)).text += event.delta;
 			else if (event.type === 'tool-start')
-				reply.tools.push({ id: event.id, name: event.name, done: false });
+				(reply ?? (startReply(), reply!)).tools.push({
+					id: event.id,
+					name: event.name,
+					done: false,
+				});
 			else if (event.type === 'tool-end') {
-				const tool = reply.tools.find((t) => t.id === event.id);
+				const tool = reply?.tools.find((t) => t.id === event.id);
 				if (tool) tool.done = true;
-			} else if (event.type === 'notice') reply.text += `\n\n_${event.text}_`;
+			} else if (event.type === 'notice')
+				(reply ?? (startReply(), reply!)).text += `\n\n_${event.text}_`;
+			else if (event.type === 'done') finished = true;
 			else if (event.type === 'error') {
-				reply.text += (reply.text ? '\n\n' : '') + event.message;
-				reply.error = true;
+				finished = true;
+				const target = reply ?? (startReply(), reply!);
+				target.text += (target.text ? '\n\n' : '') + event.message;
+				target.error = true;
 				// The server forgot the conversation: start a new one on the next message.
-				if (event.code === 'conversation_not_found') conversationId.value = undefined;
+				if (event.code === 'conversation_not_found') {
+					conversationId.value = undefined;
+					rememberConversation();
+				}
 				// Access changed (method turned off, session ended): show the current way in.
 				if (['login_required', 'invite_required', 'no_access_method'].includes(event.code ?? '')) {
 					if (token.value) void signOut();
@@ -190,20 +314,41 @@ async function send() {
 			scrollDown();
 		}
 	} catch (error) {
-		if (!abort.signal.aborted) {
-			reply.text = (error as Error).message;
-			reply.error = true;
+		if (!controller.signal.aborted) {
+			const target = reply ?? (startReply(), reply!);
+			target.text = (error as Error).message;
+			target.error = true;
+			finished = true;
 		}
 	} finally {
-		busy.value = false;
-		abort = undefined;
+		if (abort === controller) {
+			abort = undefined;
+			busy.value = false;
+			runningExecution.value = undefined;
+		}
+		// Option B: a stream that ended early (network, reload) leaves the turn running: read it back.
+		if (optionB.value && !finished && conversationId.value && !controller.signal.aborted) {
+			void loadHistory(conversationId.value);
+		}
+	}
+}
+
+async function stop() {
+	if (conversationId.value && runningExecution.value) {
+		await stopTurn(props.base, conversationId.value, runningExecution.value, token.value);
+		const last = messages.value.findLast((message) => message.role === 'agent');
+		if (last) last.text += (last.text ? '\n\n' : '') + '_Stopped._';
 	}
 }
 
 function newChat() {
+	restored.value = 0;
+	clearTimeout(polling);
 	abort?.abort();
 	messages.value = [];
 	conversationId.value = undefined;
+	runningExecution.value = undefined;
+	rememberConversation();
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -285,6 +430,9 @@ function onKeydown(event: KeyboardEvent) {
 						This chat is not available.
 					</p>
 				</div>
+				<p v-if="restored" class="agent-chat__note" data-testid="agent-chat-restored">
+					Conversation restored after reload ({{ restored }} messages)
+				</p>
 				<div
 					v-for="(message, index) in messages"
 					:key="index"
@@ -304,6 +452,12 @@ function onKeydown(event: KeyboardEvent) {
 					/>
 					<template v-else-if="message.role === 'user'">{{ message.text }}</template>
 					<span v-else-if="busy && !message.tools.length" class="agent-chat__typing">…</span>
+					<div v-for="file in message.files" :key="file" class="agent-chat__file">
+						📎 {{ file }}
+					</div>
+					<div v-if="message.queued" class="agent-chat__queued" data-testid="agent-chat-queued">
+						Waiting until the current answer is done
+					</div>
 				</div>
 			</div>
 			<div
@@ -321,7 +475,56 @@ function onKeydown(event: KeyboardEvent) {
 					Sign out
 				</button>
 			</div>
+			<!-- Public chat without an identity: say so, so missing features (uploads, memory) make sense. -->
+			<div
+				v-else-if="config && !needsLogin && !signedInAs"
+				class="agent-chat__identity"
+				data-testid="agent-chat-anonymous"
+			>
+				Chatting as a visitor (not signed in)
+				<button
+					v-if="config.methods.n8nUsers"
+					class="agent-chat__link"
+					type="button"
+					:disabled="signingIn"
+					@click="signIn"
+				>
+					Sign in with n8n
+				</button>
+			</div>
 			<form v-if="!needsLogin" class="agent-chat__composer" @submit.prevent="send">
+				<!-- Option B: the attach button is always there; disabled with the reason when uploads are off. -->
+				<span
+					v-if="optionB"
+					:class="[
+						'agent-chat__attach-wrap',
+						{ 'agent-chat__attach-wrap--off': !features?.uploads },
+					]"
+					:title="uploadsHint"
+				>
+					<input
+						ref="fileInput"
+						type="file"
+						hidden
+						accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/csv"
+						data-testid="agent-chat-file"
+						@change="pickFile"
+					/>
+					<button
+						:class="[
+							'agent-chat__icon-button',
+							'agent-chat__attach',
+							{ 'agent-chat__attach--on': attachment },
+						]"
+						type="button"
+						:aria-label="uploadsHint"
+						:disabled="!features?.uploads"
+						data-testid="agent-chat-attach"
+						@click="fileInput?.click()"
+					>
+						📎
+					</button>
+				</span>
 				<textarea
 					v-model="input"
 					class="agent-chat__input"
@@ -330,12 +533,37 @@ function onKeydown(event: KeyboardEvent) {
 					:disabled="!!loadError"
 					@keydown="onKeydown"
 				/>
-				<button class="agent-chat__send" type="submit" :disabled="busy || !input.trim()">
+				<button
+					class="agent-chat__send"
+					type="submit"
+					data-testid="agent-chat-send"
+					:disabled="(busy && !features?.queue) || (!input.trim() && !attachment)"
+				>
 					Send
 				</button>
+				<button
+					v-if="runningExecution && features?.stop"
+					class="agent-chat__send agent-chat__stop"
+					type="button"
+					title="Stop the current answer. Waiting messages stay queued."
+					data-testid="agent-chat-stop"
+					@click="stop"
+				>
+					■ Stop
+				</button>
 			</form>
+			<p v-if="attachment" class="agent-chat__note" data-testid="agent-chat-attachment">
+				📎 {{ attachment.fileName }}
+				<button class="agent-chat__link" type="button" @click="attachment = undefined">
+					Remove
+				</button>
+			</p>
 			<footer class="agent-chat__footer">
 				Powered by n8n · Conversations are visible to the agent's owner
+				<span v-if="config" data-testid="agent-chat-variant">
+					· spike:
+					{{ optionB ? 'option B (n8n Chat backend: history, queue, Stop)' : 'v1 (API channel)' }}
+				</span>
 			</footer>
 		</section>
 		<button
@@ -577,6 +805,47 @@ function onKeydown(event: KeyboardEvent) {
 	color: var(--agent-chat--color-on-primary);
 	cursor: pointer;
 }
+.agent-chat__note {
+	text-align: center;
+	font-size: 12px;
+	opacity: 0.7;
+	margin: 4px 0;
+}
+
+.agent-chat__stop {
+	background: #b42318;
+}
+
+.agent-chat__attach:disabled {
+	opacity: 0.35;
+	/* Lets the wrapper show its tooltip: a disabled button gets no hover. */
+	pointer-events: none;
+}
+
+.agent-chat__attach-wrap {
+	display: inline-flex;
+}
+
+.agent-chat__attach-wrap--off {
+	cursor: not-allowed;
+}
+
+.agent-chat__attach--on {
+	outline: 2px solid currentColor;
+	border-radius: 6px;
+}
+
+.agent-chat__queued,
+.agent-chat__file {
+	font-size: 12px;
+	opacity: 0.7;
+	margin-top: 4px;
+}
+
+.agent-chat__attach {
+	color: inherit;
+}
+
 .agent-chat__send:disabled {
 	opacity: 0.5;
 	cursor: default;

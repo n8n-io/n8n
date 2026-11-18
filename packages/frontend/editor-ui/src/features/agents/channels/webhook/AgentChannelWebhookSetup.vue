@@ -12,6 +12,7 @@ import { I18nT } from 'vue-i18n';
 
 import { getAgentWebhookUrl } from '../../composables/useAgentApi';
 import type { AgentChannelViewProps } from '../types';
+import AgentChannelN8nChatShare from '../n8nChat/AgentChannelN8nChatShare.vue';
 import AgentChannelWebhookAuth from './AgentChannelWebhookAuth.vue';
 import AgentChannelWebhookInstructions from './AgentChannelWebhookInstructions.vue';
 
@@ -208,6 +209,13 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 				</N8nText>
 			</div>
 			<AgentChannelWebhookInstructions :authentication="authentication" />
+			<!-- SPIKE (agent-chat-embed): v1 chat page, each turn runs on this channel's webhook path. -->
+			<AgentChannelN8nChatShare
+				surface="chat"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:is-published="isPublished"
+			/>
 		</template>
 	</div>
 </template>

@@ -2,6 +2,8 @@ import type { AgentExecutionThread } from '../../entities/agent-execution-thread
 import {
 	canContinueThreadOnSurface,
 	chatSurfaceForKind,
+	isExternalThreadOf,
+	threadBelongsTo,
 	N8N_CHAT_PRODUCTION_SOURCE,
 	SYSTEM_CHAT_SOURCE,
 } from '../agent-thread-access';
@@ -78,5 +80,36 @@ describe('canContinueThreadOnSurface', () => {
 				expect(canContinueThreadOnSurface(surface, thread, 'user-1', source, true)).toBe(false);
 			},
 		);
+	});
+});
+
+// SPIKE (agent-chat-embed): sessions of external chat principals.
+describe('external threads', () => {
+	const external = {
+		...thread,
+		accessScope: 'external',
+		ownerId: null,
+		externalPrincipal: 'invite-1',
+		projectId: 'p',
+		agentId: 'a',
+	} as AgentExecutionThread;
+
+	it('belongs only to its own principal', () => {
+		expect(isExternalThreadOf(external, 'invite-1')).toBe(true);
+		expect(isExternalThreadOf(external, 'invite-2')).toBe(false);
+		expect(canContinueThreadOnSurface('external', external, 'invite-1', null, false)).toBe(true);
+		expect(canContinueThreadOnSurface('external', external, 'anon-x', null, false)).toBe(false);
+	});
+
+	it('never matches an n8n user ID or another surface', () => {
+		const raw = { ...external, externalPrincipal: 'u-1' } as AgentExecutionThread;
+		expect(isExternalThreadOf(raw, 'u-1')).toBe(false);
+		expect(threadBelongsTo(external, 'p', 'a', 'user-1')).toBe(false);
+		expect(canContinueThreadOnSurface('n8n-chat', external, 'invite-1', null, false)).toBe(false);
+		expect(canContinueThreadOnSurface('preview', external, 'invite-1', null, false)).toBe(false);
+	});
+
+	it('maps the external_chat queue kind to the external surface', () => {
+		expect(chatSurfaceForKind('external_chat')).toBe('external');
 	});
 });

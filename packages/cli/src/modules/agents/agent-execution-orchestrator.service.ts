@@ -164,6 +164,8 @@ export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Set to false when the channel cannot receive background job wakes. Defaults to true. */
 	allowBackgroundTasks?: boolean;
+	/** SPIKE (agent-chat-embed): the session access. Defaults to a project session (integrations). */
+	access?: AgentThreadAccess;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
 	// session — there is no n8n `User` to attach. The admin who published the
@@ -889,7 +891,7 @@ export class AgentExecutionOrchestratorService {
 							platformMessageId: config.messageContext?.messageId,
 						},
 						source: integrationType,
-						access: { accessScope: 'project', ownerId: null },
+						access: config.access ?? { accessScope: 'project', ownerId: null },
 						sessionMode,
 						admittedExecution: config.admittedExecution,
 					},
@@ -918,7 +920,7 @@ export class AgentExecutionOrchestratorService {
 							: undefined,
 					messageContext,
 					episodicScope: config.episodicScope,
-					access: { accessScope: 'project', ownerId: null },
+					access: config.access ?? { accessScope: 'project', ownerId: null },
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,

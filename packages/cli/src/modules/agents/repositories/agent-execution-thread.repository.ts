@@ -214,12 +214,18 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				agentId: metadata.parentAgentId ?? IsNull(),
 			});
 			if (parent) {
-				access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
+				access = {
+					accessScope: parent.accessScope,
+					ownerId: parent.ownerId,
+					externalPrincipal: parent.externalPrincipal,
+				};
 			} else if (await repository.existsBy({ id: metadata.parentThreadId })) {
 				throw new UserError('Session not found');
 			}
 		}
 		if (access.accessScope === 'user' && !access.ownerId) throw new UserError('Session not found');
+		if (access.accessScope === 'external' && !access.externalPrincipal)
+			throw new UserError('Session not found');
 		await this.assertOwnerActive(access, ctx);
 
 		const isPostgres = manager.connection.options.type === 'postgres';
@@ -231,6 +237,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 					projectId,
 					...access,
 					ownerId: access.ownerId ?? IsNull(),
+					externalPrincipal: access.externalPrincipal ?? IsNull(),
 				},
 				lock: isPostgres ? { mode: 'pessimistic_write' } : undefined,
 			});
@@ -250,6 +257,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			agentName,
 			projectId,
 			...access,
+			externalPrincipal: access.externalPrincipal ?? null,
 			taskId: taskId ?? null,
 			taskVersionId: taskVersionId ?? null,
 			sessionNumber: (maxResult?.max ?? 0) + 1,

@@ -138,7 +138,13 @@ export abstract class AbstractServer {
 	}
 
 	private setupDevMiddlewares() {
-		this.app.use(corsMiddleware);
+		// SPIKE (agent-chat-embed): the agent chat routes set their own CORS. The dev
+		// middleware would answer their preflights first, without their headers.
+		const agentWebhook = `/${this.globalConfig.endpoints.agentWebhook}/`;
+		this.app.use((req, res, next) => {
+			if (req.path.startsWith(agentWebhook)) next();
+			else void corsMiddleware(req, res, next);
+		});
 	}
 
 	protected setupPushServer() {}

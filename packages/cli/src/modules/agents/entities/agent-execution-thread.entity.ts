@@ -38,7 +38,12 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 		default: 'user',
 		comment: 'user: private session; project: shared integration, workflow, or task session',
 	})
-	accessScope: 'user' | 'project';
+	accessScope: 'user' | 'project' | 'external';
+
+	/** SPIKE (agent-chat-embed): the key of the external chat principal of an `external` session. */
+	@Index()
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	externalPrincipal: string | null;
 
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
@@ -127,4 +132,6 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	totalDuration: number;
 }
 
-export type AgentThreadAccess = Pick<AgentExecutionThread, 'ownerId' | 'accessScope'>;
+export type AgentThreadAccess = Pick<AgentExecutionThread, 'ownerId' | 'accessScope'> & {
+	externalPrincipal?: string | null;
+};

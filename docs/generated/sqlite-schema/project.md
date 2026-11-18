@@ -138,6 +138,7 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
+  varchar_255_ externalPrincipal
   varchar_128_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
