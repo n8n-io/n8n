@@ -4070,12 +4070,12 @@ pub const Client = struct {
     /// has a failure of its own), and the result is true.
     fn dropStored(c: *Client, ri: u32, msg: []const u8) bool {
         const r = &c.reqs[ri];
-        const blobs = c.cfg.blobs orelse unreachable; // The handle of the request came from it.
         const h = r.stored;
         std.debug.assert(h != .none);
         r.stored = .none;
-        // A rule that did not decide yet: the request has no row.
+        // A rule that did not decide yet: the request has no row, and a runtime without a store can have such a rule.
         if (h == .pending) return false;
+        const blobs = c.cfg.blobs orelse unreachable; // The handle of the request came from it.
         if (!r.storing) {
             blobs.release(h);
             return false;
