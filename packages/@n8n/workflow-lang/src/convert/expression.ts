@@ -1307,6 +1307,37 @@ function luxonMode(
 	return rest.includes('.') || rest.includes('[') ? 'text' : 'reject';
 }
 
+const SIBLING_READ = /\$parameter\[(["'])&([A-Za-z_]\w*)\1\]/g;
+const WHOLE_EXPRESSION = /^=\s*\{\{([\s\S]*)\}\}\s*$/;
+
+/**
+ * `$parameter["&name"]` in an expression is the value of the parameter `name` next to the
+ * parameter of the expression. The value is known here: a constant goes in as its literal,
+ * and one whole expression goes in as its code. Another value keeps the read as it is, and
+ * the expression then does not translate.
+ */
+export function withSiblingValues(members: Record<string, unknown>): Record<string, unknown> {
+	let out = members;
+	for (const [key, member] of Object.entries(members)) {
+		if (typeof member !== 'string' || !member.startsWith('=') || !member.includes('$parameter['))
+			continue;
+		const replaced = member.replace(SIBLING_READ, (read: string, _quote: string, name: string) => {
+			if (name === key || !Object.hasOwn(members, name)) return read;
+			const sibling = members[name];
+			if (typeof sibling === 'number' || typeof sibling === 'boolean')
+				return JSON.stringify(sibling);
+			if (typeof sibling !== 'string') return read;
+			if (!sibling.startsWith('=')) return JSON.stringify(sibling);
+			const inner = WHOLE_EXPRESSION.exec(sibling)?.[1];
+			return inner === undefined || inner.includes('{{') || inner.includes('$parameter')
+				? read
+				: `(${inner})`;
+		});
+		if (replaced !== member) out = { ...out, [key]: replaced };
+	}
+	return out;
+}
+
 /**
  * Translates a parameter value tree. Expressions that do not translate keep
  * their raw text and are listed in `failures`.
@@ -1363,7 +1394,7 @@ export function translateValue(
 			if (options.flattenResourceLocators && v.__rl === true) return walk(v.value, `${p}.value`);
 			return {
 				kind: 'object',
-				entries: Object.entries(v).map(([k, x]): [string, Code] => [
+				entries: Object.entries(withSiblingValues(v)).map(([k, x]): [string, Code] => [
 					k,
 					walk(x, p ? `${p}.${k}` : k),
 				]),

@@ -8,9 +8,10 @@ import {
 import type { CredentialDerivation } from './specialise.ts';
 
 const MAX_SLOT_FLAGS = MAX_CREDENTIAL_FLAGS * 64;
+const TIMEOUT_MS = Number(process.env.WF_EVALUATE_TIMEOUT_MS) || 100;
 
 export function evaluateInSandbox(code: string): unknown {
-	return runInNewContext(code, Object.create(null), { timeout: 100 });
+	return runInNewContext(code, Object.create(null), { timeout: TIMEOUT_MS });
 }
 
 export function evaluateDerivation(
@@ -20,7 +21,7 @@ export function evaluateDerivation(
 	const result: unknown = runInNewContext(
 		`(${code})(data)`,
 		{ data: structuredClone(data), Buffer, btoa },
-		{ timeout: 100 },
+		{ timeout: TIMEOUT_MS },
 	);
 	return typeof result === 'string' ? result : undefined;
 }
@@ -30,7 +31,7 @@ export function evaluateFlag(code: string, data: Record<string, unknown>): boole
 		const result: unknown = runInNewContext(
 			`(${code})(data)`,
 			{ data: structuredClone(data), Buffer, btoa },
-			{ timeout: 100 },
+			{ timeout: TIMEOUT_MS },
 		);
 		return typeof result === 'boolean' ? result : undefined;
 	} catch {

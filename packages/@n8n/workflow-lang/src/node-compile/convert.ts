@@ -409,7 +409,11 @@ function kindOf(property: unknown): ParameterKind | undefined {
 			modes[mode.name] = { pattern: rule.regex.source, flags: rule.regex.flags };
 		else return undefined;
 	}
-	return { ...kind, modes };
+	return {
+		...kind,
+		modes,
+		...(typeof property.displayName === 'string' ? { label: property.displayName } : {}),
+	};
 }
 
 export function parameterKindOf(

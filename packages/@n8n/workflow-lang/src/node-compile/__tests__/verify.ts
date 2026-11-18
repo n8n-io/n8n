@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 
 import { Writer } from '../../convert/code.ts';
-import { helperSources } from '../../convert/helpers.ts';
+import { withSiblingValues } from '../../convert/expression.ts';
+import { helperSources, RUNS_IN_HOST } from '../../convert/helpers.ts';
 import {
 	emitContinueLoop,
 	emitContinueOnce,
@@ -471,11 +473,38 @@ function valueForItem(value: unknown, item: Record<string, unknown>): unknown {
 		return value;
 	}
 	if (Array.isArray(value)) return value.map((member: unknown) => valueForItem(member, item));
-	if (isRecord(value))
+	if (isRecord(value)) {
+		const members = withSiblingValues(value);
 		return Object.fromEntries(
-			Object.entries(value).map(([key, member]) => [key, valueForItem(member, item)]),
+			Object.entries(members).map(([key, member]) => [
+				key,
+				member !== value[key] && typeof member === 'string'
+					? neighbourValueForItem(member, item)
+					: valueForItem(member, item),
+			]),
 		);
+	}
 	return value;
+}
+
+const WHOLE_CODE = /^=\s*\{\{([\s\S]*)\}\}\s*$/;
+const OTHER_NAME = /\$(?!json\b)/;
+
+function neighbourValueForItem(text: string, item: Record<string, unknown>): unknown {
+	const code = WHOLE_CODE.exec(text)?.[1];
+	if (code === undefined || code.includes('{{') || OTHER_NAME.test(code))
+		throw new Error(`the check has no value for the expression ${text}`);
+	try {
+		const result: unknown = runInNewContext(
+			code,
+			{ $json: structuredClone(item) },
+			{ timeout: 1000 },
+		);
+		return result;
+	} catch (error) {
+		if (isRecord(error) && error.name === 'TypeError') return null;
+		throw error;
+	}
 }
 
 export function itemParameterEntries(
@@ -1196,10 +1225,23 @@ export async function differenceFromV1(
 		(request: unknown, k: number) =>
 			wireOf(expected[k]) === undefined ? withoutWire(request) : request,
 	);
+	const stopped = isRecord(out.result) ? out.result.message : undefined;
+	if (out.status === 'error' && typeof stopped === 'string' && stopped.includes(RUNS_IN_HOST)) {
+		const repeated =
+			JSON.stringify(requests) === JSON.stringify(expected.slice(0, requests.length)) &&
+			requests.every((request: unknown) => isRecord(request) && request.method === 'GET');
+		return repeated
+			? undefined
+			: 'the node goes to the fallback host after requests that v1 does not send, or that are not GET requests';
+	}
 	if (JSON.stringify(requests) !== JSON.stringify(expected)) {
 		if (requests.length !== expected.length) {
 			const cause = v1.error === undefined ? '' : `; v1 fails: ${v1.error.slice(0, 90)}`;
-			return `the requests differ: count ${requests.length} / ${expected.length}${cause}`;
+			const own =
+				out.status === 'error' && v1.error === undefined
+					? `; the compiled node fails: ${String(stopped).slice(0, 90)}`
+					: '';
+			return `the requests differ: count ${requests.length} / ${expected.length}${cause}${own}`;
 		}
 		for (let k = 0; k < requests.length; k++) {
 			const sentRequest = requests[k];

@@ -102,6 +102,7 @@ export interface ParameterKind {
 	type: string;
 	extract: boolean;
 	modes?: Record<string, { pattern: string; flags: string } | null>;
+	label?: string;
 	mapper?: { adds: boolean; conversions: boolean };
 }
 
@@ -1272,6 +1273,31 @@ const HELPERS: Record<string, string> = {
 	for (let k = 0; k < found.length; k += 2) match.push(found[k] < 0 ? undefined : input.slice(found[k], found[k + 1]));
 	return match;
 }`,
+	__locatorValue: `function __locatorValue(value: any, modes: any, label: string, whole: boolean): any {
+	if (value === null || value === undefined || typeof value !== 'object') return value;
+	const keys: any = Object.keys(value);
+	if (whole && (!keys.includes('mode') || !keys.includes('value'))) return value;
+	let rule: any = undefined;
+	for (const mode of modes) {
+		if (rule === undefined && mode[0] === value.mode) rule = mode;
+	}
+	if (rule === undefined || rule[1] === null) return value.value;
+	const text: any = value.value;
+	if (typeof text !== 'string') throw __error("ERROR: This parameter's value is invalid. Please enter a valid mode.", 'NodeOperationError', undefined);
+	const found: any = __regexExec(rule[1], text, rule[2]);
+	if (found === null) throw __error('ERROR: ' + label + " parameter's value is invalid. This is likely because the URL entered is incorrect", 'NodeOperationError', undefined);
+	return found[1];
+}`,
+	__parameterAt: `function __parameterAt(base: any, name: string, rest: string, fallback: any): any {
+	const keys: string[] = __pathKeys(name + rest);
+	let value: any = base;
+	for (let k: number = name.split('.').length; k < keys.length; k++) {
+		if (value === null || value === undefined) return fallback;
+		if (typeof value !== 'object') throw new Error('a parameter name with a path into a value that is not an object or a list has no compiled form');
+		value = value[keys[k]];
+	}
+	return value === undefined ? fallback : value;
+}`,
 	__isMapper: `function __isMapper(value: any): boolean {
 	if (value === null || value === undefined || typeof value !== 'object') return false;
 	const keys: any = Object.keys(value);
@@ -1820,6 +1846,8 @@ const HELPER_USES: Record<string, string[]> = {
 	__jsonParse: ['__error'],
 	__toNumber: ['__error'],
 	__missing: ['__error'],
+	__locatorValue: ['__error', '__regexExec'],
+	__parameterAt: ['__pathKeys', '__pathNumber', '__pathQuoted'],
 	__binaryOf: ['__error'],
 	__inputBytes: ['__fileBytes', '__storedBytes'],
 	...MOMENT_HELPER_USES,
@@ -2293,6 +2321,16 @@ function extractedBy(rule: { pattern: string; flags: string }, value: unknown): 
 		return found && found.length === 2 && typeof found[1] === 'string' ? found[1] : undefined;
 	} catch {
 		return undefined;
+	}
+}
+
+const MEMBER_NAME_HEAD = /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[(["']?)$/;
+
+function hasOneGroup(rule: { pattern: string; flags: string }): boolean {
+	try {
+		return new RegExp(`${rule.pattern}|`, rule.flags).exec('')?.length === 2;
+	} catch {
+		return false;
 	}
 }
 
@@ -2836,6 +2874,44 @@ class Specialiser {
 
 	private parameter(node: ts.CallExpression, late = false, checked = false): ts.Expression {
 		const [nameArg, indexArg, fallback, options] = node.arguments;
+		if (nameArg && ts.isTemplateExpression(nameArg) && !options) {
+			const head = MEMBER_NAME_HEAD.exec(nameArg.head.text);
+			const base = head?.[1];
+			const quote = head?.[2] ?? '';
+			const [span] = nameArg.templateSpans;
+			if (
+				base === undefined ||
+				nameArg.templateSpans.length !== 1 ||
+				span.literal.text !== `${quote}]`
+			)
+				return node;
+			let value: unknown = this.input.parameters;
+			for (const key of base.split('.')) value = isRecord(value) ? value[key] : undefined;
+			const entry = f.createElementAccessExpression(
+				f.createElementAccessExpression(
+					f.createIdentifier(ITEM_PARAMETERS),
+					indexArg ?? f.createIdentifier('undefined'),
+				),
+				f.createStringLiteral(base),
+			);
+			const held = !hasExpression(value)
+				? expressionOf(value)
+				: this.helper(
+						'__deepCopy',
+						this.input.deferredParameters?.includes(base)
+							? this.helper('__parameterValue', entry)
+							: entry,
+					);
+			return this.helper(
+				'__parameterAt',
+				held,
+				f.createStringLiteral(base),
+				f.createTemplateExpression(f.createTemplateHead(`[${quote}`), [
+					f.createTemplateSpan(span.expression, f.createTemplateTail(`${quote}]`)),
+				]),
+				fallback ?? f.createIdentifier('undefined'),
+			);
+		}
 		if (!nameArg || !(ts.isStringLiteral(nameArg) || ts.isNoSubstitutionTemplateLiteral(nameArg))) {
 			return node;
 		}
@@ -2919,7 +2995,15 @@ class Specialiser {
 				if (rule === undefined && locator.mode !== 'id' && locator.mode !== 'list') return node;
 				if (rule) {
 					const extracted = dynamic ? undefined : extractedBy(rule, locator.value);
-					return extracted === undefined ? node : f.createStringLiteral(extracted);
+					if (extracted !== undefined) return f.createStringLiteral(extracted);
+					if (kind?.label === undefined || !hasOneGroup(rule)) return node;
+					return this.helper(
+						'__locatorValue',
+						dynamic ? read : expressionOf(locator),
+						expressionOf([[locator.mode, rule.pattern, rule.flags]]),
+						f.createStringLiteral(kind.label),
+						f.createFalse(),
+					);
 				}
 				if (dynamic) {
 					return this.helper(
@@ -2932,6 +3016,25 @@ class Specialiser {
 					);
 				}
 				return expressionOf(locator.value);
+			}
+			if (
+				dynamic &&
+				typeof value === 'string' &&
+				kind?.type === 'resourceLocator' &&
+				kind.modes &&
+				kind.label !== undefined
+			) {
+				const rules = Object.entries(kind.modes);
+				if (rules.every(([, rule]) => rule === null || hasOneGroup(rule)))
+					return this.helper(
+						'__locatorValue',
+						this.helper('__deepCopy', read),
+						expressionOf(
+							rules.map(([mode, rule]) => [mode, rule?.pattern ?? null, rule?.flags ?? '']),
+						),
+						f.createStringLiteral(kind.label),
+						f.createTrue(),
+					);
 			}
 			if (dynamic && (kind === undefined || kind.type === 'resourceLocator')) return node;
 		}
@@ -8205,7 +8308,9 @@ class Specialiser {
 			(this.storesResponses && sendsRequests && namesOutsideRequest(joined, 'encoding'));
 		if (this.marksFileLimit) {
 			for (const helper of ['__isLimit', '__isFileLimit']) this.helpers.add(helper);
-			const guarded = unitsWith(true, this.readsItemBytes);
+			if (!contextCode.includes(CONTEXT_HELPERS.__hostForLimit))
+				contextCode.push(CONTEXT_HELPERS.__hostForLimit);
+			const guarded = unitsWith(true, true);
 			code = codeWith(guarded.code, true);
 			body = guarded.body;
 			joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);

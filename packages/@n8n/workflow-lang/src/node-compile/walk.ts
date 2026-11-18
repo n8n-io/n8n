@@ -14,12 +14,19 @@ export interface WalkMember {
 	typeOptions?: { multipleValues?: boolean };
 	validateType?: string;
 	ignoreValidationDuringExecution?: boolean;
+	displayOptions?: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> };
+}
+
+export interface WalkMode {
+	name?: string;
+	extractValue?: { type?: string; regex?: unknown };
 }
 
 export interface WalkProperty {
 	name: string;
 	type: string;
 	default?: unknown;
+	modes?: WalkMode[];
 	options?: WalkMember[];
 	displayOptions?: { show?: Record<string, unknown[]> };
 	typeOptions?: { multipleValues?: boolean };
@@ -52,6 +59,57 @@ const VALID_SAMPLES: Record<string, unknown> = {
 	jwt: 'a.b.c',
 };
 
+const LOCATOR_SAMPLES = [
+	'id1',
+	'a@example.test',
+	'https://example.test/id1',
+	'https://docs.google.com/document/d/id1/edit',
+	'https://drive.google.com/file/d/id1/view',
+	'https://drive.google.com/drive/folders/id1',
+	'https://example.test/d/id1/edit',
+];
+const LOCATOR_MISSES = ['', 'no match'];
+
+export function locatorRule(
+	property: WalkProperty | undefined,
+	mode: unknown,
+): { pattern: string; flags: string } | undefined {
+	const rule = (property?.modes ?? []).find((entry) => entry.name === mode)?.extractValue;
+	if (rule === undefined || rule.type !== 'regex') return undefined;
+	if (typeof rule.regex === 'string') return { pattern: rule.regex, flags: '' };
+	return rule.regex instanceof RegExp
+		? { pattern: rule.regex.source, flags: rule.regex.flags }
+		: undefined;
+}
+
+function matchesRule(rule: { pattern: string; flags: string }, text: string): boolean {
+	try {
+		const found = new RegExp(rule.pattern, rule.flags).exec(text);
+		return found !== null && found.length === 2 && typeof found[1] === 'string';
+	} catch {
+		return false;
+	}
+}
+
+export function locatorSample(property: WalkProperty | undefined): Json {
+	const rule = locatorRule(property, 'id');
+	const sample =
+		rule === undefined ? undefined : LOCATOR_SAMPLES.find((text) => matchesRule(rule, text));
+	return { __rl: true, mode: 'id', value: sample ?? 'id1' };
+}
+
+export function locatorMiss(property: WalkProperty | undefined, mode: unknown): string | undefined {
+	const rule = locatorRule(property, mode);
+	if (rule === undefined) return undefined;
+	return LOCATOR_MISSES.find((text) => {
+		try {
+			return new RegExp(rule.pattern, rule.flags).exec(text) === null;
+		} catch {
+			return false;
+		}
+	});
+}
+
 export function requiredParameters(node: WalkNode, version: number, start: Json): Json {
 	const properties = propertiesOf(node);
 	const out: Json = { ...start };
@@ -66,7 +124,7 @@ export function requiredParameters(node: WalkNode, version: number, start: Json)
 		if (type === 'string' && value === '') out[name] = checked ?? 'v1';
 		else if (type === 'json' && value === '') out[name] = '{}';
 		else if (type === 'number' && value === undefined) out[name] = 1;
-		else if (type === 'resourceLocator') out[name] = { __rl: true, mode: 'id', value: 'id1' };
+		else if (type === 'resourceLocator') out[name] = locatorSample(property);
 	}
 	return out;
 }

@@ -3441,6 +3441,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		return ts.isStringLiteral(x) || ts.isNoSubstitutionTemplateLiteral(x) || ts.isNumericLiteral(x);
 	};
 
+	/** Optional calls of a helper with the later links of their chain inside the call. */
+	const chainedCalls = new Set<ts.Node>();
+	const hasQuestionDot = (e: ts.Node): boolean =>
+		(ts.isPropertyAccessExpression(e) ||
+			ts.isElementAccessExpression(e) ||
+			ts.isCallExpression(e)) &&
+		e.questionDotToken !== undefined;
+
 	/** \`recv.m(a, b)\` becomes \`helper(recv, a, b)\` (the caller visits the parts). */
 	const toHelper = (
 		n: ts.CallExpression,
@@ -3453,17 +3461,41 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		const recv = callee.expression;
 		if (callee.questionDotToken) {
 			// \`x?.m(a)\` becomes \`optCall(x, (o) => helper(o, a))\`: the arguments run only for a value.
+			// The links of the chain after the call (\`x?.m(a).b[0]\`) run only for a value too, as
+			// JavaScript stops the whole chain: they go into the function.
 			helpers.add('optCall');
 			const fn = `(${P}o: Json): Json => ${helper}(${P}o`;
+			let last: ts.Node = n;
+			for (;;) {
+				const outer = last.parent;
+				const continues =
+					(ts.isPropertyAccessExpression(outer) ||
+						ts.isElementAccessExpression(outer) ||
+						ts.isCallExpression(outer) ||
+						ts.isNonNullExpression(outer)) &&
+					outer.expression === last &&
+					(ts.isNonNullExpression(outer)
+						? ts.isOptionalChain(outer.parent) && !hasQuestionDot(outer.parent)
+						: ts.isOptionalChain(outer) && !outer.questionDotToken);
+				if (!continues) break;
+				last = outer;
+			}
+			const chained = last !== n;
+			if (chained) chainedCalls.add(n);
+			// The result of the helper is a value of any kind for the links after it.
+			const head = chained ? `(${P}o: Json): Json => { const ${P}r: Json = ${helper}(${P}o` : fn;
+			const tail = chained ? `); return ${P}r` : '))';
 			open(recv.getStart(sf), 'optCall(');
 			if (n.arguments.length === 0) {
-				closing(recv.getEnd(), n.getEnd(), `, ${fn}${extra}))`, o);
+				closing(recv.getEnd(), n.getEnd(), `, ${head}${extra}${tail}`, o);
+				if (chained) closing(last.getEnd(), last.getEnd(), '; })', o);
 				return;
 			}
 			const lastArg = n.arguments[n.arguments.length - 1];
-			closing(recv.getEnd(), n.arguments[0].getStart(sf), `, ${fn}, `, o);
+			closing(recv.getEnd(), n.arguments[0].getStart(sf), `, ${head}, `, o);
 			if (extra !== '') closing(lastArg.getEnd(), lastArg.getEnd(), extra, o);
-			closing(n.getEnd() - 1, n.getEnd(), '))', o);
+			closing(n.getEnd() - 1, n.getEnd(), tail, o);
+			if (chained) closing(last.getEnd(), last.getEnd(), '; })', o);
 			return;
 		}
 		if (ts.isOptionalChain(callee)) {
@@ -5641,6 +5673,11 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				ts.isTaggedTemplateExpression(p)
 			);
 		};
+		// A call of the traced form around such a call would end before the later links.
+		for (const wrapped of [...lineValues.keys(), ...lineErrors.keys(), ...lineChecks.keys()]) {
+			if (chainedCalls.has(wrapped))
+				block('optional chain', 'A method rewrite inside an optional chain has no native form.');
+		}
 		const before = new Map<ts.Node, number>();
 		for (const [n, line] of lineValues) {
 			const seq0 = lineSeq.get(n);

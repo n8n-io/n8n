@@ -35,12 +35,13 @@ import { COST } from '../src/node-compile/cost.generated.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import type { Variant } from '../src/node-compile/variants.ts';
-import { parameterVariants, withVariant } from '../src/node-compile/variants.ts';
+import { mapperVariant, parameterVariants, withVariant } from '../src/node-compile/variants.ts';
 import type { Json, WalkNode, WalkProperty as Property } from '../src/node-compile/walk.ts';
 import {
 	credentialOf,
 	fakeCredentialData,
 	operationsOf,
+	locatorMiss,
 	requiredParameters,
 	resolveParameters,
 } from '../src/node-compile/walk.ts';
@@ -79,7 +80,7 @@ const PREFIX = 'n8n-nodes-base.';
 const load = createRequire(join(base, 'package.json'));
 
 const ACCEPT_RISE = '--accept-cost-rise';
-const VALUE_FLAGS = ['--one', '--weights', ACCEPT_RISE];
+const VALUE_FLAGS = ['--one', '--weights', '--key', ACCEPT_RISE];
 const args = process.argv.slice(2);
 const valueOf = (flag: string) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
 const DIST = args.includes('--dist');
@@ -91,6 +92,8 @@ const CHECK_COST = args.includes('--check-cost');
 const acceptedRises = new Set(args.filter((_arg, at) => at > 0 && args[at - 1] === ACCEPT_RISE));
 const one = valueOf('--one');
 const weightsFile = valueOf('--weights');
+const keyText = valueOf('--key');
+const keyFilter = keyText === undefined ? undefined : new RegExp(keyText);
 const pattern = args.find((a, at) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[at - 1]));
 const add = (into: Record<string, number>, from: Record<string, number> | undefined) => {
 	for (const [key, count] of Object.entries(from ?? {})) into[key] = (into[key] ?? 0) + count;
@@ -411,6 +414,28 @@ const OPERATION_ANSWERS: Record<string, OperationAnswers> = {
 	},
 };
 
+const MESSAGES_WITH_FILES = {
+	id: 'm1',
+	hasAttachments: true,
+	value: [
+		{ id: 'm1', subject: 'first', hasAttachments: true },
+		{ id: 'm2', subject: 'second', hasAttachments: false },
+	],
+};
+const ATTACHMENTS = {
+	value: [
+		{ id: 'a1', name: 'reports/summary.pdf', contentType: 'application/pdf' },
+		{ id: 'a2', name: 'notes.txt', contentType: 'text/plain' },
+	],
+};
+const VARIANT_ANSWERS: Record<string, EquivalenceCase['responses']> = {
+	'n8n-nodes-base.microsoftOutlook:options.downloadAttachments': [
+		{ body: MESSAGES_WITH_FILES },
+		{ body: ATTACHMENTS },
+		DOWNLOAD_ANSWER,
+	],
+};
+
 const EVALUATED_VALUES: unknown[][] = [
 	['one', 7, 'a$&b'],
 	[['p', 'q'], { k: 1 }, null],
@@ -440,6 +465,75 @@ function failingEvaluatedForm(form: ExpressionForm, at: number): ExpressionForm 
 			[field]: [0, 1, 2].map((k) => (k === at ? FAILING_VALUE : `ok${k}`)),
 		},
 	};
+}
+
+const MAX_LOCATOR_CHECKS = 4;
+const MAX_NESTED_CASES = 48;
+
+function locatorForms(node: LoadedNode, parameters: Json, fixed: Json): ExpressionForm[][] {
+	const properties = node.description.properties as unknown as Property[];
+	const out: ExpressionForm[][] = [];
+	for (const [name, value] of Object.entries(parameters)) {
+		if (name in fixed || out.length >= MAX_LOCATOR_CHECKS) continue;
+		if (!isJson(value) || value.__rl !== true || typeof value.value !== 'string') continue;
+		const field = name.replace(/\W/g, '_');
+		const good = value.value;
+		const forms: ExpressionForm[] = [
+			{
+				name,
+				value: itemFieldExpression(field),
+				fields: { [field]: [good, `${good}b`, `${good}c`] },
+			},
+			{
+				name,
+				value: itemFieldExpression(field),
+				fields: {
+					[field]: [
+						{ mode: value.mode, value: good },
+						{ mode: 'list', value: `${good}b` },
+						{ mode: 'other', value: 7 },
+					],
+				},
+			},
+		];
+		const property = properties.find((p) => p.name === name && p.type === 'resourceLocator');
+		const miss = locatorMiss(property, value.mode);
+		if (miss !== undefined) {
+			forms.push(
+				{ name, value: { ...value, value: miss }, fields: {} },
+				{
+					name,
+					value: { ...value, value: itemFieldExpression(field) },
+					fields: { [field]: [good, miss, good] },
+				},
+				{
+					name,
+					value: { ...value, value: itemFieldExpression(field) },
+					fields: { [field]: [miss, good, good] },
+				},
+			);
+		}
+		out.push(forms);
+	}
+	return out;
+}
+
+function withMappers(
+	node: LoadedNode,
+	version: number,
+	parameters: Json,
+	fixed: Json,
+): { parameters: Json; names: string[] } {
+	const properties = node.description.properties as unknown as Property[];
+	const out: Json = { ...parameters };
+	const names: string[] = [];
+	for (const name of Object.keys(resolve(node, version, parameters))) {
+		if (name in fixed || name in parameters) continue;
+		if (!properties.some((p) => p.name === name && p.type === 'resourceMapper')) continue;
+		out[name] = mapperVariant(name, itemFieldExpression).values[0];
+		names.push(name);
+	}
+	return { parameters: out, names };
 }
 
 const MAX_WIDER_FORMS = 6;
@@ -542,6 +636,7 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 				...(ALL_BLOCKERS ? ['--all-blockers'] : []),
 				...(MEASURE_COST ? ['--cost'] : []),
 				...(weightsFile === undefined ? [] : ['--weights', weightsFile]),
+				...(keyText === undefined ? [] : ['--key', keyText]),
 				'--one',
 				name,
 			],
@@ -651,13 +746,16 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 		const node = nodeOf(type, version);
 		if (!node || sources.entry(type, version) === undefined) continue;
 		for (const usual of operations(node)) {
+			if (
+				keyFilter !== undefined &&
+				!keyFilter.test(verifiedKey(type, version, resolve(node, version, usual)))
+			)
+				continue;
 			for (const start of [usual, ...otherAuthentications(node, version, usual)]) {
 				const other = start !== usual;
 				if (!other) tried++;
-				const parameters = required(node, version, start);
-				const credential = credentialOf(node, resolve(node, version, parameters));
-				const weight = weightOf(type, parameters);
-				const instance = { type, version, parameters };
+				const usualParameters = required(node, version, start);
+				const credential = credentialOf(node, resolve(node, version, usualParameters));
 				const fields = credential
 					? {
 							[credential]: publicCredential(
@@ -666,7 +764,20 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							),
 						}
 					: {};
-				const compiled = compileForCheck(sources, instance, fields);
+				const mapped = withMappers(node, version, usualParameters, start);
+				const usualCompiled = compileForCheck(
+					sources,
+					{ type, version, parameters: usualParameters },
+					fields,
+				);
+				const mappedCompiled =
+					'errors' in usualCompiled && mapped.names.length > 0
+						? compileForCheck(sources, { type, version, parameters: mapped.parameters }, fields)
+						: undefined;
+				const withMapper = mappedCompiled !== undefined && !('errors' in mappedCompiled);
+				const parameters = withMapper ? mapped.parameters : usualParameters;
+				const compiled = withMapper ? mappedCompiled : usualCompiled;
+				const weight = weightOf(type, parameters);
 				if (other && 'errors' in compiled) continue;
 				if (other && !('errors' in compiled) && compiled.mints.length > 0) mintedTried++;
 				if ('errors' in compiled) {
@@ -820,32 +931,55 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					}
 					const widerAgrees = names !== compiled.changed;
 					const settled = parameters;
-					const agreesWith = async (label: string, p: Json): Promise<string[] | string> => {
+					const filesOf = (p: Json) => {
+						const c = compileForCheck(sources, { type, version, parameters: p }, fields);
+						const reads =
+							'errors' in c ? readsFiles : /__(binaryOf|inputBytes)\(__items/.test(c.source);
+						const makes = 'errors' in c ? makesFiles : c.source.includes('__prepareBinary(');
+						const same = reads === readsFiles && makes === makesFiles;
+						const answers = same
+							? ok
+							: makes
+								? [...token, DOWNLOAD_ANSWER]
+								: [...token, { body: reads ? { ...plain, ...UPLOAD_ANSWER } : plain }];
+						return { answers, first: reads ? FILE_ITEMS[0] : {} };
+					};
+					const agreesWith = async (
+						label: string,
+						p: Json,
+						conditions: string[] = [],
+					): Promise<string[] | string> => {
 						const c = compileForCheck(sources, { type, version, parameters: p }, fields);
 						if ('errors' in c) return `does not compile: ${c.errors[0]}`;
 						if (c.mints.length !== compiled.mints.length)
 							return 'the tokens of the credential differ';
-						if (
-							/__(binaryOf|inputBytes)\(__items/.test(c.source) !== readsFiles ||
-							c.source.includes('__prepareBinary(') !== makesFiles
-						)
-							return 'the use of files differs from the usual case';
-						const difference = await differenceFromV1(
-							make(label, p, ok, several(3)),
+						const files = filesOf(p);
+						const items = (count: number) =>
+							Array.from({ length: count }, (_, k) => ({ ...files.first, position: k + 1 }));
+						let difference = await differenceFromV1(
+							make(label, p, files.answers, items(3)),
 							sources,
 							registry,
 							checking,
 						);
+						for (const condition of conditions) {
+							const special = VARIANT_ANSWERS[`${type}:${condition}`];
+							if (special === undefined || difference !== undefined) continue;
+							difference = await differenceFromV1(
+								make(`${label}, the answers of ${condition}`, p, [...token, ...special], items(1)),
+								sources,
+								registry,
+								checking,
+							);
+						}
 						return difference ?? c.changed;
 					};
-					const variants = parameterVariants(
-						node,
-						version,
-						settled,
-						start,
-						names,
-						itemFieldExpression,
-					);
+					const variants = [
+						...parameterVariants(node, version, settled, start, names, itemFieldExpression),
+						...(withMapper ? mapped.names : []).map((name) =>
+							mapperVariant(name, itemFieldExpression),
+						),
+					];
 					const agreed: Variant[] = [];
 					const added: string[] = [];
 					for (const variant of variants) {
@@ -855,6 +989,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							const found = await agreesWith(
 								`alone ${variant.condition} ${at}`,
 								required(node, version, withVariant(settled, variant, value)),
+								[variant.condition],
 							);
 							if (typeof found === 'string') {
 								all = false;
@@ -874,13 +1009,70 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						agreed.push(variant);
 						added.push(variant.condition, ...changed.filter((name) => name !== variant.name));
 					}
+					const nested: Array<{ variant: Variant; base: Json }> = [];
+					const shownAtStart = new Set(Object.keys(resolve(node, version, settled)));
+					let nestedCases = 0;
+					for (const parent of agreed) {
+						if (parent.member !== undefined) continue;
+						for (const value of parent.values) {
+							if (typeof value !== 'string' && typeof value !== 'boolean') continue;
+							const base = required(node, version, withVariant(settled, parent, value));
+							const inner = parameterVariants(
+								node,
+								version,
+								base,
+								{ ...start, [parent.name]: value },
+								names,
+								itemFieldExpression,
+							).filter(
+								(variant) =>
+									!shownAtStart.has(variant.name) &&
+									!nested.some((known) => known.variant.condition === variant.condition),
+							);
+							for (const variant of inner) {
+								if (nestedCases + variant.values.length > MAX_NESTED_CASES) continue;
+								nestedCases += variant.values.length;
+								const changed: string[] = [];
+								let all = true;
+								for (const [at, inside] of variant.values.entries()) {
+									const found = await agreesWith(
+										`under ${parent.name} ${String(value)}: ${variant.condition} ${at}`,
+										required(node, version, withVariant(base, variant, inside)),
+									);
+									if (typeof found === 'string') {
+										all = false;
+										if (!other) {
+											const text = found.slice(0, 110);
+											aloneReasons[text] = (aloneReasons[text] ?? 0) + 1;
+											if (examples.length < 400)
+												examples.push(
+													`${verifiedKey(type, version, compiled.resolved)} with ${variant.condition} under ${parent.name}: ${found.slice(0, 200)}`,
+												);
+										}
+										break;
+									}
+									changed.push(...found);
+								}
+								if (!all) continue;
+								nested.push({ variant, base });
+								added.push(
+									variant.condition,
+									...changed.filter((name) => name !== variant.name && name !== parent.name),
+								);
+							}
+						}
+					}
 					let together = settled;
 					for (const variant of agreed)
 						together = withVariant(together, variant, variant.values[0]);
 					together = required(node, version, together);
 					const combined =
 						agreed.length < 2 ||
-						typeof (await agreesWith('alone, together', together)) !== 'string';
+						typeof (await agreesWith(
+							'alone, together',
+							together,
+							agreed.map((variant) => variant.condition),
+						)) !== 'string';
 					if (combined) names = [...new Set([...names, ...added])];
 					const variantForms = combined ? agreed.filter((variant) => variant.form) : [];
 					if (!other) {
@@ -1054,28 +1246,32 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						missing: boolean,
 						mode?: ErrorMode,
 						from: Json = widerAgrees ? more : parameters,
-					): EquivalenceCase => ({
-						...(mode === undefined ? {} : { settings: { onError: mode } }),
-						...make(
-							mode === undefined ? label : `${label} ${mode}`,
-							{
-								...from,
-								...Object.fromEntries(chosen.map((form) => [form.name, form.value])),
-							},
-							ok,
-							[0, 1, 2].map((k) => ({
-								...first,
-								position: k + 1,
-								...(missing && k === 1
-									? {}
-									: Object.fromEntries(
-											chosen.flatMap((form) =>
-												Object.entries(form.fields).map(([field, values]) => [field, values[k]]),
-											),
-										)),
-							})),
-						),
-					});
+					): EquivalenceCase => {
+						const tested = {
+							...from,
+							...Object.fromEntries(chosen.map((form) => [form.name, form.value])),
+						};
+						const files = filesOf(tested);
+						return {
+							...(mode === undefined ? {} : { settings: { onError: mode } }),
+							...make(
+								mode === undefined ? label : `${label} ${mode}`,
+								tested,
+								files.answers,
+								[0, 1, 2].map((k) => ({
+									...files.first,
+									position: k + 1,
+									...(missing && k === 1
+										? {}
+										: Object.fromEntries(
+												chosen.flatMap((form) =>
+													Object.entries(form.fields).map(([field, values]) => [field, values[k]]),
+												),
+											)),
+								})),
+							),
+						};
+					};
 					const expressionDifference = async (
 						chosen: ExpressionForm[],
 						mode?: ErrorMode,
@@ -1173,6 +1369,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						if (variantForms.length === 0) return [];
 						const all = await expressionDifference(formsOfVariants(variantForms), mode, together);
 						if (all === undefined) return variantForms.map((variant) => variant.condition);
+						if (examples.length < 400)
+							examples.push(
+								`${key} with ${variantForms.map((variant) => variant.condition).join(', ')} for each item, ${mode ?? 'stopWorkflow'}: ${all.slice(0, 200)}`,
+							);
 						const singly: string[] = [];
 						const tried =
 							variantForms.length > 1 ? variantForms.slice(0, MAX_VARIANT_FORMS_ALONE) : [];
@@ -1193,6 +1393,20 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					for (const [mode] of variantProven.length > 0 ? formOf : []) {
 						const under = (await variantEach(mode)).filter((name) => variantProven.includes(name));
 						provenUnder.push(...under.map((name) => itemParameterCondition(name, mode)));
+					}
+					for (const { variant, base } of combined ? nested : []) {
+						if (!variant.form || variant.rejected) continue;
+						const form: ExpressionForm = {
+							name: variant.name,
+							value: withVariant(base, variant, variant.form.value)[variant.name],
+							fields: variant.form.fields,
+						};
+						if ((await expressionDifference([form], undefined, base)) !== undefined) continue;
+						provenEach.push(variant.condition);
+						for (const [mode] of formOf) {
+							if ((await expressionDifference([form], mode, base)) === undefined)
+								provenUnder.push(itemParameterCondition(variant.condition, mode));
+						}
 					}
 					for (const [mode] of widerProven.length > 0 ? formOf : []) {
 						const agreed = (await widerUnder(mode)).filter((name) => widerProven.includes(name));
@@ -1373,6 +1587,38 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						...(pairedReason === undefined ? [PAIRED_ITEMS] : []),
 						...(eachItem === undefined ? [CALL_FOR_EACH_ITEM] : []),
 					];
+					let locatorReason: string | undefined;
+					for (const form of locatorForms(node, parameters, start).flat()) {
+						const probe = compileForCheck(
+							sources,
+							{ type, version, parameters: { ...parameters, [form.name]: form.value } },
+							fields,
+						);
+						if ('errors' in probe) continue;
+						for (const mode of [undefined, ...formOf.keys()]) {
+							const how = {
+								...checking,
+								pairing: mode === undefined ? undefined : formOf.get(mode),
+							};
+							const label = `a resource locator ${form.name} ${JSON.stringify(form.value).slice(0, 60)}`;
+							locatorReason ??= await differenceFromV1(
+								expressionCase(label, [form], false, mode, parameters),
+								sources,
+								registry,
+								how,
+							);
+							if (locatorReason !== undefined) {
+								locatorReason = `${label}, ${mode ?? 'stopWorkflow'}: ${locatorReason}`;
+								break;
+							}
+						}
+						if (locatorReason !== undefined) break;
+					}
+					if (locatorReason !== undefined) {
+						if (!other) why(`v1: ${locatorReason}`, weight);
+						if (examples.length < 400) examples.push(`${key}: ${locatorReason.slice(0, 300)}`);
+						continue;
+					}
 					const authentication = String(parameters.authentication);
 					verified[key] = [
 						...new Set(
