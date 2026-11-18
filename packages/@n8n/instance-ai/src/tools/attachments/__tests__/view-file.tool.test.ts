@@ -1,7 +1,7 @@
 import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES } from '@n8n/api-types';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import type { InstanceAiStoredFile, InstanceAiStoredFileReader } from '../../../types';
+import type { InstanceAiStoredFile } from '../../../types';
 import { createViewFileTool } from '../view-file.tool';
 
 function storedFile(overrides: Partial<InstanceAiStoredFile> = {}): InstanceAiStoredFile {
@@ -9,15 +9,20 @@ function storedFile(overrides: Partial<InstanceAiStoredFile> = {}): InstanceAiSt
 		fileName: 'hat.png',
 		mimeType: 'image/png',
 		sizeBytes: 1234,
+		hasContent: vi.fn(async () => await Promise.resolve(true)),
 		readContent: vi.fn(async () => await Promise.resolve(Buffer.from('png'))),
 		...overrides,
 	};
 }
 
+const VIEWABLE = new Set(['image/png', 'application/pdf']);
+
 /** `null` stands for a file that the thread does not have. */
 function setup(file: InstanceAiStoredFile | null = storedFile()) {
-	const storedFiles: InstanceAiStoredFileReader = {
+	const storedFiles = {
 		read: vi.fn(async () => await Promise.resolve(file ?? undefined)),
+		// The host decides from the provider of the model.
+		canView: vi.fn((mimeType: string) => VIEWABLE.has(mimeType)),
 	};
 	const tool = createViewFileTool(storedFiles);
 	const view = async (fileId = 'file-1') =>
@@ -33,6 +38,7 @@ describe('createViewFileTool', () => {
 		const output = await view();
 
 		expect(storedFiles.read).toHaveBeenCalledWith('file-1');
+		expect(storedFiles.canView).toHaveBeenCalledWith('image/png');
 		expect(file.readContent).not.toHaveBeenCalled();
 		expect(output).toEqual({
 			viewedFile: { fileId: 'file-1', fileName: 'hat.png', mimeType: 'image/png', sizeBytes: 1234 },
@@ -64,11 +70,17 @@ describe('createViewFileTool', () => {
 
 	it.each([
 		['a file of another thread', null, 'not found in this conversation'],
-		['a file type the model cannot see', storedFile({ mimeType: 'text/csv' }), 'parse-file'],
+		['a file type the model cannot see', storedFile({ mimeType: 'image/webp' }), 'cannot view'],
+		['a document', storedFile({ mimeType: 'text/csv' }), 'parse-file'],
 		[
 			'a file over the attachment cap',
 			storedFile({ sizeBytes: MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES + 1 }),
 			'cannot be viewed',
+		],
+		[
+			'a file whose bytes storage pruned',
+			storedFile({ hasContent: vi.fn(async () => await Promise.resolve(false)) }),
+			'no longer available',
 		],
 	])('gives an error and no file reference for %s', async (_label, file, message) => {
 		const { tool, view } = setup(file);

@@ -1708,6 +1708,8 @@ export interface InstanceAiStoredFile {
 	fileName: string;
 	mimeType: string;
 	sizeBytes: number;
+	/** Checks that storage still has the bytes, without loading them. */
+	hasContent(): Promise<boolean>;
 	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
 	readContent(): Promise<Buffer | undefined>;
 }
@@ -1760,6 +1762,11 @@ export interface InstanceAiStoredFileReader {
 	 * The host sets it only when the sandbox files feature is on.
 	 */
 	list?(): Promise<InstanceAiListedFile[]>;
+	/**
+	 * Whether the model of the turn can see a file of this type. The runtime
+	 * attaches only these types to the model input. `view-file` needs it.
+	 */
+	canView?(mimeType: string): boolean;
 }
 
 // ── Context bundle ───────────────────────────────────────────────────────────

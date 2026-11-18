@@ -1411,8 +1411,8 @@ route can read them.
 Attach an image or a PDF of the thread for the model to see. The model cannot
 see a file that it makes in the sandbox. With this tool, it can share an image
 with `share-files` and then look at it, or look again at an upload of an
-earlier turn that is no longer attached. The registry adds the tool with
-`list-files`, so only when the host sets `list` on `storedFiles`. When the tool
+earlier turn that is no longer attached. The registry adds the tool only when
+the host sets `list` and `canView` on `storedFiles`. When the tool
 is present, the `## Sandbox workspace` prompt section tells the model to check
 the images that it makes.
 
@@ -1421,9 +1421,12 @@ the images that it makes.
 | `fileId` | string | yes | A file of this conversation |
 
 The tool reads the metadata through `storedFiles.read`, so it finds the same
-files as `parse-file`. It accepts PNG, JPEG, GIF, WebP and PDF files up to the
-chat attachment cap (`MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES`). For any other
-file, it returns an `error`. The result has the file under `viewedFile`, not
+files as `parse-file`. It accepts only the file types for which `canView` is
+true. The runtime attaches only the images and PDFs that the provider of the
+model supports, so the host decides from that provider. The file must also be
+smaller than the chat attachment cap (`MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES`),
+and storage must still have its bytes (`hasContent`). For any other file, the
+tool returns an `error`. The result has the file under `viewedFile`, not
 `files`, so the chat does not show the file again. The model output adds a file
 reference, and the runtime loads the bytes before each model call, the same as
 for an attached file.

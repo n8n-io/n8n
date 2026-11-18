@@ -295,9 +295,14 @@ function getOrchestratorDomainToolFactories(
 			DOMAIN_TOOL_IDS.LIST_FILES,
 			() => loadListFilesTool().createListFilesTool(listFiles),
 		]);
+	}
+	// The tool cannot tell the model whether it sees a file without the model's file types.
+	const canView = storedFiles?.canView?.bind(storedFiles);
+	if (storedFiles && listFiles && canView) {
+		const read = storedFiles.read.bind(storedFiles);
 		tools.push([
 			DOMAIN_TOOL_IDS.VIEW_FILE,
-			() => loadViewFileTool().createViewFileTool(storedFiles),
+			() => loadViewFileTool().createViewFileTool({ read, canView }),
 		]);
 	}
 

@@ -1084,6 +1084,7 @@ export class SystemAgentExecutionService {
 			fileName: attachment.fileName,
 			mimeType: attachment.mimeType,
 			sizeBytes: attachment.fileSizeBytes,
+			hasContent: async () => await this.attachmentService.hasStoredData(attachment),
 			readContent: async () => {
 				try {
 					return await streamToBuffer(await this.attachmentService.getStream(attachment));

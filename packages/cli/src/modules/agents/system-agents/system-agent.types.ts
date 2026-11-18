@@ -139,6 +139,8 @@ export interface SystemAgentFile {
 	fileName: string;
 	mimeType: string;
 	sizeBytes: number;
+	/** Checks that storage still has the bytes, without loading them. */
+	hasContent(): Promise<boolean>;
 	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
 	readContent(): Promise<Buffer | undefined>;
 }

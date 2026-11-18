@@ -10,6 +10,7 @@ function storedFile(fileName: string): InstanceAiStoredFile {
 		fileName,
 		mimeType: 'text/csv',
 		sizeBytes: 3,
+		hasContent: vi.fn(async () => await Promise.resolve(true)),
 		readContent: vi.fn(async () => await Promise.resolve(Buffer.from('a,b'))),
 	};
 }

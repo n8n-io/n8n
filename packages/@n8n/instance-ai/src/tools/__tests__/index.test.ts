@@ -385,19 +385,41 @@ describe('domain tool construction', () => {
 	describe('view-file registration', () => {
 		it.each([
 			['nothing', {}],
-			['a file reader without a list', { storedFiles: { read: vi.fn() } }],
+			['a file reader without a list', { storedFiles: { read: vi.fn(), canView: vi.fn() } }],
+			[
+				'a file reader without the viewable types',
+				{ storedFiles: { read: vi.fn(), list: vi.fn() } },
+			],
 		])('leaves the tool out with %s', (_label, overrides) => {
 			expect(createOrchestratorDomainTools(makeContext(overrides)).has('view-file')).toBe(false);
 		});
 
-		it('registers the tool with the file reader when the sandbox files feature is on', () => {
-			const storedFiles = { read: vi.fn(), list: vi.fn() };
+		it('registers the tool with the file reader when the sandbox files feature is on', async () => {
+			const file = {
+				fileName: 'hat.png',
+				mimeType: 'image/png',
+				sizeBytes: 3,
+				hasContent: vi.fn(),
+				readContent: vi.fn(),
+			};
+			const storedFiles = {
+				read: vi.fn(async () => await Promise.resolve(file)),
+				list: vi.fn(),
+				canView: vi.fn(() => true),
+			};
 
 			const tool = createOrchestratorDomainTools(makeContext({ storedFiles })).get(
 				'view-file',
-			) as unknown as { storedFiles: unknown };
+			) as unknown as {
+				storedFiles: {
+					read: (fileId: string) => Promise<unknown>;
+					canView: (type: string) => boolean;
+				};
+			};
 
-			expect(tool.storedFiles).toBe(storedFiles);
+			await expect(tool.storedFiles.read('file-1')).resolves.toBe(file);
+			expect(tool.storedFiles.canView('image/png')).toBe(true);
+			expect(storedFiles.canView).toHaveBeenCalledWith('image/png');
 			expect(ALWAYS_LOADED_TOOL_NAMES.has('view-file')).toBe(true);
 		});
 	});

@@ -1030,10 +1030,16 @@ describe('SystemAgentExecutionService', () => {
 					fileSizeBytes: 3,
 				} as never);
 				attachmentService.getStream.mockRejectedValue(new FileNotFoundError('file-1'));
+				attachmentService.hasStoredData.mockResolvedValue(false);
 
 				const file = await turn.readFile('att-1');
 
 				await expect(file?.readContent()).resolves.toBeUndefined();
+				// A caller can check the bytes without loading them.
+				await expect(file?.hasContent()).resolves.toBe(false);
+				expect(attachmentService.hasStoredData).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'att-1' }),
+				);
 			});
 		});
 

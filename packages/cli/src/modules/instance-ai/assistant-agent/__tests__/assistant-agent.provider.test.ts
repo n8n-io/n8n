@@ -83,7 +83,10 @@ function setup() {
 	} as unknown as AssistantTurnInput;
 	turnInput.buildInput.mockResolvedValue(input);
 	turnInput.onInputAccepted.mockResolvedValue(undefined);
-	const agent = { name: 'assistant' };
+	const agent = {
+		name: 'assistant',
+		snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet' } },
+	};
 	const agentFactory = mock<AssistantAgentFactory>();
 	agentFactory.createAgent.mockResolvedValue(
 		agent as unknown as Awaited<ReturnType<AssistantAgentFactory['createAgent']>>,
@@ -466,6 +469,7 @@ describe('AssistantAgentProvider', () => {
 				fileName: 'notes.csv',
 				mimeType: 'text/csv',
 				sizeBytes: 3,
+				hasContent: vi.fn(async () => true),
 				readContent: vi.fn(async () => Buffer.from('a,b')),
 			};
 			const turn = startTurn({
@@ -554,6 +558,22 @@ describe('AssistantAgentProvider', () => {
 			await expect(on.environment.context.storedFiles?.list?.()).resolves.toEqual(files);
 		});
 
+		it.each([
+			['anthropic', 'image/png', true],
+			['anthropic', 'application/pdf', true],
+			['anthropic', 'image/svg+xml', false],
+			['xai', 'image/png', false],
+			['xai', 'application/pdf', false],
+		])('with a %s model, lets the model view %s: %s', async (modelProvider, mimeType, viewable) => {
+			const { provider, environment, agent } = setup();
+			// The provider of the built agent decides, as for the file store of the runtime.
+			agent.snapshot.model.provider = modelProvider;
+
+			await provider.prepareTurn(startTurn());
+
+			expect(environment.context.storedFiles?.canView?.(mimeType)).toBe(viewable);
+		});
+
 		describe('storing a file of outputs/', () => {
 			async function prepareWithSandbox(workspace?: Workspace) {
 				const context = setup();
@@ -614,6 +634,7 @@ describe('AssistantAgentProvider', () => {
 				fileName: 'notes.csv',
 				mimeType: 'text/csv',
 				sizeBytes: 3,
+				hasContent: vi.fn(async () => true),
 				readContent: vi.fn(async () => Buffer.from('a,b')),
 			};
 			const turn: SystemAgentResumeTurn<AssistantSandboxLease> = {
