@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Transaction } from '@n8n/db';
+import { UnexpectedError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -229,6 +230,20 @@ describe('ExecutionLedger', () => {
 
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('getBacklogStats', () => {
+		it('returns what the bound writer resolves', async () => {
+			const stats = { rows: 3, oldestOccurredAt: new Date('2026-10-30T10:00:00Z') };
+			writer.getBacklogStats.mockResolvedValue(stats);
+			ledger.setImplementation(writer);
+
+			await expect(ledger.getBacklogStats()).resolves.toBe(stats);
+		});
+
+		it('throws UnexpectedError when no writer is bound', async () => {
+			await expect(ledger.getBacklogStats()).rejects.toThrow(UnexpectedError);
 		});
 	});
 });

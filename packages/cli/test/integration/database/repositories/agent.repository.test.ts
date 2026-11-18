@@ -1,3 +1,4 @@
+import type { FolderService } from '@/services/folder.service';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
@@ -221,6 +222,8 @@ describe('AgentRepository', () => {
 				mock(),
 				definitionService,
 				mock<TagService>(),
+				mock<FolderService>(),
+				mock(),
 				mock(),
 			);
 			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });

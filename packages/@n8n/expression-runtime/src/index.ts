@@ -41,8 +41,11 @@ export { IsolateError } from '@n8n/errors';
 export { NoOpProvider } from './observability/noop-provider';
 export { EXPRESSION_METRICS } from './observability/metrics';
 export type { ExpressionMetricDef, ExpressionMetricKey, MetricDef } from './observability/metrics';
-export { classifyExpressionError } from './evaluator/error-classification';
-export type { ExpressionErrorType } from './evaluator/error-classification';
+export { classifyExpressionError, errorOriginOf } from './evaluator/error-classification';
+export type {
+	ExpressionErrorOrigin,
+	ExpressionErrorType,
+} from './evaluator/error-classification';
 
 // Removed expression globals (shared with n8n-workflow's legacy engine)
 export { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './runtime/removed-globals';

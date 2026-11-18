@@ -247,6 +247,35 @@ describe('access repositories', () => {
 			).resolves.toEqual(new Set(['credential-1']));
 		});
 
+		it('returns credential ids shared with a team project through the given roles', async () => {
+			manager.find.mockResolvedValue([
+				Object.assign(new SharedCredentials(), { credentialsId: 'credential-1' }),
+			]);
+
+			await expect(
+				repository.findTeamProjectCredentialIds(
+					['credential-1', 'credential-2'],
+					['credential:owner', 'credential:user'],
+				),
+			).resolves.toEqual(new Set(['credential-1']));
+			expect(manager.find).toHaveBeenCalledWith(SharedCredentials, {
+				select: { credentialsId: true },
+				where: {
+					credentialsId: In(['credential-1', 'credential-2']),
+					credentials: { usageScope: 'project' },
+					role: In(['credential:owner', 'credential:user']),
+					project: { type: 'team' },
+				},
+			});
+		});
+
+		it('does not query team project credentials without credential roles', async () => {
+			await expect(repository.findTeamProjectCredentialIds(['credential-1'], [])).resolves.toEqual(
+				new Set(),
+			);
+			expect(manager.find).not.toHaveBeenCalled();
+		});
+
 		it('filters global ids to resolvable credentials when requested', async () => {
 			manager.find.mockResolvedValue([]);
 

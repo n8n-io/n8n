@@ -390,7 +390,7 @@ export class ActiveExecutions {
 
 		try {
 			await Promise.race([
-				this.executionRepository.cancelManyRunning(executionIds),
+				this.executionRepository.markAsCanceled(executionIds, ['running']),
 				new Promise<never>((_, reject) => {
 					timeout = setTimeout(
 						() => reject(new OperationalError('Timed out writing the cancelled status')),

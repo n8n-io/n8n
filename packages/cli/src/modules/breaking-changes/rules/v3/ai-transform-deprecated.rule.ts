@@ -37,7 +37,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace AI Transform with a Code node',
 				description:
-					'The AI Transform node ran its generated JavaScript in the same sandbox as the Code node. Migrate it to a Code node to keep that code running.',
+					'Give the Code node the same name and connections as the AI Transform node. Set Language to JavaScript. Set Mode to Run Once for All Items. Copy the generated code and node settings such as Always Output Data. If the AI Transform node has no generated code, write the equivalent JavaScript in the Code node.',
 			},
 		];
 	}

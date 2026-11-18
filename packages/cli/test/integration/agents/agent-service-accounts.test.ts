@@ -2,6 +2,7 @@ import {
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
+	linkUserToProject,
 	mockInstance,
 	testDb,
 	testModules,
@@ -35,6 +36,7 @@ import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { ServiceAccountProjects } from '@/services/service-account-projects';
 import { ServiceAccountService } from '@/services/service-account.service';
 import { UserService } from '@/services/user.service';
 import { Telemetry } from '@/telemetry';
@@ -64,6 +66,8 @@ describe('Agent service accounts', () => {
 		agentsConfig = Container.get(AgentsConfig);
 		registerUserDeletionHandler();
 		registerServiceAccountUsage();
+		// The module registers this in `init`, which tests do not run.
+		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
 	});
 
 	beforeEach(() => {
@@ -487,6 +491,70 @@ describe('Agent service accounts', () => {
 			await Container.get(UserService).deleteUser(owner, serviceAccount.id);
 
 			await expectRemoved(serviceAccount.id, project.id);
+		});
+	});
+
+	describe('as sharing targets', () => {
+		const createAgentIn = async (projectName: string, agentName: string) => {
+			const project = await createTeamProject(projectName);
+			const agent = await agentsService.create(project.id, agentName, { actor });
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agent.id });
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(identityId!);
+			return { project, personalProject };
+		};
+
+		const listCandidates = async (user: Awaited<ReturnType<typeof createMember>>) => {
+			const { projects } = await Container.get(ProjectService).getShareableProjectsAndCount(user, {
+				take: 50,
+				includeServiceAccounts: true,
+			});
+			return projects;
+		};
+
+		it('shows two agents with the same name with the project of each', async () => {
+			const owner = await createOwner();
+			const marketing = await createAgentIn('Marketing', 'Support bot');
+			const sales = await createAgentIn('Sales', 'Support bot');
+
+			const projects = await listCandidates(owner);
+
+			expect(projects.find((p) => p.id === marketing.personalProject.id)).toMatchObject({
+				name: 'Support bot',
+				accountKind: 'service',
+				accountProject: { id: marketing.project.id, name: 'Marketing' },
+			});
+			expect(projects.find((p) => p.id === sales.personalProject.id)).toMatchObject({
+				name: 'Support bot',
+				accountKind: 'service',
+				accountProject: { id: sales.project.id, name: 'Sales' },
+			});
+		});
+
+		it('shows a member only the agents of their own projects', async () => {
+			const member = await createMember();
+			const marketing = await createAgentIn('Marketing', 'Marketing bot');
+			const sales = await createAgentIn('Sales', 'Sales bot');
+			await linkUserToProject(member, marketing.project, 'project:viewer');
+
+			const projects = await listCandidates(member);
+
+			expect(projects.find((p) => p.id === marketing.personalProject.id)).toMatchObject({
+				accountKind: 'service',
+				accountProject: { id: marketing.project.id, name: 'Marketing' },
+			});
+			expect(projects.find((p) => p.id === sales.personalProject.id)).toBeUndefined();
+		});
+
+		it('shows no agent when the flag is off', async () => {
+			const owner = await createOwner();
+			const marketing = await createAgentIn('Marketing', 'Marketing bot');
+			agentsConfig.serviceAccountsEnabled = false;
+
+			const projects = await listCandidates(owner);
+
+			expect(projects.find((p) => p.id === marketing.personalProject.id)).toBeUndefined();
 		});
 	});
 });

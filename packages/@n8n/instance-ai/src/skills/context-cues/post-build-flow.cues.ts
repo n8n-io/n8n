@@ -48,7 +48,7 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 		},
 		{
 			id: 'empty-lookup-seed-and-remove',
-			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (e.g. `insert_data_table_rows`), verify again once, then delete the row. If you cannot seed, or the second pass still does not reach them, name the unreached nodes and offer a manual test; do not start a live run.',
+			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (an `insert-rows` change in `change_data_tables`), verify again once, then delete the row. If you cannot seed, or the second pass still does not reach them, name the unreached nodes and offer a manual test; do not start a live run.',
 			appliesWhen:
 				'Verification succeeded but stopped early and lists nodes not reached, often after an empty lookup or query.',
 		},
