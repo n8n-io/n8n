@@ -164,6 +164,8 @@ export class McpServerStoreService {
 			shareVisibility: 'instance',
 			confirmDestructive: true,
 			confirmWrite: false,
+			captureIntent: true,
+			missingCapabilityTool: true,
 			rateLimitPerMinute: 60,
 			active: true,
 			revokedUserIds: [],
@@ -425,6 +427,11 @@ export class McpServerStoreService {
 			byTool: countBy(calls, (call) => call.name),
 			byClient: countBy(calls, (call) => call.clientName ?? 'Unknown client'),
 			byCaller: countBy(calls, (call) => call.caller),
+			// ponytail: exact-match counts. Cluster the requests into themes if the list gets noisy.
+			missingCapabilities: countBy(
+				calls.filter((call) => call.kind === 'missing'),
+				(call) => call.intent?.trim().toLowerCase(),
+			),
 			byDay: [...byDay.entries()].map(([date, value]) => ({ date, ...value })),
 		};
 	}
@@ -477,6 +484,8 @@ export class McpServerStoreService {
 			error: row.error,
 			executionId: row.executionId,
 			workflowId: row.workflowId,
+			intent: row.intent,
+			sessionId: row.sessionId,
 			createdAt: row.createdAt.toISOString(),
 		};
 	}
@@ -611,6 +620,8 @@ export class McpServerStoreService {
 			rateLimitPerMinute: server.rateLimitPerMinute,
 			confirmDestructive: server.confirmDestructive,
 			confirmWrite: server.confirmWrite,
+			captureIntent: server.captureIntent,
+			missingCapabilityTool: server.missingCapabilityTool,
 			tools: toolDtos,
 			resources: resourceDtos,
 			apiKeys: keyDtos,

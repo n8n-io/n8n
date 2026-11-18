@@ -64,12 +64,14 @@ erDiagram
 "public.mcp_server" {
   varchar_16_ accessMode
   boolean active
+  boolean captureIntent
   boolean confirmDestructive
   boolean confirmWrite
   timestamp_3__with_time_zone createdAt
   text description
   varchar_36_ id
   text instructions
+  boolean missingCapabilityTool
   varchar_128_ name
   uuid ownerId FK
   integer rateLimitPerMinute

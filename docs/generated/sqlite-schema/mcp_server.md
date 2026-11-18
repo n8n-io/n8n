@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "mcp_server" ("id" varchar(36) PRIMARY KEY NOT NULL, "slug" varchar(64) NOT NULL, "name" varchar(128) NOT NULL, "description" text NOT NULL, "instructions" text NOT NULL, "active" boolean NOT NULL DEFAULT (true), "accessMode" varchar(16) NOT NULL DEFAULT ('apiKey'), "rateLimitPerMinute" integer NOT NULL DEFAULT (60), "shareVisibility" varchar(16) NOT NULL DEFAULT ('instance'), "confirmDestructive" boolean NOT NULL DEFAULT (true), "confirmWrite" boolean NOT NULL DEFAULT (false), "revokedUserIds" text, "ownerId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_mcp_server_ownerId" FOREIGN KEY ("ownerId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "mcp_server" ("id" varchar(36) PRIMARY KEY NOT NULL, "slug" varchar(64) NOT NULL, "name" varchar(128) NOT NULL, "description" text NOT NULL, "instructions" text NOT NULL, "active" boolean NOT NULL DEFAULT (true), "accessMode" varchar(16) NOT NULL DEFAULT ('apiKey'), "rateLimitPerMinute" integer NOT NULL DEFAULT (60), "shareVisibility" varchar(16) NOT NULL DEFAULT ('instance'), "confirmDestructive" boolean NOT NULL DEFAULT (true), "confirmWrite" boolean NOT NULL DEFAULT (false), "revokedUserIds" text, "ownerId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "captureIntent" BOOLEAN NOT NULL DEFAULT TRUE, "missingCapabilityTool" BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT "FK_mcp_server_ownerId" FOREIGN KEY ("ownerId") REFERENCES "user" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -17,12 +17,14 @@ CREATE TABLE "mcp_server" ("id" varchar(36) PRIMARY KEY NOT NULL, "slug" varchar
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | accessMode | varchar(16) | 'apiKey' | false |  |  |  |
 | active | boolean | true | false |  |  |  |
+| captureIntent | BOOLEAN | TRUE | false |  |  |  |
 | confirmDestructive | boolean | true | false |  |  |  |
 | confirmWrite | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | description | TEXT |  | false |  |  |  |
 | id | varchar(36) |  | false | [mcp_server_api_key](mcp_server_api_key.md) [mcp_server_call](mcp_server_call.md) [mcp_server_resource](mcp_server_resource.md) [mcp_server_tool](mcp_server_tool.md) |  |  |
 | instructions | TEXT |  | false |  |  |  |
+| missingCapabilityTool | BOOLEAN | TRUE | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | ownerId | varchar |  | false |  | [user](user.md) |  |
 | rateLimitPerMinute | INTEGER | 60 | false |  |  |  |
@@ -60,12 +62,14 @@ erDiagram
 "mcp_server" {
   varchar_16_ accessMode
   boolean active
+  BOOLEAN captureIntent
   boolean confirmDestructive
   boolean confirmWrite
   datetime_3_ createdAt
   TEXT description
   varchar_36_ id PK
   TEXT instructions
+  BOOLEAN missingCapabilityTool
   varchar_128_ name
   varchar ownerId FK
   INTEGER rateLimitPerMinute
@@ -96,10 +100,12 @@ erDiagram
   varchar_36_ executionId
   varchar_36_ id PK
   TEXT input
+  TEXT intent
   varchar_16_ kind
   varchar_256_ name
   TEXT output
   varchar_36_ serverId FK
+  VARCHAR_36_ sessionId
   varchar_16_ status
   datetime_3_ updatedAt
   varchar_36_ workflowId

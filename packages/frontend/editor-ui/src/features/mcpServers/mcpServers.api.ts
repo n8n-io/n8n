@@ -139,6 +139,7 @@ export interface McpServerCallsFilter {
 	tool?: string;
 	caller?: string;
 	status?: McpServerCallStatus;
+	session?: string;
 	limit?: number;
 }
 

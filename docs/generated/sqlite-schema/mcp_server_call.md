@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "mcp_server_call" ("id" varchar(36) PRIMARY KEY NOT NULL, "serverId" varchar(36) NOT NULL, "kind" varchar(16) NOT NULL, "name" varchar(256) NOT NULL, "callerType" varchar(16) NOT NULL, "caller" varchar(320) NOT NULL, "callerUserId" varchar, "apiKeyId" varchar(36), "clientName" varchar(128), "status" varchar(16) NOT NULL, "durationMs" integer, "input" text, "output" text, "error" text, "executionId" varchar(36), "workflowId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_mcp_server_call_serverId" FOREIGN KEY ("serverId") REFERENCES "mcp_server" ("id") ON DELETE CASCADE)
+CREATE TABLE "mcp_server_call" ("id" varchar(36) PRIMARY KEY NOT NULL, "serverId" varchar(36) NOT NULL, "kind" varchar(16) NOT NULL, "name" varchar(256) NOT NULL, "callerType" varchar(16) NOT NULL, "caller" varchar(320) NOT NULL, "callerUserId" varchar, "apiKeyId" varchar(36), "clientName" varchar(128), "status" varchar(16) NOT NULL, "durationMs" integer, "input" text, "output" text, "error" text, "executionId" varchar(36), "workflowId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "intent" TEXT, "sessionId" VARCHAR(36), CONSTRAINT "FK_mcp_server_call_serverId" FOREIGN KEY ("serverId") REFERENCES "mcp_server" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -26,10 +26,12 @@ CREATE TABLE "mcp_server_call" ("id" varchar(36) PRIMARY KEY NOT NULL, "serverId
 | executionId | varchar(36) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | input | TEXT |  | true |  |  |  |
+| intent | TEXT |  | true |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
 | name | varchar(256) |  | false |  |  |  |
 | output | TEXT |  | true |  |  |  |
 | serverId | varchar(36) |  | false |  | [mcp_server](mcp_server.md) |  |
+| sessionId | VARCHAR(36) |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | workflowId | varchar(36) |  | true |  |  |  |
@@ -68,10 +70,12 @@ erDiagram
   varchar_36_ executionId
   varchar_36_ id PK
   TEXT input
+  TEXT intent
   varchar_16_ kind
   varchar_256_ name
   TEXT output
   varchar_36_ serverId FK
+  VARCHAR_36_ sessionId
   varchar_16_ status
   datetime_3_ updatedAt
   varchar_36_ workflowId
@@ -79,12 +83,14 @@ erDiagram
 "mcp_server" {
   varchar_16_ accessMode
   boolean active
+  BOOLEAN captureIntent
   boolean confirmDestructive
   boolean confirmWrite
   datetime_3_ createdAt
   TEXT description
   varchar_36_ id PK
   TEXT instructions
+  BOOLEAN missingCapabilityTool
   varchar_128_ name
   varchar ownerId FK
   INTEGER rateLimitPerMinute

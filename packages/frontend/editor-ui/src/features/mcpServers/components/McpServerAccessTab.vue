@@ -367,6 +367,24 @@ async function onToggleOAuthUser(connection: McpServerOAuthConnectionDto) {
 			/>
 		</section>
 
+		<section :class="$style.section">
+			<N8nHeading tag="h3" size="small" bold>
+				{{ i18n.baseText('mcpServers.access.insights.title') }}
+			</N8nHeading>
+			<N8nCheckbox
+				:model-value="server.captureIntent"
+				:label="i18n.baseText('mcpServers.access.insights.captureIntent')"
+				data-testid="mcp-server-capture-intent"
+				@update:model-value="(value: boolean) => patch({ captureIntent: value })"
+			/>
+			<N8nCheckbox
+				:model-value="server.missingCapabilityTool"
+				:label="i18n.baseText('mcpServers.access.insights.missingCapabilityTool')"
+				data-testid="mcp-server-missing-capability-tool"
+				@update:model-value="(value: boolean) => patch({ missingCapabilityTool: value })"
+			/>
+		</section>
+
 		<McpServerApiKeyDialog
 			v-if="apiKeyDialogOpen"
 			:server-id="server.id"

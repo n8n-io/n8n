@@ -1,5 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import type { McpServerCallerType, McpServerCallStatus, McpServerToolInput } from '@n8n/api-types';
+import type {
+	McpServerCallerType,
+	McpServerCallKind,
+	McpServerCallStatus,
+	McpServerToolInput,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -20,6 +25,7 @@ export interface RuntimeCaller {
 	label: string;
 	userId?: string;
 	apiKeyId?: string;
+	sessionId?: string;
 }
 
 /** The slice of the SDK handler context this runtime reads. */
@@ -39,6 +45,16 @@ type HandlerContext = {
 const CONFIRM_KEY = 'confirm';
 const MAX_STORED_CHARS = 100_000;
 const WINDOW_MS = 60_000;
+const MAX_INTENT_CHARS = 1000;
+
+/** The extra input on every tool that carries the reason for the call. */
+const INTENT_KEY = 'context';
+const INTENT_DESCRIPTION =
+	'In one sentence, say what the person wants to achieve with this call. Do not include secrets or personal data.';
+
+const MISSING_TOOL_NAME = 'get_more_tools';
+const MISSING_TOOL_DESCRIPTION =
+	'Call this when none of the available tools can do what the person needs. Describe what you need. Nothing runs: the request is recorded so the server owner can add the tool.';
 
 function stringifyForLog(value: unknown): string | null {
 	if (value === undefined) return null;
@@ -149,9 +165,14 @@ export class McpServerRuntimeService {
 
 		const tools = await this.listCallableTools(server);
 		for (const tool of tools) {
-			const shape = Object.fromEntries(
-				tool.inputs.map((input) => [input.name, inputToZod(input)]),
-			) satisfies z.ZodRawShape;
+			const captureIntent =
+				server.captureIntent && !tool.inputs.some((input) => input.name === INTENT_KEY);
+			const shape = {
+				...Object.fromEntries(tool.inputs.map((input) => [input.name, inputToZod(input)])),
+				...(captureIntent
+					? { [INTENT_KEY]: z.string().describe(INTENT_DESCRIPTION).optional() }
+					: {}),
+			} satisfies z.ZodRawShape;
 
 			mcp.registerTool(
 				tool.name,
@@ -167,7 +188,13 @@ export class McpServerRuntimeService {
 					},
 				},
 				async (args: unknown, extra: unknown): Promise<ToolHandlerResult> => {
-					const input = isRecord(args) ? args : {};
+					const raw = isRecord(args) ? args : {};
+					// The workflow must not see the reason, so it leaves the input here.
+					const input = captureIntent
+						? Object.fromEntries(Object.entries(raw).filter(([key]) => key !== INTENT_KEY))
+						: raw;
+					const stated = captureIntent ? raw[INTENT_KEY] : undefined;
+					const intent = typeof stated === 'string' ? stated : undefined;
 					const ctx = (extra ?? {}) as HandlerContext;
 
 					if (!this.rateLimiter.take(server.id, caller.label, server.rateLimitPerMinute)) {
@@ -176,6 +203,7 @@ export class McpServerRuntimeService {
 							name: tool.name,
 							status: 'rateLimited',
 							input,
+							intent,
 							error: `Rate limit of ${server.rateLimitPerMinute} calls each minute reached.`,
 						});
 						return errorResult(
@@ -196,13 +224,47 @@ export class McpServerRuntimeService {
 								name: tool.name,
 								status: 'declined',
 								input,
+								intent,
 								error: decision.message,
 							});
 							return errorResult(decision.message);
 						}
 					}
 
-					return await this.runTool(server, tool, input, caller, clientName, ctx.signal);
+					return await this.runTool(server, tool, input, caller, clientName, ctx.signal, intent);
+				},
+			);
+		}
+
+		if (server.missingCapabilityTool && !tools.some((tool) => tool.name === MISSING_TOOL_NAME)) {
+			mcp.registerTool(
+				MISSING_TOOL_NAME,
+				{
+					title: 'Request a missing tool',
+					description: MISSING_TOOL_DESCRIPTION,
+					inputSchema: shapeToStandardSchema({
+						request: z.string().describe('What you need to do, in one sentence.'),
+					}),
+					annotations: { title: 'Request a missing tool', readOnlyHint: true },
+				},
+				async (args: unknown): Promise<ToolHandlerResult> => {
+					if (!this.rateLimiter.take(server.id, caller.label, server.rateLimitPerMinute)) {
+						return errorResult('Rate limit reached. Wait a minute, then try again.');
+					}
+					await this.record(server, caller, clientName, {
+						kind: 'missing',
+						name: MISSING_TOOL_NAME,
+						status: 'ok',
+						intent: isRecord(args) && typeof args.request === 'string' ? args.request : null,
+					});
+					return {
+						content: [
+							{
+								type: 'text',
+								text: 'No tool is available for this yet. The request is recorded for the server owner.',
+							},
+						],
+					};
 				},
 			);
 		}
@@ -322,6 +384,7 @@ export class McpServerRuntimeService {
 		caller: RuntimeCaller,
 		clientName: string | null,
 		signal?: AbortSignal,
+		intent?: string,
 	): Promise<ToolHandlerResult & { durationMs?: number; status?: McpServerCallStatus }> {
 		const started = Date.now();
 		try {
@@ -334,6 +397,7 @@ export class McpServerRuntimeService {
 				status: result.ok ? 'ok' : 'error',
 				durationMs,
 				input,
+				intent,
 				output: result.output,
 				error: result.error ?? null,
 				executionId: result.executionId ?? null,
@@ -357,6 +421,7 @@ export class McpServerRuntimeService {
 				status: 'error',
 				durationMs,
 				input,
+				intent,
 				error: message,
 			});
 			return { ...errorResult(`Error: ${message}`), durationMs, status: 'error' };
@@ -368,8 +433,9 @@ export class McpServerRuntimeService {
 		caller: RuntimeCaller,
 		clientName: string | null,
 		call: {
-			kind: 'tool' | 'resource';
+			kind: McpServerCallKind;
 			name: string;
+			intent?: string | null;
 			status: McpServerCallStatus;
 			durationMs?: number;
 			input?: unknown;
@@ -396,6 +462,8 @@ export class McpServerRuntimeService {
 				error: call.error ?? null,
 				executionId: call.executionId ?? null,
 				workflowId: call.workflowId ?? null,
+				intent: call.intent?.slice(0, MAX_INTENT_CHARS) ?? null,
+				sessionId: caller.sessionId ?? null,
 			});
 		} catch (error) {
 			this.logger.warn('MCP servers: could not record a call', {

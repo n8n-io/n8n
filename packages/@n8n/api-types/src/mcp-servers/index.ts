@@ -142,6 +142,8 @@ export interface McpServerDetailDto extends McpServerSummaryDto {
 	rateLimitPerMinute: number;
 	confirmDestructive: boolean;
 	confirmWrite: boolean;
+	captureIntent: boolean;
+	missingCapabilityTool: boolean;
 	tools: McpServerToolDto[];
 	resources: McpServerResourceDto[];
 	apiKeys: McpServerApiKeyDto[];
@@ -149,10 +151,16 @@ export interface McpServerDetailDto extends McpServerSummaryDto {
 	shareUrl: string;
 }
 
+/** `missing` is a request for a tool that the server does not have. */
+export type McpServerCallKind = 'tool' | 'resource' | 'missing';
+
 export interface McpServerCallDto {
 	id: string;
-	kind: 'tool' | 'resource';
+	kind: McpServerCallKind;
 	name: string;
+	/** The reason the AI client gave for the call. */
+	intent: string | null;
+	sessionId: string | null;
 	callerType: McpServerCallerType;
 	caller: string;
 	clientName: string | null;
@@ -186,6 +194,7 @@ export interface McpServerAnalyticsDto {
 	byTool: McpServerCountDto[];
 	byClient: McpServerCountDto[];
 	byCaller: McpServerCountDto[];
+	missingCapabilities: McpServerCountDto[];
 	byDay: Array<{ date: string; calls: number; errors: number }>;
 }
 
@@ -268,6 +277,8 @@ export class UpdateMcpServerDto extends Z.class({
 	shareVisibility: mcpServerShareVisibilitySchema.optional(),
 	confirmDestructive: z.boolean().optional(),
 	confirmWrite: z.boolean().optional(),
+	captureIntent: z.boolean().optional(),
+	missingCapabilityTool: z.boolean().optional(),
 }) {}
 
 export class AddMcpServerToolDto extends Z.class({
@@ -310,6 +321,7 @@ export class McpServerCallsQueryDto extends Z.class({
 	tool: z.string().optional(),
 	caller: z.string().optional(),
 	status: mcpServerCallStatusSchema.optional(),
+	session: z.string().max(36).optional(),
 	limit: z.coerce.number().int().min(1).max(500).optional(),
 }) {}
 

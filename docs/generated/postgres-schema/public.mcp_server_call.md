@@ -15,10 +15,12 @@
 | executionId | varchar(36) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | input | text |  | true |  |  |  |
+| intent | text |  | true |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
 | name | varchar(256) |  | false |  |  |  |
 | output | text |  | true |  |  |  |
 | serverId | varchar(36) |  | false |  | [public.mcp_server](public.mcp_server.md) |  |
+| sessionId | varchar(36) |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | true |  |  |  |
@@ -65,10 +67,12 @@ erDiagram
   varchar_36_ executionId
   varchar_36_ id
   text input
+  text intent
   varchar_16_ kind
   varchar_256_ name
   text output
   varchar_36_ serverId FK
+  varchar_36_ sessionId
   varchar_16_ status
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId
@@ -76,12 +80,14 @@ erDiagram
 "public.mcp_server" {
   varchar_16_ accessMode
   boolean active
+  boolean captureIntent
   boolean confirmDestructive
   boolean confirmWrite
   timestamp_3__with_time_zone createdAt
   text description
   varchar_36_ id
   text instructions
+  boolean missingCapabilityTool
   varchar_128_ name
   uuid ownerId FK
   integer rateLimitPerMinute

@@ -46,6 +46,7 @@ const loading = ref(true);
 const tool = ref(ALL);
 const caller = ref(ALL);
 const status = ref(ALL);
+const session = ref<string | null>(null);
 const selectedId = ref<string | null>(null);
 
 const statuses = mcpServerCallStatusSchema.options;
@@ -64,6 +65,7 @@ async function load() {
 			tool: tool.value === ALL ? undefined : tool.value,
 			caller: caller.value === ALL ? undefined : caller.value,
 			status: isStatus(status.value) ? status.value : undefined,
+			session: session.value ?? undefined,
 			limit: PAGE_SIZE,
 		});
 	} catch (error) {
@@ -73,7 +75,7 @@ async function load() {
 	}
 }
 
-watch([tool, caller, status], () => void load());
+watch([tool, caller, status, session], () => void load());
 watch(
 	() => props.liveTick,
 	() => void load(),
@@ -130,6 +132,16 @@ function openExecution(call: McpServerCallDto) {
 					:label="i18n.baseText(CALL_STATUS_LABEL_KEYS[value])"
 				/>
 			</N8nSelect>
+			<N8nButton
+				v-if="session"
+				variant="outline"
+				size="small"
+				icon="x"
+				data-testid="mcp-server-logs-clear-session"
+				@click="session = null"
+			>
+				{{ i18n.baseText('mcpServers.logs.filter.oneSession') }}
+			</N8nButton>
 			<span :class="$style.spacer" />
 			<span :class="$style.live">
 				<N8nStatusDot variant="success" pulse />
@@ -150,6 +162,7 @@ function openExecution(call: McpServerCallDto) {
 						<tr>
 							<th>{{ i18n.baseText('mcpServers.logs.column.status') }}</th>
 							<th>{{ i18n.baseText('mcpServers.logs.column.tool') }}</th>
+							<th>{{ i18n.baseText('mcpServers.logs.column.intent') }}</th>
 							<th>{{ i18n.baseText('mcpServers.logs.column.caller') }}</th>
 							<th>{{ i18n.baseText('mcpServers.logs.column.client') }}</th>
 							<th>{{ i18n.baseText('mcpServers.logs.column.duration') }}</th>
@@ -170,6 +183,9 @@ function openExecution(call: McpServerCallDto) {
 								</N8nBadge>
 							</td>
 							<td :class="$style.mono">{{ displayName(call) }}</td>
+							<td :class="$style.intent" :title="call.intent ?? undefined">
+								{{ call.intent ?? '–' }}
+							</td>
 							<td>{{ call.caller }}</td>
 							<td>{{ call.clientName ?? '–' }}</td>
 							<td>{{ formatDuration(call.durationMs) }}</td>
@@ -203,6 +219,19 @@ function openExecution(call: McpServerCallDto) {
 					{{ new Date(selected.createdAt).toLocaleString() }} ·
 					{{ formatDuration(selected.durationMs) }}
 				</N8nText>
+				<N8nButton
+					v-if="selected.sessionId && !session"
+					variant="outline"
+					size="small"
+					data-testid="mcp-server-logs-show-session"
+					@click="session = selected.sessionId"
+				>
+					{{ i18n.baseText('mcpServers.logs.showSession') }}
+				</N8nButton>
+				<div v-if="selected.intent" :class="$style.block">
+					<N8nText size="small" bold>{{ i18n.baseText('mcpServers.logs.column.intent') }}</N8nText>
+					<N8nText size="small">{{ selected.intent }}</N8nText>
+				</div>
 				<N8nButton
 					v-if="executionHref(selected)"
 					variant="outline"
@@ -319,6 +348,12 @@ function openExecution(call: McpServerCallDto) {
 
 .time {
 	color: var(--text-color--subtle);
+}
+
+.intent {
+	max-width: 280px;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .details {

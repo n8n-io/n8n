@@ -13,6 +13,7 @@ import { accountEmail } from './account-label';
 import type { McpServerEntity } from './database/mcp-server.entities';
 import { McpServerProtectedResource } from './mcp-server-protected-resource';
 import { McpServerRuntimeService, type RuntimeCaller } from './mcp-server-runtime.service';
+import { resolveSessionId, type SessionMap } from './mcp-server-session';
 import { McpServerStoreService } from './mcp-server-store.service';
 
 type AuthOutcome = { ok: true; caller: RuntimeCaller } | { ok: false };
@@ -41,6 +42,8 @@ function clientFromUserAgent(userAgent: string | undefined): string | null {
 export class McpServerRuntimeController {
 	/** Client names seen at the handshake, per server and caller. */
 	private readonly clientNames = new Map<string, string>();
+
+	private readonly sessions: SessionMap = new Map();
 
 	constructor(
 		private readonly logger: Logger,
@@ -119,6 +122,13 @@ export class McpServerRuntimeController {
 		}
 
 		const clientName = this.resolveClientName(server, auth.caller, req);
+		const caller: RuntimeCaller = {
+			...auth.caller,
+			sessionId: resolveSessionId(
+				this.sessions,
+				`${server.id}:${auth.caller.label}:${clientName ?? ''}`,
+			),
+		};
 
 		try {
 			const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
@@ -128,7 +138,7 @@ export class McpServerRuntimeController {
 				async () => await import('@modelcontextprotocol/node'),
 			);
 			const handler = createMcpHandler(
-				async () => await this.runtime.build(server, auth.caller, clientName),
+				async () => await this.runtime.build(server, caller, clientName),
 				{
 					legacy: 'stateless',
 					onerror: (error) => this.errorReporter.error(error),

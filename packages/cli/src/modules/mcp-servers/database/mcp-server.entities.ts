@@ -1,5 +1,6 @@
 import type {
 	McpServerAccessMode,
+	McpServerCallKind,
 	McpServerCallerType,
 	McpServerCallStatus,
 	McpServerResourceKind,
@@ -44,6 +45,14 @@ export class McpServerEntity extends WithTimestampsAndStringId {
 
 	@Column({ type: Boolean, default: false })
 	confirmWrite: boolean;
+
+	/** Adds an optional `context` input to every tool, for the reason of the call. */
+	@Column({ type: Boolean, default: true })
+	captureIntent: boolean;
+
+	/** Lists the `get_more_tools` tool, which records what clients could not find. */
+	@Column({ type: Boolean, default: true })
+	missingCapabilityTool: boolean;
 
 	/** OAuth users whose access the owner revoked. */
 	@JsonColumn({ nullable: true })
@@ -133,7 +142,7 @@ export class McpServerCallEntity extends WithTimestampsAndStringId {
 	serverId: string;
 
 	@Column({ type: 'varchar', length: 16 })
-	kind: 'tool' | 'resource';
+	kind: McpServerCallKind;
 
 	@Column({ type: 'varchar', length: 256 })
 	name: string;
@@ -173,6 +182,12 @@ export class McpServerCallEntity extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowId: string | null;
+
+	@Column({ type: 'text', nullable: true })
+	intent: string | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	sessionId: string | null;
 }
 
 export const MCP_SERVER_ENTITIES = [

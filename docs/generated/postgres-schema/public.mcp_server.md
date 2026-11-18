@@ -6,12 +6,14 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | accessMode | varchar(16) | 'apiKey'::character varying | false |  |  |  |
 | active | boolean | true | false |  |  |  |
+| captureIntent | boolean | true | false |  |  |  |
 | confirmDestructive | boolean | true | false |  |  |  |
 | confirmWrite | boolean | false | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | description | text |  | false |  |  |  |
 | id | varchar(36) |  | false | [public.mcp_server_api_key](public.mcp_server_api_key.md) [public.mcp_server_call](public.mcp_server_call.md) [public.mcp_server_resource](public.mcp_server_resource.md) [public.mcp_server_tool](public.mcp_server_tool.md) |  |  |
 | instructions | text |  | false |  |  |  |
+| missingCapabilityTool | boolean | true | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | ownerId | uuid |  | false |  | [public.user](public.user.md) |  |
 | rateLimitPerMinute | integer | 60 | false |  |  |  |
@@ -28,12 +30,14 @@
 | PK_940f98ed91dd060f63e6fc5634e | PRIMARY KEY | PRIMARY KEY (id) |
 | mcp_server_accessMode_not_null | n | NOT NULL "accessMode" |
 | mcp_server_active_not_null | n | NOT NULL active |
+| mcp_server_captureIntent_not_null | n | NOT NULL "captureIntent" |
 | mcp_server_confirmDestructive_not_null | n | NOT NULL "confirmDestructive" |
 | mcp_server_confirmWrite_not_null | n | NOT NULL "confirmWrite" |
 | mcp_server_createdAt_not_null | n | NOT NULL "createdAt" |
 | mcp_server_description_not_null | n | NOT NULL description |
 | mcp_server_id_not_null | n | NOT NULL id |
 | mcp_server_instructions_not_null | n | NOT NULL instructions |
+| mcp_server_missingCapabilityTool_not_null | n | NOT NULL "missingCapabilityTool" |
 | mcp_server_name_not_null | n | NOT NULL name |
 | mcp_server_ownerId_not_null | n | NOT NULL "ownerId" |
 | mcp_server_rateLimitPerMinute_not_null | n | NOT NULL "rateLimitPerMinute" |
@@ -62,12 +66,14 @@ erDiagram
 "public.mcp_server" {
   varchar_16_ accessMode
   boolean active
+  boolean captureIntent
   boolean confirmDestructive
   boolean confirmWrite
   timestamp_3__with_time_zone createdAt
   text description
   varchar_36_ id
   text instructions
+  boolean missingCapabilityTool
   varchar_128_ name
   uuid ownerId FK
   integer rateLimitPerMinute
@@ -98,10 +104,12 @@ erDiagram
   varchar_36_ executionId
   varchar_36_ id
   text input
+  text intent
   varchar_16_ kind
   varchar_256_ name
   text output
   varchar_36_ serverId FK
+  varchar_36_ sessionId
   varchar_16_ status
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId

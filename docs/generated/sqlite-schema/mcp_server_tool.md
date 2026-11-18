@@ -67,12 +67,14 @@ erDiagram
 "mcp_server" {
   varchar_16_ accessMode
   boolean active
+  BOOLEAN captureIntent
   boolean confirmDestructive
   boolean confirmWrite
   datetime_3_ createdAt
   TEXT description
   varchar_36_ id PK
   TEXT instructions
+  BOOLEAN missingCapabilityTool
   varchar_128_ name
   varchar ownerId FK
   INTEGER rateLimitPerMinute

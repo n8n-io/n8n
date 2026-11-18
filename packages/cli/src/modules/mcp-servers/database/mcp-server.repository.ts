@@ -38,6 +38,8 @@ export type ServerChanges = Partial<
 		| 'shareVisibility'
 		| 'confirmDestructive'
 		| 'confirmWrite'
+		| 'captureIntent'
+		| 'missingCapabilityTool'
 		| 'revokedUserIds'
 	>
 >;
@@ -74,12 +76,15 @@ export type NewCallRow = Pick<
 	| 'error'
 	| 'executionId'
 	| 'workflowId'
+	| 'intent'
+	| 'sessionId'
 >;
 
 export interface CallFilters {
 	tool?: string;
 	caller?: string;
 	status?: McpServerCallStatus;
+	session?: string;
 	limit: number;
 }
 
@@ -227,6 +232,7 @@ export class McpServerRepository {
 		if (filters.tool) where.name = filters.tool;
 		if (filters.caller) where.caller = filters.caller;
 		if (filters.status) where.status = filters.status;
+		if (filters.session) where.sessionId = filters.session;
 		return await this.calls.find({ where, order: { createdAt: 'DESC' }, take: filters.limit });
 	}
 
@@ -251,6 +257,7 @@ export class McpServerRepository {
 				clientName: true,
 				status: true,
 				durationMs: true,
+				intent: true,
 				createdAt: true,
 			},
 			order: { createdAt: 'ASC' },

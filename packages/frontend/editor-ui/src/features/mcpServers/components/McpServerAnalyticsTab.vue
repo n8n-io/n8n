@@ -168,6 +168,11 @@ const maxDay = computed(() => Math.max(1, ...(data.value?.byDay ?? []).map((day)
 					:items="data.byCaller"
 					:empty-text="i18n.baseText('mcpServers.analytics.empty')"
 				/>
+				<McpServerBarList
+					:title="i18n.baseText('mcpServers.analytics.missingCapabilities')"
+					:items="data.missingCapabilities"
+					:empty-text="i18n.baseText('mcpServers.analytics.missingCapabilities.empty')"
+				/>
 			</div>
 		</template>
 	</div>
