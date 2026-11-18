@@ -7,7 +7,7 @@ import {
 	ProjectScopeService,
 } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import { type PersonRepository, Person, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
 	AddDataTableColumnOptions,
@@ -21,6 +21,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
+import type { DataTable } from '../data-table.entity';
 import { DataTableProxyService } from '../data-table-proxy.service';
 import { DataTableService } from '../data-table.service';
 
@@ -38,6 +39,7 @@ describe('DataTableProxyService', () => {
 	let workflowProjectServiceMock = mock<WorkflowProjectService>();
 	let loggerMock = mock<Logger>();
 	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
+	let personRepositoryMock: PersonRepository;
 	let dataTableProxyService: DataTableProxyService;
 
 	let workflow: Workflow;
@@ -52,6 +54,11 @@ describe('DataTableProxyService', () => {
 		instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 		instanceWriteAccessMock.isReadOnly.mockReturnValue(false);
 
+		personRepositoryMock = mock<PersonRepository>();
+		dataTableServiceMock.validateDataTableExists.mockResolvedValue(
+			mock<DataTable>({ rowRule: null }),
+		);
+
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
@@ -59,6 +66,7 @@ describe('DataTableProxyService', () => {
 			loggerMock,
 			instanceWriteAccessMock,
 			mock<ProjectScopeService>(),
+			personRepositoryMock,
 		);
 
 		workflow = mock<Workflow>({
@@ -213,9 +221,49 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.getManyRowsAndCount).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
-			{ kind: 'management' },
+			{ kind: 'actor', actor: null },
 			options,
 		);
+	});
+
+	describe('row access of a workflow run', () => {
+		const listRows = async (executedByUserId?: string) => {
+			const operations = await dataTableProxyService.getDataTableProxy(
+				workflow,
+				node,
+				'dataTable-id',
+				undefined,
+				executedByUserId,
+			);
+			await operations.getManyRowsAndCount({});
+			return vi.mocked(dataTableServiceMock.getManyRowsAndCount).mock.calls[0][2];
+		};
+
+		it('acts as the user of the run', async () => {
+			expect(await listRows('user-1')).toEqual({
+				kind: 'actor',
+				actor: { id: 'user-1', email: null },
+			});
+			expect(personRepositoryMock.findById).not.toHaveBeenCalled();
+		});
+
+		it('loads the email of the user for an email rule', async () => {
+			dataTableServiceMock.validateDataTableExists.mockResolvedValue(
+				mock<DataTable>({ rowRule: { column: 'owner', match: 'email', runsWithoutUser: 'deny' } }),
+			);
+			vi.mocked(personRepositoryMock.findById).mockResolvedValue(
+				Object.assign(new Person(), { id: 'user-1', email: 'ada@example.com' }),
+			);
+
+			expect(await listRows('user-1')).toEqual({
+				kind: 'actor',
+				actor: { id: 'user-1', email: 'ada@example.com' },
+			});
+		});
+
+		it('acts for no user when the run carries none', async () => {
+			expect(await listRows()).toEqual({ kind: 'actor', actor: null });
+		});
 	});
 
 	it('should call insertRows with correct parameters', async () => {
@@ -231,7 +279,7 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.insertRows).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
-			{ kind: 'management' },
+			{ kind: 'actor', actor: null },
 			rows,
 			'count',
 		);
@@ -256,7 +304,7 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.upsertRow).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
-			{ kind: 'management' },
+			{ kind: 'actor', actor: null },
 			options,
 			true,
 			undefined,
@@ -283,7 +331,7 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.upsertRow).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
-			{ kind: 'management' },
+			{ kind: 'actor', actor: null },
 			options,
 			true,
 			true,
@@ -397,6 +445,7 @@ describe('makeDataTableOperationsForUser', () => {
 			loggerMock,
 			instanceWriteAccessMock,
 			projectScopeServiceMock,
+			mock<PersonRepository>(),
 		);
 
 		projectScopeServiceMock.getProjectIds.mockReset().mockResolvedValue(null);

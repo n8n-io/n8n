@@ -32,10 +32,10 @@ describe('DynamicCredentialsContextHook', () => {
 				: undefined,
 		}) as ContextEstablishmentOptions;
 
-	const node = (credentials?: INode['credentials']): INode =>
+	const node = (credentials?: INode['credentials'], type = 't'): INode =>
 		({
 			name: 'n',
-			type: 't',
+			type,
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
@@ -165,6 +165,25 @@ describe('DynamicCredentialsContextHook', () => {
 
 			expect(executingUserIdentifierProxy.identify).not.toHaveBeenCalled();
 			expect(result).toEqual({ contextUpdate: { usesDynamicCredentials: true } });
+		});
+	});
+
+	describe('executedByUserId for a data table run', () => {
+		const dataTableNode = () => node(undefined, 'n8n-nodes-base.dataTable');
+
+		it('stamps the user without the private-credential flag', async () => {
+			executingUserIdentifierProxy.identify.mockResolvedValue('user-42');
+
+			const result = await hook.execute(buildOptions({ A: dataTableNode() }, carrier()));
+
+			expect(result).toEqual({ contextUpdate: { executedByUserId: 'user-42' } });
+		});
+
+		it('stamps nothing when the run has no identity carrier', async () => {
+			const result = await hook.execute(buildOptions({ A: dataTableNode() }));
+
+			expect(executingUserIdentifierProxy.identify).not.toHaveBeenCalled();
+			expect(result).toEqual({ contextUpdate: {} });
 		});
 	});
 });

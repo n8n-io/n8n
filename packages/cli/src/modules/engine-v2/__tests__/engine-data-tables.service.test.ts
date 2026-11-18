@@ -88,6 +88,7 @@ describe('EngineDataTablesService', () => {
 			expect(proxyService.makeDataTableOperations).toHaveBeenCalledExactlyOnceWith(
 				'project-1',
 				'dt-1',
+				{ kind: 'actor', actor: null },
 			);
 		});
 

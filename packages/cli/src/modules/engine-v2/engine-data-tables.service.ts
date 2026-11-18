@@ -92,7 +92,12 @@ export class EngineDataTablesService {
 		// The access check lives in the proxy: every operation looks the table up
 		// by id and project, and throws `DataTableNotFoundError` when the table is
 		// not in the workflow's project.
-		const table = proxy.makeDataTableOperations(projectId, call.dataTableId);
+		// An engine execution has no control plane row, so it carries no verified
+		// user. A table with a row rule treats it as a run without a user.
+		const table = proxy.makeDataTableOperations(projectId, call.dataTableId, {
+			kind: 'actor',
+			actor: null,
+		});
 
 		switch (call.kind) {
 			case 'updateDataTable':

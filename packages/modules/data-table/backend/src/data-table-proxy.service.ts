@@ -5,7 +5,7 @@ import {
 	ProjectScopeService,
 	WorkflowProjectService,
 } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { PersonRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
 import {
@@ -33,7 +33,8 @@ import {
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { assertSchemaWriteAccess } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
-import { managementRowAccess } from './data-table.types';
+import type { DataTable as DataTableEntity } from './data-table.entity';
+import { managementRowAccess, type RowAccess } from './data-table.types';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 
 const ALLOWED_NODES = [
@@ -71,6 +72,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly personRepository: PersonRepository,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -102,12 +104,14 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		node: INode,
 		dataTableId: string,
 		projectId?: string,
+		executedByUserId?: string,
 	): Promise<IDataTableProjectService> {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
+		let table: DataTableEntity;
 		try {
-			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
+			table = await this.dataTableService.validateDataTableExists(dataTableId, projectId);
 		} catch (error) {
 			if (error instanceof DataTableNotFoundError) {
 				const { message, description } = dataTableNotFoundInProject(dataTableId);
@@ -116,7 +120,22 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			throw error;
 		}
 
-		return this.makeDataTableOperations(projectId, dataTableId);
+		const access = await this.workflowRowAccess(table, executedByUserId);
+		return this.makeDataTableOperations(projectId, dataTableId, access);
+	}
+
+	/** A workflow acts for the user its run carries. Without one, it acts for no user. */
+	private async workflowRowAccess(
+		table: DataTableEntity,
+		executedByUserId?: string,
+	): Promise<RowAccess> {
+		if (!executedByUserId) return { kind: 'actor', actor: null };
+		// Only an email rule needs the email, so skip the lookup otherwise.
+		if (table.rowRule?.match !== 'email') {
+			return { kind: 'actor', actor: { id: executedByUserId, email: null } };
+		}
+		const person = await this.personRepository.findById(executedByUserId);
+		return { kind: 'actor', actor: { id: executedByUserId, email: person?.email ?? null } };
 	}
 
 	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
@@ -295,6 +314,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	makeDataTableOperations(
 		projectId: string,
 		dataTableId: string,
+		access: RowAccess,
 	): Omit<IDataTableProjectService, keyof IDataTableProjectAggregateService> {
 		const dataTableService = this.dataTableService;
 
@@ -327,32 +347,21 @@ export class DataTableProxyService implements DataTableProxyProvider {
 
 			// Row operations
 			async getManyRowsAndCount(options: Partial<ListDataTableRowsOptions>) {
-				return await dataTableService.getManyRowsAndCount(
-					dataTableId,
-					projectId,
-					managementRowAccess,
-					options,
-				);
+				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, access, options);
 			},
 
 			async insertRows<T extends DataTableInsertRowsReturnType>(
 				rows: DataTableRows,
 				returnType: T,
 			) {
-				return await dataTableService.insertRows(
-					dataTableId,
-					projectId,
-					managementRowAccess,
-					rows,
-					returnType,
-				);
+				return await dataTableService.insertRows(dataTableId, projectId, access, rows, returnType);
 			},
 
 			async updateRows(options: UpdateDataTableRowOptions) {
 				return await dataTableService.updateRows(
 					dataTableId,
 					projectId,
-					managementRowAccess,
+					access,
 					{ filter: options.filter, data: options.data },
 					true,
 					options.dryRun,
@@ -363,7 +372,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				return await dataTableService.upsertRow(
 					dataTableId,
 					projectId,
-					managementRowAccess,
+					access,
 					options,
 					true,
 					options.dryRun,
@@ -374,7 +383,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				return await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
-					managementRowAccess,
+					access,
 					{ filter: options.filter },
 					true,
 					options.dryRun,
@@ -382,7 +391,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			},
 
 			async clearRows() {
-				return await dataTableService.clearRows(dataTableId, projectId, managementRowAccess);
+				return await dataTableService.clearRows(dataTableId, projectId, access);
 			},
 		};
 	}

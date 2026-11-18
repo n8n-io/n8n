@@ -10,6 +10,7 @@ import {
 import type { PlaintextExecutionContext } from 'n8n-workflow';
 
 import { ExecutingUserIdentifierProxy } from '@n8n/backend-services';
+import { isAllowedNode as isDataTableNode } from '@n8n/backend-module-data-table';
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,
@@ -45,6 +46,8 @@ export class DynamicCredentialsContextHook implements IContextEstablishmentHook 
 	 *   uses — so the redaction owner cannot drift from the resolved user. Grants
 	 *   that user access to their own run. One place covers every identity path
 	 *   (manual, chat, MCP, webhook, form) because they all carry the identity.
+	 *   A run with a data table node needs it too: a table's row rule limits
+	 *   the run to that user's rows.
 	 *
 	 * Not gated by the data-redaction license: private-credential redaction is
 	 * unconditional, unlike the policy-driven redaction snapshot.
@@ -53,7 +56,9 @@ export class DynamicCredentialsContextHook implements IContextEstablishmentHook 
 		const contextUpdate: Partial<PlaintextExecutionContext> = {};
 
 		const credentialIds = new Set<string>();
+		let usesDataTables = false;
 		for (const node of Object.values(options.workflow.nodes)) {
+			if (isDataTableNode(node.type)) usesDataTables = true;
 			for (const credential of Object.values(node.credentials ?? {})) {
 				if (credential.id) credentialIds.add(credential.id);
 			}
@@ -69,12 +74,12 @@ export class DynamicCredentialsContextHook implements IContextEstablishmentHook 
 			});
 			return { contextUpdate: { usesDynamicCredentials: true } };
 		}
-		if (!hasResolvable) return {};
-		contextUpdate.usesDynamicCredentials = true;
+		if (!hasResolvable && !usesDataTables) return {};
+		if (hasResolvable) contextUpdate.usesDynamicCredentials = true;
 
-		// Only a private-credential run needs its owner attributed, so identify here
-		// rather than for every identity run. The token is still valid at execution
-		// start, so a later view (after it expires) still finds the persisted user.
+		// Identify only for a run that needs the user, not for every identity run.
+		// The token is still valid at execution start, so a later view (after it
+		// expires) still finds the persisted user.
 		const credentials = options.context?.credentials;
 		if (credentials) {
 			const executedByUserId = await this.executingUserIdentifierProxy.identify(credentials);

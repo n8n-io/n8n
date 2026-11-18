@@ -1276,11 +1276,16 @@ export type DataTableProxyProvider = {
 		node: INode,
 		projectId?: string,
 	): Promise<IDataTableProjectAggregateService>;
+	/**
+	 * `executedByUserId` is the verified user the run acts as. A table with a row
+	 * rule limits that user to their own rows. Without it, the run has no user.
+	 */
 	getDataTableProxy(
 		workflow: Workflow,
 		node: INode,
 		dataTableId: string,
 		projectId?: string,
+		executedByUserId?: string,
 	): Promise<IDataTableProjectService>;
 };
 

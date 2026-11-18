@@ -4,6 +4,7 @@ import type {
 	ProjectScopeService,
 	WorkflowProjectService,
 } from '@n8n/backend-services';
+import type { PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
@@ -23,6 +24,7 @@ describe('DataTableProxyService', () => {
 			mock<Logger>({ scoped: vi.fn().mockReturnThis() }),
 			mock<InstanceWriteAccessService>(),
 			mock<ProjectScopeService>(),
+			mock<PersonRepository>(),
 		);
 		vi.mocked(dataTableService.getManyAndCount).mockResolvedValue({ count: 0, data: [] });
 	});
