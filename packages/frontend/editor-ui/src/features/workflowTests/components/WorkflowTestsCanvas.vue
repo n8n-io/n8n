@@ -3,6 +3,7 @@ import { N8nBadge, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { BadgeVariant } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { useVueFlow } from '@vue-flow/core';
 import {
 	computed,
 	effectScope,
@@ -50,6 +51,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+
+const CANVAS_ID = 'workflow-tests-canvas';
+const { viewport } = useVueFlow(CANVAS_ID);
 
 // `useWorkflowDocumentRenderData` subscribes to the document store, so it runs
 // one time for each document in a scope that this component stops.
@@ -198,9 +202,9 @@ function tooltipLines(marks: TestNodeMark[]) {
 			</N8nButton>
 		</header>
 
-		<div :class="$style.canvas">
+		<div :class="$style.canvas" :style="{ '--canvas-zoom': viewport.zoom }">
 			<Canvas
-				id="workflow-tests-canvas"
+				:id="CANVAS_ID"
 				:nodes="nodes"
 				:connections="connections"
 				:render-data="renderData"
@@ -298,7 +302,9 @@ function tooltipLines(marks: TestNodeMark[]) {
 	left: 50%;
 	display: flex;
 	gap: var(--spacing--4xs);
-	transform: translateX(-50%);
+	// The marks keep their size when the canvas zooms out, up to two times.
+	transform: translateX(-50%) scale(calc(1 / max(var(--canvas-zoom), 0.5)));
+	transform-origin: bottom center;
 	white-space: nowrap;
 }
 
