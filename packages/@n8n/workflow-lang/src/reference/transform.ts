@@ -80,7 +80,7 @@ function dateRewrite(
 	if (
 		ts.isIdentifier(callee.expression) &&
 		callee.expression.text === 'Date' &&
-		(callee.name.text === 'value' || callee.name.text === 'of' || callee.name.text === 'is')
+		['value', 'of', 'is', 'set'].includes(callee.name.text)
 	) {
 		// A Date is an object here, so it is its own Date value.
 		const args = node.arguments.map((a) => {
@@ -96,6 +96,7 @@ function dateRewrite(
 				),
 			);
 		}
+		if (callee.name.text === 'set') return rt('dateSet', args);
 		return callee.name.text === 'value'
 			? f.createParenthesizedExpression(args[0])
 			: rt('dateOf', args);

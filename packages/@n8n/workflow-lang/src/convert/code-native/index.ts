@@ -110,6 +110,44 @@ export type NativeAttempt =
 	  }
 	| { ok: false; blockers: Blocker[] };
 
+/**
+ * Translates the code in the first form of its Dates that has a native form, in the order of
+ * their cost:
+ * 1. A Date is a number in each place with the type Date, and JSON text in a place that no
+ *    code reads back. The form with typed parameters and results is exact or it does not
+ *    compile; then the form with plain parameters applies.
+ * 2. The same, and a Date that goes to a place without the type Date is a Date value.
+ * 3. Each Date that the code holds is a Date value (`CodeNativeInput.dateObjects`).
+ *
+ * Forms 2 and 3 need `dateValues`. `options` in the result are those of the form, for the
+ * traced translation of the same code.
+ */
+export function translateDateForms(options: Parameters<typeof translateCode>[0]): {
+	result: TranslateResult;
+	options: Parameters<typeof translateCode>[0];
+} {
+	type Form = { result: TranslateResult; options: Parameters<typeof translateCode>[0] };
+	const exact = (r: TranslateResult): boolean =>
+		r.ok && checkTranslation(r.translation, options.mode).ok;
+	const typedForms = (first: Parameters<typeof translateCode>[0]): Form & { exact?: boolean } => {
+		const result = translateCode(first);
+		const typed = result.ok ? result.translation.typedDates : result.partial?.typedDates === true;
+		if (!typed) return { result, options: first };
+		if (exact(result)) return { result, options: first, exact: true };
+		const plain = { ...first, plainDates: true };
+		return { result: translateCode(plain), options: plain };
+	};
+	if (options.dateValues !== true || !/\bnew\s+Date\b/.test(options.code)) {
+		return typedForms(options);
+	}
+	for (const dateValues of [false, true]) {
+		const form = typedForms({ ...options, dateValues });
+		if (form.exact ?? exact(form.result)) return { result: form.result, options: form.options };
+	}
+	const objects = { ...options, plainDates: undefined, dateObjects: true };
+	return { result: translateCode(objects), options: objects };
+}
+
 /** Translates and compiles the code of a node. `hasNode` tells which nodes ran before it. */
 export function attemptNative(
 	type: string,
@@ -150,14 +188,16 @@ export function attemptNative(
 			],
 		};
 	}
-	let options: Parameters<typeof translateCode>[0] = { ...src, hasNode, ...context };
-	let r: TranslateResult = translateCode(options);
-	// The form with typed Dates is exact or it does not compile; then the plain form applies.
-	const typed = r.ok ? r.translation.typedDates : r.partial?.typedDates === true;
-	if (typed && !(r.ok && checkTranslation(r.translation, src.mode).ok)) {
-		options = { ...options, plainDates: true };
-		r = translateCode(options);
-	}
+	// A Date keeps its kind as a Date value unless the caller has a runtime without the kind Date.
+	let options: Parameters<typeof translateCode>[0] = {
+		...src,
+		hasNode,
+		...context,
+		dateValues: context.dateValues !== false,
+	};
+	const form = translateDateForms(options);
+	options = form.options;
+	const r = form.result;
 	if (!r.ok) {
 		if (!collectAll || !r.partial) return r;
 		// Analysis: the compiler finds the blockers that the translation does not know.
@@ -194,7 +234,7 @@ export function attemptNative(
 			ok: false,
 			blockers: [
 				{
-					feature: 'line of an error',
+					feature: process.env.WF_DATE_HELPER_NAMES ? `line of an error: ${second.blockers.map((b) => b.feature).join(', ')}` : 'line of an error',
 					message: `The traced form of the code has no native form: ${second.blockers.map((b) => b.feature).join(', ')}.`,
 				},
 			],

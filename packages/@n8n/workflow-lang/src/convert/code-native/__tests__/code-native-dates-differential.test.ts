@@ -16,163 +16,24 @@ import { hostRunners } from '../../__tests__/behaviour/compare.ts';
 import { allItemsCode } from '../../code-node.ts';
 import { useUtc } from '../../../reference/runner.ts';
 import { runModule } from '../../../testing/vm.ts';
-import { checkTranslation } from '../check.ts';
+import { translateDateForms } from '../index.ts';
 import { translateCode } from '../translate.ts';
+import { generator, input, makeBody, nativeModule } from './dates-cases.ts';
 
 useUtc();
 
 const VALUES = process.env.WF_DATE_VALUES !== '0';
+/** `WF_DATE_SHARED=1`: the bodies also have a Date under two names, with setters. */
+const SHARED = process.env.WF_DATE_SHARED === '1';
 
 const USED = new Set<string>();
 type Outcome = { ok: true; value: string } | { ok: false } | { refused: string };
 
-const input = [
-	{ t: '2024-03-07T10:20:30.000Z', u: '2023-11-05T06:30:00Z', ms: 1700000000000, k: 3 },
-	{ t: 'not a date', u: 0, ms: 5, k: 1 },
-	{ t: '2024-01-31T23:59:59.999+05:00', u: null, k: 2 },
-	{ t: 1700000000000, u: '', ms: 86400000, k: 0 },
-];
-
-const SOURCES = [
-	'new Date(i.json.t)',
-	'new Date(i.json.ms)',
-	'new Date(i.json.u)',
-	'new Date(Date.UTC(2024, 1, i.json.k))',
-	'make(i.json.t)',
-];
-
-/** A holder: the statements that put the Date `S` in a place, and the expression that reads it. */
-const HOLDERS: Array<[string, string, string]> = [
-	['variable', 'const d = S;', 'd'],
-	['member', 'const o = { d: S, n: 1 };', 'o.d'],
-	['member assignment', 'const o = {}; o.d = S;', 'o.d'],
-	['computed member', "const o = {}; const key = 'd' + i.json.k; o[key] = S;", 'o[key]'],
-	['list', 'const a = [S, 1];', 'a[0]'],
-	['push', 'const a = []; a.push(S);', 'a[0]'],
-	['callback', 'const a = [1].map(() => S);', 'a[0]'],
-	['parameter', '', 'S'],
-	['or', 'const d = i.json.u || S;', 'd'],
-	['nullish', 'const d = i.json.u ?? S;', 'd'],
-	['ternary with a value', 'const d = i.json.k > 1 ? S : i.json.t;', 'd'],
-	['ternary with null', 'const d = i.json.k > 1 ? S : null;', 'd'],
-	['ternary of two Dates', 'const d = i.json.k > 1 ? S : new Date(i.json.ms);', 'd'],
-	['assignment after the declaration', 'let d; d = S;', 'd'],
-	['item', 'i.json.d = S;', 'i.json.d'],
-	['nested list', 'const o = { a: { list: [S] } };', 'o.a.list[0]'],
-	['pattern', 'const { d } = { d: S };', 'd'],
-	['alias', 'const first = S; const d = first;', 'd'],
-	['values of an object', 'const d = Object.values({ x: S })[0];', 'd'],
-	['result of a function', 'const d = pick(S);', 'd'],
-];
-
-const USES = [
-	'`${R}`',
-	"'' + R",
-	'String(R)',
-	'R - 5',
-	'R - new Date(i.json.ms)',
-	'+R',
-	'R < new Date(i.json.ms)',
-	'R > 1700000000000',
-	'R == null',
-	'R === R',
-	'JSON.stringify(R)',
-	'JSON.stringify({ v: R })',
-	'R',
-	'typeof R',
-	'R instanceof Date',
-	'R.getTime()',
-	'R.toISOString()',
-	'R.getUTCDay()',
-	'R ? 1 : 2',
-	'!R',
-	"R || 'x'",
-	"R ?? 'x'",
-	'Math.max(R, 5)',
-	'isNaN(R)',
-	'Number(R)',
-	"[R].join('|')",
-	'[R, 1].includes(R)',
-	'R.toString()',
-	'R.valueOf()',
-	'R.toJSON()',
-	'[R, R].length',
-	'{ v: R }',
-	'[R]',
-];
-
-/** A small generator with a seed: the same seed gives the same bodies. */
-function generator(seed: number): () => number {
-	let s = seed >>> 0;
-	return () => {
-		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-		return s / 4294967296;
-	};
-}
-
-interface Body {
-	code: string;
-	holder: string;
-	uses: string[];
-}
-
-function makeBody(next: () => number): Body {
-	const pick = <T>(list: T[]): T => list[Math.floor(next() * list.length)];
-	const [holder, statements, read] = pick(HOLDERS);
-	const source = pick(SOURCES);
-	const uses = [pick(USES), pick(USES), pick(USES)].slice(0, 1 + Math.floor(next() * 3));
-	const head =
-		'function make(v) { return new Date(v); }\nconst pick = (v) => v;\nconst use = (x, k) => (k === 0 ? U0 : k === 1 ? U1 : U2);\n';
-	const text = (template: string, r: string) => template.split('R').join(r);
-	if (holder === 'parameter') {
-		const fn = head
-			.replace('U0', text(uses[0], 'x'))
-			.replace('U1', text(uses[1] ?? '1', 'x'))
-			.replace('U2', text(uses[2] ?? '2', 'x'));
-		return {
-			code: `${fn}return items.map((i) => ({ json: { a: use(${source}, 0), b: use(${source}, 1), c: use(${source}, 2) } }));`,
-			holder,
-			uses,
-		};
-	}
-	const fn = head.replace('U0', '0').replace('U1', '1').replace('U2', '2');
-	const fields = uses.map((u, k) => `${'abc'[k]}: ${text(u, read)}`).join(', ');
-	return {
-		code: `${fn}return items.map((i) => { ${statements.split('S').join(source)} return { json: { ${fields} } }; });`,
-		holder,
-		uses,
-	};
-}
-
 function native(code: string): Outcome {
-	let t = translateCode({
-		code,
-		mode: 'all',
-		kind: 'code',
-		hasNode: () => false,
-		timezone: 'system',
-		dateValues: VALUES,
-	});
-	let c = t.ok ? checkTranslation(t.translation, 'all') : undefined;
-	const typed = t.ok ? t.translation.typedDates : t.partial?.typedDates === true;
-	const first = !t.ok ? t.blockers[0].feature : c && !c.ok ? c.blockers[0].feature : '';
-	if (typed && !c?.ok) {
-		t = translateCode({
-			code,
-			mode: 'all',
-			kind: 'code',
-			hasNode: () => false,
-			timezone: 'system',
-			dateValues: VALUES,
-			plainDates: true,
-		});
-		c = t.ok ? checkTranslation(t.translation, 'all') : undefined;
-	}
-	if (!t.ok) return { refused: first || t.blockers[0].feature };
-	if (!c?.ok) return { refused: first || (c ? c.blockers[0].feature : 'no check') };
-	if (!c.compiled.data) return { refused: 'no module' };
-	for (const h of t.translation.helpers) USED.add(h);
-	const out = runModule(c.compiled.data, {
+	const m = nativeModule(code, 'all', VALUES);
+	if ('refused' in m) return m;
+	for (const h of m.helpers) USED.add(h);
+	const out = runModule(m.data, {
 		trigger: { body: { input: structuredClone(input), nodes: [] } },
 		now: 1_700_000_000_000,
 		seed: 1,
@@ -202,7 +63,7 @@ describe('Dates in Code nodes: the native form against the fallback host', () =>
 		const refused = new Map<string, number>();
 		let equal = 0;
 		for (let k = 0; k < cases; k++) {
-			const body = makeBody(next);
+			const body = makeBody(next, SHARED);
 			const n = native(body.code);
 			if ('refused' in n) {
 				refused.set(n.refused, (refused.get(n.refused) ?? 0) + 1);
@@ -217,8 +78,8 @@ describe('Dates in Code nodes: the native form against the fallback host', () =>
 			const entry = wrong.get(body.holder) ?? {
 				count: 0,
 				code: body.code,
-				native: JSON.stringify(n).slice(0, 300),
-				host: JSON.stringify(h).slice(0, 300),
+				native: JSON.stringify(n).slice(0, 1000),
+				host: JSON.stringify(h).slice(0, 1000),
 			};
 			entry.count++;
 			wrong.set(body.holder, entry);
@@ -232,7 +93,7 @@ describe('Dates in Code nodes: the native form against the fallback host', () =>
 					`  WRONG ${w.count}: ${holder}\n    ${w.code}\n    native ${w.native}\n    host   ${w.host}`,
 			),
 		].join('\n');
-		if (process.env.WF_DATE_CASES || wrong.size > 0) console.log(report);
+		if (process.env.WF_DATE_CASES || wrong.size > 0) require('fs').writeFileSync('/tmp/date-diff-report.txt', report);
 		if (process.env.WF_DATE_HELPERS) console.log('HELPERS', [...USED].sort().join(' '));
 		expect([...wrong.keys()]).toEqual([]);
 		expect(equal).toBeGreaterThan(0);
@@ -368,7 +229,122 @@ describe('Date values in Code nodes', () => {
 	});
 
 	it('refuses a Date value with a helper that is not proven', () => {
-		const code = body('const a = [new Date(i.json.t)]; const s = new Set([1]);');
+		const code = body('const a = [new Date(i.json.t)]; const name = "X"; const x = $(name).all();');
 		expect(feature(code, true)).toBe('Date: a Date value with a helper that is not proven');
+	});
+
+	it('refuses a setter of a Date value beside a variable with the type Date', () => {
+		const code = body('const d = new Date(i.json.t); const a = [d]; a[0].setHours(0);');
+		expect(feature(code, true)).toBe('Date: setter on a shared Date');
+		const copy = body('const a = [new Date(i.json.t)]; a[0].setHours(0);');
+		expect(feature(copy, true)).toBe('Date: setter on a shared Date');
+	});
+
+	it('tests the kind of the receiver of toLocaleString at run time', () => {
+		const code = body('const a = [new Date(i.json.t)]; const s = a[0].toLocaleString();');
+		expect(feature(code, false)).toBe('Date: a Date in a place that loses its kind');
+		expect(feature(code, true)).toMatch(/localeFormat\(a\[0\], .*, null\)/);
+	});
+
+	it('takes the Date of a Date value for toLocaleDateString, or the TypeError of JavaScript', () => {
+		const code = body('const a = [new Date(i.json.t)]; const s = a[0].toLocaleDateString();');
+		expect(feature(code, true)).toContain(
+			'localeFormat(Date.of(a[0], "toLocaleDateString", "a[0].toLocaleDateString").getTime(), ',
+		);
+	});
+
+	it('calls valueOf and toJSON of a value of unknown kind through a helper', () => {
+		const code = body('const a = [new Date(i.json.t)]; const v = [a[0].valueOf(), a[0].toJSON()];');
+		expect(feature(code, true)).toContain(
+			'[valueOfOf(a[0], "a[0].valueOf"), toJsonOf(a[0], "a[0].toJSON")]',
+		);
+	});
+
+	it('gives the text of V8 for the callee of a Date method', () => {
+		const code =
+			'const f = (v) => v; return items.map((i) => ({ json: { a: f(i.json.t).getTime(), b: i.json["t"].getUTCDay() } }));';
+		const text = feature(code, true);
+		expect(text).toContain('Date.of(f(i.json.t), "getTime", "f(...).getTime").getTime()');
+		expect(text).toContain('Date.of(i.json["t"], "getUTCDay", "i.json.t.getUTCDay").getUTCDay()');
+	});
+
+	it('refuses a Date method name that the code defines as a member', () => {
+		const code =
+			'const clock = { getTime: () => 5 }; return items.map((i) => ({ json: { a: clock.getTime(), b: [new Date(0)] } }));';
+		expect(feature(code, true)).toBe('Date: method of a value of unknown kind');
+	});
+});
+
+describe('Date objects in Code nodes', () => {
+	const options = (code: string) => ({
+		code,
+		mode: 'all' as const,
+		kind: 'code' as const,
+		hasNode: () => false,
+		timezone: 'system',
+		dateValues: true,
+	});
+	const objects = (code: string) => {
+		const t = translateCode({ ...options(code), dateObjects: true });
+		return t.ok ? t.translation.body : t.blockers[0].feature;
+	};
+	const form = (code: string) => {
+		const f = translateDateForms(options(code));
+		return {
+			ok: f.result.ok,
+			values: f.options.dateValues === true,
+			objects: f.options.dateObjects === true,
+		};
+	};
+
+	it('gives each Date that the code holds as a Date value', () => {
+		const text = objects(
+			'return items.map((i) => { const d = new Date(i.json.t); const e = d; return { json: { same: d === e, t: typeof d, n: new Date(i.json.ms).getTime(), at: d } }; });',
+		);
+		expect(text).toContain('const d: Json = Date.value(new Date(i.json.t));');
+		expect(text).toContain('same: d === e, t: typeof d');
+		// An operation reads this Date at once: it needs no Date value.
+		expect(text).toContain('n: new Date(i.json.ms).getTime()');
+	});
+
+	it('gives a setter as a change of the Date value', () => {
+		const text = objects(
+			'return items.map((i) => { const d = new Date(i.json.t); const a = [d]; a[0].setUTCHours(1, 2); d.setDate(); return { json: { d } }; });',
+		);
+		expect(text).toContain('dateSetter("setUTCHours", "a[0].setUTCHours", a[0], [1, 2]);');
+		expect(text).toContain('dateSetter("setDate", "d.setDate", d, []);');
+	});
+
+	it('refuses a setter with a spread argument', () => {
+		expect(
+			objects(
+				'return items.map((i) => { const d = new Date(i.json.t); const p = [1, 2]; d.setHours(...p); return { json: { d } }; });',
+			),
+		).toBe('Date: method of a value of unknown kind');
+	});
+
+	it.each([
+		[
+			'no Date value for a Date that only leaves the node',
+			'return items.map((i) => ({ json: { d: new Date(i.json.t) } }));',
+			{ ok: true, values: false, objects: false },
+		],
+		[
+			'a Date value for a Date in a list that the code reads',
+			'return items.map((i) => { const a = [new Date(i.json.t)]; return { json: { n: a[0] - 1 } }; });',
+			{ ok: true, values: true, objects: false },
+		],
+		[
+			'Date objects for a setter on a shared Date',
+			'return items.map((i) => { const d = new Date(i.json.t); const a = [d]; a[0].setUTCHours(0); return { json: { d } }; });',
+			{ ok: true, values: true, objects: true },
+		],
+		[
+			'Date objects for the kind of a Date variable',
+			'return items.map((i) => { const d = new Date(i.json.t); return { json: { t: typeof d, c: d ? 1 : 2 } }; });',
+			{ ok: true, values: true, objects: true },
+		],
+	])('takes the first form that is exact: %s', (_name, code, expected) => {
+		expect(form(code)).toEqual(expected);
 	});
 });

@@ -244,6 +244,8 @@ interface DateConstructor {
   of(value: unknown, method: string, text: string): Date;
   /** Spec section 4.5: true when the value is a Date value (\`value instanceof Date\` of JavaScript). */
   is(value: unknown): boolean;
+  /** Spec section 4.5: stores the time value \`time\` in a Date value, as a setter of JavaScript does, and gives the stored time value. */
+  set(value: unknown, time: number): number;
 }
 declare var Date: DateConstructor;
 

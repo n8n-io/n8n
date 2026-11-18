@@ -470,6 +470,13 @@ pub const Region = struct {
         return r.at(DateObj, off).time;
     }
 
+    /// Stores the time value of the Date value at `off`: a setter of the Date.
+    pub fn setDateTime(r: *Region, off: u32, time: f64) void {
+        std.debug.assert(r.hdr(off).kind == .date);
+        r.at(DateObj, off).time = time;
+        std.debug.assert(r.hdr(off).kind == .date);
+    }
+
     pub fn newBytes(r: *Region, n: u32) Error!u32 {
         const off = try r.alloc(.bytes, @sizeOf(Hdr) + n);
         if (mem.enabled) mem.wr(r.probe, .bytes_block, .vals_fill, r.buf.ptr + off + @sizeOf(Hdr), n);

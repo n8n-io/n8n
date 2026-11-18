@@ -7,7 +7,7 @@ import ts from 'typescript';
 import { compileFunction } from 'node:vm';
 
 import { transpileForReference } from './transform.ts';
-import { dateOf } from './date-lib.ts';
+import { dateOf, dateSet } from './date-lib.ts';
 import { zoneOffset } from './zone-lib.ts';
 import { regexExec } from './regex-lib.ts';
 import { StaticDataDoc } from './static-data.ts';
@@ -311,6 +311,7 @@ export async function runReference(
 		xmlContent,
 		zoneOffset: (zone: unknown, t: unknown) => zoneOffset(String(zone), Number(t)),
 		dateOf: (v: unknown, method: unknown, text: unknown) => dateOf(v, String(method), String(text)),
+		dateSet: (v: unknown, time: unknown) => dateSet(v, Number(time)),
 		all: async (thunks: Array<() => Promise<unknown>>) => await fork(thunks),
 		allMap: async (items: unknown[], mapper: (x: unknown) => Promise<unknown>) =>
 			await fork(items.map((x) => async () => await mapper(x))),
