@@ -24,6 +24,12 @@ export class PageController {
 		return await this.pageService.listPages(req.params.projectId);
 	}
 
+	@Get('/overview')
+	@ProjectScope('page:list')
+	async getProjectOverview(req: AuthenticatedRequest<{ projectId: string }>) {
+		return await this.pageService.getProjectOverview(req.user, req.params.projectId);
+	}
+
 	@Post('/')
 	@ProjectScope('page:create')
 	async createPage(

@@ -1,7 +1,7 @@
 import type { PageResourceType } from '@n8n/api-types';
 import { BaseRepository, OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type FindOptionsWhere } from '@n8n/typeorm';
+import { DataSource, In, type FindOptionsWhere } from '@n8n/typeorm';
 
 import { PageReferenceEntity } from './page-reference.entity';
 
@@ -13,6 +13,14 @@ class PageReferenceTable extends BaseRepository<PageReferenceEntity> {
 
 /** One link from a page to a node. */
 export type PageNodeLinkRow = { pageId: string; nodeId: string };
+
+/** One link from a page to a workflow, or to one node of that workflow, with facts about the page. */
+export type PageWorkflowLinkRow = {
+	pageId: string;
+	workflowId: string;
+	pageProjectId: string;
+	pageUpdatedAt: Date;
+};
 
 export type PageReferenceRow = Pick<
 	PageReferenceEntity,
@@ -27,6 +35,28 @@ function toNodeOfWorkflowConditions(
 	return resourceType === 'workflow'
 		? [{ resourceType: 'node', parentResourceId: resourceId }]
 		: [];
+}
+
+/** Reads a reference to a workflow or to a node that was loaded with its page. */
+function toWorkflowLinkRow({
+	pageId,
+	resourceId,
+	parentResourceId,
+	page,
+}: PageReferenceEntity): PageWorkflowLinkRow {
+	return {
+		pageId,
+		workflowId: parentResourceId ?? resourceId,
+		pageProjectId: page.projectId,
+		pageUpdatedAt: page.updatedAt,
+	};
+}
+
+/** Restricts a search to the pages of these projects. `null` means every project. */
+function toPageProjectCondition(
+	projectIds: string[] | null,
+): FindOptionsWhere<PageReferenceEntity> {
+	return projectIds ? { page: { projectId: In(projectIds) } } : {};
 }
 
 @Service()
@@ -92,5 +122,28 @@ export class PageReferenceRepository {
 			where: { resourceType: 'node', parentResourceId: workflowId },
 		});
 		return rows.map(({ pageId, resourceId }) => ({ pageId, nodeId: resourceId }));
+	}
+
+	/**
+	 * Lists the links from pages to workflows and to their nodes.
+	 * A page gives one row for each workflow link and one row for each node link.
+	 * `projectIds` restricts the result to the pages of these projects. `null` means every project.
+	 */
+	async listWorkflowLinks(
+		projectIds: string[] | null,
+		ctx: OperationContext,
+	): Promise<PageWorkflowLinkRow[]> {
+		const rows = await this.table.managerFor(ctx).find(PageReferenceEntity, {
+			select: {
+				pageId: true,
+				resourceType: true,
+				resourceId: true,
+				parentResourceId: true,
+				page: { id: true, projectId: true, updatedAt: true },
+			},
+			relations: { page: true },
+			where: { resourceType: In(['workflow', 'node']), ...toPageProjectCondition(projectIds) },
+		});
+		return rows.map(toWorkflowLinkRow);
 	}
 }

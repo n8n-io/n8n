@@ -111,6 +111,11 @@ export class PageRepository {
 		});
 	}
 
+	/** Lists the given pages with their content. */
+	async listByIds(pageIds: string[], ctx: OperationContext): Promise<PageEntity[]> {
+		return await this.table.managerFor(ctx).find(PageEntity, { where: { id: In(pageIds) } });
+	}
+
 	/**
 	 * Lists at most `limit` pages with the name of their project, the most recently updated first.
 	 * `projectIds` restricts the result to these projects. `null` means every project.

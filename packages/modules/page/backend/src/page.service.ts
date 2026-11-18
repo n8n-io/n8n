@@ -6,6 +6,7 @@ import type {
 	PageBacklinks,
 	PageListItem,
 	PageNodeReferences,
+	PageOverview,
 	PageSummary,
 	PageWorkflowPlacement,
 	UpdatePageDto,
@@ -22,10 +23,12 @@ import { PageProjectNotFoundError } from './errors/page-project-not-found.error'
 import { PageVersionConflictError } from './errors/page-version-conflict.error';
 import { appendMarkdownBlock } from './page-append';
 import { replaceMarkdownSection } from './page-section';
+import { PageExecutionRepository } from './page-execution.repository';
+import { toMainPageIds, toPageOverview, toWorkflowDocumentations } from './page-overview';
 import { toWorkflowPlacements } from './page-placements';
 import { PageReferenceRepository } from './page-reference.repository';
 import { toReferenceRows } from './page-references';
-import { PageWorkflowRepository } from './page-workflow.repository';
+import { PageWorkflowRepository, type ProjectWorkflowRow } from './page-workflow.repository';
 import type { PageEntity } from './page.entity';
 import { toNodeReferences, toPage, toPageListItem, toPageSummary } from './page.mapper';
 import { PageRepository, type PageRowChanges } from './page.repository';
@@ -52,6 +55,7 @@ export class PageService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly pageWorkflowRepository: PageWorkflowRepository,
+		private readonly pageExecutionRepository: PageExecutionRepository,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly transactionRunner: TransactionRunner,
 	) {}
@@ -251,6 +255,52 @@ export class PageService {
 			this.listWorkflowPlacements(user, pageId),
 		]);
 		return { pages, workflows };
+	}
+
+	/**
+	 * Sums up the documentation of every project where the user can list pages.
+	 * Gives each workflow that is not archived and that the user can read, with the page that documents it.
+	 */
+	async getOverview(user: User): Promise<PageOverview> {
+		return await this.buildOverview(
+			user,
+			await this.projectScopeService.getProjectIds(user, ['page:list']),
+		);
+	}
+
+	/** Sums up the documentation of one project. The caller checks that the user can list its pages. */
+	async getProjectOverview(user: User, projectId: string): Promise<PageOverview> {
+		return await this.buildOverview(user, [projectId]);
+	}
+
+	/** `projectIds` restricts the overview to these projects. `null` means every project. */
+	private async buildOverview(user: User, projectIds: string[] | null): Promise<PageOverview> {
+		const [workflows, links] = await Promise.all([
+			this.listReadableWorkflows(user, projectIds),
+			this.pageReferenceRepository.listWorkflowLinks(projectIds, {}),
+		]);
+		const documentations = toWorkflowDocumentations(workflows, links);
+		const [mainPages, lastExecutions] = await Promise.all([
+			this.pageRepository.listByIds(toMainPageIds(documentations), {}),
+			this.pageExecutionRepository.findLastFinishedByWorkflow(
+				workflows.map((workflow) => workflow.id),
+				{},
+			),
+		]);
+		return toPageOverview(documentations, mainPages, lastExecutions);
+	}
+
+	/** Lists the workflows of the projects that are not archived and that the user can read, by name. */
+	private async listReadableWorkflows(
+		user: User,
+		projectIds: string[] | null,
+	): Promise<ProjectWorkflowRow[]> {
+		const [workflows, readableWorkflowIds] = await Promise.all([
+			this.pageWorkflowRepository.listNotArchivedOfProjects(projectIds, {}),
+			this.workflowSharingService.getSharedWorkflowIdsForScopes(user, ['workflow:read']),
+		]);
+		const readableIds = new Set(readableWorkflowIds);
+		return workflows.filter((workflow) => readableIds.has(workflow.id));
 	}
 
 	/** `null` means that the user can read the pages of every project. */

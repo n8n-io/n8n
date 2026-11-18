@@ -29,11 +29,18 @@ describe('PageController', () => {
 
 		expect(scopes).toEqual({
 			listPages: 'page:list',
+			getProjectOverview: 'page:list',
 			createPage: 'page:create',
 			getPage: 'page:read',
 			updatePage: 'page:update',
 			deletePage: 'page:delete',
 		});
+	});
+
+	it('should register the overview route before the page id routes', () => {
+		const paths = routesOf(PageController as never).map(({ route }) => route.path);
+
+		expect(paths.indexOf('/overview')).toBeLessThan(paths.indexOf('/:pageId'));
 	});
 });
 
@@ -45,6 +52,7 @@ describe('PageLookupController', () => {
 			'listAllPages',
 			'listReferencingPages',
 			'listNodeReferences',
+			'getOverview',
 			'getBacklinks',
 			'getPage',
 		]);
@@ -58,6 +66,7 @@ describe('PageLookupController', () => {
 			'/',
 			'/referencing',
 			'/node-references',
+			'/overview',
 			'/:pageId/backlinks',
 			'/:pageId',
 		]);

@@ -13,6 +13,7 @@ import { PageService } from './page.service';
  * Routes that find pages without a project id in the path.
  * They carry no scope decorator, because the project is not known before the lookup.
  * The service applies `page:read` to the project of each page.
+ * The overview applies `page:list` to each project.
  */
 @RestController('/pages')
 export class PageLookupController {
@@ -44,6 +45,11 @@ export class PageLookupController {
 		@Query query: ListPageNodeReferencesQueryDto,
 	) {
 		return await this.pageService.listNodeReferences(req.user, query.workflowId);
+	}
+
+	@Get('/overview')
+	async getOverview(req: AuthenticatedRequest) {
+		return await this.pageService.getOverview(req.user);
 	}
 
 	@Get('/:pageId/backlinks')

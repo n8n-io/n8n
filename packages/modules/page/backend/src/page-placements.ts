@@ -2,7 +2,7 @@ import { readShownPageId, type PageWorkflowPlacement } from '@n8n/api-types';
 
 import type { WorkflowNodesRow } from './page-workflow.repository';
 
-const STICKY_NOTE_NODE_TYPE = 'n8n-nodes-base.stickyNote';
+export const STICKY_NOTE_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
 type WorkflowNode = WorkflowNodesRow['nodes'][number];
 
