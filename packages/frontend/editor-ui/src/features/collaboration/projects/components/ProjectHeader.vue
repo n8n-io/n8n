@@ -545,7 +545,10 @@ const onSelect = (action: string, source: CreateSource) => {
 
 <template>
 	<div>
-		<div ref="projectHeaderRef" :class="$style.projectHeader">
+		<div
+			ref="projectHeaderRef"
+			:class="[$style.projectHeader, { [$style.compact]: props.hideDescription }]"
+		>
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div ref="projectInfoRef" :class="$style.projectInfo">
@@ -638,6 +641,11 @@ const onSelect = (action: string, source: CreateSource) => {
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	min-height: var(--spacing--3xl);
+}
+
+// Without the description, the min-height above leaves an empty line under the name.
+.compact {
+	min-height: auto;
 }
 
 .projectDetails {

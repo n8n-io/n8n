@@ -243,6 +243,11 @@ async function summarize() {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--sm) var(--doc-project-page--inset) var(--spacing--md);
+
+	// The body padding already spaces the first heading from the bar.
+	:global(.doc-page-content) > :first-child {
+		margin-top: 0;
+	}
 }
 
 .empty {
