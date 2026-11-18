@@ -28,6 +28,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'externalSecretsProvider',
 	'externalSecret',
 	'dataTable',
+	'page',
 	'projectVariable',
 	'projectAiPreference',
 	'projectSkill',

@@ -30,6 +30,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'List apps',
 		description: 'List apps in a project.',
 	},
+	'page:create': { displayName: 'Create page', description: 'Create pages in a project.' },
+	'page:read': { displayName: 'View page', description: 'View the pages of a project.' },
+	'page:update': { displayName: 'Edit page', description: 'Edit pages in a project.' },
+	'page:delete': { displayName: 'Delete page', description: 'Delete pages in a project.' },
+	'page:list': { displayName: 'List pages', description: 'List pages in a project.' },
 	'aiPreference:read': {
 		displayName: 'Read AI Preferences',
 		description:

@@ -61,6 +61,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'create',
 		'delete',
 	],
+	page: ['read', 'update', 'create', 'delete'],
 	projectVariable: ['read', 'update', 'create', 'delete'],
 	projectAiPreference: ['read', 'update', 'create', 'delete'],
 	projectSkill: ['read', 'update', 'create', 'delete'],

@@ -98,6 +98,7 @@ export const RESOURCES = {
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list', 'read'] as const,
 	oidc: ['manage'] as const,
+	page: [...DEFAULT_OPERATIONS] as const,
 	provisioning: ['manage'] as const,
 	scim: ['manage'] as const,
 	dataTable: [
