@@ -1,11 +1,12 @@
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
-import { defineComponent, h } from 'vue';
+import { computed, defineComponent, h } from 'vue';
 
 import ResourceChip from './ResourceChip.vue';
 import type { ResourceFetchers } from './resourceNameResolver';
 import { createTestRouter } from '../__tests__/router';
+import { WORKFLOW_CATEGORIES } from '../overview/workflowCategories';
 import { RESOURCE_PREVIEW_DELAY_MS } from '../page.constants';
 
 const fetchers = vi.hoisted(() => ({
@@ -60,6 +61,29 @@ describe('ResourceChip', () => {
 
 	afterEach(() => {
 		componentRegistry.clear();
+	});
+
+	it('takes the trigger category of its workflow when an ancestor provides the categories', () => {
+		const wrapper = renderChip({
+			props: { href: '/workflow/abc123', label: 'Sync orders' },
+			global: {
+				plugins: [createTestRouter()],
+				provide: {
+					[WORKFLOW_CATEGORIES as symbol]: computed(() => new Map([['abc123', 'schedule']])),
+				},
+			},
+		});
+
+		expect(wrapper.getByTestId('page-resource-chip')).toHaveAttribute(
+			'data-trigger-category',
+			'schedule',
+		);
+	});
+
+	it('has no trigger category without the categories', () => {
+		const { wrapper } = renderChipFor('/workflow/abc123', 'Sync orders');
+
+		expect(wrapper.getByTestId('page-resource-chip')).not.toHaveAttribute('data-trigger-category');
 	});
 
 	it('shows the icon of the node type for a node when the app provides node icons', async () => {

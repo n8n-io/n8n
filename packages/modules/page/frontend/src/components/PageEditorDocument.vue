@@ -24,6 +24,8 @@ const props = defineProps<{
 	projectId?: string;
 	readonly: boolean;
 	showTitle: boolean;
+	/** True shows the content in small type, with no room kept below a short text. */
+	dense?: boolean;
 	slashCommands?: SlashCommand[];
 }>();
 
@@ -177,7 +179,7 @@ defineExpose({ focusTitle, focusContent, flush, reload: load });
 				:placeholder="isReadonly ? '' : i18n.baseText('page.editor.content.placeholder')"
 				:extensions="extensions"
 				:editor-props="editorProps"
-				:container-class="$style.content"
+				:container-class="dense ? [$style.content, $style.dense].join(' ') : $style.content"
 				@update:model-value="setContent"
 				@ready="editor = $event"
 			/>
@@ -219,6 +221,21 @@ defineExpose({ focusTitle, focusContent, flush, reload: load });
 	:global(.n8n-markdown) {
 		min-height: calc(var(--spacing--5xl) * 2);
 		overflow-y: visible;
+	}
+}
+.dense {
+	font-size: var(--font-size--sm);
+
+	:global(.n8n-markdown) {
+		min-height: 0;
+		padding: 0;
+	}
+
+	:global(.n8n-markdown) :is(h1, h2, h3) {
+		margin-top: var(--spacing--sm);
+		margin-bottom: var(--spacing--4xs);
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
 	}
 }
 </style>

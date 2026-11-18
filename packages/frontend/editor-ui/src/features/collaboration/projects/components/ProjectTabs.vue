@@ -13,7 +13,7 @@ import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
 import { ProjectTypes } from '../projects.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useProjectDocumentation } from '@/features/pages/composables/useProjectDocumentation';
+import { useIsPageModuleActive } from '@/features/pages/composables/useIsPageModuleActive';
 import {
 	DOCUMENTATION_OVERVIEW_MODE,
 	OVERVIEW_MODE_QUERY_PARAMETER,
@@ -39,7 +39,7 @@ const locale = useI18n();
 const route = useRoute();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
-const { hasDocumentation, loadDocumentation } = useProjectDocumentation();
+const isPageModuleActive = useIsPageModuleActive();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 
@@ -62,15 +62,10 @@ const isDocumentationOpen = computed(
 		route.query?.[OVERVIEW_MODE_QUERY_PARAMETER] === DOCUMENTATION_OVERVIEW_MODE,
 );
 
-/**
- * The tab shows only when a workflow has a page, and while the board is open.
- * The documentation board has no meaning for the workflows that other users shared.
- */
+/** The documentation board has no meaning for the workflows that other users shared. */
 const showsDocumentationTab = computed(
-	() => props.pageType !== 'shared' && (hasDocumentation.value || isDocumentationOpen.value),
+	() => props.pageType !== 'shared' && isPageModuleActive.value,
 );
-
-watch(projectId, loadDocumentation, { immediate: true });
 
 const isPublicProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Public);
 

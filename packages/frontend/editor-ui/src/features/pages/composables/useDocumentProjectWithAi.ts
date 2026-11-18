@@ -1,4 +1,5 @@
 import { toResourcePath } from '@n8n/api-types';
+import { usePageStore } from '@n8n/frontend-module-page';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
@@ -18,9 +19,10 @@ export interface UndocumentedWorkflow {
 export const DOCUMENT_PROJECT_PAGE_COUNT = 5;
 
 /**
- * Gives the "Document me" action of a project.
+ * Gives the "Write it for me" action of a project.
  * `isAvailable` is true when this user can reach the assistant and the instance has pages.
- * `documentProject` opens an assistant thread in the project and asks for pages about the most important workflows without a page, and for one general page about the project.
+ * `documentProject` opens an assistant thread in the project. It asks for pages about the most important workflows without a page, and for the text of the page that sums up the project.
+ * A project without a summary page gets an empty one first.
  * It resolves with `true` only when the thread opened. An assistant that is not set up opens its setup instead.
  */
 export function useDocumentProjectWithAi() {
@@ -28,6 +30,7 @@ export function useDocumentProjectWithAi() {
 	const isAssistantAvailable = useInstanceAiAvailable();
 	const isPageModuleActive = useIsPageModuleActive();
 	const { startThread } = useInstanceAiHandoff();
+	const pageStore = usePageStore();
 	const isStarting = ref(false);
 
 	const isAvailable = computed(() => isAssistantAvailable.value && isPageModuleActive.value);
@@ -42,16 +45,34 @@ export function useDocumentProjectWithAi() {
 		return `/projects/${projectId}/workflows?${OVERVIEW_MODE_QUERY_PARAMETER}=${DOCUMENTATION_OVERVIEW_MODE}`;
 	}
 
-	function toDocumentProjectRequest(projectId: string, workflows: UndocumentedWorkflow[]): string {
-		return i18n.baseText('page.documentProject.prompt', {
+	function toSummaryRequest(summaryPageId: string): string {
+		return i18n.baseText('page.documentProject.summaryRequest', {
 			interpolate: {
-				pageCount: Math.min(DOCUMENT_PROJECT_PAGE_COUNT, workflows.length),
-				workflowList: workflows.map(toWorkflowLine).join('\n'),
-				generalPageTitle: i18n.baseText('page.documentProject.generalPageTitle'),
-				overviewLabel: i18n.baseText('page.documentProject.overviewLink'),
-				overviewPath: toDocumentationOverviewPath(projectId),
+				summaryPath: toResourcePath({ resourceType: 'page', resourceId: summaryPageId }),
 			},
 		});
+	}
+
+	/** Asks for the summary only when each workflow has a page. */
+	function toDocumentProjectRequest(
+		projectId: string,
+		workflows: UndocumentedWorkflow[],
+		summaryPageId: string,
+	): string {
+		const closing = {
+			summaryRequest: toSummaryRequest(summaryPageId),
+			overviewLabel: i18n.baseText('page.documentProject.overviewLink'),
+			overviewPath: toDocumentationOverviewPath(projectId),
+		};
+		return workflows.length > 0
+			? i18n.baseText('page.documentProject.prompt', {
+					interpolate: {
+						...closing,
+						pageCount: Math.min(DOCUMENT_PROJECT_PAGE_COUNT, workflows.length),
+						workflowList: workflows.map(toWorkflowLine).join('\n'),
+					},
+				})
+			: i18n.baseText('page.documentProject.summaryPrompt', { interpolate: closing });
 	}
 
 	async function documentProject(
@@ -60,9 +81,10 @@ export function useDocumentProjectWithAi() {
 	): Promise<boolean> {
 		isStarting.value = true;
 		try {
+			const summary = await pageStore.ensureProjectSummary(projectId);
 			const outcome = await startThread(
 				projectId,
-				toDocumentProjectRequest(projectId, workflows),
+				toDocumentProjectRequest(projectId, workflows, summary.id),
 				{ kind: 'prefill', prefillType: 'handoff_document_project' },
 				{ source: 'page_overview_button', origin: 'internal', sourceContext: { projectId } },
 			);

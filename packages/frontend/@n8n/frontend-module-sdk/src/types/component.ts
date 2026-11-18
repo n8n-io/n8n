@@ -31,7 +31,8 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * types load and when the instance does not know the type.
  * `page-actions` holds the actions that the shell adds to the header of a page.
  * `page-overview-actions` holds the actions that the shell adds to the header of the
- * documentation overview. It can emit `started` after an action started.
+ * documentation overview. It takes `projectId`, `undocumentedWorkflows` and `hasSummary`.
+ * It can emit `started` after an action started.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'

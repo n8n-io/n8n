@@ -13,7 +13,6 @@ import ResourcesListLoadingState from '@/app/components/layouts/ResourcesListLoa
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ProjectDocumentationOverview from '@/features/pages/components/ProjectDocumentationOverview.vue';
-import ProjectDocumentationStart from '@/features/pages/components/ProjectDocumentationStart.vue';
 import { useOverviewMode } from '@/features/pages/composables/useOverviewMode';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
@@ -2340,7 +2339,6 @@ const onNameSubmit = async (name: string) => {
 					time-range="week"
 				/>
 			</ProjectHeader>
-			<ProjectDocumentationStart />
 		</template>
 		<template #callout>
 			<WontExecuteCallout

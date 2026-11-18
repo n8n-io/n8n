@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import type { PageOverviewWorkflow } from '@n8n/api-types';
+import type { Page, PageOverviewWorkflow } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nEmptyState, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 
+import ClippedContent from './ClippedContent.vue';
+import PageEditorDocument from './PageEditorDocument.vue';
 import PageOverviewCard from './PageOverviewCard.vue';
 import { usePageOverview } from '../composables/usePageOverview';
 import { toSectionLabel } from '../overview/overviewDisplay';
 import { isDocumented, toSections, toWorkflowPageContent } from '../overview/pageOverviewSections';
+import { WORKFLOW_CATEGORIES } from '../overview/workflowCategories';
 import { usePageStore } from '../page.store';
 
 /**
@@ -17,7 +20,11 @@ import { usePageStore } from '../page.store';
  * It loads the overview itself. `select-page` asks the host to show a page.
  * `select-project` asks the host to show the documentation of one project.
  * A board of one project groups the workflows by trigger, without a heading. A board of every project groups them by project.
- * The `page-overview-actions` slot of the shell shows above the sections when it is registered.
+ * A board of one project shows the page that sums up the project above the cards. The user can edit it in place.
+ * A long summary shows clipped. A chip of a workflow in the summary takes the color of the trigger of that workflow.
+ * A project with no page shows an empty state in place of the cards, when the shell registers the actions slot.
+ * The user can leave the empty state to write the pages without the actions.
+ * The `page-overview-actions` slot of the shell shows in the empty state and next to the summary when it is registered.
  */
 const props = withDefaults(
 	defineProps<{
@@ -50,6 +57,51 @@ const undocumentedWorkflows = computed(() =>
 	workflows.value
 		.filter((workflow) => !isDocumented(workflow))
 		.map(({ id, name }) => ({ id, name })),
+);
+
+provide(
+	WORKFLOW_CATEGORIES,
+	computed(() => new Map(workflows.value.map(({ id, category }) => [id, category]))),
+);
+
+const summary = computed(() => overview.value?.summary);
+const hasSummary = computed(() => summary.value !== undefined && !summary.value.isEmpty);
+
+/** True after the user chose to write the pages without the actions of the shell. */
+const writesWithoutActions = ref(false);
+
+/** True when the board offers the actions of the shell in place of a project that has no text. */
+const showsEmptyState = computed(
+	() =>
+		props.projectId !== undefined &&
+		OverviewActions.value !== undefined &&
+		!writesWithoutActions.value &&
+		workflows.value.length > 0 &&
+		!hasSummary.value &&
+		!workflows.value.some(isDocumented),
+);
+
+const summaryDocument = useTemplateRef<InstanceType<typeof PageEditorDocument>>('summaryDocument');
+
+/** The version of the summary that the document shows. */
+const shownSummaryVersion = ref<number>();
+
+function rememberShownSummary(page: Page): void {
+	shownSummaryVersion.value = page.version;
+}
+
+/** Shows the summary that another writer saved, for example the assistant. */
+watch(
+	() => summary.value?.version,
+	(version) => {
+		const isNewer =
+			version !== undefined &&
+			shownSummaryVersion.value !== undefined &&
+			version > shownSummaryVersion.value;
+		if (isNewer) {
+			void summaryDocument.value?.reload();
+		}
+	},
 );
 
 /** The keys of the sections whose cards are hidden. The state does not outlive the board. */
@@ -106,13 +158,6 @@ defineExpose({ refresh });
 	<div :class="$style.board" data-test-id="page-overview-board">
 		<N8nLoading v-if="isLoading" :rows="4" />
 		<template v-else>
-			<div v-if="OverviewActions" :class="$style.actions" data-test-id="page-overview-actions">
-				<component
-					:is="OverviewActions"
-					:project-id="projectId"
-					:undocumented-workflows="undocumentedWorkflows"
-				/>
-			</div>
 			<N8nText
 				v-if="workflows.length === 0"
 				color="text-light"
@@ -120,7 +165,81 @@ defineExpose({ refresh });
 			>
 				{{ i18n.baseText('page.overview.noWorkflows') }}
 			</N8nText>
+			<N8nEmptyState
+				v-else-if="showsEmptyState"
+				:icon="{ type: 'icon', value: 'book-open' }"
+				:heading="i18n.baseText('page.overview.empty.heading')"
+				:description="i18n.baseText('page.overview.empty.description')"
+				data-test-id="page-overview-empty"
+			>
+				<template #additionalContent>
+					<div :class="$style.emptyActions">
+						<component
+							:is="OverviewActions"
+							:project-id="projectId"
+							:undocumented-workflows="undocumentedWorkflows"
+							:has-summary="false"
+						/>
+						<button
+							type="button"
+							:class="$style.writeYourself"
+							data-test-id="page-overview-write-yourself"
+							@click="writesWithoutActions = true"
+						>
+							{{ i18n.baseText('page.overview.empty.writeYourself') }}
+						</button>
+					</div>
+				</template>
+			</N8nEmptyState>
 			<template v-else>
+				<section
+					v-if="projectId"
+					:class="$style.summary"
+					:aria-label="i18n.baseText('page.overview.summary.title')"
+					data-test-id="page-overview-summary"
+				>
+					<header :class="$style.summaryBar">
+						<span :class="$style.summaryLabel">
+							<N8nIcon icon="book-open" size="small" />
+							{{ i18n.baseText('page.overview.summary.title') }}
+						</span>
+						<div
+							v-if="OverviewActions"
+							:class="$style.actions"
+							data-test-id="page-overview-actions"
+						>
+							<component
+								:is="OverviewActions"
+								:project-id="projectId"
+								:undocumented-workflows="undocumentedWorkflows"
+								:has-summary="hasSummary"
+							/>
+						</div>
+					</header>
+					<div :class="$style.summaryBody">
+						<ClippedContent v-if="summary && hasSummary">
+							<PageEditorDocument
+								ref="summaryDocument"
+								:key="summary.id"
+								:page-id="summary.id"
+								:project-id="projectId"
+								:readonly="false"
+								:show-title="false"
+								dense
+								@loaded="rememberShownSummary"
+								@saved="rememberShownSummary"
+							/>
+						</ClippedContent>
+						<N8nText
+							v-else
+							color="text-light"
+							size="small"
+							data-test-id="page-overview-summary-empty"
+						>
+							{{ i18n.baseText('page.overview.summary.empty') }}
+						</N8nText>
+					</div>
+				</section>
 				<section
 					v-for="section in sections"
 					:key="section.key"
@@ -193,11 +312,64 @@ defineExpose({ refresh });
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+}
 
-	// A slot component that renders nothing leaves no empty row.
-	&:empty {
-		display: none;
+.emptyActions {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.writeYourself {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: 0;
+	border-radius: var(--radius--md);
+	background-color: transparent;
+	color: var(--text-color--subtle);
+	font-family: inherit;
+	font-size: var(--font-size--2xs);
+	cursor: pointer;
+
+	&:hover {
+		color: var(--text-color);
+		text-decoration: underline;
 	}
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+	}
+}
+
+.summary {
+	overflow: hidden;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background-color: var(--background--surface);
+}
+
+.summaryBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	min-height: var(--spacing--xl);
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--4xs) var(--spacing--md);
+	border-bottom: var(--border);
+	background-color: var(--background--subtle);
+}
+
+.summaryBody {
+	padding: var(--spacing--xs) var(--spacing--md) var(--spacing--sm);
+}
+
+.summaryLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 }
 
 .section {

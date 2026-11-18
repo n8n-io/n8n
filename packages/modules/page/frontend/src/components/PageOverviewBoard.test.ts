@@ -112,10 +112,11 @@ describe('PageOverviewBoard', () => {
 		expect(wrapper.queryByTestId('page-overview-section-toggle')).not.toBeInTheDocument();
 	});
 
-	it('shows only the sections and their cards', async () => {
+	it('shows only the summary of the project, the sections and their cards', async () => {
 		const { wrapper } = await renderBoard([manual]);
 
-		expect(wrapper.getByTestId('page-overview-board').children).toHaveLength(1);
+		expect(wrapper.getByTestId('page-overview-board').children).toHaveLength(2);
+		expect(wrapper.getByTestId('page-overview-summary')).toHaveTextContent('No summary yet.');
 		expect(wrapper.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
 		expect(wrapper.queryByRole('progressbar')).not.toBeInTheDocument();
 		expect(wrapper.queryByRole('textbox')).not.toBeInTheDocument();
@@ -330,6 +331,42 @@ describe('PageOverviewBoard', () => {
 				{ id: 'wf-fix', name: 'Fix data' },
 				{ id: 'wf-refund', name: 'Refund API' },
 			],
+		});
+	});
+
+	describe('a project without a page', () => {
+		const registerActions = () =>
+			componentRegistry.register(
+				'page-overview-actions',
+				defineComponent({ setup: () => () => h('button', 'Document all') }),
+			);
+
+		it('offers the actions of the shell in place of the cards', async () => {
+			registerActions();
+			api.getPageOverview.mockResolvedValue({ workflows: [manual, webhook] });
+			const wrapper = createComponentRenderer(PageOverviewBoard)({
+				props: { projectId: 'project-1' },
+				global: { plugins: [createTestRouter()] },
+			});
+
+			const empty = await wrapper.findByTestId('page-overview-empty');
+
+			expect(empty).toHaveTextContent('Document all');
+			expect(wrapper.queryByTestId('page-overview-section')).not.toBeInTheDocument();
+			expect(wrapper.queryByTestId('page-overview-summary')).not.toBeInTheDocument();
+
+			await fireEvent.click(wrapper.getByTestId('page-overview-write-yourself'));
+
+			expect(wrapper.queryByTestId('page-overview-empty')).not.toBeInTheDocument();
+			expect(wrapper.getAllByTestId('page-overview-card-undocumented')).toHaveLength(2);
+		});
+
+		it('shows the cards when a workflow has a page', async () => {
+			registerActions();
+			const { wrapper } = await renderBoard([manual, scheduled]);
+
+			expect(wrapper.queryByTestId('page-overview-empty')).not.toBeInTheDocument();
+			expect(wrapper.getByTestId('page-overview-summary')).toBeInTheDocument();
 		});
 	});
 

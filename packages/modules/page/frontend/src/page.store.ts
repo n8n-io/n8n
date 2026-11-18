@@ -111,6 +111,11 @@ export const usePageStore = defineStore('page', () => {
 		return rememberPage(await pageApi.createPage(rootStore.restApiContext, projectId, page));
 	}
 
+	/** Gives the page that sums up a project. A project without one gets an empty one. */
+	async function ensureProjectSummary(projectId: string): Promise<Page> {
+		return rememberPage(await pageApi.ensureProjectSummary(rootStore.restApiContext, projectId));
+	}
+
 	/**
 	 * Saves changes that the user made on version `changes.baseVersion` of the page.
 	 * Rejects with HTTP status 409 when the server holds a newer version.
@@ -158,6 +163,7 @@ export const usePageStore = defineStore('page', () => {
 		fetchPage,
 		fetchPageById,
 		createPage,
+		ensureProjectSummary,
 		updatePage,
 		deletePage,
 		listReferencing,

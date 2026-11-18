@@ -1,7 +1,9 @@
+import { usePageStore } from '@n8n/frontend-module-page';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 
 import DocumentProjectButton from './DocumentProjectButton.vue';
 
@@ -30,6 +32,9 @@ describe('DocumentProjectButton', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
+		mockedStore(usePageStore).ensureProjectSummary.mockResolvedValue({
+			id: 'summary-1',
+		} as Awaited<ReturnType<ReturnType<typeof usePageStore>['ensureProjectSummary']>>);
 		assistant.isAvailable.value = true;
 		assistant.startThread.mockResolvedValue('started');
 	});
@@ -48,10 +53,17 @@ describe('DocumentProjectButton', () => {
 		expect(queryByTestId('page-document-project-button')).not.toBeInTheDocument();
 	});
 
-	it('should render nothing when each workflow has a page', () => {
-		const { queryByTestId } = renderComponent({ props: { undocumentedWorkflows: [] } });
+	it('should ask only for the summary when each workflow has a page', async () => {
+		const { getByTestId } = renderComponent({
+			props: { undocumentedWorkflows: [], hasSummary: true },
+		});
 
-		expect(queryByTestId('page-document-project-button')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('page-document-project-button'));
+
+		expect(getByTestId('page-document-project-button')).toHaveTextContent('Update');
+		const message = assistant.startThread.mock.calls[0][1];
+		expect(message).toContain('in the page /page/summary-1 with `update_page`');
+		expect(message).not.toContain('most important');
 	});
 
 	it('should ask the assistant for pages about the workflows without a page', async () => {
@@ -59,13 +71,14 @@ describe('DocumentProjectButton', () => {
 
 		await userEvent.click(getByTestId('page-document-project-button'));
 
-		expect(getByTestId('page-document-project-button')).toHaveTextContent('Document me!');
+		expect(getByTestId('page-document-project-button')).toHaveTextContent('Write it for me');
 		const [projectId, message, authorship, launch] = assistant.startThread.mock.calls[0];
 		expect(projectId).toBe('p1');
 		expect(message).toContain('- [Workflow 1](/workflow/w1)');
 		expect(message).toContain('- [Workflow 2](/workflow/w2)');
 		expect(message).toContain('Choose the 2 most important');
-		expect(message).toContain('one more page with the title "Project overview"');
+		expect(message).toContain('in the page /page/summary-1 with `update_page`');
+		expect(mockedStore(usePageStore).ensureProjectSummary).toHaveBeenCalledWith('p1');
 		expect(message).toContain(
 			'[Open the documentation overview](/projects/p1/workflows?view=docs)',
 		);

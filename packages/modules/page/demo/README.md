@@ -34,7 +34,7 @@ They are made to be read, not run. The workflow "Daily sales report" is the exce
 3. Open "AI inbox assistant", select the pages button, then "Document with AI". This needs the n8n Assistant.
 4. Open the page "Daily sales report" in one tab. In another tab, run the workflow "Daily sales report" from "Run now". The section "Latest report" of the page changes without a reload.
 
-## Try "Document me!"
+## Try "Write it for me"
 
 This needs the n8n Assistant and team projects.
 
@@ -42,6 +42,6 @@ This needs the n8n Assistant and team projects.
 node packages/modules/page/demo/seed-undocumented.mjs
 ```
 
-1. Open the project "Acme Operations". Its overview shows the list of workflows and the button "Document me!".
-2. Select "Document me!". The assistant writes pages for the most important workflows.
-3. Open the project again. It now has a tab "Documentation" with one card for each workflow. Workflows without a page show with a dashed border.
+1. Open the project "Acme Operations". Its tab "Documentation" shows an empty state with the button "Write it for me".
+2. Select "Write it for me". The assistant writes pages for the most important workflows and the summary of the project.
+3. Open the tab "Documentation" again. It shows the summary, then one card for each workflow. Workflows without a page show with a dashed border.

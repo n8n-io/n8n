@@ -2,13 +2,15 @@
 import { parseResourcePath } from '@n8n/api-types';
 import { N8nHoverCard, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watchEffect } from 'vue';
+import { computed, inject, ref, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { usePageResourceStore } from './resource.store';
 import { toResourceDisplay } from './resourceDisplay';
 import ResourceIcon from './ResourceIcon.vue';
 import ResourcePreviewCard from './ResourcePreviewCard.vue';
+import { CATEGORY_ICONS } from '../overview/overviewDisplay';
+import { WORKFLOW_CATEGORIES } from '../overview/workflowCategories';
 import { RESOURCE_PREVIEW_DELAY_MS } from '../page.constants';
 
 const props = defineProps<{
@@ -26,6 +28,15 @@ const reference = computed(() => parseResourcePath(props.href));
 
 const resolution = computed(() =>
 	reference.value ? resourceStore.resolutionOf(reference.value) : undefined,
+);
+
+const workflowCategories = inject(WORKFLOW_CATEGORIES, undefined);
+
+/** The trigger category of the workflow of the chip, when an ancestor provides the categories. */
+const category = computed(() =>
+	reference.value?.resourceType === 'workflow'
+		? workflowCategories?.value.get(reference.value.resourceId)
+		: undefined,
 );
 
 const isMissing = computed(() => resolution.value?.status === 'missing');
@@ -78,14 +89,20 @@ function openResource(event: MouseEvent) {
 			<template #trigger>
 				<a
 					:href="address"
-					:class="['not-prose', $style.chip, isMissing ? $style.missing : '']"
+					:class="[
+						'not-prose',
+						$style.chip,
+						isMissing ? $style.missing : '',
+						category ? [$style.accented, $style[category]] : '',
+					]"
 					:data-resource-type="reference?.resourceType"
+					:data-trigger-category="category"
 					data-test-id="page-resource-chip"
 					@click="openResource"
 				>
 					<ResourceIcon
-						:icon="display.icon"
-						:emoji="display.emoji"
+						:icon="category ? CATEGORY_ICONS[category] : display.icon"
+						:emoji="category ? undefined : display.emoji"
 						:node-type="details?.nodeType"
 						:class="$style.icon"
 					/>
@@ -106,6 +123,10 @@ function openResource(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+@use '../overview/accent';
+
+@include accent.classes;
+
 .chip {
 	display: inline-flex;
 	align-items: center;
@@ -137,6 +158,27 @@ function openResource(event: MouseEvent) {
 .icon {
 	flex-shrink: 0;
 	color: var(--text-color--subtle);
+}
+
+.accented {
+	border-color: transparent;
+	background-color: var(--page-overview--accent--color--background);
+	color: var(--page-overview--accent--color--text);
+	transition: filter var(--duration--snappy) var(--easing--ease-out);
+
+	&:hover {
+		background-color: var(--page-overview--accent--color--background);
+		color: var(--page-overview--accent--color--text);
+		filter: brightness(0.95) saturate(1.3);
+	}
+
+	.icon {
+		color: inherit;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 
 .name {

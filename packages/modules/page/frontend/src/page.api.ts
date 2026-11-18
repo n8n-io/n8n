@@ -39,6 +39,14 @@ export async function createPage(
 	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/pages`, page);
 }
 
+/** Reads the page that sums up a project. The server creates an empty one when the project has none. */
+export async function ensureProjectSummary(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<Page> {
+	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/pages/summary`);
+}
+
 /** The server answers 409 when `changes.baseVersion` is not the latest version of the page. */
 export async function updatePage(
 	context: IRestApiContext,
