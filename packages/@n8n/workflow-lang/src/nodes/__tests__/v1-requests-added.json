@@ -14966,5 +14966,2383 @@
 			]
 		],
 		"nodePaired": [false]
+	},
+	"agent 1.6 stream, system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "Hello"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.6 stream, two items": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "Hello"
+			},
+			{
+				"output": "B"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				},
+				{
+					"output": "B"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
+	},
+	"agent 1.7 stream, system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "Hello"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.7 stream, two items": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "Hello"
+			},
+			{
+				"output": "B"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				},
+				{
+					"output": "B"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
+	},
+	"agent 1.8 stream, system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "Hello"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.8 stream, two items": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "Hello"
+			},
+			{
+				"output": "B"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				},
+				{
+					"output": "B"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
+	},
+	"agent 1.9 stream, system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "Be brief"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "Hello"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.9 stream, two items": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "Hello"
+			},
+			{
+				"output": "B"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "Hello"
+				},
+				{
+					"output": "B"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, false]
+	},
+	"agent 1.7 stream, empty system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.7 stream, forms of the stream": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "ABC"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ABC"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.7 stream, empty answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.7 stream, model options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-5",
+					"temperature": 0.5,
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"max_completion_tokens": 9,
+					"messages": [
+						{
+							"role": "developer",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.7 stream, failed": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "400"
+		}
+	},
+	"agent 1.7 stream, failed after the tries": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "500 bad thing"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "500 bad thing",
+		"errorDetail": {
+			"description": "Original error: InternalServerError",
+			"httpCode": null
+		}
+	},
+	"agent 1.7 stream, rate limit": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "OpenAI: Rate limit reached"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "OpenAI: Rate limit reached",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
+	},
+	"agent 1.7 stream, no answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Connection error."
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Connection error.",
+		"errorDetail": {
+			"description": "Original error: APIConnectionError. Cause: connect ECONNREFUSED 203.0.113.7:443",
+			"httpCode": null
+		}
+	},
+	"agent 1.7 stream, continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"output": "ok"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"agent 1.7 stream, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			],
+			[
+				{
+					"a": 2,
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			],
+			[
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, true]
+	},
+	"agent 1.7 stream, retry": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false],
+		"waits": [10]
+	},
+	"agent 1.7 stream, no prompt": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified",
+		"errorDetail": {
+			"description": "The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.",
+			"httpCode": null
+		}
+	},
+	"agent 1.7 stream, default prompt type": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "from chat"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.7 stream, open router": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "system",
+							"content": "You are a helpful assistant"
+						},
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.9 stream, empty system message": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.9 stream, forms of the stream": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "ABC"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ABC"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.9 stream, empty answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": ""
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": ""
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.9 stream, model options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-5",
+					"temperature": 0.5,
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"max_completion_tokens": 9,
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.9 stream, failed": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Bad request - please check your parameters",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": "400"
+		}
+	},
+	"agent 1.9 stream, failed after the tries": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "500 bad thing"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "500 bad thing",
+		"errorDetail": {
+			"description": "Original error: InternalServerError",
+			"httpCode": null
+		}
+	},
+	"agent 1.9 stream, rate limit": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "OpenAI: Rate limit reached"
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "OpenAI: Rate limit reached",
+		"errorDetail": {
+			"description": "bad thing",
+			"httpCode": null
+		}
+	},
+	"agent 1.9 stream, no answer": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null, null],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Connection error."
+				}
+			]
+		},
+		"outputs": [],
+		"paired": [],
+		"error": "Connection error.",
+		"errorDetail": {
+			"description": "Original error: APIConnectionError. Cause: connect ECONNREFUSED 203.0.113.7:443",
+			"httpCode": null
+		}
+	},
+	"agent 1.9 stream, continue": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"error": "Bad request - please check your parameters"
+			},
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"output": "ok"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [true, false]
+	},
+	"agent 1.9 stream, error output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				},
+				{
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			],
+			[
+				{
+					"a": 2,
+					"error": "The resource you are requesting could not be found"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			],
+			[
+				{
+					"item": 1
+				}
+			]
+		],
+		"nodePaired": [false, true]
+	},
+	"agent 1.9 stream, retry": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null, null],
+		"output": [
+			{
+				"output": "ok"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": "Bad request - please check your parameters"
+				},
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "ok"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false],
+		"waits": [10]
+	},
+	"agent 1.9 stream, no prompt": {
+		"requests": [],
+		"wire": [],
+		"subRuns": {},
+		"outputs": [],
+		"paired": [],
+		"error": "No prompt specified",
+		"errorDetail": {
+			"description": "The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.",
+			"httpCode": null
+		}
+	},
+	"agent 1.9 stream, default prompt type": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-platform": "org-qkmJQuJ2WnvoIKMr2UJwIJkZ"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "from chat"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
+	},
+	"agent 1.9 stream, open router": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-or-fake"
+				},
+				"body": {
+					"model": "anthropic/claude-sonnet-4",
+					"stream": true,
+					"stream_options": {
+						"include_usage": true
+					},
+					"messages": [
+						{
+							"role": "user",
+							"content": "Ask {this}"
+						}
+					]
+				}
+			}
+		],
+		"wire": [null],
+		"output": [
+			{
+				"output": "x"
+			}
+		],
+		"subRuns": {
+			"Model": [
+				{
+					"error": null
+				}
+			]
+		},
+		"outputs": [
+			[
+				{
+					"output": "x"
+				}
+			]
+		],
+		"paired": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"nodePaired": [false]
 	}
 }

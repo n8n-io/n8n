@@ -3831,6 +3831,206 @@ const BINARY_CHAIN_CASES: EquivalenceCase[] = [
 	chain('file in the input item', gpt, [completion('x')], {}, withFile('image/png', 'a.png')),
 ];
 
+/** A Chat Completions answer as a stream of server-sent events. */
+const chunk = (delta: Record<string, unknown> | null, finish: string | null = null) =>
+	`data: ${JSON.stringify({
+		id: 'chatcmpl-1',
+		object: 'chat.completion.chunk',
+		created: 1,
+		model: 'm',
+		choices: [{ index: 0, delta, logprobs: null, finish_reason: finish }],
+	})}\n\n`;
+const stream = (...chunks: string[]) => ({
+	headers: { 'content-type': 'text/event-stream' },
+	body: `${chunks.join('')}data: [DONE]\n\n`,
+});
+const streamed = (...texts: string[]) =>
+	stream(
+		chunk({ role: 'assistant', content: '', refusal: null }),
+		...texts.map((text) => chunk({ content: text })),
+		chunk({}, 'stop'),
+	);
+const usageChunk = `data: ${JSON.stringify({ id: 'chatcmpl-1', choices: [], usage: { total_tokens: 7 } })}\n\n`;
+/** The forms of a stream that the clients accept: comments, line ends, chunks without text. */
+const streamForms = {
+	headers: { 'content-type': 'text/event-stream' },
+	body: [
+		': keep-alive\n\n',
+		`data:${JSON.stringify({ id: 'c', choices: [{ index: 0, delta: { role: 'assistant', content: 'A' } }] })}\r\n\r\n`,
+		chunk({ content: null, reasoning: 'thinking', reasoning_content: 'more' }),
+		chunk({ role: 'assistant', content: 'B' }),
+		chunk(null),
+		`data: ${JSON.stringify({ id: 'c' })}\n\n`,
+		`data: ${JSON.stringify({
+			id: 'c',
+			choices: [
+				{ index: 0, delta: { content: 'C' } },
+				{ index: 1, delta: { content: 'x' } },
+			],
+		})}\n\n`,
+		chunk({ content: [{ type: 'text', text: 'skipped' }] }),
+		chunk({}, 'length'),
+		usageChunk,
+		'data: [DONE]\n\n',
+		chunk({ content: 'after the end' }),
+	].join(''),
+};
+
+/** The Tools Agent of versions 1.6 to 1.9: the model answers with a stream. */
+function streamCases(version: number): EquivalenceCase[] {
+	const named = (name: string) => `${version} stream, ${name}`;
+	return [
+		agent(named('system message'), version, gpt, [streamed('Hel', 'lo')], {
+			options: { systemMessage: 'Be brief' },
+		}),
+		agent(named('two items'), version, gpt, [streamed('Hel', 'lo'), streamed('B')], {}, two),
+	];
+}
+
+const STREAM_CASES: EquivalenceCase[] = [
+	...[1.6, 1.7, 1.8, 1.9].flatMap((version) => streamCases(version)),
+	...[1.7, 1.9].flatMap((version) => {
+		const named = (name: string) => `${version} stream, ${name}`;
+		return [
+			agent(named('empty system message'), version, gpt, [streamed('x')], {
+				options: { systemMessage: '' },
+			}),
+			agent(named('forms of the stream'), version, gpt, [streamForms]),
+			agent(named('empty answer'), version, gpt, [streamed()]),
+			agent(
+				named('model options'),
+				version,
+				openAiModel(1.2, 'gpt-5', { temperature: 0.5, maxTokens: 9 }),
+				[streamed('x')],
+				{},
+				{
+					subNodes: [openAiModel(1.2, 'gpt-5', { temperature: 0.5, maxTokens: 9 })],
+				},
+			),
+			agent(
+				named('failed'),
+				version,
+				gpt,
+				[failed(400)],
+				{},
+				{ expectedError: STATUS_ERRORS[400] },
+			),
+			agent(
+				named('failed after the tries'),
+				version,
+				gpt,
+				[failed(500)],
+				{},
+				{
+					expectedError: '500 bad thing',
+				},
+			),
+			agent(
+				named('rate limit'),
+				version,
+				gpt,
+				[failed(429)],
+				{},
+				{
+					expectedError: STATUS_ERRORS[429],
+				},
+			),
+			agent(
+				named('no answer'),
+				version,
+				gpt,
+				[refused],
+				{},
+				{ expectedError: 'Connection error.' },
+			),
+			agent(
+				named('continue'),
+				version,
+				gpt,
+				[failed(400), streamed('ok')],
+				{},
+				{
+					...two,
+					settings: { onError: 'continueRegularOutput' },
+				},
+			),
+			agent(
+				named('error output'),
+				version,
+				gpt,
+				[streamed('ok'), failed(404)],
+				{},
+				{
+					...two,
+					settings: { onError: 'continueErrorOutput' },
+				},
+			),
+			agent(named('retry'), version, gpt, [failed(400), streamed('ok')], {}, { settings: retry }),
+			agent(
+				named('no prompt'),
+				version,
+				gpt,
+				[streamed('x')],
+				{ text: '={{ $json.none }}' },
+				{
+					expectedError: 'No prompt specified',
+				},
+			),
+			agent(
+				named('default prompt type'),
+				version,
+				gpt,
+				[streamed('x')],
+				{ promptType: undefined, text: 'not in use' },
+				{
+					items: [{ chatInput: 'from chat' }],
+				},
+			),
+			agent(
+				named('open router'),
+				version,
+				router,
+				[streamed('x')],
+				{},
+				{
+					...openRouter,
+					subNodes: [router],
+				},
+			),
+		];
+	}),
+];
+
+/**
+ * Streams that the library node does not read: it gives the cluster to the fallback host
+ * (`ai-cluster.test.ts`).
+ */
+export const STREAM_HOST_CASES: EquivalenceCase[] = [
+	agent('1.7 stream, tool call', 1.7, gpt, [
+		stream(
+			chunk({
+				role: 'assistant',
+				content: null,
+				tool_calls: [
+					{ index: 0, id: 'call_1', type: 'function', function: { name: 'x', arguments: '{}' } },
+				],
+			}),
+			chunk({}, 'tool_calls'),
+		),
+	]),
+	agent('1.7 stream, answer that is not a stream', 1.7, gpt, [completion('plain')]),
+	agent('1.7 stream, no chunk', 1.7, gpt, [stream()]),
+	agent('1.7 stream, event name', 1.7, gpt, [
+		{
+			headers: { 'content-type': 'text/event-stream' },
+			body: `event: x\n${chunk({ role: 'assistant', content: 'a' })}`,
+		},
+	]),
+	agent('1.7 stream, chunk that is not JSON', 1.7, gpt, [
+		{ headers: { 'content-type': 'text/event-stream' }, body: 'data: {bad\n\n' },
+	]),
+];
+
 /** Every case that runs in the engine of n8n and through the converter. */
 export const ENGINE_CASES: EquivalenceCase[] = [
 	...OUTPUT_PARSER_CASES,
@@ -3851,4 +4051,5 @@ export const ENGINE_CASES: EquivalenceCase[] = [
 	...GEMINI_DEFAULT_CASES,
 	...PROMPT_DEFAULT_CASES,
 	...BINARY_CHAIN_CASES,
+	...STREAM_CASES,
 ];

@@ -28,6 +28,7 @@ import {
 	ENGINE_CASES,
 	AI_HOST_CASES,
 	BINARY_HOST_CASES,
+	STREAM_HOST_CASES,
 	TOOL_PENDING_CASES,
 	TOOL_PROBE_CASES,
 } from './ai-cases.ts';
@@ -680,6 +681,35 @@ describe.runIf(typesBuilt)('AI nodes through the converter, against n8n engine r
 			const args = isRecord(host[0].args) ? host[0].args : {};
 			expect(args.type).toBe(c.type);
 			expect(traced(out.trace ?? [], NODE).outputs).toEqual([answer]);
+			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
+		});
+	});
+
+	describe.each(STREAM_HOST_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
+		it('gives the cluster to the fallback host, because the stream has more than text', async () => {
+			const result = converted(c);
+			expect(result.fallbackNodes ?? []).not.toContain(NODE);
+			const compiled = compile(result.source);
+			expect(compiled.diagnostics).toEqual([]);
+			const hostStep = `${NODE} (fallback host)`;
+			const answer = [{ json: { output: 'from the host' } }];
+			const base = fixtureOf(c, result);
+			const fixture: Fixture = {
+				...base,
+				effects: {
+					...base.effects,
+					[hostStep]: [[{ items: answer }, { subRuns: { Model: [{ error: null }] } }]],
+				},
+			};
+			const out = await runReference(result.source, fixture);
+			expect(out.status).toBe('ok');
+			// One request goes to the model. The host then runs the cluster as v1 does.
+			expect(out.effects.filter((e) => e.step === NODE).map((e) => e.kind)).toEqual(['http']);
+			expect(out.effects.filter((e) => e.step === hostStep).map((e) => e.kind)).toEqual(['node']);
+			expect(traced(out.trace ?? [], NODE).outputs).toEqual([answer]);
+			// The run data has the runs of the model that the host gives, and no other run.
+			expect(traced(out.trace ?? [], 'Model').subRuns).toEqual([{ error: null }]);
 			const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
 			expect(JSON.stringify(bytecode)).toBe(JSON.stringify(out));
 		});

@@ -37,6 +37,9 @@
  * The agent takes the same parser: it gives the model the schema as the tool
  * `format_final_json_response`, and the parser reads the arguments of that call, or the text
  * of an answer without a call (`docs/compiler-plan.md`, "Output parser of the agent").
+ * The agent of versions 1.6 to 1.9 asks the model for a stream: the node reads the text of
+ * the server-sent events (`streamedCompletion`). A stream with more than text gives
+ * `{ host: true }`, and the converted source then runs the cluster in the fallback host.
  * Not supported (the converter keeps these in the fallback host): other output
  * parsers, a fallback model, image messages, the JSON response format, the reasoning
  * effort, built-in tools, a custom base URL of the model node, and other model providers.
@@ -219,6 +222,8 @@ interface Outcome {
 	description?: string;
 	/** The agent of version 3: the answer calls a tool, so the engine runs the node again. */
 	again?: boolean;
+	/** The answer has a form without a proof: the cluster runs in the fallback host. */
+	host?: boolean;
 }
 
 /** The request of one item: the body, and true when it goes to the Responses API. */
@@ -917,6 +922,80 @@ function stepOf(call: ToolCall, result: ToolResult, text: string | undefined): A
 	return { action, observation: observationOf(result) };
 }
 
+/** The system message of the agent before version 1.9, when the option has no value. */
+const SYSTEM_MESSAGE = 'You are a helpful assistant';
+
+/**
+ * The answer of a Chat Completions request with `stream: true` (server-sent events), as the
+ * answer of a request without a stream. The agent before version 2 asks for a stream, and
+ * LangChain joins the text of the chunks. Undefined for a stream that has more than text
+ * (a tool call, an event name, a chunk that is not JSON, no chunk): that form has no proof.
+ *
+ * As the OpenAI client reads the stream: an empty line ends an event, a line that starts
+ * with `:` is a comment, `[DONE]` ends the stream. As LangChain reads a chunk: the first
+ * choice only, a chunk without a choice or without a delta is skipped (the usage chunk),
+ * and so is a delta whose content is not text.
+ */
+function streamedCompletion(body: unknown): unknown {
+	if (typeof body !== 'string') return undefined;
+	let content = '';
+	let chunks = 0;
+	let data: string | undefined;
+	let done = false;
+	for (const raw of body.split('\n')) {
+		const line = raw.endsWith('\r') ? raw.slice(0, raw.length - 1) : raw;
+		if (line.includes('\r')) return undefined;
+		if (line !== '') {
+			if (line.startsWith(':')) continue;
+			// A second data line of one event, and each other field, have no proof.
+			if (!line.startsWith('data:') || data !== undefined) return undefined;
+			data = line.slice(5);
+			if (data.startsWith(' ')) data = data.slice(1);
+			continue;
+		}
+		if (data === undefined) continue;
+		const text = data;
+		data = undefined;
+		if (done) continue;
+		if (text.startsWith('[DONE]')) {
+			done = true;
+			continue;
+		}
+		let chunk: unknown;
+		try {
+			chunk = JSON.parse(text);
+		} catch {
+			return undefined;
+		}
+		if (!isObject(chunk) || chunk.error) return undefined;
+		if (chunk.choices === undefined || chunk.choices === null) continue;
+		if (!Array.isArray(chunk.choices)) return undefined;
+		const choice: unknown = chunk.choices[0];
+		if (choice === undefined || choice === null) continue;
+		if (!isObject(choice)) return undefined;
+		const delta = choice.delta;
+		if (delta === undefined || delta === null) continue;
+		if (!isObject(delta)) return undefined;
+		// The first chunk names the role; a chunk without a role has the role of the last chunk.
+		const role = delta.role;
+		if (
+			chunks === 0
+				? role !== 'assistant'
+				: role !== undefined && role !== null && role !== 'assistant'
+		) {
+			return undefined;
+		}
+		if (delta.function_call || delta.tool_calls || delta.audio) return undefined;
+		chunks++;
+		const part = delta.content;
+		if (typeof part === 'string') content += part;
+		else if (part !== undefined && part !== null) continue;
+	}
+	// An event without the empty line after it is not read by the client.
+	if (data !== undefined || chunks === 0) return undefined;
+	return { choices: [{ message: { role: 'assistant', content } }] };
+}
+
 /** The wait of LangChain's caller before try `attempt + 1` (p-retry with `randomize`). */
 function retryWait(random: number, attempt: number): number {
 	let factor = 1;
@@ -1341,6 +1420,8 @@ export default defineNode<ChainParameters>({
 		const step = batched ? size : 1;
 		const maxIterations = parameters.maxIterations ?? 10;
 		const tries = (ai.options?.maxRetries ?? 2) + 1;
+		// The agent before version 2 asks the model for a stream.
+		const streams = agent && version < 2;
 		const memoryRuns: Array<{ error: string | null }> = [];
 		// The memory sub-node gives its session once for the run, before the first item.
 		let session: string | undefined;
@@ -1482,7 +1563,9 @@ export default defineNode<ChainParameters>({
 		 * One call of the model, with the tries of LangChain's caller. It records the run of the
 		 * model sub-node when the request starts, and gives the body of the answer or the error.
 		 */
-		const send = async (request: ModelRequest): Promise<{ data?: unknown; error?: string }> => {
+		const send = async (
+			request: ModelRequest,
+		): Promise<{ data?: unknown; error?: string; host?: boolean }> => {
 			const run: { error: string | null } = { error: null };
 			runs.push(run);
 			if (request.refused !== undefined) {
@@ -1515,7 +1598,11 @@ export default defineNode<ChainParameters>({
 					// The request has no answer (a network failure). LangChain tries it again.
 					transport = messageOf(error);
 				}
-				if (status > 0 && status < 400) return { data: body };
+				if (status > 0 && status < 400) {
+					if (!streams) return { data: body };
+					const data = streamedCompletion(body);
+					return data === undefined ? { host: true } : { data };
+				}
 				const final = status === 429 || NO_RETRY.includes(status);
 				if (final || attempt >= tries) {
 					run.error = status > 0 ? failure(status, body) : connectionMessage(transport);
@@ -1575,16 +1662,25 @@ export default defineNode<ChainParameters>({
 				});
 				history = loaded.messages ?? [];
 			}
+			// Before version 1.9 the agent has a system message when the option has no value.
+			const noSystem = item.systemMessage === undefined || item.systemMessage === null;
 			const request = requestOf(
-				item,
+				agent && version < 1.9 && noSystem
+					? { text: item.text, systemMessage: SYSTEM_MESSAGE }
+					: item,
 				ai,
 				agent,
 				history,
 				agentParser !== undefined ? FORMAT_INSTRUCTIONS : parser?.instructions,
 			);
 			if (agentParser !== undefined) addFormatTool(request, ai.provider, agentParser.schema);
+			if (streams) {
+				request.body.stream = true;
+				request.body.stream_options = { include_usage: true };
+			}
 			for (let turn = 1; ; turn++) {
 				const answer = await send(request);
+				if (answer.host === true) return { host: true };
 				if (answer.error !== undefined) return { error: answer.error };
 				const run = runs[runs.length - 1];
 				let parts: Array<Record<string, unknown>> = [];
@@ -2012,6 +2108,8 @@ export default defineNode<ChainParameters>({
 					outcomes.push(await one(item, iteration));
 				}
 				for (const outcome of outcomes) {
+					// The fallback host runs the cluster: it gives the runs of the sub-nodes.
+					if (outcome.host === true) return [{ items: [], runs: [], host: true }];
 					if (outcome.again === true) {
 						again = true;
 					} else if (outcome.item !== undefined) {

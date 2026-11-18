@@ -646,7 +646,11 @@ current coverage are in `docs/ai-node-coverage.md`.
   Batches as the chain, with a default size of 1. Before version 3 the agent refuses a model that asks for the
   Responses API. Version 3 also stores the first output as execution custom data
   (`autoSaveHighlightedData`); the native node does not (see the differences).
-- **Tools Agent, versions 1.6 to 1.9.** They ask the model for a stream (`stream: true`). Not native.
+- **Tools Agent, versions 1.6 to 1.9.** They ask the model for a stream (`stream: true`,
+  `stream_options: { include_usage: true }`), one item at a time, without batches. Before version
+  1.9 the system message is "You are a helpful assistant" when the option has no value; an empty
+  text gives no system message. The output is the joined text of the chunks. Native for the model
+  alone on the Chat Completions API (OpenAI, OpenRouter): see "Stream of the agent before version 2".
 - **Tools Agent with tools.** The system message, the chat history from the memory, the prompt, then the
   scratchpad (tool calls and results). Each tool is a function schema of the provider. With an output parser
   the agent adds the tool `format_final_json_response`. The loop stops at `options.maxIterations` (default 10)
@@ -798,12 +802,34 @@ call there is a step with LangChain objects in it.
    list of models that take no sampling parameters.
 2. Structured output parser: the auto-fix call (the parser without auto-fixing is native on the
    chain and on the agent).
-3. Tools Agent versions 1.6 to 1.9: the answer is a stream (server-sent events).
+3. Tools Agent versions 1.6 to 1.9 with a tool, a memory or an output parser, and on the Responses
+   API, Anthropic and Gemini: the stream has tool call parts (LangChain reads their arguments with
+   a parser of partial JSON), or another form.
 4. Tools Agent with tools: see "Tools" below.
 5. `informationExtractor`, `textClassifier` (a chain with a fixed prompt and a parser).
 6. Other operations of the vendor nodes (image, audio, document, file).
 7. `options.reasoningEffort`, `responseFormat`, `textFormat` and built-in tools of the OpenAI model.
 8. Vector stores, document loaders and text splitters.
+
+### Stream of the agent before version 2 (built for text)
+
+`STREAM_CASES` and `STREAM_HOST_CASES` in `ai-cases.ts`. The library node sends the request with
+`stream: true` and reads the body as text (`streamedCompletion` in `chain-llm.ts`): the events of
+the OpenAI client (an empty line ends an event, a line that starts with `:` is a comment, `[DONE]`
+ends the stream) and the chunks as LangChain reads them (the first choice; a chunk without a choice
+or a delta is skipped; so is a delta whose content is not text). The result is the answer of a
+request without a stream, so the rest of the node is the same. A failed request has the answer and
+the tries of a request without a stream (recorded).
+
+A stream with more than text has no proof: a tool call part, an event name, two data lines in one
+event, a chunk that is not JSON, a stream without a chunk, a body that is not text. The library node
+then gives `{ host: true }` and no runs, and the converted source runs the cluster in the fallback
+host in the same run (the host form that each agent has for binary data). The model then gets one
+more request than in v1. A model that has no tools does not call a tool, so this is for answers
+that v1 itself reads in another way (v1 fails for a body that is not a stream).
+
+In the host: an agent type other than the Tools Agent (`agent`), tools, a memory and an output
+parser before version 2, and each chat model but OpenAI Chat Completions and OpenRouter.
 
 ### Output parser of the agent (built)
 

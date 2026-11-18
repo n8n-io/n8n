@@ -607,7 +607,17 @@ function toolsAgent(
 	context: ClusterContext,
 	settings: ClusterSettings,
 ): NativeCluster | string {
-	if (![2, 2.1, 2.2, 3, 3.1].includes(version)) return `agent version ${version}`;
+	if (![1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 3, 3.1].includes(version)) {
+		return `agent version ${version}`;
+	}
+	// Before version 2 the node has other agent types, and the Tools Agent asks the model
+	// for a stream. The library node reads a stream of text of the Chat Completions API.
+	const streams = version < 2;
+	if (streams && (p.agent ?? 'toolsAgent') !== 'toolsAgent') {
+		return typeof p.agent === 'string' && !p.agent.startsWith('=')
+			? `agent type ${p.agent}`
+			: 'agent type';
+	}
 	const unused = subReason(subs);
 	if (unused !== undefined) return unused;
 	const toolSubs = subs.filter((s) => s.connection === 'ai_tool');
@@ -618,6 +628,9 @@ function toolsAgent(
 	const wantsParser = p.hasOutputParser ?? false;
 	if (typeof wantsParser !== 'boolean' || parsers.length > 1) return 'output parser';
 	const hasParser = wantsParser && parsers.length === 1;
+	// With a stream, the answer of the parser comes as parts of a tool call.
+	if (streams && hasParser) return 'output parser before version 2';
+	if (streams && toolSubs.length > 0) return 'tools before version 2';
 	subs = subs.filter((s) => s.connection !== 'ai_outputParser');
 	if (subs.filter((s) => s.connection === 'ai_languageModel').length > 1) return 'fallback model';
 	if (subs.length !== 1 && subs.length !== 2) return 'sub-nodes';
@@ -630,6 +643,18 @@ function toolsAgent(
 	const chat = chatModel(root, sub);
 	if (typeof chat === 'string') return chat;
 	const { aiModel } = chat;
+	if (streams && aiMemory !== undefined) return 'memory before version 2';
+	if (streams && aiModel.provider !== 'openAi' && aiModel.provider !== 'openRouter') {
+		return 'stream of this chat model';
+	}
+	if (streams) {
+		if (aiModel.responses === true) return 'stream of the Responses API';
+		const model = aiModel.model;
+		// LangChain uses the Responses API for some model names; its stream has another form.
+		if (typeof model !== 'string' || model.startsWith('=') || prefersResponses(model)) {
+			return 'stream of the Responses API';
+		}
+	}
 	// Before version 3 the agent refuses a model that uses the Responses API.
 	if (version < 3 && aiModel.responses === true) return 'responses model before version 3';
 	let outputParser: Record<string, unknown> | undefined;
@@ -670,7 +695,8 @@ function toolsAgent(
 	if (typeof steps !== 'boolean') return 'intermediate steps';
 	// Before version 3, a tool call of the model is a step with LangChain objects in it.
 	if (steps && version < 3) return 'intermediate steps before version 3';
-	const batching = options.batching ?? {};
+	// Before version 2 the agent has no batches: one item at a time, and no wait.
+	const batching = streams ? {} : (options.batching ?? {});
 	if (!isRecord(batching)) return 'batching';
 	const size = batching.batchSize ?? 1;
 	const delay = batching.delayBetweenBatches ?? 0;
