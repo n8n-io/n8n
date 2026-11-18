@@ -9,6 +9,7 @@ import { defineComponent, h, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import * as api from '../workflowTests.api';
+import { useWorkflowTestsStore } from '../workflowTests.store';
 import WorkflowTestsView from './WorkflowTestsView.vue';
 
 const revealLine = vi.fn();
@@ -134,6 +135,16 @@ describe('WorkflowTestsView', () => {
 
 		await waitFor(() => expect(revealLine).toHaveBeenLastCalledWith(7));
 		expect(getByLabelText('editor')).toBeVisible();
+	});
+
+	it('shows the code of a file that the store already holds', async () => {
+		useWorkflowTestsStore().files['wf-1'] = file;
+		const { findByText, getByLabelText, getByRole } = renderView({ pinia });
+
+		await userEvent.click(await findByText('Code'));
+
+		expect(getByLabelText('editor')).toHaveValue(file.source);
+		expect(getByRole('button', { name: 'Run all' })).toBeEnabled();
 	});
 
 	it('saves the edited file before it runs the tests', async () => {

@@ -61,7 +61,8 @@ const isLoading = ref(true);
 const isSaving = ref(false);
 const isWriting = ref(false);
 const view = ref<View>('results');
-const draft = ref('');
+// The store keeps a loaded file. An empty draft would look like an unsaved edit of that file.
+const draft = ref(testsStore.files[props.workflowId]?.source ?? '');
 const file = computed(() => testsStore.files[props.workflowId] ?? null);
 const run = computed(() => testsStore.runs[props.workflowId]);
 const isRunning = computed(() => run.value?.status === 'running');
@@ -217,6 +218,7 @@ watch(
 		isWriting.value = false;
 		selectedName.value = undefined;
 		lineToReveal.value = undefined;
+		draft.value = file.value?.source ?? '';
 		void load();
 	},
 );
