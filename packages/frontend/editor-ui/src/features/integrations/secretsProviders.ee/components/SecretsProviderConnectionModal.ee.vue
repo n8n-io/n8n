@@ -571,36 +571,28 @@ onMounted(async () => {
 	display: block;
 }
 
-.secretsProviderConnectionModal.secretsProviderConnectionModal {
-	/* Previous shell was 70% of the viewport and capped at 1200px. No spacing token for that cap. */
-	--dialog--max-width: min(70%, 1200px, calc(100dvw - var(--spacing--lg)));
-	/* Keep the previous 600px shell, and stay inside short viewports. No spacing token for 600px. */
-	height: min(600px, calc(100dvh - var(--spacing--lg)));
-	min-height: 0;
-	max-height: calc(100dvh - var(--spacing--lg));
-}
-
 .dialogHeader {
 	align-items: center;
 }
 
+.secretsProviderConnectionModal {
+	height: min(600px, calc(100dvh - var(--spacing--lg)));
+	max-height: calc(100dvh - var(--spacing--lg));
+	--n8n-dialog-close--inset-block-start: calc(
+		var(--n8n-dialog-region--padding) + (var(--height--md) - var(--n8n-dialog-close--size)) / 2
+	);
+}
+
 .body {
-	&.body {
-		flex: 1 1 auto;
-		min-height: 0;
-		padding: 0;
-		overflow: hidden;
-		border-block: var(--border);
-	}
+	flex: 1 1 auto;
+	padding: 0;
+	overflow: hidden;
+	border-block: var(--border);
 }
 
 .modalLayout {
 	display: flex;
 	flex: 1 1 auto;
-	flex-direction: row;
-	align-items: stretch;
-	min-width: 0;
-	min-height: 0;
 	overflow: hidden;
 }
 
