@@ -14,11 +14,11 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
-	ExecutionRepository,
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -45,6 +45,7 @@ import {
 import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
+import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -74,7 +75,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -82,6 +82,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -256,7 +257,7 @@ describe('McpService scope enforcement', () => {
 				},
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
-			mockInstance(Telemetry),
+			mockInstance(TelemetryProxy),
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
@@ -266,7 +267,6 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
-			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
 			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),
@@ -303,6 +303,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
 			mockInstance(McpPreferencesNoteService),
+			mockInstance(WorkflowPublicationStatusService),
 		);
 
 	beforeEach(() => {
@@ -753,6 +754,27 @@ describe('McpService scope enforcement', () => {
 		expect(registered).not.toContain('move_workflows_to_folder');
 		expect(registered).toContain('search_projects');
 	});
+
+	it.each([false, true])(
+		'gates Agent move registration on the folder license: %s',
+		async (foldersLicensed) => {
+			mockInstance(McpAgentToolsService, {
+				registerTools: vi.fn((registerTool) => {
+					for (const name of ['move_agent', 'create_agent']) {
+						registerTool({ name, config: {}, handler: vi.fn() });
+					}
+				}),
+			});
+			const server = await buildService({ foldersLicensed, agentsActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered.has('move_agent')).toBe(foldersLicensed);
+			expect(registered).toContain('create_agent');
+		},
+	);
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();

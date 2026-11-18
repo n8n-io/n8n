@@ -59,9 +59,10 @@ export function serializeError(err: unknown): ErrorSentinel {
 			message: err.message,
 			stack: err.stack,
 			extra,
+			fromHost: true,
 		};
 	}
-	return { __isError: true, name: 'Error', message: String(err), extra: {} };
+	return { __isError: true, name: 'Error', message: String(err), extra: {}, fromHost: true };
 }
 
 /**

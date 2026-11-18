@@ -1,6 +1,10 @@
 {
   "name": "@n8n/agents",
+<<<<<<< HEAD
   "version": "1.3.0",
+=======
+  "version": "0.34.0",
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
   "description": "AI agent SDK for n8n's code-first execution engine",
   "engines": {
     "node": ">=24.0.0"

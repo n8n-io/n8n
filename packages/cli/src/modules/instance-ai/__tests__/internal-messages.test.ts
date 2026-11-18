@@ -1,3 +1,4 @@
+import { wrapUntrustedData } from '@n8n/agents';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 
 import {
@@ -7,6 +8,7 @@ import {
 	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
+	buildRunStoppedMessage,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
@@ -117,6 +119,27 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
+	it('strips <cloud-browser-task-completed> block', () => {
+		const stored =
+			'<cloud-browser-task-completed>\ntask-1 ended with a summary\n</cloud-browser-task-completed>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('hides the whole cloud browser follow-up message', () => {
+		const stored = [
+			'<cloud-browser-task-completed>',
+			'Virtual browser tasks that ended. This is an automated report, not a message from the user.',
+			'<task taskId="task_1" outcome="succeeded">',
+			'Title: Find the price',
+			wrapUntrustedData('$20 a month', 'cloud-browser'),
+			'</task>',
+			'</cloud-browser-task-completed>',
+			'',
+			AUTO_FOLLOW_UP_MESSAGE,
+		].join('\n');
+		expect(cleanStoredUserMessage(stored)).toBeNull();
+	});
+
 	it('strips <workflow-verification-follow-up> block', () => {
 		const stored =
 			'<workflow-verification-follow-up>\n{"workItemId":"wi-1"}\n</workflow-verification-follow-up>\n\nUser reply';
@@ -192,6 +215,10 @@ describe('cleanStoredUserMessage', () => {
 
 	it('returns null for auto-follow-up message', () => {
 		expect(cleanStoredUserMessage(AUTO_FOLLOW_UP_MESSAGE)).toBeNull();
+	});
+
+	it('returns null for the run-stopped message', () => {
+		expect(cleanStoredUserMessage(buildRunStoppedMessage())).toBeNull();
 	});
 
 	it('returns null for auto-follow-up after stripping task block', () => {
@@ -1159,6 +1186,15 @@ describe('buildThreadContextBlock', () => {
 		].join('\n\n');
 
 		expect(cleanStoredUserMessage(stored)).toBe('why does <project-context> show up in my logs?');
+	});
+});
+
+describe('buildRunStoppedMessage', () => {
+	it('wraps the stop notice in a run-stopped block after the auto follow-up text', () => {
+		const message = buildRunStoppedMessage();
+
+		expect(message.startsWith(AUTO_FOLLOW_UP_MESSAGE)).toBe(true);
+		expect(message).toMatch(/<run-stopped>\n.*stopped your previous reply.*\n<\/run-stopped>$/);
 	});
 });
 

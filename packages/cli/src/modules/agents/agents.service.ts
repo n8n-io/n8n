@@ -21,7 +21,7 @@ import {
 	type AgentSkill,
 	type ListAgentsOptions,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
 import {
 	In,
@@ -97,6 +97,7 @@ import type {
 	PlannedAgentDestinations,
 } from './utils/agent-definition';
 import { buildAgentMutationEvent } from './agent-modification-telemetry.service';
+import { FolderService } from '@/services/folder.service';
 
 type CreateAgentOptions =
 	| DraftAgentCreateOptions
@@ -111,6 +112,7 @@ type CreateAgentOptions =
 	  };
 
 type DraftAgentCreateOptions = {
+	parentFolderId?: string | null;
 	/** Who asked for the create, named on the policy block audit event. */
 	actor: PolicyActor;
 	availableInMCP?: boolean;
@@ -186,6 +188,8 @@ export class AgentsService {
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
 		private readonly tagService: TagService,
+		private readonly folderService: FolderService,
+		private readonly licenseState: LicenseState,
 		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
 
@@ -252,6 +256,13 @@ export class AgentsService {
 		}
 		this.assertCreateOptions(options);
 		const agentTags = await this.resolveCreateTags(options.tagIds);
+
+		if (options.parentFolderId) {
+			this.assertFoldersLicensed();
+
+			await this.folderService.validateDestination(options.parentFolderId, projectId, 'agent');
+		}
+
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(
 			projectId,
 			name,
@@ -263,6 +274,7 @@ export class AgentsService {
 				id: options.id || generateNanoId(),
 				name,
 				projectId,
+				parentFolderId: options.parentFolderId ?? null,
 				schema: fromAgentDocument(schemaConfig).config,
 				...(integrations.length > 0 ? { integrations } : {}),
 				...(options.tools ? { tools: options.tools as Agent['tools'] } : {}),
@@ -563,16 +575,68 @@ export class AgentsService {
 		projectId: string,
 		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
-		return await this.addListSkillVersions(
+		if (options.filter?.parentFolderId) {
+			await this.folderService.validateDestination(
+				options.filter.parentFolderId,
+				projectId,
+				'agent',
+			);
+		}
+
+		const result = await this.addListSkillVersions(
 			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
 		);
+
+		if (!options.filter?.query) {
+			return result;
+		}
+
+		const folderIds = [
+			...new Set(
+				result.data.flatMap((agent) => (agent.parentFolderId ? [agent.parentFolderId] : [])),
+			),
+		];
+		const paths = await this.folderService.getFolderPathsToRoot(folderIds);
+
+		return {
+			...result,
+			data: result.data.map((agent) =>
+				Object.assign(agent, {
+					folderPath: agent.parentFolderId ? (paths.get(agent.parentFolderId) ?? []) : [],
+				}),
+			),
+		};
+	}
+
+	async move(agentId: string, projectId: string, parentFolderId: string | null): Promise<boolean> {
+		await this.settingsService.assertEnabled();
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+
+		if (!agent) {
+			return false;
+		}
+
+		if (parentFolderId || agent.parentFolderId) {
+			this.assertFoldersLicensed();
+		}
+
+		if (parentFolderId) {
+			await this.folderService.validateDestination(parentFolderId, projectId, 'agent');
+		}
+
+		return await this.agentRepository.moveToFolder(agentId, projectId, parentFolderId);
+	}
+
+	private assertFoldersLicensed() {
+		if (!this.licenseState.isFoldersLicensed()) {
+			throw new ForbiddenError('Plan lacks license for this feature');
+		}
 	}
 
 	/**
 	 * With `projectId`: scoped lookup (internal REST). Without it the agent is
-	 * resolved by ID alone — Public API, where `@ProjectScope` has already
-	 * authorized the user against the agent's project. Returns no instance
-	 * agent.
+	 * resolved by ID alone in Public API, where `@ProjectScope` has already
+	 * authorized the user against the agent's project. Returns no instance agent
 	 */
 	async findById(agentId: string, projectId?: string): Promise<ProjectAgent | null> {
 		return projectId
@@ -724,6 +788,18 @@ export class AgentsService {
 		projectIds: string[] | null,
 		options: AgentSummaryFilters = {},
 	): Promise<AgentSummary[]> {
+		if (options.parentFolderId) {
+			const [folder] = await this.folderService.getFoldersByIds([options.parentFolderId]);
+
+			if (
+				!folder ||
+				folder.resourceType !== 'agent' ||
+				(projectIds !== null && !projectIds.includes(folder.homeProject.id))
+			) {
+				throw new NotFoundError('Agent folder not found');
+			}
+		}
+
 		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);
 	}
 

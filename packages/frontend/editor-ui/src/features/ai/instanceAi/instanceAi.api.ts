@@ -5,6 +5,7 @@ import type {
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -106,6 +107,23 @@ export async function postCancelTask(
 	taskId: string,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', `/instance-ai/chat/${threadId}/tasks/${taskId}/cancel`);
+}
+
+/**
+ * GET /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-live-view
+ * The live view of a cloud browser task. The link lets anyone who has it control the browser,
+ * so keep it in memory only.
+ */
+export async function fetchCloudBrowserLiveView(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-live-view`,
+	);
 }
 
 /**

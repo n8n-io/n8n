@@ -41,8 +41,6 @@ import { jsonParse } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
-import type { AgentRunTelemetryType } from '@/interfaces';
-
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import {
 	type ActiveRun,
@@ -51,6 +49,7 @@ import {
 	usedWorkspace,
 } from '../agent-sandbox-files.service';
 import type { StartExecutionParams } from '../agent-execution.service';
+import type { AgentRunTelemetryType } from '../agent-telemetry.types';
 import {
 	AgentExecutionRepository,
 	type AgentExecutionLinks,

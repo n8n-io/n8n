@@ -1,6 +1,10 @@
 {
   "name": "@n8n/scan-community-package",
+<<<<<<< HEAD
   "version": "1.3.0",
+=======
+  "version": "0.44.0",
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
   "description": "Static code analyser for n8n community packages",
   "license": "LicenseRef-n8n-sustainable-use",
   "type": "module",

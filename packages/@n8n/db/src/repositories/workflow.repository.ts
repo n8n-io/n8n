@@ -2351,6 +2351,23 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return await qb.getMany();
 	}
 
+	/** Read the canonical published versions for publication status checks. */
+	async findActiveVersionIds(
+		workflowIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string | null>> {
+		const versions = new Map<string, string | null>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const workflows = await this.managerFor(ctx).find(WorkflowEntity, {
+				where: { id: In(chunk) },
+				select: ['id', 'activeVersionId'],
+				loadEagerRelations: false,
+			});
+			for (const workflow of workflows) versions.set(workflow.id, workflow.activeVersionId);
+		}
+		return versions;
+	}
+
 	/**
 	 * Returns if the workflow is stored as `active`.
 	 *

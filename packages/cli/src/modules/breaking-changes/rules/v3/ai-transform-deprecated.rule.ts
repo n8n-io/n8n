@@ -22,7 +22,11 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'AI Transform node removed',
 			description:
+<<<<<<< HEAD
 				'The AI Transform node is no longer supported. Migrate it to a Code node, which runs its generated code unchanged.',
+=======
+				'The AI Transform node is deprecated, and workflows that use it fail after the update.',
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			assistant: 'fix',
@@ -37,7 +41,11 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace AI Transform with a Code node',
 				description:
+<<<<<<< HEAD
 					'The AI Transform node ran its generated JavaScript in the same sandbox as the Code node. Migrate it to a Code node to keep that code running.',
+=======
+					'Give the Code node the same name and connections as the AI Transform node. Set Language to JavaScript and Mode to Run Once for All Items, then copy in the generated code and node settings such as Always Output Data. If the AI Transform node has no generated code, generate it first.',
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 			},
 		];
 	}

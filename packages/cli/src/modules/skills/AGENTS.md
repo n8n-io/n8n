@@ -70,11 +70,7 @@ The skills module cannot import the agents module, because the agents module imp
 Two checks enforce two rules. The code-health rule `skills-module-boundary` resolves each import to a file, so relative imports cannot bypass it. The ESLint and oxlint configs of cli match the import strings and show errors in the editor. If you change a rule, change it in the code-health rule and in both lint configs.
 
 - Code outside the module imports only `@/modules/skills`. Tests outside the module can also import `@/modules/skills/testing`.
-- Code in the module imports nothing from cli outside the module, except an allowlist. The allowlist only shrinks. The rule also stops imports of the agents, MCP and instance-ai modules.
-
-| Allowed import                                    | Used in                                        | Needed before a move to a package                                      |
-| ------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `Telemetry` (`@/telemetry`)                       | `SkillsTelemetry`                              | A shared package, or a contract that cli implements                    |
+- Code in the module imports nothing from cli outside the module. The allowlist in the code-health rule is empty, and it must stay empty. The rule also stops imports of the agents, MCP and instance-ai modules.
 
 These rules keep the module ready to move to `packages/modules/skills/backend`, like `packages/modules/insights/backend`. The ownership transfer manifest (`src/services/ownership-transfer/ownership-transfer.manifest.json`) also holds the path of `skill.entity.ts`.
 
@@ -92,7 +88,18 @@ Split services by capability, never by caller.
 
 ## Gates
 
-- `SkillsGate.isEnabled` reads one fact: the agents module registered its `SkillUsage`. Without the agents module, the delete and move guards cannot see the agents that use a skill. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')` or the proxy in other code.
+- `SkillsGate.isEnabled` decides if skills are on. Skills have no admin toggle of their own. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')`, the proxy or the consumer settings in other code. The gate needs two facts:
+  - The agents module registered its `SkillUsage`. Without the agents module, the delete and move guards cannot see the agents that use a skill, so skills stay off.
+  - One or more consumers are on. The gate reads the module settings that `ModuleRegistry` caches, so it does not import the consumer modules:
+
+    | Consumer      | Module setting                  | Admin control                       |
+    | ------------- | ------------------------------- | ----------------------------------- |
+    | Agents        | `agents.enabled`                | Settings > Agents (`PUT /agents/settings`) |
+    | n8n Assistant | `instance-ai.enabled`           | n8n Assistant settings              |
+    | MCP           | `mcp.mcpAccessEnabled`          | Instance MCP access                 |
+
+  When all consumers are off, the skills routes and the Skill Sync routes answer 404, MCP and n8n Assistant show no skill tools, and the frontend hides the skills page (`isContextSkillsEnabled`, which uses the same rule). n8n keeps the skill data. Each consumer refreshes its module settings on every main when an admin changes it (`reload-agents-settings`, `reload-instance-ai-settings` and `reload-mcp-settings`).
+  The delete and move guards do not read the agents toggle. While agents are off and skills stay on for n8n Assistant or MCP, a user still cannot delete or move a skill that an agent uses.
 - `AssistantSkillsFlagGate.isEnabled()` needs two facts: `SkillsGate` is on, and the PostHog instance flag `ASSISTANT_SKILLS_FLAG` is on. It switches n8n Assistant skills separately from skills.
 - `SkillSyncFlagGate.isEnabled(user)` needs two facts: `SkillsGate` is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. The Skill Sync controller checks it in a middleware before the body is validated, and the service calls `assertEnabled`. Both answer 404. The check task has no user, so it reads the flag of the user who created the source, or of the instance owner when that user is gone. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag through `useSkillSyncFlag`.
 
@@ -145,7 +152,7 @@ If a decision sits between repository reads, move it into a pure function first 
 
 - `__tests__/test-utils/skill-services.ts` builds the three services over a mocked repository and transactions. The agents side is `FakeSkillUsage` behind a real `SkillUsageProxy`: seed agents, drafts and publishes with `usage.seed`, and do not mock its answers.
 - `describeSkillUsageContract` in `testing/` holds the cases that every `SkillUsage` passes. `__tests__/skill-usage.fake.test.ts` runs them on the fake, and `../agents/__tests__/agent-skill-usage.integration.test.ts` runs them on the database. When the contract changes, change the cases first.
-- `__tests__/integration/skills-off.integration.test.ts` loads the skills module without the agents module, so the gates are off with nothing stubbed.
+- `__tests__/integration/skills-off.integration.test.ts` loads the skills module without the agents module, so the gates are off with nothing stubbed. Then it registers `FakeSkillUsage` and sets the consumer settings on the real `ModuleRegistry`.
 - Tests outside the module use the fixtures in `testing/` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
 - `testing/` holds only what tests outside the module import. It is the one test path that the boundary rules allow, as `index.ts` is for code. Before you add a file to `testing/`, find the test outside the module that imports it. If no such test exists, put the file in `__tests__/test-utils/`. Move it to `testing/` with the first outside test that needs it. A fake or a contract suite for a strategy of this module, such as `InMemorySkillSourceClient`, stays in `__tests__/test-utils/`.
 - AI tools report a refused write through `toSkillToolRefusal`, so MCP and n8n Assistant tell the model the same thing.

@@ -98,9 +98,9 @@ function keycloakSourceInput(keycloak: ServiceHelpers['keycloak']): TrustedSourc
 
 export const test = base.extend<InboundAuthFixtures, InboundAuthWorkerFixtures>({
 	suiteSetup: [
-		async ({ n8nContainer, backendUrl, dbSetup }, use) => {
-			// The worker's database reset runs first, so it cannot drop the member or the source.
-			void dbSetup;
+		async ({ sut, backendUrl }, use) => {
+			// The SUT resets before this fixture creates the member and the source.
+			const n8nContainer = sut.stack;
 			if (!n8nContainer) {
 				// Local runs have no stack, and `containerRequirement` skips every test.
 				await use(null!);

@@ -109,7 +109,7 @@ them with your own tools:
   `agent-context({ type: "attachable-workflows" })` and reference it as
   `{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
-  and create the required tables with `create_data_table`.
+  and create the required tables with `change_data_tables`.
 - Never ask the user to create prerequisites manually.
 
 For an unsupported chat channel that the user explicitly wants as the

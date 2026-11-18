@@ -1,3 +1,4 @@
+import type { FolderService } from '@/services/folder.service';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
@@ -7,8 +8,13 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type ListAgentsOptions,
 } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+<<<<<<< HEAD
 import type { Telemetry } from '@/telemetry';
+=======
+import type { GlobalConfig } from '@n8n/config';
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -19,10 +25,12 @@ import type {
 	CredentialsFinderService,
 	EventService,
 	ProjectScopeService,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
+	type Folder,
 	type ProjectRelationRepository,
 	type TagEntity,
 	type TransactionRunner,
@@ -112,7 +120,7 @@ function makeService() {
 	const workflowRepository = mock<WorkflowRepository>();
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	const saveCompletion = new AgentSaveCompletionService(
 		eventService,
@@ -166,6 +174,10 @@ function makeService() {
 	);
 
 	const agentServiceAccount = mock<AgentServiceAccountService>();
+	const folderService = mock<FolderService>();
+	const licenseState = mock<LicenseState>();
+	licenseState.isFoldersLicensed.mockReturnValue(true);
+
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
@@ -191,11 +203,15 @@ function makeService() {
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
 		tagService,
+		folderService,
+		licenseState,
 		agentServiceAccount,
 	);
 
 	return {
 		service,
+		folderService,
+		licenseState,
 		n8nChatFlag,
 		telemetry,
 		setupCompletion,
@@ -268,6 +284,98 @@ describe('AgentsService', () => {
 			projectScopeService.hasScopes.mockResolvedValue(false);
 
 			await expect(service.resolveOwningProjectId(user, projectId)).rejects.toThrow(ForbiddenError);
+		});
+	});
+
+	it('reports a workflow folder as not found when listing Agent summaries', async () => {
+		const { service, folderService, agentRepository } = makeService();
+		folderService.getFoldersByIds.mockResolvedValue([mock<Folder>({ resourceType: 'workflow' })]);
+
+		await expect(
+			service.findSummariesInProjects(null, { parentFolderId: 'folder-1' }),
+		).rejects.toThrow(NotFoundError);
+
+		expect(agentRepository.findSummariesByProjectIds).not.toHaveBeenCalled();
+	});
+
+	describe('folder license', () => {
+		it('rejects creation in a folder without a folder license', async () => {
+			const { service, agentRepository, folderService, licenseState } = makeService();
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+
+			await expect(
+				service.create(projectId, 'Support Agent', { actor, parentFolderId: 'folder-1' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(folderService.validateDestination).not.toHaveBeenCalled();
+			expect(agentRepository.create).not.toHaveBeenCalled();
+		});
+
+		it.each([undefined, null])(
+			'allows root creation with folder membership %s',
+			async (parentFolderId) => {
+				const { service, agentRepository, licenseState } = makeService();
+				licenseState.isFoldersLicensed.mockReturnValue(false);
+				mockCreateReturning(agentRepository, makeAgent());
+
+				const result = await service.create(projectId, 'Support Agent', { actor, parentFolderId });
+
+				expect(result.parentFolderId).toBeNull();
+			},
+		);
+
+		it('validates the destination before licensed folder creation', async () => {
+			const { service, agentRepository, folderService } = makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+
+			await service.create(projectId, 'Support Agent', { actor, parentFolderId: 'folder-1' });
+
+			expect(folderService.validateDestination).toHaveBeenCalledWith(
+				'folder-1',
+				projectId,
+				'agent',
+			);
+		});
+
+		it.each([
+			{ source: null, destination: 'folder-1' },
+			{ source: 'folder-1', destination: null },
+			{ source: 'folder-1', destination: 'folder-2' },
+		])(
+			'rejects a move from $source to $destination without a folder license',
+			async ({ source, destination }) => {
+				const { service, agentRepository, folderService, licenseState } = makeService();
+				licenseState.isFoldersLicensed.mockReturnValue(false);
+				agentRepository.findByIdAndProjectId.mockResolvedValue(
+					makeAgent({ parentFolderId: source }),
+				);
+
+				await expect(service.move(agentId, projectId, destination)).rejects.toThrow(ForbiddenError);
+
+				expect(folderService.validateDestination).not.toHaveBeenCalled();
+				expect(agentRepository.moveToFolder).not.toHaveBeenCalled();
+			},
+		);
+
+		it('allows root-only import placement without a folder license', async () => {
+			const { service, agentRepository, licenseState } = makeService();
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ parentFolderId: null }));
+			agentRepository.moveToFolder.mockResolvedValue(true);
+
+			await expect(service.move(agentId, projectId, null)).resolves.toBe(true);
+
+			expect(agentRepository.moveToFolder).toHaveBeenCalledWith(agentId, projectId, null);
+		});
+
+		it('does not move an Agent outside the requested project', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.move(agentId, projectId, 'folder-1')).resolves.toBe(false);
+
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(agentId, projectId);
+			expect(agentRepository.moveToFolder).not.toHaveBeenCalled();
 		});
 	});
 
@@ -557,6 +665,7 @@ describe('AgentsService', () => {
 			id: agentId,
 			name: 'Support Agent',
 			projectId,
+			parentFolderId: null,
 			schema: {
 				name: 'Support Agent',
 				model: '',

@@ -3,6 +3,7 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import {
 	AgentTagMapping,
 	LIKE_ESCAPE_CLAUSE,
+	type FolderRepository,
 	type ServiceAccountRepository,
 	type TransactionRunner,
 } from '@n8n/db';
@@ -19,12 +20,18 @@ const mockDataSource = { manager: entityManager };
 
 describe('AgentRepository', () => {
 	let repository: AgentRepository;
+	const folderRepository = mock<FolderRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		repository = new AgentRepository(
 			mockDataSource as never,
 			mock<TransactionRunner>(),
+<<<<<<< HEAD
+=======
+			globalConfig,
+			folderRepository,
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 			mock<ServiceAccountRepository>(),
 		);
 	});
@@ -147,6 +154,7 @@ describe('AgentRepository', () => {
 				'agent.activeVersionId',
 				'agent.availableInMCP',
 				'agent.updatedAt',
+				'agent.parentFolderId',
 			]);
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
@@ -498,6 +506,11 @@ describe('AgentRepository', () => {
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				transactionRunner,
+<<<<<<< HEAD
+=======
+				globalConfig,
+				folderRepository,
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 				mock<ServiceAccountRepository>(),
 			);
 
@@ -518,6 +531,11 @@ describe('AgentRepository', () => {
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				makeTransactionRunner(),
+<<<<<<< HEAD
+=======
+				globalConfig,
+				folderRepository,
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
 				mock<ServiceAccountRepository>(),
 			);
 
@@ -531,7 +549,8 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findN8nChatListPaginated', () => {
-		it('excludes archived agents when the filter requests them', async () => {
+		it('includes descendant folders while excluding archived chat agents', async () => {
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue(['child-folder']);
 			const mockQb = {
 				leftJoinAndSelect: vi.fn().mockReturnThis(),
 				where: vi.fn().mockReturnThis(),
@@ -547,9 +566,17 @@ describe('AgentRepository', () => {
 			await repository.findN8nChatListPaginated(null, ['p1'], {
 				offset: 0,
 				limit: 10,
-				filter: { availableInChat: true, includeArchived: true },
+				filter: {
+					availableInChat: true,
+					includeArchived: true,
+					parentFolderId: 'parent-folder',
+					includeDescendants: true,
+				},
 			});
 
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.parentFolderId IN (:...folderIds)', {
+				folderIds: ['parent-folder', 'child-folder'],
+			});
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
 				isArchived: false,
 			});

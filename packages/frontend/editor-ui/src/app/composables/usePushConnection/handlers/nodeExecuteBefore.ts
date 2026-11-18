@@ -22,6 +22,7 @@ export async function nodeExecuteBefore(
 
 	workflowExecutionStateStore.executingNode.addExecutingNode(
 		data.nodeName,
+		data.executionId,
 		data.sequenceNumber,
 		data.data.executionIndex,
 	);

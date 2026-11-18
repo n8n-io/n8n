@@ -1,7 +1,11 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
+<<<<<<< HEAD
   "version": "3.3.0",
+=======
+  "version": "2.48.0",
+>>>>>>> 24f9f2d0cbca37bbde0d85d4cb576701e84a15f1
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

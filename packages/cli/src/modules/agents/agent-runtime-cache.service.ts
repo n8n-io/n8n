@@ -7,7 +7,6 @@ import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
@@ -23,6 +22,7 @@ import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
+import type { IAgentConfigurationTelemetryProperties } from './agent-telemetry.types';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -359,6 +359,7 @@ export class AgentRuntimeCacheService {
 			userToolAccessSnapshot,
 			budget,
 			toolGuardrails,
+			guardrailModel,
 		} = await reconstruction;
 
 		return {
@@ -368,6 +369,7 @@ export class AgentRuntimeCacheService {
 			mcpServerAttributions,
 			...(budget !== undefined ? { budget } : {}),
 			...(toolGuardrails !== undefined ? { toolGuardrails } : {}),
+			...(guardrailModel !== undefined ? { guardrailModel } : {}),
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),

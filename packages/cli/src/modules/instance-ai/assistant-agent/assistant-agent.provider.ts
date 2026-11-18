@@ -40,7 +40,7 @@ import type {
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
 } from '@/modules/agents/system-agents/system-agent.types';
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import {
@@ -167,7 +167,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly errorReporter: InstanceAiErrorReporterService,
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;

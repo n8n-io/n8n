@@ -13,12 +13,15 @@ import {
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
+import { nextTick, ref } from 'vue';
 
 import { getDropdownItems } from '@/__tests__/utils';
+import { RECOMMENDED_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalData } from '@/features/agents/components/AgentSkillModal.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -179,10 +182,9 @@ describe('SettingsSkillsView', () => {
 		if (!view.queryByTestId('resources-list-filters-dropdown')) {
 			await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
 		}
-		const items = await getDropdownItems(await view.findByTestId(testId));
-		const option = [...items].find((item) => item.textContent?.trim() === optionText);
-		if (!option) throw new Error(`No option ${optionText}`);
-		await userEvent.click(option);
+		const select = await view.findByTestId(testId);
+		await userEvent.click(within(select).getAllByRole('combobox')[0]);
+		await userEvent.click(await screen.findByRole('option', { name: optionText }));
 	}
 
 	it('loads the first page of 10 skills on mount', async () => {
@@ -366,6 +368,17 @@ describe('SettingsSkillsView', () => {
 		const items = await getDropdownItems(await view.findByTestId('skills-filter-scope'));
 
 		expect([...items].map((item) => item.textContent?.trim())).toEqual(['Global', 'Projects']);
+	});
+
+	it('keeps source filtering and source search copy behind Skill Sync', async () => {
+		const view = renderView();
+		await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+
+		expect(view.queryByTestId('skills-filter-source')).not.toBeInTheDocument();
+		expect(view.getByTestId('skills-search')).toHaveAttribute(
+			'placeholder',
+			'Search skills by name...',
+		);
 	});
 
 	it('combines the agent and creator filters with the search, from the first page', async () => {
@@ -856,15 +869,273 @@ describe('SettingsSkillsView', () => {
 		});
 	});
 
+	describe('recommended skills', () => {
+		const experimentProperties = {
+			variant: 'variant',
+			'$feature/143_recommended_skills': 'variant',
+		};
+
+		function assignVariant(variant: string | undefined) {
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? variant : undefined,
+			);
+			mockedStore(usePostHog).isVariantEnabled.mockImplementation(
+				(flag, expected) => flag === RECOMMENDED_SKILLS_EXPERIMENT.name && expected === variant,
+			);
+		}
+
+		function addedEvents() {
+			return trackMock.mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_ADDED_RECOMMENDED_SKILL,
+			);
+		}
+
+		async function pickCard(container: HTMLElement, id: string) {
+			await userEvent.click(
+				within(within(container).getByTestId(`recommended-skill-${id}`)).getByTestId(
+					'recommended-skill-use-button',
+				),
+			);
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+		}
+
+		it('keeps the empty state and the menu in the control group, and tracks the exposure', async () => {
+			assignVariant('control');
+			const view = renderView();
+
+			const emptyState = await view.findByTestId('skills-empty-state');
+			expect(within(emptyState).getByText('No skills yet')).toBeVisible();
+			expect(view.queryByTestId('recommended-skill-cards')).not.toBeInTheDocument();
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
+		});
+
+		it('shows the recommended skills instead of the table in the empty state of the treatment', async () => {
+			assignVariant('variant');
+			const view = renderView();
+
+			const emptyState = await view.findByTestId('skills-recommended-empty-state');
+			expect(within(emptyState).getByText('Start with a recommended skill')).toBeVisible();
+			expect(within(emptyState).getByTestId('recommended-skill-cards')).toBeVisible();
+			expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			expect(view.queryByRole('table')).not.toBeInTheDocument();
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_RECOMMENDED_SKILLS,
+				{ entry_point: 'empty_state', ...experimentProperties },
+			);
+
+			await userEvent.click(within(emptyState).getByTestId('skills-empty-create-button'));
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
+		});
+
+		it('tracks no exposure when the user has skills', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			renderView();
+			await new Promise(process.nextTick);
+
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+		});
+
+		it('tracks the exposure when the variant arrives after the page', async () => {
+			const lateVariant = ref<string>();
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? lateVariant.value : undefined,
+			);
+			renderView();
+			await new Promise(process.nextTick);
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+
+			lateVariant.value = 'variant';
+			await nextTick();
+
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledExactlyOnceWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+		});
+
+		it('tracks the exposure when the last skill goes away', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			renderView();
+			await new Promise(process.nextTick);
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+
+			skillsStore.skills = [];
+			skillsStore.count = 0;
+			await nextTick();
+
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledExactlyOnceWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+		});
+
+		it('tracks no exposure when a source with no synced skills replaces the empty state', async () => {
+			assignVariant('variant');
+			skillsStore.collapsedSources = [{ sourceId: 'src-1', index: 0, skillCount: 0 }];
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+			expect(view.queryByTestId('recommended-skill-cards')).not.toBeInTheDocument();
+		});
+
+		it('drops an upload when the user opens the recommended skills before it finishes', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [slow] },
+			});
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await userEvent.click(await view.findByTestId('skills-create-recommended'));
+			await screen.findByTestId('recommended-skills-dialog');
+			read.resolve('---\nname: slow-skill\ndescription: d\n---\ni');
+			await new Promise(process.nextTick);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('opens the create modal filled in from a card and reports the saved skill', async () => {
+			assignVariant('variant');
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			const view = renderView();
+
+			await pickCard(await view.findByTestId('skills-recommended-empty-state'), 'cold-email');
+
+			const data = lastModalData();
+			expect(data.skill?.name).toBe('cold-email');
+			expect(data.skill?.references?.map(({ path }) => path)).toEqual([
+				'references/personalization.md',
+				'references/frameworks.md',
+				'references/subject-lines.md',
+				'references/follow-up-sequences.md',
+			]);
+			expect(data.initialStep).toBeUndefined();
+			expect(data.availableToAssistant).toBeUndefined();
+			expect(addedEvents()).toHaveLength(0);
+
+			await data.onConfirm({ skill: data.skill!, scope: 'project:personal-1', method: 'manual' });
+
+			expect(skillsStore.createSkill).toHaveBeenCalledWith({
+				scope: 'project',
+				projectId: 'personal-1',
+				skill: data.skill,
+				method: 'manual',
+			});
+			expect(addedEvents()).toEqual([
+				[
+					TELEMETRY_EVENT.CONTEXT.USER_ADDED_RECOMMENDED_SKILL,
+					{
+						recommended_skill_id: 'cold-email',
+						skill_id: 's-new',
+						entry_point: 'empty_state',
+						...experimentProperties,
+					},
+				],
+			]);
+		});
+
+		it('reports no added skill when the save is refused', async () => {
+			assignVariant('variant');
+			skillsStore.createSkill.mockRejectedValue(new Error('Server down'));
+			const view = renderView();
+
+			await pickCard(await view.findByTestId('skills-recommended-empty-state'), 'humanizer');
+			const data = lastModalData();
+			const result = await data.onConfirm({ skill: data.skill!, scope: 'project:personal-1' });
+
+			expect(result).toEqual({ saved: false });
+			expect(addedEvents()).toHaveLength(0);
+		});
+
+		it('offers "Recommended skills" last in the menu and shows the cards in a dialog', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual([
+				'Upload folder',
+				'Upload SKILL.md',
+				'Create manually',
+				'Recommended skills',
+			]);
+			await userEvent.click(view.getByTestId('skills-create-recommended'));
+
+			const dialog = await screen.findByTestId('recommended-skills-dialog');
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_RECOMMENDED_SKILLS,
+				{ entry_point: 'create_menu', ...experimentProperties },
+			);
+			await pickCard(dialog, 'research');
+
+			await waitFor(() =>
+				expect(screen.queryByTestId('recommended-skills-dialog')).not.toBeInTheDocument(),
+			);
+			const data = lastModalData();
+			expect(data.skill?.name).toBe('research');
+			await data.onConfirm({ skill: data.skill!, scope: 'project:personal-1' });
+			expect(addedEvents()).toEqual([
+				[
+					TELEMETRY_EVENT.CONTEXT.USER_ADDED_RECOMMENDED_SKILL,
+					{
+						recommended_skill_id: 'research',
+						skill_id: 's-new',
+						entry_point: 'create_menu',
+						...experimentProperties,
+					},
+				],
+			]);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await userEvent.click(await view.findByTestId('skills-create-recommended'));
+			const reopened = await screen.findByTestId('recommended-skills-dialog');
+			expect(
+				within(within(reopened).getByTestId('recommended-skill-research')).getByTestId(
+					'recommended-skill-added',
+				),
+			).toHaveTextContent('Added');
+			expect(within(reopened).getAllByTestId('recommended-skill-added')).toHaveLength(1);
+		});
+	});
+
 	describe('edit', () => {
 		it.each([
-			['instance', true, false, false],
-			['project', true, true, true],
-			['instance', false, true, undefined],
+			['instance', true, true, false, false],
+			['project', true, true, true, true],
+			['instance', false, true, true, undefined],
+			['project', true, false, true, undefined],
 		] as const)(
-			'shows availability in the table and modal behind the Assistant flag (%s, %s)',
-			async (scope, enabled, availableToAssistant, expected) => {
+			'shows availability in the table and modal behind the Assistant flag (%s, flag %s, Assistant on %s)',
+			async (scope, enabled, assistantOn, availableToAssistant, expected) => {
 				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+				mockedStore(useSettingsStore).moduleSettings = {
+					'instance-ai': { enabled: assistantOn },
+				} as never;
 				skillsStore.skills = [skill({ scope, availableToAssistant })];
 				skillsStore.count = 1;
 				skillsStore.fetchSkill.mockResolvedValue(detail({ scope, availableToAssistant }));
@@ -1415,6 +1686,102 @@ describe('SettingsSkillsView', () => {
 				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
 			});
 
+			it('selects multiple sources, combines filters, resets the page and clears the selection', async () => {
+				const view = await renderWithSource();
+				skillsStore.sources = [
+					source,
+					{
+						...source,
+						id: 'src-2',
+						projectId: 'team-1',
+						projectName: 'Marketing',
+						projectType: 'team',
+					},
+				];
+				skillsStore.count = 21;
+				skillsStore.pageCount = 3;
+				await userEvent.click(await view.findByTestId('pagination-next'));
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({ page: 1 }),
+					),
+				);
+				await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+				const select = await view.findByTestId('skills-filter-source');
+				const input = within(select).getAllByRole('combobox')[0];
+				await userEvent.click(input);
+				const items = screen.getAllByRole('option');
+				expect(items.map((item) => item.textContent?.trim())).toEqual([
+					'acme/skills · main · Global',
+					'acme/skills · main · Marketing',
+				]);
+				await userEvent.click(items[0]);
+				await userEvent.click(items[1]);
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({ sourceIds: 'src-1,src-2', page: 0, skip: 0 }),
+					),
+				);
+				expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('1');
+				await userEvent.click(input);
+				await pickFilter(view, 'skills-filter-scope', 'Projects');
+				await pickFilter(view, 'skills-filter-agent', 'Support bot');
+				await pickFilter(view, 'skills-filter-created-by', 'Ada Lovelace');
+				await userEvent.type(view.getByTestId('skills-search'), 'acme');
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							sourceIds: 'src-1,src-2',
+							search: 'acme',
+							scope: 'project',
+							agentId: 'agent-1',
+							createdById: 'user-2',
+						}),
+					),
+				);
+				expect(view.getByTestId('skills-search')).toHaveAttribute(
+					'placeholder',
+					'Search skills or sources…',
+				);
+				if (!view.queryByTestId('resources-list-filters-dropdown')) {
+					await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+				}
+				await userEvent.click(await view.findByText('Reset all'));
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
+						groupBy: 'source',
+						page: 0,
+						skip: 0,
+						take: 10,
+						sortBy: 'updatedAt:desc',
+						search: 'acme',
+					}),
+				);
+				expect(view.queryByTestId('resources-list-filters-count')).not.toBeInTheDocument();
+			});
+
+			it('shows a selected empty source instead of the no-results state', async () => {
+				const view = await renderWithSource();
+				skillsStore.skills = [];
+				skillsStore.collapsedSources = [{ sourceId: source.id, index: 0, skillCount: 0 }];
+
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
+
+				expect(await view.findByTestId('skill-group-empty')).toHaveTextContent('No synced skills');
+				expect(view.queryByTestId('skills-no-results')).not.toBeInTheDocument();
+			});
+
+			it('shows no results when a source selection matches nothing', async () => {
+				const view = await renderWithSource();
+				skillsStore.skills = [];
+				skillsStore.count = 0;
+
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
+
+				expect(await view.findByTestId('skills-no-results')).toBeInTheDocument();
+				expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			});
+
 			it('confirms source deletion and reloads the sources, skills, and creators', async () => {
 				const view = await renderWithSource();
 				await userEvent.click(view.getByTestId('skill-group-actions').querySelector('button')!);
@@ -1445,12 +1812,14 @@ describe('SettingsSkillsView', () => {
 					return { data: skillsStore.skills, count: 21, page: 2, pageCount: 3 };
 				});
 				const view = renderWithDialogStub();
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
 				await userEvent.click(view.getByTestId('connect-dialog-open-source'));
 				await waitFor(() =>
 					expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
 						expect.objectContaining({ focusSourceId: 'src-1' }),
 					),
 				);
+				expect(skillsStore.fetchSkills.mock.lastCall?.[0]).not.toHaveProperty('sourceIds');
 				expect(
 					JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
 				).toEqual([]);

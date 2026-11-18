@@ -375,7 +375,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getPlaceholderText(text: string) {
-		return this.page.getByText(text);
+		return this.container.getByText(text);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
@@ -652,7 +652,7 @@ export class NodeDetailsViewPage extends BasePage {
 
 	/**
 	 * Fullscreen code editor dialog.
-	 * The node details view is also a dialog, so this locator stays on the editor.
+	 * It teleports outside the NDV. The filter distinguishes it from the NDV dialog.
 	 */
 	getCodeEditorDialog() {
 		return this.page.getByRole('dialog').filter({

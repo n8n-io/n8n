@@ -1,3 +1,4 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import type { Mock } from 'vitest';
 
 import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createSearchExecutionsTool } from '../tools/search-executions.tool';
@@ -30,7 +30,7 @@ describe('search-executions MCP tool', () => {
 	const time = '2026-09-07T12:00:00.000Z';
 	let executionListService: ExecutionListService;
 	let workflowFinderService: WorkflowFinderService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 
 	beforeEach(() => {
 		executionListService = mockInstance(ExecutionListService, {
@@ -53,7 +53,7 @@ describe('search-executions MCP tool', () => {
 				settings: { availableInMCP: true },
 			}),
 		});
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 	});
