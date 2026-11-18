@@ -38,3 +38,14 @@ export type RuntimeCredentialRulesResponse = {
 export class UpdateRuntimeCredentialRulesDto extends Z.class({
 	rules: z.array(runtimeCredentialRuleSchema).max(100),
 }) {}
+
+export class RuntimeCredentialRuleImpactQueryDto extends Z.class({
+	nodeType: runtimeCredentialRuleSchema.shape.nodeType,
+	path: runtimeCredentialRuleSchema.shape.path,
+}) {}
+
+/** Workflows that read the field a rule would remove. Lists at most a few of them. */
+export type RuntimeCredentialRuleImpact = {
+	count: number;
+	workflows: Array<{ id: string; name: string }>;
+};

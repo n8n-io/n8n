@@ -1,19 +1,23 @@
 import {
+	RuntimeCredentialRuleImpactQueryDto,
 	UpdateRuntimeCredentialRulesDto,
+	type RuntimeCredentialRuleImpact,
 	type RuntimeCredentialRulesResponse,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Put, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Put, Query, RestController } from '@n8n/decorators';
 import { BadRequestError, UserError } from '@n8n/errors';
 import type { Response } from 'express';
 
+import { RuntimeCredentialsImpactService } from './runtime-credentials-impact.service';
 import { RuntimeCredentialsService } from './runtime-credentials.service';
 
 @RestController('/runtime-credentials')
 export class RuntimeCredentialsController {
 	constructor(
 		private readonly runtimeCredentialsService: RuntimeCredentialsService,
+		private readonly impactService: RuntimeCredentialsImpactService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly logger: Logger,
 	) {}
@@ -22,6 +26,16 @@ export class RuntimeCredentialsController {
 	@GlobalScope('securitySettings:manage')
 	async getRules(): Promise<RuntimeCredentialRulesResponse> {
 		return { rules: this.runtimeCredentialsService.getRules() };
+	}
+
+	@Get('/rules/impact')
+	@GlobalScope('securitySettings:manage')
+	async getRuleImpact(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: RuntimeCredentialRuleImpactQueryDto,
+	): Promise<RuntimeCredentialRuleImpact> {
+		return await this.impactService.findAffectedWorkflows(query.nodeType, query.path);
 	}
 
 	@Put('/rules')

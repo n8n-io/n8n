@@ -4419,6 +4419,7 @@
 	"settings.runtimeCredentials.form.trigger.label": "Trigger",
 	"settings.runtimeCredentials.form.path.label": "Field path",
 	"settings.runtimeCredentials.form.path.placeholder": "headers.x-tenant-key",
+	"settings.runtimeCredentials.form.impact": "{count} workflow(s) read this field today and get no value once you save the rule: {workflows}",
 	"settings.runtimeCredentials.form.description.label": "Description (optional)",
 	"settings.runtimeCredentials.form.add": "Add rule",
 	"settings.runtimeCredentials.form.save": "Save rule",

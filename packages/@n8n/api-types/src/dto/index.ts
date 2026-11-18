@@ -609,6 +609,8 @@ export {
 } from './security-settings/security-settings.dto';
 export {
 	UpdateRuntimeCredentialRulesDto,
+	RuntimeCredentialRuleImpactQueryDto,
+	type RuntimeCredentialRuleImpact,
 	runtimeCredentialAliasSchema,
 	runtimeCredentialRuleSchema,
 	type RuntimeCredentialRule,

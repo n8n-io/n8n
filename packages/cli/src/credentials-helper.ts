@@ -715,6 +715,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			data: decryptedDataOriginal,
 			consumerNode,
 			executionContext: additionalData.executionContext,
+			workflowId: additionalData.workflowId,
+			executionId: additionalData.executionId,
 		});
 
 		const decryptedData = await this.applyDefaultsAndOverwrites(

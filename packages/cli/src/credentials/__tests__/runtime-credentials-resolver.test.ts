@@ -1,4 +1,4 @@
-import type { RuntimeCredentialProxyService } from '@n8n/backend-services';
+import type { EventService, RuntimeCredentialProxyService } from '@n8n/backend-services';
 import { UserError } from '@n8n/errors';
 import type { ICredentialType, IExecutionContext, INode } from 'n8n-workflow';
 import { ExpressionError } from 'n8n-workflow';
@@ -44,7 +44,8 @@ const request = (
 describe('RuntimeCredentialsResolver', () => {
 	const proxyService = mock<RuntimeCredentialProxyService>();
 	const credentialTypes = mock<CredentialTypes>();
-	const resolver = new RuntimeCredentialsResolver(proxyService, credentialTypes);
+	const eventService = mock<EventService>();
+	const resolver = new RuntimeCredentialsResolver(proxyService, credentialTypes, eventService);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -73,6 +74,35 @@ describe('RuntimeCredentialsResolver', () => {
 
 		expect(result?.tenant_key).toBe('sk_acme_123');
 		expect(proxyService.getRuntimeCredentials).toHaveBeenCalledWith(executionContext);
+	});
+
+	it('sends one audit event for each execution, credential and node', async () => {
+		const audited = request({
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			data: {
+				name: 'x-api-key',
+				value: "=Bearer {{ $runtimeCredentials['tenant_key'] }} {{ $runtimeCredentials.other }}",
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.partner.test',
+			},
+		});
+
+		await resolver.resolve(audited);
+		await resolver.resolve(audited);
+		await resolver.resolve({ ...audited, executionId: 'exec-2' });
+
+		expect(eventService.emit).toHaveBeenCalledTimes(2);
+		expect(eventService.emit).toHaveBeenCalledWith('runtime-credential-used', {
+			credentialId: 'cred-1',
+			credentialName: 'Tenant key',
+			credentialType: 'httpHeaderAuth',
+			aliases: ['tenant_key', 'other'],
+			workflowId: 'wf-1',
+			executionId: 'exec-1',
+			nodeName: httpNode.name,
+			nodeType: 'n8n-nodes-base.httpRequest',
+		});
 	});
 
 	it.each<[string, Partial<RuntimeCredentialsRequest>, RegExp]>([

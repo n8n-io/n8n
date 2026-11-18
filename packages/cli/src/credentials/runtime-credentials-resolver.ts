@@ -1,4 +1,8 @@
-import { RuntimeCredentialProxyService, type RuntimeCredentialValues } from '@n8n/backend-services';
+import {
+	EventService,
+	RuntimeCredentialProxyService,
+	type RuntimeCredentialValues,
+} from '@n8n/backend-services';
 import type { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -24,6 +28,13 @@ const OAUTH_BASE_TYPES = new Set(['oAuth1Api', 'oAuth2Api', 'googleOAuth2Api']);
 
 const PROBED_KEYS = new Set(['then', 'toJSON']);
 
+/** Reads the alias of each `$runtimeCredentials.alias` or `$runtimeCredentials['alias']`. */
+const ALIAS_REFERENCE =
+	/\$runtimeCredentials\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*['"]([^'"]+)['"]\s*\])/g;
+
+/** Bounds the memory that the once-per-run audit check keeps. */
+const MAX_AUDITED_KEYS = 10_000;
+
 type PrimitiveValue = string | number | boolean;
 
 export type RuntimeCredentialsRequest = {
@@ -31,6 +42,8 @@ export type RuntimeCredentialsRequest = {
 	data: ICredentialDataDecryptedObject;
 	consumerNode: INode | undefined;
 	executionContext: IExecutionContext | undefined;
+	workflowId?: string;
+	executionId?: string;
 };
 
 /**
@@ -42,9 +55,13 @@ export type RuntimeCredentialsRequest = {
  */
 @Service()
 export class RuntimeCredentialsResolver {
+	/** A node can resolve its credential once per item, so the audit event is sent once per run. */
+	private readonly auditedKeys = new Set<string>();
+
 	constructor(
 		private readonly runtimeCredentialProxy: RuntimeCredentialProxyService,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly eventService: EventService,
 	) {}
 
 	/** Returns `undefined` when the credential does not refer to `$runtimeCredentials`. */
@@ -56,7 +73,32 @@ export class RuntimeCredentialsResolver {
 		const values = await this.runtimeCredentialProxy.getRuntimeCredentials(
 			request.executionContext,
 		);
+		this.audit(request);
 		return buildRuntimeCredentialsProxy(values);
+	}
+
+	private audit({
+		credential,
+		data,
+		consumerNode,
+		workflowId,
+		executionId,
+	}: RuntimeCredentialsRequest) {
+		const key = `${executionId ?? ''}:${credential.id}:${consumerNode?.name ?? ''}`;
+		if (this.auditedKeys.has(key)) return;
+		if (this.auditedKeys.size >= MAX_AUDITED_KEYS) this.auditedKeys.clear();
+		this.auditedKeys.add(key);
+
+		this.eventService.emit('runtime-credential-used', {
+			credentialId: credential.id,
+			credentialName: credential.name,
+			credentialType: credential.type,
+			aliases: referencedAliases(data),
+			workflowId,
+			executionId,
+			nodeName: consumerNode?.name,
+			nodeType: consumerNode?.type,
+		});
 	}
 
 	private assertAllowed({ credential, data, consumerNode }: RuntimeCredentialsRequest) {
@@ -108,6 +150,19 @@ export class RuntimeCredentialsResolver {
 			);
 		});
 	}
+}
+
+function referencedAliases(data: ICredentialDataDecryptedObject): string[] {
+	const aliases = new Set<string>();
+	const visit = (value: unknown) => {
+		if (typeof value === 'string') {
+			for (const match of value.matchAll(ALIAS_REFERENCE)) aliases.add(match[1] ?? match[2]);
+		} else if (typeof value === 'object' && value !== null) {
+			Object.values(value).forEach(visit);
+		}
+	};
+	visit(data);
+	return [...aliases];
 }
 
 function refersToRuntimeCredentials(data: ICredentialDataDecryptedObject): boolean {

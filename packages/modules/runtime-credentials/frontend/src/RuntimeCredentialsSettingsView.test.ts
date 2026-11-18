@@ -18,10 +18,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 type ApiMock = (...args: unknown[]) => Promise<unknown>;
 const getRulesMock = vi.fn<ApiMock>();
 const updateRulesMock = vi.fn<ApiMock>();
+const getImpactMock = vi.fn<ApiMock>();
 
 vi.mock('./runtime-credentials.api', () => ({
 	getRuntimeCredentialRules: async (...args: unknown[]) => await getRulesMock(...args),
 	updateRuntimeCredentialRules: async (...args: unknown[]) => await updateRulesMock(...args),
+	getRuntimeCredentialRuleImpact: async (...args: unknown[]) => await getImpactMock(...args),
 }));
 
 const envRule = { alias: 'env_key', nodeType: '*', path: 'headers.authorization', source: 'env' };
@@ -46,6 +48,7 @@ describe('RuntimeCredentialsSettingsView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getRulesMock.mockResolvedValue({ rules: [envRule, savedRule] });
+		getImpactMock.mockResolvedValue({ count: 0, workflows: [] });
 		updateRulesMock.mockImplementation(async (_context, rules) => ({
 			rules: [envRule, ...(rules as object[]).map((rule) => ({ ...rule, source: 'settings' }))],
 		}));
@@ -90,5 +93,24 @@ describe('RuntimeCredentialsSettingsView', () => {
 		);
 		expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		expect(await screen.findByTestId('runtime-credentials-rule-form_pw')).toBeInTheDocument();
+	});
+
+	it('warns about workflows that read the field today', async () => {
+		getImpactMock.mockResolvedValue({
+			count: 2,
+			workflows: [
+				{ id: '1', name: 'Billing sync' },
+				{ id: '2', name: 'CRM import' },
+			],
+		});
+		renderView({ pinia: createTestingPinia({ stubActions: false }) });
+		await screen.findByTestId('runtime-credentials-rule-tenant_key');
+
+		await userEvent.type(inputOf('runtime-credentials-path'), 'headers.x-api-key');
+
+		expect(
+			await screen.findByTestId('runtime-credentials-impact', {}, { timeout: 3000 }),
+		).toHaveTextContent('2 workflow(s) read this field today');
+		expect(getImpactMock).toHaveBeenLastCalledWith(expect.anything(), '*', 'headers.x-api-key');
 	});
 });

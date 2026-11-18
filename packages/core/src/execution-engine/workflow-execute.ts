@@ -70,6 +70,10 @@ import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { assertExecutionDataExists } from '@/utils/assertions';
 
 import { establishExecutionContext } from './execution-context';
+import {
+	buildRuntimeCredentialScrubber,
+	type RuntimeCredentialScrubber,
+} from './runtime-credential-scrubber';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import {
 	ExecuteContext,
@@ -118,6 +122,9 @@ function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBas
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
+
+	/** Built once per execution, because the runtime credential values never change in a run. */
+	private runtimeCredentialScrubber?: Promise<RuntimeCredentialScrubber | undefined>;
 
 	private readonly abortController = new AbortController();
 	timedOut: boolean = false;
@@ -2289,6 +2296,7 @@ export class WorkflowExecute {
 		continueExecution: boolean;
 		nodeSuccessData: INodeExecutionData[][] | null | undefined;
 	}> {
+		(await this.getRuntimeCredentialScrubber())?.scrubError(executionError);
 		taskData.error = executionError;
 		taskData.executionStatus = 'error';
 
@@ -2375,6 +2383,16 @@ export class WorkflowExecute {
 	 * Move the error a node reported in `$error` onto the standard `error` and `json`
 	 * fields of the item, so all nodes report errors the same way.
 	 */
+	private async getRuntimeCredentialScrubber() {
+		if (!this.additionalData.getRuntimeCredentials) return undefined;
+
+		this.runtimeCredentialScrubber ??= this.additionalData
+			.getRuntimeCredentials(this.runExecutionData)
+			.then(buildRuntimeCredentialScrubber)
+			.catch(() => undefined);
+		return await this.runtimeCredentialScrubber;
+	}
+
 	private normalizeNodeErrors(nodeSuccessData: INodeExecutionData[][]): void {
 		for (const execution of nodeSuccessData) {
 			for (const lineResult of execution) {
@@ -2698,6 +2716,7 @@ export class WorkflowExecute {
 					}
 
 					this.normalizeNodeErrors(nodeSuccessData!);
+					(await this.getRuntimeCredentialScrubber())?.scrubItems(nodeSuccessData!);
 
 					// Node executed successfully. So add data and go on.
 					taskData.data = {

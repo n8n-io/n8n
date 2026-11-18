@@ -4132,6 +4132,8 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	/** Every runtime credential value of the execution, keyed by alias. Empty when there are none. */
+	getRuntimeCredentials?(runExecutionData: IRunExecutionData): Promise<Record<string, unknown>>;
 	/**
 	 * Backing implementations for the trigger identity pipeline exposed to nodes on
 	 * `IWebhookFunctions` (see the docs there). Optional here because they are only

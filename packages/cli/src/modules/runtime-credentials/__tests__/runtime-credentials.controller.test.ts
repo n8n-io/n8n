@@ -6,12 +6,18 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { RuntimeCredentialsController } from '../runtime-credentials.controller';
+import type { RuntimeCredentialsImpactService } from '../runtime-credentials-impact.service';
 import type { RuntimeCredentialsService } from '../runtime-credentials.service';
 
 describe('RuntimeCredentialsController', () => {
 	const service = mock<RuntimeCredentialsService>();
 	const moduleRegistry = mock<ModuleRegistry>();
-	const controller = new RuntimeCredentialsController(service, moduleRegistry, mockLogger());
+	const controller = new RuntimeCredentialsController(
+		service,
+		mock<RuntimeCredentialsImpactService>(),
+		moduleRegistry,
+		mockLogger(),
+	);
 	const rule = { alias: 'tenant_key', nodeType: '*', path: 'headers.x-tenant-key' };
 
 	beforeEach(() => {

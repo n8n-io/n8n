@@ -638,6 +638,21 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	/**
+	 * A node resolved a credential that reads `$runtimeCredentials`. Sent once for each
+	 * execution, credential and node. Holds the aliases, never the values.
+	 */
+	'runtime-credential-used': {
+		credentialId: string;
+		credentialName: string;
+		credentialType: string;
+		aliases: string[];
+		workflowId?: string;
+		executionId?: string;
+		nodeName?: string;
+		nodeType?: string;
+	};
+
 	/** A user retrieved the decrypted data of a credential through `includeData=true`. */
 	'credentials-data-read': {
 		user: UserLike;

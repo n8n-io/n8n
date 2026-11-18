@@ -1007,6 +1007,11 @@ export async function getBase({
 				alias,
 			);
 		},
+		async getRuntimeCredentials(runExecutionData) {
+			return await Container.get(RuntimeCredentialProxyService).getRuntimeCredentials(
+				runExecutionData.executionData?.runtimeData,
+			);
+		},
 		async getRunExecutionData(executionId) {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const executionData = await executionPersistence.findSingleExecution(executionId, {

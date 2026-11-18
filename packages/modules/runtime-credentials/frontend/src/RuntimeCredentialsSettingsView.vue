@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { runtimeCredentialAliasSchema, type RuntimeCredentialRuleWithSource } from '@n8n/api-types';
+import {
+	runtimeCredentialAliasSchema,
+	type RuntimeCredentialRuleImpact,
+	type RuntimeCredentialRuleWithSource,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -17,7 +21,10 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+
+import { getRuntimeCredentialRuleImpact } from './runtime-credentials.api';
 
 import { ANY_TRIGGER, SUGGESTED_TRIGGER_TYPES } from './runtime-credentials.constants';
 import { useRuntimeCredentialsStore } from './runtime-credentials.store';
@@ -35,6 +42,47 @@ const aliasError = computed(() => {
 	if (!form.alias) return '';
 	const result = runtimeCredentialAliasSchema.safeParse(form.alias);
 	return result.success ? '' : i18n.baseText('settings.runtimeCredentials.form.alias.invalid');
+});
+
+const IMPACT_DEBOUNCE_MS = 400;
+const impact = ref<RuntimeCredentialRuleImpact | null>(null);
+let impactTimer: ReturnType<typeof setTimeout> | undefined;
+let impactRequest = 0;
+
+async function loadImpact(nodeType: string, path: string) {
+	const request = ++impactRequest;
+	try {
+		const result = await getRuntimeCredentialRuleImpact(
+			useRootStore().restApiContext,
+			nodeType,
+			path,
+		);
+		if (request === impactRequest) impact.value = result;
+	} catch {
+		if (request === impactRequest) impact.value = null;
+	}
+}
+
+watch(
+	() => [form.nodeType, form.path.trim()] as const,
+	([nodeType, path]) => {
+		clearTimeout(impactTimer);
+		impact.value = null;
+		if (!nodeType || !path) return;
+		impactTimer = setTimeout(async () => await loadImpact(nodeType, path), IMPACT_DEBOUNCE_MS);
+	},
+);
+
+onBeforeUnmount(() => clearTimeout(impactTimer));
+
+const impactText = computed(() => {
+	if (!impact.value || impact.value.count === 0) return '';
+	return i18n.baseText('settings.runtimeCredentials.form.impact', {
+		interpolate: {
+			count: String(impact.value.count),
+			workflows: impact.value.workflows.map(({ name }) => name).join(', '),
+		},
+	});
 });
 
 const canSubmit = computed(
@@ -233,6 +281,14 @@ onMounted(async () => {
 							data-test-id="runtime-credentials-path"
 						/>
 					</N8nInputLabel>
+					<N8nText
+						v-if="impactText"
+						color="warning"
+						size="small"
+						data-test-id="runtime-credentials-impact"
+					>
+						{{ impactText }}
+					</N8nText>
 
 					<N8nInputLabel
 						:label="i18n.baseText('settings.runtimeCredentials.form.description.label')"

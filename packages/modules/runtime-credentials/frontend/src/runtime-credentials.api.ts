@@ -1,4 +1,8 @@
-import type { RuntimeCredentialRule, RuntimeCredentialRulesResponse } from '@n8n/api-types';
+import type {
+	RuntimeCredentialRule,
+	RuntimeCredentialRuleImpact,
+	RuntimeCredentialRulesResponse,
+} from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -14,4 +18,16 @@ export async function updateRuntimeCredentialRules(
 	rules: RuntimeCredentialRule[],
 ): Promise<RuntimeCredentialRulesResponse> {
 	return await makeRestApiRequest(context, 'PUT', '/runtime-credentials/rules', { rules });
+}
+
+/** Workflows that read the field today, so the admin sees what the rule would break. */
+export async function getRuntimeCredentialRuleImpact(
+	context: IRestApiContext,
+	nodeType: string,
+	path: string,
+): Promise<RuntimeCredentialRuleImpact> {
+	return await makeRestApiRequest(context, 'GET', '/runtime-credentials/rules/impact', {
+		nodeType,
+		path,
+	});
 }

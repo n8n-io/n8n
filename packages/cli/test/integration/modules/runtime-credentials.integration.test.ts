@@ -127,7 +127,17 @@ const credentialConsumer: INodeType = {
 	},
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('httpHeaderAuth');
-		return [[{ json: { headerName: credentials.name, headerValue: credentials.value } }]];
+		// Echoes the value, like an API that returns the headers it received.
+		return [
+			[
+				{
+					json: {
+						headerName: credentials.name,
+						headerValue: `Bearer ${String(credentials.value)}`,
+					},
+				},
+			],
+		];
 	},
 };
 
@@ -332,7 +342,8 @@ describe('runtime-credentials module — integration', () => {
 			echoOutputItems.map((item) => [item.json.alias as string, item.json]),
 		) as Record<string, { alias: string; value: unknown; valueType: string }>;
 
-		expect(byAlias.apiKey.value).toEqual(['secret-A']); // wildcard rule + matched path
+		// The node read the value, and output scrubbing replaced it before the run was saved.
+		expect(byAlias.apiKey.value).toEqual(['[runtime credential: apiKey]']); // wildcard rule + matched path
 		expect(byAlias.formPwd.value).toEqual(['pw-B']); // node-type-scoped rule + matched path
 
 		expect(byAlias.wrongNodeType.value).toBeNull(); // rule scoped to a different node type
@@ -408,7 +419,12 @@ describe('runtime-credentials module — integration', () => {
 			expect(execution.data.resultData.error?.message).toBeUndefined();
 			expect(execution.status).toBe('success');
 			const output = execution.data.resultData.runData.Consumer?.[0]?.data?.main?.[0]?.[0]?.json;
-			expect(output).toEqual({ headerName: 'Authorization', headerValue: 'secret-A' });
+			// The echoed value is scrubbed; the placeholder proves the credential resolved it.
+			expect(output).toEqual({
+				headerName: 'Authorization',
+				headerValue: 'Bearer [runtime credential: apiKey]',
+			});
+			expect(JSON.stringify(execution.data)).not.toContain('secret-A');
 		});
 
 		it.each([
