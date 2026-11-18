@@ -378,7 +378,7 @@ onBeforeUnmount(() => {
 		size="2xlarge"
 		:show-close-button="false"
 		:aria-label="t('commandBar.ariaLabel')"
-		:container-class="$style.dialog"
+		:container-class="plainBackdrop ? `${$style.dialog} ${$style.translucent}` : $style.dialog"
 		:plain-overlay="plainBackdrop"
 		@escape-key-down="onEscapeKeyDown"
 		@open-auto-focus="onOpenAutoFocus"
@@ -523,6 +523,22 @@ onBeforeUnmount(() => {
 .dialog {
 	--n8n-dialog-content--padding: 0;
 	overflow: hidden;
+	transition:
+		background-color var(--animation--duration--snappy) ease,
+		backdrop-filter var(--animation--duration--snappy) ease;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
+}
+
+// Only the panel background is see-through, so the text and the rows stay opaque.
+.dialog.translucent {
+	background-color: light-dark(
+		color-mix(in srgb, var(--background--surface) 82%, transparent),
+		color-mix(in srgb, var(--background--subtle) 82%, transparent)
+	);
+	backdrop-filter: blur(2px);
 }
 
 .commandBar {
