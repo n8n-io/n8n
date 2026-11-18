@@ -100,11 +100,9 @@ export const bigWhaleRule: TraitRule = (entity, traits) =>
 			}
 		: traits;
 
-/** A cat watches a creature that fails a security check. */
+/** A cat on the tank frame watches a creature that fails a security check. */
 export const securityRule: TraitRule = (entity, traits) =>
-	(entity.metrics.securityRisks ?? 0) > 0
-		? { ...traits, effects: [...traits.effects, 'cat'] }
-		: traits;
+	(entity.metrics.securityRisks ?? 0) > 0 ? { ...traits, watchedByCat: true } : traits;
 
 /** An agent holds one seaweed strand for each skill. */
 export const skillStrandsRule: TraitRule = (entity, traits) =>

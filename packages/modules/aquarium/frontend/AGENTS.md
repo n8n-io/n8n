@@ -102,7 +102,7 @@ health.
 
 | Data | Meaning | Look | Status |
 | --- | --- | --- | --- |
-| Security risk: an unprotected webhook, an expression in a SQL query, or an Execute Command or SSH node | Negative: exposed | A cat in a diving helmet watches the fish (`securityRule`, `catEffect`) | Partly: proof of concept |
+| Security risk: an unprotected webhook, an expression in a SQL query, or an Execute Command or SSH node | Negative: exposed | An orange tabby lies on the top of the tank frame, outside the glass, and faces the fish. Its tail twitches and it blinks. While the fish is below it, it taps the glass and shows alert marks. One cat for each risky fish, while they fit on the frame (`securityRule`, `cat.ts`) | Built |
 | Error workflow set (`design.hasErrorWorkflow`) | Positive: failures are handled | A remora trails behind the tail (`remoraRule`, `remoraEffect`). No error workflow stays Neutral | Built |
 | Build quality (`maintainabilityOf()`): big with no sub-workflows, many Code nodes, copy-pasted nodes, disabled leftovers, many If, Switch and Merge nodes | Negative: hard to maintain | A really big whale: the whale at 2×, at 30% speed, turning to look around every 3 s, below a score of 70 (`bigWhaleRule`, `BIG_WHALE`) | Built |
 | Redaction on | Neutral: private data | Glasses | Open |
@@ -160,6 +160,7 @@ a continuous value.
 | Live activity (polling, demo activity) | `src/aquarium.store.ts`, `src/sources/activity.source.ts`, `src/sources/demo-activity.ts` |
 | Live activity (backend counts) | `../backend/src/` |
 | Security risks (backend checks) | `../backend/src/security-checks.ts`, `src/sources/security.source.ts` |
+| The cat on the tank frame (sprite, poses, perches) | `src/engine/cat.ts`, `CAT_OBSERVER` in `src/aquarium.constants.ts` |
 
 ## Recipes
 

@@ -162,6 +162,21 @@ export const SHIMMER = {
 	edge: '#fff4cf',
 } as const;
 
+/** The cat on a tank frame that watches a workflow with a security risk. */
+export const CAT_OBSERVER = {
+	/** Rows of the cat that hang over the top edge of the frame: its front paws. */
+	overhang: 3,
+	/** Pixels between two cats on the same frame. */
+	gap: 4,
+	blinkEverySeconds: 4,
+	blinkSeconds: 0.2,
+	/** The tail twitches twice at the start of each cycle. */
+	twitchEverySeconds: 2.2,
+	twitchSeconds: 0.15,
+	/** Seconds for each paw down and paw up while the creature is below the cat. */
+	pawTapSeconds: 0.25,
+} as const;
+
 /** Delay between two polls of the live activity endpoint. */
 export const ACTIVITY_POLL_MS = 2_000;
 

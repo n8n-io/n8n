@@ -1,4 +1,4 @@
-import { PROP_LAYOUT, SHIMMER, ZOOM } from '../aquarium.constants';
+import { CAT_OBSERVER, PROP_LAYOUT, SHIMMER, ZOOM } from '../aquarium.constants';
 import {
 	isPropDead,
 	layoutProps,
@@ -12,6 +12,17 @@ import type { PropDefinition } from '../decor/props';
 import { hashString } from '../species/species.registry';
 import type { PixelSprite } from '../species/species.types';
 import type { Camera, Size } from './camera';
+import {
+	CAT_ALERT_OFFSET,
+	CAT_HEIGHT,
+	CAT_WIDTH,
+	catAlertSprite,
+	catFrameAt,
+	catPerchX,
+	catSprite,
+	catsThatFit,
+	isBelowCat,
+} from './cat';
 import { getEffect } from './effects';
 import { FRAME_THICKNESS, paintFrame } from './frames';
 import type { TankRegion } from './layout';
@@ -284,6 +295,68 @@ export class AquariumRenderer {
 				`${region.id}|${region.frame}|${region.bounds.width}x${region.bounds.height}`,
 			);
 			if (frame) ctx.drawImage(frame, region.x - border, region.y - border);
+		}
+
+		// Last, so a cat on a frame lies in front of the tank above it.
+		for (const region of this.regions) {
+			this.drawCats(region, creaturesByTank.get(region.id) ?? [], left, right, top, bottom);
+		}
+	}
+
+	/**
+	 * One cat on the top of the frame for each creature with a security risk, while they fit. Each
+	 * cat faces its creature, and taps the glass while the creature is below it.
+	 */
+	private drawCats(
+		region: TankRegion,
+		creatures: Creature[],
+		left: number,
+		right: number,
+		top: number,
+		bottom: number,
+	): void {
+		let watched = 0;
+		for (const creature of creatures) if (creature.traits.watchedByCat) watched++;
+		if (watched === 0) return;
+
+		const { width } = region.bounds;
+		const border = FRAME_THICKNESS[region.frame];
+		// The single tank has no frame and starts at the top of the world, so its cats lie on the water.
+		const y = Math.max(0, region.y - border - CAT_HEIGHT + CAT_OBSERVER.overhang);
+		const visible =
+			region.x + width > left && region.x < right && y + CAT_HEIGHT > top && y < bottom;
+		if (!visible) return;
+
+		const ctx = this.ctx;
+		const frames = this.spriteFrames('observer:cat', catSprite);
+		const [alert] = this.spriteFrames('observer:catAlert', catAlertSprite);
+		const count = Math.min(watched, catsThatFit(width));
+		let index = 0;
+		for (const creature of creatures) {
+			if (!creature.traits.watchedByCat) continue;
+			if (index === count) break;
+			const perchX = catPerchX(index, count, width);
+			index++;
+			const below = isBelowCat(creature, perchX);
+			// Age, not tank time, so cats move out of step, and reduced motion stops them.
+			const frame = frames[catFrameAt(creature.age, below)];
+			if (!frame) continue;
+
+			const faceLeft = creature.x + creature.width / 2 < perchX + CAT_WIDTH / 2;
+			let x = region.x + perchX;
+			let catY = y;
+			if (faceLeft) {
+				ctx.save();
+				ctx.translate(x + CAT_WIDTH, y);
+				ctx.scale(-1, 1);
+				x = 0;
+				catY = 0;
+			}
+			ctx.drawImage(frame, x, catY);
+			if (below && alert) {
+				ctx.drawImage(alert, x + CAT_ALERT_OFFSET.x, catY + CAT_ALERT_OFFSET.y);
+			}
+			if (faceLeft) ctx.restore();
 		}
 	}
 

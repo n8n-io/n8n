@@ -148,6 +148,8 @@ export interface CreatureTraits {
 	shimmer?: boolean;
 	/** Multiplies the whole swim speed, live boost included. Without it, the factor is 1. */
 	speedFactor?: number;
+	/** A cat on the tank frame watches the creature: its workflow has a security risk. */
+	watchedByCat?: boolean;
 	/** Ids of effects in the effect registry. */
 	effects: string[];
 	/**

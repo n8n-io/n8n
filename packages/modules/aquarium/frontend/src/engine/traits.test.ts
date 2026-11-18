@@ -53,10 +53,10 @@ describe('deriveTraits', () => {
 		expect(deriveTraits(entity({ executionCount: 100 })).effects).toContain('bubbles');
 	});
 
-	it('adds a watching cat only to creatures with a security risk', () => {
-		expect(deriveTraits(entity({ securityRisks: 0 })).effects).not.toContain('cat');
-		expect(deriveTraits(entity({})).effects).not.toContain('cat');
-		expect(deriveTraits(entity({ securityRisks: 2 })).effects).toContain('cat');
+	it('puts a watching cat only on creatures with a security risk', () => {
+		expect(deriveTraits(entity({ securityRisks: 0 })).watchedByCat).toBeUndefined();
+		expect(deriveTraits(entity({})).watchedByCat).toBeUndefined();
+		expect(deriveTraits(entity({ securityRisks: 2 })).watchedByCat).toBe(true);
 	});
 
 	it('makes creatures that fail often glitch green and swim slowly', () => {

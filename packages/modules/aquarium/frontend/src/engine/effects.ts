@@ -31,37 +31,10 @@ export const bubblesEffect: CreatureEffect = {
 	},
 };
 
-/** A cat in a diving helmet. Each character is one pixel, and `.` is clear. */
-const CAT_ROWS = [
-	'....ooooo....',
-	'..oogggggoo..',
-	'.ogdgggggdgo.',
-	'.ogddgggddgo.',
-	'ogdcccccccdgo',
-	'ogdcecccecdgo',
-	'ogdcpcccpcdgo',
-	'ogdcwwnwwcdgo',
-	'.ogdcwwwcdgo.',
-	'.oggdddddggo.',
-	'..oogggggoo..',
-	'....ooooo....',
-];
-
-const CAT_PALETTE: Record<string, string> = {
-	o: '#d8eef8', // helmet rim
-	g: 'rgba(200, 230, 255, 0.35)', // helmet glass
-	d: '#7a4320', // outline
-	c: '#f0a050', // fur
-	e: '#8ee07a', // eye
-	p: '#14202a', // pupil, low in the eye, so the cat looks down at the creature
-	n: '#f28aa0', // nose
-	w: '#fff3e6', // muzzle
-};
-
 /** Pixels grouped by colour, so a frame sets each colour once and allocates nothing. */
 function toPixelGroups(
 	rows: string[],
-	palette: Record<string, string> = CAT_PALETTE,
+	palette: Record<string, string>,
 ): Array<{ color: string; points: Array<[number, number]> }> {
 	const groups = new Map<string, Array<[number, number]>>();
 	rows.forEach((row, y) => {
@@ -73,30 +46,6 @@ function toPixelGroups(
 	});
 	return [...groups.entries()].map(([color, points]) => ({ color, points }));
 }
-
-const CAT_OPEN = toPixelGroups(CAT_ROWS);
-const CAT_BLINK = toPixelGroups(CAT_ROWS.map((row) => row.replace(/e/g, 'c').replace(/p/g, 'd')));
-const CAT_WIDTH = Math.max(...CAT_ROWS.map((row) => row.length));
-const CAT_HEIGHT = CAT_ROWS.length;
-const CAT_BLINK_EVERY_SECONDS = 4;
-const CAT_BLINK_SECONDS = 0.2;
-
-/** A cat watches a creature with a security risk. It floats above the creature and bobs. */
-export const catEffect: CreatureEffect = {
-	id: 'cat',
-	draw(ctx, creature) {
-		// Age, not tank time, so cats are out of step, and reduced motion stops them.
-		const bob = Math.round(Math.sin(creature.age * 1.5));
-		const x = Math.round(creature.x + creature.width / 2 - CAT_WIDTH / 2);
-		const y = Math.max(0, Math.round(creature.y - CAT_HEIGHT - 2 + bob));
-		const blinking = creature.age % CAT_BLINK_EVERY_SECONDS < CAT_BLINK_SECONDS;
-
-		for (const { color, points } of blinking ? CAT_BLINK : CAT_OPEN) {
-			ctx.fillStyle = color;
-			for (const [px, py] of points) ctx.fillRect(x + px, y + py, 1, 1);
-		}
-	},
-};
 
 const STRAND_COLOURS = ['#2f8f4e', '#3fa65c', '#1cbc52', '#79ec41', '#267a42'];
 /** The seaweed stub in the seahorse's tail curl, in sprite pixels of the right-facing sprite. */
@@ -226,7 +175,6 @@ export const remoraEffect: CreatureEffect = {
 
 const registry = new Map<string, CreatureEffect>([
 	[bubblesEffect.id, bubblesEffect],
-	[catEffect.id, catEffect],
 	[skillStrandsEffect.id, skillStrandsEffect],
 	[zzzEffect.id, zzzEffect],
 	[remoraEffect.id, remoraEffect],
