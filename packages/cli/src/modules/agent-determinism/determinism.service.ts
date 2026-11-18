@@ -1,9 +1,30 @@
-import type { DeterminismSummaryDto } from '@n8n/api-types';
+import type {
+	DeterminismSuggestion,
+	DeterminismSuggestionsDto,
+	DeterminismSummaryDto,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { GeneratedFromSourceType } from 'n8n-workflow';
 
-import { DeterminismSourceRepository } from './database/determinism-source.repository';
+import {
+	DeterminismSourceRepository,
+	type DeterminismSourceRow,
+} from './database/determinism-source.repository';
+
+function toSuggestion(row: DeterminismSourceRow): DeterminismSuggestion | null {
+	const { result, draftWorkflowId } = row;
+	const isCurrent = row.analyzedVersionHash === row.versionHash;
+	if (!result?.showCta || !draftWorkflowId || row.dismissedAt || !isCurrent) return null;
+
+	return {
+		draftWorkflowId,
+		gainPoints: result.gainPoints,
+		matchRate: result.matchRate,
+		holdoutRuns: result.holdoutRuns,
+		tokenDelta: result.tokenDelta,
+	};
+}
 
 @Service()
 export class DeterminismService {
@@ -17,21 +38,19 @@ export class DeterminismService {
 		const row = await this.sourceRepository.findBySource(sourceType, sourceId);
 		if (!row || row.projectId !== projectId) return { suggestion: null };
 
-		const { result, draftWorkflowId } = row;
-		const isCurrent = row.analyzedVersionHash === row.versionHash;
-		if (!result?.showCta || !draftWorkflowId || row.dismissedAt || !isCurrent) {
-			return { suggestion: null };
-		}
+		return { suggestion: toSuggestion(row) };
+	}
 
-		return {
-			suggestion: {
-				draftWorkflowId,
-				gainPoints: result.gainPoints,
-				matchRate: result.matchRate,
-				holdoutRuns: result.holdoutRuns,
-				tokenDelta: result.tokenDelta,
-			},
-		};
+	async listSuggestions(
+		projectId: string,
+		sourceType: GeneratedFromSourceType,
+	): Promise<DeterminismSuggestionsDto> {
+		const suggestions: DeterminismSuggestionsDto['suggestions'] = {};
+		for (const row of await this.sourceRepository.findByProject(projectId, sourceType)) {
+			const suggestion = toSuggestion(row);
+			if (suggestion) suggestions[row.sourceId] = suggestion;
+		}
+		return { suggestions };
 	}
 
 	async dismiss(projectId: string, sourceType: GeneratedFromSourceType, sourceId: string) {

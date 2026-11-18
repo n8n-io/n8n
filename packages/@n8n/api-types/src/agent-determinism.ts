@@ -9,3 +9,7 @@ export type DeterminismSuggestion = {
 export type DeterminismSummaryDto = {
 	suggestion: DeterminismSuggestion | null;
 };
+
+export type DeterminismSuggestionsDto = {
+	suggestions: Record<string, DeterminismSuggestion>;
+};

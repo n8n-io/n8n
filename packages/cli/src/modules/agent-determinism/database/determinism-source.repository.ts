@@ -113,6 +113,15 @@ export class DeterminismSourceRepository {
 			.update(DeterminismSourceEntity, { sourceType, sourceId }, { dismissedAt: new Date() });
 	}
 
+	async findByProject(
+		projectId: string,
+		sourceType: GeneratedFromSourceType,
+	): Promise<DeterminismSourceRow[]> {
+		return await this.table
+			.managerFor({})
+			.findBy(DeterminismSourceEntity, { projectId, sourceType });
+	}
+
 	async findBySource(
 		sourceType: GeneratedFromSourceType,
 		sourceId: string,
