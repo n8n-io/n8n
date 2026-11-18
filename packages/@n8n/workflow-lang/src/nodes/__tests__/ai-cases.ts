@@ -3848,6 +3848,9 @@ const BINARY_CHAIN_CASES: EquivalenceCase[] = [
 	chain('file in the input item', gpt, [completion('x')], {}, withFile('image/png', 'a.png')),
 ];
 
+/** The rate-limit text of the LangChain stream client, as v1 records it. */
+const RATE_LIMIT = 'OpenAI: Rate limit reached';
+
 /** A Chat Completions answer as a stream of server-sent events. */
 const chunk = (delta: Record<string, unknown> | null, finish: string | null = null) =>
 	`data: ${JSON.stringify({
@@ -3949,7 +3952,8 @@ const STREAM_CASES: EquivalenceCase[] = [
 				[failed(429)],
 				{},
 				{
-					expectedError: STATUS_ERRORS[429],
+					// The stream of LangChain gives its own rate-limit text (recorded).
+					expectedError: RATE_LIMIT,
 				},
 			),
 			agent(

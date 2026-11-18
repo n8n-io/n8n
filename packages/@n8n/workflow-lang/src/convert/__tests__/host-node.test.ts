@@ -190,8 +190,18 @@ describe('AI clusters', () => {
 			expect(compile(source).diagnostics).toEqual([]);
 		});
 
+		it('links the library node with the parser parameter and no parser node', () => {
+			// v1 runs the chain without a parser then (`chainLlm 1.9, parser parameter without a
+			// parser` in `ai-cases.ts`).
+			const { source, fallbackNodes } = converted(
+				chain({ ...prompt, hasOutputParser: true }, model),
+			);
+			expect(fallbackNodes).not.toContain('Chain');
+			expect(source).not.toContain('subNodes: [');
+			expect(compile(source).diagnostics).toEqual([]);
+		});
+
 		it.each([
-			['an output parser', { ...prompt, hasOutputParser: true }, model, {}],
 			['a fallback model', { ...prompt, needsFallback: true }, model, {}],
 			[
 				'an image message',
@@ -269,16 +279,34 @@ describe('AI clusters', () => {
 				agentWorkflow(3.1, { ...prompt, options: { systemMessage: 'Be brief' } }),
 			);
 			expect(fallbackNodes).not.toContain('Agent');
-			expect(source).not.toContain('subNodes: [');
+			// The cluster keeps its host form, for an input item with binary data.
+			expect(source).toContain('subNodes: [');
 			expect(source).toContain("name: 'Agent'");
 			expect(source).toContain("kind: 'agent'");
 			expect(source).toContain("systemMessage: 'Be brief'");
 			expect(compile(source).diagnostics).toEqual([]);
 		});
 
+		it('links the library node for version 1.7, which asks the model for a stream', () => {
+			// `agent 1.7 stream, system message` in `ai-cases.ts` is the recording.
+			const { source, fallbackNodes } = converted(agentWorkflow(1.7, prompt));
+			expect(fallbackNodes).not.toContain('Agent');
+			expect(source).toContain("kind: 'agent'");
+			expect(compile(source).diagnostics).toEqual([]);
+		});
+
+		it('links the library node with the parser parameter and no parser node', () => {
+			// v1 runs the agent without a parser then (`agent 3.1, parser parameter without a
+			// parser` in `ai-cases.ts`).
+			const { source, fallbackNodes } = converted(
+				agentWorkflow(3.1, { ...prompt, hasOutputParser: true }),
+			);
+			expect(fallbackNodes).not.toContain('Agent');
+			expect(source).toContain("kind: 'agent'");
+			expect(compile(source).diagnostics).toEqual([]);
+		});
+
 		it.each([
-			['version 1.7, which asks the model for a stream', 1.7, prompt, [], {}],
-			['an output parser', 3.1, { ...prompt, hasOutputParser: true }, [], {}],
 			['binary images', 3.1, { ...prompt, options: { passthroughBinaryImages: true } }, [], {}],
 			[
 				'a tool',
