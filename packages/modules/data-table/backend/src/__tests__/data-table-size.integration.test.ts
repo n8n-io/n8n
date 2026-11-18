@@ -9,6 +9,7 @@ import { DataTableSizeValidator } from '../data-table-size-validator.service';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
+import { managementRowAccess } from '../data-table.types';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table'], {
@@ -64,7 +65,9 @@ describe('Data Table Size Tests', () => {
 
 			// ACT & ASSERT
 			await expect(
-				dataTableService.insertRows(dataTableId, project1.id, [{ data: 'test' }]),
+				dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+					{ data: 'test' },
+				]),
 			).rejects.toThrow(DataTableValidationError);
 
 			expect(mockFindDataTablesSize).toHaveBeenCalled();
@@ -90,7 +93,7 @@ describe('Data Table Size Tests', () => {
 
 			// ACT & ASSERT
 			await expect(
-				dataTableService.updateRows(dataTableId, project1.id, {
+				dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
@@ -119,7 +122,7 @@ describe('Data Table Size Tests', () => {
 
 			// ACT & ASSERT
 			await expect(
-				dataTableService.upsertRow(dataTableId, project1.id, {
+				dataTableService.upsertRow(dataTableId, project1.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'data', condition: 'eq', value: 'nonexistent' }],
@@ -164,9 +167,11 @@ describe('Data Table Size Tests', () => {
 
 			const data = new Array(1000).fill(0).map((_, i) => ({ data: `test_data_${i}` }));
 
-			await dataTableService.insertRows(dataTable1.id, project1.id, data);
+			await dataTableService.insertRows(dataTable1.id, project1.id, managementRowAccess, data);
 
-			await dataTableService.insertRows(dataTable2.id, project2.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable2.id, project2.id, managementRowAccess, [
+				{ data: 'test' },
+			]);
 
 			// ACT
 			const result = await dataTableService.getDataTablesSize(owner);
@@ -213,8 +218,12 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTable1.id, project1.id, [{ data: 'accessible' }]);
-			await dataTableService.insertRows(dataTable2.id, project2.id, [{ data: 'inaccessible' }]);
+			await dataTableService.insertRows(dataTable1.id, project1.id, managementRowAccess, [
+				{ data: 'accessible' },
+			]);
+			await dataTableService.insertRows(dataTable2.id, project2.id, managementRowAccess, [
+				{ data: 'inaccessible' },
+			]);
 
 			// ACT
 			const result = await dataTableService.getDataTablesSize(regularUser);
@@ -244,7 +253,9 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTable1.id, project1.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable1.id, project1.id, managementRowAccess, [
+				{ data: 'test' },
+			]);
 
 			// ACT
 			const result = await dataTableService.getDataTablesSize(regularUser);
@@ -268,8 +279,12 @@ describe('Data Table Size Tests', () => {
 			});
 
 			// Add data to both
-			await dataTableService.insertRows(dataTable1.id, project1.id, [{ data: 'test1' }]);
-			await dataTableService.insertRows(dataTable2.id, project2.id, [{ data: 'test2' }]);
+			await dataTableService.insertRows(dataTable1.id, project1.id, managementRowAccess, [
+				{ data: 'test1' },
+			]);
+			await dataTableService.insertRows(dataTable2.id, project2.id, managementRowAccess, [
+				{ data: 'test2' },
+			]);
 
 			// ACT
 			const result = await dataTableService.getDataTablesSize(regularUser);
@@ -332,7 +347,9 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, managementRowAccess, [
+				{ data: 'test' },
+			]);
 
 			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
 
@@ -362,7 +379,9 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, managementRowAccess, [
+				{ data: 'test' },
+			]);
 
 			const mockGetCachedSizeData = vi.spyOn(dataTableSizeValidator, 'getCachedSizeData');
 			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
@@ -372,7 +391,9 @@ describe('Data Table Size Tests', () => {
 			await dataTableService.getDataTablesSize(owner);
 
 			// Insert more data (triggers size validation which should use same cache)
-			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test2' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, managementRowAccess, [
+				{ data: 'test2' },
+			]);
 
 			// ASSERT
 			// Should have called getCachedSizeData twice:
@@ -405,7 +426,9 @@ describe('Data Table Size Tests', () => {
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(1);
 
 			// Inserting new data should reset cache
-			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable.id, project1.id, managementRowAccess, [
+				{ data: 'test' },
+			]);
 			expect(mockReset).toHaveBeenCalledTimes(1);
 
 			// Fetch data again (should call repository again due to cache reset)
@@ -413,7 +436,7 @@ describe('Data Table Size Tests', () => {
 			expect(mockFindDataTablesSize).toHaveBeenCalledTimes(2);
 
 			// Update data (should reset cache again)
-			await dataTableService.updateRows(dataTable.id, project1.id, {
+			await dataTableService.updateRows(dataTable.id, project1.id, managementRowAccess, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'data', condition: 'eq', value: 'test' }],
@@ -423,7 +446,7 @@ describe('Data Table Size Tests', () => {
 			expect(mockReset).toHaveBeenCalledTimes(2);
 
 			// Upsert data (should reset cache again)
-			await dataTableService.upsertRow(dataTable.id, project1.id, {
+			await dataTableService.upsertRow(dataTable.id, project1.id, managementRowAccess, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'data', condition: 'eq', value: 'nonexistent' }],
@@ -433,7 +456,7 @@ describe('Data Table Size Tests', () => {
 			expect(mockReset).toHaveBeenCalledTimes(3);
 
 			// Delete data (should reset cache again)
-			await dataTableService.deleteRows(dataTable.id, project1.id, {
+			await dataTableService.deleteRows(dataTable.id, project1.id, managementRowAccess, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'data', condition: 'eq', value: 'updated' }],

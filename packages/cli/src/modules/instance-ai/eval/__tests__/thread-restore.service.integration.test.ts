@@ -94,7 +94,12 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 		const newId = idMap.get('job-applications-1234');
 		expect(newId).toBeDefined();
 
-		const { count, data } = await dataTableService.getManyRowsAndCount(newId!, project.id, {});
+		const { count, data } = await dataTableService.getManyRowsAndCount(
+			newId!,
+			project.id,
+			{ kind: 'management' },
+			{},
+		);
 		expect(count).toBe(2);
 		expect(data).toEqual([
 			expect.objectContaining({ application_id: 'row_001', is_active: true }),
@@ -165,7 +170,12 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 	it('seeds rows into an empty pre-created table', async () => {
 		await service.reseedDataTableRows(tableId, project.id, [{ application_id: 'row_001' }]);
 
-		const { count, data } = await dataTableService.getManyRowsAndCount(tableId, project.id, {});
+		const { count, data } = await dataTableService.getManyRowsAndCount(
+			tableId,
+			project.id,
+			{ kind: 'management' },
+			{},
+		);
 		expect(count).toBe(1);
 		expect(data).toEqual([expect.objectContaining({ application_id: 'row_001' })]);
 	});
@@ -177,7 +187,12 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 		]);
 		await service.reseedDataTableRows(tableId, project.id, [{ application_id: 'row_003' }]);
 
-		const { count, data } = await dataTableService.getManyRowsAndCount(tableId, project.id, {});
+		const { count, data } = await dataTableService.getManyRowsAndCount(
+			tableId,
+			project.id,
+			{ kind: 'management' },
+			{},
+		);
 		expect(count).toBe(1);
 		expect(data).toEqual([expect.objectContaining({ application_id: 'row_003' })]);
 	});
@@ -186,7 +201,12 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 		await service.reseedDataTableRows(tableId, project.id, [{ application_id: 'row_001' }]);
 		await service.reseedDataTableRows(tableId, project.id, []);
 
-		const { count } = await dataTableService.getManyRowsAndCount(tableId, project.id, {});
+		const { count } = await dataTableService.getManyRowsAndCount(
+			tableId,
+			project.id,
+			{ kind: 'management' },
+			{},
+		);
 		expect(count).toBe(0);
 	});
 });

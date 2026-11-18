@@ -66,7 +66,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
 | [credentials_entity](credentials_entity.md) | 14 |  | table |
-| [data_table](data_table.md) | 5 |  | table |
+| [data_table](data_table.md) | 6 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
 | [dynamic_credential_entry](dynamic_credential_entry.md) | 6 |  | table |
@@ -1130,6 +1130,7 @@ erDiagram
   varchar_36_ id PK
   varchar_128_ name
   varchar_36_ projectId FK
+  TEXT rowRule
   datetime_3_ updatedAt
 }
 "data_table_column" {

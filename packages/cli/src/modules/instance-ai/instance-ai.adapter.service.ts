@@ -3839,11 +3839,16 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
-				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
-					take: options?.limit ?? 50,
-					skip: options?.offset ?? 0,
-					filter: options?.filter,
-				});
+				return await dataTableService.getManyRowsAndCount(
+					resolvedId,
+					projectId,
+					{ kind: 'management' },
+					{
+						take: options?.limit ?? 50,
+						skip: options?.offset ?? 0,
+						filter: options?.filter,
+					},
+				);
 			},
 
 			async insertRows(dataTableId, rows, options) {
@@ -3856,6 +3861,7 @@ export class InstanceAiAdapterService {
 				const result = await dataTableService.insertRows(
 					resolvedId,
 					projectId,
+					{ kind: 'management' },
 					rows as DataTableRows,
 					'count',
 				);
@@ -3877,6 +3883,7 @@ export class InstanceAiAdapterService {
 				const result = await dataTableService.updateRows(
 					resolvedId,
 					projectId,
+					{ kind: 'management' },
 					{ filter, data: data as DataTableRow },
 					true,
 				);
@@ -3895,7 +3902,13 @@ export class InstanceAiAdapterService {
 					options,
 				);
 				assertInBoundProject(projectId);
-				const result = await dataTableService.deleteRows(resolvedId, projectId, { filter }, true);
+				const result = await dataTableService.deleteRows(
+					resolvedId,
+					projectId,
+					{ kind: 'management' },
+					{ filter },
+					true,
+				);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
 					dataTableId: resolvedId,

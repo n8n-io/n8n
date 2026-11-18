@@ -116,7 +116,13 @@ export class EvaluationDatasetService {
 			row[column.name] = toDataTableCellValue(value as JsonValue, column);
 		}
 
-		return await this.dataTableService.insertRows(dataTableId, projectId, [row], 'id');
+		return await this.dataTableService.insertRows(
+			dataTableId,
+			projectId,
+			{ kind: 'management' },
+			[row],
+			'id',
+		);
 	}
 
 	// -------------------------------------------------------------------------

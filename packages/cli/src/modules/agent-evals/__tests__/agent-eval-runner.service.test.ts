@@ -482,7 +482,7 @@ describe('AgentEvalRunnerService', () => {
 		it('pages through every row when the table exceeds one page', async () => {
 			const page = (start: number, len: number) =>
 				Array.from({ length: len }, (_, i) => ({ id: `r${start + i}`, question: `Q${start + i}` }));
-			dataTableService.getManyRowsAndCount.mockImplementation(async (_id, _p, dto) =>
+			dataTableService.getManyRowsAndCount.mockImplementation(async (_id, _p, _access, dto) =>
 				(dto?.skip ?? 0) === 0
 					? { count: 120, data: page(0, 100) as never }
 					: { count: 120, data: page(100, 20) as never },

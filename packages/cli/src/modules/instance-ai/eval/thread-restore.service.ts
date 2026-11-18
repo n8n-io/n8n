@@ -240,7 +240,12 @@ export class EvalThreadRestoreService {
 				// Map before seeding rows so a row-insert failure rolls this table back too.
 				idMap.set(table.id, created.id);
 				if (table.rows && table.rows.length > 0) {
-					await this.dataTableService.insertRows(created.id, projectId, table.rows);
+					await this.dataTableService.insertRows(
+						created.id,
+						projectId,
+						{ kind: 'management' },
+						table.rows,
+					);
 				}
 			}
 		} catch (error) {
@@ -263,9 +268,9 @@ export class EvalThreadRestoreService {
 		projectId: string,
 		rows: NonNullable<InstanceAiEvalSeedDataTable['rows']>,
 	): Promise<void> {
-		await this.dataTableService.clearRows(tableId, projectId);
+		await this.dataTableService.clearRows(tableId, projectId, { kind: 'management' });
 		if (rows.length > 0) {
-			await this.dataTableService.insertRows(tableId, projectId, rows);
+			await this.dataTableService.insertRows(tableId, projectId, { kind: 'management' }, rows);
 		}
 	}
 

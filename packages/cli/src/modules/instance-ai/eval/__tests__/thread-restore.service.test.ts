@@ -596,10 +596,12 @@ describe('EvalThreadRestoreService', () => {
 
 			// The table is created schema-only, then its rows are inserted against
 			// the freshly created id (not the seed id).
-			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-new', 'project-1', [
-				{ id: 'row_001' },
-				{ id: 'row_002' },
-			]);
+			expect(dataTableService.insertRows).toHaveBeenCalledWith(
+				'dt-new',
+				'project-1',
+				{ kind: 'management' },
+				[{ id: 'row_001' }, { id: 'row_002' }],
+			);
 		});
 
 		it('rolls back the created table when row seeding fails', async () => {
@@ -642,9 +644,12 @@ describe('EvalThreadRestoreService', () => {
 			const [, dto] = dataTableService.createDataTable.mock.calls[0];
 			// No ` [seed <uuid>]` suffix — the built workflow references it by this name.
 			expect(dto.name).toBe('Job Applications');
-			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-new', 'project-1', [
-				{ application_id: 'row_001' },
-			]);
+			expect(dataTableService.insertRows).toHaveBeenCalledWith(
+				'dt-new',
+				'project-1',
+				{ kind: 'management' },
+				[{ application_id: 'row_001' }],
+			);
 		});
 
 		it('rejects a too-short table id without creating anything (unsafe to string-replace)', async () => {

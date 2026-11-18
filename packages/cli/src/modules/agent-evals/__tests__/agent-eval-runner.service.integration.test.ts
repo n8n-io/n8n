@@ -124,7 +124,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 				{ name: 'answer', type: 'string' },
 			],
 		});
-		await dataTableService.insertRows(table.id, project.id, [
+		await dataTableService.insertRows(table.id, project.id, { kind: 'management' }, [
 			{ question: 'What is 2+2?', answer: '4' },
 			{ question: 'Capital of France?', answer: 'Paris' },
 		]);
@@ -196,7 +196,9 @@ describe('AgentEvalRunnerService (integration)', () => {
 			name: 'cases',
 			columns: [{ name: 'question', type: 'string' }],
 		});
-		await dataTableService.insertRows(table.id, project.id, [{ question: 'boom' }]);
+		await dataTableService.insertRows(table.id, project.id, { kind: 'management' }, [
+			{ question: 'boom' },
+		]);
 
 		const dataset = await Container.get(AgentEvalDatasetRepository).createDataset({
 			name: 'ds',

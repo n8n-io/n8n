@@ -213,6 +213,7 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.getManyRowsAndCount).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
+			{ kind: 'management' },
 			options,
 		);
 	});
@@ -230,6 +231,7 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.insertRows).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
+			{ kind: 'management' },
 			rows,
 			'count',
 		);
@@ -254,6 +256,7 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.upsertRow).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
+			{ kind: 'management' },
 			options,
 			true,
 			undefined,
@@ -280,6 +283,7 @@ describe('DataTableProxyService', () => {
 		expect(dataTableServiceMock.upsertRow).toBeCalledWith(
 			'dataTable-id',
 			PROJECT_ID,
+			{ kind: 'management' },
 			options,
 			true,
 			true,
@@ -570,7 +574,12 @@ describe('makeDataTableOperationsForUser', () => {
 			expect(projectScopeServiceMock.getProjectIds).toHaveBeenCalledWith(user, [
 				'dataTable:readRow',
 			]);
-			expect(dataTableServiceMock.getManyRowsAndCount).toHaveBeenCalledWith('dt-1', PROJECT_ID, {});
+			expect(dataTableServiceMock.getManyRowsAndCount).toHaveBeenCalledWith(
+				'dt-1',
+				PROJECT_ID,
+				{ kind: 'management' },
+				{},
+			);
 		});
 
 		it('should reject getManyRowsAndCount when user lacks scope', async () => {
@@ -598,6 +607,7 @@ describe('makeDataTableOperationsForUser', () => {
 			expect(dataTableServiceMock.insertRows).toHaveBeenCalledWith(
 				'dt-1',
 				PROJECT_ID,
+				{ kind: 'management' },
 				rows,
 				'count',
 			);

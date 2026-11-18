@@ -477,6 +477,7 @@ export class DataTablesPublicController {
 			const { data, count } = await this.dataTableService.getManyRowsAndCount(
 				dataTableId,
 				projectId,
+				{ kind: 'management' },
 				{
 					skip: offset,
 					take: limit,
@@ -514,6 +515,7 @@ export class DataTablesPublicController {
 			const result = await this.dataTableService.insertRows(
 				dataTableId,
 				projectId,
+				{ kind: 'management' },
 				body.data,
 				body.returnType,
 			);
@@ -554,6 +556,7 @@ export class DataTablesPublicController {
 			const result = await this.dataTableService.upsertRow(
 				dataTableId,
 				projectId,
+				{ kind: 'management' },
 				{ filter, data },
 				returnData,
 				dryRun,
@@ -591,6 +594,7 @@ export class DataTablesPublicController {
 			const result = await this.dataTableService.updateRows(
 				dataTableId,
 				projectId,
+				{ kind: 'management' },
 				{ filter, data },
 				returnData,
 				dryRun,
@@ -621,7 +625,7 @@ export class DataTablesPublicController {
 		try {
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 
-			return await this.dataTableService.clearRows(dataTableId, projectId);
+			return await this.dataTableService.clearRows(dataTableId, projectId, { kind: 'management' });
 		} catch (error) {
 			return handleError(error);
 		}
@@ -656,6 +660,7 @@ export class DataTablesPublicController {
 			const result = await this.dataTableService.deleteRows(
 				dataTableId,
 				projectId,
+				{ kind: 'management' },
 				{ filter },
 				returnData,
 				dryRun,

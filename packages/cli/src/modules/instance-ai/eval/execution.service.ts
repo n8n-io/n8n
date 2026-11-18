@@ -489,8 +489,9 @@ export class EvalExecutionService {
 
 			for (const table of tables) {
 				const rows = rowsByTable[table.name] ?? [];
-				await this.dataTableService.clearRows(table.id, projectId);
-				if (rows.length > 0) await this.dataTableService.insertRows(table.id, projectId, rows);
+				await this.dataTableService.clearRows(table.id, projectId, { kind: 'management' });
+				if (rows.length > 0)
+					await this.dataTableService.insertRows(table.id, projectId, { kind: 'management' }, rows);
 				this.logger.debug(
 					`[EvalMock] Data Table "${table.name}" starts with ${String(rows.length)} row(s)`,
 				);

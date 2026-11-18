@@ -32,6 +32,7 @@ import { DataTableAccessDeniedError } from '../errors/data-table-access-denied.e
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
+import { managementRowAccess } from '../data-table.types';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;
@@ -772,7 +773,12 @@ describe('DataTableService', () => {
 			mockDataTableColumnRepository.getColumnsInContext.mockResolvedValue([]);
 			mockDataTableRowsRepository.getManyAndCount.mockResolvedValue({ count: 0, data: [] });
 
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, projectId, {});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				projectId,
+				managementRowAccess,
+				{},
+			);
 
 			expect(result).toEqual({ count: 0, data: [] });
 			expect(mockTransactionRunner.run).toHaveBeenCalledTimes(1);
@@ -791,6 +797,7 @@ describe('DataTableService', () => {
 				{},
 				[],
 				enrichedCtx,
+				null,
 			);
 			expect(mockDataTableRowsRepository.getManyAndCount.mock.calls[0][3]).toBe(enrichedCtx);
 		});

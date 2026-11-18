@@ -60,6 +60,7 @@ erDiagram
   varchar_36_ id PK
   varchar_128_ name
   varchar_36_ projectId FK
+  TEXT rowRule
   datetime_3_ updatedAt
 }
 ```

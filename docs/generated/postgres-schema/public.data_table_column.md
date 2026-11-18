@@ -55,6 +55,7 @@ erDiagram
   varchar_36_ id
   varchar_128_ name
   varchar_36_ projectId FK
+  json rowRule
   timestamp_3__with_time_zone updatedAt
 }
 ```

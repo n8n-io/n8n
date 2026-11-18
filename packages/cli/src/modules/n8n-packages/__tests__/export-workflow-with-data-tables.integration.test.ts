@@ -142,7 +142,7 @@ describe('workflow package export — with data tables', () => {
 				name: 'WithRows',
 				columns: [{ name: 'email', type: 'string' }],
 			});
-			await dataTableService.insertRows(dataTable.id, project.id, [
+			await dataTableService.insertRows(dataTable.id, project.id, { kind: 'management' }, [
 				{ email: 'secret-user@example.com' },
 			]);
 			const workflow = await buildWorkflowReferencingDataTables({

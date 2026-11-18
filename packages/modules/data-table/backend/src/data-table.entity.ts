@@ -1,4 +1,5 @@
-import { Project, WithTimestampsAndStringId } from '@n8n/db';
+import type { DataTableRowRule } from '@n8n/api-types';
+import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from '@n8n/typeorm';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -28,4 +29,8 @@ export class DataTable extends WithTimestampsAndStringId {
 
 	@Column()
 	projectId: string;
+
+	/** Limits callers that act for an end user to their own rows. `null` means no limit. */
+	@JsonColumn({ nullable: true })
+	rowRule: DataTableRowRule | null;
 }

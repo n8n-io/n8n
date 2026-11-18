@@ -103,7 +103,13 @@ export class AppDataTableAdapter extends AppDataTablePort {
 
 	async listRows(ctx: AppCallContext, dataTableId: string, query: ListDataTableContentQueryDto) {
 		return await this.call(
-			async (service) => await service.getManyRowsAndCount(dataTableId, ctx.projectId, query),
+			async (service) =>
+				await service.getManyRowsAndCount(
+					dataTableId,
+					ctx.projectId,
+					{ kind: 'management' },
+					query,
+				),
 		);
 	}
 
@@ -113,7 +119,8 @@ export class AppDataTableAdapter extends AppDataTablePort {
 		rows: AppRuntimeRowInput[],
 	): Promise<AppRow[]> {
 		return await this.call(
-			async (service) => await service.insertRows(dataTableId, ctx.projectId, rows, 'all'),
+			async (service) =>
+				await service.insertRows(dataTableId, ctx.projectId, { kind: 'management' }, rows, 'all'),
 		);
 	}
 
@@ -125,7 +132,14 @@ export class AppDataTableAdapter extends AppDataTablePort {
 	): Promise<AppRow[]> {
 		return await this.call(
 			async (service) =>
-				await service.updateRows(dataTableId, ctx.projectId, { filter, data }, true, false),
+				await service.updateRows(
+					dataTableId,
+					ctx.projectId,
+					{ kind: 'management' },
+					{ filter, data },
+					true,
+					false,
+				),
 		);
 	}
 
@@ -136,7 +150,14 @@ export class AppDataTableAdapter extends AppDataTablePort {
 	): Promise<AppRow[]> {
 		return await this.call(
 			async (service) =>
-				await service.deleteRows(dataTableId, ctx.projectId, { filter }, true, false),
+				await service.deleteRows(
+					dataTableId,
+					ctx.projectId,
+					{ kind: 'management' },
+					{ filter },
+					true,
+					false,
+				),
 		);
 	}
 

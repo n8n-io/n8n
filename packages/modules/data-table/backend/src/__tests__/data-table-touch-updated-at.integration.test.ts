@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { mockDataTableSizeValidator } from '../testing';
+import { managementRowAccess } from '../data-table.types';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table'], {
@@ -60,7 +61,7 @@ describe('DataTable touchUpdatedAt', () => {
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			// Insert rows
-			await dataTableService.insertRows(dataTable.id, project.id, [
+			await dataTableService.insertRows(dataTable.id, project.id, managementRowAccess, [
 				{ name: 'Alice', age: 30 },
 				{ name: 'Bob', age: 25 },
 			]);
@@ -81,7 +82,7 @@ describe('DataTable touchUpdatedAt', () => {
 			});
 
 			// Insert initial row
-			await dataTableService.insertRows(dataTable.id, project.id, [
+			await dataTableService.insertRows(dataTable.id, project.id, managementRowAccess, [
 				{ email: 'test@example.com', name: 'Alice' },
 			]);
 
@@ -96,6 +97,7 @@ describe('DataTable touchUpdatedAt', () => {
 			await dataTableService.upsertRow(
 				dataTable.id,
 				project.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -123,7 +125,7 @@ describe('DataTable touchUpdatedAt', () => {
 			});
 
 			// Insert initial row
-			await dataTableService.insertRows(dataTable.id, project.id, [
+			await dataTableService.insertRows(dataTable.id, project.id, managementRowAccess, [
 				{ email: 'test@example.com', status: 'active' },
 			]);
 
@@ -138,6 +140,7 @@ describe('DataTable touchUpdatedAt', () => {
 			await dataTableService.updateRows(
 				dataTable.id,
 				project.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -165,7 +168,7 @@ describe('DataTable touchUpdatedAt', () => {
 			});
 
 			// Insert rows
-			await dataTableService.insertRows(dataTable.id, project.id, [
+			await dataTableService.insertRows(dataTable.id, project.id, managementRowAccess, [
 				{ email: 'test1@example.com', name: 'User 1' },
 				{ email: 'test2@example.com', name: 'User 2' },
 			]);
@@ -181,6 +184,7 @@ describe('DataTable touchUpdatedAt', () => {
 			await dataTableService.deleteRows(
 				dataTable.id,
 				project.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -263,15 +267,20 @@ describe('DataTable touchUpdatedAt', () => {
 			});
 
 			// Insert initial data
-			await dataTableService.insertRows(dataTable.id, project.id, [{ name: 'Initial' }]);
+			await dataTableService.insertRows(dataTable.id, project.id, managementRowAccess, [
+				{ name: 'Initial' },
+			]);
 
 			// Mock touchUpdatedAt to simulate an error scenario
 			const touchSpy = vi.spyOn(dataTableRepository, 'touchUpdatedAt');
 
 			// Insert rows - operation should succeed
-			const result = await dataTableService.insertRows(dataTable.id, project.id, [
-				{ name: 'Alice' },
-			]);
+			const result = await dataTableService.insertRows(
+				dataTable.id,
+				project.id,
+				managementRowAccess,
+				[{ name: 'Alice' }],
+			);
 			expect(result).toBeDefined();
 
 			// Verify touchUpdatedAt was called
@@ -335,7 +344,7 @@ describe('DataTable touchUpdatedAt', () => {
 			});
 
 			// Insert initial row
-			await dataTableService.insertRows(dataTable.id, project.id, [
+			await dataTableService.insertRows(dataTable.id, project.id, managementRowAccess, [
 				{ email: 'test@example.com', status: 'active' },
 			]);
 
@@ -350,6 +359,7 @@ describe('DataTable touchUpdatedAt', () => {
 			await dataTableService.updateRows(
 				dataTable.id,
 				project.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -377,7 +387,7 @@ describe('DataTable touchUpdatedAt', () => {
 			});
 
 			// Insert rows
-			await dataTableService.insertRows(dataTable.id, project.id, [
+			await dataTableService.insertRows(dataTable.id, project.id, managementRowAccess, [
 				{ email: 'test@example.com', name: 'User 1' },
 			]);
 
@@ -392,6 +402,7 @@ describe('DataTable touchUpdatedAt', () => {
 			await dataTableService.deleteRows(
 				dataTable.id,
 				project.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',

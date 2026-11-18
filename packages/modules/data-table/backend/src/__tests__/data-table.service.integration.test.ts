@@ -20,6 +20,7 @@ import { DataTableNameConflictError } from '../errors/data-table-name-conflict.e
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 import { toTableName } from '../utils/sql-utils';
+import { managementRowAccess } from '../data-table.types';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table'], {
@@ -503,6 +504,7 @@ describe('dataTable', () => {
 			const results = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Alice', age: 30 },
 					{ name: 'Bob', age: 25 },
@@ -538,7 +540,12 @@ describe('dataTable', () => {
 			expect(columns.map((c) => c.name)).toEqual(['name', 'age', 'email']);
 
 			// Verify existing rows now have null values for the new column
-			const updatedData = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const updatedData = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(updatedData.count).toBe(3);
 			expect(updatedData.data).toEqual([
 				expect.objectContaining({
@@ -565,6 +572,7 @@ describe('dataTable', () => {
 			const newRow = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ name: 'David', age: 28, email: 'david@example.com' }],
 				'id',
 			);
@@ -574,7 +582,12 @@ describe('dataTable', () => {
 				},
 			]);
 
-			const finalData = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const finalData = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(finalData.count).toBe(4);
 			expect(finalData.data).toEqual([
 				expect.objectContaining({
@@ -1042,6 +1055,7 @@ describe('dataTable', () => {
 				{ sortBy } as ListDataTableContentQueryDto,
 				columns,
 				em,
+				null,
 			);
 			return query.select('*').getQuery();
 		}
@@ -1092,7 +1106,13 @@ describe('dataTable', () => {
 					c4: 'iso 8601 date strings are okay too',
 				},
 			];
-			const result = await dataTableService.insertRows(dataTableId, project1.id, rows, 'id');
+			const result = await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				rows,
+				'id',
+			);
 
 			// ASSERT
 			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
@@ -1100,6 +1120,7 @@ describe('dataTable', () => {
 			const { count, data } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 			expect(count).toEqual(4);
@@ -1130,6 +1151,7 @@ describe('dataTable', () => {
 			const initial = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ c1: 1, c2: 'foo' }],
 				'id',
 			);
@@ -1139,6 +1161,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ c1: 1, c2: 'foo' }],
 				'id',
 			);
@@ -1182,6 +1205,7 @@ describe('dataTable', () => {
 			const ids = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ c1: 1, c2: 'foo' },
 					{ c1: 2, c2: 'bar' },
@@ -1190,7 +1214,7 @@ describe('dataTable', () => {
 			);
 			expect(ids).toEqual([{ id: 1 }, { id: 2 }]);
 
-			await dataTableService.deleteRows(dataTableId, project1.id, {
+			await dataTableService.deleteRows(dataTableId, project1.id, managementRowAccess, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'id', condition: 'eq', value: ids[0].id }],
@@ -1201,6 +1225,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ c1: 1, c2: 'baz' },
 					{ c1: 2, c2: 'faz' },
@@ -1256,6 +1281,7 @@ describe('dataTable', () => {
 			const ids = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ c1: 1, c2: 'foo', c3: true, c4: now },
 					{ c1: 2, c2: 'bar', c3: false, c4: now },
@@ -1312,6 +1338,7 @@ describe('dataTable', () => {
 			const ids = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ c1: 1, c2: 'foo', c3: true, c4: now },
 					{ c2: 'bar', c1: 2, c3: false, c4: now },
@@ -1366,6 +1393,7 @@ describe('dataTable', () => {
 			const result = dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 					{ cWrong: 3, c1: 4, c2: true, c3: new Date(), c4: 'hello?' },
@@ -1394,6 +1422,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Mary', age: 20, email: 'mary@example.com', active: true }, // full row
 					{ name: 'Alice', age: 30 }, // missing email and active
@@ -1406,6 +1435,7 @@ describe('dataTable', () => {
 			const { count, data } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 			expect(count).toEqual(4);
@@ -1453,6 +1483,7 @@ describe('dataTable', () => {
 			const result = dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 					{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
@@ -1476,6 +1507,7 @@ describe('dataTable', () => {
 			const result = dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ c1: '2025-99-15T09:48:14.259Z' }],
 				'id',
 			);
@@ -1501,6 +1533,7 @@ describe('dataTable', () => {
 			const inserted = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ registeredAt: dateWithOffset }],
 				'all',
 			);
@@ -1524,6 +1557,7 @@ describe('dataTable', () => {
 			const inserted = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ registeredAt: isoWithOffsetPlus }, { registeredAt: isoWithOffsetMinus }],
 				'all',
 			);
@@ -1549,6 +1583,7 @@ describe('dataTable', () => {
 			const result = dataTableService.insertRows(
 				'this is not an id',
 				project1.id,
+				managementRowAccess,
 				[
 					{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 					{ cWrong: 3, c2: true, c3: new Date(), c4: 'hello?' },
@@ -1572,6 +1607,7 @@ describe('dataTable', () => {
 			const result = dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ c1: 3 }, { c1: wrongValue }],
 				'id',
 			);
@@ -1592,7 +1628,13 @@ describe('dataTable', () => {
 
 			// ACT
 			const rows = [{}, {}, {}];
-			const result = await dataTableService.insertRows(dataTableId, project1.id, rows, 'id');
+			const result = await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				rows,
+				'id',
+			);
 
 			// ASSERT
 			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
@@ -1600,6 +1642,7 @@ describe('dataTable', () => {
 			const { count, data } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 			expect(count).toEqual(3);
@@ -1631,7 +1674,12 @@ describe('dataTable', () => {
 
 				// ACT
 				const rows = [{}];
-				const result = await dataTableService.insertRows(dataTableId, project1.id, rows);
+				const result = await dataTableService.insertRows(
+					dataTableId,
+					project1.id,
+					managementRowAccess,
+					rows,
+				);
 
 				// ASSERT
 				expect(result).toEqual({ success: true, insertedRows: 1 });
@@ -1639,6 +1687,7 @@ describe('dataTable', () => {
 				const { count, data } = await dataTableService.getManyRowsAndCount(
 					dataTableId,
 					project1.id,
+					managementRowAccess,
 					{},
 				);
 				expect(count).toEqual(1);
@@ -1654,7 +1703,12 @@ describe('dataTable', () => {
 				});
 
 				// ACT
-				const result = await dataTableService.insertRows(dataTableId, project1.id, [{}, {}]);
+				const result = await dataTableService.insertRows(
+					dataTableId,
+					project1.id,
+					managementRowAccess,
+					[{}, {}],
+				);
 
 				// ASSERT
 				expect(result).toEqual({ success: true, insertedRows: 2 });
@@ -1662,6 +1716,7 @@ describe('dataTable', () => {
 				const { count, data } = await dataTableService.getManyRowsAndCount(
 					dataTableId,
 					project1.id,
+					managementRowAccess,
 					{},
 				);
 
@@ -1689,7 +1744,12 @@ describe('dataTable', () => {
 					c2: index % 2 === 0,
 					c3: `index ${index}`,
 				}));
-				const result = await dataTableService.insertRows(dataTableId, project1.id, rows);
+				const result = await dataTableService.insertRows(
+					dataTableId,
+					project1.id,
+					managementRowAccess,
+					rows,
+				);
 
 				// ASSERT
 				expect(result).toEqual({ success: true, insertedRows: rows.length });
@@ -1697,6 +1757,7 @@ describe('dataTable', () => {
 				const { count, data } = await dataTableService.getManyRowsAndCount(
 					dataTableId,
 					project1.id,
+					managementRowAccess,
 					{},
 				);
 				expect(count).toEqual(rows.length);
@@ -1728,6 +1789,7 @@ describe('dataTable', () => {
 			const ids = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ pid: '1995-111a', name: 'Alice', age: 30 },
 					{ pid: '1994-222a', name: 'John', age: 31 },
@@ -1739,13 +1801,18 @@ describe('dataTable', () => {
 			expect(ids).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
 			// ACT
-			const result = await dataTableService.upsertRow(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'pid', value: '1995-111a', condition: 'eq' }],
+			const result = await dataTableService.upsertRow(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'pid', value: '1995-111a', condition: 'eq' }],
+					},
+					data: { name: 'Alicia', age: 31 },
 				},
-				data: { name: 'Alicia', age: 31 },
-			});
+			);
 
 			// ASSERT
 			expect(result).toBe(true);
@@ -1753,6 +1820,7 @@ describe('dataTable', () => {
 			const { count, data } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 
@@ -1793,19 +1861,25 @@ describe('dataTable', () => {
 			const ids = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ pid: '1995-111a', name: 'Alice', age: 30 }],
 				'id',
 			);
 			expect(ids).toEqual([{ id: 1 }]);
 
 			// ACT
-			const result = await dataTableService.upsertRow(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'pid', value: '1995-222b', condition: 'eq' }],
+			const result = await dataTableService.upsertRow(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'pid', value: '1995-222b', condition: 'eq' }],
+					},
+					data: { pid: '1995-222b', name: 'Alice', age: 30 },
 				},
-				data: { pid: '1995-222b', name: 'Alice', age: 30 },
-			});
+			);
 
 			// ASSERT
 			expect(result).toBe(true);
@@ -1813,6 +1887,7 @@ describe('dataTable', () => {
 			const { count, data } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 
@@ -1848,6 +1923,7 @@ describe('dataTable', () => {
 			const ids = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ fullName: 'Alice Cooper', age: 30, birthday: new Date('1995-01-01') }],
 				'id',
 			);
@@ -1857,6 +1933,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.upsertRow(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -1895,6 +1972,7 @@ describe('dataTable', () => {
 			const ids = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ fullName: 'Alice Cooper', age: 30, birthday: new Date('1995-01-01') }],
 				'id',
 			);
@@ -1904,6 +1982,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.upsertRow(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -1940,6 +2019,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ name: 'Alice', age: 30 }],
 				'id',
 			);
@@ -1948,6 +2028,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.upsertRow(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -1974,7 +2055,12 @@ describe('dataTable', () => {
 			]);
 
 			// Verify data was NOT persisted
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 
 			expect(data).toEqual([
 				expect.objectContaining({
@@ -1997,6 +2083,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ name: 'Alice', age: 30 }],
 				'id',
 			);
@@ -2005,6 +2092,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.upsertRow(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -2036,6 +2124,7 @@ describe('dataTable', () => {
 			const { count, data } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 
@@ -2066,6 +2155,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Alice', age: 30, active: true },
 					{ name: 'Bob', age: 25, active: false },
@@ -2075,17 +2165,27 @@ describe('dataTable', () => {
 			);
 
 			// ACT
-			const result = await dataTableService.deleteRows(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'active', condition: 'eq', value: true }],
+			const result = await dataTableService.deleteRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'active', condition: 'eq', value: true }],
+					},
 				},
-			});
+			);
 
 			// ASSERT
 			expect(result).toBe(true);
 
-			const rows = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const rows = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(rows.count).toBe(1);
 			expect(rows.data).toEqual([
 				expect.objectContaining({
@@ -2111,6 +2211,7 @@ describe('dataTable', () => {
 			const insertedIds = await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Alice', age: 30 },
 					{ name: 'Bob', age: 25 },
@@ -2124,17 +2225,27 @@ describe('dataTable', () => {
 				.map(({ id }) => ({ columnName: 'id', condition: 'eq' as const, value: id }));
 
 			// ACT
-			const result = await dataTableService.deleteRows(dataTableId, project1.id, {
-				filter: {
-					type: 'or',
-					filters,
+			const result = await dataTableService.deleteRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'or',
+						filters,
+					},
 				},
-			});
+			);
 
 			// ASSERT
 			expect(result).toBe(true);
 
-			const rows = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const rows = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(rows.count).toBe(1);
 			expect(rows.data).toEqual([
 				expect.objectContaining({
@@ -2157,6 +2268,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Alice', age: 30 },
 					{ name: 'Bob', age: 25 },
@@ -2165,17 +2277,27 @@ describe('dataTable', () => {
 			);
 
 			// ACT
-			const result = await dataTableService.deleteRows(dataTableId, project1.id, {
-				filter: {
-					type: 'or',
-					filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+			const result = await dataTableService.deleteRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'or',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
 				},
-			});
+			);
 
 			// ASSERT
 			expect(result).toBe(true);
 
-			const rows = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const rows = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(rows.count).toBe(1);
 			expect(rows.data).toEqual([
 				expect.objectContaining({
@@ -2199,6 +2321,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ name: 'Alice', age: 30 }],
 				'id',
 			);
@@ -2207,6 +2330,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.deleteRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -2242,6 +2366,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Alice', age: 30 },
 					{ name: 'Bob', age: 25 },
@@ -2253,6 +2378,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.deleteRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -2284,7 +2410,12 @@ describe('dataTable', () => {
 			]);
 
 			// Should not actually delete the rows
-			const rows = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const rows = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(rows.count).toBe(2);
 			expect(rows.data).toEqual([
 				expect.objectContaining({ name: 'Alice', age: 30 }),
@@ -2306,6 +2437,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Alice', age: 30 },
 					{ name: 'Bob', age: 25 },
@@ -2317,6 +2449,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.deleteRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -2348,7 +2481,12 @@ describe('dataTable', () => {
 			]);
 
 			// Should not actually delete the rows
-			const rows = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const rows = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(rows.count).toBe(2);
 			expect(rows.data).toEqual([
 				expect.objectContaining({ name: 'Alice', age: 30 }),
@@ -2370,6 +2508,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[{ name: 'Alice', age: 30 }],
 				'id',
 			);
@@ -2378,6 +2517,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.deleteRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -2391,18 +2531,28 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(result).toEqual([]);
 
-			const rows = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const rows = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(rows.count).toBe(1);
 		});
 
 		it('fails when trying to delete from non-existent data table', async () => {
 			// ACT & ASSERT
-			const result = dataTableService.deleteRows('non-existent-id', project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+			const result = dataTableService.deleteRows(
+				'non-existent-id',
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+					},
 				},
-			});
+			);
 
 			await expect(result).rejects.toThrow(DataTableNotFoundError);
 		});
@@ -2415,20 +2565,32 @@ describe('dataTable', () => {
 			});
 			const { id: dataTableId } = dataTable;
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice' },
+			]);
 
 			// ACT
-			const result = await dataTableService.deleteRows(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'name', condition: 'eq', value: 'Charlie' }],
+			const result = await dataTableService.deleteRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Charlie' }],
+					},
 				},
-			});
+			);
 
 			// ASSERT
 			expect(result).toBe(true);
 
-			const { count } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { count } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(count).toBe(1);
 		});
 
@@ -2440,14 +2602,14 @@ describe('dataTable', () => {
 			});
 			const { id: dataTableId } = dataTable;
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice' },
 				{ name: 'Bob' },
 				{ name: 'Charlie' },
 			]);
 
 			// ACT
-			const result = dataTableService.deleteRows(dataTableId, project1.id, {
+			const result = dataTableService.deleteRows(dataTableId, project1.id, managementRowAccess, {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				filter: undefined as any,
 			});
@@ -2466,14 +2628,14 @@ describe('dataTable', () => {
 			});
 			const { id: dataTableId } = dataTable;
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice' },
 				{ name: 'Bob' },
 				{ name: 'Charlie' },
 			]);
 
 			// ACT
-			const result = dataTableService.deleteRows(dataTableId, project1.id, {
+			const result = dataTableService.deleteRows(dataTableId, project1.id, managementRowAccess, {
 				filter: { type: 'and', filters: [] },
 			});
 
@@ -2491,12 +2653,13 @@ describe('dataTable', () => {
 			});
 
 			// Insert empty rows
-			await dataTableService.insertRows(dataTableId, project1.id, [{}, {}]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [{}, {}]);
 
 			// Verify rows exist with only system columns
 			const { count: initialCount, data: initialData } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 			expect(initialCount).toEqual(2);
@@ -2506,12 +2669,17 @@ describe('dataTable', () => {
 			]);
 
 			// ACT
-			const result = await dataTableService.deleteRows(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+			const result = await dataTableService.deleteRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+					},
 				},
-			});
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
@@ -2520,6 +2688,7 @@ describe('dataTable', () => {
 			const { count: finalCount, data: finalData } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 			expect(finalCount).toEqual(1);
@@ -2543,6 +2712,7 @@ describe('dataTable', () => {
 			await dataTableService.insertRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				[
 					{ name: 'Alice', age: 30 },
 					{ name: 'Bob', age: 25 },
@@ -2552,7 +2722,11 @@ describe('dataTable', () => {
 			);
 
 			// ACT
-			const result = await dataTableService.clearRows(dataTableId, project1.id);
+			const result = await dataTableService.clearRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+			);
 
 			// ASSERT
 			expect(result).toEqual({ deletedCount: 3 });
@@ -2560,6 +2734,7 @@ describe('dataTable', () => {
 			const { count, data } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 			expect(count).toEqual(0);
@@ -2580,7 +2755,11 @@ describe('dataTable', () => {
 			});
 
 			// ACT
-			const result = await dataTableService.clearRows(dataTableId, project1.id);
+			const result = await dataTableService.clearRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+			);
 
 			// ASSERT
 			expect(result).toEqual({ deletedCount: 0 });
@@ -2593,10 +2772,16 @@ describe('dataTable', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }], 'id');
+			await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				[{ name: 'Alice' }],
+				'id',
+			);
 
 			// ACT
-			await dataTableService.clearRows(dataTableId, project1.id);
+			await dataTableService.clearRows(dataTableId, project1.id, managementRowAccess);
 
 			// ASSERT
 			const { data } = await dataTableService.getManyAndCount({
@@ -2613,7 +2798,7 @@ describe('dataTable', () => {
 			});
 
 			// ACT
-			const result = dataTableService.clearRows(dataTableId, project2.id);
+			const result = dataTableService.clearRows(dataTableId, project2.id, managementRowAccess);
 
 			// ASSERT
 			await expect(result).rejects.toThrow(DataTableNotFoundError);
@@ -2633,21 +2818,34 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
 				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
 			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
-				data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
+					data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -2679,7 +2877,7 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{
 					name: 'Alice',
 					age: 30,
@@ -2693,15 +2891,25 @@ describe('dataTable', () => {
 			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 1 }] },
-				data: { name: 'Alicia', age: 31, active: false },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 1 }] },
+					data: { name: 'Alicia', age: 31, active: false },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -2731,13 +2939,14 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true },
 			]);
 
 			const { data: initialRows } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 
@@ -2745,10 +2954,18 @@ describe('dataTable', () => {
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
-				data: { age: 31, active: false },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
+					data: { age: 31, active: false },
+				},
+			);
 
 			// ASSERT
 			expect(result).toBe(true);
@@ -2756,6 +2973,7 @@ describe('dataTable', () => {
 			const { data: updatedRows } = await dataTableService.getManyRowsAndCount(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{},
 			);
 
@@ -2782,21 +3000,34 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
 				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
 			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
-				data: { name: 'Alicia' },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
+					data: { name: 'Alicia' },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -2829,21 +3060,31 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
 				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
 			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'age', condition: 'eq', value: 30 }] },
-				data: { age: 31 },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: { type: 'and', filters: [{ columnName: 'age', condition: 'eq', value: 30 }] },
+					data: { age: 31 },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -2871,18 +3112,30 @@ describe('dataTable', () => {
 				columns: [{ name: 'age', type: 'number' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ age: 30 }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ age: 30 },
+			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'age', condition: 'eq', value: '30' }] },
-				data: { age: '31' },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: { type: 'and', filters: [{ columnName: 'age', condition: 'eq', value: '30' }] },
+					data: { age: '31' },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual([expect.objectContaining({ age: 31 })]);
 		});
 
@@ -2893,10 +3146,12 @@ describe('dataTable', () => {
 				columns: [{ name: 'age', type: 'number' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ age: 30 }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ age: 30 },
+			]);
 
 			// ACT
-			const result = dataTableService.updateRows(dataTableId, project1.id, {
+			const result = dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'age', condition: 'eq', value: '30dfddf' }],
@@ -2921,21 +3176,34 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
 				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
 			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'active', condition: 'eq', value: true }] },
-				data: { active: false },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'active', condition: 'eq', value: true }],
+					},
+					data: { active: false },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -2971,25 +3239,35 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true, birthday: aliceBirthday },
 				{ name: 'Bob', age: 25, active: false, birthday: bobBirthday },
 			]);
 
 			// ACT
 			const newBirthday = new Date('1990-01-03');
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'birthday', condition: 'eq', value: aliceBirthday }],
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'birthday', condition: 'eq', value: aliceBirthday }],
+					},
+					data: { birthday: newBirthday },
 				},
-				data: { birthday: newBirthday },
-			});
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -3021,28 +3299,38 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, department: 'Engineering' },
 				{ name: 'Alice', age: 25, department: 'Marketing' },
 				{ name: 'Bob', age: 30, department: 'Engineering' },
 			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [
-						{ columnName: 'name', condition: 'eq', value: 'Alice' },
-						{ columnName: 'age', condition: 'eq', value: 30 },
-					],
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [
+							{ columnName: 'name', condition: 'eq', value: 'Alice' },
+							{ columnName: 'age', condition: 'eq', value: 30 },
+						],
+					},
+					data: { department: 'Management' },
 				},
-				data: { department: 'Management' },
-			});
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -3077,21 +3365,33 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice', age: 30 }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice', age: 30 },
+			]);
 
 			// ACT
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'name', condition: 'eq', value: 'Charlie' }],
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Charlie' }],
+					},
+					data: { age: 25 },
 				},
-				data: { age: 25 },
-			});
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual([
 				expect.objectContaining({
 					name: 'Alice',
@@ -3110,10 +3410,12 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice', age: 30 }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice', age: 30 },
+			]);
 
 			// ACT
-			const result = dataTableService.updateRows(dataTableId, project1.id, {
+			const result = dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 				filter: { type: 'and', filters: [] },
 				data: { name: 'Alice', age: 31 },
 			});
@@ -3122,7 +3424,12 @@ describe('dataTable', () => {
 			await expect(result).rejects.toThrow(DataTableValidationError);
 			await expect(result).rejects.toThrow('Filter must not be empty');
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual([
 				expect.objectContaining({
 					name: 'Alice',
@@ -3141,10 +3448,12 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice', age: 30 }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice', age: 30 },
+			]);
 
 			// ACT
-			const result = dataTableService.updateRows(dataTableId, project1.id, {
+			const result = dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: {},
 			});
@@ -3153,7 +3462,12 @@ describe('dataTable', () => {
 			await expect(result).rejects.toThrow(DataTableValidationError);
 			await expect(result).rejects.toThrow('Data columns must not be empty');
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual([
 				expect.objectContaining({
 					name: 'Alice',
@@ -3164,10 +3478,18 @@ describe('dataTable', () => {
 
 		it('should fail when data table does not exist', async () => {
 			// ACT & ASSERT
-			const result = dataTableService.updateRows('non-existent-id', project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
-				data: { age: 25 },
-			});
+			const result = dataTableService.updateRows(
+				'non-existent-id',
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
+					data: { age: 25 },
+				},
+			);
 
 			await expect(result).rejects.toThrow(DataTableNotFoundError);
 		});
@@ -3179,10 +3501,12 @@ describe('dataTable', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice' },
+			]);
 
 			// ACT & ASSERT
-			const result = dataTableService.updateRows(dataTableId, project1.id, {
+			const result = dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { invalidColumn: 'value' },
 			});
@@ -3197,10 +3521,12 @@ describe('dataTable', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice' },
+			]);
 
 			// ACT & ASSERT
-			const result = dataTableService.updateRows(dataTableId, project1.id, {
+			const result = dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'invalidColumn', condition: 'eq', value: 'Alice' }],
@@ -3221,10 +3547,12 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice', age: 30 }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice', age: 30 },
+			]);
 
 			// ACT & ASSERT
-			const result = dataTableService.updateRows(dataTableId, project1.id, {
+			const result = dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 				data: { age: 'not-a-number' },
 			});
@@ -3243,20 +3571,33 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true },
 			]);
 
 			// ACT - only update age, leaving name and active unchanged
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
-				data: { age: 31 },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
+					data: { age: 31 },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data).toEqual([
 				expect.objectContaining({
 					name: 'Alice',
@@ -3277,21 +3618,34 @@ describe('dataTable', () => {
 			});
 
 			const initialDate = new Date('1990-01-01');
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', birthDate: initialDate },
 			]);
 
 			// ACT
 			const newDate = new Date('1991-02-02');
-			const result = await dataTableService.updateRows(dataTableId, project1.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
-				data: { birthDate: newDate.toISOString() },
-			});
+			const result = await dataTableService.updateRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }],
+					},
+					data: { birthDate: newDate.toISOString() },
+				},
+			);
 
 			// ASSERT
 			expect(result).toEqual(true);
 
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 
 			expect(data).toEqual([expect.objectContaining({ id: 1, name: 'Alice', birthDate: newDate })]);
 		});
@@ -3309,7 +3663,7 @@ describe('dataTable', () => {
 			});
 
 			const now = new Date();
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30, active: true, timestamp: now },
 				{ name: 'Bob', age: 25, active: false, timestamp: now },
 			]);
@@ -3321,6 +3675,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.updateRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -3347,7 +3702,7 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', age: 30 },
 				{ name: 'Bob', age: 25 },
 			]);
@@ -3356,6 +3711,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.updateRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -3396,7 +3752,12 @@ describe('dataTable', () => {
 			);
 
 			// Should not actually update the rows
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			const aliceRow = data.find((row) => row.name === 'Alice');
 			expect(aliceRow?.age).toBe(30); // Should still be original value
 		});
@@ -3411,12 +3772,15 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice', age: 30 }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice', age: 30 },
+			]);
 
 			// ACT
 			const result = await dataTableService.updateRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -3432,7 +3796,12 @@ describe('dataTable', () => {
 			expect(result).toEqual([]);
 
 			// Should not update any rows
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			expect(data[0].age).toBe(30);
 		});
 
@@ -3446,7 +3815,7 @@ describe('dataTable', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
 				{ name: 'Alice', active: false },
 				{ name: 'Bob', active: false },
 				{ name: 'Charlie', active: true },
@@ -3456,6 +3825,7 @@ describe('dataTable', () => {
 			const result = await dataTableService.updateRows(
 				dataTableId,
 				project1.id,
+				managementRowAccess,
 				{
 					filter: {
 						type: 'and',
@@ -3487,7 +3857,12 @@ describe('dataTable', () => {
 			);
 
 			// Should not actually update the rows
-			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 			const activeFalseRows = data.filter((row) => row.active === false);
 			expect(activeFalseRows).toHaveLength(2);
 		});
@@ -3499,11 +3874,18 @@ describe('dataTable', () => {
 				name: 'dataTable',
 				columns: [{ name: 'name', type: 'string' }],
 			});
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice' },
+			]);
 
-			const result = dataTableService.getManyRowsAndCount(dataTableId, project1.id, {
-				sortBy: ['bogusCol', 'ASC'],
-			});
+			const result = dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{
+					sortBy: ['bogusCol', 'ASC'],
+				},
+			);
 
 			await expect(result).rejects.toThrow(DataTableValidationError);
 			await expect(result).rejects.toThrow(
@@ -3518,11 +3900,18 @@ describe('dataTable', () => {
 					name: 'dataTable',
 					columns: [{ name: 'name', type: 'string' }],
 				});
-				await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+				await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+					{ name: 'Alice' },
+				]);
 
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {
-					sortBy: [columnName, 'ASC'],
-				});
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project1.id,
+					managementRowAccess,
+					{
+						sortBy: [columnName, 'ASC'],
+					},
+				);
 				expect(result.count).toBe(1);
 				expect(result.data[0].name).toBe('Alice');
 			},
@@ -3561,11 +3950,22 @@ describe('dataTable', () => {
 				},
 			];
 
-			const ids = await dataTableService.insertRows(dataTableId, project1.id, rows, 'id');
+			const ids = await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				rows,
+				'id',
+			);
 			expect(ids).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
 			// ACT
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				managementRowAccess,
+				{},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(3);
@@ -3608,10 +4008,12 @@ describe('dataTable', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+			await dataTableService.insertRows(dataTableId, project1.id, managementRowAccess, [
+				{ name: 'Alice' },
+			]);
 
 			// ACT
-			const result = dataTableService.updateRows(dataTableId, project1.id, {
+			const result = dataTableService.updateRows(dataTableId, project1.id, managementRowAccess, {
 				filter: {
 					type: 'and',
 					filters: [{ columnName: 'invalidColumn', condition: 'eq', value: 'Alice' }],

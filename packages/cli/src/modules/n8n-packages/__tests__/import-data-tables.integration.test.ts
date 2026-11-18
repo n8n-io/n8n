@@ -162,7 +162,9 @@ describe('workflow package import — with data tables', () => {
 	}
 
 	async function rowsOf(tableId: string) {
-		return (await dataTableService.getManyRowsAndCount(tableId, project.id, {})).data;
+		return (
+			await dataTableService.getManyRowsAndCount(tableId, project.id, { kind: 'management' }, {})
+		).data;
 	}
 
 	describe('creating missing tables', () => {
@@ -190,6 +192,7 @@ describe('workflow package import — with data tables', () => {
 			const { count: rowCount } = await dataTableService.getManyRowsAndCount(
 				table.id,
 				project.id,
+				{ kind: 'management' },
 				{},
 			);
 			expect(rowCount).toBe(0);
@@ -980,7 +983,7 @@ describe('workflow package import — with data tables', () => {
 					{ name: 'old', type: 'string' },
 				],
 			});
-			await dataTableService.insertRows(table.id, project.id, [
+			await dataTableService.insertRows(table.id, project.id, { kind: 'management' }, [
 				{ foo: 'x', score: '10', note: 'first', email: 'a@example.com', old: 'gone' },
 			]);
 			const columnIds = Object.fromEntries(table.columns.map(({ id, name }) => [name, id]));
@@ -1020,7 +1023,9 @@ describe('workflow package import — with data tables', () => {
 					{ name: 'signed_up_at', type: 'date' },
 				],
 			});
-			await dataTableService.insertRows(table.id, project.id, [{ email: 'a@example.com' }]);
+			await dataTableService.insertRows(table.id, project.id, { kind: 'management' }, [
+				{ email: 'a@example.com' },
+			]);
 			const packageTable = serializedDataTable({
 				id: table.id,
 				columns: [
@@ -1086,7 +1091,9 @@ describe('workflow package import — with data tables', () => {
 					{ name: 'c', type: 'string' },
 				],
 			});
-			await dataTableService.insertRows(table.id, project.id, [{ a: '1', b: '2', c: '3' }]);
+			await dataTableService.insertRows(table.id, project.id, { kind: 'management' }, [
+				{ a: '1', b: '2', c: '3' },
+			]);
 			const columnIds = Object.fromEntries(table.columns.map(({ id, name }) => [name, id]));
 			const packageColumns: SerializedDataTable['columns'] = [
 				{ id: columnIds.a, name: 'b', type: 'string', index: 0 },
@@ -1389,7 +1396,7 @@ describe('workflow package import — with data tables', () => {
 					{ name: 'extra', type: 'string' },
 				],
 			});
-			await dataTableService.insertRows(table.id, project.id, [
+			await dataTableService.insertRows(table.id, project.id, { kind: 'management' }, [
 				{ email: 'a@example.com', extra: 'keep me' },
 			]);
 			const { packageBuffer } = await buildDataTablePackage([
@@ -1425,7 +1432,12 @@ describe('workflow package import — with data tables', () => {
 				{ name: 'email', type: 'string', index: 0 },
 				{ name: 'extra', type: 'string', index: 1 },
 			]);
-			const { data } = await dataTableService.getManyRowsAndCount(table.id, project.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				table.id,
+				project.id,
+				{ kind: 'management' },
+				{},
+			);
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', extra: 'keep me' })]);
 			expect(data[0]).not.toHaveProperty('first_new');
 			expect(data[0]).not.toHaveProperty('second_new');
@@ -1483,7 +1495,7 @@ describe('workflow package import — with data tables', () => {
 				],
 			});
 			const signedUpAt = new Date('2024-01-02T03:04:05.000Z');
-			await dataTableService.insertRows(table.id, project.id, [
+			await dataTableService.insertRows(table.id, project.id, { kind: 'management' }, [
 				{ signed_up_at: signedUpAt, mail: 'a@example.com' },
 			]);
 			const mail = table.columns.find(({ name }) => name === 'mail')!;
@@ -1506,7 +1518,12 @@ describe('workflow package import — with data tables', () => {
 				{ name: 'added', type: 'boolean', index: 2 },
 			]);
 			expect((await dataTableService.getOne(table.id, project.id)).name).toBe('Customers');
-			const { data } = await dataTableService.getManyRowsAndCount(table.id, project.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				table.id,
+				project.id,
+				{ kind: 'management' },
+				{},
+			);
 			expect(data).toHaveLength(1);
 			expect(data[0]).toMatchObject({ email: 'a@example.com', added: null });
 			expect(data[0]).not.toHaveProperty('mail');

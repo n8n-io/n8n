@@ -2765,7 +2765,7 @@ describe('Apply data table changes', () => {
 			const promoted = await prepareDataTableApply();
 			const { project, workflow, orders, dataTableService } = promoted;
 			await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
-			await dataTableService.insertRows(orders.id, project.id, [
+			await dataTableService.insertRows(orders.id, project.id, { kind: 'management' }, [
 				{ email: 'a@example.com', extra: 'keep me' },
 			]);
 			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
@@ -2814,7 +2814,12 @@ describe('Apply data table changes', () => {
 			});
 			expect(changes.filter(({ destructive }) => destructive)).toEqual([removeExtra]);
 			expect(await snapshotApplyState()).toEqual(before);
-			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				orders.id,
+				project.id,
+				{ kind: 'management' },
+				{},
+			);
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', extra: 'keep me' })]);
 			expect(applyPackageResultSchema.parse(result)).toEqual(result);
 		},
@@ -2826,7 +2831,7 @@ describe('Apply data table changes', () => {
 			const promoted = await prepareDataTableApply();
 			const { environments, project, workflow, orders, dataTableService } = promoted;
 			await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
-			await dataTableService.insertRows(orders.id, project.id, [
+			await dataTableService.insertRows(orders.id, project.id, { kind: 'management' }, [
 				{ email: 'a@example.com', extra: 'keep me' },
 			]);
 			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
@@ -2856,6 +2861,7 @@ describe('Apply data table changes', () => {
 			const { data: rowsBefore } = await dataTableService.getManyRowsAndCount(
 				orders.id,
 				project.id,
+				{ kind: 'management' },
 				{},
 			);
 			expect(rowsBefore).toEqual([expect.objectContaining({ extra: 'keep me' })]);
@@ -2870,7 +2876,12 @@ describe('Apply data table changes', () => {
 			expect(
 				(await dataTableService.getColumns(orders.id, project.id)).map(({ name }) => name),
 			).toEqual(['email', 'note']);
-			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				orders.id,
+				project.id,
+				{ kind: 'management' },
+				{},
+			);
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com' })]);
 			expect(data[0]).not.toHaveProperty('extra');
 		},
@@ -2917,7 +2928,7 @@ describe('Apply data table changes', () => {
 			const promoted = await prepareDataTableApply();
 			const { project, orders, dataTableService } = promoted;
 			await renameNoteColumn(promoted, 'memo');
-			await dataTableService.insertRows(orders.id, project.id, [
+			await dataTableService.insertRows(orders.id, project.id, { kind: 'management' }, [
 				{ email: 'a@example.com', memo: 'keep me' },
 			]);
 
@@ -2928,7 +2939,12 @@ describe('Apply data table changes', () => {
 			expect(
 				(await dataTableService.getColumns(orders.id, project.id)).map(({ name }) => name),
 			).toEqual(['email', 'note']);
-			const { data } = await dataTableService.getManyRowsAndCount(orders.id, project.id, {});
+			const { data } = await dataTableService.getManyRowsAndCount(
+				orders.id,
+				project.id,
+				{ kind: 'management' },
+				{},
+			);
 			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', note: 'keep me' })]);
 			expect(await listApplyChanges(project.id)).toEqual([]);
 		},

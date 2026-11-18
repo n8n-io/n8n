@@ -302,6 +302,8 @@ export {
 	type DataTableListFilter,
 	type DataTableListOptions,
 	type DataTableListSortBy,
+	type DataTableRowRule,
+	dataTableRowRuleSchema,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
 	dataTableColumnTypeSchema,

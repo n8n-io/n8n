@@ -14,6 +14,12 @@ export * from './errors/data-table-name-conflict.error';
 export * from './errors/data-table-not-found.error';
 export * from './errors/data-table-system-column-name-conflict.error';
 export * from './errors/data-table-validation.error';
+export * from './errors/data-table-row-access.error';
+export {
+	type DataTableRowActor,
+	type RowAccess,
+	managementRowAccess,
+} from './data-table.types';
 export * from './persistence/data-table-ddl';
 export * from './utils/pair-columns';
 export {

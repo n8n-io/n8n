@@ -35,6 +35,13 @@ export const dataTableColumnSchema = dataTableCreateColumnSchema.extend({
 	dataTableId: dataTableIdSchema,
 });
 
+export const dataTableRowRuleSchema = z.object({
+	column: dataTableColumnNameSchema,
+	match: z.enum(['id', 'email']),
+	runsWithoutUser: z.enum(['deny', 'allRows']),
+});
+export type DataTableRowRule = z.infer<typeof dataTableRowRuleSchema>;
+
 export const dataTableSchema = z.object({
 	id: dataTableIdSchema,
 	name: dataTableNameSchema,

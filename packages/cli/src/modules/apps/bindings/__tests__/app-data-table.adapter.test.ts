@@ -90,7 +90,12 @@ describe('AppDataTableAdapter', () => {
 
 		await adapter.listRows(ctx, 't1', { take: 10 });
 
-		expect(service.getManyRowsAndCount).toHaveBeenCalledWith('t1', 'project-1', { take: 10 });
+		expect(service.getManyRowsAndCount).toHaveBeenCalledWith(
+			't1',
+			'project-1',
+			{ kind: 'management' },
+			{ take: 10 },
+		);
 	});
 
 	it('maps a rejected value to invalid_input', async () => {

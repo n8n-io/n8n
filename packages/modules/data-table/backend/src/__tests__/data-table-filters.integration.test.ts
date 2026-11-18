@@ -7,6 +7,7 @@ import { Container } from '@n8n/di';
 import { mockDataTableSizeValidator } from '../testing';
 import { DataTableService } from '../data-table.service';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
+import { managementRowAccess } from '../data-table.types';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table'], {
@@ -200,20 +201,25 @@ describe('dataTable filters', () => {
 					{ name: 'Jack', age: 35, birthday: new Date('1988-12-05T00:00:00.000Z'), isActive: true },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [
-							{ columnName: 'name', value: 'Mary', condition: 'eq' },
-							{ columnName: 'age', value: 25, condition: 'eq' },
-							{ columnName: 'birthday', value: maryBirthday, condition: 'eq' },
-							{ columnName: 'isActive', value: false, condition: 'eq' },
-						],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'name', value: 'Mary', condition: 'eq' },
+								{ columnName: 'age', value: 25, condition: 'eq' },
+								{ columnName: 'birthday', value: maryBirthday, condition: 'eq' },
+								{ columnName: 'isActive', value: false, condition: 'eq' },
+							],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(1);
@@ -243,15 +249,20 @@ describe('dataTable filters', () => {
 					{ name: 'Jack', age: 35 },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(2);
@@ -278,15 +289,20 @@ describe('dataTable filters', () => {
 					{ c1: 'Polo', c2: false },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'c1', condition: 'eq', value: null }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'c1', condition: 'eq', value: null }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(2);
@@ -313,15 +329,20 @@ describe('dataTable filters', () => {
 					{ c1: 'Polo', c2: false },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'c1', condition: 'neq', value: null }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'c1', condition: 'neq', value: null }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(2);
@@ -340,15 +361,20 @@ describe('dataTable filters', () => {
 
 				const rows = [{ c1: 'value' }, { c1: null }, { c1: '' }];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'c1', condition: 'isEmpty', value: null }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'c1', condition: 'isEmpty', value: null }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(2);
@@ -367,15 +393,20 @@ describe('dataTable filters', () => {
 
 				const rows = [{ c1: 'value' }, { c1: null }, { c1: '' }];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'c1', condition: 'isNotEmpty', value: null }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'c1', condition: 'isNotEmpty', value: null }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(1);
@@ -389,21 +420,34 @@ describe('dataTable filters', () => {
 					columns: [{ name: 'c1', type: 'number' }],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [{ c1: 1 }, { c1: null }]);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
+					{ c1: 1 },
+					{ c1: null },
+				]);
 
 				// ACT
-				const emptyResult = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'c1', condition: 'isEmpty', value: null }],
+				const emptyResult = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'c1', condition: 'isEmpty', value: null }],
+						},
 					},
-				});
-				const notEmptyResult = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'c1', condition: 'isNotEmpty', value: null }],
+				);
+				const notEmptyResult = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'c1', condition: 'isNotEmpty', value: null }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(emptyResult.count).toEqual(1);
@@ -430,15 +474,20 @@ describe('dataTable filters', () => {
 					{ name: 'Bob', category: null },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'category', condition: 'neq', value: 'A' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'category', condition: 'neq', value: 'A' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(3);
@@ -457,15 +506,23 @@ describe('dataTable filters', () => {
 					columns: [{ name: 'age', type: 'number' }],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [{ age: null }, { age: 30 }]);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
+					{ age: null },
+					{ age: 30 },
+				]);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', condition: 'eq', value: '30' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', condition: 'eq', value: '30' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(1);
@@ -478,15 +535,23 @@ describe('dataTable filters', () => {
 					columns: [{ name: 'age', type: 'number' }],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [{ age: null }, { age: 30 }]);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
+					{ age: null },
+					{ age: 30 },
+				]);
 
 				// ACT
-				const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', condition: 'eq', value: '30dfddf' }],
+				const result = dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', condition: 'eq', value: '30dfddf' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				await expect(result).rejects.toThrow(DataTableValidationError);
@@ -511,15 +576,20 @@ describe('dataTable filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(2);
@@ -546,15 +616,20 @@ describe('dataTable filters', () => {
 					{ name: 'Taj', age: 35 },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'name', value: '%J%', condition: 'ilike' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'name', value: '%J%', condition: 'ilike' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(3);
@@ -581,15 +656,20 @@ describe('dataTable filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(1);
@@ -613,15 +693,20 @@ describe('dataTable filters', () => {
 					{ name: 'Harold', age: 40 },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(2);
@@ -649,15 +734,20 @@ describe('dataTable filters', () => {
 							{ name: 'Mary', age: 25 },
 						];
 
-						await dataTableService.insertRows(dataTableId, project.id, rows);
+						await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 						// ACT
-						const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-							filter: {
-								type: 'and',
-								filters: [{ columnName: 'name', value: null, condition }],
+						const result = dataTableService.getManyRowsAndCount(
+							dataTableId,
+							project.id,
+							managementRowAccess,
+							{
+								filter: {
+									type: 'and',
+									filters: [{ columnName: 'name', value: null, condition }],
+								},
 							},
-						});
+						);
 
 						// ASSERT
 						await expect(result).rejects.toThrow(DataTableValidationError);
@@ -681,15 +771,20 @@ describe('dataTable filters', () => {
 							{ name: 'Mary', age: 25 },
 						];
 
-						await dataTableService.insertRows(dataTableId, project.id, rows);
+						await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 						// ACT
-						const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-							filter: {
-								type: 'and',
-								filters: [{ columnName: 'age', value: 123, condition }],
+						const result = dataTableService.getManyRowsAndCount(
+							dataTableId,
+							project.id,
+							managementRowAccess,
+							{
+								filter: {
+									type: 'and',
+									filters: [{ columnName: 'age', value: 123, condition }],
+								},
 							},
-						});
+						);
 
 						// ASSERT
 						await expect(result).rejects.toThrow(DataTableValidationError);
@@ -713,7 +808,7 @@ describe('dataTable filters', () => {
 
 				it('should treat square brackets literally in like patterns', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test[abc]data' },
 						{ text: 'Test[abc]Data' },
 						{ text: 'testAdata' },
@@ -721,12 +816,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'test%[abc]%', condition: 'like' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'test%[abc]%', condition: 'like' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(1);
@@ -735,7 +835,7 @@ describe('dataTable filters', () => {
 
 				it('should treat asterisk literally in like patterns', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test*data' },
 						{ text: 'Test*Data' },
 						{ text: 'testAdata' },
@@ -743,12 +843,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'test%*%', condition: 'like' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'test%*%', condition: 'like' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(1);
@@ -757,7 +862,7 @@ describe('dataTable filters', () => {
 
 				it('should treat question mark literally in like patterns', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test?data' },
 						{ text: 'Test?Data' },
 						{ text: 'testAdata' },
@@ -765,12 +870,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'test%?%', condition: 'like' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'test%?%', condition: 'like' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(1);
@@ -779,7 +889,7 @@ describe('dataTable filters', () => {
 
 				it('should convert LIKE % wildcard to match zero or more characters', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'data%more' },
 						{ text: 'Data%More' },
 						{ text: 'datamore' },
@@ -788,12 +898,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'data%more', condition: 'like' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'data%more', condition: 'like' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(3);
@@ -808,7 +923,7 @@ describe('dataTable filters', () => {
 
 				it('should treat underscore literally in like patterns', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'prefix_suffix' },
 						{ text: 'Prefix_Suffix' },
 						{ text: 'prefix\\_suffix' },
@@ -817,12 +932,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'like' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'like' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(1);
@@ -831,7 +951,7 @@ describe('dataTable filters', () => {
 
 				it('should handle multiple special characters', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test[*?]data' },
 						{ text: 'Test[*?]Data' },
 						{ text: 'testOtherData' },
@@ -839,12 +959,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'test%[*?]%', condition: 'like' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'test%[*?]%', condition: 'like' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(1);
@@ -865,7 +990,7 @@ describe('dataTable filters', () => {
 
 				it('should treat square brackets literally', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test[abc]data' },
 						{ text: 'Test[ABC]Data' },
 						{ text: 'testAdata' },
@@ -873,12 +998,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: '%[abc]%', condition: 'ilike' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: '%[abc]%', condition: 'ilike' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -892,7 +1022,7 @@ describe('dataTable filters', () => {
 
 				it('should treat asterisk literally', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test*data' },
 						{ text: 'Test*Data' },
 						{ text: 'testOtherData' },
@@ -900,12 +1030,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: '%*%', condition: 'ilike' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: '%*%', condition: 'ilike' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -919,7 +1054,7 @@ describe('dataTable filters', () => {
 
 				it('should treat question mark literally', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test?data' },
 						{ text: 'Test?Data' },
 						{ text: 'testSingleChar' },
@@ -927,12 +1062,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: '%?%', condition: 'ilike' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: '%?%', condition: 'ilike' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -946,7 +1086,7 @@ describe('dataTable filters', () => {
 
 				it('should convert % wildcard to match zero or more characters', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'data%more' },
 						{ text: 'Data%More' },
 						{ text: 'datamore' },
@@ -957,12 +1097,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'data%more', condition: 'ilike' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'data%more', condition: 'ilike' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(6);
@@ -980,7 +1125,7 @@ describe('dataTable filters', () => {
 
 				it('should treat underscore literally', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'prefix_suffix' },
 						{ text: 'Prefix_Suffix' },
 						{ text: 'Prefix\\_Suffix' },
@@ -989,12 +1134,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'ilike' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'ilike' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -1008,7 +1158,7 @@ describe('dataTable filters', () => {
 
 				it('should handle multiple special characters', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ text: 'test[*?]data' },
 						{ text: 'Test[*?]Data' },
 						{ text: 'testOtherData' },
@@ -1016,12 +1166,17 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'text', value: '%[*?]%', condition: 'ilike' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'text', value: '%[*?]%', condition: 'ilike' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -1056,17 +1211,22 @@ describe('dataTable filters', () => {
 						{ name: 'Alice', age: 40 },
 					];
 
-					await dataTableService.insertRows(dataTableId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 				});
 
 				it("retrieves rows with 'greater than' filter correctly", async () => {
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'age', value: 30, condition: 'gt' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'age', value: 30, condition: 'gt' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -1078,12 +1238,17 @@ describe('dataTable filters', () => {
 
 				it("retrieves rows with 'greater than or equal' filter correctly", async () => {
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'age', value: 30, condition: 'gte' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'age', value: 30, condition: 'gte' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(3);
@@ -1096,12 +1261,17 @@ describe('dataTable filters', () => {
 
 				it("retrieves rows with 'less than' filter correctly", async () => {
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'age', value: 35, condition: 'lt' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'age', value: 35, condition: 'lt' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -1113,12 +1283,17 @@ describe('dataTable filters', () => {
 
 				it("retrieves rows with 'less than or equal' filter correctly", async () => {
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'age', value: 35, condition: 'lte' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'age', value: 35, condition: 'lte' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(3);
@@ -1150,17 +1325,22 @@ describe('dataTable filters', () => {
 						{ name: 'David', category: 'Delta' },
 					];
 
-					await dataTableService.insertRows(dataTableId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 				});
 
 				it("retrieves rows with 'greater than' string filter correctly", async () => {
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'category', value: 'Beta', condition: 'gt' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'category', value: 'Beta', condition: 'gt' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -1172,12 +1352,17 @@ describe('dataTable filters', () => {
 
 				it("retrieves rows with 'less than' string filter correctly", async () => {
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'category', value: 'Delta', condition: 'lt' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'category', value: 'Delta', condition: 'lt' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -1208,18 +1393,23 @@ describe('dataTable filters', () => {
 						{ name: 'Task4', registeredAt: new Date('2024-01-02T09:59:00.000Z') },
 					];
 
-					await dataTableService.insertRows(dataTableId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 				});
 
 				it("retrieves rows with 'greater than' date filter correctly", async () => {
 					// ACT
 					const baseDate = new Date('2024-01-01T12:00:00.000Z');
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'gt' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'gt' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(2);
@@ -1232,12 +1422,17 @@ describe('dataTable filters', () => {
 				it("retrieves rows with 'less than or equal' date filter correctly", async () => {
 					// ACT
 					const baseDate = new Date('2024-01-02');
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'lte' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'lte' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toEqual(3);
@@ -1253,6 +1448,7 @@ describe('dataTable filters', () => {
 					const inserted = await dataTableService.insertRows(
 						dataTableId,
 						project.id,
+						managementRowAccess,
 						[{ name: 'TestRow' }],
 						'all',
 					);
@@ -1266,6 +1462,7 @@ describe('dataTable filters', () => {
 					const beforeMidnightResult = await dataTableService.getManyRowsAndCount(
 						dataTableId,
 						project.id,
+						managementRowAccess,
 						{
 							filter: {
 								type: 'and',
@@ -1278,24 +1475,34 @@ describe('dataTable filters', () => {
 					expect(beforeMidnightResult.data.some((row) => row.name === 'TestRow')).toBe(false);
 
 					// ACT - Check the row is returned when using lte on the exact timestamp
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'createdAt', value: createdAtTimestamp, condition: 'lte' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'createdAt', value: createdAtTimestamp, condition: 'lte' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toBeGreaterThanOrEqual(1);
 					expect(result.data.some((row) => row.name === 'TestRow')).toBe(true);
 
 					// ACT - Check the row is returned when using lt on the exact timestamp
-					const resultLt = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'createdAt', value: createdAtTimestamp, condition: 'lt' }],
+					const resultLt = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'createdAt', value: createdAtTimestamp, condition: 'lt' }],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(resultLt.data.some((row) => row.name === 'TestRow')).toBe(false);
@@ -1309,6 +1516,7 @@ describe('dataTable filters', () => {
 					await dataTableService.insertRows(
 						dataTableId,
 						project.id,
+						managementRowAccess,
 						[{ name: 'TimezoneTest', registeredAt: dateWithOffset }],
 						'all',
 					);
@@ -1317,6 +1525,7 @@ describe('dataTable filters', () => {
 					const resultWithOffset = await dataTableService.getManyRowsAndCount(
 						dataTableId,
 						project.id,
+						managementRowAccess,
 						{
 							filter: {
 								type: 'and',
@@ -1328,6 +1537,7 @@ describe('dataTable filters', () => {
 					const resultWithUtc = await dataTableService.getManyRowsAndCount(
 						dataTableId,
 						project.id,
+						managementRowAccess,
 						{
 							filter: {
 								type: 'and',
@@ -1351,18 +1561,25 @@ describe('dataTable filters', () => {
 					const isoWithOffsetMinus = '2024-01-15T02:30:00.000-03:00';
 					const equivalentUtcTime = new Date('2024-01-15T05:30:00.000Z');
 
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'OffsetPlus', registeredAt: isoWithOffsetPlus },
 						{ name: 'OffsetMinus', registeredAt: isoWithOffsetMinus },
 					]);
 
 					// ACT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'registeredAt', value: equivalentUtcTime, condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [
+									{ columnName: 'registeredAt', value: equivalentUtcTime, condition: 'eq' },
+								],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toBe(2);
@@ -1371,7 +1588,7 @@ describe('dataTable filters', () => {
 
 				it('correctly compares dates across timezones with gt/lt filters', async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'TzEarly', registeredAt: new Date('2025-01-15T08:00:00.000+02:00') },
 						{ name: 'TzMiddle', registeredAt: new Date('2025-01-15T12:00:00.000Z') },
 						{ name: 'TzLate', registeredAt: new Date('2025-01-15T20:00:00.000+02:00') },
@@ -1379,30 +1596,40 @@ describe('dataTable filters', () => {
 
 					// ACT
 					const filterDate = new Date('2025-01-15T13:00:00.000+03:00');
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [
-								{ columnName: 'registeredAt', value: filterDate, condition: 'gt' },
-								{ columnName: 'name', value: 'Tz%', condition: 'like' },
-							],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [
+									{ columnName: 'registeredAt', value: filterDate, condition: 'gt' },
+									{ columnName: 'name', value: 'Tz%', condition: 'like' },
+								],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(result.count).toBe(2);
 					expect(result.data.map((r) => r.name).sort()).toEqual(['TzLate', 'TzMiddle']);
 
 					// ACT
-					const resultLt = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [
-								{ columnName: 'registeredAt', value: filterDate, condition: 'lt' },
-								{ columnName: 'name', value: 'Tz%', condition: 'like' },
-							],
+					const resultLt = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [
+									{ columnName: 'registeredAt', value: filterDate, condition: 'lt' },
+									{ columnName: 'name', value: 'Tz%', condition: 'like' },
+								],
+							},
 						},
-					});
+					);
 
 					// ASSERT
 					expect(resultLt.count).toBe(1);
@@ -1429,7 +1656,7 @@ describe('dataTable filters', () => {
 						{ name: 'Mary', age: null },
 					];
 
-					await dataTableService.insertRows(dataTableId, project.id, rows);
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 				});
 
 				describe.each(['gt', 'gte', 'lt', 'lte'] as const)(
@@ -1437,12 +1664,17 @@ describe('dataTable filters', () => {
 					(condition) => {
 						it(`throws error when '${condition}' filter value is null`, async () => {
 							// ACT
-							const result = dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-								filter: {
-									type: 'and',
-									filters: [{ columnName: 'age', value: null, condition }],
+							const result = dataTableService.getManyRowsAndCount(
+								dataTableId,
+								project.id,
+								managementRowAccess,
+								{
+									filter: {
+										type: 'and',
+										filters: [{ columnName: 'age', value: null, condition }],
+									},
 								},
-							});
+							);
 
 							// ASSERT
 							await expect(result).rejects.toThrow(DataTableValidationError);
@@ -1453,12 +1685,17 @@ describe('dataTable filters', () => {
 
 						it(`handles null values in data correctly with '${condition}' filter`, async () => {
 							// ACT
-							const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-								filter: {
-									type: 'and',
-									filters: [{ columnName: 'age', value: 30, condition }],
+							const result = await dataTableService.getManyRowsAndCount(
+								dataTableId,
+								project.id,
+								managementRowAccess,
+								{
+									filter: {
+										type: 'and',
+										filters: [{ columnName: 'age', value: 30, condition }],
+									},
 								},
-							});
+							);
 
 							// ASSERT
 							// Null values should be excluded from comparison results
@@ -1482,7 +1719,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, managementRowAccess, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -1491,15 +1728,20 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'and',
-						filters: [
-							{ columnName: 'name', value: '%ar%', condition: 'ilike' },
-							{ columnName: 'isActive', value: true, condition: 'neq' },
-						],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'name', value: '%ar%', condition: 'ilike' },
+								{ columnName: 'isActive', value: true, condition: 'neq' },
+							],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(1);
@@ -1519,7 +1761,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, managementRowAccess, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: false },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -1528,15 +1770,20 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'and',
-						filters: [
-							{ columnName: 'name', value: '%ar%', condition: 'ilike' },
-							{ columnName: 'age', value: 50, condition: 'gt' },
-						],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'name', value: '%ar%', condition: 'ilike' },
+								{ columnName: 'age', value: 50, condition: 'gt' },
+							],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(0);
@@ -1556,7 +1803,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, managementRowAccess, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: false },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -1565,15 +1812,20 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'or',
-						filters: [
-							{ columnName: 'name', value: '%ar%', condition: 'ilike' },
-							{ columnName: 'isActive', value: true, condition: 'eq' },
-						],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'or',
+							filters: [
+								{ columnName: 'name', value: '%ar%', condition: 'ilike' },
+								{ columnName: 'isActive', value: true, condition: 'eq' },
+							],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(4);
@@ -1596,7 +1848,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, managementRowAccess, [
 					{ name: 'John', age: 25, isActive: false },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Arnold', age: 35, isActive: false },
@@ -1605,15 +1857,20 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'or',
-						filters: [
-							{ columnName: 'name', value: 'Mar%', condition: 'like' },
-							{ columnName: 'isActive', value: true, condition: 'eq' },
-						],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'or',
+							filters: [
+								{ columnName: 'name', value: 'Mar%', condition: 'like' },
+								{ columnName: 'isActive', value: true, condition: 'eq' },
+							],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(1);
@@ -1634,15 +1891,20 @@ describe('dataTable filters', () => {
 				});
 
 				// ACT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'or',
-						filters: [
-							{ columnName: 'name', value: 'NonExistent', condition: 'eq' },
-							{ columnName: 'age', value: 999, condition: 'eq' },
-						],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'or',
+							filters: [
+								{ columnName: 'name', value: 'NonExistent', condition: 'eq' },
+								{ columnName: 'age', value: 999, condition: 'eq' },
+							],
+						},
 					},
-				});
+				);
 
 				// ASSERT
 				expect(result.count).toEqual(0);
@@ -1667,7 +1929,7 @@ describe('dataTable filters', () => {
 
 				const maryBirthday = new Date('1998-08-25T14:30:00.000Z');
 
-				await dataTableService.insertRows(dataTableId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 					{ name: 'John', age: 30, birthday: new Date('1994-05-15T12:00:00.000Z'), isActive: true },
 					{ name: 'Mary', age: 25, birthday: maryBirthday, isActive: false },
 					{ name: 'Jack', age: 35, birthday: new Date('1988-12-05T10:00:00.000Z'), isActive: true },
@@ -1677,6 +1939,7 @@ describe('dataTable filters', () => {
 				await dataTableService.updateRows(
 					dataTableId,
 					project.id,
+					managementRowAccess,
 					{
 						filter: {
 							type: 'and',
@@ -1693,12 +1956,17 @@ describe('dataTable filters', () => {
 				);
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'name', value: 'Mary', condition: 'eq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'name', value: 'Mary', condition: 'eq' }],
+						},
 					},
-				});
+				);
 				expect(result.count).toEqual(1);
 				expect(result.data).toEqual([
 					expect.objectContaining({
@@ -1720,14 +1988,14 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 					{ name: 'John', age: 30 },
 					{ name: 'Mary', age: 25 },
 					{ name: 'Jack', age: 35 },
 				]);
 
 				// ACT
-				await dataTableService.updateRows(dataTableId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }],
@@ -1736,7 +2004,12 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{},
+				);
 				expect(result.count).toEqual(3);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1757,7 +2030,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 					{ name: null, active: true },
 					{ name: 'Marco', active: true },
 					{ name: null, active: false },
@@ -1765,7 +2038,7 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				await dataTableService.updateRows(dataTableId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', condition: 'eq', value: null }],
@@ -1774,7 +2047,12 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{},
+				);
 				expect(result.count).toEqual(4);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1796,7 +2074,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 					{ name: null, active: true },
 					{ name: 'Marco', active: true },
 					{ name: null, active: false },
@@ -1804,7 +2082,7 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				await dataTableService.updateRows(dataTableId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', condition: 'neq', value: null }],
@@ -1813,7 +2091,12 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{},
+				);
 				expect(result.count).toEqual(4);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1837,14 +2120,14 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 					{ name: 'Arnold', age: 30 },
 					{ name: 'Mary', age: 25 },
 					{ name: 'Charlie', age: 35 },
 				]);
 
 				// ACT
-				await dataTableService.updateRows(dataTableId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
@@ -1853,12 +2136,17 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', value: 50, condition: 'eq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 50, condition: 'eq' }],
+						},
 					},
-				});
+				);
 				expect(result.count).toEqual(2);
 				expect(result.data).toEqual([
 					expect.objectContaining({ name: 'Mary', age: 50 }),
@@ -1882,10 +2170,10 @@ describe('dataTable filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				await dataTableService.updateRows(dataTableId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%ar%', condition: 'ilike' }],
@@ -1894,7 +2182,12 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {});
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{},
+				);
 				expect(result.count).toEqual(3);
 				expect(result.data).toEqual(
 					expect.arrayContaining([
@@ -1921,10 +2214,10 @@ describe('dataTable filters', () => {
 					{ name: 'Charlie', age: 35 },
 				];
 
-				await dataTableService.insertRows(dataTableId, project.id, rows);
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, rows);
 
 				// ACT
-				await dataTableService.updateRows(dataTableId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
@@ -1933,12 +2226,17 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', value: 60, condition: 'eq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 60, condition: 'eq' }],
+						},
 					},
-				});
+				);
 				expect(result.count).toEqual(1);
 				expect(result.data).toEqual([expect.objectContaining({ name: 'Arnold', age: 60 })]);
 			});
@@ -1953,7 +2251,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(dataTableId, project.id, [
+				await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 					{ name: 'Arnold', age: 30 },
 					{ name: 'Mary', age: 25 },
 					{ name: 'Charlie', age: 35 },
@@ -1961,7 +2259,7 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				await dataTableService.updateRows(dataTableId, project.id, {
+				await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
@@ -1970,12 +2268,17 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', value: 65, condition: 'eq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 65, condition: 'eq' }],
+						},
 					},
-				});
+				);
 				expect(result.count).toEqual(2);
 				expect(result.data).toEqual([
 					expect.objectContaining({ name: 'Arnold', age: 65 }),
@@ -2002,7 +2305,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'greater than' filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -2010,7 +2313,7 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gt' }],
@@ -2019,12 +2322,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'position', value: 'senior', condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'position', value: 'senior', condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(2);
 					expect(result.data).toEqual([
 						expect.objectContaining({ name: 'Jack', position: 'senior', age: 35 }),
@@ -2034,7 +2342,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'greater than or equal' filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -2042,7 +2350,7 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 30, condition: 'gte' }],
@@ -2051,12 +2359,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'position', value: 'experienced', condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'position', value: 'experienced', condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(3);
 					expect(result.data).toEqual(
 						expect.arrayContaining([
@@ -2069,7 +2382,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'less than' filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -2077,7 +2390,7 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lt' }],
@@ -2086,12 +2399,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'position', value: 'junior', condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'position', value: 'junior', condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(2);
 					expect(result.data).toEqual(
 						expect.arrayContaining([
@@ -2103,7 +2421,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'less than or equal' filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'John', age: 25 },
 						{ name: 'Mary', age: 30 },
 						{ name: 'Jack', age: 35 },
@@ -2111,7 +2429,7 @@ describe('dataTable filters', () => {
 					]);
 
 					// ACT
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'age', value: 35, condition: 'lte' }],
@@ -2120,12 +2438,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'position', value: 'junior', condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'position', value: 'junior', condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(3);
 					expect(result.data).toEqual(
 						expect.arrayContaining([
@@ -2154,7 +2477,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'greater than' string filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'Alice', category: 'A', startDate: new Date('2023-01-01T12:00:00Z') },
 						{ name: 'Bob', category: 'B', startDate: new Date('2023-01-02T12:00:00Z') },
 						{ name: 'Charlie', category: 'C', startDate: new Date('2023-01-03T12:00:00Z') },
@@ -2163,7 +2486,7 @@ describe('dataTable filters', () => {
 
 					// ACT
 					const newStartDate = new Date('2024-01-01T12:00:00Z');
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'C', condition: 'gt' }],
@@ -2172,12 +2495,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'startDate', value: newStartDate, condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'startDate', value: newStartDate, condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(1);
 					expect(result.data).toEqual([
 						expect.objectContaining({ name: 'David', category: 'D', startDate: newStartDate }),
@@ -2186,7 +2514,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'less than' string filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'Alice', category: 'A', startDate: new Date('2023-01-01T12:00:00Z') },
 						{ name: 'Bob', category: 'B', startDate: new Date('2023-01-02T12:00:00Z') },
 						{ name: 'Charlie', category: 'C', startDate: new Date('2023-01-03T12:00:00Z') },
@@ -2195,7 +2523,7 @@ describe('dataTable filters', () => {
 
 					// ACT
 					const newStartDate = new Date('2024-01-01T12:00:00Z');
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'category', value: 'C', condition: 'lt' }],
@@ -2204,12 +2532,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'startDate', value: newStartDate, condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'startDate', value: newStartDate, condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(2);
 					expect(result.data).toEqual(
 						expect.arrayContaining([
@@ -2236,7 +2569,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'greater than' date filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'Task1', registeredAt: new Date('2023-12-31') },
 						{ name: 'Task2', registeredAt: new Date('2024-01-01') },
 						{ name: 'Task3', registeredAt: new Date('2024-01-02') },
@@ -2245,7 +2578,7 @@ describe('dataTable filters', () => {
 
 					// ACT
 					const baseDate = new Date('2024-01-01');
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'gt' }],
@@ -2254,12 +2587,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'name', value: 'RECENT', condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'name', value: 'RECENT', condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(2);
 					expect(result.data).toEqual([
 						expect.objectContaining({ name: 'RECENT' }),
@@ -2269,7 +2607,7 @@ describe('dataTable filters', () => {
 
 				it("updates rows with 'less than or equal' date filter correctly", async () => {
 					// ARRANGE
-					await dataTableService.insertRows(dataTableId, project.id, [
+					await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 						{ name: 'Task1', registeredAt: new Date('2023-12-31') },
 						{ name: 'Task2', registeredAt: new Date('2024-01-01') },
 						{ name: 'Task3', registeredAt: new Date('2024-01-02') },
@@ -2278,7 +2616,7 @@ describe('dataTable filters', () => {
 
 					// ACT
 					const baseDate = new Date('2024-01-02');
-					await dataTableService.updateRows(dataTableId, project.id, {
+					await dataTableService.updateRows(dataTableId, project.id, managementRowAccess, {
 						filter: {
 							type: 'and',
 							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'lte' }],
@@ -2287,12 +2625,17 @@ describe('dataTable filters', () => {
 					});
 
 					// ASSERT
-					const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'name', value: 'OLD', condition: 'eq' }],
+					const result = await dataTableService.getManyRowsAndCount(
+						dataTableId,
+						project.id,
+						managementRowAccess,
+						{
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'name', value: 'OLD', condition: 'eq' }],
+							},
 						},
-					});
+					);
 					expect(result.count).toEqual(3);
 					expect(result.data).toEqual([
 						expect.objectContaining({ name: 'OLD' }),
@@ -2315,7 +2658,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, managementRowAccess, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -2324,7 +2667,7 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				await dataTableService.updateRows(id, project.id, {
+				await dataTableService.updateRows(id, project.id, managementRowAccess, {
 					filter: {
 						type: 'and',
 						filters: [
@@ -2336,12 +2679,17 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', value: 100, condition: 'eq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 100, condition: 'eq' }],
+						},
 					},
-				});
+				);
 				expect(result.count).toEqual(1);
 				expect(result.data).toEqual([
 					expect.objectContaining({ name: 'Arnold', age: 100, isActive: false }),
@@ -2361,7 +2709,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, managementRowAccess, [
 					{ name: 'John', age: 25, isActive: true },
 					{ name: 'Mary', age: 30, isActive: false },
 					{ name: 'Jack', age: 35, isActive: true },
@@ -2370,7 +2718,7 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				await dataTableService.updateRows(id, project.id, {
+				await dataTableService.updateRows(id, project.id, managementRowAccess, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -2382,12 +2730,17 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', value: 99, condition: 'eq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 99, condition: 'eq' }],
+						},
 					},
-				});
+				);
 				expect(result.count).toEqual(4);
 				expect(result.data).toEqual([
 					expect.objectContaining({ name: 'John', age: 99, isActive: true }),
@@ -2408,7 +2761,7 @@ describe('dataTable filters', () => {
 					],
 				});
 
-				await dataTableService.insertRows(id, project.id, [
+				await dataTableService.insertRows(id, project.id, managementRowAccess, [
 					{ name: 'John', age: 25, isActive: false },
 					{ name: 'Mary', age: 30, isActive: true },
 					{ name: 'Arnold', age: 35, isActive: false },
@@ -2417,7 +2770,7 @@ describe('dataTable filters', () => {
 				]);
 
 				// ACT
-				await dataTableService.updateRows(id, project.id, {
+				await dataTableService.updateRows(id, project.id, managementRowAccess, {
 					filter: {
 						type: 'or',
 						filters: [
@@ -2429,12 +2782,17 @@ describe('dataTable filters', () => {
 				});
 
 				// ASSERT
-				const result = await dataTableService.getManyRowsAndCount(id, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'age', value: 88, condition: 'eq' }],
+				const result = await dataTableService.getManyRowsAndCount(
+					id,
+					project.id,
+					managementRowAccess,
+					{
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 88, condition: 'eq' }],
+						},
 					},
-				});
+				);
 				expect(result.count).toEqual(1);
 				expect(result.data).toEqual([
 					expect.objectContaining({ name: 'Mary', age: 88, isActive: true }),
@@ -2455,16 +2813,21 @@ describe('dataTable filters', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'John Doe', email: 'john@example.com', age: 30 },
 				{ name: 'Jane Smith', email: 'jane@example.com', age: 25 },
 				{ name: 'Bob Johnson', email: 'bob@test.com', age: 35 },
 			]);
 
 			// ACT - Search for 'john' should match name and email columns
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'john',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'john',
+				},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(2);
@@ -2483,7 +2846,7 @@ describe('dataTable filters', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'Alice' },
 				{ name: 'ALICE' },
 				{ name: 'alice' },
@@ -2491,9 +2854,14 @@ describe('dataTable filters', () => {
 			]);
 
 			// ACT
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'ALICE',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'ALICE',
+				},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(3);
@@ -2512,16 +2880,21 @@ describe('dataTable filters', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'John', age: 25 },
 				{ name: 'Jane', age: 30 },
 				{ name: 'Bob', age: 250 },
 			]);
 
 			// ACT - Search for '25' should match age column
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: '25',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: '25',
+				},
+			);
 
 			// ASSERT - Should match at least these 2 rows (might also match system columns)
 			expect(result.count).toBeGreaterThanOrEqual(2);
@@ -2540,15 +2913,20 @@ describe('dataTable filters', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'Alice' },
 				{ name: 'Bob' },
 			]);
 
 			// ACT
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'xyz123notfound',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'xyz123notfound',
+				},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(0);
@@ -2566,7 +2944,7 @@ describe('dataTable filters', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'John Doe', age: 25, isActive: true },
 				{ name: 'John Smith', age: 30, isActive: false },
 				{ name: 'Jane Doe', age: 35, isActive: true },
@@ -2574,13 +2952,18 @@ describe('dataTable filters', () => {
 			]);
 
 			// ACT - Search for 'john' AND filter by isActive = true
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'john',
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'isActive', condition: 'eq', value: true }],
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'john',
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'isActive', condition: 'eq', value: true }],
+					},
 				},
-			});
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(2);
@@ -2602,17 +2985,22 @@ describe('dataTable filters', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'Alice', age: 30 },
 				{ name: 'Charlie', age: 25 },
 				{ name: 'Bob', age: 35 },
 			]);
 
 			// ACT - Search for 'a' (matches Alice and Charlie) and sort by age DESC
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'a',
-				sortBy: ['age', 'DESC'],
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'a',
+					sortBy: ['age', 'DESC'],
+				},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(2);
@@ -2629,7 +3017,7 @@ describe('dataTable filters', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'User 1' },
 				{ name: 'User 2' },
 				{ name: 'User 3' },
@@ -2639,17 +3027,27 @@ describe('dataTable filters', () => {
 			]);
 
 			// ACT - Search for 'user' with pagination
-			const page1 = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'user',
-				take: 2,
-				skip: 0,
-			});
+			const page1 = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'user',
+					take: 2,
+					skip: 0,
+				},
+			);
 
-			const page2 = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'user',
-				take: 2,
-				skip: 2,
-			});
+			const page2 = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'user',
+					take: 2,
+					skip: 2,
+				},
+			);
 
 			// ASSERT
 			expect(page1.count).toEqual(5);
@@ -2666,16 +3064,21 @@ describe('dataTable filters', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'Alice' },
 				{ name: 'Bob' },
 				{ name: 'Charlie' },
 			]);
 
 			// ACT
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: '',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: '',
+				},
+			);
 
 			// ASSERT - Empty search should return all rows
 			expect(result.count).toEqual(3);
@@ -2689,15 +3092,20 @@ describe('dataTable filters', () => {
 				columns: [{ name: 'name', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'Alice' },
 				{ name: 'Bob' },
 			]);
 
 			// ACT
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: '   ',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: '   ',
+				},
+			);
 
 			// ASSERT - Whitespace-only search should return all rows
 			expect(result.count).toEqual(2);
@@ -2711,7 +3119,7 @@ describe('dataTable filters', () => {
 				columns: [{ name: 'text', type: 'string' }],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ text: 'test_data' },
 				{ text: 'test-data' },
 				{ text: 'test.data' },
@@ -2719,9 +3127,14 @@ describe('dataTable filters', () => {
 			]);
 
 			// ACT - Search for underscore
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'test_',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'test_',
+				},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(1);
@@ -2738,16 +3151,21 @@ describe('dataTable filters', () => {
 				],
 			});
 
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'John', description: null },
 				{ name: 'Jane', description: 'Developer' },
 				{ name: 'Bob', description: null },
 			]);
 
 			// ACT
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'John',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'John',
+				},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(1);
@@ -2767,16 +3185,21 @@ describe('dataTable filters', () => {
 			});
 
 			const birthday = new Date('1990-05-15');
-			await dataTableService.insertRows(dataTableId, project.id, [
+			await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
 				{ name: 'John', age: 30, isActive: true, birthday },
 				{ name: 'Jane', age: 25, isActive: false, birthday: new Date('1995-08-20') },
 				{ name: 'Bob', age: 35, isActive: true, birthday: new Date('1988-12-05') },
 			]);
 
 			// ACT - Search for partial name
-			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
-				search: 'jo',
-			});
+			const result = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project.id,
+				managementRowAccess,
+				{
+					search: 'jo',
+				},
+			);
 
 			// ASSERT
 			expect(result.count).toEqual(1);

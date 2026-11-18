@@ -7,6 +7,7 @@ import { sleep } from '@n8n/utils/sleep';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableService } from '../data-table.service';
 import { mockDataTableSizeValidator } from '../testing';
+import { managementRowAccess } from '../data-table.types';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table'], {
@@ -41,7 +42,10 @@ describe('DataTableService.getManyRowsAndCount under a concurrent write transact
 			columns: [{ name: 'name', type: 'string' }],
 		});
 		dataTableId = dataTable.id;
-		await dataTableService.insertRows(dataTableId, project.id, [{ name: 'a' }, { name: 'b' }]);
+		await dataTableService.insertRows(dataTableId, project.id, managementRowAccess, [
+			{ name: 'a' },
+			{ name: 'b' },
+		]);
 	});
 
 	it('does not wait for the write connection', async () => {
@@ -57,7 +61,13 @@ describe('DataTableService.getManyRowsAndCount under a concurrent write transact
 		await writeHasConnection;
 
 		const read = await timed(
-			async () => await dataTableService.getManyRowsAndCount(dataTableId, project.id, {}),
+			async () =>
+				await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					project.id,
+					managementRowAccess,
+					{},
+				),
 		);
 		await writeHeld;
 

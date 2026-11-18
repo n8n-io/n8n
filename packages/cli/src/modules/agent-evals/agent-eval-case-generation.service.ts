@@ -423,7 +423,7 @@ export class AgentEvalCaseGenerationService {
 					[INPUT_COLUMN]: c.input,
 					[CRITERIA_COLUMN]: c.whatToCheck,
 				}));
-				await this.dataTableService.insertRows(table.id, projectId, rows);
+				await this.dataTableService.insertRows(table.id, projectId, { kind: 'management' }, rows);
 			}
 
 			const columnMapping = { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN };

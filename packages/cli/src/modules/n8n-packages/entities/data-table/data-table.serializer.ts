@@ -17,6 +17,7 @@ type DataTablePackageKeyHandling = {
 	columns: 'transform';
 	project: 'transform';
 	projectId: 'transform';
+	rowRule: 'exclude';
 };
 
 type DataTableColumnPackageKeyHandling = {

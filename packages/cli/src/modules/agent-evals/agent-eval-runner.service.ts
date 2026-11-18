@@ -778,6 +778,7 @@ export class AgentEvalRunnerService {
 			const { data, count } = await this.dataTableService.getManyRowsAndCount(
 				dataTableId,
 				tableProjectId,
+				{ kind: 'management' },
 				{ take: ROW_PAGE_SIZE, skip },
 			);
 			// Reject oversized datasets rather than launching thousands of real

@@ -2241,12 +2241,19 @@ describe('EvalExecutionService', () => {
 					],
 				}),
 			);
-			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-1', 'proj-1');
-			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-2', 'proj-1');
+			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-1', 'proj-1', {
+				kind: 'management',
+			});
+			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-2', 'proj-1', {
+				kind: 'management',
+			});
 			expect(dataTableService.insertRows).toHaveBeenCalledTimes(1);
-			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-1', 'proj-1', [
-				{ title: 'Post A' },
-			]);
+			expect(dataTableService.insertRows).toHaveBeenCalledWith(
+				'dt-1',
+				'proj-1',
+				{ kind: 'management' },
+				[{ title: 'Post A' }],
+			);
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
 
@@ -2406,7 +2413,9 @@ describe('EvalExecutionService', () => {
 			expect(result.errors).toEqual([
 				'FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: pin generator down',
 			]);
-			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-1', 'proj-1');
+			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-1', 'proj-1', {
+				kind: 'management',
+			});
 		});
 
 		it('skips the preparation for a workflow without Data Table nodes', async () => {

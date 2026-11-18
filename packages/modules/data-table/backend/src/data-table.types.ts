@@ -11,3 +11,16 @@ export const columnTypeToFieldType: Record<string, keyof FieldTypeMap> = {
 	boolean: 'boolean',
 	date: 'dateTime',
 };
+
+export type DataTableRowActor = { id: string; email: string | null };
+
+/**
+ * Who a row operation acts for. `management` ignores the table's row rule.
+ * `actor` applies it; a `null` actor is a run without a verified user.
+ */
+export type RowAccess = { kind: 'management' } | { kind: 'actor'; actor: DataTableRowActor | null };
+
+export const managementRowAccess: RowAccess = { kind: 'management' };
+
+/** The resolved row rule: only rows where `column` equals `value`. */
+export type DataTableRowScope = { column: string; value: string };

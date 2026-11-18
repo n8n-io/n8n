@@ -33,6 +33,7 @@ import {
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { assertSchemaWriteAccess } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
+import { managementRowAccess } from './data-table.types';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 
 const ALLOWED_NODES = [
@@ -199,7 +200,12 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				options: Partial<ListDataTableRowsOptions>,
 			) {
 				await requireScope('dataTable:readRow', projectId);
-				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, options);
+				return await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					projectId,
+					managementRowAccess,
+					options,
+				);
 			},
 
 			// dataTable:writeRow
@@ -210,7 +216,13 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				returnType: T,
 			) {
 				await requireScope('dataTable:writeRow', projectId);
-				return await dataTableService.insertRows(dataTableId, projectId, rows, returnType);
+				return await dataTableService.insertRows(
+					dataTableId,
+					projectId,
+					managementRowAccess,
+					rows,
+					returnType,
+				);
 			},
 
 			async updateRows(dataTableId: string, projectId: string, options: UpdateDataTableRowOptions) {
@@ -220,6 +232,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				return await dataTableService.updateRows(
 					dataTableId,
 					projectId,
+					managementRowAccess,
 					{ filter: options.filter, data: options.data },
 					true,
 					options.dryRun,
@@ -237,6 +250,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				return await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
+					managementRowAccess,
 					{ filter: options.filter },
 					true,
 					options.dryRun,
@@ -245,7 +259,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 
 			async clearRows(dataTableId: string, projectId: string) {
 				await requireScope('dataTable:writeRow', projectId);
-				return await dataTableService.clearRows(dataTableId, projectId);
+				return await dataTableService.clearRows(dataTableId, projectId, managementRowAccess);
 			},
 		};
 	}
@@ -313,20 +327,32 @@ export class DataTableProxyService implements DataTableProxyProvider {
 
 			// Row operations
 			async getManyRowsAndCount(options: Partial<ListDataTableRowsOptions>) {
-				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, options);
+				return await dataTableService.getManyRowsAndCount(
+					dataTableId,
+					projectId,
+					managementRowAccess,
+					options,
+				);
 			},
 
 			async insertRows<T extends DataTableInsertRowsReturnType>(
 				rows: DataTableRows,
 				returnType: T,
 			) {
-				return await dataTableService.insertRows(dataTableId, projectId, rows, returnType);
+				return await dataTableService.insertRows(
+					dataTableId,
+					projectId,
+					managementRowAccess,
+					rows,
+					returnType,
+				);
 			},
 
 			async updateRows(options: UpdateDataTableRowOptions) {
 				return await dataTableService.updateRows(
 					dataTableId,
 					projectId,
+					managementRowAccess,
 					{ filter: options.filter, data: options.data },
 					true,
 					options.dryRun,
@@ -337,6 +363,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				return await dataTableService.upsertRow(
 					dataTableId,
 					projectId,
+					managementRowAccess,
 					options,
 					true,
 					options.dryRun,
@@ -347,6 +374,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				return await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
+					managementRowAccess,
 					{ filter: options.filter },
 					true,
 					options.dryRun,
@@ -354,7 +382,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			},
 
 			async clearRows() {
-				return await dataTableService.clearRows(dataTableId, projectId);
+				return await dataTableService.clearRows(dataTableId, projectId, managementRowAccess);
 			},
 		};
 	}

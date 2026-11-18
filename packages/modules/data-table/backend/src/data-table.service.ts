@@ -52,11 +52,17 @@ import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import type { DataTable } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
-import { columnTypeToFieldType } from './data-table.types';
+import {
+	columnTypeToFieldType,
+	type DataTableRowScope,
+	type RowAccess,
+	managementRowAccess,
+} from './data-table.types';
 import { DataTableAccessDeniedError } from './errors/data-table-access-denied.error';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
+import { DataTableRowAccessError } from './errors/data-table-row-access.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
@@ -203,7 +209,7 @@ export class DataTableService {
 				);
 
 				if (rows.length > 0) {
-					await this.insertRows(result.id, projectId, rows);
+					await this.insertRows(result.id, projectId, managementRowAccess, rows);
 				}
 			} catch (error) {
 				await this.deleteDataTable(result.id, projectId);
@@ -260,7 +266,7 @@ export class DataTableService {
 				await this.csvImportService.validateAndBuildRowsForExistingTable(fileId, tableColumns);
 
 			if (rows.length > 0) {
-				await this.insertRows(dataTableId, projectId, rows);
+				await this.insertRows(dataTableId, projectId, managementRowAccess, rows);
 			}
 
 			return {
@@ -361,8 +367,13 @@ export class DataTableService {
 	}
 
 	async deleteColumn(dataTableId: string, projectId: string, columnId: string) {
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
 		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+		if (table.rowRule?.column === existingColumn.name) {
+			throw new DataTableValidationError(
+				`column '${existingColumn.name}' is used by the row access rule. Remove the rule first.`,
+			);
+		}
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
 
@@ -377,10 +388,21 @@ export class DataTableService {
 		columnId: string,
 		dto: RenameDataTableColumnDto,
 	) {
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
 		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
 
-		return await this.dataTableColumnRepository.renameColumn(dataTableId, existingColumn, dto.name);
+		const renamed = await this.dataTableColumnRepository.renameColumn(
+			dataTableId,
+			existingColumn,
+			dto.name,
+		);
+		if (table.rowRule?.column === existingColumn.name) {
+			await this.dataTableRepository.setRowRule(dataTableId, {
+				...table.rowRule,
+				column: dto.name,
+			});
+		}
+		return renamed;
 	}
 
 	async getManyAndCount(options: DataTableListOptions) {
@@ -390,9 +412,11 @@ export class DataTableService {
 	async getManyRowsAndCount(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: ListDataTableContentQueryDto,
 	) {
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		const scope = this.resolveRowScope(table, access);
 
 		// Read-only, so the pooled SQLite driver serves it from the read pool instead of
 		// the single write connection. Under WAL that also pins columns and rows to one
@@ -418,6 +442,7 @@ export class DataTableService {
 					transformedDto,
 					columns,
 					ctx,
+					scope,
 				);
 				return {
 					count: result.count,
@@ -451,21 +476,27 @@ export class DataTableService {
 	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		rows: DataTableRows,
 		returnType?: T,
 	): Promise<DataTableInsertRowsResult<T>>;
 	async insertRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		rows: DataTableRows,
 		returnType: DataTableInsertRowsReturnType = 'count',
 	) {
 		await this.validateDataTableSize();
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		const scope = this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			const transformedRows = this.validateAndTransformRows(rows, columns);
+			const transformedRows = this.validateAndTransformRows(
+				scope ? rows.map((row) => this.stampOwner(row, scope)) : rows,
+				columns,
+			);
 
 			return await this.dataTableRowsRepository.insertRows(
 				dataTableId,
@@ -486,6 +517,7 @@ export class DataTableService {
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: true,
 		dryRun?: boolean,
@@ -493,6 +525,7 @@ export class DataTableService {
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData?: boolean,
 		dryRun?: true,
@@ -500,6 +533,7 @@ export class DataTableService {
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData?: false,
 		dryRun?: false,
@@ -507,6 +541,7 @@ export class DataTableService {
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean,
 		dryRun: boolean,
@@ -514,16 +549,21 @@ export class DataTableService {
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
 		await this.validateDataTableSize();
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		const scope = this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
-			const { data, filter } = this.validateAndTransformUpdateParams(dto, columns);
+			const { data, filter } = this.validateAndTransformUpdateParams(
+				scope ? { ...dto, data: this.stampOwner(dto.data, scope) } : dto,
+				columns,
+			);
 
 			if (dryRun) {
 				return await this.dataTableRowsRepository.dryRunUpsertRow(
@@ -532,6 +572,7 @@ export class DataTableService {
 					filter,
 					columns,
 					trx,
+					scope,
 				);
 			}
 
@@ -542,6 +583,7 @@ export class DataTableService {
 				columns,
 				true,
 				trx,
+				scope,
 			);
 
 			if (updated.length > 0) {
@@ -594,6 +636,7 @@ export class DataTableService {
 	async updateRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: true,
 		dryRun?: boolean,
@@ -601,6 +644,7 @@ export class DataTableService {
 	async updateRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData?: boolean,
 		dryRun?: true,
@@ -608,6 +652,7 @@ export class DataTableService {
 	async updateRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData?: false,
 		dryRun?: false,
@@ -615,6 +660,7 @@ export class DataTableService {
 	async updateRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean,
 		dryRun: boolean,
@@ -622,12 +668,15 @@ export class DataTableService {
 	async updateRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
 		await this.validateDataTableSize();
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		const scope = this.resolveRowScope(table, access);
+		if (scope) this.assertOwnerUnchanged(dto.data, scope);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -640,6 +689,7 @@ export class DataTableService {
 					filter,
 					columns,
 					trx,
+					scope,
 				);
 			}
 
@@ -650,6 +700,7 @@ export class DataTableService {
 				columns,
 				returnData,
 				trx,
+				scope,
 			);
 		});
 
@@ -665,6 +716,7 @@ export class DataTableService {
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData: true,
 		dryRun?: boolean,
@@ -672,6 +724,7 @@ export class DataTableService {
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData?: boolean,
 		dryRun?: true,
@@ -679,6 +732,7 @@ export class DataTableService {
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData?: false,
 		dryRun?: false,
@@ -686,6 +740,7 @@ export class DataTableService {
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData: boolean,
 		dryRun: boolean,
@@ -693,11 +748,13 @@ export class DataTableService {
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
+		access: RowAccess,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
-		await this.validateDataTableExists(dataTableId, projectId);
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		const scope = this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
@@ -717,6 +774,7 @@ export class DataTableService {
 				returnData,
 				dryRun,
 				trx,
+				scope,
 			);
 		});
 
@@ -729,17 +787,58 @@ export class DataTableService {
 		return result;
 	}
 
-	async clearRows(dataTableId: string, projectId: string): Promise<{ deletedCount: number }> {
-		await this.validateDataTableExists(dataTableId, projectId);
+	async clearRows(
+		dataTableId: string,
+		projectId: string,
+		access: RowAccess,
+	): Promise<{ deletedCount: number }> {
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		const scope = this.resolveRowScope(table, access);
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
-			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
+			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx, scope);
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
 			return clearResult;
 		});
 
 		this.dataTableSizeValidator.reset();
 		return result;
+	}
+
+	/** Returns `null` when the caller may touch every row. */
+	private resolveRowScope(table: DataTable, access: RowAccess): DataTableRowScope | null {
+		const rule = table.rowRule;
+		if (!rule || access.kind === 'management') return null;
+
+		const { actor } = access;
+		if (!actor) {
+			if (rule.runsWithoutUser === 'allRows') return null;
+			throw new DataTableRowAccessError(
+				`Data table '${table.name}' only gives rows to a signed-in person. Use a trigger that identifies the user, or allow runs without a user in the row access settings of the table.`,
+			);
+		}
+
+		const value = rule.match === 'id' ? actor.id : actor.email;
+		if (!value) {
+			throw new DataTableRowAccessError(
+				`Data table '${table.name}' matches rows by email, and the current user has no email.`,
+			);
+		}
+		return { column: rule.column, value };
+	}
+
+	private stampOwner(row: DataTableRow, scope: DataTableRowScope): DataTableRow {
+		this.assertOwnerUnchanged(row, scope);
+		return { ...row, [scope.column]: scope.value };
+	}
+
+	private assertOwnerUnchanged(row: DataTableRow, scope: DataTableRowScope) {
+		const value = row[scope.column];
+		if (value !== undefined && value !== null && value !== scope.value) {
+			throw new DataTableRowAccessError(
+				`Column '${scope.column}' is set by n8n to the current user. Remove it from the data.`,
+			);
+		}
 	}
 
 	private validateAndTransformRows(

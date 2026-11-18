@@ -402,6 +402,7 @@ describe('EvaluationDatasetService', () => {
 			expect(dataTableService.insertRows).toHaveBeenCalledWith(
 				DATA_TABLE_ID,
 				PROJECT_ID,
+				{ kind: 'management' },
 				[{ question: 'Q1', answer: 'A1' }],
 				'id',
 			);
@@ -438,6 +439,7 @@ describe('EvaluationDatasetService', () => {
 			expect(dataTableService.insertRows).toHaveBeenCalledWith(
 				DATA_TABLE_ID,
 				PROJECT_ID,
+				{ kind: 'management' },
 				[{}],
 				'id',
 			);
@@ -457,6 +459,7 @@ describe('EvaluationDatasetService', () => {
 			expect(dataTableService.insertRows).toHaveBeenCalledWith(
 				DATA_TABLE_ID,
 				PROJECT_ID,
+				{ kind: 'management' },
 				[{ question: 'Q1' }],
 				'id',
 			);
@@ -485,6 +488,7 @@ describe('EvaluationDatasetService', () => {
 			expect(dataTableService.insertRows).toHaveBeenCalledWith(
 				DATA_TABLE_ID,
 				PROJECT_ID,
+				{ kind: 'management' },
 				[{ payload: '{"nested":true}' }],
 				'id',
 			);

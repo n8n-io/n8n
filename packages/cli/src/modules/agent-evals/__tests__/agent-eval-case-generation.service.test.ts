@@ -196,6 +196,7 @@ describe('AgentEvalCaseGenerationService', () => {
 		expect(dataTableService.insertRows).toHaveBeenCalledWith(
 			'dt-1',
 			'project-1',
+			{ kind: 'management' },
 			cases.map((c) => ({ input: c.input, criteria: c.whatToCheck })),
 		);
 		// Dataset points at the table and never carries an expectedOutput (no gold).
@@ -425,7 +426,7 @@ describe('AgentEvalCaseGenerationService', () => {
 			whatToCheck: 'ok',
 			scenario: 'Vague',
 		});
-		const insertedRows = dataTableService.insertRows.mock.calls[0][2] as Array<{
+		const insertedRows = dataTableService.insertRows.mock.calls[0][3] as Array<{
 			input: string;
 			criteria: string;
 		}>;
@@ -468,7 +469,7 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		expect(result.cases).toHaveLength(6);
 		expect(result.cases[0].scenario).toHaveLength(40);
-		const insertedRows = dataTableService.insertRows.mock.calls[0][2] as Array<{
+		const insertedRows = dataTableService.insertRows.mock.calls[0][3] as Array<{
 			input: string;
 			criteria: string;
 		}>;

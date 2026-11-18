@@ -2,6 +2,7 @@ import { DataTableFilter, ListDataTableContentQueryDto } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
+	Brackets,
 	DataSource,
 	DataSourceOptions,
 	SelectQueryBuilder,
@@ -27,7 +28,7 @@ import {
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
-import { DataTableUserTableName } from './data-table.types';
+import type { DataTableRowScope, DataTableUserTableName } from './data-table.types';
 import {
 	escapeLikeSpecials,
 	extractInsertedIds,
@@ -319,6 +320,7 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		returnData?: T,
 		trx?: EntityManager,
+		scope?: DataTableRowScope | null,
 	): Promise<T extends true ? DataTableRowReturn[] : true>;
 	async updateRows(
 		dataTableId: string,
@@ -327,6 +329,7 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		returnData: boolean = false,
 		trx?: EntityManager,
+		scope: DataTableRowScope | null = null,
 	) {
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
@@ -345,14 +348,21 @@ export class DataTableRowsRepository {
 			if (!useReturning && returnData) {
 				// Only Postgres supports RETURNING statement on updates (with our typeorm),
 				// on other engines we must query the list of updates rows later by ID
-				affectedRows = await this.getAffectedRowsForUpdate(dataTableId, filter, columns, true, em);
+				affectedRows = await this.getAffectedRowsForUpdate(
+					dataTableId,
+					filter,
+					columns,
+					true,
+					em,
+					scope,
+				);
 			}
 
 			setData.updatedAt = normalizeValueForDatabase(new Date(), 'date', dbType);
 
 			const query = em.createQueryBuilder().update(table);
 			// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
-			this.applyFilters(query, filter, undefined);
+			this.applyFilters(query, filter, undefined, scope);
 			query.set(setData);
 
 			if (useReturning && returnData) {
@@ -380,6 +390,7 @@ export class DataTableRowsRepository {
 		filter: DataTableFilter,
 		columns: DataTableColumn[],
 		trx?: EntityManager,
+		scope: DataTableRowScope | null = null,
 	): Promise<DataTableRowReturnWithState[]> {
 		const dbType = this.dataSource.options.type;
 
@@ -389,6 +400,7 @@ export class DataTableRowsRepository {
 			columns,
 			false,
 			trx,
+			scope,
 		);
 
 		const columnUpdates = this.prepareUpdateData(data, columns, dbType);
@@ -405,8 +417,16 @@ export class DataTableRowsRepository {
 		filter: DataTableFilter,
 		columns: DataTableColumn[],
 		trx?: EntityManager,
+		scope: DataTableRowScope | null = null,
 	): Promise<DataTableRowReturnWithState[]> {
-		const updateResult = await this.dryRunUpdateRows(dataTableId, data, filter, columns, trx);
+		const updateResult = await this.dryRunUpdateRows(
+			dataTableId,
+			data,
+			filter,
+			columns,
+			trx,
+			scope,
+		);
 
 		if (updateResult.length > 0) {
 			return updateResult;
@@ -443,6 +463,7 @@ export class DataTableRowsRepository {
 		returnData: boolean = false,
 		dryRun: boolean = false,
 		trx?: EntityManager,
+		scope: DataTableRowScope | null = null,
 	) {
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
@@ -454,9 +475,7 @@ export class DataTableRowsRepository {
 			if (!shouldReturnData) {
 				// Just delete and return true
 				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
-				if (filter) {
-					this.applyFilters(query, filter, undefined);
-				}
+				this.applyFilters(query, filter, undefined, scope);
 				await query.execute();
 
 				return true;
@@ -467,9 +486,7 @@ export class DataTableRowsRepository {
 			if (!useReturning) {
 				const selectQuery = em.createQueryBuilder().select('*').from(table, 'dataTable');
 
-				if (filter) {
-					this.applyFilters(selectQuery, filter, 'dataTable');
-				}
+				this.applyFilters(selectQuery, filter, 'dataTable', scope);
 
 				const rawRows = await selectQuery.getRawMany<DataTableRawRowReturn>();
 				affectedRows = normalizeRows(rawRows, columns);
@@ -491,9 +508,7 @@ export class DataTableRowsRepository {
 				deleteQuery.returning(selectColumns.join(','));
 			}
 
-			if (filter) {
-				this.applyFilters(deleteQuery, filter, undefined);
-			}
+			this.applyFilters(deleteQuery, filter, undefined, scope);
 
 			const result = await deleteQuery.execute();
 
@@ -505,11 +520,17 @@ export class DataTableRowsRepository {
 		});
 	}
 
-	async clearRows(dataTableId: string, trx?: EntityManager): Promise<{ deletedCount: number }> {
+	async clearRows(
+		dataTableId: string,
+		trx?: EntityManager,
+		scope: DataTableRowScope | null = null,
+	): Promise<{ deletedCount: number }> {
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
-			const result = await em.createQueryBuilder().delete().from(table).execute();
+			const query = em.createQueryBuilder().delete().from(table);
+			this.applyFilters(query, undefined, undefined, scope);
+			const result = await query.execute();
 			return { deletedCount: result.affected ?? 0 };
 		});
 	}
@@ -520,13 +541,14 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		idsOnly: T,
 		trx?: EntityManager,
+		scope: DataTableRowScope | null = null,
 	): Promise<T extends true ? Array<Pick<DataTableRowReturn, 'id'>> : DataTableRowReturn[]> {
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const selectColumns = idsOnly ? 'id' : '*';
 			const selectQuery = em.createQueryBuilder().select(selectColumns).from(table, 'dataTable');
-			this.applyFilters(selectQuery, filter, 'dataTable');
+			this.applyFilters(selectQuery, filter, 'dataTable', scope);
 			const rawRows: DataTableRowsReturn = await selectQuery.getRawMany();
 
 			if (idsOnly) {
@@ -589,10 +611,11 @@ export class DataTableRowsRepository {
 		dto: ListDataTableContentQueryDto,
 		columns: DataTableColumn[],
 		ctx: OperationContext,
+		scope: DataTableRowScope | null = null,
 	) {
 		const em = this.table.managerFor(ctx);
 
-		const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
+		const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em, scope);
 		const data: DataTableRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
@@ -636,14 +659,13 @@ export class DataTableRowsRepository {
 		dto: ListDataTableContentQueryDto,
 		columns: DataTableColumn[],
 		em: EntityManager,
+		scope: DataTableRowScope | null,
 	): [QueryBuilder, QueryBuilder] {
 		const query = em.createQueryBuilder();
 
 		const tableReference = 'dataTable';
 		query.from(toTableName(dataTableId), tableReference);
-		if (dto.filter) {
-			this.applyFilters(query, dto.filter, tableReference);
-		}
+		this.applyFilters(query, dto.filter, tableReference, scope);
 
 		if (dto.search && dto.search.trim().length > 0) {
 			this.applySearch(query, dto.search, tableReference, columns);
@@ -693,31 +715,43 @@ export class DataTableRowsRepository {
 		query.andWhere(whereClause, { search: escapeLikeSpecials(searchTerm) });
 	}
 
+	/**
+	 * Adds the client filter as one bracketed group, then the row scope with AND.
+	 * The group keeps an `or` filter from widening the scope or a later search.
+	 */
 	private applyFilters<T extends ObjectLiteral>(
 		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
-		filter: DataTableFilter,
-		tableReference?: string,
+		filter: DataTableFilter | undefined,
+		tableReference: string | undefined,
+		scope: DataTableRowScope | null = null,
 	): void {
-		const filters = filter.filters ?? [];
-		const filterType = filter.type ?? 'and';
+		const filters = filter?.filters ?? [];
+		const filterType = filter?.type ?? 'and';
 
 		const dbType = this.dataSource.options.type;
 		const conditionsAndParams = filters.map((filter, i) =>
 			getConditionAndParams(filter, i, dbType, tableReference),
 		);
 
-		if (conditionsAndParams.length === 1) {
-			// Always use AND for a single filter
-			const [condition, params] = conditionsAndParams[0];
-			query.andWhere(condition, params);
-		} else {
-			for (const [condition, params] of conditionsAndParams) {
-				if (filterType === 'or') {
-					query.orWhere(condition, params);
-				} else {
-					query.andWhere(condition, params);
-				}
-			}
+		if (conditionsAndParams.length > 0) {
+			query.andWhere(
+				new Brackets((group) => {
+					for (const [condition, params] of conditionsAndParams) {
+						if (filterType === 'or') {
+							group.orWhere(condition, params);
+						} else {
+							group.andWhere(condition, params);
+						}
+					}
+				}),
+			);
+		}
+
+		if (scope) {
+			const columnRef = tableReference
+				? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(scope.column, dbType)}`
+				: quoteIdentifier(scope.column, dbType);
+			query.andWhere(`${columnRef} = :rowrule_value`, { rowrule_value: scope.value });
 		}
 	}
 

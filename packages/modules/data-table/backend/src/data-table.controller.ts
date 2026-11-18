@@ -40,6 +40,7 @@ import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import { assertSchemaWriteAccess } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
+import { managementRowAccess } from './data-table.types';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -285,6 +286,7 @@ export class DataTableController {
 			return await this.dataTableService.getManyRowsAndCount(
 				dataTableId,
 				req.params.projectId,
+				managementRowAccess,
 				dto,
 			);
 		} catch (e: unknown) {
@@ -351,6 +353,7 @@ export class DataTableController {
 			return await this.dataTableService.insertRows(
 				dataTableId,
 				req.params.projectId,
+				managementRowAccess,
 				dto.data,
 				dto.returnType,
 			);
@@ -409,6 +412,7 @@ export class DataTableController {
 			return await this.dataTableService.upsertRow(
 				dataTableId,
 				req.params.projectId,
+				managementRowAccess,
 				dto,
 				dto.returnData,
 				dto.dryRun,
@@ -439,6 +443,7 @@ export class DataTableController {
 			return await this.dataTableService.updateRows(
 				dataTableId,
 				req.params.projectId,
+				managementRowAccess,
 				dto,
 				dto.returnData,
 				dto.dryRun,
@@ -469,6 +474,7 @@ export class DataTableController {
 			return await this.dataTableService.deleteRows(
 				dataTableId,
 				req.params.projectId,
+				managementRowAccess,
 				dto,
 				dto.returnData,
 				dto.dryRun,

@@ -1,6 +1,7 @@
 import {
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
+	type DataTableRowRule,
 	type ListDataTableQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -74,6 +75,13 @@ export class DataTableRepository extends Repository<DataTable> {
 			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
 		}).catch((error) => {
 			this.logger.warn('Failed to update DataTable timestamp', { dataTableId, error });
+		});
+	}
+
+	async setRowRule(dataTableId: string, rowRule: DataTableRowRule | null, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
+		await withTransaction(this.manager, trx, async (em) => {
+			await em.update(DataTable, { id: dataTableId }, { rowRule });
 		});
 	}
 

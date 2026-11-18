@@ -8,6 +8,7 @@
 | id | varchar(36) |  | false | [public.data_table_column](public.data_table_column.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
+| rowRule | json |  | true |  |  | Row rule as {column, match: id\|email, runsWithoutUser: deny\|allRows}. NULL means every caller sees all rows. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -43,6 +44,7 @@ erDiagram
   varchar_36_ id
   varchar_128_ name
   varchar_36_ projectId FK
+  json rowRule
   timestamp_3__with_time_zone updatedAt
 }
 "public.data_table_column" {
