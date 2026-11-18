@@ -52,6 +52,16 @@ vi.mock('@/features/core/dataTable/utils/columnUtils', () => ({
 	isOversizedValue: vi.fn(() => false),
 }));
 
+vi.mock('@/features/core/dataTable/components/dataGrid/RowRuleCellEditor.vue', () => ({
+	default: { name: 'RowRuleCellEditor' },
+}));
+
+vi.mock('@/features/core/dataTable/composables/useRowRulePeople', () => ({
+	useRowRulePeople: () => ({
+		label: (_match: string, value: unknown) => (value === 'user-1' ? 'Ada Lovelace' : undefined),
+	}),
+}));
+
 describe('useDataTableColumns', () => {
 	const mockOnDeleteColumn = vi.fn();
 	const mockOnRenameColumn = vi.fn();
@@ -72,6 +82,28 @@ describe('useDataTableColumns', () => {
 			isTextEditorOpen,
 		});
 	};
+
+	describe('row rule columns', () => {
+		it('picks and shows a person for an owner column', () => {
+			const { createColumnDef } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				ruleColumns: ref({ owner: 'id' as const }),
+			});
+
+			const colDef = createColumnDef({ id: 'c1', name: 'owner', type: 'string', index: 0 });
+
+			const editor = (colDef.cellEditorSelector as () => { params: unknown })();
+			expect(editor).toMatchObject({ params: { match: 'id' } });
+			const format = colDef.valueFormatter as (params: { value: unknown }) => string;
+			expect(format({ value: 'user-1' })).toBe('Ada Lovelace');
+			expect(format({ value: 'unknown-id' })).toBe('unknown-id');
+			expect(colDef.headerComponentParams.rowRuleRole()).toBe('owner');
+		});
+	});
 
 	describe('createColumnDef', () => {
 		it('should create basic column definition', () => {

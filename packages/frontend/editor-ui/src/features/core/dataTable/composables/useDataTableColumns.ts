@@ -15,6 +15,11 @@ import {
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import ColumnHeader from '@/features/core/dataTable/components/dataGrid/ColumnHeader.vue';
 import ElDatePickerCellEditor from '@/features/core/dataTable/components/dataGrid/ElDatePickerCellEditor.vue';
+import RowRuleCellEditor from '@/features/core/dataTable/components/dataGrid/RowRuleCellEditor.vue';
+import {
+	type RowRuleMatch,
+	useRowRulePeople,
+} from '@/features/core/dataTable/composables/useRowRulePeople';
 import ElDatePickerFilter from '@/features/core/dataTable/components/dataGrid/ElDatePickerFilter.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/core/dataTable/components/dataGrid/AddColumnButton.vue';
@@ -58,12 +63,15 @@ export const useDataTableColumns = ({
 	/** Locks only the columns, for example on a protected instance. Rows stay editable. */
 	schemaReadOnly?: Ref<boolean>;
 	schemaReadOnlyTooltip?: Ref<string | undefined>;
-	/** Columns that a row rule reads: `owner` holds the person, `team` a project ID. */
-	ruleColumns?: Ref<Record<string, 'owner' | 'team'>>;
+	/** Columns that a row rule reads, by what the rule matches them on. */
+	ruleColumns?: Ref<Record<string, RowRuleMatch>>;
 }) => {
 	const colDefs = ref<ColDef[]>([]);
 	const isSchemaReadOnly = () => readOnly.value || schemaReadOnly.value;
 	const { mapToAGCellType } = useDataTableTypes();
+	// Created on first use: only a table with a row rule needs the people stores.
+	let rowRulePeople: ReturnType<typeof useRowRulePeople> | undefined;
+	const people = () => (rowRulePeople ??= useRowRulePeople());
 	const i18n = useI18n();
 
 	const createColumnDef = (col: DataTableColumn, extraProps: Partial<ColDef> = {}) => {
@@ -85,7 +93,11 @@ export const useDataTableColumns = ({
 				onRename: onRenameColumn,
 				allowMenuActions: true,
 				readOnly: isSchemaReadOnly,
-				rowRuleRole: () => ruleColumns.value[col.name],
+				rowRuleRole: () => {
+					const match = ruleColumns.value[col.name];
+					if (!match) return undefined;
+					return match === 'project' ? 'team' : 'owner';
+				},
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
@@ -95,7 +107,21 @@ export const useDataTableColumns = ({
 			width: DEFAULT_COLUMN_WIDTH,
 		};
 
-		if (col.type === 'string') {
+		const ruleMatch = ruleColumns.value[col.name];
+		if (col.type === 'string' && ruleMatch) {
+			// Shows the person or team name and picks one, but stores the ID or email the rule matches.
+			columnDef.cellEditorSelector = () => ({
+				component: RowRuleCellEditor,
+				params: { match: ruleMatch },
+			});
+			columnDef.cellEditorPopup = true;
+			columnDef.valueFormatter = (params) =>
+				people().label(ruleMatch, params.value) ?? String(params.value ?? '');
+			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+			columnDef.filterParams = {
+				filterOptions: getStringColumnFilterOptions(i18n),
+			};
+		} else if (col.type === 'string') {
 			columnDef.cellEditor = 'agLargeTextCellEditor';
 			columnDef.cellEditorPopup = true;
 			columnDef.cellEditorPopupPosition = 'over';

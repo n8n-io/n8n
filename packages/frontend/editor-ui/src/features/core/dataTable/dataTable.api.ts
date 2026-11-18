@@ -237,6 +237,28 @@ export const updateDataTableRowsApi = async (
 	);
 };
 
+/** Sets the same values on every row with one of `rowIds`, in one request. */
+export const updateDataTableRowsByIdsApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	rowIds: number[],
+	rowData: DataTableRow,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/rows`,
+		{
+			filter: {
+				type: 'or',
+				filters: rowIds.map((value) => ({ columnName: 'id', condition: 'eq', value })),
+			},
+			data: rowData,
+		},
+	);
+};
+
 export const deleteDataTableRowsApi = async (
 	context: IRestApiContext,
 	dataTableId: string,

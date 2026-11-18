@@ -16,6 +16,7 @@ import {
 	getDataTableRowsApi,
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
+	updateDataTableRowsByIdsApi,
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
 	downloadDataTableCsvApi,
@@ -375,6 +376,20 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return inserted[0];
 	};
 
+	const updateRowsByIds = async (
+		dataTableId: string,
+		projectId: string,
+		rowIds: number[],
+		rowData: DataTableRow,
+	) =>
+		await updateDataTableRowsByIdsApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			rowIds,
+			rowData,
+		);
+
 	const updateRow = async (
 		dataTableId: string,
 		projectId: string,
@@ -457,6 +472,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		totalCount,
 		setRowRule,
 		fetchRowRuleImpact,
+		updateRowsByIds,
 		fetchDataTables,
 		fetchDataTableSize,
 		dataTableSize: computed(() => dataTableSize.value),

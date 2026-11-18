@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type {
 	DataTable,
 	DataTableColumnCreatePayload,
@@ -29,7 +29,14 @@ import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappin
 import { useDebounce } from '@n8n/composables/useDebounce';
 import DataTableLoadingIndicator from './DataTableLoadingIndicator.vue';
 
-import { N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
+import { N8nButton, N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import {
+	type RowRuleMatch,
+	useRowRulePeople,
+} from '@/features/core/dataTable/composables/useRowRulePeople';
+import AssignRowsPopover from './AssignRowsPopover.vue';
 registerAgGridModulesOnce();
 
 type Props = {
@@ -72,6 +79,16 @@ const agGrid = useAgGrid<DataTableRow>({
 	defaultColDef: defaultColDef.value,
 });
 
+const ruleColumns = computed<Record<string, RowRuleMatch>>(() =>
+	Object.fromEntries(
+		(props.dataTable.rowRule?.conditions ?? []).map(({ column, match }) => [column, match]),
+	),
+);
+const hasRuleColumns = computed(() => Object.keys(ruleColumns.value).length > 0);
+const rowRulePeople = useRowRulePeople();
+const dataTableStore = useDataTableStore();
+const toast = useToast();
+
 const dataTableColumns = useDataTableColumns({
 	onDeleteColumn: onDeleteColumnFunction,
 	onRenameColumn: onRenameColumnFunction,
@@ -81,14 +98,7 @@ const dataTableColumns = useDataTableColumns({
 	readOnly: computed(() => props.readOnly ?? false),
 	schemaReadOnly: computed(() => props.schemaReadOnly ?? false),
 	schemaReadOnlyTooltip: computed(() => props.schemaReadOnlyTooltip),
-	ruleColumns: computed(() =>
-		Object.fromEntries(
-			(props.dataTable.rowRule?.conditions ?? []).map(({ column, match }) => [
-				column,
-				match === 'project' ? 'team' : 'owner',
-			]),
-		),
-	),
+	ruleColumns,
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
@@ -177,6 +187,33 @@ const initialize = async (params: GridReadyEvent) => {
 		emit('ready');
 	}
 };
+
+// Owner and team cells show names, which load after the grid renders.
+onMounted(async () => {
+	if (!hasRuleColumns.value) return;
+	try {
+		await rowRulePeople.load();
+		if (isGridReady) agGrid.gridApi.value.refreshCells({ force: true });
+	} catch {
+		// Cells then show the stored IDs, which is still correct.
+	}
+});
+
+async function assignSelectedRows(column: string, value: string) {
+	const rowIds = [...selection.selectedRowIds.value];
+	try {
+		emit('toggleSave', true);
+		await dataTableStore.updateRowsByIds(props.dataTable.id, props.dataTable.projectId, rowIds, {
+			[column]: value,
+		});
+		selection.handleClearSelection();
+		await dataTableOperations.fetchDataTableRows();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataTable.rowAccess.assign.error'));
+	} finally {
+		emit('toggleSave', false);
+	}
+}
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
 
@@ -280,7 +317,21 @@ defineExpose({
 			:selected-count="selection.selectedCount.value"
 			@delete-selected="dataTableOperations.handleDeleteSelected"
 			@clear-selection="selection.handleClearSelection"
-		/>
+		>
+			<template #actions>
+				<AssignRowsPopover
+					v-if="hasRuleColumns && !readOnly"
+					:rule-columns="ruleColumns"
+					@assign="assignSelectedRows"
+				/>
+				<N8nButton
+					variant="outline"
+					data-test-id="delete-selected-button"
+					:label="i18n.baseText('generic.delete')"
+					@click="dataTableOperations.handleDeleteSelected"
+				/>
+			</template>
+		</N8nSelectedItemsInfo>
 	</div>
 </template>
 
