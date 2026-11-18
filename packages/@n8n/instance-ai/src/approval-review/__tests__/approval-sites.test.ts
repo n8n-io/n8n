@@ -10,7 +10,7 @@ import type { Mock } from 'vitest';
 import type { Logger } from '../../logger';
 import { createToolRegistry } from '../../tool-registry';
 import { createDeleteCredentialTool } from '../../tools/credentials.tool';
-import { createDataTableTool } from '../../tools/data-tables.tool';
+import { createChangeDataTablesTool } from '../../tools/data-tables/change-data-tables.tool';
 import { createExecutionTool } from '../../tools/executions.tool';
 import { createWorkflowTool } from '../../tools/workflows.tool';
 import { createWorkspaceActionTool } from '../../tools/workspace.tool';
@@ -55,7 +55,11 @@ function createContext(): InstanceAiContext {
 		},
 		dataTableService: {
 			list: vi.fn().mockResolvedValue([]),
-			getSchema: vi.fn().mockResolvedValue([]),
+			getSchema: vi.fn().mockResolvedValue([
+				{ id: 'col_1', name: 'phone', type: 'string', index: 0 },
+				{ id: 'col_2', name: 'status', type: 'string', index: 1 },
+				{ id: 'col_3', name: 'email', type: 'string', index: 2 },
+			]),
 			resolveTableReference: vi.fn().mockResolvedValue({ id: 'dt_1', name: 'Leads' }),
 			create: vi.fn().mockResolvedValue({ id: 'dt_1', name: 'Leads' }),
 			delete: vi.fn().mockResolvedValue(undefined),
@@ -88,6 +92,11 @@ interface ApprovalSite {
 	action(context: InstanceAiContext): Mock;
 }
 
+/** A data table batch with one change, as the model sends it. */
+function oneChange(change: Record<string, unknown>): Record<string, unknown> {
+	return { changes: [change] };
+}
+
 function service<T>(value: T): Record<string, Mock> {
 	return value as unknown as Record<string, Mock>;
 }
@@ -103,8 +112,8 @@ const SITES: ApprovalSite[] = [
 	{
 		name: 'delete a data table',
 		route: 'always-ask',
-		build: (context) => createDataTableTool(context, 'delete'),
-		input: { dataTableId: 'dt_1' },
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({ action: 'delete', table: 'dt_1' }),
 		action: (context) => service(context.dataTableService).delete,
 	},
 	{
@@ -131,15 +140,19 @@ const SITES: ApprovalSite[] = [
 	{
 		name: 'create a data table',
 		route: 'low-risk',
-		build: (context) => createDataTableTool(context, 'create'),
-		input: { name: 'Leads', columns: [{ name: 'email', type: 'string' }] },
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({
+			action: 'create',
+			name: 'Leads',
+			columns: [{ name: 'email', type: 'string' }],
+		}),
 		action: (context) => service(context.dataTableService).create,
 	},
 	{
 		name: 'add a data table column',
 		route: 'low-risk',
-		build: (context) => createDataTableTool(context, 'add-column'),
-		input: { dataTableId: 'dt_1', columnName: 'phone', type: 'string' },
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({ action: 'add-column', table: 'dt_1', column: 'fax', type: 'string' }),
 		action: (context) => service(context.dataTableService).addColumn,
 	},
 	{
@@ -159,18 +172,23 @@ const SITES: ApprovalSite[] = [
 	{
 		name: 'delete data table rows',
 		route: 'judge',
-		build: (context) => createDataTableTool(context, 'delete-rows'),
-		input: {
-			dataTableId: 'dt_1',
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({
+			action: 'delete-rows',
+			table: 'dt_1',
 			filter: { type: 'and', filters: [{ columnName: 'status', condition: 'eq', value: 'test' }] },
-		},
+		}),
 		action: (context) => service(context.dataTableService).deleteRows,
 	},
 	{
 		name: 'insert data table rows',
 		route: 'judge',
-		build: (context) => createDataTableTool(context, 'insert-rows'),
-		input: { dataTableId: 'dt_1', rows: [{ email: 'jane@example.com' }] },
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({
+			action: 'insert-rows',
+			table: 'dt_1',
+			rows: [{ email: 'jane@example.com' }],
+		}),
 		action: (context) => service(context.dataTableService).insertRows,
 	},
 	{
@@ -218,31 +236,32 @@ const SITES: ApprovalSite[] = [
 	{
 		name: 'update data table rows',
 		route: 'judge',
-		build: (context) => createDataTableTool(context, 'update-rows'),
-		input: {
-			dataTableId: 'dt_1',
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({
+			action: 'update-rows',
+			table: 'dt_1',
 			filter: { type: 'and', filters: [{ columnName: 'status', condition: 'eq', value: 'test' }] },
 			data: { status: 'done' },
-		},
+		}),
 		action: (context) => service(context.dataTableService).updateRows,
 	},
 	{
 		name: 'delete a data table column',
 		route: 'judge',
-		build: (context) => createDataTableTool(context, 'delete-column'),
-		input: { dataTableId: 'dt_1', columnId: 'col_1', currentColumnName: 'phone' },
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({ action: 'delete-column', table: 'dt_1', column: 'phone' }),
 		action: (context) => service(context.dataTableService).deleteColumn,
 	},
 	{
 		name: 'rename a data table column',
 		route: 'judge',
-		build: (context) => createDataTableTool(context, 'rename-column'),
-		input: {
-			dataTableId: 'dt_1',
-			columnId: 'col_1',
-			currentColumnName: 'phone',
+		build: (context) => createChangeDataTablesTool(context),
+		input: oneChange({
+			action: 'rename-column',
+			table: 'dt_1',
+			column: 'phone',
 			newName: 'mobile',
-		},
+		}),
 		action: (context) => service(context.dataTableService).renameColumn,
 	},
 	{
