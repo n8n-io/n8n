@@ -12,10 +12,9 @@ import {
 	WorkflowDependencyRepository,
 	type Project,
 	type User,
-	type WorkflowDependency,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INode, INodeProperties } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -28,25 +27,6 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
-// Like the real HTTP Request node, each selector shows only for its own auth mode.
-const HTTP_REQUEST_SELECTORS: INodeProperties[] = [
-	{ displayName: 'Authentication', name: 'authentication', type: 'string', default: 'none' },
-	{
-		displayName: 'Credential Type',
-		name: 'nodeCredentialType',
-		type: 'string',
-		default: '',
-		displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
-	},
-	{
-		displayName: 'Generic Auth Type',
-		name: 'genericAuthType',
-		type: 'string',
-		default: '',
-		displayOptions: { show: { authentication: ['genericCredentialType'] } },
-	},
-];
-
 const INSTANCE_USAGE = '/credential-type-policies/usage';
 const projectUsage = (projectId: string) => `/projects/${projectId}/credential-type-policies/usage`;
 
@@ -57,24 +37,20 @@ let projectEditor: User;
 let projectA: Project;
 let projectB: Project;
 
-type IndexRow = { type: WorkflowDependency['dependencyType']; credentialId: string };
-const active = (credentialId: string): IndexRow => ({ type: 'activeCredentialId', credentialId });
-const staleOnly = (credentialId: string): IndexRow => ({ type: 'credentialId', credentialId });
-
 async function indexVersion(
 	workflow: { id: string; versionCounter: number },
 	publishedVersionId: string | null,
-	rows: IndexRow[],
+	credentialIds: string[],
 ) {
 	const dependencies = new WorkflowDependencies(
 		workflow.id,
 		workflow.versionCounter + 1,
 		publishedVersionId,
 	);
-	for (const [index, row] of rows.entries()) {
+	for (const [index, credentialId] of credentialIds.entries()) {
 		dependencies.add({
-			dependencyType: row.type,
-			dependencyKey: row.credentialId,
+			dependencyType: 'credentialId',
+			dependencyKey: credentialId,
 			dependencyInfo: { nodeId: `node-${index}`, nodeVersion: 1 },
 		});
 	}
@@ -88,13 +64,6 @@ const credential = async (type: string) =>
 	await createCredentials({ name: type, type, data: '' }, projectA);
 
 beforeAll(async () => {
-	await utils.initNodeTypes({
-		...utils.buildDefaultNodes(),
-		'n8n-nodes-base.httpRequest': utils.minimalNodeType(
-			'n8n-nodes-base.httpRequest',
-			HTTP_REQUEST_SELECTORS,
-		),
-	});
 	owner = await createOwner();
 	member = await createMember();
 	projectAdmin = await createMember();
@@ -115,12 +84,12 @@ describe('GET /credential-type-policies/usage', () => {
 		const bitlyTwo = await credential('bitlyApi');
 
 		const inactive = await createWorkflow({}, projectA);
-		await indexVersion(inactive, null, [active(bitlyOne.id), active(bitlyTwo.id)]);
+		await indexVersion(inactive, null, [bitlyOne.id, bitlyTwo.id]);
 
 		const published = await createActiveWorkflow({}, projectA);
-		await indexVersion(published, published.activeVersionId, [active(bitlyOne.id)]);
-		// The draft of an active workflow does not run, so its rows do not count.
-		await indexVersion(published, null, [active(bitlyOne.id), active(bitlyOne.id)]);
+		await indexVersion(published, published.activeVersionId, [bitlyOne.id]);
+		// An active workflow counts in its published version only, so its draft rows do not count.
+		await indexVersion(published, null, [bitlyOne.id, bitlyOne.id]);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -129,27 +98,7 @@ describe('GET /credential-type-policies/usage', () => {
 		});
 	});
 
-	test('counts a credential that the node configuration uses, and not a stale one', async () => {
-		const bitly = await credential('bitlyApi');
-		const header = await credential('httpHeaderAuth');
-
-		// An HTTP Request node switched from "Predefined Credential Type" (Bitly) to header auth
-		// keeps the Bitly credential, but the indexer marks only the header credential as active.
-		const workflow = await createWorkflow({}, projectA);
-		await indexVersion(workflow, null, [
-			staleOnly(bitly.id),
-			staleOnly(header.id),
-			active(header.id),
-		]);
-
-		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
-
-		expect(response.body.data).toEqual({
-			httpHeaderAuth: { uses: 1, workflows: 1, activeWorkflows: 0 },
-		});
-	});
-
-	test('counts what the indexer records for HTTP Request nodes', async () => {
+	test('counts the credentials that HTTP Request nodes select, also one left after an auth mode change', async () => {
 		const bitly = await credential('bitlyApi');
 		const header = await credential('httpHeaderAuth');
 		const httpRequest = (id: string, overrides: Partial<INode>): INode => ({
@@ -161,10 +110,6 @@ describe('GET /credential-type-policies/usage', () => {
 			parameters: {},
 			...overrides,
 		});
-		const bothCredentials = {
-			bitlyApi: { id: bitly.id, name: 'Bitly' },
-			httpHeaderAuth: { id: header.id, name: 'Header' },
-		};
 
 		const workflow = await createWorkflow(
 			{
@@ -174,7 +119,7 @@ describe('GET /credential-type-policies/usage', () => {
 							authentication: 'predefinedCredentialType',
 							nodeCredentialType: 'bitlyApi',
 						},
-						credentials: bothCredentials,
+						credentials: { bitlyApi: { id: bitly.id, name: 'Bitly' } },
 					}),
 					// Switched to header auth, with the Bitly credential and selector left behind.
 					httpRequest('switched', {
@@ -183,7 +128,10 @@ describe('GET /credential-type-policies/usage', () => {
 							genericAuthType: 'httpHeaderAuth',
 							nodeCredentialType: 'bitlyApi',
 						},
-						credentials: bothCredentials,
+						credentials: {
+							bitlyApi: { id: bitly.id, name: 'Bitly' },
+							httpHeaderAuth: { id: header.id, name: 'Header' },
+						},
 					}),
 					// Names Bitly API but has no credential selected.
 					httpRequest('unselected', {
@@ -205,8 +153,34 @@ describe('GET /credential-type-policies/usage', () => {
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
 		expect(response.body.data).toEqual({
-			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0 },
+			bitlyApi: { uses: 2, workflows: 1, activeWorkflows: 0 },
 			httpHeaderAuth: { uses: 1, workflows: 1, activeWorkflows: 0 },
+		});
+	});
+
+	test('counts only credential rows of the index', async () => {
+		const bitly = await credential('bitlyApi');
+		const workflow = await createWorkflow({}, projectA);
+		const dependencies = new WorkflowDependencies(workflow.id, workflow.versionCounter + 1, null);
+		dependencies.add({
+			dependencyType: 'credentialId',
+			dependencyKey: bitly.id,
+			dependencyInfo: { nodeId: 'node-0', nodeVersion: 1 },
+		});
+		dependencies.add({
+			dependencyType: 'dataTableId',
+			dependencyKey: bitly.id,
+			dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+		});
+		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
+			workflow.id,
+			dependencies,
+		);
+
+		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
+
+		expect(response.body.data).toEqual({
+			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0 },
 		});
 	});
 
@@ -214,9 +188,9 @@ describe('GET /credential-type-policies/usage', () => {
 		const bitly = await credential('bitlyApi');
 
 		const archived = await createWorkflow({ isArchived: true }, projectA);
-		await indexVersion(archived, null, [active(bitly.id)]);
+		await indexVersion(archived, null, [bitly.id]);
 		const withDeletedCredential = await createWorkflow({}, projectA);
-		await indexVersion(withDeletedCredential, null, [active('deleted-credential-id')]);
+		await indexVersion(withDeletedCredential, null, ['deleted-credential-id']);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -228,8 +202,8 @@ describe('GET /credential-type-policies/usage', () => {
 		const slack = await credential('slackApi');
 
 		const workflow = await createActiveWorkflow({}, projectA);
-		await indexVersion(workflow, workflow.activeVersionId, [active(bitly.id)]);
-		await indexVersion(workflow, null, [active(slack.id)]);
+		await indexVersion(workflow, workflow.activeVersionId, [bitly.id]);
+		await indexVersion(workflow, null, [slack.id]);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -241,7 +215,7 @@ describe('GET /credential-type-policies/usage', () => {
 	test('ignores the published rows of a workflow that is no longer active', async () => {
 		const bitly = await credential('bitlyApi');
 		const inactive = await createWorkflow({}, projectA);
-		await indexVersion(inactive, 'unpublished-version-id', [active(bitly.id)]);
+		await indexVersion(inactive, 'unpublished-version-id', [bitly.id]);
 
 		const response = await testServer.authAgentFor(owner).get(INSTANCE_USAGE).expect(200);
 
@@ -267,7 +241,7 @@ describe('GET /projects/:projectId/credential-type-policies/usage', () => {
 		const bitly = await credential('bitlyApi');
 		const workflow = await createWorkflow({}, projectA);
 		await shareWorkflowWithProjects(workflow, [{ project: projectB }]);
-		await indexVersion(workflow, null, [active(bitly.id)]);
+		await indexVersion(workflow, null, [bitly.id]);
 
 		const agent = testServer.authAgentFor(owner);
 		const ownerProject = await agent.get(projectUsage(projectA.id)).expect(200);
@@ -277,6 +251,21 @@ describe('GET /projects/:projectId/credential-type-policies/usage', () => {
 			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0 },
 		});
 		expect(sharedProject.body.data).toEqual({});
+	});
+
+	test('counts a credential of another project in the project that owns the workflow', async () => {
+		const bitly = await credential('bitlyApi');
+		const workflow = await createWorkflow({}, projectB);
+		await indexVersion(workflow, null, [bitly.id]);
+
+		const agent = testServer.authAgentFor(owner);
+		const workflowProject = await agent.get(projectUsage(projectB.id)).expect(200);
+		const credentialProject = await agent.get(projectUsage(projectA.id)).expect(200);
+
+		expect(workflowProject.body.data).toEqual({
+			bitlyApi: { uses: 1, workflows: 1, activeWorkflows: 0 },
+		});
+		expect(credentialProject.body.data).toEqual({});
 	});
 
 	test('lets the admin of the project read it', async () => {

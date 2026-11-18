@@ -30,8 +30,9 @@ export class TypeUsageRepository {
 	}
 
 	/**
-	 * Counts the selected credentials that the running version of each non-archived workflow
-	 * uses. With a `projectId`, counts only the workflows that the project owns.
+	 * Counts the credentials that the running version of each non-archived workflow selects.
+	 * A credential left on a node after an auth mode change counts, because the credential type
+	 * check blocks on it too. With a `projectId`, counts only the workflows that the project owns.
 	 */
 	async countCredentialTypeUsage(
 		projectId: string | null,
@@ -49,9 +50,7 @@ export class TypeUsageRepository {
 				'COUNT(DISTINCT CASE WHEN workflow.activeVersionId IS NOT NULL THEN dependency.workflowId END)',
 				'activeWorkflows',
 			)
-			.where('dependency.dependencyType = :dependencyType', {
-				dependencyType: 'activeCredentialId',
-			})
+			.where('dependency.dependencyType = :dependencyType', { dependencyType: 'credentialId' })
 			.andWhere(runningVersionRows('dependency', 'workflow'))
 			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
 			.groupBy('credential.type');

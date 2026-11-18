@@ -8,35 +8,10 @@ import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from
 import type { WorkflowHistory } from '@n8n/db';
 import type { Span } from 'n8n-core';
 import { ErrorReporter, Tracing } from 'n8n-core';
-import type { INode, INodeType, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { NodeTypes } from '@/node-types';
-
 import { WorkflowIndexService } from '../workflow-index.service';
-
-// Like the real HTTP Request node, each selector shows only for its own auth mode, so a value
-// left over from an earlier auth mode is not active.
-const httpRequestDescription = {
-	properties: [
-		{ displayName: 'Authentication', name: 'authentication', type: 'string', default: 'none' },
-		{
-			displayName: 'Credential Type',
-			name: 'nodeCredentialType',
-			type: 'string',
-			default: '',
-			displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
-		},
-		{
-			displayName: 'Generic Auth Type',
-			name: 'genericAuthType',
-			type: 'string',
-			default: '',
-			displayOptions: { show: { authentication: ['genericCredentialType'] } },
-		},
-	],
-	credentials: [],
-} as unknown as INodeTypeDescription;
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;
@@ -46,7 +21,6 @@ describe('WorkflowIndexService', () => {
 	const mockErrorReporter = mockInstance(ErrorReporter);
 	const mockEventService = mockInstance(EventService);
 	const mockTracing = mockInstance(Tracing);
-	const mockNodeTypes = mockInstance(NodeTypes);
 
 	const createWorkflowsConfig = (overrides: Partial<WorkflowsConfig> = {}) =>
 		mock<WorkflowsConfig>({ indexingBatchSize: 10, ...overrides });
@@ -67,7 +41,6 @@ describe('WorkflowIndexService', () => {
 			mockErrorReporter,
 			mockTracing,
 			createWorkflowsConfig(),
-			mockNodeTypes,
 		);
 	});
 
@@ -420,10 +393,6 @@ describe('WorkflowIndexService', () => {
 
 		it('should skip credentials with null or empty id', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
-			// An unknown node type makes every selected credential active.
-			mockNodeTypes.getByNameAndVersion.mockImplementation(() => {
-				throw new Error('Unknown node type');
-			});
 
 			const workflow = createWorkflow([
 				createNode({
@@ -442,8 +411,8 @@ describe('WorkflowIndexService', () => {
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			const dependencies = call[1].dependencies;
 
-			// nodeType, plus credentialId and activeCredentialId for cred-1 only
-			expect(dependencies).toHaveLength(3);
+			// Should have nodeType + only 1 credential (cred-1)
+			expect(dependencies).toHaveLength(2);
 			expect(dependencies).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -456,84 +425,8 @@ describe('WorkflowIndexService', () => {
 						dependencyKey: 'cred-1',
 						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
 					}),
-					expect.objectContaining({
-						dependencyType: 'activeCredentialId',
-						dependencyKey: 'cred-1',
-						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
-					}),
 				]),
 			);
-		});
-
-		describe('activeCredentialId', () => {
-			const httpRequestNode = (parameters: INode['parameters']) =>
-				createNode({
-					id: 'node-1',
-					type: 'n8n-nodes-base.httpRequest',
-					parameters,
-					credentials: {
-						bitlyApi: { id: 'cred-bitly', name: 'Bitly' },
-						httpHeaderAuth: { id: 'cred-header', name: 'Header' },
-					},
-				});
-
-			const keysOfType = (type: string) =>
-				mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0][1].dependencies
-					.filter((dependency) => dependency.dependencyType === type)
-					.map((dependency) => dependency.dependencyKey)
-					.sort();
-
-			beforeEach(() => {
-				mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
-			});
-
-			it('should index only the credentials that the node configuration uses', async () => {
-				mockNodeTypes.getByNameAndVersion.mockReturnValue({
-					description: httpRequestDescription,
-				} as INodeType);
-
-				await service.updateIndexForDraft(
-					createWorkflow([
-						httpRequestNode({
-							authentication: 'genericCredentialType',
-							genericAuthType: 'httpHeaderAuth',
-							nodeCredentialType: 'bitlyApi',
-						}),
-					]),
-				);
-
-				expect(keysOfType('credentialId')).toEqual(['cred-bitly', 'cred-header']);
-				expect(keysOfType('activeCredentialId')).toEqual(['cred-header']);
-			});
-
-			it('should index the credential of a predefined credential type', async () => {
-				mockNodeTypes.getByNameAndVersion.mockReturnValue({
-					description: httpRequestDescription,
-				} as INodeType);
-
-				await service.updateIndexForDraft(
-					createWorkflow([
-						httpRequestNode({
-							authentication: 'predefinedCredentialType',
-							nodeCredentialType: 'bitlyApi',
-						}),
-					]),
-				);
-
-				expect(keysOfType('activeCredentialId')).toEqual(['cred-bitly']);
-			});
-
-			it('should index every selected credential when the node type is unknown', async () => {
-				mockNodeTypes.getByNameAndVersion.mockImplementation(() => {
-					throw new Error('Unknown node type');
-				});
-
-				await service.updateIndexForDraft(
-					createWorkflow([httpRequestNode({ authentication: 'genericCredentialType' })]),
-				);
-
-				expect(keysOfType('activeCredentialId')).toEqual(['cred-bitly', 'cred-header']);
-			});
 		});
 
 		it('should skip nodes with missing type', async () => {
@@ -957,7 +850,6 @@ describe('WorkflowIndexService', () => {
 				mockErrorReporter,
 				mockTracing,
 				createWorkflowsConfig({ indexingBatchSize: batchSize }),
-				mockNodeTypes,
 			);
 
 			// Create 5 workflows to test multiple batches

@@ -8,11 +8,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
-import {
-	WORKFLOW_DEPENDENCY_INDEX_VERSION,
-	WorkflowDependencyRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { ErrorReporter, Tracing } from 'n8n-core';
@@ -20,7 +16,6 @@ import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { NodeTypes } from '@/node-types';
 import { retryUntil } from '@test-integration/retry-until';
 
 import { createOwner } from '../shared/db/users';
@@ -47,7 +42,6 @@ beforeAll(async () => {
 		Container.get(ErrorReporter),
 		Container.get(Tracing),
 		Container.get(WorkflowsConfig),
-		Container.get(NodeTypes),
 	);
 
 	// Initialize the service to register event listeners
@@ -215,7 +209,7 @@ describe('WorkflowIndexService Integration', () => {
 						nodeId: 'node-1',
 						nodeVersion: 1,
 					},
-					indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
+					indexVersionId: 2,
 				});
 			});
 		});

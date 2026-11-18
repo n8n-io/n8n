@@ -308,20 +308,28 @@ types, and they get the verdict of their base type.
 
 `GET /credential-type-policies/usage` and `GET /projects/:projectId/credential-type-policies/usage`
 return Uses, Workflows and Active workflows for each credential type in use. A type that no
-workflow uses has no entry. The counts come from the `activeCredentialId` rows of the workflow
-dependency index:
+workflow uses has no entry. The counts come from the `credentialId` rows of the workflow
+dependency index, joined to the credential for its type:
 
-- The indexer writes these rows only for the credentials that the node's current configuration
-  uses. A credential left on a node after an auth mode change does not count, unless n8n cannot
-  tell which credentials the node uses, for example when its node type is not loaded or a
-  credential type parameter is an expression. Then every selected credential counts.
+- Every selected credential counts, also a credential left on a node after an auth mode change.
+  [The credential type check](#the-credential-type-check) reads every key of a node's
+  `credentials` map, so a deny blocks that workflow too.
 - Each workflow counts in one version: the published version if it is active, the draft if not.
   Archived workflows and deleted credentials do not count.
 - The project route counts only the workflows that the project owns.
-- A disabled node counts, the same as in the check above.
+- A disabled node counts, as in [Grandfathering](#grandfathering).
 
-The counts are only as current as the index. After an upgrade that bumps
-`WORKFLOW_DEPENDENCY_INDEX_VERSION`, a workflow counts as 0 until the startup reindex reaches it.
+The check also reads some nodes that the counts leave out, so a deny can block more workflows
+than the counts show:
+
+- A node that names a credential type, through a parameter or `extendsCredential`, but has no
+  credential selected.
+- A node on Gateway credits. It has no stored credential.
+- A tool of an inline agent. The index reads only the nodes of the workflow itself.
+- A node whose selected credential no longer exists, or whose credential has no ID. The node
+  still names the type in its `credentials` map.
+
+The counts are only as current as the index.
 
 ## The write seal
 

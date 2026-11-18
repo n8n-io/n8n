@@ -8,15 +8,11 @@ import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	DATA_TABLE_NODE_TYPES,
-	getActiveCredentialTypes,
 	INode,
-	INodeTypeDescription,
 	IWorkflowBase,
 	IWorkflowSettings,
 	isNodeWithWorkflowSelector,
 } from 'n8n-workflow';
-
-import { NodeTypes } from '@/node-types';
 
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
@@ -42,7 +38,6 @@ export class WorkflowIndexService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly tracing: Tracing,
 		workflowsConfig: WorkflowsConfig,
-		private readonly nodeTypes: NodeTypes,
 	) {
 		this.batchSize = workflowsConfig.indexingBatchSize;
 	}
@@ -303,33 +298,20 @@ export class WorkflowIndexService {
 	}
 
 	private addCredentialDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		const selected = Object.entries(node.credentials ?? {}).flatMap(([type, { id }]) =>
-			id ? [{ type, id }] : [],
-		);
-		if (selected.length === 0) {
+		if (!node.credentials) {
 			return;
 		}
-		const activeTypes = this.getActiveCredentialTypes(node);
-		for (const { type: credentialType, id } of selected) {
-			const dependencyInfo = { nodeId: node.id, nodeVersion: node.typeVersion };
-			dependencyUpdates.add({ dependencyType: 'credentialId', dependencyKey: id, dependencyInfo });
-			if (activeTypes === null || activeTypes.has(credentialType)) {
-				dependencyUpdates.add({
-					dependencyType: 'activeCredentialId',
-					dependencyKey: id,
-					dependencyInfo,
-				});
+		for (const credentialDetails of Object.values(node.credentials)) {
+			const { id } = credentialDetails;
+			if (!id) {
+				continue;
 			}
+			dependencyUpdates.add({
+				dependencyType: 'credentialId',
+				dependencyKey: id,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
 		}
-	}
-
-	/** `null` means the active set is unknown, so every selected credential counts as active. */
-	private getActiveCredentialTypes(node: INode): Set<string> | null {
-		let description: INodeTypeDescription | null = null;
-		try {
-			description = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-		} catch {}
-		return getActiveCredentialTypes(node, description);
 	}
 
 	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {

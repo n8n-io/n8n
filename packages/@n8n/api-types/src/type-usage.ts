@@ -1,6 +1,6 @@
 /** How often the running version of non-archived workflows uses one type. */
 export type TypeUsage = {
-	/** Nodes that use the type. */
+	/** Nodes that use the type. A node uses a credential type when it selects a credential of it. */
 	uses: number;
 	workflows: number;
 	activeWorkflows: number;
