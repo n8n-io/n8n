@@ -1,5 +1,6 @@
 import type { TelemetryProxy } from '@n8n/backend-services';
 import type { OperationContext, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -7,8 +8,13 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';
+import { McpConfirmationService } from '../../mcp-confirmation.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type {
+	ToolDefinition,
+	ToolHandlerResult,
+	UserCalledMCPToolEventPayload,
+} from '../../mcp.types';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const inputSchema = {
@@ -31,7 +37,7 @@ export const createArchiveWorkflowTool = (
 	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
 	ctx: OperationContext = {},
-): ToolDefinition<typeof inputSchema> => ({
+): ToolDefinition<typeof inputSchema, ToolHandlerResult> => ({
 	name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
 	config: {
 		description: 'Archive a workflow in n8n by its ID.',
@@ -45,7 +51,7 @@ export const createArchiveWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId }: { workflowId: string }) => {
+	handler: async ({ workflowId }: { workflowId: string }, extra?: unknown) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
@@ -53,7 +59,31 @@ export const createArchiveWorkflowTool = (
 		};
 
 		try {
-			await getMcpWorkflow(workflowId, user, ['workflow:delete'], workflowFinderService);
+			const existing = await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:delete'],
+				workflowFinderService,
+			);
+
+			const confirmed = await Container.get(McpConfirmationService).confirm(extra, user, {
+				tool: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
+				args: { workflowId },
+				message: `Archive ${existing.name} (ID: ${workflowId})`,
+				approval: {
+					approvalDetails: { action: 'archive-workflow', name: existing.name, id: workflowId },
+					resourceName: existing.name,
+					severity: 'warning',
+				},
+			});
+			if (confirmed.kind === 'ask') return confirmed.result;
+			if (confirmed.kind !== 'proceed') {
+				throw new Error(
+					confirmed.kind === 'declined'
+						? 'The user declined to archive the workflow.'
+						: 'The confirmation does not match this request. Ask again.',
+				);
+			}
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 

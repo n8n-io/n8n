@@ -9,10 +9,27 @@ import { sanitizeMcpToolSchemas } from '../agent/sanitize-mcp-schemas';
 import type { Logger } from '../logger';
 import { createToolRegistry } from '../tool-registry';
 import type {
+	InstanceAiContext,
 	InstanceAiToolRegistry,
+	InstanceMcpCallToolOptions,
 	InstanceMcpCallToolResult,
+	InstanceMcpInputRequiredResult,
 	InstanceMcpServer,
 } from '../types';
+import {
+	approvalSuspendPayload,
+	elicitationResumeSchema,
+	elicitationSuspendSchema,
+	formContinuation,
+	formSuspendPayload,
+	readContinuation,
+	readElicitation,
+	resolveApprovalPolicy,
+	toElicitResult,
+	type ElicitationContinuation,
+	type ElicitationResumeData,
+	type ElicitationSuspendPayload,
+} from './instance-mcp-elicitation';
 
 export const INSTANCE_MCP_SOURCE = 'instance MCP';
 
@@ -27,12 +44,35 @@ export interface InstanceMcpBridgedTools {
 
 function isInputRequired(
 	result: InstanceMcpCallToolResult,
-): result is Extract<InstanceMcpCallToolResult, { resultType: 'input_required' }> {
+): result is InstanceMcpInputRequiredResult {
 	return 'resultType' in result && result.resultType === 'input_required';
 }
 
 function isMcpToolCallResult(value: unknown): value is McpToolCallResult {
 	return isRecord(value) && Array.isArray(value.content);
+}
+
+function unsupportedInputRequest(result: InstanceMcpInputRequiredResult): McpToolCallResult {
+	const methods = Object.values(result.inputRequests ?? {}).map((request) => request.method);
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `The tool asked for input the Assistant cannot provide (${methods.join(', ') || 'unknown'}).`,
+			},
+		],
+		isError: true,
+	};
+}
+
+interface BridgeToolContext {
+	resumeData: ElicitationResumeData | undefined;
+	continuation?: unknown;
+	abortSignal?: AbortSignal;
+	suspend: (
+		payload: ElicitationSuspendPayload,
+		options?: { continuation?: ElicitationContinuation },
+	) => Promise<never>;
 }
 
 /**
@@ -42,13 +82,21 @@ function isMcpToolCallResult(value: unknown): value is McpToolCallResult {
  *
  * Input schemas are the server's JSON Schema, passed through unchanged, so
  * the model sees exactly what an external MCP client sees.
+ *
+ * A tool that answers `input_required` (a confirmation before a write, or a
+ * form) suspends the run on the matching card. The resumed call retries the
+ * same request with the answer and the server's `requestState`, as any
+ * 2026-07-28 client does. Admin rules, "Always allow" grants and Auto mode
+ * apply before a card shows, as they do for the Assistant's own tools.
  */
 export function createToolsFromInstanceMcpServer({
 	server,
 	logger,
+	context,
 }: {
 	server: InstanceMcpServer;
 	logger: Logger;
+	context: InstanceAiContext;
 }): InstanceMcpBridgedTools {
 	const tools = createToolRegistry();
 	const groups = new Map<string, string>();
@@ -61,26 +109,96 @@ export function createToolsFromInstanceMcpServer({
 		const tool = new Tool(toolName)
 			.description(definition.description ?? toolName)
 			.input(definition.inputSchema)
-			.handler(async (input: unknown, ctx) => {
-				const result = await server.callTool(
-					{ name: toolName, arguments: isRecord(input) ? input : {} },
-					{ abortSignal: ctx.abortSignal },
-				);
-				if (isInputRequired(result)) {
-					// M2 turns this into a suspension; until then the model learns the call stopped.
-					return {
-						content: [
-							{
-								type: 'text',
-								text: `The tool asked for input before it acts (${Object.keys(
-									result.inputRequests ?? {},
-								).join(', ')}). Answering is not supported yet.`,
-							},
-						],
-						isError: true,
-					};
+			.suspend(elicitationSuspendSchema)
+			.resume(elicitationResumeSchema)
+			.handler(async (input: unknown, ctx: BridgeToolContext) => {
+				const args = isRecord(input) ? input : {};
+				const call = async (
+					retry?: Pick<InstanceMcpCallToolOptions, 'inputResponses' | 'requestState'>,
+				) =>
+					await server.callTool(
+						{ name: toolName, arguments: args },
+						{ abortSignal: ctx.abortSignal, ...retry },
+					);
+
+				const answerInputRequired = async (
+					result: InstanceMcpInputRequiredResult,
+				): Promise<unknown> => {
+					const elicitation = readElicitation(result);
+					if (!elicitation) return unsupportedInputRequest(result);
+
+					if (elicitation.approval) {
+						const { decision, grantKey } = resolveApprovalPolicy(
+							context,
+							elicitation.approval,
+							args,
+							toolName,
+						);
+						if (decision === 'blocked') {
+							return { success: false, denied: true, reason: 'Action blocked by admin' };
+						}
+						if (decision === 'allowed') {
+							const retried = await call({
+								inputResponses: {
+									[elicitation.key]: { action: 'accept', content: { confirm: true } },
+								},
+								requestState: result.requestState,
+							});
+							return isInputRequired(retried) ? unsupportedInputRequest(retried) : retried;
+						}
+						return await ctx.suspend(approvalSuspendPayload(elicitation), {
+							continuation: formContinuation(
+								elicitation,
+								'approval',
+								result.requestState,
+								grantKey,
+							),
+						});
+					}
+
+					return await ctx.suspend(formSuspendPayload(elicitation), {
+						continuation: formContinuation(elicitation, 'form', result.requestState),
+					});
+				};
+
+				const { resumeData } = ctx;
+				if (resumeData !== undefined && resumeData !== null) {
+					let continuation = readContinuation(ctx.continuation);
+					if (!continuation) {
+						// No state survived (e.g. a resume without its checkpoint): ask the server
+						// again to learn the request key and a fresh state, then answer it.
+						const first = await call();
+						if (!isInputRequired(first)) return first;
+						const elicitation = readElicitation(first);
+						if (!elicitation) return unsupportedInputRequest(first);
+						continuation = formContinuation(
+							elicitation,
+							elicitation.approval ? 'approval' : 'form',
+							first.requestState,
+						);
+					}
+					const answer = toElicitResult(continuation, resumeData);
+					if (
+						continuation.kind === 'approval' &&
+						answer.action === 'accept' &&
+						continuation.grantKey &&
+						'scope' in resumeData &&
+						resumeData.scope === 'session'
+					) {
+						await context.grantSessionToolApproval?.(continuation.grantKey);
+					}
+					const result = await call({
+						inputResponses: { [continuation.key]: answer },
+						...(continuation.requestState !== undefined
+							? { requestState: continuation.requestState }
+							: {}),
+					});
+					// The server may ask another round; a card shows again for it.
+					return isInputRequired(result) ? await answerInputRequired(result) : result;
 				}
-				return result;
+
+				const result = await call();
+				return isInputRequired(result) ? await answerInputRequired(result) : result;
 			})
 			// A plain value lands in the message as JSON; only media needs the content shape.
 			.toModelOutput((result: unknown) => {

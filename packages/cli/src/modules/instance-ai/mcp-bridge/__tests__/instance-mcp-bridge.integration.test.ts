@@ -1,9 +1,15 @@
 import { PostHogClient } from '@n8n/backend-services';
+import { mock } from 'vitest-mock-extended';
 import { createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createToolsFromInstanceMcpServer, type InstanceAiToolRegistry } from '@n8n/instance-ai';
+import {
+	createToolsFromInstanceMcpServer,
+	type InstanceAiContext,
+	type InstanceAiToolRegistry,
+} from '@n8n/instance-ai';
+import type { JSONValue } from '@n8n/utils/json/to-json-value';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -49,7 +55,12 @@ describe('Assistant over the instance MCP server', () => {
 		owner = await createOwner();
 		const client = await Container.get(InstanceMcpClientFactory).createForUser(owner);
 		server = await InstanceMcpServerAdapter.create(client);
-		({ tools, groups } = createToolsFromInstanceMcpServer({ server, logger: noopLogger }));
+		// The bridge reads only permissions and grants from the context (none here: every write asks).
+		const context = mock<InstanceAiContext>({
+			permissions: undefined,
+			sessionApprovedToolKeys: undefined,
+		});
+		({ tools, groups } = createToolsFromInstanceMcpServer({ server, logger: noopLogger, context }));
 	});
 
 	afterAll(async () => {
@@ -89,6 +100,74 @@ describe('Assistant over the instance MCP server', () => {
 		expect(isRecord(result) ? result.structuredContent : undefined).toMatchObject({
 			workflow: expect.objectContaining({ id: workflow.id, name: 'Not exposed' }),
 		});
+	});
+
+	// M2: a write asks first. The first call answers `input_required`, which the bridge
+	// turns into a suspension; the resumed call retries with the answer and the state.
+	it('confirms an archive through elicitation, then archives on approval', async () => {
+		const workflow = await createWorkflow({ name: 'To archive' }, owner);
+		const archive = tools.get('archive_workflow');
+		if (!archive?.handler) throw new Error('archive_workflow was not bridged');
+		let suspended: { payload: unknown; options?: { continuation?: JSONValue } } | undefined;
+		const probe = {
+			toolCallId: 'call-2',
+			toolName: 'archive_workflow',
+			runId: 'run-1',
+			resumeData: undefined,
+			suspend: async (payload: unknown, options?: { continuation?: JSONValue }) => {
+				suspended = { payload, options };
+				throw new Error('suspended');
+			},
+		};
+
+		await expect(archive.handler({ workflowId: workflow.id }, probe)).rejects.toThrow('suspended');
+		expect(suspended?.payload).toMatchObject({
+			message: `Archive To archive (ID: ${workflow.id})`,
+			resourceName: 'To archive',
+			approvalDetails: { action: 'archive-workflow', id: workflow.id },
+			severity: 'warning',
+		});
+		expect(suspended?.options?.continuation).toMatchObject({
+			kind: 'approval',
+			key: 'confirm',
+			requestState: expect.any(String),
+		});
+
+		const result = await archive.handler(
+			{ workflowId: workflow.id },
+			{ ...probe, resumeData: { approved: true }, continuation: suspended?.options?.continuation },
+		);
+
+		expect(isRecord(result) ? result.structuredContent : undefined).toMatchObject({
+			archived: true,
+			workflowId: workflow.id,
+		});
+	});
+
+	it('does not archive when the user declines', async () => {
+		const workflow = await createWorkflow({ name: 'To keep' }, owner);
+		const archive = tools.get('archive_workflow');
+		if (!archive?.handler) throw new Error('archive_workflow was not bridged');
+		let continuation: JSONValue | undefined;
+		const probe = {
+			toolCallId: 'call-3',
+			toolName: 'archive_workflow',
+			runId: 'run-1',
+			resumeData: undefined,
+			suspend: async (_payload: unknown, options?: { continuation?: JSONValue }) => {
+				continuation = options?.continuation;
+				throw new Error('suspended');
+			},
+		};
+		await expect(archive.handler({ workflowId: workflow.id }, probe)).rejects.toThrow('suspended');
+
+		const result = await archive.handler(
+			{ workflowId: workflow.id },
+			{ ...probe, resumeData: { approved: false }, continuation },
+		);
+
+		expect(isRecord(result) && result.isError).toBe(true);
+		expect(JSON.stringify(result)).toContain('declined');
 	});
 
 	// The test server loads no node packages, so the search answers empty; the point

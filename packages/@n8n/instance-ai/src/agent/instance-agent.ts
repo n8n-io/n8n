@@ -167,6 +167,7 @@ export async function createInstanceAgent(
 		? createToolsFromInstanceMcpServer({
 				server: context.instanceMcpServer,
 				logger: context.logger,
+				context: domainContext,
 			})
 		: undefined;
 	const instanceMcpTools = createToolRegistry();

@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import type { TelemetryProxy } from '@n8n/backend-services';
 import type { OperationContext, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
@@ -20,10 +21,12 @@ import type {
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpConfirmationService } from '../mcp-confirmation.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type {
 	ToolDefinition,
+	ToolHandlerResult,
 	UserCalledMCPToolEventPayload,
 	WorkflowNotFoundReason,
 } from '../mcp.types';
@@ -64,6 +67,30 @@ const outputSchema = {
 	workflowReviewRequestId: workflowPublishBlockedDetailsShape.workflowReviewRequestId.optional(),
 } satisfies z.ZodRawShape;
 
+/** The user declined the confirmation, or the retry carried a state that is not this call's. */
+const declinedResult = (
+	workflowId: string,
+	kind: 'declined' | 'invalid',
+	telemetry: TelemetryProxy,
+	telemetryPayload: UserCalledMCPToolEventPayload,
+) => {
+	const output: PublishWorkflowOutput = {
+		success: false,
+		workflowId,
+		activeVersionId: null,
+		error:
+			kind === 'declined'
+				? 'The user declined to publish the workflow.'
+				: 'The confirmation does not match this request. Ask again.',
+	};
+	telemetryPayload.results = { success: false, error: output.error };
+	telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+	return {
+		content: [{ type: 'text' as const, text: jsonStringify(output) }],
+		structuredContent: output,
+	};
+};
+
 /** Only these two failures carry a machine-readable reason; anything else reports just its message. */
 const extractErrorReason = (
 	error: Error,
@@ -81,7 +108,7 @@ export const createPublishWorkflowTool = (
 	collaborationService: CollaborationService,
 	publicationStatusService?: WorkflowPublicationStatusService,
 	ctx: OperationContext = {},
-): ToolDefinition<typeof inputSchema.shape> => ({
+): ToolDefinition<typeof inputSchema.shape, ToolHandlerResult> => ({
 	name: 'publish_workflow',
 	config: {
 		description:
@@ -96,7 +123,10 @@ export const createPublishWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, versionId, name, description }: z.infer<typeof inputSchema>) => {
+	handler: async (
+		{ workflowId, versionId, name, description }: z.infer<typeof inputSchema>,
+		extra?: unknown,
+	) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'publish_workflow',
@@ -111,6 +141,25 @@ export const createPublishWorkflowTool = (
 				workflowFinderService,
 			);
 			const requestedVersionId = versionId ?? workflow.versionId;
+
+			const confirmed = await Container.get(McpConfirmationService).confirm(extra, user, {
+				tool: 'publish_workflow',
+				args: { workflowId, versionId, name, description },
+				message: `Make the ${versionId ? 'selected version' : 'latest draft'} of "${workflow.name}" live`,
+				approval: {
+					approvalDetails: {
+						action: 'publish-workflow',
+						selectedVersion: versionId !== undefined,
+						supportingCount: 0,
+					},
+					resourceName: workflow.name,
+					severity: 'warning',
+				},
+			});
+			if (confirmed.kind === 'ask') return confirmed.result;
+			if (confirmed.kind !== 'proceed') {
+				return declinedResult(workflowId, confirmed.kind, telemetry, telemetryPayload);
+			}
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 

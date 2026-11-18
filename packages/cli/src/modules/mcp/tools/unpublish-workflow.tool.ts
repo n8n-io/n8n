@@ -1,5 +1,6 @@
 import type { TelemetryProxy } from '@n8n/backend-services';
 import type { OperationContext, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
@@ -8,9 +9,14 @@ import type { CollaborationService } from '@/collaboration/collaboration.service
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpConfirmationService } from '../mcp-confirmation.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import type {
+	ToolDefinition,
+	ToolHandlerResult,
+	UserCalledMCPToolEventPayload,
+} from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -36,7 +42,7 @@ export const createUnpublishWorkflowTool = (
 	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
 	ctx: OperationContext = {},
-): ToolDefinition<typeof inputSchema.shape> => ({
+): ToolDefinition<typeof inputSchema.shape, ToolHandlerResult> => ({
 	name: 'unpublish_workflow',
 	config: {
 		description:
@@ -51,7 +57,7 @@ export const createUnpublishWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId }: z.infer<typeof inputSchema>) => {
+	handler: async ({ workflowId }: z.infer<typeof inputSchema>, extra?: unknown) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'unpublish_workflow',
@@ -59,7 +65,40 @@ export const createUnpublishWorkflowTool = (
 		};
 
 		try {
-			await getMcpWorkflow(workflowId, user, ['workflow:unpublish'], workflowFinderService);
+			const workflow = await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:unpublish'],
+				workflowFinderService,
+			);
+
+			const confirmed = await Container.get(McpConfirmationService).confirm(extra, user, {
+				tool: 'unpublish_workflow',
+				args: { workflowId },
+				message: `Unpublish ${workflow.name} (ID: ${workflowId})`,
+				approval: {
+					approvalDetails: { action: 'unpublish-workflow', name: workflow.name, id: workflowId },
+					resourceName: workflow.name,
+					severity: 'warning',
+				},
+			});
+			if (confirmed.kind === 'ask') return confirmed.result;
+			if (confirmed.kind !== 'proceed') {
+				const output: UnpublishWorkflowOutput = {
+					success: false,
+					workflowId,
+					error:
+						confirmed.kind === 'declined'
+							? 'The user declined to unpublish the workflow.'
+							: 'The confirmation does not match this request. Ask again.',
+				};
+				telemetryPayload.results = { success: false, error: output.error };
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				return {
+					content: [{ type: 'text', text: jsonStringify(output) }],
+					structuredContent: output,
+				};
+			}
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 

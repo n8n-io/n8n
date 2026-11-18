@@ -1,5 +1,6 @@
 import type { TelemetryProxy } from '@n8n/backend-services';
 import { type OperationContext, type User, WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
@@ -8,9 +9,14 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpConfirmationService } from '../../mcp-confirmation.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import { WorkflowAccessError } from '../../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type {
+	ToolDefinition,
+	ToolHandlerResult,
+	UserCalledMCPToolEventPayload,
+} from '../../mcp.types';
 import { getMcpWorkflowVersion } from '../workflow-history.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 import { buildRestoreVersionMetadata } from './version-metadata';
@@ -54,7 +60,7 @@ export const createRestoreWorkflowVersionTool = (
 	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
 	ctx: OperationContext = {},
-): ToolDefinition<typeof inputSchema.shape> => ({
+): ToolDefinition<typeof inputSchema.shape, ToolHandlerResult> => ({
 	name: 'restore_workflow_version',
 	config: {
 		description:
@@ -69,7 +75,7 @@ export const createRestoreWorkflowVersionTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, versionId }: z.infer<typeof inputSchema>) => {
+	handler: async ({ workflowId, versionId }: z.infer<typeof inputSchema>, extra?: unknown) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'restore_workflow_version',
@@ -92,6 +98,31 @@ export const createRestoreWorkflowVersionTool = (
 				workflowId,
 				versionId,
 			);
+
+			const createdAt =
+				version.createdAt instanceof Date ? version.createdAt.toISOString() : undefined;
+			const confirmed = await Container.get(McpConfirmationService).confirm(extra, user, {
+				tool: 'restore_workflow_version',
+				args: { workflowId, versionId },
+				message: `Restore ${existingWorkflow.name} to version "${version.name ?? versionId}"`,
+				approval: {
+					approvalDetails: {
+						action: 'restore-version',
+						version: version.name ?? versionId,
+						...(createdAt ? { createdAt } : {}),
+					},
+					resourceName: existingWorkflow.name,
+					severity: 'warning',
+				},
+			});
+			if (confirmed.kind === 'ask') return confirmed.result;
+			if (confirmed.kind !== 'proceed') {
+				throw new Error(
+					confirmed.kind === 'declined'
+						? 'The user declined to restore the version.'
+						: 'The confirmation does not match this request. Ask again.',
+				);
+			}
 
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {

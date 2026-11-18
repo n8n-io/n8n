@@ -95,9 +95,9 @@ milestone proves it.
 | Discovery, input schemas | native | `tools/list`; zod → JSON Schema → zod fidelity | **yes.** M1: the bridge hands the server's JSON Schema to `@n8n/agents` unchanged (`Tool.input()` takes JSON Schema), so there is no second conversion. Only the Anthropic sanitizer (`sanitizeMcpToolSchemas`) touches it, as for every MCP tool |
 | Typed and multimodal outputs | native | `structuredContent`, `outputSchema`, content blocks | **yes.** M1: `structuredContent` goes to the model as JSON; media content blocks become model parts; `isError` becomes `{ error }` as native tools report it |
 | Cancellation, progress | native | `AbortSignal` → `ctx.mcpReq.signal`; `notifications/progress` | M0: an aborted `signal` cancels the in-flight call and reaches the handler's `signal`. Progress: open |
-| Durable approval before a write | native, modern leg only | `input_required` + `requestState` | M0: manual mode surfaces `input_required` with `inputRequests` and `requestState`; the retry with `inputResponses` completes the call. Suspend across a restart: M2 |
-| Rich approval card | extension | `_meta['n8n/approvalDetails']` | ? |
-| Session grants, admin rules, auto-approval judge | client-side | bridge answers the form from grants, policy, judge | ? |
+| Durable approval before a write | native, modern leg only | `input_required` + `requestState` | **yes.** M2: `publish/unpublish/archive/restore` answer `input_required` before the write; the bridge suspends and keeps the request key and the HMAC-signed `requestState` in the suspension's `continuation`; the resumed call retries with `inputResponses` + `requestState` through the same checkpoint path every other card uses, so it survives a restart. The server binds the state to tool + user + arguments and a 24 h TTL |
+| Rich approval card | extension | `_meta['n8n/approval']` | **yes, with `_meta`.** M2: the elicit request carries `{ approvalDetails, resourceName, severity }` in the Assistant's own vocabulary (`@n8n/api-types`); the bridge suspends with it, so the existing approval card, its title and its "Always allow" button render unchanged. A generic client sees `message` and a one-field boolean form |
+| Session grants, admin rules, auto-approval judge | client-side | bridge answers the form from grants, policy, judge | **yes.** M2: the bridge maps `approvalDetails.action` to the admin permission and the `workflows:<action>:<id>` grant key the native tools use; `blocked` refuses without calling, `always_allow` and a grant answer the form at once, otherwise the card shows. Auto mode's probe wrapper works unchanged because the bridged tool suspends like a native one |
 | Tool groups for deferral | extension | tool `_meta['n8n/group']` | **yes, with `_meta`.** M1: the registrar stamps every tool (`mcp-tool-groups.ts`); the bridge reads it and the catalog groups by it. Generic clients ignore the key |
 | Guidance | native | `server/discover.instructions`, resources | **partial.** M1: `instructions` render as a prompt section when instance tools are active. The `workflow-builder` skill still names the native tools; the model has to map them through `find_tools`. Measured in M3 |
 | Workflow artifact tab | extension | `structuredContent.workflowId` → `onArtifactChanged` | ? |
@@ -208,10 +208,16 @@ packages/@n8n/instance-ai/src/
   tools/index.ts                    # M1: drops the replaced native tools
   agent/instance-agent.ts           # M1: merges, reserves names, groups by _meta
   agent/system-prompt.ts            # M1: instance MCP instructions section
+packages/@n8n/instance-ai/src/tools/
+  instance-mcp-elicitation.ts       # M2: input_required → card payloads, policy, answers
 packages/cli/src/modules/mcp/
   mcp-tool-groups.ts                # M1: _meta['n8n/group'] per tool
-  mcp.service.ts                    # M1: registrar stamps the group
-  tools/workflow-builder/*          # M2-M4 additive changes
+  mcp-caller-policy.ts              # M1: first-party caller policy (AsyncLocalStorage)
+  mcp-confirmation.service.ts       # M2: elicitation before a write, signed requestState
+  mcp.service.ts                    # M1: registrar stamps the group and the caller policy
+  tools/publish-workflow.tool.ts, unpublish-workflow.tool.ts,
+  tools/workflow-builder/delete-workflow.tool.ts, restore-workflow-version.tool.ts   # M2
+  tools/workflow-builder/*          # M3-M4 additive changes
 packages/cli/src/modules/instance-ai/turn-setup/
   assistant-turn-environment.factory.ts   # M1: connects the client per turn
 ```
@@ -221,8 +227,8 @@ packages/cli/src/modules/instance-ai/turn-setup/
 - [x] M0: dependency, `InstanceMcpClient`, in-process fetch, contract test
 - [x] M1: seam, bridge, wiring, `nodes` group swapped
 - [x] M1: `workflows` read tools swapped, instructions in the prompt
-- [ ] M2: server elicitation on destructive tools, signed `requestState`
-- [ ] M2: bridge suspend/resume, grants and judge, `questions` card mapping
+- [x] M2: server elicitation on destructive tools, signed `requestState`
+- [x] M2: bridge suspend/resume, grants and judge, `questions` card mapping
 - [ ] M3: build through `create_workflow_from_code`; eval delta
 - [ ] M3: `build_workflow({ files })` compile service; eval delta
 - [ ] M4: identity-keyed sandbox, workspace tools over MCP, Assistant on MCP only
@@ -262,15 +268,38 @@ packages/cli/src/modules/instance-ai/turn-setup/
   notion of first-party vs third-party caller, which the protocol does not
   carry; `clientInfo` is a claim and cannot be it.
 
+## Findings (M2)
+
+- `Client.callTool()` validates every result against the tool's output schema
+  and rejects an `input_required` result (no `structuredContent`) in manual
+  mode (client 2.3.0). The bridge client sends `tools/call` through
+  `Client.request()` instead, which also takes the retry fields as plain params.
+- The SDK's `requestState` integrity hook (`ServerOptions.requestState.verify`)
+  is server-wide, and `save_user_preference` already echoes a raw id as state.
+  The confirmation service verifies its own HMAC state in the handler instead
+  (`mcp-confirmation.service.ts`), bound to tool, user and arguments.
+- A confirmation form is the Assistant's approval card only because the server
+  speaks the Assistant's `approvalDetails` vocabulary through `_meta`. A
+  generic client gets a boolean form. Where that vocabulary ends (verification
+  evidence before a publish, supporting workflows), the protocol tool knows
+  nothing: the native publish disclosed unverified builds; the MCP publish
+  cannot. That gate is thread state and would need a client-side decorator.
+- The server confirms for every form-capable client (decision 5). Claude
+  Desktop and the like now get a confirmation before archive, publish,
+  unpublish and restore. Clients without form elicitation keep the old
+  unconfirmed behaviour.
+
 ## Native tools swapped so far
 
 | Native tool | Instance MCP tool(s) |
 |---|---|
 | `search_nodes`, `get_node_types`, `get_node_parameter_options` | `search_nodes`, `get_node_types`, `explore_node_resources`, `validate_node_config` |
 | `list_workflows`, `get_workflow`, `list_workflow_versions`, `get_workflow_node_usage` | `search_workflows`, `get_workflow_details`, `get_workflow_history`, `get_workflow_version`, `get_workflow_versions_diff`, `get_node_usage` |
+| `publish_workflow`, `unpublish_workflow`, `archive_workflow`, `restore_workflow_version` | the same names, confirmed through multi-round-trip elicitation |
 
 Kept native for now: `get_workflow_as_code`, `validate_workflow`, `setup_workflow`,
-`execute_node`, `search_models`, and every write (M2, M3).
+`unarchive_workflow`, `update_workflow_version`, `execute_node`, `search_models`,
+and the build path (M3).
 
 The bridge takes only the tools in `INSTANCE_MCP_TOOLS_IN_USE`
 (`tools/tool-ids.ts`). The server lists many more; a write without an

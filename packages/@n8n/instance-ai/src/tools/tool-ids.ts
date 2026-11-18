@@ -170,6 +170,11 @@ export const NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP: ReadonlySet<string> = new Se
 	DOMAIN_TOOL_IDS.GET_WORKFLOW,
 	DOMAIN_TOOL_IDS.LIST_WORKFLOW_VERSIONS,
 	DOMAIN_TOOL_IDS.GET_WORKFLOW_NODE_USAGE,
+	// workflow lifecycle → the same names on the server, confirmed through elicitation
+	DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW,
+	DOMAIN_TOOL_IDS.UNPUBLISH_WORKFLOW,
+	DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW,
+	DOMAIN_TOOL_IDS.RESTORE_WORKFLOW_VERSION,
 ]);
 
 /**
@@ -193,6 +198,11 @@ export const INSTANCE_MCP_TOOLS_IN_USE: ReadonlySet<string> = new Set<string>([
 	'get_workflow_version',
 	'get_workflow_versions_diff',
 	'get_node_usage',
+	// workflow lifecycle (confirmed through elicitation)
+	'publish_workflow',
+	'unpublish_workflow',
+	'archive_workflow',
+	'restore_workflow_version',
 ]);
 
 const NODE_TOOL_NAMES: readonly string[] = [

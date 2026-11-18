@@ -9,6 +9,9 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import type { CallToolResult } from '@modelcontextprotocol/server';
+
+import type { ToolHandlerResult } from '../mcp.types';
 import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
@@ -27,6 +30,12 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 /** Parse the first text content item from a tool result */
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
 	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
+
+/** The tool can also answer with a confirmation form; these tests never send a form-capable client. */
+const asCallResult = (result: ToolHandlerResult): CallToolResult => {
+	if ('resultType' in result) throw new Error('unexpected input_required result');
+	return result;
+};
 
 describe('archive-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -96,7 +105,7 @@ describe('archive-workflow MCP tool', () => {
 			});
 
 			const tool = createTool();
-			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+			const result = asCallResult(await tool.handler({ workflowId: 'wf-1' }, {} as never));
 
 			const response = parseResult(result);
 			expect(response.archived).toBe(true);
@@ -130,7 +139,7 @@ describe('archive-workflow MCP tool', () => {
 			);
 
 			const tool = createTool();
-			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+			const result = asCallResult(await tool.handler({ workflowId: 'wf-1' }, {} as never));
 
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
@@ -148,7 +157,7 @@ describe('archive-workflow MCP tool', () => {
 			);
 
 			const tool = createTool();
-			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+			const result = asCallResult(await tool.handler({ workflowId: 'wf-1' }, {} as never));
 
 			const response = parseResult(result);
 			expect(response.archived).toBe(true);
@@ -159,7 +168,7 @@ describe('archive-workflow MCP tool', () => {
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
 
 			const tool = createTool();
-			const result = await tool.handler({ workflowId: 'wf-missing' }, {} as never);
+			const result = asCallResult(await tool.handler({ workflowId: 'wf-missing' }, {} as never));
 
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
@@ -171,7 +180,7 @@ describe('archive-workflow MCP tool', () => {
 			(workflowService.archive as Mock).mockRejectedValue(new Error('Database connection lost'));
 
 			const tool = createTool();
-			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+			const result = asCallResult(await tool.handler({ workflowId: 'wf-1' }, {} as never));
 
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);

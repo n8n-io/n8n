@@ -105,19 +105,24 @@ export class InstanceMcpClient {
 	): Promise<InstanceMcpCallToolResult> {
 		const { inputResponses, requestState, signal, timeoutMs } = options;
 		// The retry fields are top-level params the server lifts off before
-		// dispatch. They are not part of the typed `tools/call` params, so the
-		// object is widened here rather than typed as the request params.
+		// dispatch; `request()` takes them as plain params. It is also what makes
+		// manual multi-round-trip work: `callTool()` validates every result
+		// against the tool's output schema, and an `input_required` result has no
+		// structured content, so it rejects it (client 2.3.0).
 		const params = {
 			name,
 			arguments: args,
 			...(inputResponses ? { inputResponses } : {}),
 			...(requestState !== undefined ? { requestState } : {}),
 		};
-		return await this.client.callTool(params, {
-			allowInputRequired: true,
-			...(signal ? { signal } : {}),
-			...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
-		});
+		return await this.client.request(
+			{ method: 'tools/call', params },
+			{
+				allowInputRequired: true,
+				...(signal ? { signal } : {}),
+				...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+			},
+		);
 	}
 
 	isInputRequired(result: InstanceMcpCallToolResult): result is InputRequiredResult {
