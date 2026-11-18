@@ -236,7 +236,17 @@ useDocumentVisibility().onDocumentVisible(() => loadChats());
 // The panel shows the Inbox list itself, and the rail marks the Inbox while items are open.
 const InboxNavList = defineAsyncComponent(loadInboxNavList);
 const inboxStore = useInboxStore();
-const hasOpenInboxItems = computed(() => (inboxStore.openCount ?? 0) > 0);
+// The Inbox page resets the store on entry, so the count is unknown while it reloads. The dot
+// keeps the last known count instead of blinking out.
+const lastOpenInboxCount = ref(0);
+watch(
+	() => inboxStore.openCount,
+	(count) => {
+		if (count !== null) lastOpenInboxCount.value = count;
+	},
+	{ immediate: true },
+);
+const hasOpenInboxItems = computed(() => lastOpenInboxCount.value > 0);
 function loadInboxSummary() {
 	if (inboxStore.enabled) void inboxStore.fetchSummary();
 }
@@ -539,15 +549,18 @@ $panel-width: 240px;
 	height: var(--spacing--xl);
 	border-radius: var(--radius);
 	color: var(--text-color--subtle);
+	// The state color tints the item, and the dot's ring repeats it to match the item.
+	--rail-item--state-color: transparent;
+	background-color: var(--rail-item--state-color);
 	transition: background-color var(--duration--snappy) var(--easing--ease-out);
 
 	&:hover,
 	&.railItemPeeked {
-		background-color: var(--background--hover);
+		--rail-item--state-color: var(--background--hover);
 	}
 
 	&.railItemActive {
-		background-color: var(--background--active);
+		--rail-item--state-color: var(--background--active);
 	}
 
 	&:focus-visible {
@@ -565,7 +578,11 @@ $panel-width: 240px;
 	height: var(--spacing--2xs);
 	border-radius: 50%;
 	background-color: var(--color--pink-500);
-	box-shadow: 0 0 0 var(--border-width, 1px) var(--app-shell--rail--color--background);
+	// The state colors are see-through, so the ring lays the item's tint over the rail color.
+	box-shadow:
+		0 0 0 var(--border-width, 1px) var(--rail-item--state-color),
+		0 0 0 var(--border-width, 1px) var(--app-shell--rail--color--background);
+	transition: box-shadow var(--duration--snappy) var(--easing--ease-out);
 	pointer-events: none;
 }
 
@@ -648,7 +665,8 @@ $panel-width: 240px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.railItem {
+	.railItem,
+	.railDot {
 		transition: none;
 	}
 
