@@ -1,9 +1,14 @@
 packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
   s_8e7a418266e5a0::t_b77ce3f9cd6a95 1217-1223
   s_91b4b22ce11712::t_552fac92840848 28-29,31,1226,1229-1234,1805-2102,2161,2165,2174-2186,2188-2202,2206-2213,2216-2226,2228,2230-2236,2261-2265
+  s_2018a6b9bedb2e::t_658cfd11820066 1224-1225,1227-1228,1235-1253,1262-1265
+  s_2018a6b9bedb2e::t_3e245328e4bf1e 2167,2169-2172,2203-2205,2214
+  s_2018a6b9bedb2e::t_a3bc8e08007b5e 1254-1261
 packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
   s_fa60947423cda2::t_ebbeaaa9b3e982 634,1076
   s_fa60947423cda2::t_177e015832b6de 2,16
+  s_2018a6b9bedb2e::t_02ff0de9c251dc 91-94
+  s_2018a6b9bedb2e::t_8e0e513b497d65 107-108,637,641,652
 packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.vue
   s_3401c61efbb7b6::t_ade53a46e96fd9 114,248
   s_fa60947423cda2::t_572c95e4cce27b 115-116
@@ -17,10 +22,14 @@ packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConv
   s_fa60947423cda2::t_96fe62bf5b3343 1154,1178,1180
   s_fa60947423cda2::t_455b6998efcfc0 18,22,421-422,425-433,437-440,442-445,669,867
   s_8e7a418266e5a0::t_dffc9e4e7bc1ea 1103-1105
+  s_2018a6b9bedb2e::t_fcecab0814086b 1012-1054,1056-1058
 packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
   s_fa60947423cda2::t_0d3dcaee178123 354-361,364-365,370-371,375-376,378,381-385,387-389,394-395,399-404,407,414-417,423,426,434-436,438
   s_1c883d6d7d8e42::t_7f395617a63ddf 386
   s_91b4b22ce11712::t_f84b86b2475980 440
+  s_2018a6b9bedb2e::t_f1ca4f7dd26f01 2
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.olderMessages.test.ts
+  s_2018a6b9bedb2e::t_736bb2d94cef88 2,6-9,32,34-35,37-42,46,49,51-56,62,68,78
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -32,6 +41,14 @@ packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/Inst
       "agent_id": {
         "tool": "pi",
         "id": "01a1e37b-a8d3-76b5-b5f1-af87e16bfe2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2018a6b9bedb2e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ee61-7f95-7688-b680-bb63a2002de8",
         "model": "claude-opus-5-5"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
