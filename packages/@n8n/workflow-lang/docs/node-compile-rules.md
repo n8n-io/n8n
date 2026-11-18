@@ -372,6 +372,24 @@ await this.helpers.requestWithAuthentication.call(this, credentialType, options,
 await this.helpers.requestWithAuthentication.call(this, 'acmeApi', options);
 ```
 
+## NC034 A credential argument that the compiler cannot bind
+
+- Cannot compile: a credential that goes to a function that is not a declaration
+  or an arrow function, or to a parameter that has a default value, a rest
+  pattern or a destructured pattern.
+- Why: the engine fills the credential fields into the request, and the compiler
+  puts each field into the function at compile time.
+- Rewrite: pass the credential as a plain parameter of a function declaration
+  or of an arrow function.
+
+```ts
+// Before
+async function send(this: IExecuteFunctions, { apiKey }: { apiKey: string }) { … }
+
+// After
+async function send(this: IExecuteFunctions, credentials: { apiKey: string }) { … }
+```
+
 ## NC040 Class inheritance
 
 **Not supported by decision**: class inheritance.
