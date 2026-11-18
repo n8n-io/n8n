@@ -1,0 +1,56 @@
+packages/@n8n/permissions/src/__tests__/public-api-permissions.test.ts
+  s_06fc4a3eebd292::t_8f70cd7d22f4db 1-8,20-27,31-46
+  s_06fc4a3eebd292::t_cc1744ecc1cd64 28-30
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_06fc4a3eebd292::t_eda6cdd815547b 205-207
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_06fc4a3eebd292::t_3875eebaaabccc 79,81-83,86
+  s_06fc4a3eebd292::t_50a6b786df6c0a 15-16
+  s_06fc4a3eebd292::t_650fb53a3f09d6 110-113
+  s_06fc4a3eebd292::t_59214ad8629385 240-242
+  s_06fc4a3eebd292::t_daf50ef5e38d69 943-979,983-1027
+  s_06fc4a3eebd292::t_341e1b0b7a971c 980-982
+  s_06fc4a3eebd292::t_0d38a1e671a601 66
+packages/@n8n/api-types/src/dto/workflows/run-workflow-public.dto.ts
+  s_06fc4a3eebd292::t_821d08648a342b 1-33,42-55
+  s_06fc4a3eebd292::t_cc1744ecc1cd64 34-41
+packages/@n8n/permissions/src/constants.ee.ts
+  s_06fc4a3eebd292::t_f56a797a817b42 145-153
+packages/@n8n/api-types/src/dto/workflows/manual-run.dto.ts
+  s_06fc4a3eebd292::t_4ee489afa691a2 8
+packages/cli/test/integration/public-api/workflow-run.test.ts
+  s_06fc4a3eebd292::t_341e1b0b7a971c 316-319
+  s_06fc4a3eebd292::t_589640de396d43 67,73
+  s_06fc4a3eebd292::t_64be8424f21c28 233,241
+  s_06fc4a3eebd292::t_c894780d9a00bb 9
+  s_06fc4a3eebd292::t_ec473f2e1c4704 1-8,10-66,68-72,74-232,234-240,242-315,320-326
+packages/@n8n/api-types/src/dto/workflows/__tests__/run-workflow-public.dto.test.ts
+  s_06fc4a3eebd292::t_06f7345ca8948b 1-48,50-90
+  s_06fc4a3eebd292::t_e4e4527d752ef8 49
+packages/@n8n/api-types/src/dto/index.ts
+  s_06fc4a3eebd292::t_614c181cdeb750 255-258
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_06fc4a3eebd292::t_49f5d535451708 80,157,234
+packages/@n8n/permissions/src/__tests__/types.test.ts
+  s_06fc4a3eebd292::t_485e81a27f5855 44
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/runWorkflow.generated.yml
+  s_06fc4a3eebd292::t_cbb537565f3681 1-84
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_06fc4a3eebd292::t_b6bb2748b3d831 471-473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f87e94db9d672014de6a78332f7bdb60763401d8",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

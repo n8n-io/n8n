@@ -1,0 +1,14 @@
+docker/images/n8n/Dockerfile
+  h_52a137d26d774c 4-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06654170e91abcf91cf2fe04a0273b148f275a7b",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

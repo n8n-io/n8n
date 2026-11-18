@@ -1,0 +1,65 @@
+packages/cli/src/modules/n8n-packages/engine/cross-project-mover.ts
+  s_3dd47ea0104342::t_fc5f7c33f7675a 1-545
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_e05d1fd29d331f::t_9928b7b798963f 422-433,478
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_1f72d857ffd270::t_74dc9853fe4909 107,145-146,459,469-473,485,496
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_1f72d857ffd270::t_77b849bc5f67b2 37,77-82,92,199-203,213-220,234-239,356
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_1f72d857ffd270::t_0cb516e6605bc3 15,30-35,38-43
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_1f72d857ffd270::t_006c0b296d85ee 39-40,45-47
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_1f72d857ffd270::t_8fb79bc36b2492 35,74-80,101-105,143-146
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_1f72d857ffd270::t_31f68ade4b2576 30-31
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_1f72d857ffd270::t_ae3096644755ff 58-63,99-102
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_1f72d857ffd270::t_f2fe78b64d00f4 752-757
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_e05d1fd29d331f::t_32f4d9f59f9b3f 408-414,417-471,767,958-959
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_b7b13575e78da5::t_993b62cede1f88 207-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9a3ca04ded6f24423e13e325c1772316ad99e4b",
+  "prompts": {},
+  "sessions": {
+    "s_1f72d857ffd270": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a341a53502b181928",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b7b13575e78da5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a518632057e785d0d",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_e05d1fd29d331f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0b0be5243deec8fe",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

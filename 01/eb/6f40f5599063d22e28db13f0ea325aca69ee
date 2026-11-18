@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_5631e4fb1157e6::t_2cd29a9aea20eb 194,220,858-859,994-995,1193,1195-1196,1199,1207,1211-1212
+  s_5631e4fb1157e6::t_871778ed138e22 1213-1214
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5631e4fb1157e6::t_d1363dc9b3b934 1109,6024,6061
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/worker/type-declarations/n8n.d.ts
+  s_5631e4fb1157e6::t_6f09a75a3caab1 75
+packages/frontend/editor-ui/src/features/shared/editors/components/CodeNodeEditor/completions/execution.completions.ts
+  s_5631e4fb1157e6::t_6f09a75a3caab1 11,39-41
+  s_5631e4fb1157e6::t_39657c50906206 42
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_5631e4fb1157e6::t_2cd29a9aea20eb 513,519,525,531
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/datatype.completions.ts
+  s_5631e4fb1157e6::t_6f09a75a3caab1 892-895
+  s_5631e4fb1157e6::t_abfd1a724f14fc 891
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01eb6f40f5599063d22e28db13f0ea325aca69ee",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5631e4fb1157e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa70ca35-8c1d-451e-9aca-ed24413b8763",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

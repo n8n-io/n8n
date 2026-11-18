@@ -1,0 +1,34 @@
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.implicit-team-access.integration.test.ts
+  s_627bb5064efa94::t_dae39bec856e27 76,115,130,143,152,163
+  s_627bb5064efa94::t_a484237a937977 1-6,8-75,77-114,116-129,131-142,144-151,153-162,164-170
+  s_627bb5064efa94::t_f825cf8270eb5a 7
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_627bb5064efa94::t_9b27cfdd990bd1 317-319
+packages/@n8n/backend-services/src/credentials/credentials-finder.service.ts
+  s_627bb5064efa94::t_c7475e7a6b5017 10-14,294-296,378-395
+  s_627bb5064efa94::t_312637cf36a03b 396
+packages/@n8n/db/src/repositories/credential-access.repository.ts
+  s_627bb5064efa94::t_d110fdb997beca 183-210
+packages/@n8n/db/src/repositories/__tests__/access-repositories.test.ts
+  s_627bb5064efa94::t_013c5bd8910bab 250-257,259-278
+  s_627bb5064efa94::t_75515b0096778c 258
+packages/@n8n/backend-services/src/credentials/__tests__/credentials-finder.service.test.ts
+  s_627bb5064efa94::t_80953be07aa48b 6,22,58
+  s_627bb5064efa94::t_c4bf6bbf8b9056 587-636
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e816994242c9fdab0733e9f397bcef5c6c5fc00c",
+  "prompts": {},
+  "sessions": {
+    "s_627bb5064efa94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00e6e00-2960-43a9-966d-d33883fb3f1a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
