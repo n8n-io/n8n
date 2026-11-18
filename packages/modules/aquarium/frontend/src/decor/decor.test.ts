@@ -2,7 +2,7 @@ import { PROP_LAYOUT, TANK_HEALTH } from '../aquarium.constants';
 import type { TankBounds } from '../engine/simulation';
 import { emptyMetrics } from '../sources/source.utils';
 import { spriteSize, validateSprite } from '../species/species.types';
-import { isPropDead, layoutProps, tankFailureShare, tankHealthOf } from './decor';
+import { isPropDead, layoutProps, tankFailureShare, tankHealthOf, tankScaleOf } from './decor';
 import { PROPS } from './props';
 
 const tank = (width: number): TankBounds => ({ width, height: 120, floor: 110 });
@@ -35,9 +35,27 @@ describe('layoutProps', () => {
 		for (const width of [96, 250, 400, 1_000]) {
 			for (const placed of layoutProps(tank(width), `seed-${width}`)) {
 				expect(placed.x).toBeGreaterThanOrEqual(0);
-				expect(placed.x + spriteSize(placed.prop.healthy).width).toBeLessThanOrEqual(width);
+				expect(placed.x + spriteSize(placed.prop.healthy).width * placed.scale).toBeLessThanOrEqual(
+					width,
+				);
 			}
 		}
+	});
+});
+
+describe('tankScaleOf', () => {
+	it('keeps small tanks at scale 1 and draws big tanks larger', () => {
+		expect(tankScaleOf({ width: 96, height: 54, floor: 44 })).toBe(1);
+		expect(tankScaleOf({ width: 400, height: 120, floor: 110 })).toBe(2);
+		expect(tankScaleOf({ width: 4_000, height: 2_000, floor: 1_990 })).toBe(PROP_LAYOUT.maxScale);
+	});
+
+	it('gives a big tank fewer, bigger props than a small tank of the same width', () => {
+		const small = layoutProps({ width: 400, height: 54, floor: 44 }, 'p');
+		const big = layoutProps({ width: 400, height: 240, floor: 230 }, 'p');
+
+		expect(big.length).toBeLessThan(small.length);
+		expect(big[0]?.scale).toBeGreaterThan(1);
 	});
 });
 

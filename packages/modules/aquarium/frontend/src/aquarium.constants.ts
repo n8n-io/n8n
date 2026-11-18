@@ -42,8 +42,16 @@ export const PROP_LAYOUT = {
 	/** Tank width for each prop. A narrow tank still gets one. */
 	spacing: 80,
 	max: 5,
-	/** Pixels that the sand under a prop sinks into the floor. */
+	/** Pixels that the sand under a prop sinks into the floor, at scale 1. */
 	sink: 3,
+	/**
+	 * Big tanks draw furniture, seaweed and waves larger instead of repeating them: one scale step
+	 * for each `heightPerScale` pixels of tank height. Small tanks stay at scale 1.
+	 */
+	heightPerScale: 50,
+	maxScale: 4,
+	/** Opacity lost for each scale step, so the big furniture of a big tank stays in the back. */
+	fadePerScale: 0.08,
 } as const;
 
 /** Resting speed, from the execution count of the period. Live activity adds `LIVE_SPEED`. */

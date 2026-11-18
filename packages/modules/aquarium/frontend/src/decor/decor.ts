@@ -11,18 +11,34 @@ export interface PlacedProp {
 	x: number;
 	/** From 0 to 1. The prop looks dead when the failure share of its tank is above this rank. */
 	deathRank: number;
+	/** Integer pixel multiplier. Big tanks get bigger props, not more of them. */
+	scale: number;
+}
+
+/** Big tanks draw furniture, seaweed and waves larger instead of repeating them. */
+export function tankScaleOf(bounds: TankBounds): number {
+	return Math.max(
+		1,
+		Math.min(PROP_LAYOUT.maxScale, Math.floor(bounds.height / PROP_LAYOUT.heightPerScale)),
+	);
 }
 
 const unit = (value: string) => (hashString(value) % 1000) / 1000;
 
 /**
  * Picks the props of a tank and their places from the tank id, so a tank keeps its furniture
- * after a reload. Wide tanks get more props, and no prop shows twice in one tank.
+ * after a reload. Wide tanks get more props, big tanks get bigger props, and no prop shows twice
+ * in one tank.
  */
 export function layoutProps(bounds: TankBounds, seed: string): PlacedProp[] {
+	const scale = tankScaleOf(bounds);
 	const count = Math.max(
 		1,
-		Math.min(PROP_LAYOUT.max, PROPS.length, Math.floor(bounds.width / PROP_LAYOUT.spacing)),
+		Math.min(
+			PROP_LAYOUT.max,
+			PROPS.length,
+			Math.round(bounds.width / (PROP_LAYOUT.spacing * scale)),
+		),
 	);
 	const slotWidth = bounds.width / count;
 	const order = [...PROPS].sort(
@@ -30,11 +46,15 @@ export function layoutProps(bounds: TankBounds, seed: string): PlacedProp[] {
 	);
 
 	return order.slice(0, count).map((prop, slot) => {
-		const free = Math.max(0, slotWidth - spriteSize(prop.healthy).width);
+		const width = spriteSize(prop.healthy).width * scale;
+		const free = Math.max(0, slotWidth - width);
+		const x = Math.round(slot * slotWidth + unit(`${seed}:x${slot}`) * free);
 		return {
 			prop,
-			x: Math.round(slot * slotWidth + unit(`${seed}:x${slot}`) * free),
+			// A prop wider than its slot still stays inside the tank.
+			x: Math.max(0, Math.min(x, bounds.width - width)),
 			deathRank: unit(`${seed}:death:${prop.id}`),
+			scale,
 		};
 	});
 }

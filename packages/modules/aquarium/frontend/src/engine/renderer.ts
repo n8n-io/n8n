@@ -4,6 +4,7 @@ import {
 	layoutProps,
 	tankFailureShare,
 	tankHealthOf,
+	tankScaleOf,
 	type PlacedProp,
 	type TankHealth,
 } from '../decor/decor';
@@ -44,6 +45,8 @@ const LIGHT_RAYS = {
 	/** Alpha steps, so the fade is banded like the dithered water, not smooth. */
 	steps: 4,
 	pulseSeconds: 9,
+	/** Opacity lost for each tank scale step, so big tanks keep the light in the background. */
+	fadePerScale: 0.12,
 } as const;
 /** The sun fades as a tank fails. */
 const RAY_STRENGTH: Record<TankHealth, number> = {
@@ -93,6 +96,8 @@ interface Plant {
 	height: number;
 	color: string;
 	phase: number;
+	/** Pixel multiplier: big tanks draw thicker plants. */
+	scale: number;
 }
 
 function createCanvas(width: number, height: number): HTMLCanvasElement {
@@ -240,12 +245,13 @@ export class AquariumRenderer {
 		const sizeKey = `${region.bounds.width}x${region.bounds.height}`;
 		const failureShare = tankFailureShare(creatures);
 		const health = tankHealthOf(failureShare);
+		const scale = tankScaleOf(region.bounds);
 
 		ctx.drawImage(this.backgroundFor(region.bounds, sizeKey, health), 0, 0);
 		const rays = this.lightRays.get(sizeKey);
 		if (rays) {
 			const pulse = 0.75 + 0.25 * Math.sin((time * 2 * Math.PI) / LIGHT_RAYS.pulseSeconds);
-			ctx.globalAlpha = pulse * RAY_STRENGTH[health];
+			ctx.globalAlpha = pulse * RAY_STRENGTH[health] * (1 - LIGHT_RAYS.fadePerScale * (scale - 1));
 			ctx.drawImage(rays, 0, 0);
 			ctx.globalAlpha = 1;
 		}
@@ -258,7 +264,7 @@ export class AquariumRenderer {
 			view.right + CULL_MARGIN,
 		);
 		this.drawAmbientBubbles(region.bounds, time);
-		this.drawSurface(region.bounds, health, time, view.left, view.right);
+		this.drawSurface(region.bounds, health, scale, time, view.left, view.right);
 
 		for (const creature of creatures) {
 			const visible =
@@ -281,11 +287,22 @@ export class AquariumRenderer {
 		props: PlacedProp[],
 		failureShare: number | undefined,
 	): void {
+		const ctx = this.ctx;
 		for (const placed of props) {
 			const image = this.propImage(placed.prop, isPropDead(placed, failureShare));
-			if (image)
-				this.ctx.drawImage(image, placed.x, bounds.floor + PROP_LAYOUT.sink - image.height);
+			if (!image) continue;
+			const width = image.width * placed.scale;
+			const height = image.height * placed.scale;
+			ctx.globalAlpha = 1 - PROP_LAYOUT.fadePerScale * (placed.scale - 1);
+			ctx.drawImage(
+				image,
+				placed.x,
+				bounds.floor + PROP_LAYOUT.sink * placed.scale - height,
+				width,
+				height,
+			);
 		}
+		ctx.globalAlpha = 1;
 	}
 
 	private propImage(prop: PropDefinition, dead: boolean): HTMLCanvasElement | undefined {
@@ -390,26 +407,29 @@ export class AquariumRenderer {
 	}
 
 	/** A moving crest with a little foam above it. Drawn only for the visible columns. */
+	/** In a big tank, each wave pixel is a `scale` block, so the waves grow instead of repeating. */
 	private drawSurface(
 		bounds: TankBounds,
 		health: TankHealth,
+		scale: number,
 		time: number,
 		fromX: number,
 		toX: number,
 	): void {
 		const ctx = this.ctx;
 		const { crest, foam, calm } = SURFACE[health];
-		const start = Math.max(0, Math.floor(fromX));
-		const end = Math.min(bounds.width, Math.ceil(toX));
+		const start = Math.max(0, Math.floor(fromX / scale));
+		const end = Math.min(Math.ceil(bounds.width / scale), Math.ceil(toX / scale));
 
 		ctx.fillStyle = foam;
 		for (let x = start; x < end; x++) {
-			const crestY = surfaceCrestAt(x, time, calm);
-			if (crestY > 0) ctx.fillRect(x, 0, 1, crestY);
+			const crestY = surfaceCrestAt(x, time, calm) * scale;
+			if (crestY > 0) ctx.fillRect(x * scale, 0, scale, crestY);
 		}
 		ctx.fillStyle = crest;
 		for (let x = start; x < end; x++) {
-			ctx.fillRect(x, Math.max(0, surfaceCrestAt(x, time, calm)), 1, 1);
+			const crestY = Math.max(0, surfaceCrestAt(x, time, calm)) * scale;
+			ctx.fillRect(x * scale, crestY, scale, scale);
 		}
 	}
 
@@ -462,16 +482,19 @@ export class AquariumRenderer {
 	}
 
 	/** `seed` gives each tank its own plants. */
+	/** Big tanks get thicker, taller and fewer plants, not more of the small ones. */
 	private layoutPlants(bounds: TankBounds, seed: string): Plant[] {
+		const scale = tankScaleOf(bounds);
 		const plants: Plant[] = [];
-		for (let x = 3; x < bounds.width - 3; x += 7) {
+		for (let x = 3 * scale; x < bounds.width - 3 * scale; x += 7 * scale) {
 			const hash = hashString(`${seed}:plant${x}`);
 			if (hash % 3 !== 0) continue;
 			plants.push({
-				x: x + (hash % 4),
-				height: 6 + (hash % 18),
+				x: x + (hash % 4) * scale,
+				height: (6 + (hash % 18)) * scale,
 				color: SEAWEED[hash % SEAWEED.length],
 				phase: (hash % 100) / 10,
+				scale,
 			});
 		}
 		return plants;
@@ -488,10 +511,12 @@ export class AquariumRenderer {
 		for (const plant of plants) {
 			if (plant.x < fromX || plant.x > toX) continue;
 			ctx.fillStyle = plant.color;
-			for (let i = 0; i < plant.height; i++) {
+			const { scale } = plant;
+			for (let i = 0; i < plant.height; i += scale) {
 				// The tip sways more than the root.
-				const sway = Math.round(Math.sin(time * 1.2 + plant.phase + i * 0.35) * (i / 8));
-				ctx.fillRect(plant.x + sway, bounds.floor - i, 2, 1);
+				const step = i / scale;
+				const sway = Math.round(Math.sin(time * 1.2 + plant.phase + step * 0.35) * (step / 8));
+				ctx.fillRect(plant.x + sway * scale, bounds.floor - i - scale + 1, 2 * scale, scale);
 			}
 		}
 	}
