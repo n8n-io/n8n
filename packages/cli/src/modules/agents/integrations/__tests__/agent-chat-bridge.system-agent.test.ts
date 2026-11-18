@@ -522,6 +522,23 @@ describe('AgentChatBridge.deliverSystemTurn', () => {
 		expect(posted).toBe('You have 12 workflows.');
 	});
 
+	it('gives relative editor links the instance URL, also when a link is split', async () => {
+		const ctx = setup();
+		let posted = '';
+		ctx.thread.post.mockImplementation(async (value: unknown) => {
+			posted += await drain(value);
+		});
+
+		await ctx.bridge.deliverSystemTurn(channel, 'agent-thread', async (onChunk) => {
+			onChunk({ type: 'text-delta', id: 't1', delta: 'Open [Invoice Sync](' });
+			onChunk({ type: 'text-delta', id: 't1', delta: '/workflow/abc) or [docs](https://x.io)' });
+		});
+
+		expect(posted).toBe(
+			`Open [Invoice Sync](${INSTANCE_URL}/workflow/abc) or [docs](https://x.io)`,
+		);
+	});
+
 	it('posts the error and rethrows it when the turn fails before it streams', async () => {
 		const ctx = setup();
 

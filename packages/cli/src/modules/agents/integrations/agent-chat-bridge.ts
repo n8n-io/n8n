@@ -86,6 +86,7 @@ import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import { ChannelIdentityService, type ChannelActor } from './channel-identity.service';
 import { createChunkChannel } from './chunk-channel';
+import { createRelativeLinkRewriter } from './relative-link-rewriter';
 import { findWorkflowIdInText } from './workflow-link';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
@@ -1320,17 +1321,35 @@ export class AgentChatBridge {
 		// Do not leave a rejection unhandled while the turn still runs.
 		delivery.catch(() => {});
 
+		// The answer links to editor paths such as `/workflow/<id>`. A chat platform
+		// would resolve them against its own host, so they need the instance URL.
+		const links = createRelativeLinkRewriter(Container.get(UrlService).getInstanceBaseUrl());
+		let textId = '';
+		const flushLinks = () => {
+			const rest = links.flush();
+			if (rest) chunks.push({ type: 'text-delta', id: textId, delta: rest });
+		};
+
 		let failure: { error: unknown } | undefined;
 		try {
 			await run((chunk) => {
+				if (chunk.type === 'text-delta') {
+					textId = chunk.id;
+					const delta = links.write(chunk.delta);
+					if (delta) chunks.push({ ...chunk, delta });
+					return;
+				}
+				flushLinks();
 				if (chunk.type === 'error') sawError = true;
 				chunks.push(chunk);
 			});
 		} catch (error) {
 			failure = { error };
+			flushLinks();
 			// A failure before the stream started has no error chunk yet.
 			if (!sawError) chunks.push({ type: 'error', error });
 		} finally {
+			flushLinks();
 			chunks.close();
 		}
 		try {
