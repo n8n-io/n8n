@@ -230,6 +230,57 @@ export function comparableOutput(output: unknown): unknown {
 }
 
 type Compiled = ReturnType<typeof compileNodeInstance>;
+
+export interface CaseMemo {
+	get: (key: string) => unknown;
+	set: (key: string, value: unknown) => void;
+}
+
+const compiledHashes = new WeakMap<object, string>();
+
+function hashOfCompiled(compiled: object): string {
+	const known = compiledHashes.get(compiled);
+	if (known !== undefined) return known;
+	const hash = createHash('sha256').update(JSON.stringify(compiled)).digest('hex');
+	compiledHashes.set(compiled, hash);
+	return hash;
+}
+
+export function caseMemoKey(
+	kind: string,
+	c: EquivalenceCase,
+	how: unknown,
+	compiled: object[],
+): string {
+	const text = JSON.stringify([
+		kind,
+		c,
+		c.responses.map((response) => response === MINTED_TOKEN_RESPONSE),
+		how,
+		compiled.map(hashOfCompiled),
+	]);
+	return createHash('sha256').update(text).digest('hex');
+}
+
+interface KeptDifference {
+	difference: string | null;
+	pairings: ErrorPairing[];
+	paging: string | null;
+}
+
+function isKeptDifference(value: unknown): value is KeptDifference {
+	return (
+		isRecord(value) &&
+		(value.difference === null || typeof value.difference === 'string') &&
+		Array.isArray(value.pairings) &&
+		value.pairings.every((pairing) => pairing === 'item' || pairing === 'position') &&
+		(value.paging === null || typeof value.paging === 'string')
+	);
+}
+
+function isCaseCost(value: unknown): value is CaseCost {
+	return isRecord(value) && typeof value.ops === 'number' && typeof value.allocations === 'number';
+}
 const RECENT_COMPILES = 8;
 const recent: Array<{ sources: NodeSources; key: string; compiled: Compiled }> = [];
 
@@ -432,6 +483,17 @@ const PAGING_GOES_ON = 'v1 has no result: the paging does not end';
 const LAST_PAGE_FAILS = 'v1 fails on the last page';
 const MAX_PAGING_CHOICES = 4096;
 const pagingChoices = new Map<string, string>();
+
+export function forgetPagingChoices(): void {
+	pagingChoices.clear();
+}
+
+function pagingOperationOf(
+	c: EquivalenceCase,
+	compiled: Exclude<Compiled, { errors: string[] }>,
+): string {
+	return `${c.type}@${c.typeVersion}:${String(compiled.resolved.resource ?? '')}.${String(compiled.resolved.operation ?? '')}`;
+}
 
 export type ErrorPairing = 'item' | 'position';
 
@@ -806,6 +868,7 @@ export function costOfCase(
 	registry: Registry,
 	eachItem = false,
 	form?: ContinueForm,
+	memo?: CaseMemo,
 ): CaseCost | undefined {
 	const mode: ErrorMode = (form === undefined ? undefined : c.settings?.onError) ?? 'stopWorkflow';
 	const compiled = compileForCheck(
@@ -818,6 +881,23 @@ export function costOfCase(
 			pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {})),
 	);
 	if ('errors' in compiled) return undefined;
+	if (memo === undefined) return costOfCompiled(c, compiled, eachItem, form, mode);
+	const key = caseMemoKey('cost', c, [eachItem, form ?? null], [compiled]);
+	const kept = memo.get(key);
+	if (kept === null) return undefined;
+	if (isCaseCost(kept)) return kept;
+	const cost = costOfCompiled(c, compiled, eachItem, form, mode);
+	memo.set(key, cost ?? null);
+	return cost;
+}
+
+function costOfCompiled(
+	c: EquivalenceCase,
+	compiled: Exclude<Compiled, { errors: string[] }>,
+	eachItem: boolean,
+	form: ContinueForm | undefined,
+	mode: ErrorMode,
+): CaseCost | undefined {
 	const given = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
 	const responses =
 		form === undefined
@@ -971,6 +1051,7 @@ export async function differenceFromV1(
 		pairings?: Set<ErrorPairing>;
 		eachItem?: boolean;
 		paired?: boolean;
+		memo?: CaseMemo;
 		pagingEnds?: boolean;
 	} = {},
 ): Promise<string | undefined> {
@@ -994,6 +1075,69 @@ export async function differenceFromV1(
 			? plain
 			: compileForCheck(sources, instance, credentialsOf(c, registry), mode, pairedOutput, failing);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
+	const memo = options.memo;
+	if (memo === undefined)
+		return await differenceOfCompiled(c, sources, registry, options, compiled);
+	const operation = pagingOperationOf(c, compiled);
+	const key = caseMemoKey(
+		'difference',
+		c,
+		[
+			options.cache === true,
+			options.pairing ?? null,
+			options.eachItem === true,
+			options.paired === true,
+			options.pagingEnds === true,
+			pagingChoices.get(operation) ?? null,
+		],
+		[plain, compiled],
+	);
+	const choose = (label: string) => {
+		if (pagingChoices.size < MAX_PAGING_CHOICES) pagingChoices.set(operation, label);
+	};
+	const kept = memo.get(key);
+	if (isKeptDifference(kept)) {
+		for (const pairing of kept.pairings) options.pairings?.add(pairing);
+		if (kept.paging !== null) choose(kept.paging);
+		return kept.difference ?? undefined;
+	}
+	const pairings = new Set<ErrorPairing>();
+	const chosen: string[] = [];
+	const difference = await differenceOfCompiled(
+		c,
+		sources,
+		registry,
+		{ ...options, pairings, chosen },
+		compiled,
+	);
+	for (const pairing of pairings) options.pairings?.add(pairing);
+	memo.set(key, {
+		difference: difference ?? null,
+		pairings: [...pairings],
+		paging: chosen.at(-1) ?? null,
+	});
+	return difference;
+}
+
+async function differenceOfCompiled(
+	c: EquivalenceCase,
+	sources: NodeSources,
+	registry: Registry,
+	options: {
+		cache?: boolean;
+		pairing?: ContinueForm;
+		pairings?: Set<ErrorPairing>;
+		eachItem?: boolean;
+		paired?: boolean;
+		memo?: CaseMemo;
+		pagingEnds?: boolean;
+		chosen?: string[];
+	},
+	compiled: Exclude<Compiled, { errors: string[] }>,
+): Promise<string | undefined> {
+	const mode: ErrorMode =
+		c.settings?.onError ?? (c.settings?.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	const continues = mode !== 'stopWorkflow';
 	const inEngine: EquivalenceCase =
 		options.paired === true
 			? { ...c, name: `${c.name} in the engine`, settings: { onError: 'stopWorkflow' } }
@@ -1033,7 +1177,8 @@ export async function differenceFromV1(
 		const trials = [nextPageOf(page.body, paths), page.body].flatMap((next, n) =>
 			lastPages.map((last, k) => ({ label: `${n}.${k}`, next, last })),
 		);
-		const operation = `${c.type}@${c.typeVersion}:${String(compiled.resolved.resource ?? '')}.${String(compiled.resolved.operation ?? '')}`;
+		const operation = pagingOperationOf(c, compiled);
+		const { chosen: _chosen, ...nested } = options;
 		const known = trials.find((trial) => trial.label === pagingChoices.get(operation));
 		for (const trial of known ? [known, ...trials.filter((t) => t !== known)] : trials) {
 			const found = await differenceFromV1(
@@ -1044,10 +1189,11 @@ export async function differenceFromV1(
 				},
 				sources,
 				registry,
-				{ ...options, pagingEnds: true },
+				{ ...nested, pagingEnds: true },
 			);
 			if (found === PAGING_GOES_ON || found === LAST_PAGE_FAILS) continue;
 			if (pagingChoices.size < MAX_PAGING_CHOICES) pagingChoices.set(operation, trial.label);
+			options.chosen?.push(trial.label);
 			return found;
 		}
 		return `v1 has no result: ${limit.slice(0, 90)}`;

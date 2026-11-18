@@ -17,6 +17,7 @@ pub const lib = @import("lib.zig");
 pub const interp = @import("interp.zig");
 pub const aot = @import("aot.zig");
 pub const exec_index = @import("exec_index.zig");
+pub const held = @import("held.zig");
 pub const asm_ = @import("asm.zig");
 pub const core = @import("core.zig");
 pub const exactnum = @import("exactnum.zig");
@@ -45,6 +46,7 @@ test {
     _ = @import("schedule_test.zig");
     _ = @import("workflow_test.zig");
     _ = @import("workload_test.zig");
+    _ = @import("held_test.zig");
     _ = @import("multipart.zig");
     _ = @import("fuzz_test.zig");
     _ = @import("textcodec.zig");

@@ -846,6 +846,29 @@ pub fn pendingEffect(vm: *Vm, fi: u32) PendingInfo {
     return .{ .seq = f.wait_effect, .kind = @fromBackingInt(@intCast(ins.x)), .step = @intFromFloat(value.asNum(R[ins.b])), .args = R[ins.c] };
 }
 
+/// Undo the state changes of `suspendOn` so the fibre can run again and
+/// reach the same SUSPEND instruction. The occurrence counter of the step
+/// and the next-effect counter go back to their values before the suspend.
+/// Used when the effect table is full: the step waits and retries later.
+pub fn unparkForRetry(vm: *Vm, fi: u32) void {
+    const f = fib(vm, fi);
+    std.debug.assert(f.state == .parked_effect);
+    const fr = topFrame(vm, f);
+    const ins = vm.m.funcCode(fr.func)[fr.pc];
+    std.debug.assert(ins.op == @backingInt(Op.@"suspend"));
+    const R = window(vm, f, fr);
+    const step_v = R[ins.b];
+    std.debug.assert(value.kindOf(step_v) == .number);
+    const s: u32 = @intFromFloat(value.asNum(step_v));
+    const e = vm.r.exec();
+    const occ = vm.r.u32sAt(e.occ, e.nsteps);
+    std.debug.assert(occ[s] > 0 and e.next_effect > 0);
+    // Reverse the three state changes of `suspendOn`.
+    occ[s] -= 1;
+    e.next_effect -= 1;
+    f.state = .runnable;
+}
+
 /// Find the fibre parked on effect `seq`.
 pub fn fibreForEffect(vm: *Vm, seq: u32) ?u32 {
     const n = vm.r.exec().nfibres;
