@@ -96,6 +96,10 @@ describe('TelemetryEventRelay', () => {
 		versionNotifications: {
 			enabled: true,
 		},
+		publicApi: {
+			disabled: false,
+			swaggerUiDisabled: true,
+		},
 		executions: {
 			mode: 'regular',
 			timeout: -1,
@@ -592,12 +596,12 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-started-pull-ui` event with publicApi: true', () => {
+		it('should track on `source-control-user-started-pull-ui` event from a public API route', () => {
 			const event: RelayEventMap['source-control-user-started-pull-ui'] = {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('source-control-user-started-pull-ui', event);
@@ -607,6 +611,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 
@@ -662,7 +667,7 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-started-push-ui` event with publicApi: true', () => {
+		it('should track on `source-control-user-started-push-ui` event from a public API route', () => {
 			const event: RelayEventMap['source-control-user-started-push-ui'] = {
 				userId: 'userId',
 				workflowsEligible: 10,
@@ -670,7 +675,7 @@ describe('TelemetryEventRelay', () => {
 				credsEligible: 5,
 				credsEligibleWithConflicts: 1,
 				variablesEligible: 3,
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('source-control-user-started-push-ui', event);
@@ -683,6 +688,7 @@ describe('TelemetryEventRelay', () => {
 				creds_eligible_with_conflicts: 1,
 				variables_eligible: 3,
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 
@@ -708,14 +714,14 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-finished-push-ui` event with publicApi: true', () => {
+		it('should track on `source-control-user-finished-push-ui` event from a public API route', () => {
 			const event: RelayEventMap['source-control-user-finished-push-ui'] = {
 				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsPushed: 8,
 				credsPushed: 5,
 				variablesPushed: 3,
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('source-control-user-finished-push-ui', event);
@@ -727,6 +733,7 @@ describe('TelemetryEventRelay', () => {
 				creds_pushed: 5,
 				variables_pushed: 3,
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 	});
@@ -1995,8 +2002,8 @@ describe('TelemetryEventRelay', () => {
 		it('should buffer on `public-api-invoked` event', () => {
 			const event: RelayEventMap['public-api-invoked'] = {
 				userId: 'user123',
-				path: '/api/v1/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				apiVersion: 'v1',
 				userAgent: 'n8n-cli',
 				client: 'editor_ui',
@@ -2006,8 +2013,8 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.trackApiInvocation).toHaveBeenCalledWith({
 				user_id: 'user123',
-				path: '/api/v1/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'editor_ui',
 				user_agent: 'n8n-cli',
@@ -2023,7 +2030,7 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: 'other',
 			};
 
 			eventService.emit('public-api-key-created', event);
@@ -2031,6 +2038,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('API key created', {
 				user_id: 'user123',
 				public_api: true,
+				public_api_client: 'other',
 			});
 		});
 
@@ -2043,7 +2051,7 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: 'other',
 				isOwn: true,
 			};
 
@@ -2052,6 +2060,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('API key deleted', {
 				user_id: 'user123',
 				public_api: true,
+				public_api_client: 'other',
 				is_own: true,
 			});
 		});
@@ -2074,6 +2083,7 @@ describe('TelemetryEventRelay', () => {
 				packageNodeNames: ['CustomNode1', 'CustomNode2'],
 				packageAuthor: 'John Smith',
 				packageAuthorEmail: 'john@example.com',
+				source: 'mcp',
 			};
 
 			eventService.emit('community-package-installed', event);
@@ -2088,6 +2098,7 @@ describe('TelemetryEventRelay', () => {
 				package_author: 'John Smith',
 				package_author_email: 'john@example.com',
 				failure_reason: undefined,
+				source: 'mcp',
 			});
 		});
 
@@ -2214,13 +2225,26 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it.each([
-			{ descriptionLength: 0, publicApi: false },
-			{ descriptionLength: 18, publicApi: false },
-			{ descriptionLength: 0, publicApi: true },
-			{ descriptionLength: 18, publicApi: true },
-		])(
+			{ descriptionLength: 0, publicApi: false, expected: { public_api: false } },
+			{ descriptionLength: 18, publicApi: false, expected: { public_api: false } },
+			{
+				descriptionLength: 0,
+				publicApi: 'editor_ui',
+				expected: { public_api: true, public_api_client: 'editor_ui' },
+			},
+			{
+				descriptionLength: 0,
+				publicApi: 'n8n_node',
+				expected: { public_api: true, public_api_client: 'n8n_node' },
+			},
+			{
+				descriptionLength: 18,
+				publicApi: 'other',
+				expected: { public_api: true, public_api_client: 'other' },
+			},
+		] as const)(
 			'tracks creation with description length $descriptionLength and public API $publicApi',
-			({ descriptionLength, publicApi }) => {
+			({ descriptionLength, publicApi, expected }) => {
 				const event: RelayEventMap['credentials-created'] = {
 					credentialName: 'My GitHub account',
 					credentialDescriptionLength: descriptionLength,
@@ -2247,7 +2271,7 @@ describe('TelemetryEventRelay', () => {
 					TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
 					{
 						source: 'backend',
-						public_api: publicApi,
+						...expected,
 						user_id: 'user123',
 						user_role: GLOBAL_OWNER_ROLE.slug,
 						credential_type: 'github',
@@ -2856,7 +2880,7 @@ describe('TelemetryEventRelay', () => {
 					nodes: [],
 					connections: {},
 				}),
-				publicApi: true,
+				publicApi: 'other',
 				source: 'api',
 			};
 
@@ -2870,6 +2894,7 @@ describe('TelemetryEventRelay', () => {
 					user_id: 'user123',
 					workflow_id: 'workflow123',
 					public_api: true,
+					public_api_client: 'other',
 					source: 'api',
 					private_credentials_count: 0,
 					private_credential_types: [],
@@ -3029,7 +3054,7 @@ describe('TelemetryEventRelay', () => {
 					nodes: [],
 					connections: {},
 				}),
-				publicApi: true,
+				publicApi: 'other',
 				deactivatedVersionId: 'version-abc-123',
 				source: 'n8n-mcp',
 			};
@@ -3040,6 +3065,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				workflow_id: 'workflow123',
 				public_api: true,
+				public_api_client: 'other',
 				deactivated_version_id: 'version-abc-123',
 				source: 'n8n-mcp',
 			});
@@ -3921,6 +3947,145 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('SCIM events', () => {
+		it('should track a SCIM settings change by a user', () => {
+			eventService.emit('scim-settings-updated', {
+				user: { id: 'user123', email: 'user@example.com', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				isActive: true,
+				change: 'token_rotated',
+				source: 'user',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS,
+				{
+					user_id: 'user123',
+					is_active: true,
+					change: 'token_rotated',
+				},
+			);
+		});
+
+		it.each(['sso_off', 'startup'] as const)(
+			'should track a SCIM turn-off by n8n without a user (%s)',
+			(source) => {
+				eventService.emit('scim-settings-updated', {
+					user: null,
+					isActive: false,
+					change: 'disabled',
+					source,
+				});
+
+				const [, properties] = telemetry.track.mock.calls.find(
+					([event]) => (event as unknown) === TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS,
+				)!;
+				expect(properties).toEqual({
+					user_id: undefined,
+					is_active: false,
+					change: 'disabled',
+				});
+				expect(
+					TELEMETRY_EVENT.SCIM.USER_UPDATED_SCIM_SETTINGS.getValidationError(properties),
+				).toBeNull();
+			},
+		);
+
+		it('should not track a deprovisioning policy change', () => {
+			eventService.emit('scim-deprovisioning-policy-updated', {
+				user: { id: 'user123', email: 'user@example.com', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				isActive: true,
+				before: { onDelete: 'disable', dataAction: 'transfer', transferProjectId: null },
+				after: { onDelete: 'delete', dataAction: 'transfer', transferProjectId: null },
+			});
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		describe('rejected SCIM requests', () => {
+			// Other tests add relays to the shared event service, and each relay
+			// keeps its own throttle. So these tests use their own relay.
+			let scimEventService: EventService;
+
+			const rejected = (reason: 'invalid_token' | 'conflict' = 'invalid_token') =>
+				scimEventService.emit('scim-request-rejected', {
+					operation: 'list_users',
+					status: reason === 'invalid_token' ? 401 : 409,
+					reason,
+				});
+			const rejectionCalls = () =>
+				telemetry.track.mock.calls.filter(
+					([event]) => (event as unknown) === TELEMETRY_EVENT.SCIM.SCIM_REQUEST_REJECTED,
+				);
+
+			beforeEach(async () => {
+				vi.useFakeTimers({ now: new Date('2026-11-16T10:00:00Z') });
+				scimEventService = new EventService();
+				await new TelemetryEventRelay(
+					scimEventService,
+					telemetry,
+					license,
+					licenseState,
+					globalConfig,
+					instanceSettings,
+					binaryDataConfig,
+					workflowRepository,
+					nodeTypes,
+					sharedWorkflowRepository,
+					projectRelationRepository,
+					credentialsRepository,
+					dynamicCredentialsProxy,
+					dbConnection,
+					loadNodesAndCredentials,
+					postHogClient,
+					ownershipService,
+				).init();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('should report the first rejection of a reason at once', () => {
+				rejected();
+
+				expect(rejectionCalls()).toHaveLength(1);
+				const [, properties] = rejectionCalls()[0];
+				expect(properties).toEqual({
+					operation: 'list_users',
+					status: 401,
+					reason: 'invalid_token',
+					count: 1,
+				});
+				expect(
+					TELEMETRY_EVENT.SCIM.SCIM_REQUEST_REJECTED.getValidationError(properties),
+				).toBeNull();
+			});
+
+			it('should report a reason at most once an hour, with the count since the last report', () => {
+				rejected();
+				rejected();
+				rejected();
+				expect(rejectionCalls()).toHaveLength(1);
+
+				vi.advanceTimersByTime(60 * 60 * 1000);
+				rejected();
+
+				expect(rejectionCalls()).toHaveLength(2);
+				expect(rejectionCalls()[1][1]).toMatchObject({ reason: 'invalid_token', count: 3 });
+			});
+
+			it('should report each reason on its own', () => {
+				rejected('invalid_token');
+				rejected('conflict');
+
+				expect(rejectionCalls().map(([, properties]) => properties)).toEqual([
+					expect.objectContaining({ reason: 'invalid_token', count: 1 }),
+					expect.objectContaining({ reason: 'conflict', count: 1 }),
+				]);
+			});
+		});
+	});
+
 	describe('user events', () => {
 		describe('on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
@@ -3944,6 +4109,20 @@ describe('TelemetryEventRelay', () => {
 				expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
 					user_id: 'user123',
 					fields_changed: ['firstName', 'lastName'],
+				});
+			});
+
+			it('should add the source of a SCIM change', () => {
+				eventService.emit('user-updated', {
+					...event,
+					fieldsChanged: ['disabled'],
+					source: 'scim',
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
+					user_id: 'user123',
+					fields_changed: ['disabled'],
+					source: 'scim',
 				});
 			});
 
@@ -4042,6 +4221,34 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				email_sent: true,
 				invitee_role: 'global:member',
+			});
+		});
+
+		it('should add the source of a SCIM sign-up to the event, not to the user traits', () => {
+			const event: RelayEventMap['user-signed-up'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				userType: 'saml',
+				wasDisabledLdapUser: false,
+				source: 'scim',
+			};
+
+			eventService.emit('user-signed-up', event);
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				{ user_id: 'user123', user_type: 'saml', was_disabled_ldap_user: false },
+				'user123',
+			);
+			expect(telemetry.track).toHaveBeenCalledWith('User signed up', {
+				user_id: 'user123',
+				user_type: 'saml',
+				was_disabled_ldap_user: false,
+				source: 'scim',
 			});
 		});
 
@@ -4355,6 +4562,8 @@ describe('TelemetryEventRelay', () => {
 					n8n_binary_data_mode: 'default',
 					n8n_deployment_type: 'default',
 					n8n_deployment_artifact: 'helm-chart/1.14.0',
+					public_api_disabled: false,
+					public_api_swagger_ui_disabled: true,
 					saml_enabled: false,
 					smtp_set_up: true,
 					system_info: {

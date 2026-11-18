@@ -131,7 +131,7 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPage).toHaveBeenCalledWith(
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 0, take: 40, sortBy: 'updatedAt:desc' }),
+			expect.objectContaining({ offset: 0, limit: 40, sortBy: 'updatedAt:desc' }),
 		);
 		expect(listAgentsPageGlobal).not.toHaveBeenCalled();
 	});
@@ -146,7 +146,7 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPage).toHaveBeenCalledWith(
 			expect.anything(),
 			'personal-1',
-			expect.objectContaining({ skip: 0, take: 40 }),
+			expect.objectContaining({ offset: 0, limit: 40 }),
 		);
 		expect(listAgentsPageGlobal).not.toHaveBeenCalled();
 	});
@@ -189,7 +189,7 @@ describe('AgentSelectorParameterInput', () => {
 		expect(listAgentsPage).toHaveBeenLastCalledWith(
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 0, filter: { query: 'support' } }),
+			expect.objectContaining({ offset: 0, filter: { query: 'support' } }),
 		);
 	});
 

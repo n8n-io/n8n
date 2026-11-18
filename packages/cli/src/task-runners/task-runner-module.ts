@@ -1,5 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { CodeExecutionBackend, EventService } from '@n8n/backend-services';
 import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -98,6 +98,11 @@ export class TaskRunnerModule {
 		);
 		this.taskRequester = Container.get(LocalTaskRequester);
 		Container.set(TaskRequester, this.taskRequester);
+
+		const { TaskRunnerCodeExecutionBackend } = await import(
+			'@/task-runners/task-runner-code-execution-backend.js'
+		);
+		Container.set(CodeExecutionBackend, Container.get(TaskRunnerCodeExecutionBackend));
 	}
 
 	private async loadTaskBroker() {

@@ -1,3 +1,5 @@
+import type { FolderResourceType } from '@n8n/api-types';
+
 import type {
 	FolderConflict,
 	FolderConflictPolicy,
@@ -6,6 +8,7 @@ import type {
 } from '../../n8n-packages.types';
 
 export interface PreparedFolder {
+	resourceType?: FolderResourceType;
 	sourceFolderId: string;
 	name: string;
 	parentFolderId: string | null;
@@ -19,6 +22,7 @@ export interface FolderImportContext extends ImportContext {
 export type FolderPlannedAction = 'create' | 'skip' | 'update';
 
 export interface FolderPlanItem {
+	resourceType?: FolderResourceType;
 	action: FolderPlannedAction;
 	sourceFolderId: string;
 	name: string;

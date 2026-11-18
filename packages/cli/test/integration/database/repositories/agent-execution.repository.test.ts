@@ -1,3 +1,4 @@
+import type { FolderRepository } from '@n8n/db';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
@@ -13,7 +14,13 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig, GlobalConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
+import {
+	ServiceAccountRepository,
+	SettingsRepository,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -27,7 +34,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { Telemetry } from '@/telemetry';
+import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-telemetry.service';
 import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -214,7 +221,7 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			threads,
 			memory,
-			mock<Telemetry>(),
+			mock<AgentUsageTelemetryService>(),
 			attachmentService,
 			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
@@ -257,7 +264,13 @@ describe('AgentExecutionRepository', () => {
 			executionService,
 			checkpointStorage,
 			connection
-				? new AgentRepository(connection, txRunner, Container.get(GlobalConfig))
+				? new AgentRepository(
+						connection,
+						txRunner,
+						Container.get(GlobalConfig),
+						mock<FolderRepository>(),
+						Container.get(ServiceAccountRepository),
+					)
 				: agentRepo,
 			attachmentService,
 			queueUpdates,
@@ -1536,7 +1549,7 @@ describe('AgentExecutionRepository', () => {
 				storage,
 				executionService,
 				turns,
-				mock<Telemetry>(),
+				mock<AgentUsageTelemetryService>(),
 				runtimeCache,
 				mock<IntegrationMessageContextService>(),
 				mock<AgentRunTracingService>(),

@@ -21,6 +21,7 @@ import { PromotionProviderRepository } from '@/modules/promotions.ee/database/re
 import { GitHostClients } from '@/modules/promotions.ee/git-hosts/git-host-clients';
 import { GitLabHostClient } from '@/modules/promotions.ee/git-hosts/gitlab-host.client';
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
+import { PromotionEnvironmentLockService } from '@/modules/promotions.ee/promotion-environment-lock.service';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.service';
@@ -1678,16 +1679,29 @@ describe('Promotions in Public API', () => {
 				const plainProviderId = await createProvider(agent);
 				const repository = Container.get(PromotionEnvironmentRepository);
 				// Pause before the write transaction opens. SQLite runs one write transaction at a
-				// time, so a pause inside it would also hold back the winning update.
-				const transactions = Container.get(TransactionRunner);
-				const run = transactions.run.bind(transactions);
+				// time, so a pause inside it would also hold back the winning update. A new remote
+				// changes the checkout, so that write runs inside the environment lock: pause it
+				// before it takes the lock, so the winning update can take it.
 				const paused = createDeferredPromise();
 				const resume = createDeferredPromise();
-				const write = vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+				const pause = async () => {
 					paused.resolve();
 					await resume.promise;
-					return await run(...args);
-				});
+				};
+				const transactions = Container.get(TransactionRunner);
+				const environmentLock = Container.get(PromotionEnvironmentLockService);
+				const run = transactions.run.bind(transactions);
+				const lock = environmentLock.run.bind(environmentLock);
+				const write =
+					field === 'remote'
+						? vi.spyOn(environmentLock, 'run').mockImplementationOnce(async (...args) => {
+								await pause();
+								return await lock(...args);
+							})
+						: vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+								await pause();
+								return await run(...args);
+							});
 				const root = `/promotions/environments/${id}`;
 				const changes =
 					field === 'remote'
@@ -2303,6 +2317,7 @@ describe('Promotions in Public API', () => {
 				source: { environmentId: 'env1', branchName: 'main' },
 				resources: [],
 				dependencies: [],
+				revision: 'b'.repeat(64),
 			};
 			const getPreview = vi
 				.spyOn(Container.get(PromotionChangeService), 'getPreview')
@@ -2362,6 +2377,7 @@ describe('Promotions in Public API', () => {
 
 	describe('selective promote', () => {
 		const promoteResult = {
+			status: 'promoted' as const,
 			environmentId: 'env1',
 			counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
 			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
@@ -2633,11 +2649,15 @@ describe('Promotions in Public API', () => {
 						'proj1',
 						expect.objectContaining({ id: restrictedOwner.id }),
 						selectionBody,
+						'other',
+						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						'proj1',
 						expect.objectContaining({ id: restrictedOwner.id }),
 						selectionBody,
+						'other',
+						undefined,
 					);
 				} finally {
 					initial.mockRestore();
@@ -2734,6 +2754,8 @@ describe('Promotions in Public API', () => {
 				expect(initial).toHaveBeenCalledWith(
 					id,
 					expect.objectContaining({ id: owner.id }),
+					{},
+					'other',
 					undefined,
 				);
 			} finally {
@@ -2804,23 +2826,28 @@ describe('Promotions in Public API', () => {
 				const service = Container.get(PromotionsService);
 				const initial = vi.spyOn(service, 'apply').mockResolvedValue(result);
 				const continuation = vi.spyOn(service, 'continueApply').mockResolvedValue(result);
+				const reviewedBody = { ...continueBody, expectedPreviewRevision: 'b'.repeat(64) };
 				try {
 					for (const route of ['apply', 'apply/continue']) {
 						const response = await agent
 							.post(`/promotions/environments/${id}/${route}`)
-							.send(continueBody);
+							.send(reviewedBody);
 						expect(response.status, JSON.stringify(response.body)).toBe(200);
 						expect(response.body).toEqual(result);
 					}
 					expect(initial).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
-						continueBody.expectedSource,
+						reviewedBody,
+						'other',
+						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
-						continueBody,
+						reviewedBody,
+						'other',
+						undefined,
 					);
 				} finally {
 					initial.mockRestore();
@@ -2852,6 +2879,68 @@ describe('Promotions in Public API', () => {
 			expect(continued.body.message).toContain('not connected');
 			expect(response.status).toBe(400);
 			expect(response.body.message).toContain('not connected');
+		});
+
+		it('returns 423 and keeps the environment while another operation holds its lock', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createEnvironment(agent, promoteEnvironment);
+			const held = createDeferredPromise();
+			const release = createDeferredPromise();
+			const holder = Container.get(PromotionEnvironmentLockService).run(id, async () => {
+				held.resolve();
+				await release.promise;
+			});
+			await held.promise;
+
+			try {
+				const responses = [
+					await agent.post(`/promotions/environments/${id}/connect`),
+					await agent
+						.post(`/promotions/environments/${id}/promote`)
+						.send({ commitMessage: 'sync projects' }),
+					await agent.post(`/promotions/environments/${id}/disconnect`),
+					await agent.delete(`/promotions/environments/${id}`),
+				];
+				for (const response of responses) {
+					expect(response.status, JSON.stringify(response.body)).toBe(423);
+					expect(response.body.message).toBe(
+						'Another promotion operation is running for this environment. Try again when it finishes.',
+					);
+				}
+			} finally {
+				release.resolve();
+				await holder;
+			}
+
+			expect((await agent.get(`/promotions/environments/${id}`)).status).toBe(200);
+		});
+
+		it('returns 423 on Apply and Continue while another operation holds the lock', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createEnvironment(agent);
+			const held = createDeferredPromise();
+			const release = createDeferredPromise();
+			const holder = Container.get(PromotionEnvironmentLockService).run(id, async () => {
+				held.resolve();
+				await release.promise;
+			});
+			await held.promise;
+
+			try {
+				const responses = [
+					await agent.post(`/promotions/environments/${id}/apply`),
+					await agent.post(`/promotions/environments/${id}/apply/continue`).send(continueBody),
+				];
+				for (const response of responses) {
+					expect(response.status, JSON.stringify(response.body)).toBe(423);
+					expect(response.body.message).toBe(
+						'Another promotion operation is running for this environment. Try again when it finishes.',
+					);
+				}
+			} finally {
+				release.resolve();
+				await holder;
+			}
 		});
 
 		it('rejects Promote on an apply environment and Apply on a promote environment', async () => {

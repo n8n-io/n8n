@@ -547,6 +547,23 @@ describe('instanceAi.reducer', () => {
 			expect(child.result).toBe('done');
 			expect(child.error).toBeUndefined();
 		});
+
+		test('agent-result-delivered sets resultDelivered on the node of a finished run', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'sub-1', 'agent-root'));
+			handleEvent(state, makeAgentCompletedEvent('run-1', 'sub-1', 'done', undefined));
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+			handleEvent(state, {
+				type: 'agent-result-delivered',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {},
+			});
+
+			const child = state.messages[0].agentTree!.children[0];
+			expect(child.resultDelivered).toBe(true);
+			expect(child.status).toBe('completed');
+		});
 	});
 
 	// Test live event dispatch, not only shared history replay.
@@ -660,6 +677,30 @@ describe('instanceAi.reducer', () => {
 				message: 'Select credentials',
 				projectId: 'proj-789',
 			});
+		});
+
+		test('auto-approval marks the tool call that ran without its card', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'publish_workflow'));
+			handleEvent(state, {
+				type: 'auto-approval',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					message: 'Publish "Lead router"',
+					reason: 'The user asked to publish it.',
+					decidedBy: 'judge',
+				},
+			});
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.autoApproval).toEqual({
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish it.',
+				decidedBy: 'judge',
+			});
+			expect(tc.confirmation).toBeUndefined();
 		});
 	});
 

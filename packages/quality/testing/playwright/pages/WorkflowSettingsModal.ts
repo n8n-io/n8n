@@ -24,6 +24,7 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getErrorWorkflowList(): Locator {
+		// The select teleports the list outside the modal content.
 		return this.page.getByRole('listbox').filter({ visible: true });
 	}
 

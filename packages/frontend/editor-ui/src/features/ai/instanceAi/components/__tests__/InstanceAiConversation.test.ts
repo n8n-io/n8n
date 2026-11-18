@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, provide, reactive, type Ref } from 'vue';
+import { computed, defineComponent, h, nextTick, provide, reactive, type Ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -30,6 +30,10 @@ import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types
 import type { UseInfiniteScrollOptions } from '@vueuse/core';
 import { ResponseError } from '@n8n/rest-api-client';
 import { USER_TYPED_MESSAGE } from '../../prefills';
+import {
+	CloudBrowserTasksKey,
+	type CloudBrowserTask,
+} from '../../composables/useCloudBrowserTasks';
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const showMessageSpy = vi.hoisted(() => vi.fn());
@@ -312,7 +316,7 @@ describe('InstanceAiConversation', () => {
 
 		expect(wrapper.get('[data-test-id="instance-ai-input-out-of-credits"]').text()).toBe('true');
 		expect(wrapper.get('[data-test-id="credit-warning-banner"]').text()).toContain(
-			"You've run out of AI credits",
+			"You've run out of Assistant credits",
 		);
 		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
 	});
@@ -1096,6 +1100,95 @@ describe('InstanceAiConversation', () => {
 			await fireEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 			await vi.waitFor(() => expect(thread.clearPendingWorkflowAttachment).toHaveBeenCalled());
 			expect(thread.pendingWorkflowAttachment).toBeNull();
+		});
+	});
+
+	describe('stop browser tasks popover', () => {
+		const runningTask: CloudBrowserTask = {
+			agentId: 'agent-1',
+			taskId: 'task-1',
+			title: 'Find the price',
+			state: 'running',
+			sessionKey: 'tc-1',
+		};
+
+		function mountWithBrowserTasks(tasks: CloudBrowserTask[]) {
+			const cancelBackgroundTask = vi.fn().mockResolvedValue(undefined);
+			Object.assign(thread, { isStreaming: true, cancelBackgroundTask });
+			const Host = defineComponent({
+				setup() {
+					provideThread(thread);
+					provide(
+						CloudBrowserTasksKey,
+						computed(() => tasks),
+					);
+					return () => h(InstanceAiConversation);
+				},
+			});
+			const wrapper = mount(Host, {
+				attachTo: document.body,
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			});
+			return { wrapper, cancelBackgroundTask };
+		}
+
+		function findPopover() {
+			return document.body.querySelector('[data-test-id="instance-ai-stop-browser-tasks"]');
+		}
+
+		afterEach(() => {
+			document.body.innerHTML = '';
+		});
+
+		it('asks whether to stop the browser tasks that still run after the reply stops', async () => {
+			const { wrapper } = mountWithBrowserTasks([runningTask]);
+
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+
+			expect(thread.cancelRun).toHaveBeenCalled();
+			await vi.waitFor(() => expect(findPopover()).not.toBeNull());
+			expect(findPopover()?.textContent).toContain('Stop browser task?');
+			expect(findPopover()?.textContent).toContain('1 browser is still running');
+			wrapper.unmount();
+		});
+
+		it('stops the running tasks when the user chooses to', async () => {
+			const { wrapper, cancelBackgroundTask } = mountWithBrowserTasks([runningTask]);
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+			await vi.waitFor(() => expect(findPopover()).not.toBeNull());
+
+			await fireEvent.click(
+				document.body.querySelector('[data-test-id="instance-ai-stop-browser-tasks-stop"]')!,
+			);
+
+			expect(cancelBackgroundTask).toHaveBeenCalledWith('task-1');
+			await vi.waitFor(() => expect(findPopover()).toBeNull());
+			wrapper.unmount();
+		});
+
+		it('keeps the tasks running when the user chooses to', async () => {
+			const { wrapper, cancelBackgroundTask } = mountWithBrowserTasks([runningTask]);
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+			await vi.waitFor(() => expect(findPopover()).not.toBeNull());
+
+			await fireEvent.click(
+				document.body.querySelector('[data-test-id="instance-ai-stop-browser-tasks-keep"]')!,
+			);
+
+			expect(cancelBackgroundTask).not.toHaveBeenCalled();
+			await vi.waitFor(() => expect(findPopover()).toBeNull());
+			wrapper.unmount();
+		});
+
+		it('only stops the reply when no browser task runs', async () => {
+			const { wrapper } = mountWithBrowserTasks([{ ...runningTask, state: 'done' }]);
+
+			await wrapper.get('[data-test-id="instance-ai-input-stop"]').trigger('click');
+			await nextTick();
+
+			expect(thread.cancelRun).toHaveBeenCalled();
+			expect(findPopover()).toBeNull();
+			wrapper.unmount();
 		});
 	});
 });

@@ -142,7 +142,17 @@ export abstract class SkillSourceClient {
 	abstract location(ref: RemoteSkillRef): string;
 
 	/** A page in the source that a user can open, for the source or for one skill. */
-	abstract webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string;
+	abstract webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef, revision?: string): string;
+
+	/** A link to the stored revision, without a remote request. */
+	revisionUrl?(locator: SkillSourceLocator, revision: string): string;
+
+	/** Optional details of the stored revision. Failure must not prevent review or accept. */
+	describeRevision?(
+		locator: SkillSourceLocator,
+		revision: string,
+		auth?: SkillSourceAuth,
+	): Promise<{ message: string | null; author: string | null; date: string | null }>;
 
 	/**
 	 * A cheap check for a change, with one request: an opaque cursor, such as the commit at the

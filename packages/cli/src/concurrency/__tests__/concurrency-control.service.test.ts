@@ -663,6 +663,7 @@ describe('ConcurrencyControlService', () => {
 					);
 
 					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
+					executionRepository.markAsCanceled.mockResolvedValue([]);
 
 					/**
 					 * Act
@@ -675,6 +676,7 @@ describe('ConcurrencyControlService', () => {
 					expect(removeSpy).toHaveBeenNthCalledWith(1, '1');
 					expect(removeSpy).toHaveBeenNthCalledWith(2, '2');
 					expect(removeSpy).toHaveBeenNthCalledWith(3, '3');
+					expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(['1', '2', '3']);
 				},
 			);
 		});

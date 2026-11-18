@@ -149,6 +149,52 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(input[0].content[0]).toMatchObject({ toolCallId: invalidId });
 	});
 
+	describe('tool-call IDs from an OpenAI-compatible gateway', () => {
+		// LiteLLM stores Gemini's thought signature in the ID, in standard base64.
+		const gatewayId = 'call_1779362__thought__AY89a1+JiipVUqj7/74Q==';
+		const input = (): Message[] => [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: gatewayId,
+						toolName: 'fetch_input_data',
+						input: {},
+						state: 'resolved',
+						output: { ok: true },
+					},
+				],
+			},
+		];
+		const replayedIds = (providerId: string) => {
+			const [assistant, tool] = toAiMessages(input(), providerId);
+			if (
+				assistant.role !== 'assistant' ||
+				typeof assistant.content === 'string' ||
+				tool.role !== 'tool'
+			) {
+				throw new Error('Expected a tool call and its result');
+			}
+			const [toolCall] = assistant.content;
+			const [toolResult] = tool.content;
+			if (toolCall.type !== 'tool-call' || toolResult.type !== 'tool-result') {
+				throw new Error('Expected a tool call and its result');
+			}
+			return { call: toolCall.toolCallId, result: toolResult.toolCallId };
+		};
+
+		it.each(['openai', 'custom'])('keeps the ID unchanged for %s', (providerId) => {
+			expect(replayedIds(providerId)).toEqual({ call: gatewayId, result: gatewayId });
+		});
+
+		it('still repairs the ID for anthropic', () => {
+			const { call, result } = replayedIds('anthropic');
+			expect(call).toMatch(/^[A-Za-z0-9_-]+$/);
+			expect(result).toBe(call);
+		});
+	});
+
 	it('keeps repaired IDs distinct and pairs provider-executed results', () => {
 		const input: Message[] = [
 			{

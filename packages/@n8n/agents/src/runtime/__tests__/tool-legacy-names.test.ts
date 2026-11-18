@@ -1,9 +1,14 @@
 import { z } from 'zod';
 
 import { Tool } from '../../sdk/tool';
-import type { BuiltTool } from '../../types';
+import type { BuiltTool, LegacyCallConverter } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, resolveToolForCall, toAiSdkTools } from '../tools/tool-adapter';
+import {
+	buildToolMap,
+	resolveToolCallTarget,
+	resolveToolForCall,
+	toAiSdkTools,
+} from '../tools/tool-adapter';
 import { ToolCatalog } from '../tools/tool-catalog';
 
 function makeTool(name: string, legacyNames?: string[]): BuiltTool {
@@ -140,5 +145,73 @@ describe('tool legacy names', () => {
 				expect.objectContaining({ toolName: 'delete_item', input: '{"id":"1"}' }),
 			);
 		});
+	});
+
+	describe('a batch tool that replaces the write tools of a split tool', () => {
+		// Shaped like the data table tools: one tool for each read action, and one batch
+		// tool that took over the per-action write tools and the write actions of `items`.
+		const formerNames = ['items', 'items-old'];
+		const writeActions = { create: 'create_item', delete: 'delete_item' };
+		const readTools = ['list', 'get'].map((action) => {
+			const tool = new Tool(`${action}_items`)
+				.description(`${action} items`)
+				.input(z.object({ id: z.string() }));
+			for (const former of formerNames) tool.legacyActions(former, action);
+			return tool.handler(async () => await Promise.resolve({ ok: true })).build();
+		});
+		const batchBuilder = new Tool('change_items')
+			.description('change items')
+			.input(z.object({ changes: z.array(z.unknown()) }))
+			.legacyNames(...Object.values(writeActions));
+		for (const former of formerNames) {
+			batchBuilder.legacyActions(former, ...Object.keys(writeActions));
+		}
+		const batch = batchBuilder.handler(async () => await Promise.resolve({ ok: true })).build();
+		const map = buildToolMap([...readTools, batch]);
+
+		it('resolves every former write tool name to the batch tool', () => {
+			for (const name of Object.values(writeActions)) {
+				expect(resolveToolForCall(map, name, { id: '1' })).toBe(batch);
+				expect(resolveToolCallTarget(map, name, { id: '1' })?.tool).toBe(batch);
+			}
+		});
+
+		it('resolves write actions of the former split tool to the batch tool', () => {
+			for (const former of formerNames) {
+				for (const action of Object.keys(writeActions)) {
+					expect(resolveToolForCall(map, former, { action, id: '1' })).toBe(batch);
+					expect(resolveToolCallTarget(map, former, { action, id: '1' })?.tool).toBe(batch);
+				}
+			}
+		});
+
+		it('keeps read actions of the former split tool on the read tools', () => {
+			for (const former of formerNames) {
+				expect(resolveToolForCall(map, former, { action: 'list' })).toBe(readTools[0]);
+				expect(resolveToolCallTarget(map, former, { action: 'get' })?.tool).toBe(readTools[1]);
+			}
+		});
+
+		it('lets a registered per-action write tool keep its own name', () => {
+			const create = makeTool('create_item');
+			const both = buildToolMap([...readTools, batch, create]);
+
+			expect(resolveToolForCall(both, 'create_item', {})).toBe(create);
+			expect(resolveToolForCall(both, 'delete_item', {})).toBe(batch);
+		});
+	});
+
+	it('stores a resume-only converter on the built tool', () => {
+		const convert: LegacyCallConverter = (_formerName, input) => input;
+		const tool = new Tool('current')
+			.description('current')
+			.input(z.object({}))
+			.legacyNames('old')
+			.legacyForResumeOnly(convert)
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+
+		expect(tool.legacyResumeOnly?.convert).toBe(convert);
+		expect(makeTool('plain').legacyResumeOnly).toBeUndefined();
 	});
 });

@@ -1,6 +1,7 @@
 import type { SkillScope } from '@n8n/api-types';
 import {
 	BaseRepository,
+	DbLock,
 	LIKE_ESCAPE_CLAUSE,
 	Project,
 	TransactionRunner,
@@ -54,6 +55,10 @@ export type SkillListFilter = {
 	/** The skills an agent uses. */
 	usedBySkillIds?: string[];
 	createdById?: string;
+	/** Restrict results to these connected sources. An empty array matches nothing. */
+	sourceIds?: string[];
+	/** Sources whose labels match the search, in addition to skill names and descriptions. */
+	searchSourceIds?: string[];
 	search?: string;
 	availableToMCP?: boolean;
 	/** Most recently changed first when absent. */
@@ -204,6 +209,15 @@ export class SkillRepository {
 		if (filter.createdById !== undefined) {
 			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
 		}
+		if (filter.sourceIds || filter.searchSourceIds?.length) {
+			query.leftJoin(SkillSourceLink, 'filterSourceLink', 'filterSourceLink.skillId = skill.id');
+		}
+		if (filter.sourceIds) {
+			if (filter.sourceIds.length === 0) return null;
+			query.andWhere('filterSourceLink.sourceId IN (:...filterSourceIds)', {
+				filterSourceIds: filter.sourceIds,
+			});
+		}
 		if (filter.availableToMCP !== undefined) {
 			query.andWhere('skill.availableToMCP = :availableToMCP', {
 				availableToMCP: filter.availableToMCP,
@@ -222,11 +236,16 @@ export class SkillRepository {
 		}
 		if (filter.search) {
 			query.andWhere(
-				new Brackets((qb) =>
-					qb
-						.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`)
-						.orWhere(`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`),
-				),
+				new Brackets((qb) => {
+					qb.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`).orWhere(
+						`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`,
+					);
+					if (filter.searchSourceIds?.length) {
+						qb.orWhere('filterSourceLink.sourceId IN (:...searchSourceIds)', {
+							searchSourceIds: filter.searchSourceIds,
+						});
+					}
+				}),
 				{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
 			);
 		}
@@ -496,9 +515,17 @@ export class SkillRepository {
 		content: SkillContent,
 		createdById: string | null,
 		ctx: OperationContext = {},
+		sourceRevision: string | null = null,
 	): Promise<string> {
 		return await this.table.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById, null);
+			const id = await insertVersion(
+				manager,
+				skillId,
+				version,
+				content,
+				createdById,
+				sourceRevision,
+			);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
@@ -624,6 +651,16 @@ export class SkillRepository {
 	 */
 	async lockForEdit(skillIds: string[], ctx: OperationContext = {}): Promise<void> {
 		await this.lock(skillIds, 'pessimistic_write', ctx);
+	}
+
+	/** Serialize name checks and writes. Take all existing skill row locks before this lock. */
+	async lockNames(ctx: OperationContext): Promise<void> {
+		if (!ctx.trx) throw new UnexpectedError('Skill name locks need a transaction');
+		// SQLite serializes write transactions. PostgreSQL needs a lock without a schema change.
+		if (this.table.manager.connection.options.type !== 'postgres') return;
+		await this.table
+			.managerFor(ctx)
+			.query('SELECT pg_advisory_xact_lock($1)', [DbLock.SKILL_NAMES]);
 	}
 
 	/** Shared lock: publishes run side by side, a save waits for them. */

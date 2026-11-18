@@ -1,3 +1,4 @@
+import { DATA_TABLE_TOOL_ACTIONS } from '../../builder-tool-names';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	base64EncodedSize,
@@ -13,6 +14,7 @@ import {
 	appBlueprintSchema,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
@@ -112,9 +114,8 @@ describe('Instance AI prompt version requests', () => {
 		const base = { message: 'Build a workflow', timeZone: 'UTC' };
 		expect(InstanceAiSendMessageRequest.safeParse(base).success).toBe(true);
 		expect(
-			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' progressive@1 ' })
-				.promptVersion,
-		).toBe('progressive@1');
+			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' concise@1 ' }).promptVersion,
+		).toBe('concise@1');
 		for (const promptVersion of ['', '   ', 'x'.repeat(129)]) {
 			expect(InstanceAiSendMessageRequest.safeParse({ ...base, promptVersion }).success).toBe(
 				false,
@@ -804,6 +805,15 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+
+	it('builds an owned-table key that differs from every action key', () => {
+		const actionKeys = DATA_TABLE_TOOL_ACTIONS.map(buildDataTablesSessionGrantKey);
+		expect(actionKeys).not.toContain(buildOwnedDataTableGrantKey('x'));
+	});
+
+	it('encodes the table id in the owned-table key', () => {
+		expect(buildOwnedDataTableGrantKey('a/b:c')).toBe('data-tables:owned:a%2Fb%3Ac');
 	});
 });
 
