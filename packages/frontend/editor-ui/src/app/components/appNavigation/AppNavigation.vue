@@ -617,9 +617,11 @@ $panel-width: 240px;
 	position: absolute;
 	// Above the content, which sits above the rail to cast its shadow.
 	z-index: 3;
-	top: var(--spacing--2xs);
-	bottom: var(--spacing--2xs);
-	left: $rail-width;
+	// The same gap on the top, bottom and rail side, so the panel floats evenly.
+	--floating-panel--gap: var(--spacing--3xs);
+	top: var(--floating-panel--gap);
+	bottom: var(--floating-panel--gap);
+	left: calc(#{$rail-width} + var(--floating-panel--gap));
 	width: $panel-width;
 	border: 0.5px solid var(--app-shell--panel--border-color);
 	border-radius: var(--radius--sm);
