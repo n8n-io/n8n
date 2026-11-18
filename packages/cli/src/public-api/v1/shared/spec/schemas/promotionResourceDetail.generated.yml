@@ -601,6 +601,41 @@ oneOf:
                 - type
                 - index
               additionalProperties: false
+          rowRule:
+            type: object
+            properties:
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    column:
+                      type: string
+                      minLength: 1
+                      maxLength: 63
+                      pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+                    match:
+                      type: string
+                      enum:
+                        - id
+                        - email
+                        - project
+                  required:
+                    - column
+                    - match
+                minItems: 1
+                maxItems: 3
+              projectMembersSeeAll:
+                type: boolean
+              runsWithoutUser:
+                type: string
+                enum:
+                  - deny
+                  - allRows
+            required:
+              - conditions
+              - projectMembersSeeAll
+              - runsWithoutUser
         required:
           - id
           - name
@@ -648,6 +683,41 @@ oneOf:
                 - type
                 - index
               additionalProperties: false
+          rowRule:
+            type: object
+            properties:
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    column:
+                      type: string
+                      minLength: 1
+                      maxLength: 63
+                      pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+                    match:
+                      type: string
+                      enum:
+                        - id
+                        - email
+                        - project
+                  required:
+                    - column
+                    - match
+                minItems: 1
+                maxItems: 3
+              projectMembersSeeAll:
+                type: boolean
+              runsWithoutUser:
+                type: string
+                enum:
+                  - deny
+                  - allRows
+            required:
+              - conditions
+              - projectMembersSeeAll
+              - runsWithoutUser
         required:
           - id
           - name

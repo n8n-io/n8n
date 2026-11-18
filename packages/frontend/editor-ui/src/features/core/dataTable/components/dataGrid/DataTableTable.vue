@@ -81,11 +81,13 @@ const dataTableColumns = useDataTableColumns({
 	readOnly: computed(() => props.readOnly ?? false),
 	schemaReadOnly: computed(() => props.schemaReadOnly ?? false),
 	schemaReadOnlyTooltip: computed(() => props.schemaReadOnlyTooltip),
-	teamColumns: computed(
-		() =>
-			props.dataTable.rowRule?.conditions
-				.filter(({ match }) => match === 'project')
-				.map(({ column }) => column) ?? [],
+	ruleColumns: computed(() =>
+		Object.fromEntries(
+			(props.dataTable.rowRule?.conditions ?? []).map(({ column, match }) => [
+				column,
+				match === 'project' ? 'team' : 'owner',
+			]),
+		),
 	),
 });
 

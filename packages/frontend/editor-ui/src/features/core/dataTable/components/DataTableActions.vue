@@ -44,6 +44,7 @@ const emit = defineEmits<{
 	];
 	onDeleted: [];
 	imported: [];
+	rowAccessChanged: [];
 }>();
 
 const dataTableStore = useDataTableStore();
@@ -211,6 +212,7 @@ const deleteDataTable = async () => {
 		<RowAccessModal
 			:modal-name="rowAccessModalKey"
 			:data-table="dataTable"
+			@saved="emit('rowAccessChanged')"
 			@close="() => uiStore.closeModal(rowAccessModalKey)"
 		/>
 	</div>

@@ -19,7 +19,7 @@ export type HeaderParamsWithDelete = IHeaderParams & {
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;
 	readOnly: boolean | (() => boolean);
-	isTeamColumn?: () => boolean;
+	rowRuleRole?: () => 'owner' | 'team' | undefined;
 };
 
 const props = defineProps<{
@@ -32,6 +32,7 @@ const i18n = useI18n();
 const renameInput = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('renameInput');
 const actionDropdown = useTemplateRef<{ close: () => void }>('actionDropdown');
 const isReadOnly = computed(() => toValue(props.params.readOnly));
+const rowRuleRole = computed(() => props.params.rowRuleRole?.());
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
 const isFilterOpen = ref(false);
@@ -247,11 +248,21 @@ onUnmounted(() => {
 				{{ props.params.displayName }}
 			</span>
 			<N8nTooltip
-				v-if="props.params.isTeamColumn?.()"
-				:content="i18n.baseText('dataTable.rowAccess.teamColumn')"
+				v-if="rowRuleRole"
+				:content="
+					i18n.baseText(
+						rowRuleRole === 'team'
+							? 'dataTable.rowAccess.teamColumn'
+							: 'dataTable.rowAccess.ownerColumn',
+					)
+				"
 				placement="top"
 			>
-				<N8nIcon icon="users" size="small" data-test-id="data-table-column-header-team" />
+				<N8nIcon
+					:icon="rowRuleRole === 'team' ? 'users' : 'user'"
+					size="small"
+					:data-test-id="`data-table-column-header-${rowRuleRole}`"
+				/>
 			</N8nTooltip>
 
 			<div v-if="showSortIndicator" class="sort-indicator">

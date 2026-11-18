@@ -24,6 +24,7 @@ const props = defineProps<Props>();
 
 defineEmits<{
 	imported: [];
+	rowAccessChanged: [];
 }>();
 
 const renameInput = useTemplateRef<{ forceFocus: () => void }>('renameInput');
@@ -142,6 +143,7 @@ watch(
 				@rename="onRename"
 				@on-deleted="onDelete"
 				@imported="$emit('imported')"
+				@row-access-changed="$emit('rowAccessChanged')"
 			/>
 		</div>
 	</div>

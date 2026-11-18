@@ -69,7 +69,7 @@ describe('ColumnHeader', () => {
 				getSort: () => null,
 			},
 			allowMenuActions: true,
-			isTeamColumn: () => true,
+			rowRuleRole: () => 'team',
 			api: {
 				getFilterModel: vi.fn().mockReturnValue({}),
 				addEventListener: vi.fn(),
@@ -82,10 +82,35 @@ describe('ColumnHeader', () => {
 		expect(getByTestId('data-table-column-header-team')).toBeInTheDocument();
 	});
 
+	it('marks an owner column', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				params: {
+					displayName: 'owner',
+					column: {
+						getColId: () => 'col-1',
+						getColDef: () => ({ cellDataType: 'string' }),
+						getSort: () => null,
+					},
+					allowMenuActions: true,
+					rowRuleRole: () => 'owner',
+					api: {
+						getFilterModel: vi.fn().mockReturnValue({}),
+						addEventListener: vi.fn(),
+						removeEventListener: vi.fn(),
+					},
+				} as unknown as HeaderParamsWithDelete,
+			},
+		});
+
+		expect(getByTestId('data-table-column-header-owner')).toBeInTheDocument();
+	});
+
 	it('does not mark other columns', () => {
 		const { queryByTestId } = renderComponent();
 
 		expect(queryByTestId('data-table-column-header-team')).not.toBeInTheDocument();
+		expect(queryByTestId('data-table-column-header-owner')).not.toBeInTheDocument();
 	});
 
 	it('shows actions dropdown only on hover', async () => {

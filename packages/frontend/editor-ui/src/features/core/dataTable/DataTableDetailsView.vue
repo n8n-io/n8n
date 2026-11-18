@@ -123,6 +123,15 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 	return await dataTableTableRef.value.addColumn(column);
 };
 
+// The dialog can add a column and changes which header marks apply, so rebuild the grid.
+const gridKey = ref(0);
+const onRowAccessChanged = async () => {
+	const response = await dataTableStore.fetchDataTableDetails(props.id, props.projectId);
+	if (!response) return;
+	dataTable.value = response;
+	gridKey.value++;
+};
+
 const onCsvImported = async () => {
 	await dataTableTableRef.value?.fetchDataTableRows();
 };
@@ -182,6 +191,7 @@ onBeforeUnmount(() => {
 					:data-table="dataTable"
 					:schema-read-only="readOnlyEnv"
 					@imported="onCsvImported"
+					@row-access-changed="onRowAccessChanged"
 				/>
 				<div v-if="saving" :class="$style.saving">
 					<N8nSpinner />
@@ -232,6 +242,7 @@ onBeforeUnmount(() => {
 			</div>
 			<div :class="$style.content">
 				<DataTableTable
+					:key="gridKey"
 					ref="dataTableTableRef"
 					:data-table="dataTable"
 					:search="searchQuery"

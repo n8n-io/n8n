@@ -30,7 +30,18 @@ const props = defineProps<{
 	dataTable: DataTable;
 }>();
 
-const emit = defineEmits<{ close: [] }>();
+const emit = defineEmits<{ close: []; saved: [] }>();
+
+/** A condition in the dialog. `create` means n8n adds the column on save. */
+type EditableCondition = DataTableRowRuleCondition & { create: boolean };
+
+const CREATE_COLUMN = '__create__';
+const MAX_CONDITIONS = 3;
+const SUGGESTED_NAMES: Record<DataTableRowRuleCondition['match'], string> = {
+	id: 'owner',
+	email: 'owner_email',
+	project: 'team',
+};
 
 const i18n = useI18n();
 const toast = useToast();
@@ -38,8 +49,7 @@ const uiStore = useUIStore();
 const dataTableStore = useDataTableStore();
 
 const scope = ref<'all' | 'own'>('all');
-const MAX_CONDITIONS = 3;
-const conditions = ref<DataTableRowRuleCondition[]>([]);
+const conditions = ref<EditableCondition[]>([]);
 const projectMembersSeeAll = ref(false);
 const runsWithoutUser = ref<DataTableRowRule['runsWithoutUser']>('deny');
 const impact = ref<DataTableRowRuleImpact | null>(null);
@@ -49,12 +59,8 @@ const textColumns = computed(() =>
 	props.dataTable.columns.filter((candidate) => candidate.type === 'string'),
 );
 const affectedWorkflows = computed(() => impact.value?.workflowsWithoutUser ?? []);
-const unusedColumns = computed(() =>
-	textColumns.value.filter(({ name }) => !conditions.value.some(({ column }) => column === name)),
-);
-const canAddCondition = computed(
-	() => conditions.value.length < MAX_CONDITIONS && unusedColumns.value.length > 0,
-);
+const createsColumn = computed(() => conditions.value.some(({ create }) => create));
+const canAddCondition = computed(() => conditions.value.length < MAX_CONDITIONS);
 const canSave = computed(
 	() =>
 		scope.value === 'all' ||
@@ -62,9 +68,44 @@ const canSave = computed(
 			new Set(conditions.value.map(({ column }) => column)).size === conditions.value.length),
 );
 
+/** A free column name for the match, such as `owner` or `owner_2`. */
+function suggestName(match: DataTableRowRuleCondition['match'], except?: EditableCondition) {
+	const taken = new Set([
+		...props.dataTable.columns.map(({ name }) => name),
+		...conditions.value.filter((condition) => condition !== except).map(({ column }) => column),
+	]);
+	const base = SUGGESTED_NAMES[match];
+	let name = base;
+	for (let i = 2; taken.has(name); i++) name = `${base}_${i}`;
+	return name;
+}
+
+function newCondition(match: DataTableRowRuleCondition['match']): EditableCondition {
+	const existing = textColumns.value.find(
+		({ name }) =>
+			name === SUGGESTED_NAMES[match] && !conditions.value.some(({ column }) => column === name),
+	);
+	return existing
+		? { column: existing.name, match, create: false }
+		: { column: suggestName(match), match, create: true };
+}
+
+function columnChoice(condition: EditableCondition) {
+	return condition.create ? CREATE_COLUMN : condition.column;
+}
+
+function chooseColumn(condition: EditableCondition, value: string) {
+	condition.create = value === CREATE_COLUMN;
+	condition.column = condition.create ? suggestName(condition.match, condition) : value;
+}
+
+function chooseMatch(condition: EditableCondition, match: DataTableRowRuleCondition['match']) {
+	condition.match = match;
+	if (condition.create) condition.column = suggestName(match, condition);
+}
+
 function addCondition() {
-	const column = unusedColumns.value[0]?.name;
-	if (column) conditions.value.push({ column, match: 'id' });
+	conditions.value.push(newCondition(conditions.value.length === 0 ? 'id' : 'project'));
 }
 
 function removeCondition(index: number) {
@@ -75,7 +116,9 @@ function removeCondition(index: number) {
 async function load() {
 	const rule = props.dataTable.rowRule;
 	scope.value = rule ? 'own' : 'all';
-	conditions.value = rule ? rule.conditions.map((condition) => ({ ...condition })) : [];
+	conditions.value = rule
+		? rule.conditions.map((condition) => ({ ...condition, create: false }))
+		: [];
 	if (conditions.value.length === 0) addCondition();
 	projectMembersSeeAll.value = rule?.projectMembersSeeAll ?? false;
 	runsWithoutUser.value = rule?.runsWithoutUser ?? 'deny';
@@ -102,17 +145,28 @@ async function save() {
 	if (!canSave.value) return;
 	saving.value = true;
 	try {
+		const { id, projectId } = props.dataTable;
+		if (scope.value === 'own') {
+			for (const condition of conditions.value.filter(({ create }) => create)) {
+				await dataTableStore.addDataTableColumn(id, projectId, {
+					name: condition.column,
+					type: 'string',
+				});
+				condition.create = false;
+			}
+		}
 		await dataTableStore.setRowRule(
-			props.dataTable.id,
-			props.dataTable.projectId,
+			id,
+			projectId,
 			scope.value === 'all'
 				? null
 				: ({
-						conditions: conditions.value,
+						conditions: conditions.value.map(({ column, match }) => ({ column, match })),
 						projectMembersSeeAll: projectMembersSeeAll.value,
 						runsWithoutUser: runsWithoutUser.value,
 					} satisfies DataTableRowRule),
 		);
+		emit('saved');
 		emit('close');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.rowAccess.error'));
@@ -142,13 +196,8 @@ async function save() {
 						value="own"
 						:label="i18n.baseText('dataTable.rowAccess.scope.own')"
 						:description="i18n.baseText('dataTable.rowAccess.scope.own.description')"
-						:disabled="textColumns.length === 0"
 					/>
 				</N8nRadioGroup>
-
-				<N8nText v-if="textColumns.length === 0" size="small" color="text-light">
-					{{ i18n.baseText('dataTable.rowAccess.noTextColumn') }}
-				</N8nText>
 
 				<template v-if="scope === 'own'">
 					<N8nText size="small" color="text-light">
@@ -161,17 +210,37 @@ async function save() {
 						:data-test-id="`row-access-condition-${index}`"
 					>
 						<N8nInputLabel :label="i18n.baseText('dataTable.rowAccess.column')" size="small">
-							<N8nSelect v-model="condition.column" size="small" data-test-id="row-access-column">
+							<N8nSelect
+								:model-value="columnChoice(condition)"
+								size="small"
+								data-test-id="row-access-column"
+								@update:model-value="chooseColumn(condition, $event)"
+							>
 								<N8nOption
 									v-for="option in textColumns"
 									:key="option.id"
 									:value="option.name"
 									:label="option.name"
 								/>
+								<N8nOption
+									:value="CREATE_COLUMN"
+									:label="
+										i18n.baseText('dataTable.rowAccess.createColumn', {
+											interpolate: {
+												name: condition.create ? condition.column : suggestName(condition.match),
+											},
+										})
+									"
+								/>
 							</N8nSelect>
 						</N8nInputLabel>
 						<N8nInputLabel :label="i18n.baseText('dataTable.rowAccess.match')" size="small">
-							<N8nSelect v-model="condition.match" size="small" data-test-id="row-access-match">
+							<N8nSelect
+								:model-value="condition.match"
+								size="small"
+								data-test-id="row-access-match"
+								@update:model-value="chooseMatch(condition, $event)"
+							>
 								<N8nOption value="id" :label="i18n.baseText('dataTable.rowAccess.match.id')" />
 								<N8nOption
 									value="email"
@@ -205,6 +274,15 @@ async function save() {
 							@click="addCondition"
 						/>
 					</div>
+
+					<N8nText
+						v-if="createsColumn"
+						size="small"
+						color="text-light"
+						data-test-id="row-access-creates-column"
+					>
+						{{ i18n.baseText('dataTable.rowAccess.createColumn.hint') }}
+					</N8nText>
 
 					<N8nCheckbox
 						v-model="projectMembersSeeAll"

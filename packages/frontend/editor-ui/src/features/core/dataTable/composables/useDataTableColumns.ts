@@ -46,7 +46,7 @@ export const useDataTableColumns = ({
 	readOnly = computed(() => false),
 	schemaReadOnly = computed(() => false),
 	schemaReadOnlyTooltip = computed(() => undefined),
-	teamColumns = computed(() => []),
+	ruleColumns = computed(() => ({})),
 }: {
 	onDeleteColumn: (columnId: string) => void;
 	onRenameColumn: (columnId: string, columnName: string) => void;
@@ -58,8 +58,8 @@ export const useDataTableColumns = ({
 	/** Locks only the columns, for example on a protected instance. Rows stay editable. */
 	schemaReadOnly?: Ref<boolean>;
 	schemaReadOnlyTooltip?: Ref<string | undefined>;
-	/** Columns that a row rule reads as a project ID. */
-	teamColumns?: Ref<string[]>;
+	/** Columns that a row rule reads: `owner` holds the person, `team` a project ID. */
+	ruleColumns?: Ref<Record<string, 'owner' | 'team'>>;
 }) => {
 	const colDefs = ref<ColDef[]>([]);
 	const isSchemaReadOnly = () => readOnly.value || schemaReadOnly.value;
@@ -85,7 +85,7 @@ export const useDataTableColumns = ({
 				onRename: onRenameColumn,
 				allowMenuActions: true,
 				readOnly: isSchemaReadOnly,
-				isTeamColumn: () => teamColumns.value.includes(col.name),
+				rowRuleRole: () => ruleColumns.value[col.name],
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),

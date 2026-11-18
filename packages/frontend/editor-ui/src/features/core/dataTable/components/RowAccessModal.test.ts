@@ -134,4 +134,62 @@ describe('RowAccessModal', () => {
 			runsWithoutUser: 'deny',
 		});
 	});
+
+	it('creates an owner column when the table has none', async () => {
+		dataTableStore.fetchRowRuleImpact.mockResolvedValue({ workflowsWithoutUser: [] });
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				dataTable: {
+					...dataTable,
+					columns: [{ id: 'c2', name: 'score', type: 'number', index: 0 }],
+				},
+			},
+		});
+
+		await waitFor(() => expect(dataTableStore.fetchRowRuleImpact).toHaveBeenCalled());
+		await chooseScope(getByTestId('row-access-scope'), 'own');
+		expect(getByTestId('row-access-creates-column')).toBeInTheDocument();
+		await userEvent.click(getByTestId('row-access-save'));
+
+		expect(dataTableStore.addDataTableColumn).toHaveBeenCalledWith('t1', 'p1', {
+			name: 'owner',
+			type: 'string',
+		});
+		expect(dataTableStore.setRowRule).toHaveBeenCalledWith('t1', 'p1', {
+			conditions: [{ column: 'owner', match: 'id' }],
+			projectMembersSeeAll: false,
+			runsWithoutUser: 'deny',
+		});
+		expect(emitted().saved).toBeTruthy();
+	});
+
+	it('suggests a team column for an added condition', async () => {
+		dataTableStore.fetchRowRuleImpact.mockResolvedValue({ workflowsWithoutUser: [] });
+		const { getByTestId } = renderComponent({
+			props: {
+				dataTable: {
+					...dataTable,
+					columns: [{ id: 'c1', name: 'owner', type: 'string', index: 0 }],
+				},
+			},
+		});
+
+		await waitFor(() => expect(dataTableStore.fetchRowRuleImpact).toHaveBeenCalled());
+		await chooseScope(getByTestId('row-access-scope'), 'own');
+		await userEvent.click(getByTestId('row-access-add-condition'));
+		await userEvent.click(getByTestId('row-access-save'));
+
+		expect(dataTableStore.addDataTableColumn).toHaveBeenCalledExactlyOnceWith('t1', 'p1', {
+			name: 'team',
+			type: 'string',
+		});
+		expect(dataTableStore.setRowRule).toHaveBeenCalledWith('t1', 'p1', {
+			conditions: [
+				{ column: 'owner', match: 'id' },
+				{ column: 'team', match: 'project' },
+			],
+			projectMembersSeeAll: false,
+			runsWithoutUser: 'deny',
+		});
+	});
 });
