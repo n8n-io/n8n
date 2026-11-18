@@ -1345,7 +1345,7 @@ is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
 |-------|------|----------|---------|-------------|
 | `files` | array | yes | — | 1 to 20 items with `fileId` and an optional `path` |
 | `files[].fileId` | string | yes | — | Id of a stored file of the thread |
-| `files[].path` | string | no | file name | Path relative to `inputs/`. A leading `inputs/` is dropped |
+| `files[].path` | string | no | file name | Path relative to `inputs/`. A leading `inputs/` is dropped. A folder path (`inputs`, or a path that ends with `/`) gets the file name |
 
 The tool checks every file, path and the total size before the first write, so
 a failed check copies nothing. It then writes one file at a time. The result

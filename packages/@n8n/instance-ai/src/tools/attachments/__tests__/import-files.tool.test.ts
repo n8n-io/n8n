@@ -84,6 +84,11 @@ describe('createImportFilesTool', () => {
 		['a path relative to inputs/', 'q3/sales.csv', 'inputs/q3/sales.csv'],
 		['a path that starts with inputs/', 'inputs/q3/sales.csv', 'inputs/q3/sales.csv'],
 		['an absolute path under the root', `${WORKSPACE_ROOT}/q3/sales.csv`, 'inputs/q3/sales.csv'],
+		['a folder path that ends with /', 'q3/', 'inputs/q3/sales.csv'],
+		['a folder path under inputs/ that ends with /', 'inputs/q3/', 'inputs/q3/sales.csv'],
+		['the inputs folder', 'inputs', 'inputs/sales.csv'],
+		['the inputs folder with a slash', 'inputs/', 'inputs/sales.csv'],
+		['an absolute folder path', `${WORKSPACE_ROOT}/inputs/q3/`, 'inputs/q3/sales.csv'],
 	])('accepts %s', async (_label, path, expected) => {
 		const { run, written } = setup({ 'file-1': storedFile('sales.csv', 'x') });
 
@@ -98,6 +103,14 @@ describe('createImportFilesTool', () => {
 		await run({ files: [{ fileId: 'file-1' }] });
 
 		expect([...written.keys()]).toEqual(['inputs/sales.csv']);
+	});
+
+	it('keeps a file named inputs under its name', async () => {
+		const { run, written } = setup({ 'file-1': storedFile('inputs', 'x') });
+
+		await run({ files: [{ fileId: 'file-1' }] });
+
+		expect([...written.keys()]).toEqual(['inputs/inputs']);
 	});
 
 	it('uses the fileId when the file name is not a usable path', async () => {
