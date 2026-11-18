@@ -35,8 +35,7 @@ const slackConnection: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-1',
 	settings: {
-		messagingExperience: 'assistant',
-		onlyRespondWhenMentioned: true,
+		messagingExperience: 'agent',
 		teamId: TEAM,
 		botUserId: 'UBOT',
 		identity: 'email',
@@ -91,6 +90,7 @@ function makeMessage(overrides: Record<string, unknown> = {}) {
 function setup(options: { thread?: FakeThread } = {}) {
 	const handlers: {
 		mention?: (thread: unknown, message: unknown) => Promise<void>;
+		subscribed?: (thread: unknown, message: unknown) => Promise<void>;
 		action?: (event: unknown) => Promise<void>;
 	} = {};
 	const thread = options.thread ?? makeThread();
@@ -106,7 +106,9 @@ function setup(options: { thread?: FakeThread } = {}) {
 		onNewMention: (h: typeof handlers.mention) => {
 			handlers.mention = h;
 		},
-		onSubscribedMessage: vi.fn(),
+		onSubscribedMessage: (h: typeof handlers.subscribed) => {
+			handlers.subscribed = h;
+		},
 		onNewMessage: vi.fn(),
 		onAction: (h: typeof handlers.action) => {
 			handlers.action = h;
@@ -495,6 +497,109 @@ describe('AgentChatBridge — chat messages for a system agent', () => {
 
 			expect(ctx.workflowFinder.findWorkflowForUser).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('AgentChatBridge — a reply in a thread without a mention', () => {
+	const reply = (overrides: Record<string, unknown> = {}) =>
+		makeMessage({ isMention: false, id: '1700000001.000200', ...overrides });
+
+	it('continues the thread of its owner', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(n8nUser);
+		ctx.system.findUsableThread.mockResolvedValue({
+			id: 'agent-thread',
+			projectId: 'personal-project',
+		} as AgentExecutionThread);
+		ctx.system.sendMessage.mockResolvedValue({ status: 'accepted' } as never);
+
+		await ctx.handlers.subscribed?.(ctx.thread, reply({ text: 'Yes run a real test run' }));
+
+		expect(ctx.system.sendMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'agent-thread', message: 'Yes run a real test run' }),
+		);
+	});
+
+	it('is ignored when the sender has no thread of the agent here', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(n8nUser);
+		ctx.system.findUsableThread.mockResolvedValue(null);
+
+		await ctx.handlers.subscribed?.(ctx.thread, reply());
+
+		expect(ctx.system.createThread).not.toHaveBeenCalled();
+		expect(ctx.system.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('gets no notice when the sender is not linked', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(null);
+
+		await ctx.handlers.subscribed?.(ctx.thread, reply());
+
+		expect(ctx.thread.postEphemeral).not.toHaveBeenCalled();
+		expect(ctx.thread.post).not.toHaveBeenCalled();
+		expect(ctx.system.sendMessage).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentChatBridge.stopSystemTurn', () => {
+	const stop = {
+		platformThreadId: 'slack:C1:1700000000.000100',
+		externalUserId: 'U1',
+		tenantId: TEAM,
+	};
+
+	it('stops the turn of the linked user in that thread and tells the thread', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(n8nUser);
+		ctx.system.cancel.mockResolvedValue(true);
+
+		await ctx.bridge.stopSystemTurn(stop);
+
+		const threadId = uuidv5(
+			JSON.stringify(['assistant', 'slack', 'assistant:slack:C1:1700000000.000100', 'user-1']),
+			uuidv5('n8n-agent-system-channel-thread-v1', uuidv5.URL),
+		);
+		expect(ctx.system.cancel).toHaveBeenCalledWith('assistant', n8nUser, threadId);
+		expect(ctx.thread.post).toHaveBeenCalledWith('Stopped.');
+	});
+
+	it('says nothing when no turn was running', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(n8nUser);
+		ctx.system.cancel.mockResolvedValue(false);
+
+		await ctx.bridge.stopSystemTurn(stop);
+
+		expect(ctx.thread.post).not.toHaveBeenCalled();
+	});
+
+	it('does nothing for a user without a link', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(null);
+
+		await ctx.bridge.stopSystemTurn(stop);
+
+		expect(ctx.system.cancel).not.toHaveBeenCalled();
+	});
+
+	it('does nothing for another workspace', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(n8nUser);
+
+		await ctx.bridge.stopSystemTurn({ ...stop, tenantId: 'T-OTHER' });
+
+		expect(ctx.system.cancel).not.toHaveBeenCalled();
+	});
+
+	it('does nothing when the user has no thread here', async () => {
+		const ctx = setup();
+		ctx.identity.resolve.mockResolvedValue(n8nUser);
+		ctx.system.cancel.mockRejectedValue(new NotFoundError('Thread not found'));
+
+		await expect(ctx.bridge.stopSystemTurn(stop)).resolves.toBeUndefined();
+		expect(ctx.thread.post).not.toHaveBeenCalled();
 	});
 });
 

@@ -4,11 +4,13 @@ import {
 	type SystemAgentSlackConnectionResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { handleChannelWebhook } from '../integrations/channel-webhook-handler';
+import { readSlackStopEvent } from '../integrations/platforms/slack/slack-stop-event';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { SystemAgentChannelService } from './system-agent-channel.service';
 import { SystemAgentRegistry } from './system-agent-registry';
@@ -26,6 +28,7 @@ export class SystemAgentChannelsController {
 		private readonly registry: SystemAgentRegistry,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly logger: Logger,
 	) {}
 
 	// Third-party webhook callback: do not add a scope. Auth happens through
@@ -40,7 +43,7 @@ export class SystemAgentChannelsController {
 			res.status(404).json({ error: `No active ${platform} integration for agent "${agentId}"` });
 			return;
 		}
-		await handleChannelWebhook(
+		const status = await handleChannelWebhook(
 			{
 				chatIntegrationRegistry: this.chatIntegrationRegistry,
 				chatIntegrationService: this.chatIntegrationService,
@@ -49,6 +52,24 @@ export class SystemAgentChannelsController {
 			res,
 			{ agentId, platform },
 		);
+		// The adapter accepts only a request with a valid signature, so a 2xx status
+		// means that the request is genuine. The adapter ignores the Stop event.
+		if (status >= 200 && status < 300) this.stopTurnOnPlatformRequest(agentId, platform, req.body);
+	}
+
+	/** The chat platform sent a Stop request. Slack answers it already, so run it in the background. */
+	private stopTurnOnPlatformRequest(agentId: string, platform: string, body: unknown): void {
+		const stop = readSlackStopEvent(body);
+		if (platform !== 'slack' || !stop) return;
+		void this.chatIntegrationService
+			.getBridge(agentId, platform)
+			?.stopSystemTurn(stop)
+			.catch((error: unknown) => {
+				this.logger.warn('[SystemAgentChannels] Could not stop a turn on request of the chat', {
+					agentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	@Get('/slack/manifest')

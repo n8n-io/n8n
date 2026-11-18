@@ -7,6 +7,8 @@ import { channelIntegrationRecorder } from './recording/channel-integration-reco
 /**
  * Hand an inbound platform webhook to the connected Chat SDK handler of an
  * agent. Project agents and system agents share this: only the route differs.
+ * Returns the status of the response. A 2xx status means that the platform
+ * adapter accepted the request, so the signature was valid.
  */
 export async function handleChannelWebhook(
 	deps: {
@@ -16,7 +18,7 @@ export async function handleChannelWebhook(
 	req: Request,
 	res: Response,
 	{ agentId, platform }: { agentId: string; platform: string },
-): Promise<void> {
+): Promise<number> {
 	const integration = deps.chatIntegrationRegistry.get(platform);
 	const resolution = integration?.resolveWebhookRequest?.({
 		headers: req.headers,
@@ -24,7 +26,7 @@ export async function handleChannelWebhook(
 	});
 	if (resolution?.type === 'reject') {
 		res.status(resolution.response.status).json(resolution.response.body);
-		return;
+		return resolution.response.status;
 	}
 
 	const webhookHandler =
@@ -59,10 +61,10 @@ export async function handleChannelWebhook(
 			} else {
 				res.json(earlyResponse.body);
 			}
-			return;
+			return earlyResponse.status;
 		}
 		res.status(404).json({ error: `No active ${platform} integration for agent "${agentId}"` });
-		return;
+		return 404;
 	}
 
 	// Chat SDK webhook handlers accept a Web API Request and return a Web API Response.
@@ -139,4 +141,5 @@ export async function handleChannelWebhook(
 	});
 	const body = await webResponse.text();
 	res.send(body);
+	return webResponse.status;
 }

@@ -1,6 +1,8 @@
+import type { Logger } from '@n8n/backend-common';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatBridge } from '../../integrations/agent-chat-bridge';
 import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../../integrations/chat-integration.service';
 import type { SystemAgentChannelService } from '../system-agent-channel.service';
@@ -22,6 +24,7 @@ function setup() {
 		registry,
 		chatIntegrationRegistry,
 		chatIntegrationService,
+		mock<Logger>(),
 	);
 	return { controller, chatIntegrationRegistry, chatIntegrationService };
 }
@@ -75,5 +78,66 @@ describe('SystemAgentChannelsController webhook', () => {
 		expect(handler).toHaveBeenCalledOnce();
 		expect(res.status).toHaveBeenCalledWith(200);
 		expect(res.send).toHaveBeenCalledWith('ok');
+	});
+	describe('a Stop request of the chat', () => {
+		const stopBody = {
+			type: 'event_callback',
+			team_id: 'T1',
+			event: { type: 'agent_session_stopped', channel: 'D1', thread_ts: '1.2', user: 'U1' },
+		};
+
+		function stopRequest(body: unknown) {
+			return {
+				params: { agentId: 'assistant', platform: 'slack' },
+				method: 'POST',
+				headers: { host: 'n8n.test', 'content-type': 'application/json' },
+				originalUrl: '/rest/agents/system/assistant/channels/slack/webhook',
+				protocol: 'https',
+				query: {},
+				body,
+			} as unknown as Request<{ agentId: string; platform: string }>;
+		}
+
+		function connect(status: number) {
+			const ctx = setup();
+			ctx.chatIntegrationService.getWebhookHandler.mockReturnValue(
+				vi.fn().mockResolvedValue(new Response('ok', { status })),
+			);
+			const bridge = mock<AgentChatBridge>();
+			bridge.stopSystemTurn.mockResolvedValue(undefined);
+			ctx.chatIntegrationService.getBridge.mockReturnValue(bridge);
+			return { ...ctx, bridge };
+		}
+
+		it('stops the turn when the adapter accepted the request', async () => {
+			const { controller, bridge } = connect(200);
+
+			await controller.handleWebhook(stopRequest(stopBody), response());
+
+			expect(bridge.stopSystemTurn).toHaveBeenCalledWith({
+				platformThreadId: 'slack:D1:1.2',
+				externalUserId: 'U1',
+				tenantId: 'T1',
+			});
+		});
+
+		it('does not stop anything when the adapter rejected the request', async () => {
+			const { controller, bridge } = connect(401);
+
+			await controller.handleWebhook(stopRequest(stopBody), response());
+
+			expect(bridge.stopSystemTurn).not.toHaveBeenCalled();
+		});
+
+		it('does nothing for an ordinary event', async () => {
+			const { controller, bridge } = connect(200);
+
+			await controller.handleWebhook(
+				stopRequest({ type: 'event_callback', event: { type: 'message' } }),
+				response(),
+			);
+
+			expect(bridge.stopSystemTurn).not.toHaveBeenCalled();
+		});
 	});
 });

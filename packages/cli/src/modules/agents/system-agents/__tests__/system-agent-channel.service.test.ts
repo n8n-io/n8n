@@ -121,7 +121,6 @@ describe('SystemAgentChannelService', () => {
 				credentialId: 'cred-1',
 				settings: {
 					messagingExperience: 'agent',
-					onlyRespondWhenMentioned: true,
 					teamId: 'T1',
 					botUserId: 'UBOT',
 					identity: 'email',

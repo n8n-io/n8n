@@ -124,13 +124,15 @@ export class SlackMethodsService {
 
 	/** The manifest of a system agent. The Slack app sends its events to the instance route. */
 	buildInstanceManifest(agentName: string, webhookUrl: string): SlackAgentAppManifest {
-		return this.manifestFor(agentName, webhookUrl, {});
+		// The Stop button of the agent view needs this event. Only a system agent
+		// handles it, so project agents do not subscribe to it.
+		return this.manifestFor(agentName, webhookUrl, { extraBotEvents: ['agent_session_stopped'] });
 	}
 
 	private manifestFor(
 		agentName: string,
 		webhookUrl: string,
-		options: { redirectUrl?: string; managedAppUrl?: string },
+		options: { redirectUrl?: string; managedAppUrl?: string; extraBotEvents?: string[] },
 	): SlackAgentAppManifest {
 		const slackAppName = this.sanitiseSlackAppName(agentName);
 		const { managedAppUrl } = options;
@@ -163,7 +165,7 @@ export class SlackMethodsService {
 			settings: {
 				event_subscriptions: {
 					request_url: webhookUrl,
-					bot_events: [...REQUIRED_BOT_EVENTS],
+					bot_events: [...REQUIRED_BOT_EVENTS, ...(options.extraBotEvents ?? [])],
 				},
 				interactivity: {
 					is_enabled: true,

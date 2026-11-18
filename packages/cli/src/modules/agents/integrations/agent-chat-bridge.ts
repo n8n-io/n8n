@@ -1035,20 +1035,18 @@ export class AgentChatBridge {
 			tenantId,
 			externalUserId: author.userId,
 		};
+		// A reply in a thread without a mention may be meant for someone else.
+		const addressed = message.isMention === true || thread.isDM;
 		const user = await this.resolveChannelUser(actor);
 		if (!user) {
-			await this.postNotLinked(thread, author);
+			if (addressed) await this.postNotLinked(thread, author);
 			return;
 		}
 
 		const system = await getSystemAgentExecutionService();
-		const baseThreadId = (await this.resolveActiveThreadId(thread)).id;
-		// A UUID, because the system chat routes and the editor expect one. The user id
-		// gives two chat users in one chat thread two separate threads of the agent.
-		const threadId = uuidv5(
-			JSON.stringify([this.agentId, this.integration.type, baseThreadId, user.id]),
-			SYSTEM_THREAD_NAMESPACE,
-		);
+		const threadId = await this.systemThreadIdOf(thread, user.id);
+		// Without a mention, only the owner of a thread of the agent continues it.
+		if (!addressed && !(await system.findUsableThread(this.agentId, user, threadId))) return;
 
 		try {
 			const workflow = await this.resolveWorkflowContext(thread, message, user);
@@ -1118,6 +1116,58 @@ export class AgentChatBridge {
 				);
 				return;
 			}
+			throw error;
+		}
+	}
+
+	/**
+	 * A UUID, because the system chat routes and the editor expect one. The user id
+	 * gives two chat users in one chat thread two separate threads of the agent.
+	 */
+	private async systemThreadIdOf(thread: Thread, userId: string): Promise<string> {
+		const baseThreadId = (await this.resolveActiveThreadId(thread)).id;
+		return uuidv5(
+			JSON.stringify([this.agentId, this.integration.type, baseThreadId, userId]),
+			SYSTEM_THREAD_NAMESPACE,
+		);
+	}
+
+	/**
+	 * The chat platform reports that a user pressed Stop in a chat thread. Stops the
+	 * running turn of that user in that thread. Only the thread owner has such a
+	 * turn, because the thread id depends on the user. A user without a link, or
+	 * from another workspace, stops nothing and gets no answer.
+	 */
+	async stopSystemTurn(request: {
+		platformThreadId: string;
+		externalUserId: string;
+		tenantId: string | undefined;
+	}): Promise<void> {
+		if (!Container.get(SystemAgentRegistry).has(this.agentId)) return;
+		const expectedTenant = instanceTenantOf(this.integration);
+		if (!request.tenantId || !expectedTenant || request.tenantId !== expectedTenant) return;
+
+		const user = await this.resolveChannelUser({
+			platform: this.integration.type,
+			tenantId: request.tenantId,
+			externalUserId: request.externalUserId,
+		});
+		if (!user) return;
+
+		const thread = this.chat.thread(request.platformThreadId);
+		const system = await getSystemAgentExecutionService();
+		try {
+			const stopped = await system.cancel(
+				this.agentId,
+				user,
+				await this.systemThreadIdOf(thread, user.id),
+			);
+			// A post also clears the status of the thread, so the platform leaves the
+			// working state.
+			if (stopped) await thread.post('Stopped.');
+		} catch (error) {
+			// The user has no thread here yet, so there is nothing to stop.
+			if (error instanceof NotFoundError) return;
 			throw error;
 		}
 	}
