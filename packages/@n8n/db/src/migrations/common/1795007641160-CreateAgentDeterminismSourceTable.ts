@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'agent_determinism_source';
 
-export class CreateAgentDeterminismSourceTable1795001832819 implements ReversibleMigration {
+export class CreateAgentDeterminismSourceTable1795007641160 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(table)
 			.withColumns(
