@@ -100,7 +100,6 @@ const rows = computed(() =>
 				? 'settings.branding.accentColor.description'
 				: 'settings.branding.accentColor.dark.description',
 		),
-		linked: mode === 'dark' && draftDark.value === null,
 		resetLabel: i18n.baseText(
 			mode === 'light' ? 'settings.branding.reset' : 'settings.branding.accentColor.useAutomatic',
 		),
@@ -182,14 +181,6 @@ function onDiscard() {
 					</template>
 					<template #action>
 						<div :class="$style.accentActions">
-							<N8nText
-								v-if="row.linked"
-								:class="$style.automatic"
-								size="small"
-								color="text-light"
-							>
-								{{ i18n.baseText('settings.branding.accentColor.automatic') }}
-							</N8nText>
 							<N8nButton
 								variant="ghost"
 								icon="undo-2"
@@ -261,11 +252,6 @@ function onDiscard() {
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
-}
-
-.automatic {
-	margin-inline-end: var(--spacing--4xs);
-	white-space: nowrap;
 }
 
 .warning {

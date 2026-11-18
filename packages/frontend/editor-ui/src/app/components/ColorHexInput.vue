@@ -77,10 +77,11 @@ const swatch = computed({
 }
 
 .hex {
-	box-sizing: content-box;
-	width: 7.5ch;
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border: var(--border-width) var(--border-style) transparent;
+	box-sizing: border-box;
+	width: calc(7.5ch + 2 * var(--spacing--2xs) + 2 * var(--border-width));
+	height: var(--spacing--lg);
+	padding: 0 var(--spacing--2xs);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
 	background: transparent;
 	color: var(--color--text--tint-1);
@@ -89,14 +90,19 @@ const swatch = computed({
 	text-transform: uppercase;
 	text-align: right;
 
-	&:hover,
+	&:hover {
+		border-color: var(--color--foreground--shade-1);
+	}
+
 	&:focus {
-		border-color: var(--border-color);
+		border-color: var(--focus--border-color, var(--color--secondary));
 		outline: none;
+		box-shadow: 0 0 0 var(--border-width) var(--focus--border-color, var(--color--secondary));
 	}
 }
 
 .swatch {
+	box-sizing: border-box;
 	width: var(--spacing--xl);
 	height: var(--spacing--lg);
 	padding: 0;

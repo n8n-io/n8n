@@ -7062,7 +7062,6 @@
 	"settings.branding.accentColor.light": "Accent color · Light mode",
 	"settings.branding.accentColor.dark": "Accent color · Dark mode",
 	"settings.branding.accentColor.dark.description": "Follows the light mode color until you change it.",
-	"settings.branding.accentColor.automatic": "Automatic",
 	"settings.branding.accentColor.useAutomatic": "Use automatic color",
 	"settings.branding.contrast.text": "Button text is hard to read ({ratio}:1, needs 4.5:1).",
 	"settings.branding.contrast.surface": "Hard to see on the background ({ratio}:1, needs 3:1).",
