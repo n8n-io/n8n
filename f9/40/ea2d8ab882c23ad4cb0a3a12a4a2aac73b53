@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/ToDo/descriptions/TargetDescription.ts
+  s_521e3acc3ff0a1::t_5c48bfe7a38d65 35
+  s_521e3acc3ff0a1::t_afe99fe58988d5 19-22
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_521e3acc3ff0a1::t_e67f34d811ec2d 130-132
+packages/nodes-base/nodes/Microsoft/ToDo/test/authentication.test.ts
+  s_521e3acc3ff0a1::t_25fce3d64906a6 56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "f940ea2d8ab882c23ad4cb0a3a12a4a2aac73b53",
+  "prompts": {},
+  "sessions": {
+    "s_521e3acc3ff0a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "986ac801-acfd-4610-acb2-7e2701d188bc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

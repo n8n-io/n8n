@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_5785bc20fb92a9::t_9f9e72355a48c6 630,3296,3499-3502,3505-3507,3510-3515,3519-3523,3306,3320,3328-3329,3344
+  s_5785bc20fb92a9::t_e3c254978a11c4 3503-3504,3508-3509,3516-3518
+  s_5785bc20fb92a9::t_e5a51e92eb37cb 692,3297-3302,3309-3319,3321-3327,3330-3331,3336,3340-3343
+  s_5785bc20fb92a9::t_0a5623350b3dd3 3303-3305,3307-3308,3332-3335,3337-3339
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 658,1291,1293-1294,2521,2624,3239,3444
+  s_5785bc20fb92a9::t_9f9e72355a48c6 1292,2523,3230
+  s_5785bc20fb92a9::t_8d8c077d448365 2718,3447
+  s_5785bc20fb92a9::t_44374a9a883a2b 1982-1989
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb4b3468a69790d38363542a7c836b0caad0056d",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,142 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 790,941,949,959
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 34,63-68,185,566-590,1599-1649,1839-1845,1849-1853,1873-1899,1915-1930
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 1-16
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 12-13,16-17,76-77,80-82,85-97,122-134,197-227,236,253-256
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 136,223,255,333-339,389-395,531-611,613-627
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 22,24,26-42,44-47,49-67,70,94
+.github/workflows/community-pr-close-stale.yml
+  s_e3f94b9fd16cbd::t_7953652e127703 40
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-respects-stored-key.json
+  s_e3f94b9fd16cbd::t_7953652e127703 1-21
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 107-177
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 3,47,137-140
+packages/@n8n/instance-ai/src/types.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 228-246,269,462-463,501,560
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/useN8nCreditsCredentialSelectionExperiment.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 1-39
+packages/@n8n/instance-ai/src/tools/workflows/validate-workflow.service.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 7,20,23-24,215-219,297-404,557-564,603
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 242,258,271,735
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 289-373,490-492
+packages/cli/templates/form-trigger-completion.handlebars
+  s_e3f94b9fd16cbd::t_7953652e127703 204,206,208-211
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 17,770-807
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 133-164
+packages/testing/playwright/pages/components/CommandBar.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 31-35
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 16,296
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 33-38,152
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 16-17,297-302,337-363,366-374,406,408-422,455-465,507,550,890-931,939,943,947-953,956-961,1013-1016
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/authentication.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 1-48
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-workflow.service.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 1,78-88,235-257,872-1077
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 425
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 402-505,1186-1299
+packages/@n8n/instance-ai/src/index.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 622
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 150-153,190,194
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 18,27-32,50,66,70-86,132,154
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 3220-3504
+packages/@n8n/api-types/src/index.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 286
+packages/frontend/editor-ui/src/app/composables/useEditorContext.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 61
+packages/frontend/editor-ui/src/app/components/AiGatewaySelector.vue
+  s_e3f94b9fd16cbd::t_7953652e127703 10-12,30-31,34-36,90-112,115-128,130-153,156-157
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_e3f94b9fd16cbd::t_7953652e127703 31-34,37,40
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 189-194,196,198-199
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 12,86-95,267-279,281,285-308,310-311,322-326,377-382,387-391
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_e3f94b9fd16cbd::t_7953652e127703 309-317,2060
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e3f94b9fd16cbd::t_7953652e127703 2116,2196-2197,2202,2206
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_e3f94b9fd16cbd::t_7953652e127703 51,137-138,319-320,561-574,684-687,690,703,716-726
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 17,387-444
+packages/frontend/editor-ui/src/experiments/n8nCreditsCredentialSelection/index.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 1
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/MicrosoftSharePointV2.node.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 4-6,22-67
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 67-71
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 398,401,404,415-432
+packages/testing/playwright/tests/e2e/workflows/executions/list.spec.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 111-120
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_e3f94b9fd16cbd::t_7953652e127703 136-140,148
+packages/nodes-base/nodes/Microsoft/SharePoint/MicrosoftSharePoint.node.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 24-27
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 120-134
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 332-405,629-674
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 58-60,68
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_e3f94b9fd16cbd::t_7953652e127703 261-265,272-277,284-322
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-respects-named-provider.json
+  s_e3f94b9fd16cbd::t_7953652e127703 1-22
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-default-when-clean-slate.json
+  s_e3f94b9fd16cbd::t_7953652e127703 1-24
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 3-4,274
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 233,244-245
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 4,337-345,388,408-413,418,421-428,599-602
+packages/@n8n/instance-ai/src/tools/workflows/resolved-credential.schema.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 1-26
+packages/@n8n/instance-ai/evaluations/data/workflows/ai-gateway-prefers-supported-node.json
+  s_e3f94b9fd16cbd::t_7953652e127703 1-23
+packages/@n8n/instance-ai/src/tools/workflows/credential-utils.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 12-18,26-32,58,97,100
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_e3f94b9fd16cbd::t_7953652e127703 6,635-671
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb6aa503cf9516f9627227b296f3472cbc995ca8",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e3f94b9fd16cbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dd59d7d-fa76-4956-a49d-751dbc6cde33",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

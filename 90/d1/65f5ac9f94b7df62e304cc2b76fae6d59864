@@ -1,0 +1,55 @@
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_ef1105a184535e::t_92b69f505bac36 65-66
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_ef1105a184535e::t_1d38103352ec60 81
+  s_ef1105a184535e::t_74f2c8a3d540b5 494-496,507
+  s_ef1105a184535e::t_2ac6def28f6e9e 547
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_ef1105a184535e::t_3a0c6dc8938bc6 401-403
+  s_ef1105a184535e::t_4993dd38fcb77c 421
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_ef1105a184535e::t_16f0cc2dc07acf 248-250,252
+  s_ef1105a184535e::t_8b92b90990e167 1,7
+  s_ef1105a184535e::t_aa13fe64c37707 158-159
+  s_ef1105a184535e::t_e453e4d9ade96e 166-167
+  s_ef1105a184535e::t_fb474e6d3c2874 139-141
+  s_ef1105a184535e::t_057902f8ecf942 319-322
+  s_ef1105a184535e::t_5efa6bc393f0a3 77
+  s_ef1105a184535e::t_ddb9c0af167247 301-303
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_ef1105a184535e::t_8aabbe81008362 464
+  s_ef1105a184535e::t_8b476653b4a2bd 422
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  s_ef1105a184535e::t_e3221b8798db2d 151
+  s_ef1105a184535e::t_080035cb24f2a3 311
+  s_ef1105a184535e::t_7e92e4721bb129 148
+  s_ef1105a184535e::t_4c47184751419c 316-318
+  s_ef1105a184535e::t_8718e1b55cc6eb 377-378
+  s_ef1105a184535e::t_db7878196e0f96 556-561
+  s_ef1105a184535e::t_6a4c14b412e669 972
+  s_ef1105a184535e::t_ccd9d2a1406a61 95-96
+  s_ef1105a184535e::t_974a362bccd1f3 122
+  s_ef1105a184535e::t_3e3c44d877bdb8 369-372
+  s_ef1105a184535e::t_efda03dbd8ece6 171
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_ef1105a184535e::t_3bb4da066e7a6c 2
+  s_ef1105a184535e::t_32ff793ca12463 250,253
+  s_ef1105a184535e::t_5e7ec3469a86cb 437,439
+  s_ef1105a184535e::t_a0166171178560 314,327-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "90d165f5ac9f94b7df62e304cc2b76fae6d59864",
+  "prompts": {},
+  "sessions": {
+    "s_ef1105a184535e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9d6b5b5-949d-423d-a866-9b30325ee660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

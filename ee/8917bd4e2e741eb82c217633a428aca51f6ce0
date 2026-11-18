@@ -1,0 +1,38 @@
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.test.ts
+  s_f4f3f37a98d31a::t_1d8697a5cc6bc9 3436-3506
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.ts
+  s_f4f3f37a98d31a::t_58b52e86b0d98d 166-273
+  s_f4f3f37a98d31a::t_f09c2d4ed6fa35 356-362
+  s_f4f3f37a98d31a::t_7691e3d7cd6a4d 8
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.test.ts
+  s_f4f3f37a98d31a::t_da668836c46aee 192-303
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_f4f3f37a98d31a::t_7d15f4611b3259 653-655
+  s_f4f3f37a98d31a::t_a13ce2256db7be 1276-1332
+  s_f4f3f37a98d31a::t_29b5e1017194b8 52
+  s_8bd971f0249c00::t_9cb16c6127f29c 1333-1334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ee8917bd4e2e741eb82c217633a428aca51f6ce0",
+  "prompts": {},
+  "sessions": {
+    "s_8bd971f0249c00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39d0ad99-925e-4b24-a319-649f0cc67103",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

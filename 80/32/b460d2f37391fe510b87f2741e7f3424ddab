@@ -1,0 +1,21 @@
+scripts/build-n8n.mjs
+  s_2a98b7ba767f04::t_be1fb2b603c13b 572-573
+package.json
+  s_2a98b7ba767f04::t_be1fb2b603c13b 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8032b460d2f37391fe510b87f2741e7f3424ddab",
+  "prompts": {},
+  "sessions": {
+    "s_2a98b7ba767f04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "205fb3c1-f50a-4615-b40c-8de637bf10c8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

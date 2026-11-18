@@ -1,0 +1,27 @@
+packages/@n8n/db/src/connection/__tests__/db-connection.test.ts
+  s_c7a27e74653cc9::t_f3a31debaeefc4 4,9,20,165,167,173-175,182,188-191,198-204,219,222,248
+packages/@n8n/db/src/connection/db-connection.ts
+  s_c7a27e74653cc9::t_269251f82d8534 19,101-105,118-121,124,126-127,130-132
+packages/@n8n/db/src/services/__tests__/db-lock.service.test.ts
+  s_c7a27e74653cc9::t_0a349cbbbc64a2 70-133
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_c7a27e74653cc9::t_48150aeb859b34 24-32,109-115,120,136-142,144,146-151,155
+packages/cli/test/integration/database/services/db-lock.service.test.ts
+  s_c7a27e74653cc9::t_5244ca93353d4d 175-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cbabfb064ab4f104523e9015d94e4976336a728a",
+  "prompts": {},
+  "sessions": {
+    "s_c7a27e74653cc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c7a27e74653cc9",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

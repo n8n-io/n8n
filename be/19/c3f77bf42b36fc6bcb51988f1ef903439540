@@ -1,0 +1,56 @@
+packages/cli/src/hooks-api/__tests__/public-ownership.service.test.ts
+  s_f7f2d4e1621430::t_c7f1b8f1790f05 55-82
+  s_f7f2d4e1621430::t_5d5f7b3017f69c 2
+  s_f7f2d4e1621430::t_2c729a86a24fd4 83-84
+packages/cli/src/hooks-api/v1/public-ownership.service.ts
+  s_f7f2d4e1621430::t_31ff49add666b2 1,4
+  s_f7f2d4e1621430::t_a25e6a21b357fb 48-51,53-64
+packages/cli/src/webhooks/webhook-server.ts
+  s_f7f2d4e1621430::t_50103f8e918cd2 21-22
+packages/cli/src/abstract-server.ts
+  s_f7f2d4e1621430::t_68da1478484caa 365-366
+  s_f7f2d4e1621430::t_3a0c09de03b743 120-130
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_f7f2d4e1621430::t_12ca28b22b183b 665-686
+  s_f7f2d4e1621430::t_2aca18f9b83c0b 687-688
+packages/cli/src/server.ts
+  s_f7f2d4e1621430::t_9d50a0a9ac397b 506,514
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_f7f2d4e1621430::t_48dc4355cc2644 304-306
+packages/cli/test/integration/hooks-api/startup.test.ts
+  s_f7f2d4e1621430::t_1010c4c24272b8 249
+  s_f7f2d4e1621430::t_2c95b83f78fff1 263
+packages/cli/src/hooks-api/__tests__/public-http.service.test.ts
+  s_f7f2d4e1621430::t_7d0fe596dbe419 11-19
+  s_f7f2d4e1621430::t_4877c2836a2e51 46-68
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_f7f2d4e1621430::t_5cca4f2fba4154 26
+  s_f7f2d4e1621430::t_4f560490a8e143 335,339-350
+  s_f7f2d4e1621430::t_91f4f254926317 336-338
+packages/cli/src/hooks-api/v1/public-http.service.ts
+  s_f7f2d4e1621430::t_415c0060f2226d 19-24
+  s_f7f2d4e1621430::t_bfc540fb644ae3 58
+  s_f7f2d4e1621430::t_edf2019caefada 38-39
+packages/cli/src/scaling/worker-server.ts
+  s_f7f2d4e1621430::t_5d2fc5458e8fb1 4
+packages/cli/src/hooks-api/__tests__/public-workflow-hooks.service.test.ts
+  s_f7f2d4e1621430::t_40c7142194bcc0 30
+packages/cli/src/commands/worker.ts
+  s_f7f2d4e1621430::t_423c3ee3edda28 230-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be19c3f77bf42b36fc6bcb51988f1ef903439540",
+  "prompts": {},
+  "sessions": {
+    "s_f7f2d4e1621430": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a2560a7a-eba7-4d0a-9535-29bf549f1650",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

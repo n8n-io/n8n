@@ -1,0 +1,50 @@
+packages/cli/src/ldap.ee/ldap.service.ee.ts
+  s_d574195b52698e::t_5d306cbd1b4785 5,12
+  s_d574195b52698e::t_f30bf2c878d1e3 494-498
+  s_d574195b52698e::t_9f550686ac5515 433
+  s_d574195b52698e::t_c13e3a87f0e29b 110
+  s_d574195b52698e::t_47e694dba66bc7 107-109
+  s_d574195b52698e::t_f79f6508fc532a 111-113
+  s_d574195b52698e::t_ac7131c84240f9 491-493
+  s_d574195b52698e::t_558e8af839b793 499-501
+  s_d574195b52698e::t_e27f17874caed3 52-55,98-100,106,417-420,422,445,458,487-490,502-513,581-589
+packages/cli/test/integration/ldap/ldap.api.test.ts
+  s_d574195b52698e::t_ecaf20d7a26209 705-706
+  s_d574195b52698e::t_4b410a41bca0d8 702-704
+  s_d574195b52698e::t_ce6257beea5f03 707-709
+  s_d574195b52698e::t_21467625942ddf 361-392,685-701,710-718
+packages/cli/src/ldap.ee/__tests__/ldap.service.test.ts
+  s_d574195b52698e::t_60b047e807abdb 1444-1460
+  s_d574195b52698e::t_410c37022d9a8f 318-346
+  s_d574195b52698e::t_72de0338560a96 315-317
+  s_d574195b52698e::t_64fe47fe5d2c79 347-349
+  s_d574195b52698e::t_5c52f3731db523 1441-1443
+  s_d574195b52698e::t_2ce96f5ef9777e 1461-1463
+  s_d574195b52698e::t_1ccab9e9961911 5,94,235-244,314,350-357,1421-1440
+packages/@n8n/constants/src/index.ts
+  s_d574195b52698e::t_a00cc790862ada 93-97,121
+packages/cli/src/ldap.ee/constants.ts
+  s_d574195b52698e::t_4240f86e9145bf 73-75,114
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d574195b52698e::t_1b55b883728f82 3553-3554
+packages/frontend/@n8n/rest-api-client/src/api/ldap.ts
+  s_d574195b52698e::t_c06d2e9434c33c 48
+packages/frontend/editor-ui/src/features/settings/sso/views/SettingsLdapView.vue
+  s_d574195b52698e::t_426ff299184a1d 55,173,566-576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "467ddabb43b39571e60fe4aafa4c8bc4ca700ef8",
+  "prompts": {},
+  "sessions": {
+    "s_d574195b52698e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65df263d-1ca4-4441-98a7-0956aaf0bce7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

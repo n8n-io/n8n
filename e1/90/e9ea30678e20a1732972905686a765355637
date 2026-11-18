@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/constants/urls.ts
+  s_51c15317ff282f::t_c9e8bb9306a591 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e190e9ea30678e20a1732972905686a765355637",
+  "prompts": {},
+  "sessions": {
+    "s_51c15317ff282f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0cf36c2c-7b7a-400f-b819-aad0e320cffd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

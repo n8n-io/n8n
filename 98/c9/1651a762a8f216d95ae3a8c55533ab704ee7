@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_ba2ae60894487d::t_8e2f5e598cbe9c 315
+  s_ba2ae60894487d::t_3d69cb983a1106 296
+  s_ba2ae60894487d::t_6e20b0378443cc 34
+  s_ba2ae60894487d::t_edb319cb65fd49 318-323,326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "98c91651a762a8f216d95ae3a8c55533ab704ee7",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

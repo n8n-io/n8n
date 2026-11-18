@@ -1,0 +1,19 @@
+packages/cli/test/migration/1792051765225-add-instance-scope-to-agents.test.ts
+  s_f492ca66fffc84::t_0cd467e75d7fef 103-110,186-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ff09e9c8ae762280e9f7cc7de6a823a9fe9c4b6d",
+  "prompts": {},
+  "sessions": {
+    "s_f492ca66fffc84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb73c4c0-ce17-4d70-8113-ed2daa4d066a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

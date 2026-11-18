@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowPublishModal.vue
+  s_ed92b962119f40::t_58dbb9b087ac22 103
+packages/frontend/editor-ui/src/features/environments/components/EnvironmentList.vue
+  h_c63dce324dfc7b 103,106,110,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "247048c9f46b5e0447cf84e966155c4edae3b8f2",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ed92b962119f40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57272c1c-bb3b-4af1-9ce3-e8d7964df4fe",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

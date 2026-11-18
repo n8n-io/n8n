@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_ddb70a7092f02b::t_f7b242a155b478 1539-1588
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ff70785d810cd7c7b71393f2a80ce661043ea5ef",
+  "prompts": {},
+  "sessions": {
+    "s_ddb70a7092f02b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad143469-37e4-41a7-981b-d978a09bcd18",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

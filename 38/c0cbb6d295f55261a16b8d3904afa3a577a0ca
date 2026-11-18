@@ -1,0 +1,46 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8661479fcacbbd::t_5b76d395570290 60,2856,2925
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_8661479fcacbbd::t_edfabd1e8b3832 1,12-16,193,304-312,320-321,333-335,337,339,344
+  s_8661479fcacbbd::t_f3d0706a241bb0 133,137
+  s_8661479fcacbbd::t_71b80399c63062 275,282
+packages/@n8n/instance-ai/src/skills/runtime-skills.ts
+  s_8661479fcacbbd::t_fafb1db56a5ca5 35-36,38-39
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_8661479fcacbbd::t_428d7cee56090c 215-216
+packages/@n8n/instance-ai/src/skills/__tests__/progressive-building.test.ts
+  s_8661479fcacbbd::t_71b80399c63062 59
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_8661479fcacbbd::t_fafb1db56a5ca5 33,754
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  s_8661479fcacbbd::t_71b80399c63062 372,413
+packages/@n8n/instance-ai/src/skills/__tests__/skill-gates.test.ts
+  s_8661479fcacbbd::t_71b80399c63062 2,14,23,34,44,48-56
+packages/@n8n/instance-ai/src/skills/skill-gates.ts
+  s_8661479fcacbbd::t_fafb1db56a5ca5 20-22,27-28,38
+packages/@n8n/instance-ai/docs/configuration.md
+  s_8661479fcacbbd::t_c9bedfa03759f8 183-187
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_8661479fcacbbd::t_fafb1db56a5ca5 96-98
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8661479fcacbbd::t_5b76d395570290 68,273,1201
+  s_8661479fcacbbd::t_2c2c435382abf7 1050
+  s_8661479fcacbbd::t_389ff8138cdb31 1044-1049
+  s_8661479fcacbbd::t_8e3f9675657840 271,1042-1043,1064-1066
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "38c0cbb6d295f55261a16b8d3904afa3a577a0ca",
+  "prompts": {},
+  "sessions": {
+    "s_8661479fcacbbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfa2039-345b-4ff7-9ade-5eebd300fbec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

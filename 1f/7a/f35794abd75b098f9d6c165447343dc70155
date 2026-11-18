@@ -1,0 +1,14 @@
+packages/@n8n/api-types/src/dto/user/__tests__/create-users-public.dto.test.ts
+  h_5d40c27a8fdfd1 62,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1f7af35794abd75b098f9d6c165447343dc70155",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

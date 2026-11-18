@@ -1,0 +1,19 @@
+packages/cli/test/integration/agents/n8n-chat-production.model.test.ts
+  s_cc97e995c0bd14::t_a060760b19f8bf 314-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b030f6b2fa30720a0fe4f839fc8b9e1317fc8586",
+  "prompts": {},
+  "sessions": {
+    "s_cc97e995c0bd14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37192a1f-294b-426f-b852-0b185ab3dbee",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

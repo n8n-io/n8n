@@ -1,0 +1,9 @@
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  ai_agent 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6752d002944624a7e83d0958cbe4e5b1e3b013e1",
+  "prompts": {}
+}

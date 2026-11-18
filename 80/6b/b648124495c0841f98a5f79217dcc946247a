@@ -1,0 +1,29 @@
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_56feb59ed07f89::t_67c69a9791d081 147,906,925,947,951,1276
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_56feb59ed07f89::t_67c69a9791d081 247,249,279,309,320,593,1085,1098,1100,1115-1119,1152,1208,1214
+packages/cli/src/modules/promotions.ee/constants.ts
+  s_56feb59ed07f89::t_67c69a9791d081 19
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_56feb59ed07f89::t_67c69a9791d081 348,523,532,548-549,553,589-590,632
+packages/cli/src/modules/promotions.ee/__tests__/diff-package-files.integration.test.ts
+  s_56feb59ed07f89::t_67c69a9791d081 15,28,39,50-51,53
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_56feb59ed07f89::t_67c69a9791d081 395,423,614,634,637,785,849,1079,1165,1945,1979,2105,2107,2155,2384,2397,2424,2479-2480,2511,2543,2545,2556,2559,2574,2614,2620-2622,2649
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "806bb648124495c0841f98a5f79217dcc946247a",
+  "prompts": {},
+  "sessions": {
+    "s_56feb59ed07f89": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5c186a44-d295-4184-b3d7-0336578c4f06",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

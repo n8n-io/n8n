@@ -1,0 +1,67 @@
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_8cde13c9ddbb08::t_66f183a0d4c378 1161,1163,1165-1168,1189,1191,1193-1196,1211,1213,1215-1218
+  s_8cde13c9ddbb08::t_f7b0f653c59036 153-154,1151-1152,1154-1160,1173-1188,1197-1202,1204-1210,1223-1226
+  s_8cde13c9ddbb08::t_fd553fc943f9b2 1153,1169-1172,1203,1219-1222
+  s_8cde13c9ddbb08::t_203ccba2fdd07c 1227
+  s_8cde13c9ddbb08::t_b59e2f7187696d 49-52
+  s_8cde13c9ddbb08::t_16a20b94af920b 1162,1164,1190,1192,1212,1214
+packages/cli/src/webhooks/test-webhooks.ts
+  s_8cde13c9ddbb08::t_bb78433c9393e3 473-475
+  s_8cde13c9ddbb08::t_b288c72ee75644 412-416,418-441,443-444,446-450,452-459,461-463,465-472,484
+  s_8cde13c9ddbb08::t_fb1dab46b6d555 451
+  s_8cde13c9ddbb08::t_00cddaccbbde9e 476,513
+  s_8cde13c9ddbb08::t_c88e79a3a44d3f 63-76
+  s_8cde13c9ddbb08::t_09659030098c07 62,417,445
+  s_8cde13c9ddbb08::t_511f353dc3f128 460
+  s_8cde13c9ddbb08::t_b723ee8a2f4746 464
+  s_8cde13c9ddbb08::t_1b840679e116ce 506,510
+  s_8cde13c9ddbb08::t_738d2c9a55f211 442
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_8cde13c9ddbb08::t_00078dc2d33140 354
+  s_8cde13c9ddbb08::t_f9159327cffdd9 436-438,440-442,444-446
+  s_8cde13c9ddbb08::t_efea7a2d7234be 439
+  s_8cde13c9ddbb08::t_8f20899d0dc113 53,423,471
+  s_8cde13c9ddbb08::t_fd553fc943f9b2 45,62-63,66,363
+  s_8cde13c9ddbb08::t_4c4d90e04dd2bd 482-484,486-488,490-492
+  s_8cde13c9ddbb08::t_7325121a71482c 355-360
+  s_8cde13c9ddbb08::t_e9101dddf292c8 485
+  s_8cde13c9ddbb08::t_5fe9f1dbcb5ae2 361-362,364-366
+  s_8cde13c9ddbb08::t_1b29018d30980f 373
+  s_06fc4a3eebd292::t_85881223c4c91b 64-65
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_8cde13c9ddbb08::t_6b870176237403 689-696
+  s_8cde13c9ddbb08::t_4f91c20eb1c8bd 683
+  s_8cde13c9ddbb08::t_168f1049439b3f 667-682,684-688,697-712
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_8cde13c9ddbb08::t_fd553fc943f9b2 82-85
+  s_8cde13c9ddbb08::t_8d7aa8a08013e8 66,91,958,996,998
+  s_8cde13c9ddbb08::t_42539a6b987ebd 991-993
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_8cde13c9ddbb08::t_16bbcfb841bdf7 4686,4708,4717-4718,4722-4724
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/runWorkflow.generated.yml
+  s_06fc4a3eebd292::t_e6510c03df0b6a 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffaf6920f2ee5f68ba5a2d4e91516ed7c1dbb554",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_8cde13c9ddbb08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "728147de-6dcd-45dc-8e81-4e2ce64e9ff7",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

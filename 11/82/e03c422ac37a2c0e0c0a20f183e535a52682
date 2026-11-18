@@ -1,0 +1,23 @@
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_2635341d65672f::t_d51e523accd51c 1090-1110
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  ai_agent 402-405,407
+  s_2635341d65672f::t_1f5824c5f398f3 323,328-330
+  s_2635341d65672f::t_35f71a9d7869d2 400-401,406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1182e03c422ac37a2c0e0c0a20f183e535a52682",
+  "prompts": {},
+  "sessions": {
+    "s_2635341d65672f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "adaa899d-c18d-4ff6-ac9a-5ffa8b01a628",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

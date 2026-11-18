@@ -1,0 +1,50 @@
+packages/workflow/test/errors/failure.test.ts
+  s_3170ec9eca2475::t_9eb092e88e2457 1,13-14,18,21,24-25,29,32-35,39-41,44,47-52,54-56,60-65,67-69,72-75,78-79,82-84,86-87,90-92
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_3170ec9eca2475::t_ac6ea06649840a 4
+  s_3170ec9eca2475::t_2234cbeff48492 535,543,558,592,600,608
+  s_3170ec9eca2475::t_cfa269a268c11a 496-509,513-518
+packages/workflow/src/errors/node-api.error.ts
+  h_32d8cd6a0d6aad 282,284
+  s_3170ec9eca2475::t_2ae79c8bdb6dca 144-145
+packages/workflow/src/errors/node-operation.error.ts
+  s_3170ec9eca2475::t_60784c923b2511 19,41
+  h_32d8cd6a0d6aad 18,20
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_3170ec9eca2475::t_12ead690056144 13
+  h_32d8cd6a0d6aad 506-507
+  s_3170ec9eca2475::t_6ed0418292a042 582-583
+  s_3170ec9eca2475::t_a9821f2f204ee9 11,503-505,544-545,591,597,608,613-616
+  s_3170ec9eca2475::t_fe1b26d851aa8b 10
+  s_3170ec9eca2475::t_53fc6aa0274c9a 585,600
+packages/workflow/src/errors/failure.ts
+  s_3170ec9eca2475::t_11e1894257acd2 20
+packages/workflow/src/errors/abstract/node.error.ts
+  s_3170ec9eca2475::t_2ae79c8bdb6dca 41
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_3170ec9eca2475::t_3fba18ae9d5ee2 396
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_3170ec9eca2475::t_79985ed5208d64 135
+  s_3170ec9eca2475::t_3fba18ae9d5ee2 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea194d068401db93202062b6bcecc5e832f4441d",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3170ec9eca2475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecafac38-def7-40e2-8506-9784e00ca5e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

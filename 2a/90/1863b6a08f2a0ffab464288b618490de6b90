@@ -1,0 +1,14 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  h_a348dde7c02e89 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a901863b6a08f2a0ffab464288b618490de6b90",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_09abf6c2637a5b::t_a94c7aaee25a65 525-526,536-537
+packages/cli/src/modules/agent-evals/agent-eval-assignment.service.ts
+  s_09abf6c2637a5b::t_553d6614462403 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e14058db5e51b7720ac247426409a14aa3104a2",
+  "prompts": {},
+  "sessions": {
+    "s_09abf6c2637a5b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d55-409e-72bf-b2b5-b24ea81a2ae6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

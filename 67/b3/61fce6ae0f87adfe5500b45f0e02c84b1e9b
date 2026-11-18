@@ -1,0 +1,13 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewMoreMenu.vue
+  ai_agent 21,147,149-152
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  ai_agent 369,409,432,497
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  ai_agent 204,206,269,271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "67b361fce6ae0f87adfe5500b45f0e02c84b1e9b",
+  "prompts": {}
+}

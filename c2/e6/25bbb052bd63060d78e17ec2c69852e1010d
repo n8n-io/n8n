@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_e99de54a53d3e4::t_eec471baa3207c 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2e625bbb052bd63060d78e17ec2c69852e1010d",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

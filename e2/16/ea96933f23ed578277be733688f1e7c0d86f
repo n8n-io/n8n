@@ -1,0 +1,23 @@
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_48874ebba5611f::t_00d42dcc27e5c5 40
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/pre-execute-error-creates-execution.rule.test.ts
+  s_48874ebba5611f::t_c2d3db65e0dcc4 1-32
+packages/cli/src/modules/breaking-changes/rules/v3/pre-execute-error-creates-execution.rule.ts
+  s_48874ebba5611f::t_41e2d56e2066ae 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e216ea96933f23ed578277be733688f1e7c0d86f",
+  "prompts": {},
+  "sessions": {
+    "s_48874ebba5611f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "90eddcc4-a0fb-4511-bb77-47e26f2d2992",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

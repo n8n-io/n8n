@@ -1,0 +1,19 @@
+packages/cli/test/migration/1791187410548-create-agent-plan-tables.test.ts
+  s_14bbae78eb49a2::t_5228393f632f82 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6eaa887f58c5007eab4dbfee798696b3a04d857b",
+  "prompts": {},
+  "sessions": {
+    "s_14bbae78eb49a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2f9-97aa-73d1-bf6a-7b613bf7132f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

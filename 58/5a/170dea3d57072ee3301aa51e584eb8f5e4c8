@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_8bd94de82c7a30::t_bf19a396f02207 2,13,35,49-57
+  s_8bd94de82c7a30::t_87db9eaceac8c3 58
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8bd94de82c7a30::t_d107912900ad8a 222,812-813,818,826-835,2466,2500,2512
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_8bd94de82c7a30::t_4284abfea0ece7 159-167,177-178,185,187
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_8bd94de82c7a30::t_bf19a396f02207 73,282
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8bd94de82c7a30::t_1381bfc9be9cbc 8327-8328,8363
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_8bd94de82c7a30::t_8e646907642ef8 30,57,285,287-288,341-346,606-607,609-623,642,666,732-742
+  s_8bd94de82c7a30::t_1381bfc9be9cbc 275-284,286,605,608,645-651
+  s_8bd94de82c7a30::t_99cf046862826f 6,43,51-52,653-658,760
+  s_8bd94de82c7a30::t_d2bc2b71fec81e 743
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_8bd94de82c7a30::t_411b8527d61dbf 142
+  s_8bd94de82c7a30::t_2d77edeae93e75 138-141,516,519,521-546,549,551-552,569,573,576-580,584-590,594-596
+  s_8bd94de82c7a30::t_815c6caabcbd65 379,381,387-389,393-401
+  s_8bd94de82c7a30::t_21726bfaad2a45 134
+  s_8bd94de82c7a30::t_5b4d1967b4c21b 517
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_8bd94de82c7a30::t_99cf046862826f 22,35,229
+  s_8bd94de82c7a30::t_8aaaa8dd30c468 48,236
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_8bd94de82c7a30::t_99cf046862826f 20,30,122-123
+  s_8bd94de82c7a30::t_8aaaa8dd30c468 38,130
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_8bd94de82c7a30::t_8aaaa8dd30c468 88,179
+  s_8bd94de82c7a30::t_99cf046862826f 167
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_8bd94de82c7a30::t_73b89b60f98870 90-91,122,328,332,336,341,473-503
+  s_8bd94de82c7a30::t_60292ff3694ab1 504-505
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_8bd94de82c7a30::t_39fb8fd7a94c7b 559,1706-1724
+  s_8bd94de82c7a30::t_16f3042b8dace9 1725-1726
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "585a170dea3d57072ee3301aa51e584eb8f5e4c8",
+  "prompts": {},
+  "sessions": {
+    "s_8bd94de82c7a30": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b51e-4e92-7f63-beaa-ae405c56c407",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

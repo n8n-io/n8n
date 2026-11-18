@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_c4d55be4545ba1::t_a3939786177519 119
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_c4d55be4545ba1::t_a3939786177519 14,806-807
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c4d55be4545ba1::t_d5cd0d00887185 59,1219
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_c4d55be4545ba1::t_0d25b42f081d5b 154-182
+packages/frontend/editor-ui/src/features/agents/utils/tool-output-files.ts
+  s_c4d55be4545ba1::t_adee943eb88800 2
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_c4d55be4545ba1::t_d5cd0d00887185 62-69
+  s_c4d55be4545ba1::t_7b05fac3f61b9a 14
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/replyFiles.ts
+  s_c4d55be4545ba1::t_adee943eb88800 1-39
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_c4d55be4545ba1::t_f58e83c6b6b8ba 15-18,28-40,68-94,294-325
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.attachments.test.ts
+  s_c4d55be4545ba1::t_c1da8d7f1461ba 63-81,86-110,115-147
+  s_c4d55be4545ba1::t_68cd535b3ea16a 82-85,111-114
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_c4d55be4545ba1::t_d5cd0d00887185 27,377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9a5bca2c69b474a8eca89d6dceee6717fc9a400d",
+  "prompts": {},
+  "sessions": {
+    "s_c4d55be4545ba1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "846293ef-886e-46d0-9125-e48e5be2b0e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

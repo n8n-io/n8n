@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_f2e7acc401d88b::t_cbedf76feb63c8 663-665
+  s_f2e7acc401d88b::t_34b7c7a21a62b6 605-606
+  s_f2e7acc401d88b::t_57507d2b6df338 714-716
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_f2e7acc401d88b::t_8d388775bc8778 89-98,100
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_f2e7acc401d88b::t_ead12ebd9eb627 25,125
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_f2e7acc401d88b::t_0516390dbbab7c 443-445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e4396d6478be972e0c8f132f078610fef1d151a",
+  "prompts": {},
+  "sessions": {
+    "s_f2e7acc401d88b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc81e09b-56c0-4298-980d-617e84f5e6aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

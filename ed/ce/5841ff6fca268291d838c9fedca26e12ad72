@@ -1,0 +1,19 @@
+.gitignore
+  s_77eed0cf11f1b6::t_e17c59a022b3b7 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "edce5841ff6fca268291d838c9fedca26e12ad72",
+  "prompts": {},
+  "sessions": {
+    "s_77eed0cf11f1b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3829dd7e-eb4a-4209-91f3-521c94707b03",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

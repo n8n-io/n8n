@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Twilio/test/workflow/Twilio.workflow.test.ts
+  s_2e1fa95fc44f8f::t_31fb5cb56ceb27 1-26
+packages/nodes-base/nodes/Twake/test/workflow/Twake.workflow.test.ts
+  s_2e1fa95fc44f8f::t_cd32031b90e558 1-22
+packages/nodes-base/nodes/Twake/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_8234f6728a40a7 1-57
+packages/nodes-base/nodes/Twilio/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_934c47df643010 1-89
+packages/nodes-base/nodes/Twist/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_fd0fd72b9ce14f 1-733
+packages/nodes-base/nodes/Trello/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_fd0fd72b9ce14f 1-1398
+packages/nodes-base/nodes/Twist/test/workflow/Twist.workflow.test.ts
+  s_2dd6068abbadea::t_7b38a6a6d88945 1-46
+packages/nodes-base/nodes/Trello/test/workflow/Trello.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a499399e441179 1-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6d502c0f0159b10105547b1ce3200fda099ef21",
+  "prompts": {},
+  "sessions": {
+    "s_2dd6068abbadea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ca9d3eadcf574b0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

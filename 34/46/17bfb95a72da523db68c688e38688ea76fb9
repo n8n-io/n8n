@@ -1,0 +1,47 @@
+packages/nodes-base/nodes/HighLevel/v1/test/PathEncoding.test.ts
+  s_2e1fa95fc44f8f::t_79f5312ebc42f7 2,32,53
+packages/nodes-base/nodes/HighLevel/v2/HighLevelV2.node.ts
+  s_2e1fa95fc44f8f::t_ed0e07c0a06f4d 11,128,164
+packages/nodes-base/nodes/HighLevel/v2/test/AddNotePostReceiveAction.test.ts
+  s_2e1fa95fc44f8f::t_8244eae270294c 2,25,28-29,32-35,39,51,61,73,84,96,107,134
+packages/nodes-base/nodes/HighLevel/v2/test/HighLevelApiRequest.test.ts
+  s_2e1fa95fc44f8f::t_beca67e2c0f38d 1-2,24,27-28,31-34,38,50,60,72,83,95,106
+packages/nodes-base/nodes/HighLevel/v2/test/TaskUpdatePreSendAction.test.ts
+  s_2e1fa95fc44f8f::t_1134c195aa53cb 3-4,69
+packages/nodes-base/nodes/HighLevel/v1/GenericFunctions.ts
+  s_1ec27c3c45e4cb::t_bf53aa362b005d 19-20,22,136,140,144,164,181,241,258,269
+packages/nodes-base/nodes/HighLevel/v2/GenericFunctions.ts
+  s_607917b9ae477c::t_483243c9b3eee1 18-19,21,170,174,182,226,242,318,340,357-365,379-387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "344617bfb95a72da523db68c688e38688ea76fb9",
+  "prompts": {},
+  "sessions": {
+    "s_1ec27c3c45e4cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3f62a035f25f627c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_607917b9ae477c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afd947c4a80f6efd7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

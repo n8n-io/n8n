@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_51ddd449b59bf2::t_e2e4b4257792d8 175-193
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_51ddd449b59bf2::t_87b92fc5e5f57a 138-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2632dc510f83142340ad01c1cccb7a513e117aaf",
+  "prompts": {},
+  "sessions": {
+    "s_51ddd449b59bf2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "02d379e9-1ba0-44ce-a2bc-2dd6c6ebdcfc",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

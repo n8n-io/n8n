@@ -1,0 +1,309 @@
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_305955daf24d02::t_aff1ee52908261 652-659,775-778
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_305955daf24d02::t_aff1ee52908261 29
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_305955daf24d02::t_aff1ee52908261 86-88
+packages/cli/src/workflows/triggers/durable-poller-gate.service.ts
+  s_305955daf24d02::t_aff1ee52908261 1-102
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_305955daf24d02::t_aff1ee52908261 3,123-134
+  s_305955daf24d02::t_f1c482fea4223f 135-136
+packages/@n8n/agents/src/workspace/tool-result-storage.ts
+  s_305955daf24d02::t_aff1ee52908261 3-4,15,18-20,26-27,32-38,42,59-111
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 108
+packages/@n8n/instance-ai/src/types.ts
+  s_305955daf24d02::t_aff1ee52908261 1107-1109
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 18,42-43,45,47,49
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_305955daf24d02::t_aff1ee52908261 40,262-274,295,298-302,320,369-381,388
+packages/cli/src/workflows/triggers/__tests__/durable-poller-gate.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-260
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_305955daf24d02::t_aff1ee52908261 8,17-21,39,43,63-64,72-73,75-79,83-86,94,98-99,104-108,174-179,188-209,211-212,215-219,223,226,251,255-256,276-286
+packages/cli/src/modules/agents/agent-sandbox.controller.ts
+  s_305955daf24d02::t_aff1ee52908261 47
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_305955daf24d02::t_aff1ee52908261 17-19,175-176,189-193,201
+  s_305955daf24d02::t_d1a931255ca5aa 16
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_305955daf24d02::t_aff1ee52908261 702,710-714,721
+packages/cli/src/modules/agents/__tests__/agent-knowledge-mirror.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 96,209-221,275-276,317-329,388,391,400
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_305955daf24d02::t_aff1ee52908261 28-32
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_305955daf24d02::t_aff1ee52908261 96-100,216-222,490
+  s_305955daf24d02::t_cf43373552e03c 95
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_305955daf24d02::t_aff1ee52908261 126
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_305955daf24d02::t_aff1ee52908261 40,1343-1356,1446,1482,1496,1522,1556,1619,1652,1687
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 344,378
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_305955daf24d02::t_aff1ee52908261 31,330-331
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-job-provider.test.ts
+  s_305955daf24d02::t_aff1ee52908261 9-10,25,33,42,49,56,63-70,74-87
+packages/cli/src/modules/agents/__tests__/agent-sandbox-principal.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-53
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/workflow-loop-controller.test.ts
+  s_305955daf24d02::t_aff1ee52908261 73-103
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupInputs.test.ts
+  s_305955daf24d02::t_aff1ee52908261 258-269,581-584
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_305955daf24d02::t_aff1ee52908261 15,67,85-86
+  s_305955daf24d02::t_5d46ab2eefeba3 87
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_305955daf24d02::t_aff1ee52908261 2021-2378
+packages/cli/src/modules/agents/tools/knowledge/__tests__/search-knowledge.tool.test.ts
+  s_305955daf24d02::t_aff1ee52908261 36,58,77
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/workflowSetup.types.ts
+  s_305955daf24d02::t_aff1ee52908261 43-45
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_305955daf24d02::t_aff1ee52908261 57-58,147,174,306-307,387,435,494,1118-1131
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_305955daf24d02::t_aff1ee52908261 27-33,79,82-83,264,371-384,401,406-422,483-507,509-512,534-537,543,547-553,555-570,572-576,587-595,598-599,605,608-626,639-640,646,649-668,681-684,689,692-711,734,757-760,762
+  s_305955daf24d02::t_939a181f234e89 169,546,571
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 921
+packages/frontend/editor-ui/src/app/__tests__/modal-key-ratchet.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-139
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_305955daf24d02::t_aff1ee52908261 36
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_305955daf24d02::t_aff1ee52908261 182,184-195,200,202-206,208-209,217,260-382,490,502,504-507,528,549,615,710-738
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_305955daf24d02::t_aff1ee52908261 21-24,309-363
+  s_305955daf24d02::t_ec6179d4ecb229 364-365
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_305955daf24d02::t_aff1ee52908261 18,7813-7823,7830-7834,7844-7889,7906,7914-7921,7937,7940,7945-7946,7948-7961,7963-8004,8006-8073,8087,8092-8099,8112,8134,8139-8147,8157,8163
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_305955daf24d02::t_aff1ee52908261 27-33
+  s_305955daf24d02::t_e12745e42f31a5 26
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_305955daf24d02::t_aff1ee52908261 27,30-33,39-40,43-51,61-73,78-81,84-94,97,102,129,131,134-139,143,145-152,154-193,196,198,203-231,239-241,243,275-291,297,302,324-326,328,337-338,374-375,384,387
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_305955daf24d02::t_aff1ee52908261 15-18,44-46,76-100
+  s_305955daf24d02::t_75ef7687cb28cb 101-102
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_305955daf24d02::t_aff1ee52908261 20,46-57,67,82-87,121-123,142-151,156-157,162-163,168-194,199-201,203-204,206-207,209,213-216,220-234
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_305955daf24d02::t_aff1ee52908261 76-104,517-523
+  s_305955daf24d02::t_a6c695a089d7a1 524
+packages/@n8n/agents/src/__tests__/workspace/tool-result-storage.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-76
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 14,23,34,52-56,95-99
+  s_305955daf24d02::t_37165434b8fbcc 100-108
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_305955daf24d02::t_aff1ee52908261 371
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_305955daf24d02::t_aff1ee52908261 52,139,200,248,362,381,463,589,606,612-616,618-624
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_305955daf24d02::t_aff1ee52908261 14,251-315
+packages/@n8n/instance-ai/src/tools/workflows/setup-skip-state.ts
+  s_305955daf24d02::t_aff1ee52908261 1-204
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_305955daf24d02::t_aff1ee52908261 650,1028-1048,2473-2476,5134
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_305955daf24d02::t_aff1ee52908261 6
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  s_305955daf24d02::t_aff1ee52908261 17-20,64,96-97,101-106,108-126,151-160,179,183,207-209
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_305955daf24d02::t_aff1ee52908261 92,94-96,117-121,145-146
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_305955daf24d02::t_aff1ee52908261 316-317
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_305955daf24d02::t_aff1ee52908261 3,6,41-48,132-178
+  s_305955daf24d02::t_583383a422cd03 179
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_305955daf24d02::t_aff1ee52908261 35,172-173,723-724
+  s_305955daf24d02::t_1f5ec442c7c81b 725
+packages/cli/src/modules/agents/agent-knowledge-mirror.service.ts
+  s_305955daf24d02::t_aff1ee52908261 528-531
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_305955daf24d02::t_aff1ee52908261 30-35,176-180,200,234-241,351-374
+  s_305955daf24d02::t_16d080c6cb48a5 375-376
+packages/frontend/editor-ui/src/app/constants/modals.ts
+  s_305955daf24d02::t_aff1ee52908261 1-2
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 14-15,46-49,54-56,68,106,110-136,167,201,212-257,384,411
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 485-506
+packages/cli/test/integration/workflows/durable-poller-gate.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-170
+packages/cli/src/modules/agents/__tests__/agent-sandbox.controller.test.ts
+  s_305955daf24d02::t_aff1ee52908261 29,48
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_305955daf24d02::t_aff1ee52908261 170
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-worker-pool.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-132
+packages/frontend/editor-ui/src/app/__tests__/fixtures/exampleFeature/exampleFeature.constants.ts
+  s_305955daf24d02::t_aff1ee52908261 1
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_305955daf24d02::t_aff1ee52908261 682-720
+packages/@n8n/telemetry/src/events/instance.ts
+  s_305955daf24d02::t_aff1ee52908261 100-112
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 21-25,34-41,116,124-126,141,153,218,272,281-288,319,342,377,499,508,557,619-623,639,677,714,842-935,1175
+  s_305955daf24d02::t_9ebaf54cc369f1 460
+packages/@n8n/api-types/src/index.ts
+  s_305955daf24d02::t_aff1ee52908261 296-297
+packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts
+  s_305955daf24d02::t_aff1ee52908261 523-530
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_305955daf24d02::t_aff1ee52908261 110-123
+  s_305955daf24d02::t_5d4799a906aa1d 109
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupInputs.ts
+  s_305955daf24d02::t_aff1ee52908261 158,163,167-178
+  s_305955daf24d02::t_8de06301ea5901 179-180
+packages/frontend/editor-ui/src/app/__tests__/fixtures/exampleFeature/ExampleFeatureModal.vue
+  s_305955daf24d02::t_aff1ee52908261 1-10
+packages/@n8n/agents/src/workspace/index.ts
+  s_305955daf24d02::t_aff1ee52908261 3-7
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_305955daf24d02::t_aff1ee52908261 289-290
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_305955daf24d02::t_aff1ee52908261 20-21,23-25,28,34
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  s_305955daf24d02::t_aff1ee52908261 4-10,255-259,261-265
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1,23,28-30
+  s_305955daf24d02::t_2f025cefd9dba2 31
+packages/frontend/editor-ui/eslint.config.mjs
+  s_305955daf24d02::t_aff1ee52908261 252-294
+packages/@n8n/instance-ai/evaluations/__tests__/build-workflow-conversation-seed.test.ts
+  s_305955daf24d02::t_aff1ee52908261 300-305,340-345,373-378,403-408
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 363,373-377,415,421-433,435,463,470,478
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-build-routing.test.ts
+  s_305955daf24d02::t_aff1ee52908261 166-199
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_305955daf24d02::t_aff1ee52908261 1-101
+packages/cli/src/commands/__tests__/start.test.ts
+  s_305955daf24d02::t_aff1ee52908261 33,77,140,194-199
+packages/@n8n/agents/src/index.ts
+  s_305955daf24d02::t_aff1ee52908261 427
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_305955daf24d02::t_aff1ee52908261 53-55,159-187,293-299
+packages/cli/src/services/project.service.ee.ts
+  s_305955daf24d02::t_aff1ee52908261 287
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_305955daf24d02::t_aff1ee52908261 735,746,748-750,780
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_305955daf24d02::t_aff1ee52908261 238-240,249,282,318
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_305955daf24d02::t_aff1ee52908261 70-71
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 3,6,9-12,16,18,27-31,40-45,49,55,57,59-64,78-85,87-88,90-95,98-104,106
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_305955daf24d02::t_aff1ee52908261 25-32
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_305955daf24d02::t_aff1ee52908261 21,199-203,949-964,1044
+packages/cli/src/workflow-execute-additional-data.ts
+  s_305955daf24d02::t_aff1ee52908261 419,421-436,448
+packages/cli/src/scheduling/poll-trigger-node/poll-job-provider.ts
+  s_305955daf24d02::t_aff1ee52908261 6-7,23,32-35
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_305955daf24d02::t_aff1ee52908261 7,15-16,22-25,57,195,210,379-384
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_305955daf24d02::t_aff1ee52908261 40,274,309
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-skip-state.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-250
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.schema.ts
+  s_305955daf24d02::t_aff1ee52908261 30-32
+packages/cli/src/utils/ttl-map.ts
+  s_305955daf24d02::t_aff1ee52908261 22,27,34-43,52,57-58,100
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/complete-checkpoint.tool.test.ts
+  s_305955daf24d02::t_aff1ee52908261 197-234
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_305955daf24d02::t_aff1ee52908261 9-10,21,25
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_305955daf24d02::t_aff1ee52908261 8-11,14-17,32,188-247
+packages/cli/src/commands/start.ts
+  s_305955daf24d02::t_aff1ee52908261 13,46,48,219-220
+packages/testing/playwright/tests/dev-server-smoke/dev-server-boots.spec.ts
+  s_305955daf24d02::t_aff1ee52908261 14-15,29-41,48,52-59,61-62,92,96-99,117
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread-grant.repository.ts
+  s_305955daf24d02::t_aff1ee52908261 24-28
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-controller.ts
+  s_305955daf24d02::t_aff1ee52908261 175-179,184,214,292,314
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_305955daf24d02::t_aff1ee52908261 21,435
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 69
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 17-20,249-284,288-292,299-310
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 17-18,35-47,155,166,168,184,191-192,196-198,203,212-213,219-279,284-285,287-291,305,326,347,360-362,368-380,382-383,385-390
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_305955daf24d02::t_aff1ee52908261 22-23,667-672
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-thread-grant.repository.test.ts
+  s_305955daf24d02::t_aff1ee52908261 35-49
+.github/workflows/ci-pull-requests.yml
+  s_305955daf24d02::t_aff1ee52908261 105-106
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  s_305955daf24d02::t_aff1ee52908261 48-49
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_305955daf24d02::t_aff1ee52908261 113
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_305955daf24d02::t_aff1ee52908261 13,29-35,42,142-158
+  s_305955daf24d02::t_32f5387e0a7878 159-160
+packages/frontend/editor-ui/src/app/__tests__/fixtures/exampleFeature/modals.ts
+  s_305955daf24d02::t_aff1ee52908261 1-12
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_305955daf24d02::t_aff1ee52908261 383-386
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_305955daf24d02::t_aff1ee52908261 27-37,39,158-163,168,684-692,707,713-747,795-811,823-832,838,850-851,861,923-961,967,971-979,981-983,1025-1029,1034-1042,1046-1055,1085-1091,1096-1101
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 51,266-275,281
+packages/frontend/editor-ui/src/app/__tests__/modal-definition.test.ts
+  s_305955daf24d02::t_aff1ee52908261 1-90
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_305955daf24d02::t_aff1ee52908261 15-16,460-476
+  s_305955daf24d02::t_586183581a995c 477-478
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-routing.ts
+  s_305955daf24d02::t_aff1ee52908261 13-15,82,90-101,130
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_305955daf24d02::t_aff1ee52908261 285-294,296-298,300-306
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_305955daf24d02::t_aff1ee52908261 31-33,51-54,148,167-171,252,264,320-324,477-503,527,561-568
+  s_305955daf24d02::t_fd6b0cffda7420 30
+packages/@n8n/instance-ai/evaluations/__tests__/event-parser.test.ts
+  s_305955daf24d02::t_aff1ee52908261 835
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_305955daf24d02::t_aff1ee52908261 4,8-9,12,17-20,24-25,29-30,33-37,39-43,49-55,62-63,66-70,72-73,75-93
+packages/cli/src/modules/agents/agents.service.ts
+  s_305955daf24d02::t_aff1ee52908261 311
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_305955daf24d02::t_aff1ee52908261 15,44,53-66
+packages/@n8n/instance-ai/evaluations/report/workflow-report.ts
+  s_305955daf24d02::t_aff1ee52908261 21,1039-1040,1052,1055-1057,1072-1073,1080,1082-1085
+packages/@n8n/instance-ai/docs/tools.md
+  s_305955daf24d02::t_aff1ee52908261 275-277
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_305955daf24d02::t_aff1ee52908261 138-140
+packages/cli/src/workflows/publication/workflow-publication-outbox-worker-pool.ts
+  s_305955daf24d02::t_aff1ee52908261 1-87
+packages/cli/src/services/__tests__/sandbox-settings.service.test.ts
+  s_305955daf24d02::t_aff1ee52908261 49-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "54de72742db1dd1addbbbf6090c2e53a88d30fc7",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

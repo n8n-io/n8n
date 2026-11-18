@@ -1,0 +1,41 @@
+packages/nodes-base/credentials/Ftp.credentials.ts
+  s_b9030c77c076fe::t_56f1f51ba66d71 41-48
+packages/testing/containers/services/types.ts
+  s_b9030c77c076fe::t_76aed90d509516 13
+packages/testing/containers/README.md
+  s_b9030c77c076fe::t_0af0fb3ea5bfa0 355
+packages/testing/containers/services/ftp.ts
+  s_b9030c77c076fe::t_92b4392f77c1c9 4-9,11-14,23-24,27,30-37,42,44-45,52-55,59,67,71-72,74-76,81-85,96,106,108-117,119-122,124-126,141-142
+  s_b9030c77c076fe::t_b72ba47c43ca48 1-3,10,15-22,25-26,28-29,38-41,43,46-51,56-58,60-66,68-70,73,77-80,86-95,97-105,107,118,123,127-140,143-191
+packages/testing/containers/dockerfiles/ftp/Dockerfile
+  s_b9030c77c076fe::t_6026a0ac8185a5 1-3,5-13
+  s_b9030c77c076fe::t_b72ba47c43ca48 4
+packages/nodes-base/nodes/Ftp/__test__/Ftp.node.test.ts
+  s_b9030c77c076fe::t_fb1852f32322f0 67-102
+packages/testing/containers/services/registry.ts
+  s_b9030c77c076fe::t_76aed90d509516 4,33,58
+packages/nodes-base/nodes/Ftp/Ftp.node.ts
+  s_b9030c77c076fe::t_8891531b7b8cd7 645
+  s_b9030c77c076fe::t_d25312a2a7683b 638-639,646-647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6fc97f3d1d158afd9e883d835b63b1f6117eb85d",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b9030c77c076fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c789574b-f008-45a9-825d-2c0d8926284d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

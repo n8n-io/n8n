@@ -1,0 +1,55 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_33db4ed9b3e91a::t_f8ff2187a90741 64-74
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_33db4ed9b3e91a::t_458439a6a5d5f4 2,9-10,13,18-19,46,60,612-834
+packages/cli/src/webhooks/live-webhooks.ts
+  s_33db4ed9b3e91a::t_dda6d7b965894b 2,6-12,35-49,65,156-160,163,212,217-241
+packages/cli/src/webhooks/webhook-execution-context.ts
+  s_33db4ed9b3e91a::t_1fe08a68025a55 25-26,29,33,35-36,45-46,49,53,55-56
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_33db4ed9b3e91a::t_63e9c9d8495ca4 52,1118,1120-1121,1128,1130-1131,1141,1143-1144,1156,1158-1159,1164,1166-1167,1172,1174-1175,1193-1195,1212-1222
+packages/cli/src/webhooks/webhook.service.ts
+  s_33db4ed9b3e91a::t_4d1f61189619a9 282,284-285,305,307-308,314,316-317,331,333-334
+packages/core/src/execution-engine/node-execution-context/__tests__/hook-context.test.ts
+  s_33db4ed9b3e91a::t_489e8d20478833 83-85
+packages/core/src/execution-engine/node-execution-context/__tests__/webhook-context.test.ts
+  s_33db4ed9b3e91a::t_c0f768e0b8e77e 201-203
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/webhook-helper-functions.test.ts
+  s_33db4ed9b3e91a::t_bd3fc9f229bcdf 131-132,148,183-184
+packages/core/src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts
+  s_33db4ed9b3e91a::t_272a7e64018cbb 54,56-57,63,65-66
+packages/nodes-base/nodes/Webhook/description.ts
+  s_33db4ed9b3e91a::t_a0e1c6d35ecfc8 2,9-16,43-51
+packages/nodes-base/nodes/Webhook/test/description.test.ts
+  s_33db4ed9b3e91a::t_5f51fc3eba3902 1-94
+packages/workflow/src/index.ts
+  s_33db4ed9b3e91a::t_880b3aaa69e8d0 97,99
+packages/workflow/src/interfaces.ts
+  s_33db4ed9b3e91a::t_5e5521f3f7fa69 2996-3009,3011-3017,3031-3032
+packages/workflow/src/node-parameters/parameter-path-template.ts
+  s_33db4ed9b3e91a::t_7c22ff65e8535b 1-148
+packages/workflow/src/webhook-description-resolution.ts
+  s_33db4ed9b3e91a::t_9e7b1817533e45 1-69
+packages/workflow/src/workflow-expression.ts
+  s_33db4ed9b3e91a::t_5c2aa9143ad820 9,17,221-278
+packages/workflow/test/node-parameters/parameter-path-template.test.ts
+  s_33db4ed9b3e91a::t_3ce838ce4d1c3f 1-154
+packages/workflow/test/webhook-description-resolution.test.ts
+  s_33db4ed9b3e91a::t_b57cb1bd130a76 1-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "ed4bc4fb341e44265dde2f5c132fb430d21e8cf9",
+  "prompts": {},
+  "sessions": {
+    "s_33db4ed9b3e91a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_33db4ed9b3e91a",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

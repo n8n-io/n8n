@@ -1,0 +1,83 @@
+docs/generated/postgres-schema/README.md
+  s_3dd47ea0104342::t_e354c016ab93f5 132,405-407,1742-1757
+docs/generated/postgres-schema/public.project.md
+  s_3dd47ea0104342::t_7372a20c0a858d 12,57,259-274
+docs/generated/postgres-schema/public.promotion_environment.md
+  s_3dd47ea0104342::t_47618104f4496d 9,49,72-87
+docs/generated/postgres-schema/public.promotion_owner_request.md
+  s_3dd47ea0104342::t_c0032fa26f957d 1-125
+docs/generated/postgres-schema/public.user.md
+  s_3dd47ea0104342::t_ed9fe69ac51dd2 11,82,434-449
+docs/generated/sqlite-schema/README.md
+  s_3dd47ea0104342::t_287c9daff2aee0 132,387-389,1728-1743
+docs/generated/sqlite-schema/project.md
+  s_3dd47ea0104342::t_6386c0fe60684c 23,63,265-280
+docs/generated/sqlite-schema/promotion_environment.md
+  s_3dd47ea0104342::t_2b88d10d75a8a4 20,52,75-90
+docs/generated/sqlite-schema/promotion_owner_request.md
+  s_3dd47ea0104342::t_d0dab78f5af7c2 1-126
+docs/generated/sqlite-schema/user.md
+  s_3dd47ea0104342::t_79545c7effbb0b 22,86,438-453
+packages/@n8n/api-types/src/inbox.ts
+  s_3dd47ea0104342::t_05660cb69c5c97 77-78,90-91
+packages/@n8n/db/src/migrations/common/1794948393402-CreatePromotionOwnerRequestTable.ts
+  s_3dd47ea0104342::t_e42eb37c24e765 1-104
+packages/cli/src/modules/promotions.ee/database/entities/promotion-owner-request.entity.ts
+  s_3dd47ea0104342::t_b33efb659ab88d 1-91
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-owner-request.repository.ts
+  s_3dd47ea0104342::t_b4362dcfd46b4a 1-234
+packages/cli/src/modules/promotions.ee/promotion-owner-request.service.ts
+  s_3dd47ea0104342::t_dd17c270af8224 1-479
+packages/cli/src/modules/promotions.ee/promotion-owner-requests.controller.ts
+  s_3dd47ea0104342::t_86e81974fe50e2 1-26
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_3dd47ea0104342::t_6e39927fe04626 33-43,56-58,65
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3dd47ea0104342::t_a6028a23d8aaf5 8,27,894-928
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionOwnerRequest.generated.yml
+  s_3dd47ea0104342::t_2543741e2edb6e 1-82
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_3dd47ea0104342::t_f4f425cf36b08d 350-352
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_3dd47ea0104342::t_bdd09063a4a79a 102-106
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_729b097d9e06c9 122-158,11012-11014
+packages/modules/inbox/frontend/src/components/InboxListItem.vue
+  s_3dd47ea0104342::t_82b5584961597c 15,18,64,115-119,152,154,172-182,273-278
+packages/modules/inbox/frontend/src/inbox.constants.ts
+  s_3dd47ea0104342::t_9567043aab0f0b 6,14-15
+packages/modules/inbox/frontend/src/inbox.module.ts
+  s_3dd47ea0104342::t_01970c4de1330a 59-63
+packages/modules/inbox/frontend/src/inbox.routes.ts
+  s_3dd47ea0104342::t_164fc2586da00f 6,24-25,38-41,67-73
+packages/modules/inbox/frontend/src/promotions/PromotionOwnerRequestDetail.vue
+  s_3dd47ea0104342::t_0824e1f050f62f 1-465
+packages/modules/inbox/frontend/src/promotions/promotionOwnerRequest.utils.ts
+  s_3dd47ea0104342::t_f7b50339a9f48d 1-23
+packages/modules/inbox/frontend/src/promotions/promotionOwnerRequests.api.ts
+  s_3dd47ea0104342::t_180401e64cca95 1-13
+packages/modules/inbox/frontend/src/views/InboxView.vue
+  s_3dd47ea0104342::t_87c6e851cc3cb9 18,62-64,267-273
+packages/modules/promotions/frontend/src/composables/usePromotionOwnerRequest.ts
+  s_3dd47ea0104342::t_eec7da6ed29954 1-74
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3dd47ea0104342::t_1099a25220ab64 5,10,144-160
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_45ee4b06d6b2d7 154-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d5c47301546949166658094a0296a25bf998934",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

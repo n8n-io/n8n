@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Zammad/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_016c493b9aacbf 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac47f3cf389e41f82a9c595e9fee4a1aafcfc010",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

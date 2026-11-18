@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_db23049c32d561::t_484067e5ec8a25 563-570
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_db23049c32d561::t_484067e5ec8a25 452
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_db23049c32d561::t_484067e5ec8a25 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70c264678d8a2840cb8814f190e2f3797c0e0e90",
+  "prompts": {},
+  "sessions": {
+    "s_db23049c32d561": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a3ce8b-c177-449e-974c-d77f50f50c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Kafka/test/v2/consumer/consume-topic.test.ts
+  s_79c0473179aa3d::t_4d715a3ffa922c 173-203
+  s_79c0473179aa3d::t_3cc92ef6f3450b 44,51-53
+packages/nodes-base/nodes/Kafka/v2/consumer/consume-topic.ts
+  s_79c0473179aa3d::t_59a7e6ca91c1f4 144-160
+  s_79c0473179aa3d::t_4aac913c9cc392 59-65
+  s_79c0473179aa3d::t_b5b06302e714a4 86,92-97
+  s_79c0473179aa3d::t_e9cd48494830da 5-6,8
+  s_bc83fb448b2fad::t_7510feb474e289 98
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_79c0473179aa3d::t_914cded141e1e3 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4e11abfd343256fe8e7955a26ca2806316ccb96d",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_bc83fb448b2fad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb78bb6a-b140-4f08-b6bf-9dc97db6e22d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

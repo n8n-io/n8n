@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/utils/agentEvalCases.utils.ts
+  s_98cf123401c046::t_5fb043e487c7a0 12-16
+  s_98cf123401c046::t_1f5d8ccba458b9 46-53
+  s_98cf123401c046::t_837b98f4f8f7a3 1-11,17-45,54-98
+packages/frontend/editor-ui/src/features/agents/agentEvals.api.ts
+  s_98cf123401c046::t_833ab925c00d4d 3-6,19-22
+  s_98cf123401c046::t_28fc5a279a5a8d 49-99
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvalCases.utils.test.ts
+  s_98cf123401c046::t_8109a86c832997 9
+  s_98cf123401c046::t_88a8c488d9befb 15-36
+  s_98cf123401c046::t_5ad2adde465905 68,72
+  s_98cf123401c046::t_966e0f973caa63 1-8,10-14,37-67,69-71,73-78,80-84,86-94,96-157,160-168,170-173,175-180,182-186
+  s_98cf123401c046::t_efed6f00183ac9 174
+packages/frontend/editor-ui/src/features/agents/agentEvals.types.ts
+  s_98cf123401c046::t_40f7b0d03e021f 4-7,10,13-17,21-43
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_98cf123401c046::t_a649307528b62d 31-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4d943c93492c864ef175b78141d00cd5749d337",
+  "prompts": {},
+  "sessions": {
+    "s_98cf123401c046": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd44f34-8e05-442d-aa1b-26697eaed220",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

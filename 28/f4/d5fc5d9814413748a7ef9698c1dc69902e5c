@@ -1,0 +1,14 @@
+packages/testing/playwright/tests/e2e/workflow-reviews/review-round-trip.spec.ts
+  h_760178ed151f13 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28f4d5fc5d9814413748a7ef9698c1dc69902e5c",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

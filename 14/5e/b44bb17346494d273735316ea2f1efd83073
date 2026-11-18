@@ -1,0 +1,24 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_6415615520e467::t_34a854ed663ef6 401-406
+  s_6415615520e467::t_38472c0bf50712 1077
+  s_6415615520e467::t_163120e90532d1 286-291,294-298
+  s_6415615520e467::t_09b0c47c7912ce 428-432
+  s_6415615520e467::t_69f6c529ea4f98 970-973
+  s_6415615520e467::t_acc9cbdc51ec86 299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "145eb44bb17346494d273735316ea2f1efd83073",
+  "prompts": {},
+  "sessions": {
+    "s_6415615520e467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c28131-e714-48ea-a3dd-ddf5f46fbde8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

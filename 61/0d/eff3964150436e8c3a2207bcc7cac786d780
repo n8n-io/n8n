@@ -1,0 +1,33 @@
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_33a142847e9f45::t_e56a8775f66e60 154-157
+  s_33a142847e9f45::t_3a55e10229951c 163-164,180,222-224
+packages/@n8n/agents/src/runtime/loop/__tests__/stream-sink.test.ts
+  s_33a142847e9f45::t_3fe91b913d4249 1-2,4-36,38,41-46,56,58,62-67,69-79,81-88
+  s_9b24e7ba95bdd4::t_80af238f68c94c 3,37,68
+  s_33a142847e9f45::t_155f835ffbb9fe 47-55,57,59,61,80
+  s_9b24e7ba95bdd4::t_2ab7e9fc54a497 39-40,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "610deff3964150436e8c3a2207bcc7cac786d780",
+  "prompts": {},
+  "sessions": {
+    "s_33a142847e9f45": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d5b799e1-80e0-4dad-8fe3-11a49b84d41c",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9b24e7ba95bdd4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bc43dd43-948d-42b3-a2fe-81619cf784cf",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_0fd56c87c41410::t_adf53fc7561223 360-362,364,368-370
+  s_0fd56c87c41410::t_4742b16b1614eb 434-439
+  s_0fd56c87c41410::t_1eb7a933c6f88d 27
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_0fd56c87c41410::t_b008e602d81a2a 90-97,105
+  s_0fd56c87c41410::t_84cb9208a5d018 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bcc123e1a455d805653d43c0cccc1c920d63c514",
+  "prompts": {},
+  "sessions": {
+    "s_0fd56c87c41410": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f2b8ccf-7f85-4dda-af2c-78de0a4425ac",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

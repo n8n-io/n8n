@@ -1,0 +1,32 @@
+packages/@n8n/api-types/src/dto/ai/executions-nl-filter-response.dto.ts
+  s_03d816ea3ae9c9::t_a91552eb48cb9f 18-24,28-29,34-35
+  s_03d816ea3ae9c9::t_88fe865e3ff566 15-16,36-47
+packages/cli/src/services/executions-filter-ai.service.ts
+  s_03d816ea3ae9c9::t_6ba9d38859a880 24,26-27
+  s_03d816ea3ae9c9::t_6c6b0f24233420 17,21,25
+packages/@n8n/api-types/src/dto/index.ts
+  s_03d816ea3ae9c9::t_7c8184f26e2caf 31
+packages/@n8n/api-types/src/dto/ai/executions-nl-filter-request.dto.ts
+  s_03d816ea3ae9c9::t_97b36697e2d5a8 5-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1a6db1b208256a25a4a78fd90d1d8ac8e5f942e5",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_1fb648c429eca3::t_6f972b12d0a3cf 273-283
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_1fb648c429eca3::t_96446be64e9672 231-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3079c0790836d2760bfc1aaf2b685cef4b75d072",
+  "prompts": {},
+  "sessions": {
+    "s_1fb648c429eca3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed558d93-ce36-462a-b808-285763bb29a0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

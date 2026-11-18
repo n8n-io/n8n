@@ -1,0 +1,49 @@
+docs/generated/postgres-schema/README.md
+  s_71ad2034164515::t_fa53744259dc35 33,39
+docs/generated/sqlite-schema/README.md
+  s_71ad2034164515::t_d439915523030a 33,39
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_d3c0f6f6f7d41c::t_b27fe632d3b6a4 9
+docs/generated/sqlite-schema/agents.md
+  s_71ad2034164515::t_c60d686975f8ee 9
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_d3c0f6f6f7d41c::t_230037dff95241 42
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_d3c0f6f6f7d41c::t_a464c9653d3003 4
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_71ad2034164515::t_d6c87f8e9b4dd1 4
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_d3c0f6f6f7d41c::t_15571462695336 271-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c183300c3cd16e03b583fe233843ca37de6b62e",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

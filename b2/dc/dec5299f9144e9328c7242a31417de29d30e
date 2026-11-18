@@ -1,0 +1,123 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_9e9688effbb656::t_e99984d688f1bc 38
+  s_9e9688effbb656::t_22b67dde5d3d5d 5-9,30-32,34,37
+  ai_agent 21
+  s_9e9688effbb656::t_cf3bf1ae1befcd 15-20,27,29,33,35
+  s_9e9688effbb656::t_1a162970535bee 36
+  s_9e9688effbb656::t_512da9508542dd 4,13
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_9e9688effbb656::t_cb986c25767530 1,4,6-8,10-11,13-15,17-18
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_9e9688effbb656::t_a04fb5323a9a3f 51-52,59-64,67-68,82-86
+  ai_agent 53-57,69-73,75-80
+  s_9e9688effbb656::t_6fc5da3fed29e8 8
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-conflict-policy.ts
+  s_9e9688effbb656::t_c4ecab635cb8c0 7
+  s_9e9688effbb656::t_404c68b01361f3 4,8-9,11,13-20,23-25
+  s_9e9688effbb656::t_b6083c68e6067e 6,10
+  s_9e9688effbb656::t_c13e8385c736c4 3
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_9e9688effbb656::t_6f61eea7463922 29
+  s_9e9688effbb656::t_0f212a85797e2c 66,68-84
+  s_9e9688effbb656::t_2d0bc44f1c9542 12
+  s_9e9688effbb656::t_d30b71ef3a956b 48
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_9e9688effbb656::t_2342e153ca24a9 1,3-4,7,9-14,16-21,23-30,33-44,47-76,78-81
+  ai_agent 31-32
+packages/cli/src/errors/http-error-serializers.ts
+  s_9e9688effbb656::t_78d79a5c2faf20 22-25
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_9e9688effbb656::t_a6a9051b396eb8 1-44
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  ai_agent 818-822,862-866
+  s_9e9688effbb656::t_c635fbd87e74fc 793-803
+  s_9e9688effbb656::t_bdfb0aafae74ac 836
+  s_9e9688effbb656::t_397ff5ae436a98 43-52,57,62-73
+  s_9e9688effbb656::t_63ccdf44253fb0 40
+  s_9e9688effbb656::t_ac7fb2018fc062 464,466,468
+  s_9e9688effbb656::t_30d0563b94c2b9 878-884
+  s_9e9688effbb656::t_a755f346da0663 908-913
+  s_9e9688effbb656::t_25017f463bbb60 811-817,823-835,837-861,867-877,885-907,914-925
+  s_9e9688effbb656::t_68c6db0e0c1ac1 509
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_9e9688effbb656::t_22ddf581d4a6da 244,262,280
+  s_9e9688effbb656::t_e7b3685dece866 77-88,91-92,97
+  s_9e9688effbb656::t_e997f766e7b646 93,98-99,101-102,104,106-110,112-162,165-188,191-192,194-209,213-217,221,224-236,238-239,243
+  s_9e9688effbb656::t_8645f930113f4c 189
+  s_9e9688effbb656::t_74b40e32ec44cc 237,240-242,246-261,264-266,273,277
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-conflict-policy.test.ts
+  ai_agent 10-13,17-20,26-29,33-36
+  s_9e9688effbb656::t_c02b1802bdf4a7 2,4,8,14-15,21-24,37-40,54-55
+  s_9e9688effbb656::t_880bfa13c91db1 5-6,9,16,25,30-32,41,46-48
+  s_9e9688effbb656::t_ec79dcdbccdb6c 7,43-45,50-52
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_9e9688effbb656::t_31bf0ebfff7631 71,75,78,84,88-90
+  s_9e9688effbb656::t_6fa01430435755 76-77,79,85-87,91-92
+  s_9e9688effbb656::t_77f56f33079b30 63-70,80-83
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_9e9688effbb656::t_7c7767b11effe8 129-147
+  s_9e9688effbb656::t_f85f134e28e655 4-6,12,17,35-36,77-80,88-120,126
+  ai_agent 121-125
+  s_9e9688effbb656::t_243e6e988a682b 44-54,56-68
+  s_9e9688effbb656::t_895d0ed1c67bd9 14,18,39,42-43,69-72,83,128
+  s_9e9688effbb656::t_75a5b78773e7fd 73
+  s_9e9688effbb656::t_bebafef91e125a 1,15-16
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_9e9688effbb656::t_05b09a473cf594 23,29
+  s_9e9688effbb656::t_ebdb0c2f2af4f0 111,125
+  s_9e9688effbb656::t_09313f76bbc6ba 88-93,101,104-107,112
+  s_9e9688effbb656::t_e4ec4d4d82fe4d 18,20
+  s_9e9688effbb656::t_f34a539e03bfe2 79,81
+  s_9e9688effbb656::t_2e558a744e8daf 3,5
+  s_9e9688effbb656::t_fa913ef98e205a 19,28,33
+  s_9e9688effbb656::t_29f0d98fb3cd25 14-17
+  s_9e9688effbb656::t_97bd641d86b2d1 21
+  s_9e9688effbb656::t_ca0a8170d3430d 73
+  s_9e9688effbb656::t_82a319e8548519 163
+  s_9e9688effbb656::t_6208266f82e79d 122
+  s_9e9688effbb656::t_471479492a542d 24,49,64
+  s_9e9688effbb656::t_ad781c4a7bb4b9 82-83,85,94-100,102-103,108-110,126-127,151-153,155-158,164
+  s_9e9688effbb656::t_e9b66c8304e9a7 159-162
+  s_9e9688effbb656::t_1b9f32110cd3fe 27,30-32,34-35
+  s_9e9688effbb656::t_21856de5fe4486 169-174,176-177,182
+  s_9e9688effbb656::t_cf0d05cfc5c402 128-150,154,165
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_9e9688effbb656::t_14dd7aa297eab7 83
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_9e9688effbb656::t_3a454c784c8218 2,5-7,9-16,18-22
+  s_9e9688effbb656::t_3c8f86084f3004 1,4,8
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_9e9688effbb656::t_70ab363d6caae8 107-116,120-125,128-129
+  s_9e9688effbb656::t_7d83852f4ce275 35-36,49-56
+  s_9e9688effbb656::t_d4cb46c6f4fefb 57-74
+  s_9e9688effbb656::t_5f9e2339ae8e60 126
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_9e9688effbb656::t_e2e5ec2319b50b 3-4,15-36,42-56
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-missing-mode.test.ts
+  s_9e9688effbb656::t_33c13ca975afa2 1,4-24
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_9e9688effbb656::t_bc37a922a9c750 12,25-30,37
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_9e9688effbb656::t_af5d8a15211380 6
+  s_9e9688effbb656::t_935b53879410d4 214-222
+  s_9e9688effbb656::t_36588160a5c659 186
+  s_9e9688effbb656::t_85386e3675f1dc 189
+  s_9e9688effbb656::t_c640be1fb9787b 246-247,249
+  s_9e9688effbb656::t_655814ebc9e055 135,161-185,187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b2dcdec5299f9144e9328c7242a31417de29d30e",
+  "prompts": {},
+  "sessions": {
+    "s_9e9688effbb656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c97d0977-a46c-46f1-af3e-4257d4023dea",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

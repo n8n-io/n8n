@@ -1,0 +1,16 @@
+packages/@n8n/mcp-browser-extension/src/background.ts
+  h_44f8d1c0f2f8c4 193
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  h_44f8d1c0f2f8c4 278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ef2cf3cb5f73df98f172a8961b2347c7a48a90f6",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

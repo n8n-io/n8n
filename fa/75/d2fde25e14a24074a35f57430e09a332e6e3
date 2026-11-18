@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_3867156de1fad7::t_00d24f411e7bdd 813
+packages/@n8n/agents/src/runtime/model/__tests__/openrouter.test.ts
+  s_3867156de1fad7::t_00d24f411e7bdd 242-244
+packages/frontend/editor-ui/vite/aliases.test.ts
+  s_3867156de1fad7::t_00d24f411e7bdd 149,152-154
+  s_3867156de1fad7::t_ff422880ac4f26 150-151
+packages/@n8n/agents/docs/prompt-caching.md
+  s_3867156de1fad7::t_00d24f411e7bdd 160
+  s_3867156de1fad7::t_c4f27ebbbf6873 161-162
+packages/frontend/editor-ui/vite/aliases.mts
+  s_3867156de1fad7::t_00d24f411e7bdd 23-26
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_3867156de1fad7::t_0c1d6f0ec12057 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa75d2fde25e14a24074a35f57430e09a332e6e3",
+  "prompts": {},
+  "sessions": {
+    "s_3867156de1fad7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-caf3-7693-9d01-bca408146de3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

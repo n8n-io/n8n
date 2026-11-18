@@ -1,0 +1,26 @@
+packages/workflow/src/request-target.ts
+  s_2e1fa95fc44f8f::t_38d4496e5f3c64 31,34-35
+  s_2e1fa95fc44f8f::t_3dbb1df7f87c31 109,111
+  s_2e1fa95fc44f8f::t_00b4657cf2f634 137,144-149,151,155
+  s_2e1fa95fc44f8f::t_b5079108b3f19b 76,78-81,84-88
+packages/workflow/test/request-target.test.ts
+  s_2e1fa95fc44f8f::t_0a247bf6ece6c2 170-177,179-180,183,185-187,190-199,202-203,205
+  s_2e1fa95fc44f8f::t_7efdd5eebec939 86-94
+  s_2e1fa95fc44f8f::t_7a30d5ddff7585 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e88b008b5f4f55c9294129d8128671f789dc55e5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

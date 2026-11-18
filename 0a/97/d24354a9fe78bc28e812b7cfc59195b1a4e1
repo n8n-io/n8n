@@ -1,0 +1,43 @@
+.github/WORKFLOWS.md
+  s_f405e70b472511::t_f8295d7352d000 472-473,511-534
+  s_f405e70b472511::t_369c5e9c301188 535-537
+.github/scripts/determine-version-info.mjs
+  s_f405e70b472511::t_f8295d7352d000 53
+  s_f405e70b472511::t_e6b649dc493735 4-5,14,16,21-52,107,120-133,189
+.github/workflows/release-create-pr.yml
+  s_f405e70b472511::t_e6b649dc493735 17-22,47-51,68-85,138-139,145-150,152-156,168
+.github/scripts/determine-version-info.test.mjs
+  s_f405e70b472511::t_e6b649dc493735 16-23,88-110,114,116,118-121,127,133
+  s_f405e70b472511::t_a3530a0987e49b 111-113
+  s_f405e70b472511::t_e991754002d873 115
+  s_f405e70b472511::t_365169df3f8de4 117
+  s_f405e70b472511::t_26f2db628a8a0d 122-126
+  s_f405e70b472511::t_9f819d556e2ef9 128-132
+.github/workflows/release-publish.yml
+  s_f405e70b472511::t_e6b649dc493735 27,32,35-43,53-54,113,120,215-227,270
+.github/scripts/bump-versions.mjs
+  s_f405e70b472511::t_88f9d610eea9f9 176
+  s_f405e70b472511::t_e6b649dc493735 203,217-220,274
+  s_f405e70b472511::t_25b9ecef45fa57 155-163
+.github/scripts/bump-versions.test.mjs
+  s_f405e70b472511::t_327d4a98e14ad5 57-60
+  s_f405e70b472511::t_a5e3c18404c7d1 17,22-35
+.github/workflows/release-publish-post-release.yml
+  s_f405e70b472511::t_e6b649dc493735 86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a97d24354a9fe78bc28e812b7cfc59195b1a4e1",
+  "prompts": {},
+  "sessions": {
+    "s_f405e70b472511": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e9cef49c0ffevTLc50JVSA64X7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

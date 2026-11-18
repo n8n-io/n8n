@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Venafi/Datacenter/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_b7ce6dd430c564 84
+packages/nodes-base/nodes/Venafi/Datacenter/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_96bd1851839719 94-109
+packages/nodes-base/nodes/Venafi/ProtectCloud/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_58568e327d81d7 91
+packages/nodes-base/nodes/Venafi/ProtectCloud/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_4bef13ad8f6646 67-87
+packages/nodes-base/nodes/Venafi/parseNextPageLink.ts
+  s_2e1fa95fc44f8f::t_7ea3b8f239f600 12-18,23,26
+packages/nodes-base/nodes/Venafi/test/parseNextPageLink.test.ts
+  s_2e1fa95fc44f8f::t_fc199eebf432c4 3,12,27-42,54,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d28a6d159e829fff42a6cb73be88a95cf2b435c",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

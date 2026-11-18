@@ -1,0 +1,23 @@
+pnpm-lock.yaml
+  s_eedc9d3d519689::t_cc6a94fab8f909 594,3205-3206,8565-8567,8747-8750,17442-17444,25866,25870,26000-26001,36414,36416,38365
+packages/cli/package.json
+  s_eedc9d3d519689::t_0a619921b572b5 141
+package.json
+  s_eedc9d3d519689::t_030af0414881e0 192-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "da40162f837e186649c42fe298b02903c0d9603c",
+  "prompts": {},
+  "sessions": {
+    "s_eedc9d3d519689": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6efefd1-8d25-433b-bdde-5a16988f1851",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

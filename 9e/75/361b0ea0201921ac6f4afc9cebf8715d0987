@@ -1,0 +1,169 @@
+packages/@n8n/agents/src/types/sdk/mcp.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 6,8-9
+packages/nodes-base/nodes/HttpRequest/HttpRequest.node.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 18,34
+packages/@n8n/eslint-plugin-community-nodes/src/utils/credential-fields.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-52
+packages/cli/src/modules/agents/execution-log/agent-execution-log-write.error.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-13
+packages/@n8n/eslint-plugin-community-nodes/src/utils/index.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 2
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 2-5,42-46,177-181,197-200,204-226,268-270,381
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 20,38,610-613,641-642,655-658,671
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/NodeRecommendationModal.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-83
+packages/nodes-base/nodes/HttpRequest/V3/utils/error-details.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-68
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 3,154-175,224,247-338
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/mcp-connections-persist-across-multiple-generate-calls.json
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 39-40,58-59,73-74,175-176,194-195,209-210,284-285,303-304,318-319,420-421,439-440,454-455
+packages/cli/src/modules/agents/agents.module.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 37-63
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/MicrosoftExcelSharePoint.node.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 23,25-43
+packages/@n8n/agents/src/sdk/agent.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 13,924
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 12,55,76,90
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 6,31,128
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 2,86-104
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 2016,2050,2244-2250
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/credential-password-field.md
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1,13
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 564-582
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-only-the-listed-tool-when-config-requireapproval-is-a-string-array.json
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 39-40,58-59,73-74
+packages/@n8n/utils/src/json/to-json-value.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-180
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 255-286
+packages/cli/src/modules/agents/agent-execution.service.ts
+  ai_agent 2,4-6,18,61-63,71-73,127-128,143-144,152-164,271,282-285,288-293,297-316,364,368-410,419-422
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-6,92-95
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-test.controller.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 71,73,75-77
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-password-field.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 9-10,54
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 52,76,827,882-890
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/NodeRecommendationModal.vue
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 3,6,32,70-73,78-80
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 9,53
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 145-162
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  ai_agent 4,13,63-65,76-78,87-89,94-199,517,526-586,629,644-662,679-692
+packages/cli/src/modules/mcp-registry/mcp-registry-test.controller.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 39
+packages/cli/src/modules/agents/execution-log/corrupted-agent-execution-log.error.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-13
+packages/cli/src/modules/agents/agents.service.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 17,40,226
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 178-195,218-232
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/streams-a-response-that-includes-an-mcp-tool-call.json
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 39-40,58-59,73-74,180-181,199-200,214-215
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 2,215
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/credential-unnecessary-password.md
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-46
+packages/@n8n/utils/src/json/to-json-value.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1,3-15,33-36,60-65
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/merges-static-tools-and-mcp-tools-in-the-same-agent.json
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 55-56,74-75,89-90,207-208,226-227,241-242
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 173,183,193-197,200-204
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 53,55
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 25,47,257-399
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1813-1822,1826
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 231-232
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 76-77,83,90,125,139
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 343
+packages/cli/src/modules/agents/agent-runtime-instrumentation.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1,11-14,27-28
+packages/cli/src/modules/agents/execution-log/__tests__/agent-execution-log-store.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-2,4-7,9-23
+packages/cli/src/modules/agents/execution-log/agent-execution-log-store.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-55
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 201-204
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 13-17,56-61
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 27,71
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 3,6,12-20,28,32,42,58,65-123
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-suspend-a-tool-not-listed-in-config-requireapproval.json
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 39-40,58-59,73-74,175-176,194-195,209-210
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 81-82,118,142
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 160,175,209
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 52-62,87-107
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-unnecessary-password.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-105
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-all-mcp-tools-when-config-requireapproval-true.json
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 39-40,58-59,73-74
+packages/@n8n/agents/src/sdk/__tests__/agent-mcp-validation.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 4-5,11-32,92-102
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 203-214,238-239
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 44-46
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 369-375
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-unnecessary-password.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1-72
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 308
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 43-44,72-73,129-130
+packages/cli/src/services/project.service.ee.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 126-131,241,244,259
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/calls-an-mcp-tool-during-generation-and-returns-the-result.json
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 39-40,58-59,73-74,174-175,193-194,208-209
+packages/nodes-base/nodes/HttpRequest/test/node/HttpRequestV3.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 2-7,10,654-876
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 205-244
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 214,217,226-232,244
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 134
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 16
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_43e73a2b2c4d2b::t_c262492d31a1e6 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e75361b0ea0201921ac6f4afc9cebf8715d0987",
+  "prompts": {},
+  "sessions": {
+    "s_43e73a2b2c4d2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9ee65c1-ad7c-4582-a87a-f1c9856b12f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

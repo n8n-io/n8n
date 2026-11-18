@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useRunDataDisplayModes.test.ts
+  s_4367c29be9a1f1::t_670c580e4bd1f5 118,123,125-127,131,139,145
+  s_4367c29be9a1f1::t_f13c7be66397ec 46,52-55,63,71-75,77,82-83,88,91,105,107,109
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useRunDataDisplayModes.ts
+  s_4367c29be9a1f1::t_f13c7be66397ec 36,45-46,49
+  s_4367c29be9a1f1::t_670c580e4bd1f5 44,48,52
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.utils.ts
+  s_4367c29be9a1f1::t_670c580e4bd1f5 879
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bd76f29405ce021a03023a2044740f056469e9e",
+  "prompts": {},
+  "sessions": {
+    "s_4367c29be9a1f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8991c965-9f30-4180-a501-051ae3861442",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jani Jez <jani.jez@n8n.io>"
+    }
+  }
+}

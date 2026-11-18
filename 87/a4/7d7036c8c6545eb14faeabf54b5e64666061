@@ -1,0 +1,19 @@
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_919ca5b51967a8::t_3a86ca1b76997f 79,81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87a47d7036c8c6545eb14faeabf54b5e64666061",
+  "prompts": {},
+  "sessions": {
+    "s_919ca5b51967a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1f84213-85f6-4c1a-9405-b7242afa6035",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

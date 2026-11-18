@@ -1,0 +1,27 @@
+packages/frontend/@n8n/frontend-module-sdk/src/routeNames.test.ts
+  s_e6dd55d217a9d6::t_532ed842b43f8a 2,18-22,27-33,39,45-51,56-59,64-73,77,80-83,86-129
+packages/frontend/@n8n/frontend-module-sdk/src/routeNames.ts
+  s_e6dd55d217a9d6::t_89ecc26edfe985 1,5-6,19-20,23-30,32,35-40
+  s_e6dd55d217a9d6::t_4d7396737218fa 48,51
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_e6dd55d217a9d6::t_7e28b8950ac54d 130
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.test.ts
+  s_e6dd55d217a9d6::t_c5a0a6e782ab13 2-3,5-7
+  s_e6dd55d217a9d6::t_1d48c392028fff 42-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e307a2dfeb9cc8f10b45478cd37ab21281ebcc41",
+  "prompts": {},
+  "sessions": {
+    "s_e6dd55d217a9d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb05e067-c8d6-4601-8a29-4a5dd78b76f8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_5d6be4e6bc70a6::t_27163450b99af3 14
+  s_5d6be4e6bc70a6::t_b11e9f612ec667 39-41
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.test.ts
+  s_5d6be4e6bc70a6::t_6c361fb978a8f3 22-24
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/ScoreChart.vue
+  s_5d6be4e6bc70a6::t_14514d2cccd528 42-43
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_d3acadd8ec6514 6
+  s_5d6be4e6bc70a6::t_88b0f18a41d2e8 93-102
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_69bba2587ccc77 27
+  s_5d6be4e6bc70a6::t_a0f0f977d2a67f 53-56,68-69,71
+  s_5d6be4e6bc70a6::t_79a87ae635923b 9
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_9e8ec6cca0c7b5 7
+  s_5d6be4e6bc70a6::t_825236dc79daa5 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "111ac86e29ff2c5e76dbc9c85a8f9a824d972e61",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_7e67ef1e750c72::t_f183201521825d 19,28
+  s_7e67ef1e750c72::t_e49f9e0e58f34b 26-27,29-34
+  s_7e67ef1e750c72::t_8388613990f006 35-36
+docs/generated/postgres-schema/public.agent_execution.md
+  s_7e67ef1e750c72::t_315fd0e96826d9 14
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_7e67ef1e750c72::t_d0f8763ae136e9 120,168
+  s_7e67ef1e750c72::t_9d8596d86306db 78-79,93,115,163,308-309
+  s_7e67ef1e750c72::t_aba1b358cb98d0 235-238
+  s_7e67ef1e750c72::t_b1c49085233871 203-234,239-242
+  s_7e67ef1e750c72::t_f4535f088965b6 63-64,74-76,92,121-122
+  s_7e67ef1e750c72::t_ee58082f060e0c 77
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_7e67ef1e750c72::t_d451df3b058ac0 240,483
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_7e67ef1e750c72::t_9e7fd6ff16e105 293,313,326,429-432,452-455,474-493,495
+  s_7e67ef1e750c72::t_52bf0a4205127b 264,565,624,664,667-670
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_7e67ef1e750c72::t_5dba46c2a3d4c9 229,231
+  s_7e67ef1e750c72::t_993205d3b5e2e4 445-465
+  s_7e67ef1e750c72::t_0a9c35926f5c45 275
+docs/generated/postgres-schema/README.md
+  s_7e67ef1e750c72::t_fdf96b7db2b89d 18
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_7e67ef1e750c72::t_7b2a7217446f2b 125-126,221,233-234,324-325,391-392,434-435
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_7e67ef1e750c72::t_799505a0e6b8a4 30-33
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_7e67ef1e750c72::t_be6355c54d4412 707,709
+  s_7e67ef1e750c72::t_c5fa873a0a082b 719,737,739
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_7e67ef1e750c72::t_20f893f60034c9 18
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_7e67ef1e750c72::t_96d6bac9162bd7 984-985,988,993-995,1008-1009,1012,1020,1035-1040
+  s_7e67ef1e750c72::t_db3ea161895ba5 1041
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_7e67ef1e750c72::t_ac5f3c514cfead 277-279
+  s_7e67ef1e750c72::t_fd9e05993ac0ee 28-33,52,63,207-208,223,227,230,232,241,250,269-271,273-276,280,284
+packages/cli/test/migration/1785828155091-add-agent-execution-runtime-state.test.ts
+  s_7e67ef1e750c72::t_2dab316aafd0ed 1-110
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_7e67ef1e750c72::t_486ca8259baf98 113-114,209,481,855-856
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_7e67ef1e750c72::t_420b8e7b9a12a0 191-192
+  s_7e67ef1e750c72::t_d81632783ddca7 341,343,360
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_7e67ef1e750c72::t_606a98c7fe52d8 111-112,215,257-258,268,287,308
+  s_7e67ef1e750c72::t_c614dd603cd9f1 360-361,414-415,462-463,543-544,573-574,614-615,709-710,752-753,1086-1087
+  s_7e67ef1e750c72::t_e10f62b89d2187 207
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_7e67ef1e750c72::t_452f70ca320281 131,181,423
+  s_7e67ef1e750c72::t_948a7d56a2dc7f 218,276,306,342,380,402,492,534,575
+  s_7e67ef1e750c72::t_1c4e9c09d30327 227-228
+  s_7e67ef1e750c72::t_f6e531a32a14ca 98
+  s_7e67ef1e750c72::t_4ec0c06df43ff6 72-73
+  s_7e67ef1e750c72::t_818846f706614f 12,152-178
+  s_7e67ef1e750c72::t_10fc34f2cbd5bb 9,97,99-101
+  s_7e67ef1e750c72::t_9aa8027cadfc05 284,286
+  s_7e67ef1e750c72::t_74286d6b23c30a 645,665,683,685,691,694,696,701
+  s_7e67ef1e750c72::t_f6f42bb18750ee 605
+  s_7e67ef1e750c72::t_9ce7f75edb55d8 102
+  s_7e67ef1e750c72::t_42e55df515609d 179-180
+packages/@n8n/db/src/migrations/common/1785828155091-AddAgentExecutionRuntimeState.ts
+  s_7e67ef1e750c72::t_9c92af0ee56266 1-30
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_7e67ef1e750c72::t_753494d56d4ba1 232,465
+docs/generated/sqlite-schema/README.md
+  s_7e67ef1e750c72::t_9be8c58c1c1178 18
+docs/generated/sqlite-schema/agent_execution.md
+  s_7e67ef1e750c72::t_5763a58cb113c9 9,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "fe3c622d48ade4c01b6bbef3f0d78e5b251086f7",
+  "prompts": {},
+  "sessions": {
+    "s_7e67ef1e750c72": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5926349f-09c6-458e-a2d0-aa5665fa0d1b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

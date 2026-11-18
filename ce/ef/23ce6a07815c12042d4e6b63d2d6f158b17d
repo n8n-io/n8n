@@ -1,0 +1,26 @@
+packages/cli/src/modules/breaking-changes/migrations/node-removals/__tests__/node-migrations.test.ts
+  s_3fccbadf582d3f::t_42e486a91f5f8d 14
+packages/cli/src/modules/breaking-changes/migrations/node-removals/index.ts
+  s_3fccbadf582d3f::t_3667d1c2c137a3 1,25
+packages/cli/src/modules/breaking-changes/migrations/node-removals/__tests__/agent-tools-v1-to-v2.migration.test.ts
+  s_3fccbadf582d3f::t_42e486a91f5f8d 1-82
+packages/cli/src/modules/breaking-changes/migrations/node-removals/agent-tools-v1-to-v2.migration.ts
+  s_3fccbadf582d3f::t_8399e17e7deeb0 6,8-16,18-23
+  s_3fccbadf582d3f::t_42e486a91f5f8d 1-5,7,17,24-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ceef23ce6a07815c12042d4e6b63d2d6f158b17d",
+  "prompts": {},
+  "sessions": {
+    "s_3fccbadf582d3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55175171-4120-4448-8ac7-c712f2d2efc1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

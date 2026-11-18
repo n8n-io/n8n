@@ -1,0 +1,35 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_e9d4f9e371b4bb::t_a0e50a8e795bac 41-46,54,325,329,333,336-338,347-358,361
+  s_e9d4f9e371b4bb::t_48948cd0bebd5f 373,376-379,382-392
+  s_e9d4f9e371b4bb::t_805d4f6733620b 131,597-603,741
+  s_e9d4f9e371b4bb::t_ed4871d1bbea89 300-324
+  s_e9d4f9e371b4bb::t_6567ca1ae8685d 393-404
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_e9d4f9e371b4bb::t_a33e7ca51f3246 200-205,276-277
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_e9d4f9e371b4bb::t_805d4f6733620b 239,241,268,281,439-440
+  s_e9d4f9e371b4bb::t_e8822860509eed 240
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_e9d4f9e371b4bb::t_0bf8119be50fd2 147-149,153
+  s_e9d4f9e371b4bb::t_e8822860509eed 143
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_e9d4f9e371b4bb::t_c4da83cd3e7d86 223-224
+  s_e9d4f9e371b4bb::t_a15db84ca08f05 226,247-248
+  s_e9d4f9e371b4bb::t_e16d5c7fe960b5 9,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce8a89aa5eb19b26e54779bc4cf7d6e0f964ec9e",
+  "prompts": {},
+  "sessions": {
+    "s_e9d4f9e371b4bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a481-36cc-7000-82d3-ce1bf91cdc42",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,135 @@
+packages/@n8n/instance-ai/src/tools/workflows/workflow-node-diff.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 131-143,274-278
+  s_08690fb8a4caf5::t_94c32ec902925e 279-280
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment.repository.integration.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1-95
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 29,36,39,104,144,154,183-189,238,311-328,822-823,832
+  s_08690fb8a4caf5::t_e7fc1aade412df 824-831,833
+packages/@n8n/backend-services/src/pubsub/pubsub.types.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 102,162-163
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 9-10,95-107
+  s_08690fb8a4caf5::t_19719f8f5ac916 108
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1-212
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.stories.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 3,63-116,132,171,197,221,251,315,405,484,514,576,629,694,759,773-849,913,997,1187,1217,1250,1267
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 177-180
+packages/frontend/editor-ui/src/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 5-19,23-30,32-33,36-41
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 78,160,218,1501
+packages/cli/src/modules/promotions.ee/promotions-git.utils.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 108,115
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 13-14,24-25,33,35,76,302-368
+  s_08690fb8a4caf5::t_f70b4e948681c9 369-370
+packages/frontend/editor-ui/src/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1,11-13,16-20,25-34,37-45,47-57,60-81,83
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 7,472-482
+  s_08690fb8a4caf5::t_a6624ea9a1322b 483-484
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/AssistantAtMentionPicker.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 158,169,174,185-186,235-236,442,453-454
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiResourceChip.vue
+  s_08690fb8a4caf5::t_9f54c5e121cad6 53,130-131
+packages/quality/testing/playwright/services/api-helper.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 32,112,145
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 77,100,202,205-211,221,224
+packages/quality/testing/playwright/tests/infrastructure/promotions/checkout-cleanup-multi-main.spec.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1-162
+packages/cli/src/modules/promotions.ee/promotion-working-directory.service.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 5,30,60-62,69,95-110
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiResourceChip.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 45-51
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/composables/useAssistantAtMentions.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 33-48,150-152,192-195,197-200,206-215,236,280
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_08690fb8a4caf5::t_9f54c5e121cad6 405
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 32-34
+packages/quality/testing/playwright/services/promotions-api-helper.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1-88
+packages/quality/testing/playwright/tests/e2e/instance-ai/instance-ai-mentions.spec.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 84
+pnpm-workspace.yaml
+  s_08690fb8a4caf5::t_9f54c5e121cad6 423
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_08690fb8a4caf5::t_9f54c5e121cad6 744-750
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 7,1593-1684
+  s_08690fb8a4caf5::t_bceaa84d2a6d35 1685-1686
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1-632
+packages/@n8n/backend-services/src/pubsub/__tests__/publisher.service.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 182
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 17-18,109-110,175-178,205,214-218,580,584-588,594-642,644
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 18-23
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 973-996
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 19,40,93,214-219,280,383-388,393-400
+  s_08690fb8a4caf5::t_55799fc923af9a 401-402
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.mentions.stories.css
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1-93
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 757-759
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/NodesAttachmentChips.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 313-321,331,348,359
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-node-diff.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 547-645
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 101
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 424
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue
+  s_08690fb8a4caf5::t_9f54c5e121cad6 7,196,451-455,544-547
+  s_08690fb8a4caf5::t_7aadbab29986f6 548-549
+packages/@n8n/backend-services/src/pubsub/pubsub.constants.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 73
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 1,6,14,20,51,96,107-113,133-156,229-347,406,430,460,482,488,492-497,504,511-530
+  s_08690fb8a4caf5::t_98159439eed874 531-533
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 3,6,370,375-385,392-394,396-398,400,405,408-492,494-522,524,528,532-533,535-551,553-564,567,570-576,578-588,591-599,603-615,617-625,627-628,631-648,655,657-658,663,667,689,696-716,724-725,733,736,742-767,773,789
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 32,55,189-190,213
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 61-70
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_08690fb8a4caf5::t_9f54c5e121cad6 62-67,89-102
+  s_08690fb8a4caf5::t_ec6cc001aef08b 103
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/AssistantMentionBreadcrumbs.vue
+  s_08690fb8a4caf5::t_9f54c5e121cad6 3,29-31,47-48,60-61,82-84,92-99
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/composables/useAssistantAtMentions.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 46-47,156,158,161,171,173-174,177-272,276,278-280,382,402
+packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 449-463
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_08690fb8a4caf5::t_9f54c5e121cad6 466,472,551
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_08690fb8a4caf5::t_e54ae7ca0a1775 8
+pnpm-lock.yaml
+  s_08690fb8a4caf5::t_73899e0c887a57 1010,17352-17353,17905-17908,34516,34519,35086-35087,36594,36626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef5d8dca7773c50e5d33fcbe89994130e352ec83",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

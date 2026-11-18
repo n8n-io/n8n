@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.test.ts
+  s_93bfa2eb2d7de3::t_c0c0049dee5e18 1-352
+packages/frontend/editor-ui/src/experiments/trialIntroModal/constants.ts
+  s_93bfa2eb2d7de3::t_216f0eb98657ee 1-3
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.ts
+  s_93bfa2eb2d7de3::t_a05d73e927100f 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7639434948eee72b7ccc269fe1f66c39dd3f5c43",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

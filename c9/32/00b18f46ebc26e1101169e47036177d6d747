@@ -1,0 +1,79 @@
+packages/nodes-base/nodes/Microsoft/Dataverse/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_ac9e750937dc3a 70-87,339,361,372,380,392,550,552,578,580,582-583,587
+  s_2e1fa95fc44f8f::t_4f805ee6059a9f 336-338
+  s_2e1fa95fc44f8f::t_b2c1856b58e195 340-342
+  s_2e1fa95fc44f8f::t_f43764ab3293bb 358-360
+  s_2e1fa95fc44f8f::t_9f5d09d6b03926 373-375,377-379
+  s_2e1fa95fc44f8f::t_4ec7a71211bbdc 391
+  s_2e1fa95fc44f8f::t_2f87c0dd7e3cd1 393-395
+  s_2e1fa95fc44f8f::t_cf404c57667284 547-549
+  s_2e1fa95fc44f8f::t_8751a209fccd1b 551
+  s_2e1fa95fc44f8f::t_b9aa3bbc01fc22 553-555
+  s_2e1fa95fc44f8f::t_2f4e343b84a7da 579
+  s_2e1fa95fc44f8f::t_8a10ea0481e596 581
+  s_2e1fa95fc44f8f::t_3a0f25157076c2 584-586
+  s_2e1fa95fc44f8f::t_179dc91377033c 588
+  s_2e1fa95fc44f8f::t_3ea29b4061c90a 3,48,59,91,103,118,121,128,131,138,146,160,180,193,207,224,235,254,273,290,307,322,334-335,353-357,376,396-399,414,434,453,471,486,506,530,539,544-546,565,597,606-613,626,640
+packages/nodes-base/nodes/Microsoft/Dataverse/GenericFunctions.ts
+  s_24dbac2e9c1d82::t_5253792aeaf14a 9-10,12,237,284-296,308,316-317,320,323,327-329,365,389,421,436,440,442-444,466-467,470
+packages/nodes-base/nodes/Microsoft/Dataverse/constants.ts
+  s_24dbac2e9c1d82::t_4d8e2c871e813a 1-2,12
+packages/nodes-base/nodes/Microsoft/Dataverse/loadOptions.ts
+  s_25d84bacfad08a::t_d4c219b196af0c 6,8,83,240,293,320,356,368
+packages/nodes-base/nodes/Microsoft/Dataverse/operations/createRow.ts
+  s_28e6bbc7021910::t_7acd7eba5ace1c 2,54
+packages/nodes-base/nodes/Microsoft/Dataverse/operations/getManyRows.ts
+  s_28e6bbc7021910::t_33cf07e3a98bfb 2,165
+packages/nodes-base/nodes/Microsoft/Dataverse/operations/lookups.ts
+  s_28e6bbc7021910::t_836d303e309461 2,166,227
+packages/nodes-base/nodes/Microsoft/Dataverse/operations/metadata.ts
+  s_28e6bbc7021910::t_dd87a1b0d56818 2,64,92
+packages/nodes-base/nodes/Microsoft/Dataverse/operations/shared.ts
+  s_28e6bbc7021910::t_0a4bb6e8bff06c 1-7,194,197,337
+packages/nodes-base/nodes/Microsoft/Dataverse/test/loadOptions.test.ts
+  s_28e6bbc7021910::t_05f075b71b6a9a 344,394
+packages/nodes-base/nodes/Microsoft/Dataverse/test/operations.test.ts
+  s_28e6bbc7021910::t_bcfc4d7784cdc0 110,185,223,265,384,440,505,580,597,665
+packages/nodes-base/nodes/Microsoft/Dataverse/test/shared.test.ts
+  s_24dbac2e9c1d82::t_36a00704217fe4 5,241,245,342,350,361,374,387,398,414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c93200b18f46ebc26e1101169e47036177d6d747",
+  "prompts": {},
+  "sessions": {
+    "s_24dbac2e9c1d82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8dcc9e1b96250fc1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_25d84bacfad08a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a95235111de196db4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_28e6bbc7021910": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a824afeb5b956032c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

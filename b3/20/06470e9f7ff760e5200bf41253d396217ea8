@@ -1,0 +1,58 @@
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_b9e402b75ca46c::t_e087d100aaf61d 1,4
+  s_b9e402b75ca46c::t_620c12bc1c759d 2-3,5-38,40-55,60-61,91
+  s_b9e402b75ca46c::t_e2701b5c95b0fa 39
+  s_b9e402b75ca46c::t_f4fe5ebcbabdc2 56-59
+  s_b9e402b75ca46c::t_c8184d9d60b7bd 62-76,79-90
+  s_b9e402b75ca46c::t_ebc7ecf778171f 78
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_b9e402b75ca46c::t_39e55ea9e8bad8 1-10,19-28,36-56,59-79,126
+  ai_agent 29-35
+  s_b9e402b75ca46c::t_73ea8f190a73f4 57-58
+  s_d86986c3063d91::t_ffc3be706b5f83 80,12,18,81,83-84,87-90,92,94,102-103,105-112,114-116,120,125
+  s_b9e402b75ca46c::t_840c1d52634dcf 11,13-17
+  s_b9e402b75ca46c::t_fb0d4e875330f7 82,85-86,91,95-101,104,113,117-119,121-124
+  s_b9e402b75ca46c::t_955d7e3f26b6ac 93
+packages/cli/src/services/folder-finder.service.ts
+  s_b9e402b75ca46c::t_8623ce156a2d31 1-38,63-80,47-48,51,57,59,61-62
+  s_b9e402b75ca46c::t_ad847331d72413 39-46,49-50,52-56,58,60
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_b9e402b75ca46c::t_369537e9ebe806 1-2,4-23,25-30,37-44,46-53,57-70,72-101,104-117
+  s_b9e402b75ca46c::t_c6fc5f0a087693 3
+  s_b9e402b75ca46c::t_e674ea5c248710 31,35-36
+  ai_agent 32-34
+  s_b9e402b75ca46c::t_86e5ac5795b684 54-56
+  s_b9e402b75ca46c::t_abacafdfad0dcf 71
+  s_b9e402b75ca46c::t_0444ba6d1fd603 102-103
+  s_b9e402b75ca46c::t_9da13ed3532c87 24
+  s_b9e402b75ca46c::t_102e04a70f3f90 45
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b9e402b75ca46c::t_96e04bc499ab63 1-35,41-95,97-110,113-134
+  ai_agent 37-40
+  s_b9e402b75ca46c::t_e41de17b52bc19 111-112
+  s_b9e402b75ca46c::t_85fdf1cf1b94cd 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b32006470e9f7ff760e5200bf41253d396217ea8",
+  "prompts": {},
+  "sessions": {
+    "s_b9e402b75ca46c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0175b21f-7e7d-491e-a496-459c2da5cb60",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "s_d86986c3063d91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86994467-f348-48c5-a932-edbf8c61c829",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

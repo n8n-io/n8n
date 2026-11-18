@@ -1,0 +1,93 @@
+packages/nodes-base/nodes/SeaTable/__tests__/v2/getPublicURL.test.ts
+  s_2e1fa95fc44f8f::t_bf38a4c59c379e 1-27
+  s_2e1fa95fc44f8f::t_708a66b48d606d 28-30
+  s_2e1fa95fc44f8f::t_128a80fc0dcb3d 31-33
+packages/nodes-base/nodes/SeaTable/__tests__/v1/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3bf8c1686cb7bb 1-32
+  s_2e1fa95fc44f8f::t_dd401fde91875c 33-35
+  s_2e1fa95fc44f8f::t_e81597f42de973 36
+packages/nodes-base/nodes/SeaTable/v1/GenericFunctions.ts
+  s_19150bf5812493::t_be7558451fced1 9-10,12,23-25,57,61,72,82-84,91,111,154,173
+packages/nodes-base/nodes/SeaTable/v1/SeaTableTriggerV1.node.ts
+  s_29fe1f61565b6f::t_a8b812583de37b 11,20,97,128-129
+packages/nodes-base/nodes/SeaTable/v1/SeaTableV1.node.ts
+  s_29fe1f61565b6f::t_f48efab71ee06b 11,20,49,67,159,180-181,226-227,260-261,326,394
+packages/nodes-base/nodes/SeaTable/v2/GenericFunctions.ts
+  s_19150bf5812493::t_79820d63b0a3ad 11-12,14,29-31,51,55,73,76,84-85,88-90,94-95,110,115,141,158
+packages/nodes-base/nodes/SeaTable/v2/SeaTableTriggerV2.node.ts
+  s_29fe1f61565b6f::t_630aa5b034db9e 10,29,201-202,238,244,264-265,283
+packages/nodes-base/nodes/SeaTable/v2/actions/asset/getPublicURL.operation.ts
+  s_607917b9ae477c::t_cb93b7d35e146a 7,44-46
+packages/nodes-base/nodes/SeaTable/v2/actions/asset/upload.operation.ts
+  s_607917b9ae477c::t_a5f30cc263ba45 7-8,117,136,149,182,225
+packages/nodes-base/nodes/SeaTable/v2/actions/base/collaborator.operation.ts
+  s_607917b9ae477c::t_20af860ea09fec 7,45
+packages/nodes-base/nodes/SeaTable/v2/actions/base/metadata.operation.ts
+  s_607917b9ae477c::t_7235bbfa84e6a2 7,28
+packages/nodes-base/nodes/SeaTable/v2/actions/base/snapshot.operation.ts
+  s_607917b9ae477c::t_f3faea43719317 7,28
+packages/nodes-base/nodes/SeaTable/v2/actions/link/add.operation.ts
+  s_607917b9ae477c::t_21f24b79fc2ad9 7,92
+packages/nodes-base/nodes/SeaTable/v2/actions/link/list.operation.ts
+  s_607917b9ae477c::t_88f601a0ace9f2 9,79
+packages/nodes-base/nodes/SeaTable/v2/actions/link/remove.operation.ts
+  s_607917b9ae477c::t_92632e110cab0b 9,90
+packages/nodes-base/nodes/SeaTable/v2/actions/row/create.operation.ts
+  s_607917b9ae477c::t_6f5d47d8c6d79d 7,197,212
+packages/nodes-base/nodes/SeaTable/v2/actions/row/get.operation.ts
+  s_607917b9ae477c::t_419d3813a976dd 7,73
+packages/nodes-base/nodes/SeaTable/v2/actions/row/list.operation.ts
+  s_607917b9ae477c::t_17d33d2dddfb22 7,85,92
+packages/nodes-base/nodes/SeaTable/v2/actions/row/lock.operation.ts
+  s_607917b9ae477c::t_76f48ac16f4bec 2,17
+packages/nodes-base/nodes/SeaTable/v2/actions/row/remove.operation.ts
+  s_607917b9ae477c::t_db399559724c4e 2,22
+packages/nodes-base/nodes/SeaTable/v2/actions/row/search.operation.ts
+  s_607917b9ae477c::t_bd4d1d2801ebb7 7,125
+packages/nodes-base/nodes/SeaTable/v2/actions/row/unlock.operation.ts
+  s_607917b9ae477c::t_027addd172fd10 2,17
+packages/nodes-base/nodes/SeaTable/v2/actions/row/update.operation.ts
+  s_607917b9ae477c::t_a0ccf0de2d1336 7,169
+packages/nodes-base/nodes/SeaTable/v2/methods/loadOptions.ts
+  s_607917b9ae477c::t_cef47ae51eb8d6 2,20,41,62,99,133,163,190,244,270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b40cda06df2bb48ed045ed721dd50e253b16fe1",
+  "prompts": {},
+  "sessions": {
+    "s_19150bf5812493": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaeb313a3a4da81b4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_29fe1f61565b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad2b09f5b20b4c7e5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_607917b9ae477c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afd947c4a80f6efd7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

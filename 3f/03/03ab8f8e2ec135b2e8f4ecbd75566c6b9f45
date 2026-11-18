@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/index.ts
+  s_6aa515e0b5bec2::t_eeed8557613ffd 469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f0303ab8f8e2ec135b2e8f4ecbd75566c6b9f45",
+  "prompts": {},
+  "sessions": {
+    "s_6aa515e0b5bec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "639caa31-09f2-492e-ab01-be66b2e731d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

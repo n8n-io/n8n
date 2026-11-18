@@ -1,0 +1,55 @@
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_80d185abd37303::t_5b1cad83463cfd 99-101,109-121
+packages/frontend/editor-ui/src/features/agents/utils/agentPersonalisation.ts
+  s_80d185abd37303::t_69585e310cb421 38-39
+  s_80d185abd37303::t_f93f6289c9bc6c 49-56,66,74,80-81,87-89
+  s_80d185abd37303::t_200bed5280f142 19-22,27-28
+  s_80d185abd37303::t_7b3026c8071055 75-79
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  s_80d185abd37303::t_e6d25e5d21954d 12-17,36,39
+  s_80d185abd37303::t_4b6021189d044d 62-64,150-152
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentIdentityHeader.spec.ts
+  s_80d185abd37303::t_7cc13e511fe030 106-108,135-141
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agentPersonalisation.test.ts
+  s_80d185abd37303::t_9d94db86d241a4 41
+  s_80d185abd37303::t_b6b6c91bc695d4 50
+  s_80d185abd37303::t_6c7aa6b0eff5ca 22-29
+  s_80d185abd37303::t_cb43c00b9b791b 3-6,30-40,42-49,51
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_80d185abd37303::t_e639009acaf889 151-153
+  s_80d185abd37303::t_ec286ed6e1f0e3 114-116,128-130
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_80d185abd37303::t_dc3bbf8ad3329a 185-187
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_80d185abd37303::t_933f4c9da4dbb2 336-341
+  s_80d185abd37303::t_74b58817720427 122-124,130,139-148,151,173,179,194,203,215
+  s_80d185abd37303::t_b8feddf46967a2 334-335,342-343,360
+  s_80d185abd37303::t_8df1a2048bbd99 315,318-329,357,364-365
+  s_80d185abd37303::t_8ab09258c3571c 314,316-317,330-333,344-356,358-359,361-363,366-367
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_70fb4223a7d1db::t_d7e121c590cd64 293-295,306-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5aaae316fe92dfbe4d105b313c49cbc5c0dd647a",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_80d185abd37303": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2231-958a-77f0-881a-1fca61d763de",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

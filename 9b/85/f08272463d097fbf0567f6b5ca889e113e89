@@ -1,0 +1,23 @@
+packages/cli/test/integration/public-api/executions.test.ts
+  s_176da1aff184f0::t_f3919f16615b7a 1094-1102
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_176da1aff184f0::t_4abb6c87bdd28d 210,217-218
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/stopExecution.generated.yml
+  ai_agent 67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9b85f08272463d097fbf0567f6b5ca889e113e89",
+  "prompts": {},
+  "sessions": {
+    "s_176da1aff184f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c8cc965-adbd-49e9-a63e-907c657a03a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

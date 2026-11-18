@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_3993bf1ccdba2f::t_15932b09127f49 618
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b8e122277f2a1b67f5990bcbb988ca3a1d380cb",
+  "prompts": {},
+  "sessions": {
+    "s_3993bf1ccdba2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a28036f-a6dc-4c5f-aa38-bab8cd4d81b6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,257 @@
+packages/@n8n/instance-ai/src/tools/orchestration/report-verification-verdict.tool.ts
+  s_08fccf4b5fc5e9::t_8dd88a226c3fa0 60
+  s_08fccf4b5fc5e9::t_8e84f1978a66e9 43
+  s_08fccf4b5fc5e9::t_6bafce556026ae 25-26
+  s_08fccf4b5fc5e9::t_e3aec0bac8107c 49
+  s_08fccf4b5fc5e9::t_15837eb2d13d0d 30
+  s_08fccf4b5fc5e9::t_97c0e2bd88622b 115-116
+  s_08fccf4b5fc5e9::t_e9823c07c12024 75
+  s_08fccf4b5fc5e9::t_bfb3cb447c9fde 32-37
+  s_08fccf4b5fc5e9::t_e605304fe77fe3 54
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  s_08fccf4b5fc5e9::t_5929a7ccadb996 338,341-344,346,348,363
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  s_08fccf4b5fc5e9::t_c8e1a7cf79ab04 22
+  s_08fccf4b5fc5e9::t_f849c3b679c01c 56
+  s_08fccf4b5fc5e9::t_368245d45872bc 26-27
+  s_08fccf4b5fc5e9::t_2876f1094177de 50-51
+  s_08fccf4b5fc5e9::t_5eff72778ede9a 37
+  s_08fccf4b5fc5e9::t_4662563fe5c34b 48
+  s_08fccf4b5fc5e9::t_f3d5057b784a3c 160,162,164-166
+  s_08fccf4b5fc5e9::t_879f04d70438d8 15
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_08fccf4b5fc5e9::t_00891d91360461 183,189-191,198,203-204,210-214,220-224,230-232,238,244-247,619,621,623-624
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  s_08fccf4b5fc5e9::t_9f355c64b49e1a 29
+  s_08fccf4b5fc5e9::t_5baefd34635876 167
+  s_08fccf4b5fc5e9::t_35155222bd56e8 168
+  s_08fccf4b5fc5e9::t_3661f286b525b5 26
+  s_08fccf4b5fc5e9::t_933a2e4b839587 169
+  s_08fccf4b5fc5e9::t_6ce238ba2b669b 170
+  s_08fccf4b5fc5e9::t_af7f8a3173d87d 30
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_08fccf4b5fc5e9::t_843a0d03ff66c8 670,673
+  s_08fccf4b5fc5e9::t_3f08a319c53758 78
+  s_08fccf4b5fc5e9::t_68e5cfbcbda437 654
+  s_08fccf4b5fc5e9::t_2ea807b81cafce 73
+  s_08fccf4b5fc5e9::t_08a9550e7f6f11 183
+  s_08fccf4b5fc5e9::t_f963f03da67aee 157
+  s_08fccf4b5fc5e9::t_32417957ce34a1 53,69
+  s_08fccf4b5fc5e9::t_c58b8c6df3ed26 112
+  s_08fccf4b5fc5e9::t_94bc2bd2a67921 110
+  s_08fccf4b5fc5e9::t_8071a5ad3f0618 51
+  s_08fccf4b5fc5e9::t_0961ba608d83be 156
+  s_08fccf4b5fc5e9::t_b552a575db24b3 152
+  s_08fccf4b5fc5e9::t_3c93f041613b74 50
+  s_08fccf4b5fc5e9::t_b57a2b9f9df772 179
+  s_08fccf4b5fc5e9::t_ff41a7d143c21d 58
+  s_08fccf4b5fc5e9::t_fbeb3f0d1b3285 690
+  s_08fccf4b5fc5e9::t_7c402bcd6611f0 187
+  s_08fccf4b5fc5e9::t_ebb30cf0121c26 37,39,41,43
+  s_08fccf4b5fc5e9::t_c5f07c48cd9dbf 153
+  s_08fccf4b5fc5e9::t_e7d4b1382f7b6d 643
+  s_08fccf4b5fc5e9::t_bfaff308031a81 74
+  s_08fccf4b5fc5e9::t_0652d73831ba64 111
+  s_08fccf4b5fc5e9::t_e4eed97f061302 125,136
+  s_08fccf4b5fc5e9::t_531b621d5cd327 154
+  s_08fccf4b5fc5e9::t_8a2f2ab6161cb4 67
+  s_08fccf4b5fc5e9::t_6df331f345b539 180
+  s_08fccf4b5fc5e9::t_0cb096909ed782 101
+  s_08fccf4b5fc5e9::t_dff9ec90106ce1 49
+  s_08fccf4b5fc5e9::t_b6bb01ab38b191 155
+  s_08fccf4b5fc5e9::t_4f5a8fa809ce5f 167
+  s_08fccf4b5fc5e9::t_6674d465743ba3 66
+  s_08fccf4b5fc5e9::t_fd73722e3b866d 159
+packages/@n8n/instance-ai/src/tools/search-models.tool.ts
+  s_08fccf4b5fc5e9::t_5a234109123476 14-16
+  s_08fccf4b5fc5e9::t_d8681aedfd0765 18
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_08fccf4b5fc5e9::t_0722806a87510b 221
+  s_08fccf4b5fc5e9::t_316374ee9319ef 78
+  s_08fccf4b5fc5e9::t_1a1876bf30b521 85,87,89-91,94-95
+  s_08fccf4b5fc5e9::t_3c3cdaec39cbc2 119
+  s_08fccf4b5fc5e9::t_ac12d359bf6c56 224-225
+  s_08fccf4b5fc5e9::t_ba6202bdbe5e34 131-132
+  s_08fccf4b5fc5e9::t_5b701e97c8383d 138-141
+  s_08fccf4b5fc5e9::t_4bd718d736dbf4 126
+  s_08fccf4b5fc5e9::t_049f53fa38b20e 148-149
+  s_08fccf4b5fc5e9::t_f516a01e6f546c 80
+  s_08fccf4b5fc5e9::t_d45119ee1654ed 102-104,106-107
+packages/@n8n/instance-ai/src/tools/orchestration/get-session.tool.ts
+  s_08fccf4b5fc5e9::t_0e8ebe6c950e39 26
+  s_08fccf4b5fc5e9::t_ae69777e0cd1de 42-45
+packages/@n8n/instance-ai/src/tools/workflows/write-sandbox-file.tool.ts
+  s_08fccf4b5fc5e9::t_3697f70bf15df7 20,26-27
+packages/@n8n/instance-ai/src/tools/orchestration/select-agent.tool.ts
+  s_08fccf4b5fc5e9::t_9254fdbd716433 46-47
+  s_08fccf4b5fc5e9::t_ca1faf71ffb561 78-79
+  s_08fccf4b5fc5e9::t_7e29a7a30d5f54 85
+  s_08fccf4b5fc5e9::t_98a3e52e328559 62-65
+  s_08fccf4b5fc5e9::t_cd21641b68f4c5 74
+  s_08fccf4b5fc5e9::t_c8864d4c7768dc 319-324
+  s_08fccf4b5fc5e9::t_02d9c0924c2aee 53-56
+  s_08fccf4b5fc5e9::t_78975927e7553e 36-40
+packages/@n8n/instance-ai/src/agent/credential-guardrails.prompt.ts
+  s_08fccf4b5fc5e9::t_9d4e08a8fce9dc 2,5,8
+packages/@n8n/instance-ai/src/tools/workspace.tool.ts
+  s_08fccf4b5fc5e9::t_f6abe5c2f18703 34
+  s_08fccf4b5fc5e9::t_bed2b76d66fb76 43
+  s_08fccf4b5fc5e9::t_8658e003f32a3c 56
+  s_08fccf4b5fc5e9::t_0de14a2ebadfcd 40
+  s_08fccf4b5fc5e9::t_9d69dd4c4016be 67
+  s_08fccf4b5fc5e9::t_41a50f9a46332f 30
+  s_08fccf4b5fc5e9::t_570db8b84e2081 84
+  s_08fccf4b5fc5e9::t_ba944035740fdf 66
+  s_08fccf4b5fc5e9::t_f9fcfc73b3da50 93
+  s_08fccf4b5fc5e9::t_74994ec012bff7 61
+  s_08fccf4b5fc5e9::t_4429f536f87c2e 49
+  s_08fccf4b5fc5e9::t_ddc32e665e0869 396
+  s_08fccf4b5fc5e9::t_3d27e28e65aaa7 89
+  s_08fccf4b5fc5e9::t_5096cb0d338fac 72
+  s_08fccf4b5fc5e9::t_97d08cb9a5db0e 76
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_08fccf4b5fc5e9::t_3697f70bf15df7 26-27,35-36
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_08fccf4b5fc5e9::t_24d3c15f5de76c 58,62,86,90-94,96,134,136-138,140,154,161,163-166,168,175,184,195,209,218,220,224,235
+  s_08fccf4b5fc5e9::t_df3ca28f855f8f 39,49,52,237,261,276,278-279,285,288,290,294,308,310
+packages/@n8n/instance-ai/src/tools/workflows/materialize-node-type.tool.ts
+  s_08fccf4b5fc5e9::t_3697f70bf15df7 59-60,62
+packages/@n8n/instance-ai/skills/data-table-manager/references/data-table-playbook.md
+  s_08fccf4b5fc5e9::t_81c6850f690236 9,14,19,21,23,25-27,44,58,73,87,98,102,105,107-111,113-117,119,127,134,144,172-188
+packages/@n8n/instance-ai/skills/workflow-builder/references/compositional-workflows.md
+  s_08fccf4b5fc5e9::t_987ee5c7cbb9b7 10,12,14,16-18,20-25,68-70
+packages/@n8n/instance-ai/skills/workflow-builder/references/config-eval-playbook.md
+  s_08fccf4b5fc5e9::t_bac1a646cad238 10,16,18-20,25,27,35-36,38,40-42,44-45,49,62,83,87,110-113,117
+packages/@n8n/instance-ai/skills/workflow-builder/references/config-evals.md
+  s_08fccf4b5fc5e9::t_76b15e168bc8b3 17,19,23-28,33-36,41,43-46,48-52,56-58,60-62,64,66-70,73-74,76-80,84-88,93-94,96-98,102-108,112-113
+packages/@n8n/instance-ai/skills/workflow-builder/references/credential-recipe-research.md
+  s_08fccf4b5fc5e9::t_23d7142f4fc082 16,18,22,26,28-32,36,44-47,51
+packages/@n8n/instance-ai/skills/workflow-builder/references/credential-setup-with-computer-use.md
+  s_08fccf4b5fc5e9::t_3d35a9b046579d 22,26-30,34-39,43-48,52
+packages/@n8n/instance-ai/skills/workflow-builder/references/error-workflows.md
+  s_08fccf4b5fc5e9::t_d3d9590f0234f9 10,18,20,22,24-31,33-34
+packages/@n8n/instance-ai/skills/workflow-builder/references/model-selection.md
+  s_08fccf4b5fc5e9::t_148c9b905766ef 27,29-31,33-36,40-54,56-58,60-66,68-72,74-76,80-82,84-88,90-94
+packages/@n8n/instance-ai/skills/workflow-builder/references/one-off-operations.md
+  s_08fccf4b5fc5e9::t_9a708e166b5264 22,24,28-34,38-55,59-63,67,69,71-72,76
+packages/@n8n/instance-ai/skills/workflow-builder/references/post-build-flow.md
+  s_08fccf4b5fc5e9::t_8ffb5ef80a7d18 17,19,21,23,27-36,40,44-45,49,51-52,54-55,59-68,95,97,101-110,114-139,143-152,157,173-178,215-221,229-249,253-257,261-275,279-296,300-309
+packages/@n8n/instance-ai/skills/workflow-builder/references/trigger-input-data-shapes.md
+  s_08fccf4b5fc5e9::t_efb69944ddc3ab 10,14,18,26,30,34
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_08fccf4b5fc5e9::t_ba456e1a19356a 14,17-21,29,40-44,49-50,56-58,60,76,79-83
+packages/@n8n/instance-ai/src/tools/activity.tool.ts
+  s_08fccf4b5fc5e9::t_e980a16532937e 22-23,28-29,36,40,75-79
+packages/@n8n/instance-ai/src/tools/agent-context.tool.ts
+  s_08fccf4b5fc5e9::t_cfda57f606809f 16,90-95
+packages/@n8n/instance-ai/src/tools/attachments/parse-file.tool.ts
+  s_08fccf4b5fc5e9::t_78e48073e77c3e 48,52,57,66,73,159-167
+packages/@n8n/instance-ai/src/tools/conversation-history.tool.ts
+  s_08fccf4b5fc5e9::t_f3b6552515815e 21,28,37,47,55,64,167
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  s_08fccf4b5fc5e9::t_dfc69a7411fcd0 33,39-41,46,56-57,63-64,70-71,73,82,84,88,100,109,111-112,119,125,132,296-300
+packages/@n8n/instance-ai/src/tools/n8n-docs/schemas.ts
+  s_08fccf4b5fc5e9::t_be022d46cfc1df 19,21,26,31,37,47,53,59,67,72,82,90
+packages/@n8n/instance-ai/src/tools/save-user-preference.tool.ts
+  s_08fccf4b5fc5e9::t_bfa8fd15e1b9aa 19,23,41,48,53
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_08fccf4b5fc5e9::t_f9b9921fe9b543 12,20,24,38-39,51,53-54,56-60,62,64
+packages/@n8n/instance-ai/src/tools/shared/leave-onboarding.tool.ts
+  s_08fccf4b5fc5e9::t_a8ee3dbe63527e 16,18-19,29
+packages/@n8n/instance-ai/src/tools/task-control.tool.ts
+  s_08fccf4b5fc5e9::t_7aa5abe521c80b 32,38,43,47
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_08fccf4b5fc5e9::t_a80e70b9bfd0ac 90,93,98,101,111,114,117,128,135,151,171-175,182,206,208,220,222,227-228,232-233,240,242,251,257,263,269-272,274,280,286,294,296,310,316-317,324-325,331-332,336-337,341-342,351-352,354,361-362,364-365,463
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_503faa863d3ace::t_aa959bca6b1e37 4-9,25,29,31,33,37,39,41-45,47,49,53,55,57-59,61,63,65,69-75,79,81-83,87,89,91-94,96,100,102,104,106,108,110,112,114,118-133,137,139-145,163-181,185-195,199-203,213-216,220-225,229,241,243,247-253,259,263-264,266,268,270,272,276-278,285-288,293,299,302,306,309-310,312-313,315,321-322,326,328-331,333,337-341
+packages/@n8n/instance-ai/skills/data-table-manager/SKILL.md
+  s_503faa863d3ace::t_d5dbe2ba571cb2 4-10,21,23,25,27,31-36,40-48,52,54-59,61,65-72,76-80,84,88-89,93-95,99
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_503faa863d3ace::t_4f02bda119fbec 4-8,15,19,23-32,36,38,40-41,43,47,51,55,61,63,67-77,81,83-84,87,89,91,95,97-101,103,111-117,121
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  s_503faa863d3ace::t_b73172a839125c 4-7,16,22,26,30,32,34,38,40,42,46,48,50,56-60,67,69,73,77-81
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_503faa863d3ace::t_ae29fadb5f449c 4-14,20-22,26-27,29,31-33,39,41-42,44-53,55-62,64-66,69,71,73-74,78-79,81,85,88,90-93,96,99-100,105-107,109-115,117-119,121,123-128,130-134,136,138-144,146-154,160-170,173-174,176-179,185-190,194-203,207,209-211,213-230,233-242,245-254,257-260,265-270,277,281,285-286,289,294-295,302,306,309,311-313,317-318,321-322,325-326,329-330,337,339,344,348-353,355-356,358-359,362-367,369-372,375-376,380,382-385,387,389,391-395,397-413,415-418,420-425,429,438-443
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  s_503faa863d3ace::t_89ce96ff5a20b5 4-7,15,19-22,26-29,33
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_503faa863d3ace::t_7e6b25b7d7a473 5-7,19-21,25,27,31-35,38,40-41,45-49,53-54,57,59,61-62,65,69-72,76-77,79-84,86-92,96,98-99
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_503faa863d3ace::t_5f68f06c8e40b3 7-12,25,27,31,33-36,39,43,45,49,53-61,66-77,81-90,94,96,98,102,104
+packages/@n8n/instance-ai/skills/progressive-building/SKILL.md
+  s_503faa863d3ace::t_d995fa07f55039 10-18,22,24,28-31,33,35,42-50,53,55,59,61-62,64-65,69-70,72
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_503faa863d3ace::t_09c90728f0eae3 4-8,17-18,21-23,25-34,36-40,44-53,58-59,66-72,74,76,78-80,83,86,91-92,96,98,100,104-110,113-119,123-127,129-137
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_503faa863d3ace::t_7832055207e401 4-17,35-42,46,48,50,54-60,64,68-69,73,76-80,91-100,104,108-109,114,117-119,121,123-125,127-128,130-136,138-154,157-165,167-169,171-177,180-189,192,201,210,214,217-221,223-244,248-252,254,256-259,261-271,273,275-277,306,308,310-315,317-320,324,326-330,332,334,337,339,341-343,345-348,350,354-360,365,373,376-385,389,391-399,401,403,407,411-417,421,426,428-430,432-439,443,445-474,476,478-493,499,501,535,539,541-544,546-550,553-554,557,568,571-574,576-578,580-581,583-602,606,612-619,623,625-626,629,634,642,649,653,671,673,690,718,727,729,731,733,735-740,744-750,752,758,760,763-767,778-779,782,786-789
+packages/@n8n/instance-ai/src/agent/computer-use-prompt.ts
+  s_270ad0505a4308::t_b0017010af8f6a 25,31,35-36,42,56,58,65,70,81,87,93,139,144,147,149,157,159,167,170-171,175,214,218,221-222,224,228,230,234,238,242-243,248,253,265
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_270ad0505a4308::t_ee25f2d8743955 11-14,17,20,24,31
+packages/@n8n/instance-ai/src/agent/sub-agent-factory.ts
+  s_503faa863d3ace::t_8c151cf5c39c23 17,20-24,29,46
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_503faa863d3ace::t_bd3559dd69a5e6 58,63-64,69,79,84,89,95,101,108,327,334,342,348,357,359,366,372,378,388,396,403,409,414,419,425,441,447,452,460,467,570,574
+packages/@n8n/instance-ai/src/tools/data-tables.tool.ts
+  s_b191b6debab077::t_2802f5c4eca6fc 107-108,111,114,117,176,184,186,195-196,198,202-203,209-210,216,231-232,238-239,247-248,256-257,266-267,274,278-279,289-290,875,879,881
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_b191b6debab077::t_f9d6a8b042349b 34-42,49,56-58,64,71-73,75-77,83-84,87,96,103-108,110-113,117,122-125,131-136,143-146,149,156,163-164,174,177-178,185,192-195,199,211,215,573-583
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.ts
+  s_503faa863d3ace::t_ffc2aec2204b05 30,45,99-100,102-103
+packages/@n8n/instance-ai/src/tools/models/schemas.ts
+  s_503faa863d3ace::t_92eab29aeb5605 11,19,21
+packages/@n8n/instance-ai/src/tools/n8n-docs.tool.ts
+  s_503faa863d3ace::t_ce47555b90403d 229
+packages/@n8n/instance-ai/src/tools/research.tool.ts
+  s_503faa863d3ace::t_e7b1f29be50efa 42,53,61-62,70,252-256
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_502dcc3285b5d2::t_3177e9a97804b9 76,78,80,82,85-88,90,112,425,442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a2015c343ed9f0514401d548cba9f9ee8cd3585",
+  "prompts": {},
+  "sessions": {
+    "s_08fccf4b5fc5e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62afc75-8662-48ae-b8e6-522033c7b295",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_270ad0505a4308": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0ea06cc5b6f2d136",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_502dcc3285b5d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a73552fefadc85c17",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_503faa863d3ace": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6b77d0a93bc5a66c",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_b191b6debab077": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a55e5234acecd43ef",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

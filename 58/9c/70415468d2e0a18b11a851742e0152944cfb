@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_9a6001e67297f0::t_80e20563184827 154-155
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewMoreMenu.vue
+  s_9a6001e67297f0::t_80e20563184827 126,143-144
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9a6001e67297f0::t_80e20563184827 1498
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_9a6001e67297f0::t_80e20563184827 41
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_9a6001e67297f0::t_7de754d494c494 105-106
+  s_9a6001e67297f0::t_80e20563184827 122-124
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  ai_agent 392
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_9a6001e67297f0::t_4f342bec9c37d1 54
+  s_9a6001e67297f0::t_c0c1d8f6393edd 428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "589c70415468d2e0a18b11a851742e0152944cfb",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

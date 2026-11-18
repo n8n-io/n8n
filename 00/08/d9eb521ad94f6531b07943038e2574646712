@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/src/agent/sub-agent-factory.ts
+  s_7a47acdbef1432::t_5dfd0e345759fb 5-9,65
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-descriptions.test.ts
+  s_7a47acdbef1432::t_2444ce5839be5f 78-86,88-89
+  s_7a47acdbef1432::t_a8c273fc8582e3 87
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-schemas.test.ts
+  s_7a47acdbef1432::t_2444ce5839be5f 11,805-818,820,822-843
+  s_7a47acdbef1432::t_ff37bdec5fd4f2 819,821
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-descriptions.ts
+  s_7a47acdbef1432::t_5dfd0e345759fb 76-81
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  s_7a47acdbef1432::t_fa05d7983b54b0 819,850,878
+  s_7a47acdbef1432::t_ff4d2682d549dc 35-42,48,100,214-225,230-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0008d9eb521ad94f6531b07943038e2574646712",
+  "prompts": {},
+  "sessions": {
+    "s_7a47acdbef1432": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3308da59-b150-4b40-8e42-27e8b776ee8b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

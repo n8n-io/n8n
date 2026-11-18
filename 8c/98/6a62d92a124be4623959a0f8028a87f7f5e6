@@ -1,0 +1,33 @@
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_792a0f97fdfd9e::t_add1d25e243654 463-467
+  s_792a0f97fdfd9e::t_cdf287db586c9d 492-495
+  s_31a8c1e12539d5::t_bd3eb08d33080e 518-519
+  s_792a0f97fdfd9e::t_3944a306174358 489
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_31a8c1e12539d5::t_a5cd4bcc26ae4e 568,582
+  s_31a8c1e12539d5::t_97457154d38dab 499,555-558,564,578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c986a62d92a124be4623959a0f8028a87f7f5e6",
+  "prompts": {},
+  "sessions": {
+    "s_31a8c1e12539d5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eda79-7e7e-7c10-975d-9aa2bb03177c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_792a0f97fdfd9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41a7e29a-5848-4306-ac91-5c61be202bed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

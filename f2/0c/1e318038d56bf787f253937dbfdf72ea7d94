@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Npm/DistTagDescription.ts
+  s_2e1fa95fc44f8f::t_a0a481e8c5fbc1 25,37
+packages/nodes-base/nodes/Npm/PackageDescription.ts
+  s_2e1fa95fc44f8f::t_bbc8b903387476 31,43
+packages/nodes-base/nodes/Npm/test/Npm.paths.test.ts
+  s_2e1fa95fc44f8f::t_46215b185a4876 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f20c1e318038d56bf787f253937dbfdf72ea7d94",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.test.ts
+  s_a1d66d64c63009::t_3c98c37ab93b97 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "211483be228586c435c660edd7a48119bb87a6c1",
+  "prompts": {},
+  "sessions": {
+    "s_a1d66d64c63009": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae3047a3-60ee-4c59-bccd-2836cb5cb5ae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

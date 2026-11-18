@@ -1,0 +1,30 @@
+packages/cli/src/modules/insights/insights-task-schedule.ts
+  s_803afaa869a96f::t_0fdf395df26f51 1-2,9-13
+  s_803afaa869a96f::t_9afde2e997d5ef 3-8,14
+packages/cli/src/modules/insights/__tests__/insights-task-schedule.test.ts
+  s_803afaa869a96f::t_bc302a1f3ff611 1-20
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  s_803afaa869a96f::t_9afde2e997d5ef 6-19
+packages/cli/src/modules/insights/insights.config.ts
+  s_803afaa869a96f::t_e21506b47e4b7e 2,6-8,15,64
+packages/cli/src/modules/insights/__tests__/insights.config.test.ts
+  s_803afaa869a96f::t_bc302a1f3ff611 1-42
+packages/cli/src/modules/insights/insights-compaction.task.ts
+  s_803afaa869a96f::t_9afde2e997d5ef 6-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "71128f92a4465c2ee9c00cbf760bd94cae8478ba",
+  "prompts": {},
+  "sessions": {
+    "s_803afaa869a96f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "788c41fd-50e2-47ca-b30b-059fdbe16a86",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/quality/testing/playwright/tests/infrastructure/public-api/rate-limit-multi-main.spec.ts
+  s_925dcfedebf0c9::t_81f2338f9d45a8 23,34
+  s_925dcfedebf0c9::t_76964e97dc7b8e 1-22,24-27,31-33,35-40
+  s_925dcfedebf0c9::t_9a8e12e518868e 28-30
+packages/quality/testing/playwright/services/public-api-helper.ts
+  s_925dcfedebf0c9::t_ab9930e9e5986f 114-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "12f9ed2ed5b5b7020e0d27fb90a3236dd9251cc7",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

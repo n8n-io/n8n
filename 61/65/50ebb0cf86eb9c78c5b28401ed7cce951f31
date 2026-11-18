@@ -1,0 +1,25 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  s_c097b7e143f3b4::t_b8633a0a72964a 22-24
+  s_c097b7e143f3b4::t_6b4f104ac259f2 6,10
+  s_c097b7e143f3b4::t_bc991547dba06e 2-5,8,11-21,25-37,42-104,106-133
+  s_c097b7e143f3b4::t_e03da39de51d3d 7,9
+  s_c097b7e143f3b4::t_1a2777eb18ebd0 38-41
+  s_c097b7e143f3b4::t_5feb71f724e405 105
+  s_c097b7e143f3b4::t_0226c51af531f7 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "616550ebb0cf86eb9c78c5b28401ed7cce951f31",
+  "prompts": {},
+  "sessions": {
+    "s_c097b7e143f3b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5564695b-8e03-4262-96da-bc5753f4201d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

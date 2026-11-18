@@ -1,0 +1,94 @@
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.utils.test.ts
+  s_101f7a45efba1a::t_3bfde20e31ea3a 63-65
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 16,29,42,62,66-68,122,125-126,128,131-132
+  s_101f7a45efba1a::t_b9cd56b0596d9e 121,123-124,127,129-130,133-135
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_101f7a45efba1a::t_96e15a206b4708 57,59-63,65-66,73
+  ai_agent 67-72
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 58,64
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 45
+  s_101f7a45efba1a::t_024ff02f566be5 42-44
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 25,36,57
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_101f7a45efba1a::t_802fd79993e46e 117
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 77,116,405
+  ai_agent 118-119
+docs/generated/postgres-schema/README.md
+  ai_agent 66,928
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/createGitConnection.generated.yml
+  ai_agent 44-45
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/gitConnections.utils.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 18,26,71-72
+  s_101f7a45efba1a::t_d97261b960e21d 73-74
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_101f7a45efba1a::t_f841a3fe88908d 76-84,86-89,91,93-94,96-97
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 75,85,90,92,95
+docs/generated/postgres-schema/public.git_connection.md
+  ai_agent 19,36,65
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/views/GitConnectionsView.test.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 56,139
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/getGitConnections.generated.yml
+  ai_agent 49-50,65
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 3679-3680
+  s_d8c2d163d3a1a0::t_f7531a23fa5444 3678
+docs/generated/postgres-schema/public.git_connection_project.md
+  ai_agent 58
+docs/generated/sqlite-schema/git_connection_project.md
+  ai_agent 66
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+  ai_agent 49-50
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 59,154,168,251,253
+  ai_agent 160-162,170-172,255-257
+  s_101f7a45efba1a::t_62628e2dec5d8f 250,252,254,258-259
+  s_101f7a45efba1a::t_c943ceaa97df5c 155-159,163-167,169,173-174
+docs/generated/sqlite-schema/git_connection.md
+  ai_agent 9,30,37-40,70
+packages/@n8n/db/src/migrations/common/1787826404992-AddRequireBranchForPromotionToGitConnection.ts
+  ai_agent 6-8,15-17
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 1-5,9-14,18-26
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/components/GitConnectionDialog.vue
+  s_d8c2d163d3a1a0::t_4d295c43b5f265 467
+  s_d8c2d163d3a1a0::t_887b28462c48f0 474-475,477-478
+  s_d8c2d163d3a1a0::t_f0f07644bb6197 542,544-545
+  h_760178ed151f13 543
+  s_d8c2d163d3a1a0::t_bc90ee5a312140 61,159,469-470,472,476
+  s_101f7a45efba1a::t_974014ebcb0e1d 16
+  s_101f7a45efba1a::t_1ad7e05c79abdf 468,471,473,479-480
+docs/generated/sqlite-schema/README.md
+  ai_agent 66,915
+packages/cli/src/public-api/v1/shared/spec/schemas/gitConnectionPublicDto.generated.yml
+  ai_agent 29-30,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b14a88ecdff7ccf87685086928ce73b65ea92b08",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_101f7a45efba1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93ccf2db-bd52-443e-bb62-7e6dec459517",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_d8c2d163d3a1a0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "23333e77-640b-4412-888f-aed84f03846a",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+spike/ligo-1006/decisions.md
+  ai_agent 1-31
+spike/ligo-1006/evidence.md
+  ai_agent 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f634a954c139845bbfef91aae6ba11a5248d4ca",
+  "prompts": {}
+}

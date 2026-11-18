@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/agentReturnContext.store.test.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 1-22
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentNavigation.test.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 1-66
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_e137a89fdcfc31::t_40eb786a9e8543 788
+packages/frontend/editor-ui/src/features/agents/components/BackToWorkflowBanner.vue
+  s_e137a89fdcfc31::t_40eb786a9e8543 1-45
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  s_e137a89fdcfc31::t_40eb786a9e8543 4-8,12-24,29-47,52
+packages/frontend/editor-ui/src/features/agents/composables/useAgentNavigation.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 1-44
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_e137a89fdcfc31::t_40eb786a9e8543 1508
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 6,8,13,255-279
+packages/frontend/editor-ui/src/features/agents/agentReturnContext.store.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 1-28
+packages/frontend/editor-ui/src/features/agents/__tests__/BackToWorkflowBanner.test.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 1-20
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 3-7,125-137,158
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentView.test.ts
+  s_e137a89fdcfc31::t_40eb786a9e8543 1-92
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 5408,6577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4150052f4ef097bab5f7572bd7da87ab498270a6",
+  "prompts": {},
+  "sessions": {
+    "s_e137a89fdcfc31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33f13626-a118-4440-94ab-5be5f04a201c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

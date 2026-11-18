@@ -1,0 +1,72 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 136,139-140
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 527-532,534-545,549-552,556-558,586-593,595-596,598-616
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e99de54a53d3e4::t_4b9af8f74032f0 662,666-671
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 581,589,594,599,601-602,606,611,616,627
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 22-28,66
+  s_e99de54a53d3e4::t_d94d5e8f733254 36
+  s_e99de54a53d3e4::t_4b9af8f74032f0 37-39
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 358-359,387-388,416,564-567,637
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 231,274,292
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_e99de54a53d3e4::t_0543b705854fdf 201-202,710-716,722-724,731-732
+  s_e99de54a53d3e4::t_45374e2cdb884a 720-721,726-727
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 173,191
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 318-319
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_e99de54a53d3e4::t_d94d5e8f733254 43
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 166
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 637
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 20
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  s_e99de54a53d3e4::t_d94d5e8f733254 24
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_e99de54a53d3e4::t_d94d5e8f733254 421,456
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 182
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryModelSetting.test.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 153-165,167-169,172-176,181-184,187-188,192-193,198-199,203
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 161
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 595
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e99de54a53d3e4::t_4b9af8f74032f0 343,356,363
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_e99de54a53d3e4::t_4b9af8f74032f0 11-13,52,58,63,66-67,71
+  s_e99de54a53d3e4::t_45374e2cdb884a 14-47
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 65
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 352
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_e99de54a53d3e4::t_95cc72e2e8b6d1 692,695,701,709,735,737-739
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_e99de54a53d3e4::t_4b9af8f74032f0 1220,1223-1224,1258,1265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b3a0a65997a785a05f114a912b361cbff22dc23",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

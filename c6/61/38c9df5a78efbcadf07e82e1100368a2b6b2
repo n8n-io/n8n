@@ -1,0 +1,50 @@
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_e2203a10d11968::t_4816f5f7b6cb80 120-131,137-170
+  s_e2203a10d11968::t_da2bcfb17287ad 2-3,5,7,20-21,23,25-26
+  s_e2203a10d11968::t_d77c5c881aadb8 132-136
+packages/cli/test/integration/public-api/users.ee.test.ts
+  s_e2203a10d11968::t_a5eb6d4d2e6873 318-336
+packages/cli/src/public-api/v1/controllers/__tests__/users.public.controller.test.ts
+  s_e2203a10d11968::t_409c94f39b1285 163-186,188-212
+  s_e2203a10d11968::t_b24e04696e67f7 187
+  s_e2203a10d11968::t_1a03a762078f04 1-7
+packages/@n8n/api-types/src/dto/invitation/invite-users-request.dto.ts
+  s_e2203a10d11968::t_c759865f93692e 4
+packages/@n8n/api-types/src/dto/user/create-users-public.dto.ts
+  s_e2203a10d11968::t_918bfdd4a2a2d8 1-32
+packages/@n8n/api-types/src/dto/index.ts
+  s_e2203a10d11968::t_81512d772759c0 117-118
+packages/@n8n/api-types/src/dto/user/__tests__/create-users-public.dto.test.ts
+  s_e2203a10d11968::t_53d9395403c21b 1-76
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_e2203a10d11968::t_53272ac53b70c6 217,220
+packages/@n8n/api-types/src/dto/user/__tests__/delete-user-query-public.dto.test.ts
+  s_e2203a10d11968::t_43cf45cfea002b 1-21
+packages/@n8n/api-types/src/dto/user/delete-user-query-public.dto.ts
+  s_e2203a10d11968::t_0110dd72190aba 9
+  s_e2203a10d11968::t_7bb862918aa293 1-8,10-11
+packages/cli/src/public-api/v1/handlers/users/spec/paths/changeRole.generated.yml
+  s_e2203a10d11968::t_43f2751da451f9 1-47
+packages/cli/src/public-api/v1/handlers/users/spec/paths/createUser.generated.yml
+  s_e2203a10d11968::t_fad551ef9b9a79 1-36,49-50,53-54,57-58,61-71,74-86
+packages/cli/src/public-api/v1/handlers/users/spec/paths/deleteUser.generated.yml
+  s_e2203a10d11968::t_5088e37cb8259f 1-12,14-33
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e2203a10d11968::t_f41d4e09ec4a6f 186-187,191-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c66138c9df5a78efbcadf07e82e1100368a2b6b2",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

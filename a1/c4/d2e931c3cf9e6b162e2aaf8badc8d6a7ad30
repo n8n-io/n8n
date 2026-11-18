@@ -1,0 +1,31 @@
+packages/cli/src/services/__tests__/canvas-only-personal-space-role.service.test.ts
+  s_fa9aee632bdcc1::t_a26f09a9716b9a 94,99-103,113-120,122-127,129-143,153,155-156,158,170,200,226-230
+  s_fa9aee632bdcc1::t_ecb2f2a585f64c 121
+  s_fa9aee632bdcc1::t_a100f444f5d89a 31
+  s_fa9aee632bdcc1::t_d39c9eb7f5ba5c 220-225
+  s_fa9aee632bdcc1::t_4ca9b1630f2159 144-146
+  s_fa9aee632bdcc1::t_5510be8a6de29d 157
+  s_fa9aee632bdcc1::t_04adaa10741f8a 171-172
+  s_fa9aee632bdcc1::t_96889c2ede99df 231-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a1c4d2e931c3cf9e6b162e2aaf8badc8d6a7ad30",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fa9aee632bdcc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "839f7e69-e3de-4cec-ae5d-0a19810f21fe",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

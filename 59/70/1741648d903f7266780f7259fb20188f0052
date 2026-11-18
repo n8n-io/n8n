@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_efe13d0da6aa55::t_07569c9ceed69e 530
+  s_efe13d0da6aa55::t_1928ceff0b7812 816
+  s_efe13d0da6aa55::t_6375f11d4da342 200-208
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_efe13d0da6aa55::t_d45ed1d6661585 822-826,839-847
+  s_efe13d0da6aa55::t_c9aa36dd2f8021 759-766,772-790
+  s_efe13d0da6aa55::t_1874f528f6a27d 5
+  s_efe13d0da6aa55::t_260b0c227b66cb 767-771
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "59701741648d903f7266780f7259fb20188f0052",
+  "prompts": {},
+  "sessions": {
+    "s_efe13d0da6aa55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d0980d1-b27b-4ac5-bf59-b0ba7ff2d542",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

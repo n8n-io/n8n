@@ -1,0 +1,29 @@
+packages/nodes-base/credentials/test/MicrosoftEntraServicePrincipalApi.credentials.test.ts
+  s_aecb2bc701cf23::t_98abc091ad2afb 231-234,238
+  s_aecb2bc701cf23::t_fdd2350231f827 76-81
+  s_aecb2bc701cf23::t_ec0fae5f5b9cc8 137
+  s_aecb2bc701cf23::t_6683888176b97d 181-228,321
+  s_aecb2bc701cf23::t_9eef2751d33a4f 314-317,319-320
+  s_aecb2bc701cf23::t_90afbd4cd47eef 8,10
+  s_aecb2bc701cf23::t_fdb2a58f34125c 290,298-302
+packages/nodes-base/credentials/MicrosoftEntraServicePrincipalApi.credentials.ts
+  s_aecb2bc701cf23::t_f3db6d0e707d06 58
+  s_aecb2bc701cf23::t_d785eb1463e856 200-201,203
+  s_aecb2bc701cf23::t_cbb6792e85246d 90-95,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "59968cc02ce293eb829934a31827e1680b1543e8",
+  "prompts": {},
+  "sessions": {
+    "s_aecb2bc701cf23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20a0526b-771f-4d10-a665-5c541b287fa5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

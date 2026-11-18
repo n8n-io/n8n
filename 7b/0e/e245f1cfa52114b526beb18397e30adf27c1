@@ -1,0 +1,30 @@
+packages/cli/src/modules/promotions.ee/promotion-connections.service.ts
+  s_01a1b75be666ca::t_74d76312fb612a 10,289-292
+packages/@n8n/api-types/src/dto/index.ts
+  s_01a1b75be666ca::t_74d76312fb612a 610
+packages/@n8n/api-types/src/dto/promotions/promotion-config.dto.ts
+  s_01a1b75be666ca::t_74d76312fb612a 94,142-143,146-147
+packages/@n8n/api-types/src/dto/promotions/promotion-connection.dto.ts
+  s_01a1b75be666ca::t_74d76312fb612a 145
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-config.dto.test.ts
+  s_01a1b75be666ca::t_74d76312fb612a 2,6-7,16-22,100-101,116-149
+  s_01a1b75be666ca::t_00963c214dd5e2 150
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_01a1b75be666ca::t_74d76312fb612a 8,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b0ee245f1cfa52114b526beb18397e30adf27c1",
+  "prompts": {},
+  "sessions": {
+    "s_01a1b75be666ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b10d-df52-7862-9ee4-e5b4d43b0c0d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

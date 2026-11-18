@@ -1,0 +1,35 @@
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_4e1d9d30aa7128::t_7d685fc40fa61c 60
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_4e1d9d30aa7128::t_b50db256865b5d 58
+packages/cli/src/modules/agents/__tests__/observation-log-reflector.test.ts
+  s_4e1d9d30aa7128::t_a19481dce120ea 9
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_4e1d9d30aa7128::t_827755b5f7b191 68-69
+  s_4e1d9d30aa7128::t_e4c58d67a44e8f 148-149
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_4e1d9d30aa7128::t_ab6f5b00dba1e9 20-22,24-28
+packages/cli/src/modules/agents/__tests__/observation-log-observer.test.ts
+  s_4e1d9d30aa7128::t_d3bce228bc9043 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9097a8ae6f02b7bc93d7d07f8ecac02155a64c20",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4e1d9d30aa7128": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3e0e62e3-e14c-4052-8a73-443a0512af7d",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  ai_agent 1-33
+packages/cli/src/modules/instance-registry/__tests__/check.service.test.ts
+  ai_agent 53,124,138-162
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  ai_agent 5,8,10,14,17-22,25-27,29,31-32,35-36,38,40-42,45-47,49
+packages/cli/src/modules/instance-registry/instance-registry.module.ts
+  ai_agent 32-37
+packages/cli/src/modules/instance-registry/checks/check.service.ts
+  ai_agent 12,23-26,137-143
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  ai_agent 1-41
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  ai_agent 2-4,9-15,17-24,35-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a476256b34002ab3c995db143c7a77ca6e1c4ed2",
+  "prompts": {}
+}

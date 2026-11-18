@@ -1,0 +1,109 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  s_03de115502a89c::t_73802d266717b7 165,209,213-215,235,285,288,290
+  s_03de115502a89c::t_37fad89b4e6a5c 22-24,89-94,99,101-103,109,111,128,155-156,204-205,207-208,261,291
+  s_2fe9aef19c6072::t_63cae12cce6806 19,33-38,48,50-56,113,115,118,160-162,171,173
+  s_236a6976ea50a8::t_b9dc28f051c845 12,14-15,227
+  s_2fe9aef19c6072::t_a4a94fcdc8b265 114,116,119,123,130-131,141-150,166-170,172
+  s_807c744a27eead::t_e54fc0d2d2e006 211
+  s_2fe9aef19c6072::t_8a88b50cb7e738 39-43,59-60,62-63,77,86,182-185
+  s_2fe9aef19c6072::t_8b55c7c3b7b58b 61,117
+  s_236a6976ea50a8::t_1ba7598829bdb1 13
+  s_2fe9aef19c6072::t_c7bc986deec10b 49
+  s_2fe9aef19c6072::t_798c555c99ef35 57-58
+  s_03de115502a89c::t_9fdd66ed00ecc0 126-127
+  s_03de115502a89c::t_5abcc6bd71606e 152-154
+  s_2fe9aef19c6072::t_3bbd7d5ee23d1b 181
+  s_03de115502a89c::t_f89a3c8e8a53d2 203
+  s_03de115502a89c::t_1e01d7899323eb 206
+  s_03de115502a89c::t_c3f9e753030f91 259-260
+  s_03de115502a89c::t_a5e3eb90e32e36 282-284
+  s_03de115502a89c::t_9538802460c11b 286-287
+  s_03de115502a89c::t_9a69ed49ff9fde 289
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/useAgentSetupTasks.ts
+  s_302f1435b5ca8b::t_d5350282fc7870 16,21
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/agentSetupTasks.registry.ts
+  s_236a6976ea50a8::t_56622e40313c56 19
+  s_236a6976ea50a8::t_cb80d6a57f3e65 45,47,111
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_236a6976ea50a8::t_97d7e7da565102 355,371,491
+  s_236a6976ea50a8::t_e6fb982a2e6951 370,372-373
+  s_5c36014312dc70::t_0dfe9c932acebb 356,374-377,386,408
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_236a6976ea50a8::t_ea536441acbad7 116,708-709,716-717
+  s_302f1435b5ca8b::t_3da4a939597e8e 688
+  s_5c36014312dc70::t_a3be94ca13ad41 707,718-721
+  s_236a6976ea50a8::t_980d19d8064096 710-715
+  s_236a6976ea50a8::t_ea277c1491bafe 696-701
+  s_5c36014312dc70::t_cb3bd11409cca6 722-724
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_5c36014312dc70::t_62b8daaa9a3132 9,64,89-94,243
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSetupTasks.test.ts
+  s_5c36014312dc70::t_c024c37ad7f691 1-21,25-92,95-98,125-126
+  s_2fe9aef19c6072::t_facefc0c226883 22-24,93-94,99-124
+  s_5c36014312dc70::t_24905ec1426bd8 127-129
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_5c36014312dc70::t_706234e4e85449 151-152
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_236a6976ea50a8::t_83d4b7ea9c0800 188-189
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_236a6976ea50a8::t_a0141535f75ab4 103,105-107
+  s_5c36014312dc70::t_ae2d7585eb4542 94,104,120-124
+  s_236a6976ea50a8::t_bb00392443cb75 127-128
+  s_236a6976ea50a8::t_68f740f5ad05f3 8,98-102,108-119,125-126,160,197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a07a5af16e8d282cbec23c8f2a64c6d6ae09cbff",
+  "prompts": {},
+  "sessions": {
+    "s_03de115502a89c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0edae-0e13-71a1-b7b5-59b817349c99",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_236a6976ea50a8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed80-00eb-74f9-ac8a-692d1f7b48e1",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2fe9aef19c6072": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed95-8ee7-71a1-b7b5-59b6f2804063",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_302f1435b5ca8b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed8a-e707-74f9-ac8a-692f25f19a61",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_5c36014312dc70": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ed97-b8a8-74f9-ac8a-693118e2acbf",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_807c744a27eead": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0edbb-4a9e-71a1-b7b5-59bb3e41b3d9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

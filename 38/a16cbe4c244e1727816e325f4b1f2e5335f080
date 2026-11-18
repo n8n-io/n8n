@@ -1,0 +1,48 @@
+packages/modules/ui-extensions/frontend/src/examples/servicesOverview.view.test.ts
+  s_6956ec5be81713::t_eedaed585d9c51 115-125
+  s_6956ec5be81713::t_7c8efa287c0b3a 26-38,42-43,46-56,60
+packages/modules/ui-extensions/backend/src/__tests__/ui-extension-views.service.test.ts
+  s_6956ec5be81713::t_25938107f5617b 381-396
+packages/modules/ui-extensions/frontend/src/examples/servicesOverview.view.js
+  s_6956ec5be81713::t_eedaed585d9c51 85-87
+  s_6956ec5be81713::t_46a2c088b04176 80-84
+packages/modules/ui-extensions/frontend/src/ui-extensions.builtin.ts
+  s_6956ec5be81713::t_46a2c088b04176 152
+packages/frontend/editor-ui/src/app/composables/useUiExtensionsHost.test.ts
+  s_6956ec5be81713::t_18e944bd8eb6c9 25-47,51-59
+packages/frontend/editor-ui/src/app/composables/useUiExtensionOverviewData.ts
+  s_6956ec5be81713::t_1418a4d961ebad 126
+  s_6956ec5be81713::t_0a1c00f8a33950 19-23,31-32,40-41,43-44,46-48,83-85
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6956ec5be81713::t_46a2c088b04176 5859
+packages/modules/ui-extensions/frontend/src/composables/useRemoveUiExtension.ts
+  s_6956ec5be81713::t_b0ec9629407186 3,30-31,36,63
+packages/frontend/editor-ui/src/app/composables/useUiExtensionOverviewData.test.ts
+  s_6956ec5be81713::t_1418a4d961ebad 136,143-182
+  s_6956ec5be81713::t_ab6b5189f24913 137-142
+packages/modules/ui-extensions/frontend/package.json
+  s_6956ec5be81713::t_b0ec9629407186 27
+packages/frontend/editor-ui/src/app/composables/useUiExtensionsHost.ts
+  s_6956ec5be81713::t_18e944bd8eb6c9 15-25,31,38,42
+  s_6956ec5be81713::t_fad7f908f538ca 14
+packages/modules/ui-extensions/frontend/src/components/UiExtensionPagesNav.test.ts
+  s_6956ec5be81713::t_7645cf05cd9f2f 13-17,23,133-166
+pnpm-lock.yaml
+  s_6956ec5be81713::t_fcf6be514ea1d5 9002-9004
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38a16cbe4c244e1727816e325f4b1f2e5335f080",
+  "prompts": {},
+  "sessions": {
+    "s_6956ec5be81713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91664345-a691-443f-b08d-05a7967643b2",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

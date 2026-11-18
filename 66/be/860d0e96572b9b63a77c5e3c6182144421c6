@@ -1,0 +1,26 @@
+packages/testing/performance/benchmarks/expression-engine/fixtures/data.ts
+  s_6415615520e467::t_ef727ca5ed545c 166-169
+packages/testing/performance/benchmarks/expression-engine/patterns-quickjs.bench.ts
+  s_6415615520e467::t_eb03baa3583304 39-40
+packages/testing/performance/benchmarks/expression-engine/fixtures/pattern-benchmarks.ts
+  s_6415615520e467::t_cabd4ea6ec999f 30-33
+  s_6415615520e467::t_19eccb003e5cd1 119-127
+packages/testing/performance/benchmarks/expression-engine/micro-quickjs.bench.ts
+  s_6415615520e467::t_a44d50642d7f2a 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "66be860d0e96572b9b63a77c5e3c6182144421c6",
+  "prompts": {},
+  "sessions": {
+    "s_6415615520e467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97c28131-e714-48ea-a3dd-ddf5f46fbde8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

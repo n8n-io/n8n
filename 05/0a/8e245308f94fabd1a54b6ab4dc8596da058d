@@ -1,0 +1,98 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_ffcee02881150d::t_0a335217c6e9b2 125-126,129-130,133-135,194,201,205,208,222,239,242
+  s_2512c049b7c07e::t_d18084a7758427 27,29-33,249
+  s_2512c049b7c07e::t_3c6a6466daec8f 28
+  s_ffcee02881150d::t_9b0e14ab23cac3 136-137,141-150,152,179,191-193,195-197,199-200,202,207,209-213,215,220-221,224,226-229,233,236-237,241,244,248
+  s_ffcee02881150d::t_3cf91ba615e561 138-140,151,217-219,230-232,245-247
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffToolbar.vue
+  s_2512c049b7c07e::t_4ffbd484b2e851 1-5,12-17,33,82-83,87-90,93-108
+  s_2512c049b7c07e::t_5c7637e38f41fe 6-11,18-32,34-51,53-58,60-77,79-81,84-86
+  s_ffcee02881150d::t_93e7b4d4ad21dc 52,59,78,91-92
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowPreview.test.ts
+  s_ffcee02881150d::t_3af14bde469c73 20,46-48
+  s_2512c049b7c07e::t_f257a53176f247 1-19,21-37,39-45,49-50
+  s_2512c049b7c07e::t_cdc329f2533a91 38
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffIllustration.vue
+  s_2512c049b7c07e::t_3c6d89c6f6143b 1-17,19-20
+  s_ffcee02881150d::t_93e7b4d4ad21dc 18
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowShell.vue
+  s_ffcee02881150d::t_3cf91ba615e561 46-48
+  s_ffcee02881150d::t_0e229643d06771 1-7,9-45,49-63
+  s_ffcee02881150d::t_b13f9cf8270dfe 8
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowSideLabel.vue
+  s_2512c049b7c07e::t_fba8b0de15ce62 1-6,10,12-16,18-41,48
+  s_2512c049b7c07e::t_5c7637e38f41fe 42-47
+  s_ffcee02881150d::t_93de802512ed68 7-9,11,17
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffContent.vue
+  s_2512c049b7c07e::t_4ffbd484b2e851 5,13
+  s_2512c049b7c07e::t_5c7637e38f41fe 65-68,104,136
+  s_2512c049b7c07e::t_d013d52a28c1bb 103,135
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.ts
+  s_2512c049b7c07e::t_e394ef6958fa06 19,26,39,44
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_ffcee02881150d::t_2d9ad25f773c6e 50,130-131,135,137-138,144
+  s_2512c049b7c07e::t_5c7637e38f41fe 97-103
+  s_2512c049b7c07e::t_e394ef6958fa06 96,442
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffPlaceholder.vue
+  s_2512c049b7c07e::t_3c6d89c6f6143b 1-8,10-11,35-46,49,70-97
+  s_2512c049b7c07e::t_b958bce82c0198 66-69
+  s_2512c049b7c07e::t_0607bd8d59cc3e 9,12-34,47-48,50-65
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.workflow.ts
+  s_ffcee02881150d::t_cfe5716ccdb4d6 1-5,54-58,60
+  s_ffcee02881150d::t_b13f9cf8270dfe 51-53
+  s_2512c049b7c07e::t_e394ef6958fa06 46
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ffcee02881150d::t_1beebb5b5dbdc6 9957-9959
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffView.vue
+  s_2512c049b7c07e::t_5c7637e38f41fe 24,155-168,273-274
+  s_2512c049b7c07e::t_4ffbd484b2e851 7
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_2512c049b7c07e::t_126213e454e65a 30
+  s_ffcee02881150d::t_b8dd5691a40846 117,193-211,220,234,251,255
+  s_2512c049b7c07e::t_e394ef6958fa06 33,45,52-53,72-74
+  s_2512c049b7c07e::t_5c7637e38f41fe 233,235-237,250,252-253,259-261
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffPanels.vue
+  s_2512c049b7c07e::t_4ffbd484b2e851 1-5,24-29,31-37,39-45
+  s_ffcee02881150d::t_93e7b4d4ad21dc 38
+  s_2512c049b7c07e::t_5c7637e38f41fe 6-7,10,13-15,18,21-23
+  s_2512c049b7c07e::t_d013d52a28c1bb 8-9,11-12,16-17,19-20,30
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowDiff.vue
+  s_ffcee02881150d::t_93de802512ed68 13,54
+  s_2512c049b7c07e::t_126213e454e65a 8,14
+  s_2512c049b7c07e::t_5c7637e38f41fe 71-75
+  s_2512c049b7c07e::t_e394ef6958fa06 78,92
+  s_2512c049b7c07e::t_6974fd4b5004f0 5
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCards.vue
+  s_2512c049b7c07e::t_e394ef6958fa06 2,21,37,64-66
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowPreview.vue
+  s_ffcee02881150d::t_b13f9cf8270dfe 8-9
+  s_2512c049b7c07e::t_3c6a6466daec8f 54-57
+  s_2512c049b7c07e::t_e4a102864a4e12 36,42-50
+  s_ffcee02881150d::t_605a0e3dc93593 15,27-34,51-53,58-68
+  s_2512c049b7c07e::t_fba8b0de15ce62 1-7,10-14,16-26,38-41,69-78
+  s_2512c049b7c07e::t_6974fd4b5004f0 35,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "050a8e245308f94fabd1a54b6ab4dc8596da058d",
+  "prompts": {},
+  "sessions": {
+    "s_2512c049b7c07e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15583-a921-7362-bf56-c98f99505108",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    },
+    "s_ffcee02881150d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72bd9a74-7de7-486b-aad9-6ff981ea1973",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

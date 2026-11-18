@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_27f96a85425e8a::t_8670c139887de8 321,331,436-447,467-470,478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f94a265c033ecd804d23dba7585d210bff04bf6b",
+  "prompts": {},
+  "sessions": {
+    "s_27f96a85425e8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f63e-4842-7751-a964-1bba28642864",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

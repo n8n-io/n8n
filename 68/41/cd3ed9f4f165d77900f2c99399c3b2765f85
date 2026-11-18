@@ -1,0 +1,35 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_816a5de66d395d::t_cbc9e8d7b8f81d 8365
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/AgentModalTestStub.ts
+  s_816a5de66d395d::t_265645a830770f 10,47
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillUpload.vue
+  s_816a5de66d395d::t_715348c3ade53f 223
+  s_816a5de66d395d::t_1c6af12d90f845 118-126,195,203-206,208-210,212-213,215-222
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_816a5de66d395d::t_cbc9e8d7b8f81d 63,70-73,142-143,149
+  s_816a5de66d395d::t_1c6af12d90f845 138-141
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_816a5de66d395d::t_677b7783d35171 46-57,60,129-132,142,244-248,256
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_816a5de66d395d::t_c930bedf0c7217 389-393
+  s_816a5de66d395d::t_c0949986d7d124 19-21,141,155,160-161,164-166,172,174,180-199,201-212,224-225,327,358
+  s_816a5de66d395d::t_d0839164154346 200,213-223
+  s_816a5de66d395d::t_7d14c6b989f333 388
+  s_816a5de66d395d::t_fa1fecaddfcd5f 394-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6841cd3ed9f4f165d77900f2c99399c3b2765f85",
+  "prompts": {},
+  "sessions": {
+    "s_816a5de66d395d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d8dd-d6e9-7030-8d12-5c4a7dd7de27",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

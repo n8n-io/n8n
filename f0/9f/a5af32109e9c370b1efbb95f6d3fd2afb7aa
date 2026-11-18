@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.service.test.ts
+  s_4cd5caf689ec64::t_a6a12d38890194 282
+packages/cli/src/modules/instance-registry/instance-registry.service.ts
+  s_4cd5caf689ec64::t_cb7e285f473724 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f09fa5af32109e9c370b1efbb95f6d3fd2afb7aa",
+  "prompts": {},
+  "sessions": {
+    "s_4cd5caf689ec64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb230d93-4696-4f8c-a377-89cb15e5cd71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

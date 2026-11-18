@@ -1,0 +1,19 @@
+packages/modules/apps/backend/src/__tests__/apps.service.test.ts
+  s_b6d332c56aa1c5::t_9c1fae4be30a6b 166,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2dba175d2112da69f476b721c0d70e07ee080ac",
+  "prompts": {},
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

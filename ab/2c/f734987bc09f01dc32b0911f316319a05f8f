@@ -1,0 +1,24 @@
+packages/cli/src/modules/external-secrets.ee/types.ts
+  s_32942547bb62b6::t_9b29c12942bd75 41
+packages/cli/src/modules/external-secrets.ee/redaction.service.ee.ts
+  s_32942547bb62b6::t_7a274e821838a2 4-5,59-60,64,66,74-83
+packages/cli/src/modules/external-secrets.ee/__tests__/redaction.service.ee.test.ts
+  s_32942547bb62b6::t_5a1513efe9aab3 221-224,236-239
+  s_32942547bb62b6::t_0b47f4a0e16d93 219-220,225-235,240-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab2cf734987bc09f01dc32b0911f316319a05f8f",
+  "prompts": {},
+  "sessions": {
+    "s_32942547bb62b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51c82916-db6b-416b-87f5-be0a2af7d486",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

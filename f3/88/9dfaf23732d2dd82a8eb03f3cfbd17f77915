@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_f6ecac1d27039d::t_188054408ea841 199,519,524-529
+  s_f6ecac1d27039d::t_aaa4ad4d29a553 520-523
+packages/cli/src/modules/agents/agent-sandbox-files.service.ts
+  s_f6ecac1d27039d::t_b265ddb37a9401 2,6-16,18-27,38-45,55,78,81-94,194-204,207,209-214,241-265,56-58,71,74-77,109,155,159,187-189,191-193,69-70,96,102,104,113-114,117-119,124,133-134,144,149,152-154
+  s_f6ecac1d27039d::t_d3cba2da192fc1 46-53,95,205-206,208,215-240
+  s_f6ecac1d27039d::t_be93d5d86ab6d5 1,3-4,17,156-158,160-186,64-68,98-100,103,146,148,150-151
+  s_f6ecac1d27039d::t_0bfb2448159ae2 72-73,105-108,101,127,137
+  s_f6ecac1d27039d::t_6b524c146d1791 190
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_f6ecac1d27039d::t_188054408ea841 24,132,377,431-432,434,436-437
+  s_f6ecac1d27039d::t_aaa4ad4d29a553 433,435
+packages/cli/src/modules/agents/__tests__/agent-sandbox-files.service.test.ts
+  s_f6ecac1d27039d::t_6b524c146d1791 1,3-17,20,22-32,34-44,46-51,86-88,206-225,227-258,97-98,100-103,105-107,109-110,120-121,123,126-128,130-136,138-142,145,147-149,152,154-157,159-161,163-164,168,171,176,179-181,186,189,191-192,197,199-200,203-205
+  s_f6ecac1d27039d::t_1f6b2fff5016ac 18-19,33,45
+  s_f6ecac1d27039d::t_d3cba2da192fc1 52-75,129
+  s_f6ecac1d27039d::t_a37c61055d1ad7 76-85,89-96,99,104,108,111-119,122,124-125,137,153,158,162
+  s_f6ecac1d27039d::t_68fd2c33562a86 226
+  s_f6ecac1d27039d::t_58cb71437c0b31 2
+  s_f6ecac1d27039d::t_41abc492f749ab 151,166-167,170,182-185,187-188,190,193-196,198,201-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3889dfaf23732d2dd82a8eb03f3cfbd17f77915",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/nodes-base/nodes/PhilipsHue/test/workflow.test.ts
+  s_2e1fa95fc44f8f::t_dd362406b2457a 38-40
+packages/nodes-base/nodes/Paddle/test/Paddle.workflow.test.ts
+  s_2e1fa95fc44f8f::t_daef9db39015bc 1-48
+packages/nodes-base/nodes/Phantombuster/test/Phantombuster.node.test.ts
+  s_2e1fa95fc44f8f::t_e84897957f86d3 129-159
+packages/nodes-base/nodes/PagerDuty/test/PagerDuty.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b6ac7b98755ce6 1-41
+  s_2e1fa95fc44f8f::t_4f35b9c9ef1e79 42-44
+packages/nodes-base/nodes/Paddle/test/requests.workflow.json
+  s_8c267bec53484d::t_d25172605bbd4e 1-354
+packages/nodes-base/nodes/PagerDuty/test/requests.workflow.json
+  s_8c267bec53484d::t_45f95a059fa522 1-329
+packages/nodes-base/nodes/Phantombuster/test/requests.workflow.json
+  s_8c267bec53484d::t_dfb3c62a200f1a 1-176
+packages/nodes-base/nodes/PhilipsHue/test/get.workflow.json
+  s_8c267bec53484d::t_a50fd3479ed601 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "932798cb417eb0ea8d266aa3b6d2c3c48a8be055",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8c267bec53484d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a746eb8acd8948e9b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

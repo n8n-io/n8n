@@ -1,0 +1,30 @@
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_e34bb65d7ed36f::t_9eb04db08c6191 1091-1093
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_d18e32e3f063db::t_9015ebbde39143 20
+  s_d18e32e3f063db::t_6d8df67f68893f 191-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28db728cb0eb8319ccea31d2e87c3c51143f2f80",
+  "prompts": {},
+  "sessions": {
+    "s_d18e32e3f063db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eee79a34-e798-4371-b8ed-16be29a8da7a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_e34bb65d7ed36f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a047ec43-ed6d-4704-b29f-6a24019f14de",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

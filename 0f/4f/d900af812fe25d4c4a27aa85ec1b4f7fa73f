@@ -1,0 +1,19 @@
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.ts
+  s_3d207dda725269::t_19bf55389ceda6 62-68,73,80,88,97,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "0f4fd900af812fe25d4c4a27aa85ec1b4f7fa73f",
+  "prompts": {},
+  "sessions": {
+    "s_3d207dda725269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aaa5a934-174d-46b7-ae75-dd401cfe62e4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

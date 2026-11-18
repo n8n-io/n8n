@@ -1,0 +1,34 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/discloses-renamed-data-table-column.json
+  s_d7dc19b022f345::t_548a271aca17a5 1-127,129,131-133,135-144,146-149,151-152
+  s_d7dc19b022f345::t_5bec7f3725fccb 145
+  s_d7dc19b022f345::t_408b76ba368ac8 128,130,134
+  s_d7dc19b022f345::t_38ebe255d1e1d0 150
+packages/@n8n/instance-ai/evaluations/data/workflows/discloses-deleted-credential-on-next-edit.json
+  s_d7dc19b022f345::t_f906eb33243a76 150
+  s_d7dc19b022f345::t_0af945d4e25b86 1-125,127,129-131,133-149,151-152
+  s_d7dc19b022f345::t_3610eb4eefc780 126,128,132
+packages/@n8n/instance-ai/evaluations/data/workflows/discloses-node-removed-outside-conversation.json
+  s_d7dc19b022f345::t_fc58ab88dcfec5 1-120,122,124-126,128-142,144-145
+  s_d7dc19b022f345::t_7179a359c2d791 143
+  s_d7dc19b022f345::t_91a7cc64ee1347 121,123,127
+packages/@n8n/instance-ai/evaluations/data/workflows/discloses-workflow-no-longer-active.json
+  s_d7dc19b022f345::t_28f3ebda02a8c5 1-127,129,131-133,135-149,151-152
+  s_d7dc19b022f345::t_ac0b7acbfbe27c 128,130,134
+  s_d7dc19b022f345::t_65342839c9b249 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a2074ce35d043ad03a02d9bef96ee534d29aa12",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

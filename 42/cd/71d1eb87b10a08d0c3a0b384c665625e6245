@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/RenameKeys/RenameKeys.node.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 1,177
+packages/nodes-base/test/lodash-set.patch.test.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 7-8
+packages/nodes-base/nodes/ItemLists/V3/actions/itemList/concatenateItems.operation.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 1,13,295,311
+packages/nodes-base/nodes/Merge/v2/utils.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 197-200
+packages/nodes-base/nodes/RenameKeys/test/RenameKeys.test.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 4
+packages/nodes-base/nodes/ItemLists/test/node/ItemLists.test.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 4
+packages/nodes-base/test/lodash-unset.patch.test.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 8-10
+patches/lodash@4.18.1.patch
+  s_1b76c8082a8c84::t_68a1e811cdfb85 2,5,10,15,18,25,30,43,46,51,55,60
+packages/nodes-base/nodes/Merge/v3/helpers/utils.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 199-202
+packages/nodes-base/nodes/Transform/Aggregate/Aggregate.node.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 1,259,325,342
+packages/nodes-base/nodes/Transform/Aggregate/test/Aggregate.test.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 4
+packages/nodes-base/nodes/ItemLists/V2/ItemListsV2.node.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 19,1018,1034
+packages/nodes-base/nodes/ItemLists/V1/ItemListsV1.node.ts
+  s_1b76c8082a8c84::t_68a1e811cdfb85 18,977,993
+pnpm-lock.yaml
+  s_1b76c8082a8c84::t_21a30552d19481 1119,1458,1591,1967,2107,2555,2649,3006,3926,4323,4679,5088,5497,5727,5872,6175,6926,7543,7779,7991,8245,8887,8992,9517,9647,27931,28907,28972,29441,31227,34174,34214,34630,34642,35065,35860,35862,36272,37645,38525,38528,38569,39161,39171,39179,39187,39195,39207,39220,39233,39243,39251,39259,39267,39275,39283,39291,39299,39307,39315,39323,39331,39340,39348,39358,39394,39402,39410,39418,39426,39434,39446,42880,42884,43687,44220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42cd71d1eb87b10a08d0c3a0b384c665625e6245",
+  "prompts": {},
+  "sessions": {
+    "s_1b76c8082a8c84": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e36e50d2bffejJRdDVFSd36hBy",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

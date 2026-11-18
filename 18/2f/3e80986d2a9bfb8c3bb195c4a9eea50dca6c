@@ -1,0 +1,27 @@
+packages/@n8n/constants/src/scheduler.ts
+  s_d3c228b3ae556b::t_a7ba60dcfae2bf 125
+  s_d3c228b3ae556b::t_0f7ee951260459 124
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_d3c228b3ae556b::t_a7ba60dcfae2bf 1,178,184
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_d3c228b3ae556b::t_0f7ee951260459 80
+  s_d3c228b3ae556b::t_a7ba60dcfae2bf 4,166,186,231,233
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_d3c228b3ae556b::t_a7ba60dcfae2bf 1,378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "182f3e80986d2a9bfb8c3bb195c4a9eea50dca6c",
+  "prompts": {},
+  "sessions": {
+    "s_d3c228b3ae556b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70a87207-ee33-49cb-a3f1-b78fb49e11f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

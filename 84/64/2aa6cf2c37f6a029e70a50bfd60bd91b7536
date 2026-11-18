@@ -1,0 +1,71 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 1525,1541-1565,2508,2542,2544-2549,2552,2555,2583,2585-2594,2597,2623-2627,2629,2632,2669,2671-2689,2692,2695,2722,2724-2729,2732,2777,2779-2784,2787
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 20,54-57,117,199,203-273,288,292-297,299,307-313
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 27-28,128-129,151,163,180,182-189,216-220,223,306-309,315-322,329-331,349,354,726,795,802-806
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 968
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 42-43,107,337-340,352-355
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 303-304
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 3,40-41,43-48,73-81,165-173,736-741,1003-1054,1413-1427,1459-1461,1755-1824
+  s_7a769f2c239eea::t_e850ff5fa9d20f 1825
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 8-12,31,43,117-120,181,188,211,306,308-313,316,319,321-322,333
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 242-243
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 21,156-192,195,203,215
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 23-26,28,48,93-98,246-247,265-266,390-391,398,400-404,416-418,425,669,675,688-689
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 16-19,21,72,80-83,225-227,229,242
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 2209,2214,2219,2228-2229,5735-5814,5860-5866,5868,5872-5876,5881
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 402-404,436,464-474
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 45
+packages/cli/src/modules/agents/integrations/__tests__/helpers/channel-integration-contract.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 5,81,99-105
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 23-24,193-194,214-215,217-225,256-257
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 261-262
+packages/cli/src/modules/agents/integrations/agent-chat-message-context.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 14,30,32-33,35,59
+packages/cli/src/modules/agents/integrations/__tests__/integration-message-context.service.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 1-2,7,40-44,48-93
+  s_7a769f2c239eea::t_e465adff21c987 94
+packages/cli/src/modules/agents/integrations/integration-message-context.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 1-119
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 1-2,11-15,28,37-74
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 110
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 42-49,95-97,120-122,205,469-480,488-498,561,567-572,575,640-654,671-672,780,783,797,848-852,930-940
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 5-8,18,81-82,85,87-89,91-108,110,113,117-135,137-146,151,168,182-188,209,216,233-239,250-254,481,492-498,527,550-556,582,612-618,1225,1238-1271,1274,1280,1292-1298,1433,1439,1451-1457,1509,1521,1542-1548
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_7a769f2c239eea::t_83e8cd9d81031e 339-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "84642aa6cf2c37f6a029e70a50bfd60bd91b7536",
+  "prompts": {},
+  "sessions": {
+    "s_7a769f2c239eea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b40f-b032-7fb2-bc11-1597c5883613",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

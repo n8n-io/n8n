@@ -1,0 +1,24 @@
+packages/core/src/binary-data/blob.manager.ts
+  s_bd408b74fdac50::t_587aa7af661e4f 21-23
+  s_bd408b74fdac50::t_eb228b040253a3 81,83,85,88,91-93
+packages/core/src/binary-data/__tests__/blob.manager.fs.integration.test.ts
+  s_bd408b74fdac50::t_d2c27903d65ad4 229,240-251
+packages/core/src/binary-data/__tests__/blob.manager.test.ts
+  s_bd408b74fdac50::t_249689708402cc 119-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56880555b23a4dae3642e11ba14b12dc1b1e5df5",
+  "prompts": {},
+  "sessions": {
+    "s_bd408b74fdac50": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bc9bd30-63c6-4c92-9f32-338291a03e68",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

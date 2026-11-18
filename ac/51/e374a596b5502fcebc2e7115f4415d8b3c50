@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/runtime/loop/prompt-size-usage.ts
+  s_f5454d35e1e96d::t_31f684e8359525 1-113
+packages/@n8n/agents/src/runtime/loop/__tests__/prompt-size-usage.test.ts
+  s_f5454d35e1e96d::t_d28c8282e30940 1,3-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac51e374a596b5502fcebc2e7115f4415d8b3c50",
+  "prompts": {},
+  "sessions": {
+    "s_f5454d35e1e96d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e2a29ee-553b-44f7-be27-86262880b8d5",
+        "model": "unknown"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/workflow/src/path-segment.ts
+  s_db1110591292bf::t_c038df682da9ed 3-8
+  s_db1110591292bf::t_c44dbcb6273a69 1-2
+  s_db1110591292bf::t_20a2312494f217 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c669f576931fc48445dceafedc361f6e9a4d2588",
+  "prompts": {},
+  "sessions": {
+    "s_db1110591292bf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f08782ff2ffeNXrLGNxnAs6lra",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,150 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  s_2397c9db9d923f::t_23ace2afb12cd0 83,94-99
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_2397c9db9d923f::t_38309df1c931e2 23-24,96-117,119-121
+  s_2397c9db9d923f::t_2a22037e7e9406 118
+  s_2397c9db9d923f::t_131e11768f7d1f 122
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_2397c9db9d923f::t_38309df1c931e2 27
+packages/@n8n/db/src/migrations/common/1791356250367-AddAgentImportSourceIds.ts
+  s_2397c9db9d923f::t_f82bb84ac0374d 1-2,8,22-23,31-32
+  s_2397c9db9d923f::t_38309df1c931e2 3-7,9-21,24-30
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_2397c9db9d923f::t_38309df1c931e2 2,4,10-11,29-54
+  s_2397c9db9d923f::t_00dcabe3b50a37 55
+packages/cli/src/modules/agents/entities/agent-task.entity.ts
+  s_2397c9db9d923f::t_38309df1c931e2 17,26-29,31-32
+  s_2397c9db9d923f::t_1b62ffe4ae25df 30
+  s_2397c9db9d923f::t_2a7a76f4adba9a 33
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-match.service.ts
+  s_2397c9db9d923f::t_5cedb55a681091 1-47,51,55,65-86,94-99,105-128,132,137-159,165,172-182,190-213,219-220,227-250,254-256
+  s_2397c9db9d923f::t_2a22037e7e9406 48-50,52-54,56-64,87-93,100-104,129-131,133-136,160-164,166-171,183-189,214-218,221-226,251-253
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-import-match.service.test.ts
+  s_2397c9db9d923f::t_d9259e8d052a7e 1-6,11-25,29-39,68-73,77-94,99-100,104-109,113-114,118-120,135-137
+  s_2397c9db9d923f::t_2a22037e7e9406 7-10,26-28,40-67,74-76,95-98,101-103,110-112,115-117,121-134
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_2397c9db9d923f::t_1b62ffe4ae25df 25
+  s_2397c9db9d923f::t_38309df1c931e2 4,9,21-24,26-27
+  s_2397c9db9d923f::t_7aab876919724e 28
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
+  s_2397c9db9d923f::t_5c4c3aa91d279f 188-196
+  s_2397c9db9d923f::t_1b62ffe4ae25df 6,131-139,185,187
+  s_2397c9db9d923f::t_2a22037e7e9406 57-60,65-85,87-105,107-125,142-144,150-181,198-206,209-216,222-228,236-238,241-243,260-266
+  s_2397c9db9d923f::t_d9259e8d052a7e 1-5,7-56,61-64,86,106,126-130,140-141,145-149,182-184,186,197,207-208,217-221,229-235,239-240,244-259,267-280
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_2397c9db9d923f::t_5cedb55a681091 1-3,10-68
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_2397c9db9d923f::t_1b62ffe4ae25df 270
+  s_2397c9db9d923f::t_5c4c3aa91d279f 271-298
+packages/cli/test/migration/1791356250367-add-agent-import-source-ids.test.ts
+  s_2397c9db9d923f::t_23ace2afb12cd0 1-33,43-47,60-70,85-90,95-100
+  s_2397c9db9d923f::t_2a22037e7e9406 34-42,48-59,71-84,91-94
+docs/generated/postgres-schema/README.md
+  s_2397c9db9d923f::t_c6ed8dc6682fec 32,37,675,721
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_2397c9db9d923f::t_cdf7940caa39dc 100
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_2397c9db9d923f::t_94834dbe3c7cd7 75
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_2397c9db9d923f::t_b15ed56def4b6b 80
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_2397c9db9d923f::t_93c691efc7a523 61
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_2397c9db9d923f::t_d2e34b5e0de149 63
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_2397c9db9d923f::t_562ed75e2e1011 54
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_2397c9db9d923f::t_0b42df66890318 74
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_2397c9db9d923f::t_b6af74fd43fc34 107
+docs/generated/postgres-schema/public.agent_files.md
+  s_2397c9db9d923f::t_0f76f6c8ddafc6 75
+docs/generated/postgres-schema/public.agent_history.md
+  s_2397c9db9d923f::t_e5ed84c4186bb6 71
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_2397c9db9d923f::t_b11500ab33f562 13,35,53,69
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_2397c9db9d923f::t_275d21ce2bc9d9 60
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_2397c9db9d923f::t_0b2835fb7e44c8 54
+docs/generated/postgres-schema/public.agents.md
+  s_2397c9db9d923f::t_c8c912564300ad 18,47,90,229
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_2397c9db9d923f::t_efc7f111dc6c1b 87
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_2397c9db9d923f::t_5b3537a3aaf786 96
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_2397c9db9d923f::t_95806ee2f27719 63
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_2397c9db9d923f::t_7a0ede8b2ef63f 85
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_2397c9db9d923f::t_1ab4fe2ebd6a4b 63
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_2397c9db9d923f::t_a84d5c579640f9 67
+docs/generated/postgres-schema/public.agents_observations.md
+  s_2397c9db9d923f::t_9011ddae3ac424 86
+docs/generated/postgres-schema/public.project.md
+  s_2397c9db9d923f::t_1f3d65699ce225 151
+docs/generated/sqlite-schema/README.md
+  s_2397c9db9d923f::t_286f31582e8946 32,37,661,707
+docs/generated/sqlite-schema/agent_background_job.md
+  s_2397c9db9d923f::t_55f3fc075b3fb9 102
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_2397c9db9d923f::t_8b36c45d26af03 82
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_2397c9db9d923f::t_ca1d9a27e7b84d 82
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_2397c9db9d923f::t_290e9da151acce 70
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_2397c9db9d923f::t_7883bcd0678575 71
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_2397c9db9d923f::t_18891f9c32c149 64
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_2397c9db9d923f::t_f781c82f27da77 79
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_2397c9db9d923f::t_ac439578463d5b 107
+docs/generated/sqlite-schema/agent_files.md
+  s_2397c9db9d923f::t_6e1a2bb2de072e 78
+docs/generated/sqlite-schema/agent_history.md
+  s_2397c9db9d923f::t_462e4f62de917a 78
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_2397c9db9d923f::t_3e004440e2c131 9,24,40,58,74
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_2397c9db9d923f::t_91ff4c62a00e4f 67
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_2397c9db9d923f::t_0e44d56c7c609e 64
+docs/generated/sqlite-schema/agents.md
+  s_2397c9db9d923f::t_ccb02dc05a23ec 9,29,49,92,231
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_2397c9db9d923f::t_f1376bbab63a57 90
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_2397c9db9d923f::t_8e3ed55ea4eab2 95
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_2397c9db9d923f::t_56f80a19dcfc37 70
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_2397c9db9d923f::t_ac2050cead9557 89
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_2397c9db9d923f::t_71e806744ad053 70
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_2397c9db9d923f::t_78f159cf0470f9 74
+docs/generated/sqlite-schema/agents_observations.md
+  s_2397c9db9d923f::t_7a327d24aa0b9c 89
+docs/generated/sqlite-schema/project.md
+  s_2397c9db9d923f::t_c2f8595ceb597e 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9430c8f32190f27ea443994a700019d7cc68e60",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

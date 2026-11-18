@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nChatAgents.test.ts
+  ai_agent 175-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f4d34e35e09f525cb9f9b9cc555196d21ab53cb4",
+  "prompts": {}
+}

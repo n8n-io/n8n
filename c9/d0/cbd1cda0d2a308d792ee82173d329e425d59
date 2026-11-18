@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_1da5aca4f31b39::t_6df0a3513493bd 27-37
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_1da5aca4f31b39::t_41807993639847 16-18,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9d0cbd1cda0d2a308d792ee82173d329e425d59",
+  "prompts": {},
+  "sessions": {
+    "s_1da5aca4f31b39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3452aa4-968e-4380-aaf8-be8227ce8dbf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

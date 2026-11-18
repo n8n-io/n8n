@@ -1,0 +1,41 @@
+packages/cli/src/modules/instance-ai/storage/typeorm-observation-log-store.ts
+  s_1389ed5ff32164::t_8c8bb20c8fb226 223,234
+packages/cli/src/modules/instance-ai/entities/instance-ai-observation-cursor.entity.ts
+  s_1389ed5ff32164::t_8c8bb20c8fb226 12-14
+packages/@n8n/db/src/migrations/common/1789715109253-AddEmptyLogThroughMessageIdToAgentObservationCursors.ts
+  s_1389ed5ff32164::t_dfdea85b3691c9 3-4,9-21,25-29
+packages/cli/test/migration/1789715109253-add-empty-log-through-message-id.test.ts
+  s_1389ed5ff32164::t_de21346173ecdb 48-49,57-66,102-113,116,126-132,143-148,154-158,166-177
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-observation-log-store.test.ts
+  s_1389ed5ff32164::t_818836c404fb38 106,114-120,131
+  s_1389ed5ff32164::t_e446cccdbb0f54 135-136,140,149-152
+  s_1389ed5ff32164::t_46611e6762f82f 153
+docs/generated/postgres-schema/README.md
+  s_1389ed5ff32164::t_82c7794156bc14 81,1101
+docs/generated/postgres-schema/public.instance_ai_observation_cursors.md
+  s_1389ed5ff32164::t_a4ce359e96b2c8 8,41
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_1389ed5ff32164::t_33f4a9e014e8f6 110
+docs/generated/sqlite-schema/README.md
+  s_1389ed5ff32164::t_f259fe8baac2d5 81,1088
+docs/generated/sqlite-schema/instance_ai_observation_cursors.md
+  s_1389ed5ff32164::t_1aa08140888910 9,19,48
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_1389ed5ff32164::t_40a1ac6c73f668 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3422f4a80b6c31eee0f71e29b58646a3d916bfd",
+  "prompts": {},
+  "sessions": {
+    "s_1389ed5ff32164": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0afb5-5cd8-7dd1-ab29-acad02c48f33",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

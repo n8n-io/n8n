@@ -1,0 +1,103 @@
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_e709738dce3464::t_fe34ce4222298d 162-173,178-179,188-198,200-236,240-257
+  s_e709738dce3464::t_4eba0754702226 1,3-9,21-22
+  s_e709738dce3464::t_bc3c1f79c596ed 23
+  s_e709738dce3464::t_930616530ae8ea 258-259
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_e709738dce3464::t_03e1d6079f1cb2 247,262,290,293
+  s_e709738dce3464::t_e99a462689d0fe 253
+  s_e709738dce3464::t_537f230ab400ef 53
+  s_e709738dce3464::t_78e33e65ad6d68 217,236,246,248-252,254-261,263-269,271-289,291-292,294-317,323,335
+  s_e709738dce3464::t_f4e7b6d98b6245 270
+  s_e709738dce3464::t_c271f51b533a21 8,19,32,37-52
+  s_e709738dce3464::t_39cd91cc9e02db 54-55
+packages/@n8n/db/src/migrations/common/1788354438575-AddSuspensionToAgentBackgroundJob.ts
+  s_e709738dce3464::t_47f4baf2b34152 3-18
+  s_e709738dce3464::t_831c6428e1ca58 1-2,19
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_e709738dce3464::t_b3e41d20bf447e 14-15
+  s_e709738dce3464::t_7c6931587669c3 17
+  s_e709738dce3464::t_8b35403604e528 1,9
+  s_e709738dce3464::t_b4035bd780e257 2-3,10-13,16,18-21,84-86
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_e709738dce3464::t_fb9bdb0a0ca49a 185,204,206,214
+  s_e709738dce3464::t_1481cf37621471 272-273,276,287-292,301,306
+  s_e709738dce3464::t_389f5b1633200c 3,7-10,33-53,74-75,77,187-199,201-203,205,211-212,215,252-271,274-275,277-286,293-300,302-305,307-316
+  s_e709738dce3464::t_fce17fceb2f4f6 317
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e709738dce3464::t_db3ae2e09c08ed 1
+  s_e709738dce3464::t_0c80f45650a24b 9-13,33,35-44,46,63,116-147,205,249,272-281,283-317
+  s_e709738dce3464::t_40e0d6342f8767 282
+  s_e709738dce3464::t_4b738aa3ceee37 183
+  s_e709738dce3464::t_2e680ab983517a 32,34,45
+  s_e709738dce3464::t_1399616e9eb031 47
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_e709738dce3464::t_88c9372cca8eeb 138,144,149
+  s_e709738dce3464::t_847ec88733cb93 207,214-215
+  s_e709738dce3464::t_bf4d1ff42a2a09 172
+  s_e709738dce3464::t_dd778265b41ad1 7
+  s_e709738dce3464::t_3d3c3c5a86eb74 179,181-185,192
+  s_e709738dce3464::t_e6f4b679865a7d 5
+  s_e709738dce3464::t_459bd1d0c83a9b 226-227
+  s_e709738dce3464::t_b922b98f397d22 79
+  s_e709738dce3464::t_478cd4813d9d64 53,56
+  s_e709738dce3464::t_b84c8bb18a6c2c 154-155,166
+  s_e709738dce3464::t_4e2258b7882deb 261,265
+  s_e709738dce3464::t_3487d393c2a640 287
+  s_e709738dce3464::t_9fed40fb6c52c8 258-259,273,282
+  s_e709738dce3464::t_59d6bb8fad6bb7 1-4,6,11,19-22,51-52,54,57,98-137,139-143,145-148,150-153,156-165,167-171,173-178,180,186-191,193-200,202,216-217,223-225,228-230,239-240,243,245-257,260,262-264,266-272,274-281,283-286,288-298
+  s_e709738dce3464::t_7b49bb074ea4ce 237-238
+  s_e709738dce3464::t_d778f182016696 31-35
+  s_e709738dce3464::t_b0e694b145049d 36,55,302
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e709738dce3464::t_14675471b8408f 993-1001,1003,1008
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e709738dce3464::t_4d82f9797a831f 265
+  s_e709738dce3464::t_83573daefb0493 269-273,275-279
+  s_e709738dce3464::t_370a5a09c72783 381-385
+  s_e709738dce3464::t_eaa1af63676cdc 69,400,404
+  s_e709738dce3464::t_31fc38186e79fe 274
+  s_e709738dce3464::t_12d07123253904 412
+  s_e709738dce3464::t_e85d9a54992363 13,47,58,68,76,79,150-172,257,259,261-263,268,377-380,386-399,401-403,405-411,413-417
+  s_e709738dce3464::t_dd992c6d140216 260
+  s_e709738dce3464::t_b77b2533ed9137 7-10,21-30
+  s_e709738dce3464::t_53d48bf5ac4f08 258,264,266-267
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_e709738dce3464::t_f356327266fe51 116
+  s_e709738dce3464::t_8264ce5b265797 2,8,60-82,118-120
+  s_e709738dce3464::t_bf407d2252d77c 113,122-130
+  s_e709738dce3464::t_e0da8c05bd67fc 114-115,117,121
+docs/generated/postgres-schema/README.md
+  s_e709738dce3464::t_4570bc5334c744 11,371
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_e709738dce3464::t_e6769d6bbfeab8 19,73
+docs/generated/postgres-schema/public.agents.md
+  s_e709738dce3464::t_df14b0cfb401b8 115
+docs/generated/sqlite-schema/README.md
+  s_e709738dce3464::t_af32d16bcc4c67 11,358
+docs/generated/sqlite-schema/agent_background_job.md
+  s_e709738dce3464::t_06238a0011088c 9,30,40-41,77
+docs/generated/sqlite-schema/agents.md
+  s_e709738dce3464::t_0836d4f1517285 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8662e905699e88054f172b7942ef4ebdeeb93aac",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e709738dce3464": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "026ea3e9-01fb-48cb-9f02-6495f17bb8ee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

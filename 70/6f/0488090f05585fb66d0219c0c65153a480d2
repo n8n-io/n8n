@@ -1,0 +1,14 @@
+packages/cli/test/integration/agents/agents-create-collision.test.ts
+  h_52a137d26d774c 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "706f0488090f05585fb66d0219c0c65153a480d2",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

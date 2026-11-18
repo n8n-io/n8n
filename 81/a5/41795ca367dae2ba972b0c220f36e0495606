@@ -1,0 +1,32 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_4f2115a0410d20::t_f4c6192e19b3fa 594-603,614-615
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  s_4f2115a0410d20::t_2d9e441d9b55be 7,169,171-173
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.test.ts
+  s_4f2115a0410d20::t_4630f6aa265274 75-106
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_4f2115a0410d20::t_bf1008b6b72157 66-81
+  s_4f2115a0410d20::t_1a788bc08c20e2 82-83
+packages/@n8n/instance-ai/knowledge-base/reference/workflow-builder-guardrails.md
+  s_4f2115a0410d20::t_169d50c9c231e8 9-12
+packages/@n8n/instance-ai/src/knowledge-base/__tests__/materialize-knowledge-base.test.ts
+  s_4f2115a0410d20::t_aea5b2bb123e50 1,110-116
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.ts
+  s_4f2115a0410d20::t_d31dc9e58172fa 70-71,192-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "81a541795ca367dae2ba972b0c220f36e0495606",
+  "prompts": {},
+  "sessions": {
+    "s_4f2115a0410d20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28eec2a3-4e19-4cf4-b02a-8013e69e5da1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

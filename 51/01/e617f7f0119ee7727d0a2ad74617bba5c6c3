@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_9d374da5e4b63c::t_170ac5cdae7bd5 1231-1232
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_9d374da5e4b63c::t_170ac5cdae7bd5 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5101e617f7f0119ee7727d0a2ad74617bba5c6c3",
+  "prompts": {},
+  "sessions": {
+    "s_9d374da5e4b63c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df5e2375-89ec-4f11-8122-ce64b3da72d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

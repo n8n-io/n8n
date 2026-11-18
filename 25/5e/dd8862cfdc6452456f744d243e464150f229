@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_c0f61ec69ff856::t_c281d3e420bd00 35
+  s_c0f61ec69ff856::t_36584089257bd0 16-17,23
+packages/frontend/editor-ui/src/app/plugins/telemetry/telemetryRegistration.test.ts
+  s_c0f61ec69ff856::t_ec5d3e7cf5f90d 1,15
+  s_c0f61ec69ff856::t_6ff7c2d0312b39 2-14,16-25
+packages/frontend/@n8n/composables/src/useTelemetry.test.ts
+  s_c0f61ec69ff856::t_48379e8bd58bc1 4-5
+packages/frontend/@n8n/composables/src/telemetryRegistry.ts
+  s_c0f61ec69ff856::t_76d194a04448aa 1-75
+packages/frontend/@n8n/composables/src/useTelemetry.ts
+  s_c0f61ec69ff856::t_e2d3e6f3224cfb 1-15,21,43-44,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "255edd8862cfdc6452456f744d243e464150f229",
+  "prompts": {},
+  "sessions": {
+    "s_c0f61ec69ff856": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b90ce41-1d7b-4991-b1c4-557f723b5999",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

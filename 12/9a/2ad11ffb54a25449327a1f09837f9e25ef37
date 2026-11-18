@@ -1,0 +1,30 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_97bad246248ca6::t_ac2433901c422a 377-379,390-391
+  s_97bad246248ca6::t_8b626edf80ac4b 238-240,252-253
+  s_97bad246248ca6::t_4dfe754a2d620a 438-441,446,448-449,452-454
+  s_97bad246248ca6::t_e219baaa222576 495-496,504-505
+  s_97bad246248ca6::t_1f9a8e73c71894 693,703-704
+  s_97bad246248ca6::t_12908fd1cd04ce 707-788
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_97bad246248ca6::t_3885c55c600720 39
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_97bad246248ca6::t_8bd2dab5d30b5d 9
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_97bad246248ca6::t_6c839b0be8c769 60-65,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "129a2ad11ffb54a25449327a1f09837f9e25ef37",
+  "prompts": {},
+  "sessions": {
+    "s_97bad246248ca6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a9623cf-06d1-49e3-ba32-7cf6be42298f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

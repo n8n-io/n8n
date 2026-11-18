@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.ts
+  s_f3d2ec4529fb2a::t_ee4ff158402d29 26-27
+  s_f3d2ec4529fb2a::t_7815316f95a5ab 20
+  s_f3d2ec4529fb2a::t_b8c4116cb53770 24-25
+  s_f3d2ec4529fb2a::t_f8fc38b7ebddb9 19,21-23
+  s_f3d2ec4529fb2a::t_e245f9f96c62e2 28
+  s_f3d2ec4529fb2a::t_d652de7b75e59d 45,53,74,78,88
+  s_f3d2ec4529fb2a::t_f57aa1fbf96dab 5
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatThreadHistory.vue
+  s_f3d2ec4529fb2a::t_22063eaa41f324 4,8,10-11
+  s_f3d2ec4529fb2a::t_475a8d6bfeec26 114
+  s_f3d2ec4529fb2a::t_822c32c5278889 88-91
+  s_f3d2ec4529fb2a::t_f3f2b5ce7111d9 34-38,41
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_f3d2ec4529fb2a::t_7032958131c044 173-174
+  s_f3d2ec4529fb2a::t_faa399511eeb61 201-206
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.ts
+  s_f3d2ec4529fb2a::t_0d09b16b087968 96,103-104
+  s_f3d2ec4529fb2a::t_af6a742dba1d3d 47
+  s_f3d2ec4529fb2a::t_e67bb93e661b60 105-114
+  s_f3d2ec4529fb2a::t_7687b63655ef63 10-11
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatThreadHistory.test.ts
+  s_f3d2ec4529fb2a::t_2f81ff9a9fa349 159,161-164,166,172-174
+  s_f3d2ec4529fb2a::t_f7c55b2531de90 158,160,165,167-171
+  s_f3d2ec4529fb2a::t_b4fa006afbb773 2
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.test.ts
+  s_f3d2ec4529fb2a::t_3c174700a8eee6 192-193,195-196,207,211,216
+  s_f3d2ec4529fb2a::t_4b56a6a0240465 194
+  s_f3d2ec4529fb2a::t_65bd66ddba7bee 171
+  s_f3d2ec4529fb2a::t_594e9f19bfde01 206,212
+  s_f3d2ec4529fb2a::t_533b18707630fb 4-7
+  s_f3d2ec4529fb2a::t_57c150b11243ba 198-205
+  s_f3d2ec4529fb2a::t_2d34a8eb25a104 25-28,31
+  s_f3d2ec4529fb2a::t_05d6ec6f457848 168,175,179,190-191,208-210
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useMergedChatHistory.test.ts
+  s_f3d2ec4529fb2a::t_3177ecf28208a6 70-72,80-82
+  s_f3d2ec4529fb2a::t_ddf3b9f0df8a19 245-286
+  s_f3d2ec4529fb2a::t_3db85833d8a865 51-60
+  s_f3d2ec4529fb2a::t_580e247f4319a7 8
+  s_f3d2ec4529fb2a::t_6041dac9d60c49 127-138
+  s_f3d2ec4529fb2a::t_8c734d6cf69e65 103-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4e4366e6b977a1b349fc66eda63e55a5f9cb2491",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

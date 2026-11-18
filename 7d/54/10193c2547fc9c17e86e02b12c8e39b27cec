@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Telegram/hitl/webhook.ts
+  s_60ce6e746ce9d3::t_98621e1eb79264 35-78,90,109,120,130,143,145,159-166,169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7d5410193c2547fc9c17e86e02b12c8e39b27cec",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

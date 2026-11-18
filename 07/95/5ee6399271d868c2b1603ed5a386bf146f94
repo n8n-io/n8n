@@ -1,0 +1,29 @@
+packages/@n8n/api-types/src/zod-class.ts
+  s_101038ccbc858a::t_6ba4b4694be6bb 1-3,41,43-44,46,56-58
+  s_101038ccbc858a::t_6e030d2c8f92c9 42,45,52
+  s_101038ccbc858a::t_368a2db5f6eb73 59
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_6b25fb6222c01f 76,84-87
+  s_101038ccbc858a::t_6e030d2c8f92c9 77-78
+packages/@n8n/api-types/src/__tests__/zod-class.test.ts
+  s_101038ccbc858a::t_c3c06e1f0b106c 68,70-71,73-74,76-80,84-87
+  s_101038ccbc858a::t_5dd989f0a37bdd 69,72,75,81-83
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/updateDataTableColumn.generated.yml
+  s_101038ccbc858a::t_772e1bdfc9b704 45-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "07955ee6399271d868c2b1603ed5a386bf146f94",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

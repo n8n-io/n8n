@@ -1,0 +1,71 @@
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_71ad2034164515::t_9d1f601ee670fb 89
+  s_c71d8d6a27245a::t_3ca14818f85353 502
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 53-54,57-61,68-69,74
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_fb780391c8e997::t_2232f12012794a 15,322-323,338,390-402
+  s_fb780391c8e997::t_3d9bc4261281e0 35-36,101,103,222,228-229,235,294,296-298,425-426,428-429,454-457,498,501,567,573,581-583,668
+  s_fb780391c8e997::t_1b0b49abd598e8 43-44,299,301-303,388-389,463,549-552,564-565
+  s_fb780391c8e997::t_e630500f5d859d 205,211-212,218,295,300,310,316-317,332,380,383-384,405-410,412-416,420-422,433,448,452,506,555,557,561,569-572,584-586,656,671,688-689
+  s_fb780391c8e997::t_06f6cb5c004118 292-293,321,327,331,347-379
+  s_71ad2034164515::t_6ebe1f167df9ba 385,434-436,494,507-508,574-576,579-580,587,594-595,674-675
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 474-475,477-544
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 242-243,473-482
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_fb780391c8e997::t_0ff0e76fd16648 29,64,66
+packages/@n8n/cli/src/client.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 79-88,93-94
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 38-39,126-131,395,397,403-410,423-426,430,432,522,524,579-582,587-590,596,605
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 56,72,105-106,134,535,653,667
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 412,458-474
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 317-318,331,365-375,382-392,561-562,586-591
+packages/cli/src/events/maps/relay.event-map.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 5,763-767,956-964
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 440-454
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 24,74,130-139,154,247-255,278-541,688-723,1360-1439,1687,1708,1712-1713,1715-1735,1739,1754,1786,1809,1813-1818,1846,1870-1877,1881,1899,1913-2081,2109,2125,2130,2196,2219,2226-2227,2237,2243,2249,2260,2273,2299,2337-2338,2340-2343,2345,2400,2428,2433-2435,2441-2511,2594
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 21,24-25,37,48,61,65-72,85,155,211-212,215-220,403,416-417,439-445,567-568,583,593,600-602,607,613,615-619,622-627,630-633,685,690-691,707-709,721-748,785-786,791-793,801-802,852-853,857,859-867,914,976-984,1015,1049,1056-1059,1066,1068,1165,1171,1177,1184-1290,1419-1421,1426,1483-1547
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 5,33,68-71,128-131,300-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1510b51429bb8f1bc862d35ed3cfb66c41706922",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c71d8d6a27245a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a118f9-89a0-7922-9bda-d308ff402c58",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fb780391c8e997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17942-0858-71a1-8300-c3c5dea8152b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

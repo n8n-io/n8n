@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_c491120e42f4d5::t_1b976307b2532f 97,1809,2266,2287
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_c491120e42f4d5::t_0ea2ca8b2e95b2 251-256,258
+packages/cli/src/webhooks/__tests__/test-webhook-registrations.service.test.ts
+  s_c491120e42f4d5::t_fa97bcca357064 43,51,66
+packages/cli/src/webhooks/test-webhook-registrations.service.ts
+  s_c491120e42f4d5::t_fa97bcca357064 90-92
+packages/@n8n/instance-ai/src/types.ts
+  s_c491120e42f4d5::t_7ff766c6d8a78e 603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "42a85183074fd5b68c5a511d7e4302a85dd499c4",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

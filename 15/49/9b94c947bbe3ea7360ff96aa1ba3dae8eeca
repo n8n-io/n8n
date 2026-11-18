@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/evaluations/discovery/brand-rename.ts
+  s_4d7f501095fc5f::t_0719c9ab9e70b2 1-2,4-10,17-71
+  s_4d7f501095fc5f::t_dd78d18c140bd3 11-16
+  s_4d7f501095fc5f::t_b619b299a664b2 3
+  s_4d7f501095fc5f::t_6d3e67412f30cb 72-77
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_4d7f501095fc5f::t_5b8656ab9736a3 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15499b94c947bbe3ea7360ff96aa1ba3dae8eeca",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

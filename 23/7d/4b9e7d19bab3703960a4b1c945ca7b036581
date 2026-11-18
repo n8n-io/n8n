@@ -1,0 +1,39 @@
+packages/cli/src/executions/execution-cursor.ts
+  ai_agent 62-95
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  ai_agent 54-71
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  ai_agent 71-75
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  ai_agent 7-138
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  ai_agent 2,57-128
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  ai_agent 5018-5022
+packages/workflow/src/interfaces.ts
+  ai_agent 4205
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  ai_agent 12-13,110-122
+packages/cli/src/executions/merge-execution-pages.ts
+  ai_agent 4-27
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  ai_agent 21,40-42,52-108
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  ai_agent 2-8,20,54-56
+packages/cli/src/executions/__tests__/merge-execution-pages.test.ts
+  ai_agent 3-80
+packages/cli/test/integration/executions/execution-list.test.ts
+  ai_agent 1-244
+packages/cli/src/executions/execution-list.service.ts
+  ai_agent 11-97
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  ai_agent 65-86
+packages/cli/test/integration/executions.controller.test.ts
+  ai_agent 151-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "237d4b9e7d19bab3703960a4b1c945ca7b036581",
+  "prompts": {}
+}

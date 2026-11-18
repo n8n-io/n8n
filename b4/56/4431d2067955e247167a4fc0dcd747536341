@@ -1,0 +1,38 @@
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_387876dfa0b61f::t_adc5c4a25d8d59 227-268
+  s_387876dfa0b61f::t_374f8802edc2b0 226
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_387876dfa0b61f::t_431d66f2259096 56-57
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_387876dfa0b61f::t_100c43cb24348f 39-44
+  s_387876dfa0b61f::t_b9fc01fed7f4a0 216
+  s_387876dfa0b61f::t_cd0b693cfbae99 129,131-137,142,149,159
+  s_387876dfa0b61f::t_0478c9da2adff8 218
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_387876dfa0b61f::t_f114b5763a6cf3 207-211
+  s_387876dfa0b61f::t_3dfb13c07e581b 221,224
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_387876dfa0b61f::t_7f4a681aa4206d 64
+  s_387876dfa0b61f::t_0f7890bbd3e9c9 182-194
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_387876dfa0b61f::t_5f409b3df3ec72 2
+  s_387876dfa0b61f::t_1fda5b627eb5ba 243-342
+ANALYSIS.md
+  s_387876dfa0b61f::t_7a2bf1130f6b66 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b4564431d2067955e247167a4fc0dcd747536341",
+  "prompts": {},
+  "sessions": {
+    "s_387876dfa0b61f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4f54a0f-67de-40bf-9a22-836491168fb8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

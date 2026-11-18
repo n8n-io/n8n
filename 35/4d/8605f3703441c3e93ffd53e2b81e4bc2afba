@@ -1,0 +1,30 @@
+packages/@n8n/db/src/repositories/__tests__/agent-eval-rating.repository.test.ts
+  s_9a33b006a57a4b::t_493a2b9a520a22 105
+  s_9a33b006a57a4b::t_ccc1091047e988 2
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_9a33b006a57a4b::t_93ca748befc860 688,690-693
+  s_9a33b006a57a4b::t_bd4e38d0e240b6 387-389
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_9a33b006a57a4b::t_d4144162b518ca 281-283,287-290,293
+  s_9a33b006a57a4b::t_fd913cb3b3f845 501
+  s_9a33b006a57a4b::t_4dc73ba96a7edc 284-286
+packages/@n8n/db/src/repositories/agent-eval-rating.repository.ee.ts
+  s_9a33b006a57a4b::t_7b6c40af98ff2b 44
+  s_9a33b006a57a4b::t_6cec8cd6c6f388 45-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "354d8605f3703441c3e93ffd53e2b81e4bc2afba",
+  "prompts": {},
+  "sessions": {
+    "s_9a33b006a57a4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd80b90d-aba0-4a9f-bc87-ccb49676f589",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

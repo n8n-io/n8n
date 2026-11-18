@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  s_8661479fcacbbd::t_fb9c7bf8019859 30-35,409-439
+  s_8661479fcacbbd::t_b199ea453d12c3 367-408,440-481
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8661479fcacbbd::t_acf9ec3ab5d039 60,2922-2924
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8661479fcacbbd::t_76515c882dd061 1181-1185
+  s_8661479fcacbbd::t_0b0d1535e24b37 272,1186-1187
+  s_8661479fcacbbd::t_c138a93bcd36a7 68
+packages/@n8n/instance-ai/src/skills/materialize-runtime-skills.ts
+  s_8661479fcacbbd::t_fc1f85acd454a5 73,75-80,90-91,596,605-609,617,624,631-636,639,641,643,648-670,673,706-713
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ebd8660ded6d841ae7af56aadbf8f838e68a61d8",
+  "prompts": {},
+  "sessions": {
+    "s_8661479fcacbbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfa2039-345b-4ff7-9ade-5eebd300fbec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

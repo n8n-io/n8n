@@ -1,0 +1,19 @@
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_e41c60265eb706::t_9966b9deb75068 49,51,53,55-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36d82908e6dc1c4ca96452b13d569f73040c4917",
+  "prompts": {},
+  "sessions": {
+    "s_e41c60265eb706": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa00452f-a1c6-4652-b546-fa55739e41b6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

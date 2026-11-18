@@ -1,0 +1,32 @@
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_469112840b3d4a::t_56d5dba969c031 8
+  s_469112840b3d4a::t_93cd85b85f3c25 20
+  s_469112840b3d4a::t_d8c81edaa3df90 299-306,315-318
+  s_469112840b3d4a::t_629673bd3ca2fb 359-362
+  s_469112840b3d4a::t_caf64863889e7d 363,406-436,461-480
+  s_b6544c18602ad4::t_9a3ee534fbc5bf 437-460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97ea0917b5d1cedde8c9a73dce643dffdf721225",
+  "prompts": {},
+  "sessions": {
+    "s_469112840b3d4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b548073-5a87-4c76-9703-dac7522232bb",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_b6544c18602ad4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e24a9b6-a8a1-4d92-851b-b1e58e59f24c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/utils/expressions.ts
+  s_74402fcac1c7e4::t_b8194fa6b10ff4 3
+  ai_agent 4
+packages/@n8n/task-runner/src/js-task-runner/built-ins-parser/built-ins-parser.ts
+  s_74402fcac1c7e4::t_095cae464674c8 1
+packages/@n8n/task-runner/src/task-runner.ts
+  s_74402fcac1c7e4::t_febc585abfa532 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "24bf740d739f99352ff36b36f8c3a6a98d20fdb4",
+  "prompts": {},
+  "sessions": {
+    "s_74402fcac1c7e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e853d50-a6b5-4c82-b935-d5a8f8ad1608",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

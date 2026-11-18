@@ -1,0 +1,14 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  h_7555c3ee6524cf 323,329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ef77ccbb01f6e47e41072bc5dd315df090e7135",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

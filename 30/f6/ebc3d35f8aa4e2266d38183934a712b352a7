@@ -1,0 +1,19 @@
+packages/cli/src/controllers/redaction-enforcement-mapper.ts
+  s_eb9295e8672673::t_299d178654b1af 2-4,14-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "30f6ebc3d35f8aa4e2266d38183934a712b352a7",
+  "prompts": {},
+  "sessions": {
+    "s_eb9295e8672673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5a13f8c-0337-46bf-976e-7e6f21af25ec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

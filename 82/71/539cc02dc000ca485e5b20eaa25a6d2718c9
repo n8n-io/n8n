@@ -1,0 +1,24 @@
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_61c1fd31ebcb2c::t_935eb1b593430a 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8271539cc02dc000ca485e5b20eaa25a6d2718c9",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_61c1fd31ebcb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7316dab9-7680-4600-a206-34358b5e9747",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

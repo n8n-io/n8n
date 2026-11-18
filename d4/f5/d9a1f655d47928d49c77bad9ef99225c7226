@@ -1,0 +1,51 @@
+packages/frontend/@n8n/frontend-utils/src/__tests__/setup.ts
+  s_88fa5ba1d64bde::t_a5472656a425f7 1-4
+packages/frontend/editor-ui/src/app/constants/sanitization.ts
+  s_88fa5ba1d64bde::t_b6473aa44a0dcc 3
+  s_88fa5ba1d64bde::t_166ad245ee5bb4 2,11
+packages/frontend/@n8n/frontend-utils/README.md
+  s_88fa5ba1d64bde::t_47ada580b2b34f 1-25
+packages/frontend/@n8n/frontend-utils/tsconfig.json
+  s_88fa5ba1d64bde::t_cdcd9acf5c22e8 1-5,7-10
+  s_88fa5ba1d64bde::t_1579a7f83a3946 6
+packages/frontend/@n8n/frontend-utils/eslint.config.mjs
+  s_88fa5ba1d64bde::t_96de26694003b1 1-15
+packages/frontend/editor-ui/src/app/utils/htmlUtils.ts
+  s_88fa5ba1d64bde::t_e584e173fe8b09 2,16
+packages/frontend/editor-ui/tsconfig.json
+  s_88fa5ba1d64bde::t_1b606d4f4a64d1 27
+  s_88fa5ba1d64bde::t_bcc8c8392006b7 11-12
+packages/frontend/@n8n/frontend-utils/tsdown.config.ts
+  s_88fa5ba1d64bde::t_d3f794e0a54d75 1-11
+packages/frontend/@n8n/composables/package.json
+  s_88fa5ba1d64bde::t_1eaf8077ffcfbb 33
+packages/frontend/@n8n/frontend-utils/vite.config.ts
+  s_88fa5ba1d64bde::t_1a05a395e1c42b 1-4
+packages/frontend/@n8n/frontend-utils/.gitignore
+  s_88fa5ba1d64bde::t_a17f516286476d 1-24
+packages/frontend/editor-ui/package.json
+  s_88fa5ba1d64bde::t_1228aedc1aab61 52
+packages/frontend/@n8n/frontend-utils/package.json
+  s_88fa5ba1d64bde::t_29a3b433f48a61 1-36,39-46
+  s_88fa5ba1d64bde::t_77dbdfadc828ee 37-38
+packages/frontend/@n8n/frontend-utils/biome.jsonc
+  s_88fa5ba1d64bde::t_0d75f322b9bf0b 1-4
+pnpm-lock.yaml
+  s_88fa5ba1d64bde::t_fa2dc304e75719 5115-5154,5536-5538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d4f5d9a1f655d47928d49c77bad9ef99225c7226",
+  "prompts": {},
+  "sessions": {
+    "s_88fa5ba1d64bde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd918bd6-747b-499a-a6d5-29e76dc58cd8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

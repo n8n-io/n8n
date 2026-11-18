@@ -1,0 +1,25 @@
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_e61cec36903ae7::t_c5d15a228e74d5 1161,1469-1470,2039-2046,2455,2864-2865
+  s_e61cec36903ae7::t_6a88b28eddaa79 2855
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "2137a26af5115d187faa409df2725470f5b5fbf9",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e61cec36903ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8dc114a-bfa9-4ec8-8109-a97a40763935",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

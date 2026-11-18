@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_878b94f8b93887::t_7b325665035b83 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3ce1d0b26e7e994020bd604a185dd6a7fba6a86",
+  "prompts": {},
+  "sessions": {
+    "s_878b94f8b93887": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1108a-9138-7544-9bdb-54d85ad97f4a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

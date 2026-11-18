@@ -1,0 +1,127 @@
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_f642d601d434a5::t_ed04521a1906c7 51-73
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_f642d601d434a5::t_30147bbd20cae6 16,566-588,590-595,597-605,607-637
+  s_f642d601d434a5::t_35a2e6df3f1e62 589,596
+  s_f642d601d434a5::t_5583463c52f19c 606,638
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f642d601d434a5::t_68352da5c94465 9075
+  s_f642d601d434a5::t_04815f03205f9d 367-369
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-input.builder.ts
+  s_f642d601d434a5::t_d908527102bb09 92-94
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-trace-input.ts
+  s_f642d601d434a5::t_680589acaa9e0e 23-25
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_f642d601d434a5::t_cb784d0ba24734 711-714
+  s_f642d601d434a5::t_68352da5c94465 690-692,710,716-718
+  s_f642d601d434a5::t_35a2e6df3f1e62 715,719
+  s_f642d601d434a5::t_32aadb9b9fce1e 720
+packages/modules/apps/backend/src/serving/app-serving.controller.ts
+  s_f642d601d434a5::t_cd40c59ab99770 11,13,63-66,69,77
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAppPreview.vue
+  s_f642d601d434a5::t_35a2e6df3f1e62 34
+  s_f642d601d434a5::t_973ab316c47748 2,6-7,12,20-24,33,37
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.pendingAttachments.test.ts
+  s_f642d601d434a5::t_35a2e6df3f1e62 72-93
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_f642d601d434a5::t_17dbff81a53e4e 53-60
+  s_f642d601d434a5::t_acad2d156612f3 105-119
+packages/modules/apps/backend/src/serving/__tests__/inspector-script.test.ts
+  s_f642d601d434a5::t_95cb8f62667a7f 8-9
+  s_f642d601d434a5::t_ca3f9271b9889a 1-2,5-7,10-19,23,25-38,40,42-102,104-115,129-221,226-236
+  s_f642d601d434a5::t_ed04521a1906c7 4
+  s_f642d601d434a5::t_a525f1d1ede58c 21-22
+  s_f642d601d434a5::t_f4ca1557e5fc40 24,116-118,122-128
+  s_f642d601d434a5::t_62a21d9217febf 41
+  s_f642d601d434a5::t_5beb65f8b71a5a 3,39,103
+  s_f642d601d434a5::t_361b760756332e 119-121
+  s_f642d601d434a5::t_903b6ed6540c15 20
+  s_f642d601d434a5::t_d908527102bb09 222-225
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f642d601d434a5::t_b3faf40f826615 1600-1604,1610
+  s_f642d601d434a5::t_ed04521a1906c7 9-14,1599
+packages/modules/apps/backend/src/serving/inspector-script.ts
+  s_f642d601d434a5::t_ed04521a1906c7 1,188
+  s_f642d601d434a5::t_ef6bc9fd3535fe 17
+  s_f642d601d434a5::t_6c6968a65321b9 2-16,18-92,94-187,189-192
+  s_f642d601d434a5::t_376cc6c4c92098 93
+  s_f642d601d434a5::t_cd40c59ab99770 193-199
+packages/modules/apps/backend/package.json
+  s_f642d601d434a5::t_a16e12c5fe020a 76,78
+packages/modules/apps/frontend/src/components/AppPreview.test.ts
+  s_f642d601d434a5::t_83ad342c13ca3c 1-7
+  s_f642d601d434a5::t_cf9cddaaa4a8dc 10,50-56,58-66,324-376,380-389,393-437,442-450
+  s_f642d601d434a5::t_a525f1d1ede58c 377-379,390-392,438-441
+  s_f642d601d434a5::t_1924277edc3ce1 451
+packages/modules/apps/frontend/src/components/AppPreview.vue
+  s_f642d601d434a5::t_49bcde3cc784af 329-354,401-404,407-413
+  s_f642d601d434a5::t_5760e420016150 406
+  s_f642d601d434a5::t_04815f03205f9d 2-8,22,54-62,78-79,96-98,160-200,208-209,299,306,398-400,405
+  s_f642d601d434a5::t_22923f3006b2bb 238-247
+  s_f642d601d434a5::t_8911aee92a4e9a 396-397
+  s_4bcab537e8dd3b::t_7ca6892c8c0cd6 423
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_f642d601d434a5::t_68352da5c94465 23-24,38-45,48-49,117-124
+  s_f642d601d434a5::t_35a2e6df3f1e62 46-47
+  s_f642d601d434a5::t_271e1bf20cb5a1 125-126
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_f642d601d434a5::t_e48a9beab57ac6 2,23-28,30-33,127-129
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAppPreview.test.ts
+  s_f642d601d434a5::t_30147bbd20cae6 35-38
+  s_f642d601d434a5::t_05849271c51dde 1,3,5,8,15-17,20-29,34,39,41-44,47,59,68-89,91-93,95-97
+  s_f642d601d434a5::t_35a2e6df3f1e62 90,94
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_f642d601d434a5::t_95e6da7ce57738 5,535-538,540-543,555,618-619
+  s_f642d601d434a5::t_361b760756332e 539
+  s_f642d601d434a5::t_7c6acdf2ea9d02 620-621
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_f642d601d434a5::t_5760e420016150 1056
+  s_f642d601d434a5::t_92f82154ec387f 1041-1055,1057-1078
+  s_f642d601d434a5::t_29839a111f86ae 938-942
+packages/@n8n/api-types/src/index.ts
+  s_f642d601d434a5::t_0daad73272adfb 719
+  s_f642d601d434a5::t_d5185bed23c951 552
+packages/modules/apps/backend/src/serving/app-bundle-cache.ts
+  s_f642d601d434a5::t_cd40c59ab99770 12-13,55
+packages/modules/apps/backend/src/serving/__tests__/app-serving.controller.test.ts
+  s_f642d601d434a5::t_bf7ace93705003 139-142
+  s_f642d601d434a5::t_035bbc997e2acf 130-138,143-162
+packages/@n8n/api-types/src/schemas/__tests__/app-inspector.schema.test.ts
+  s_f642d601d434a5::t_6a87d4c966d9ed 1-53
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_f642d601d434a5::t_35a2e6df3f1e62 406,410-415,499-500
+  s_f642d601d434a5::t_68352da5c94465 23,405,407-409,416,498
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_f642d601d434a5::t_680589acaa9e0e 12,2399-2402,2407
+pnpm-lock.yaml
+  s_f642d601d434a5::t_04c34a32fe0ec6 7121-7123,7127-7129,25594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93cd56162b061a106cb64e7c2beba55516d3393a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4bcab537e8dd3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53408b8-c507-4016-9fc2-cf73b75fcf99",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_f642d601d434a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c7f81e-bd86-4e1f-88c9-69e2ad0fd6b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

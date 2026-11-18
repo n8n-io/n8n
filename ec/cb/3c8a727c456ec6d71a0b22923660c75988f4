@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_d68b4d4fcd8583::t_aff6187e63193a 87-98,105-115
+  s_d68b4d4fcd8583::t_741f6375761727 205
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_d68b4d4fcd8583::t_e8dd4b6934ec6e 315-317,324-331
+  s_d68b4d4fcd8583::t_62347771fcbad8 91
+  s_d68b4d4fcd8583::t_79880c853cbbb3 15-16,18-28
+  s_d68b4d4fcd8583::t_5ecbe33d12d3d2 60
+  s_d68b4d4fcd8583::t_2064c92b5974c2 318-323,332
+  s_d68b4d4fcd8583::t_d5a75c8b1b3311 333
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_d68b4d4fcd8583::t_8765c0a2885216 968-969,971-972
+  s_d68b4d4fcd8583::t_35cb6394387bf6 1095
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d68b4d4fcd8583::t_0ced4a510cbe03 6896,6904-6909
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_d68b4d4fcd8583::t_f36659b14137bb 1091-1092,1094-1139
+  s_d68b4d4fcd8583::t_bbfd6d5723c16a 133
+  s_d68b4d4fcd8583::t_370cf76df4e50f 121
+  s_d68b4d4fcd8583::t_5ed37d455b254a 536-537
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "eccb3c8a727c456ec6d71a0b22923660c75988f4",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d68b4d4fcd8583": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6147c248-8efd-4f19-99e7-01320d3cc796",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

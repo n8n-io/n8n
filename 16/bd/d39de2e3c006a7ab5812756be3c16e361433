@@ -1,0 +1,33 @@
+packages/cli/src/events/maps/system-task-metrics.event-map.ts
+  s_8b86eb076521e6::t_16a72b9de31691 1-75
+packages/cli/src/scheduling/system-tasks/emit-system-task-metric.ts
+  s_2fc564e3187e71::t_a06b2ef0115ba4 2-10,12-18
+  s_2fc564e3187e71::t_3f314ee39c853c 1,11
+packages/cli/src/events/event.service.ts
+  s_2fc564e3187e71::t_3f314ee39c853c 14
+  s_8b86eb076521e6::t_16a72b9de31691 11,21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16bdd39de2e3c006a7ab5812756be3c16e361433",
+  "prompts": {},
+  "sessions": {
+    "s_2fc564e3187e71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43cbfc44-a81b-4873-b6bf-317bdcb62056",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_8b86eb076521e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f155d013-6503-4c9b-bdf2-af0961d3e187",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

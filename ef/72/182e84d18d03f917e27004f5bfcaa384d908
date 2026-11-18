@@ -1,0 +1,31 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_1a8893cead55df::t_752f6a9191d030 32,39,82-85,218-219,225
+packages/@n8n/api-types/src/dto/assistant/assistant-thread-tabs-request.dto.ts
+  s_1a8893cead55df::t_52f97c178cf6b1 2
+packages/@n8n/api-types/src/schemas/assistant-thread-tabs.schema.ts
+  s_1a8893cead55df::t_d2910414cdbb69 1-50
+packages/@n8n/api-types/src/index.ts
+  s_1a8893cead55df::t_52f97c178cf6b1 746-760
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_1a8893cead55df::t_d2910414cdbb69 8,1628
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_1a8893cead55df::t_a0ae607022d0c0 122-123
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-thread-tabs.service.test.ts
+  s_1a8893cead55df::t_ace809e740b6fb 162-163,168-169,263-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef72182e84d18d03f917e27004f5bfcaa384d908",
+  "prompts": {},
+  "sessions": {
+    "s_1a8893cead55df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "599c151b-390c-4f30-8eeb-4e52a6cb1cd5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

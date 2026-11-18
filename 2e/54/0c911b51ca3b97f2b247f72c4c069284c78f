@@ -1,0 +1,40 @@
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  h_5d40c27a8fdfd1 24
+  s_64390ec65834a0::t_cfc4e459a273a2 77,84-86
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  h_5d40c27a8fdfd1 104
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  h_5d40c27a8fdfd1 51
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  h_5d40c27a8fdfd1 8
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  h_5d40c27a8fdfd1 33,148
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_64390ec65834a0::t_0284f00b93e41f 232
+  h_5d40c27a8fdfd1 68
+.agents/skills/public-api/SKILL.md
+  s_64390ec65834a0::t_29a0bb16d1ef4a 62
+  h_5d40c27a8fdfd1 55-56,58,60-61
+  s_64390ec65834a0::t_b2e163ec637c68 57,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2e540c911b51ca3b97f2b247f72c4c069284c78f",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

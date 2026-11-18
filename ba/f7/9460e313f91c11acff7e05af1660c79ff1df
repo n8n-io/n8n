@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Microsoft/Storage/test/blob/blobPath.test.ts
+  s_2e1fa95fc44f8f::t_774f6859e8e050 1-40
+packages/nodes-base/nodes/Microsoft/Storage/test/blob/blob_delete_nested_name.workflow.json
+  s_2e1fa95fc44f8f::t_3464b0d8727509 1-63
+packages/nodes-base/nodes/Microsoft/Storage/test/blob/blob_delete_relative_name.workflow.json
+  s_2e1fa95fc44f8f::t_05928c0a39e951 1-55
+packages/nodes-base/nodes/Microsoft/Storage/test/container/containerPath.test.ts
+  s_2e1fa95fc44f8f::t_7d23989cdc6fa3 1-24
+packages/nodes-base/nodes/Microsoft/Storage/test/container/container_delete_encoded_name.workflow.json
+  s_2e1fa95fc44f8f::t_7b070be56b595b 1-56
+packages/nodes-base/nodes/Microsoft/Storage/descriptions/BlobDescription.ts
+  s_98af74f6d17e12::t_c35ed742f35f36 21-23,44,77,110,194
+packages/nodes-base/nodes/Microsoft/Storage/descriptions/ContainerDescription.ts
+  s_98af74f6d17e12::t_6e55c83d4b6f12 81,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baf79460e313f91c11acff7e05af1660c79ff1df",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_98af74f6d17e12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9433bfcb116065c5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

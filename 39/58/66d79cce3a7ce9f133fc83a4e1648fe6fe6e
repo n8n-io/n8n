@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_88cc169ecc0820::t_968a119c0d76a3 756,763
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "395866d79cce3a7ce9f133fc83a4e1648fe6fe6e",
+  "prompts": {},
+  "sessions": {
+    "s_88cc169ecc0820": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27938eab-e3d4-4c66-a7c0-ce8536c33b68",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

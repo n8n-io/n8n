@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_f3486a76b4489c::t_799791a93e4572 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "020c9104cee8642bbf9f6cd9940931ee2f32460e",
+  "prompts": {},
+  "sessions": {
+    "s_f3486a76b4489c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d44f59b-686b-456f-a114-c08392b77661",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

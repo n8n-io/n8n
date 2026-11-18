@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  ai_agent 151,155-159
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  ai_agent 164-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13f5d3fe0268c3b9136cb7ec06c3f9321f4cd8c9",
+  "prompts": {}
+}

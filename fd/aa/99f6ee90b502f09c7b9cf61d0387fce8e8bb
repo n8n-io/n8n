@@ -1,0 +1,27 @@
+packages/@n8n/backend-services/src/services/redis.types.ts
+  s_925dcfedebf0c9::t_81cdce5bb5c103 16-17
+packages/cli/package.json
+  s_925dcfedebf0c9::t_678e41c539f563 114,274
+  s_925dcfedebf0c9::t_53e4169de8fdbf 86
+pnpm-workspace.yaml
+  s_925dcfedebf0c9::t_1a87465650438d 294-295
+  s_925dcfedebf0c9::t_46850c98edd081 296
+pnpm-lock.yaml
+  ai_agent 428-430,608-610,713-715,5176-5178,5288-5290,5381-5383,22735-22740,42330-42332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fdaa99f6ee90b502f09c7b9cf61d0387fce8e8bb",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

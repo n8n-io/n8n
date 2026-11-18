@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Facebook/FacebookTrigger.node.ts
+  s_79d975281a5884::t_1531986aaa5428 33-36
+packages/nodes-base/nodes/WhatsApp/WhatsAppTrigger.node.ts
+  s_79d975281a5884::t_1531986aaa5428 59-62
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_79d975281a5884::t_d3b3afce24ce7c 185,187
+packages/@n8n/instance-ai/evaluations/data/workflows/whatsapp-verify-token-not-a-credential-field.json
+  s_79d975281a5884::t_f2ce87551bc4bf 21-22,28-30
+  s_79d975281a5884::t_fc829ef0f1b8e7 2,6,23
+packages/nodes-base/nodes/FacebookLeadAds/FacebookLeadAdsTrigger.node.ts
+  s_79d975281a5884::t_1531986aaa5428 37-40
+packages/@n8n/instance-ai/evaluations/data/workflows/honors-missing-credential-field-correction.json
+  s_79d975281a5884::t_764f1377357eaa 2,16,20,24-26,31-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d48c0e75b0fc5fa9c6784565dda2f0d805389ea3",
+  "prompts": {},
+  "sessions": {
+    "s_79d975281a5884": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c22a92f8-033c-4e23-9653-0e5b9b7c6956",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_2df9f2e3d287d4::t_707242be23b073 1978-1989
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b02db83ac66fd43b5951cd0ee5f996f9467b9b5",
+  "prompts": {},
+  "sessions": {
+    "s_2df9f2e3d287d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1437bab9-1b9d-4a5d-a976-845f6de7d77e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

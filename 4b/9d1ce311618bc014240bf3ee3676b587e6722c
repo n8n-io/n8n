@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/test/Auth0ManagementApi.credentials.test.ts
+  s_6082a1b9696fe7::t_0202e0e92d3721 1-30
+packages/nodes-base/credentials/test/ZscalerZiaApi.credentials.test.ts
+  s_6082a1b9696fe7::t_9b00982f74e113 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b9d1ce311618bc014240bf3ee3676b587e6722c",
+  "prompts": {},
+  "sessions": {
+    "s_6082a1b9696fe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aced4535e855cb6de",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

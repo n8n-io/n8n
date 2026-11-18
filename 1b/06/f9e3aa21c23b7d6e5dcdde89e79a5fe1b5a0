@@ -1,0 +1,35 @@
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_6e0e8168b15a08::t_37b3d32488c6a0 1446,1482,1554-1557,1611,1674,1742
+  s_6e0e8168b15a08::t_767e50b36b860c 40,1343-1356,1496,1522,1707
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_6e0e8168b15a08::t_37b3d32488c6a0 501-514
+  s_6e0e8168b15a08::t_0c3dee3d009185 500
+  s_6e0e8168b15a08::t_bedb12a0678ea1 515-517
+  s_6e0e8168b15a08::t_5228a71bd3e5cf 30-33,55-58,166,185-189,271,284,341-345,518-528,553,588-595
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/createRole.generated.yml
+  s_6e0e8168b15a08::t_d0f3c8177cc9ae 42
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  s_6e0e8168b15a08::t_fd29d7513e3548 1-52
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_6e0e8168b15a08::t_e08180f431f94a 17-18
+packages/cli/src/public-api/v1/shared/spec/schemas/rolePublicDto.generated.yml
+  s_6e0e8168b15a08::t_9c10f77c8d25bc 1-35
+packages/cli/src/workflow-execute-additional-data.ts
+  s_6e0e8168b15a08::t_10c127b7de900f 436,438-453,465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1b06f9e3aa21c23b7d6e5dcdde89e79a5fe1b5a0",
+  "prompts": {},
+  "sessions": {
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_1e5b97159db84f::t_3ec84a30c7ade2 389-421
+packages/cli/src/services/folder-finder.service.ts
+  s_1e5b97159db84f::t_5ffb6f53e2ed4f 52-53
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_1e5b97159db84f::t_006c44d45d0641 94
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_1e5b97159db84f::t_881835f5fa2c45 64-71,75-81,85,94
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_1e5b97159db84f::t_2dc2850743ae3c 104,109,118,121,123-124,126,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "105324ec31c08e40ba9457ee27fa801672ae9249",
+  "prompts": {},
+  "sessions": {
+    "s_1e5b97159db84f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1487900-c5ed-4f06-8fe0-6903d96b0335",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

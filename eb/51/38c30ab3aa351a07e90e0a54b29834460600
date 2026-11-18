@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_b04c58447561ba::t_c726e955dd1864 89
+  s_b04c58447561ba::t_35b4a11fe7bae2 292-294
+  s_b04c58447561ba::t_62cbeb28b36fa5 4,6
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_b04c58447561ba::t_d57361830654a5 21
+  s_b04c58447561ba::t_ae0c3afb5234c5 487
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_b04c58447561ba::t_ecf0fc7188d89f 124-132,134-146
+  s_b04c58447561ba::t_ba08a81420a61c 133
+  s_b04c58447561ba::t_3cfd4390ad7b0f 58
+packages/cli/src/modules/agents/agent-action-already-handled.error.ts
+  s_b04c58447561ba::t_fb39ac1096f9ef 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "eb5138c30ab3aa351a07e90e0a54b29834460600",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli/src/controllers/users.controller.ts
+  s_cceebc2f7c0a9f::t_a40ec6c5d92b45 10
+  s_cceebc2f7c0a9f::t_a0a04a580651cc 126-127,129
+packages/cli/test/integration/users.api.test.ts
+  s_cceebc2f7c0a9f::t_a40ec6c5d92b45 952
+  s_cceebc2f7c0a9f::t_ffd31ae53cf984 28,919,925-930,947-951,953-956,1616-1660
+  s_cceebc2f7c0a9f::t_6b4c255ad96b39 1661-1662
+packages/cli/src/services/user.service.ts
+  s_cceebc2f7c0a9f::t_a0a04a580651cc 688-693
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5733da67c932fac28b6be59dc50b9af49526ee5",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_cceebc2f7c0a9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d5190d7-d692-4bb0-8404-c93baeb40abc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

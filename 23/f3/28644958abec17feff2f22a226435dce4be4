@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_ccfbf8efadee2b::t_e55c954692c32f 1038-1043
+  s_ccfbf8efadee2b::t_977a253b9faa13 829
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_ccfbf8efadee2b::t_922d8a89644271 356,376,381,385,389,403,405-407,415-416,424-425
+  s_ccfbf8efadee2b::t_11469840f088ee 297
+  s_ccfbf8efadee2b::t_b694864513545f 15
+  s_ccfbf8efadee2b::t_43ab61f7bc6384 296,298-308
+  s_ccfbf8efadee2b::t_295e4078b1e7d7 16
+  s_ccfbf8efadee2b::t_ab6666f3212c46 353-355,357-375,377-380,382-384,387-388,390-402,404,408-410,413-414,417-418,420-423
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_ccfbf8efadee2b::t_526bed4ed07e64 857-876,903-905,907,909-920,922-955
+  s_ccfbf8efadee2b::t_cbf98728f7697c 856,877-902,906,908,921
+  s_ccfbf8efadee2b::t_7a3ac6ede6ba23 956-977
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_ccfbf8efadee2b::t_fd45868c139178 9
+  s_ccfbf8efadee2b::t_d4531f88b95c49 424-429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "23f328644958abec17feff2f22a226435dce4be4",
+  "prompts": {},
+  "sessions": {
+    "s_ccfbf8efadee2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fef4c5f-b8bf-4e9d-8954-de3cad800f5c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

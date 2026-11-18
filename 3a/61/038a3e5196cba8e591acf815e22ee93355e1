@@ -1,0 +1,25 @@
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.test.ts
+  s_f151aa308572b0::t_471842a44a367f 1-2,98-111,115-222
+  s_f151aa308572b0::t_fff24be00ad5cc 112-114
+  s_f151aa308572b0::t_5ff4c204ef8f5f 223-225
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/__snapshots__/ChatInput.test.ts.snap
+  s_f151aa308572b0::t_2eb9ab1c23c10d 43,118
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/__snapshots__/DropdownMenu.test.ts.snap
+  s_f151aa308572b0::t_51444a00d63836 17,56,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a61038a3e5196cba8e591acf815e22ee93355e1",
+  "prompts": {},
+  "sessions": {
+    "s_f151aa308572b0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c9ed-e939-75a0-9d4c-7476aa16b0c5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

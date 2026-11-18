@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_dd64aae38c8902::t_1a321db07c43f9 195-213
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_dd64aae38c8902::t_c88acf8246c864 100-102
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_dd64aae38c8902::t_0f1e3dfee9203e 46-47,1559-1589,1591-1602
+  ai_agent 1590
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useReferencedAgentSummary.ts
+  s_dd64aae38c8902::t_c88acf8246c864 129-134
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_dd64aae38c8902::t_c88acf8246c864 209-211
+packages/cli/src/workflow-execute-additional-data.ts
+  s_dd64aae38c8902::t_cf7b17259c5713 510-513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ecfe5f1c5359087248ef7adfeeddd44828bee37e",
+  "prompts": {},
+  "sessions": {
+    "s_dd64aae38c8902": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c6dc1ab-2fad-4bdb-8e7b-175fcf16ad2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

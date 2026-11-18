@@ -1,0 +1,22 @@
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_acf0ff0cc09fee::t_0ea5bd82160834 408-410
+  s_acf0ff0cc09fee::t_e2253c4b5bd9dd 406-407
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_acf0ff0cc09fee::t_1347bbe3d1721f 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4d40096e665ed4671e56033f753481af6a2f71b",
+  "prompts": {},
+  "sessions": {
+    "s_acf0ff0cc09fee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cc5a623-4869-4dd0-8a9d-7ea5111854c2",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

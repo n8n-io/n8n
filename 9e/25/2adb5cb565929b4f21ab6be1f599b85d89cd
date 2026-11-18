@@ -1,0 +1,56 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-requirements.test.ts
+  s_d881ce7168ddca::t_620aa79b80fd96 1-68
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-requirements.ts
+  s_d881ce7168ddca::t_7ec698bffa0e83 1-8,10,12-24
+  s_d881ce7168ddca::t_f247a07f727042 9,11,25
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_8afcebef7d15aa::t_313b866300760c 102-103,117,167,98,104-111,173,178-181,183,187-188,190,192-195
+  s_f066721bbfd491::t_bba1161f874664 112-116,126-127
+  s_379ad6ba9d6637::t_6d72b61127cf35 14
+  s_d881ce7168ddca::t_e1e05fa1c3947f 15
+  s_379ad6ba9d6637::t_96ec01d8061121 18-21
+  s_379ad6ba9d6637::t_fd1edd9bf1532c 40-42,93-96,99-101
+  s_379ad6ba9d6637::t_358fcc1f825ce2 168-172,174,176-177,182,184-185,191
+  s_d881ce7168ddca::t_38a735a84b183d 175
+  s_379ad6ba9d6637::t_0e1fb6abb170e1 186,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e252adb5cb565929b4f21ab6be1f599b85d89cd",
+  "prompts": {},
+  "sessions": {
+    "s_379ad6ba9d6637": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f46e5-51cb-7b11-b347-f5afe4cdae90",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8afcebef7d15aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4151-46fb-7303-9526-e7f2de8e2586",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_d881ce7168ddca": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9ab97a0f-035f-4b88-bdcc-744437679f6e",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_f066721bbfd491": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4161-0a6a-70a2-88e5-eed58ce13450",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

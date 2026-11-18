@@ -1,0 +1,47 @@
+packages/@n8n/db/src/repositories/agent-execution-statistics.repository.ts
+  s_4a3382d717bf3e::t_7d238042356837 1-100
+packages/@n8n/db/src/repositories/index.ts
+  s_4a3382d717bf3e::t_b086ebf7b0fb45 66
+packages/@n8n/db/src/repositories/license-metrics.repository.ts
+  s_4a3382d717bf3e::t_b9669ee790a5fe 3
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_4a3382d717bf3e::t_d5abd81195bd6c 28,246,323,328,2282,2327,2413,2462,2484,2506,3016,3046,3069-3070,3072,3093-3094,3112,3117,3138,3469,3516,3905,3959
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_4a3382d717bf3e::t_1118e808ac2b98 1,340
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_4a3382d717bf3e::t_38387e7697b57d 18,385,391
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-multi-main.integration.test.ts
+  s_4a3382d717bf3e::t_04b0baefa9e981 5,78-80,99
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_4a3382d717bf3e::t_5a7402119e7960 11-15,140
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_4a3382d717bf3e::t_b87abb7c51783f 9,82,124-126,156,160,541-542,545,559-565,568,571,590-596,601
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_4a3382d717bf3e::t_9ea423fe185452 6,93,375,414-415
+packages/cli/src/services/__tests__/workflow-statistics-rollup.service.test.ts
+  s_4a3382d717bf3e::t_ccf853339d2993 4,23,32,41,114-115,121,130-134
+packages/cli/src/services/workflow-statistics-rollup.service.ts
+  s_4a3382d717bf3e::t_eca1780451f822 5,40,88-89
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_4a3382d717bf3e::t_c6416e320dabfe 1,1552
+packages/cli/test/integration/license-metrics.repository.test.ts
+  s_4a3382d717bf3e::t_76a932c745786d 7,20,27,50,55,57,72,75,79,84,91,101,106-108,111,122,127,175
+packages/cli/test/integration/workflow-statistics-rollup.task.test.ts
+  s_4a3382d717bf3e::t_f44b4c9e28215e 7,35,47,61,147,175-178,188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a054262ec49ca023727d66f838d2525494222de",
+  "prompts": {},
+  "sessions": {
+    "s_4a3382d717bf3e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c564-665d-70f2-a96c-b4cc9c552153",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/cli/src/scheduling/seeded-cron.ts
+  s_32531f1c62f1f4::t_fc018eabac7fc0 23-25
+  s_7219aabe8f128b::t_de0fe414ca4199 1,16-17,22
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_32531f1c62f1f4::t_3172598f9fb1bc 260-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b702d2848d286853a9baee43f73ded6edeea83b",
+  "prompts": {},
+  "sessions": {
+    "s_32531f1c62f1f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f59b29d-3eb6-46b9-a949-71ce4b9c7bb7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_7219aabe8f128b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e7e2-310f-7672-9c03-7bb788547509",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

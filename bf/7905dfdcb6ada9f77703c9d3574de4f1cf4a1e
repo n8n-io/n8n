@@ -1,0 +1,40 @@
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_2df9f2e3d287d4::t_da143270616da4 1-5,31,1916-2007
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_2df9f2e3d287d4::t_da143270616da4 342
+  s_2df9f2e3d287d4::t_f47e19ab0e8970 26,36,68,79-82,86,99-102,104,109,113,138-148,175-176,178-180,207,230,242-243,249,259,416-419,452
+packages/frontend/editor-ui/src/Interface.ts
+  s_2df9f2e3d287d4::t_2dd9221742e0b7 13,712
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.ts
+  s_2df9f2e3d287d4::t_2dd9221742e0b7 170
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.test.ts
+  s_2df9f2e3d287d4::t_3cec1a327c4095 119,139
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_2df9f2e3d287d4::t_82c7688146e83d 5,20-23,38,57-61,94-98
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  s_2df9f2e3d287d4::t_450c01f99a3a77 27-32
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/deleteCredential.generated.yml
+  s_2df9f2e3d287d4::t_607a5356aa03d1 48-52
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentials.generated.yml
+  s_2df9f2e3d287d4::t_056f154c0fc96d 30-34
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/updateCredential.generated.yml
+  s_2df9f2e3d287d4::t_4ec8ab5655e3a9 28-33
+packages/cli/src/public-api/v1/shared/spec/schemas/credentialPublicDto.generated.yml
+  s_2df9f2e3d287d4::t_8654a0d22cc5f7 26-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf7905dfdcb6ada9f77703c9d3574de4f1cf4a1e",
+  "prompts": {},
+  "sessions": {
+    "s_2df9f2e3d287d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1437bab9-1b9d-4a5d-a976-845f6de7d77e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

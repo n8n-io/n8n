@@ -1,0 +1,31 @@
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/slack-trigger-signature-secret.rule.test.ts
+  s_fff1ab381d7581::t_ad934f0561379f 1-170
+packages/cli/src/modules/breaking-changes/rules/v3/slack-credential-secret.ts
+  s_fff1ab381d7581::t_3887452c780709 1-46
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_fff1ab381d7581::t_ad934f0561379f 40-41
+packages/cli/src/modules/breaking-changes/rules/v3/slack-credential-signature-secret.rule.ts
+  s_fff1ab381d7581::t_3887452c780709 1-68
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/slack-credential-signature-secret.rule.test.ts
+  s_fff1ab381d7581::t_ad934f0561379f 1-157
+packages/cli/src/modules/breaking-changes/rules/v3/slack-trigger-signature-secret.rule.ts
+  s_fff1ab381d7581::t_3887452c780709 1-67
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.rule-discovery.test.ts
+  s_fff1ab381d7581::t_8f50e23bf78459 1,14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e75f03ce7e3b292ee50460af4cb43199818b50c",
+  "prompts": {},
+  "sessions": {
+    "s_fff1ab381d7581": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "383521c3-611a-4272-9d21-e69e73b36323",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

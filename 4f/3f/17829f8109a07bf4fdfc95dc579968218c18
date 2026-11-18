@@ -1,0 +1,46 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_acf0ff0cc09fee::t_1a9149f89457da 262
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow-public.dto.test.ts
+  s_acf0ff0cc09fee::t_d03e487c8335ab 1
+  s_acf0ff0cc09fee::t_e9d24e4e40d863 105-122
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_acf0ff0cc09fee::t_c8d108418a5e88 966-970,986,992-1010
+  s_acf0ff0cc09fee::t_8c2f4b6f4c2bba 1011-1012
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_acf0ff0cc09fee::t_ad22733f337d61 3051-3066,3078
+packages/cli/src/workflows/workflow.service.ts
+  s_acf0ff0cc09fee::t_1fb0a8e7281d8b 673
+  s_acf0ff0cc09fee::t_33ad7e57912dff 149-152
+  s_acf0ff0cc09fee::t_9e30db7d2875e5 153
+  s_acf0ff0cc09fee::t_d2d9a6f03a8092 596
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_acf0ff0cc09fee::t_d101ddcf0ef86f 24-26
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_acf0ff0cc09fee::t_b94a7970a0ff04 297
+  s_acf0ff0cc09fee::t_29fc2680e56a75 491-492
+  s_acf0ff0cc09fee::t_81fc33aee0005c 584-587,590
+  s_acf0ff0cc09fee::t_98093c14db9dea 101-105
+  s_acf0ff0cc09fee::t_0f878690a26dda 488-489,496
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_acf0ff0cc09fee::t_94f333ea291428 9
+  s_acf0ff0cc09fee::t_ed93200e8d807e 445
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_acf0ff0cc09fee::t_7b70adcb617462 3999-4039
+  s_acf0ff0cc09fee::t_899a90d7a7eba9 3998
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f3f17829f8109a07bf4fdfc95dc579968218c18",
+  "prompts": {},
+  "sessions": {
+    "s_acf0ff0cc09fee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cc5a623-4869-4dd0-8a9d-7ea5111854c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

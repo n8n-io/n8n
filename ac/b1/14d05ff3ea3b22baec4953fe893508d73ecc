@@ -1,0 +1,44 @@
+packages/@n8n/agents/src/sdk/tool.ts
+  s_874a0c5affc5fe::t_bfff9e5db9b0f2 136-137
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_874a0c5affc5fe::t_9fc6ed3ef36990 367
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_874a0c5affc5fe::t_4d5d308f7fa1df 8-15,41,47-50,78,101-104,112-115
+packages/@n8n/agents/src/types/index.ts
+  s_874a0c5affc5fe::t_4d5d308f7fa1df 70
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_874a0c5affc5fe::t_12c4848baffe16 530-536,542-544,547-549
+  s_874a0c5affc5fe::t_a801f6dcd9b636 790,793,796,801-805,808-818
+  s_874a0c5affc5fe::t_c3c8f13a6d5935 406-408
+  s_874a0c5affc5fe::t_d62cf43d620794 989,1001-1002,1019-1020
+  s_874a0c5affc5fe::t_b150302575f9bb 856-857,884-885
+  s_874a0c5affc5fe::t_82ed512e430bfb 609-615
+  s_874a0c5affc5fe::t_aaa2b009ce15d1 1041-1045,1047,1049-1054
+  s_874a0c5affc5fe::t_6a1c16fdc2e8aa 18,57,148-151,176,178
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_874a0c5affc5fe::t_bfff9e5db9b0f2 10,14,33-34,123-130,143-144
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_874a0c5affc5fe::t_b90d1e7b713631 4162,4187
+  s_874a0c5affc5fe::t_38628052a0cabb 481-550,2341,2343-2347,2381-2384,2922-2923,2925-2931,2968-2977,4764-4765,4771-4774,4795,4798
+  s_874a0c5affc5fe::t_f6a981a1dcfaa4 4799-4801
+packages/@n8n/agents/src/index.ts
+  s_874a0c5affc5fe::t_4d5d308f7fa1df 22
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_874a0c5affc5fe::t_4d5d308f7fa1df 389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "acb114d05ff3ea3b22baec4953fe893508d73ecc",
+  "prompts": {},
+  "sessions": {
+    "s_874a0c5affc5fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3d8-256c-7972-b467-0a43adf82ffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

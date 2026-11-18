@@ -1,0 +1,19 @@
+packages/cli/src/services/project.service.ee.ts
+  s_0af44d0617f551::t_93c2dde723358d 623-627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6a72746146a5d6df22f7845ce6857db01088a72",
+  "prompts": {},
+  "sessions": {
+    "s_0af44d0617f551": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "58e0ca41-21da-454c-8c10-fb497ce3c4d5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

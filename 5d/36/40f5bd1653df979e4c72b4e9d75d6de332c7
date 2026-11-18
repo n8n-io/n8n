@@ -1,0 +1,68 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 412
+  s_cc68fdb58b7281::t_cfab9773f5772c 383
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_cc68fdb58b7281::t_cfab9773f5772c 95-99
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 333
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 759,1233
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 752
+packages/cli/src/modules/agents/integrations/__tests__/agent-credential-lookup.service.test.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 126
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-managed-setup.service.test.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 121
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_cc68fdb58b7281::t_658efe9c2bdb62 275
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 73
+packages/cli/src/credentials/credentials.controller.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 119-123
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 453
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_cc68fdb58b7281::t_b04c8341eca13a 3344-3386
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 92
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 805
+packages/cli/src/modules/agents/integrations/agent-credential-lookup.service.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 34
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 188,548
+packages/cli/src/credentials/credentials.service.ts
+  s_cc68fdb58b7281::t_658efe9c2bdb62 635,641,667-668
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-entra-provisioning.service.test.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 473
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 153-157
+packages/cli/src/modules/agents/__tests__/agent-vector-stores.service.test.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 73
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-entra-provisioning.service.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 467
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-managed-setup.service.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 170
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_cc68fdb58b7281::t_822f41f0adf10a 155-157
+  s_cc68fdb58b7281::t_b04c8341eca13a 142,147-149,158-162
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_cc68fdb58b7281::t_46f994422d2c7e 494
+  s_cc68fdb58b7281::t_822f41f0adf10a 457
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d3640f5bd1653df979e4c72b4e9d75d6de332c7",
+  "prompts": {},
+  "sessions": {
+    "s_cc68fdb58b7281": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16404-f1e4-70d2-98b7-697672668117",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

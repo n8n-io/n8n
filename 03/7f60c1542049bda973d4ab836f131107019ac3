@@ -1,0 +1,21 @@
+packages/cli/src/modules/breaking-changes/migrations/node-removals/__tests__/agent-tools-v1-to-v2.migration.test.ts
+  s_3fccbadf582d3f::t_79e0bfd9859c4a 47-64
+packages/cli/src/modules/breaking-changes/migrations/node-removals/agent-tools-v1-to-v2.migration.ts
+  s_3fccbadf582d3f::t_5802f4d8069f2d 2,19,29,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "037f60c1542049bda973d4ab836f131107019ac3",
+  "prompts": {},
+  "sessions": {
+    "s_3fccbadf582d3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55175171-4120-4448-8ac7-c712f2d2efc1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

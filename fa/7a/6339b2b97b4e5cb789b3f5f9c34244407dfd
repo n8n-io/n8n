@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/decorator-routed.handler.ts
+  s_64390ec65834a0::t_f1edb655a42dcd 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fa7a6339b2b97b4e5cb789b3f5f9c34244407dfd",
+  "prompts": {},
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

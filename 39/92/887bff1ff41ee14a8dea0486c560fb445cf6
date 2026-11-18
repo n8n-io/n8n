@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_1f7d8576c09ae3::t_51e58be9c8b7a3 4
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_1f7d8576c09ae3::t_51e58be9c8b7a3 1011-1025
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3992887bff1ff41ee14a8dea0486c560fb445cf6",
+  "prompts": {},
+  "sessions": {
+    "s_1f7d8576c09ae3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec17cc43-a699-45b4-9137-bfe54625493c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

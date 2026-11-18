@@ -1,0 +1,25 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_45e2f6fac3868c::t_9a128690f0fc70 538-587
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_45e2f6fac3868c::t_a4feaef60c1ac5 194,633-635
+  s_45e2f6fac3868c::t_80779838506e72 41,164,172-193,195-208
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  ai_agent 102-105
+  s_45e2f6fac3868c::t_678231b6142092 100-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9c06bb343a95e6cd95647dea8ec07512ccea1ee",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

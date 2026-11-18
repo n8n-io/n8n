@@ -1,0 +1,61 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/test/LmOllama.node.test.ts
+  s_c3f63bfec03d56::t_87aafc54dfc2fd 74,93,112
+  s_c3f63bfec03d56::t_001f895b1f6089 33,36,40,43,70,87
+packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.test.ts
+  s_c3f63bfec03d56::t_87aafc54dfc2fd 51
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatAnthropic.test.ts
+  s_c3f63bfec03d56::t_dd5510abbcc1fa 429,435,443,498
+packages/@n8n/nodes-langchain/nodes/llms/LMOllama/LmOllama.node.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 77,87
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 242
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 67,74
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/__tests__/searchModels.test.ts
+  s_c3f63bfec03d56::t_dd5510abbcc1fa 48-51,57,88
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/test/LmChatOllama.node.test.ts
+  s_c3f63bfec03d56::t_001f895b1f6089 33,36,40,43,70,87
+  s_c3f63bfec03d56::t_87aafc54dfc2fd 74,93,112
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_c3f63bfec03d56::t_87aafc54dfc2fd 35
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_c3f63bfec03d56::t_ced65817c2b761 4-10,12-15,18-22,25,29,37-38,46-47,52-54,56,59-72,77-82,85-86,92-93,95,97,106,109-110,113,126-127,131-132,138,141-145
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOllama/LmChatOllama.node.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 80,82
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 197,199
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_c3f63bfec03d56::t_87aafc54dfc2fd 40
+  s_c3f63bfec03d56::t_dd5510abbcc1fa 340,397
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_c3f63bfec03d56::t_dd5510abbcc1fa 38-41,58,86
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOllama/test/EmbeddingsOllama.node.test.ts
+  s_c3f63bfec03d56::t_001f895b1f6089 33,36,40,43,69,88
+  s_c3f63bfec03d56::t_87aafc54dfc2fd 73,94,113
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 21,30
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 310
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/methods/searchModels.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 12,23
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_c3f63bfec03d56::t_bb60467eec6f48 1,5-19,22-39,65,68-73,76,79,82,89,92,95-96,98-101,104-105,107,109-110,113-114,118,123-124,128,131-132,136,140,145,149,154,158,163,167,172,177-178,185-186,190,196-197,199,205,215-216,220,229,237,240,242-243,248-250,252,254-255,258-260,262,264,285,300,302,304-308,312-313,315-316,319-321,323-328,331,336,339-340,342-346,357,359,364,366,375,377,382-383,386,388-392,396,404,406-410,414,418,420-424,427-428,434,437-438,449,452,459,463-465,473,476
+packages/@n8n/ai-utilities/src/index.ts
+  s_c3f63bfec03d56::t_6bd53c6672f663 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "643a514b2e946ad848f886e85e554e04fc115109",
+  "prompts": {},
+  "sessions": {
+    "s_c3f63bfec03d56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ec50217-81ad-4e71-9979-cd76e8a8e85d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

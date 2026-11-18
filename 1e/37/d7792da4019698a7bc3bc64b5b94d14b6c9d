@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_4f495571aef8fe::t_3f75ce7ce9a3c5 255,261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1e37d7792da4019698a7bc3bc64b5b94d14b6c9d",
+  "prompts": {},
+  "sessions": {
+    "s_4f495571aef8fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9742293-1385-4d08-b10f-038babe3a75c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

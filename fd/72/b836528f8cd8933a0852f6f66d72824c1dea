@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/Splunk/Splunk.node.ts
+  s_2e1fa95fc44f8f::t_5f3fa6ad35a689 15,21
+packages/nodes-base/nodes/Splunk/test/v2/node/report.test.ts
+  s_2e1fa95fc44f8f::t_56e296685143ed 2,72,85,97-116
+packages/nodes-base/nodes/Splunk/test/v2/node/user.test.ts
+  s_2e1fa95fc44f8f::t_45100f4f889928 2,55,68,80-99,117
+packages/nodes-base/nodes/Splunk/test/v2/utils.test.ts
+  s_2e1fa95fc44f8f::t_ddd4acce0bf7cc 8-9,144-146,149-160
+packages/nodes-base/nodes/Splunk/v1/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_42556eb81d0bb2 11-17,278
+packages/nodes-base/nodes/Splunk/v2/actions/report/deleteReport.operation.ts
+  s_2e1fa95fc44f8f::t_ddad45867bddca 6,27
+packages/nodes-base/nodes/Splunk/v2/actions/report/get.operation.ts
+  s_2e1fa95fc44f8f::t_c4fd516fed1a2c 6,27
+packages/nodes-base/nodes/Splunk/v2/actions/user/deleteUser.operation.ts
+  s_2e1fa95fc44f8f::t_d0ff6d1181a278 6,27
+packages/nodes-base/nodes/Splunk/v2/actions/user/get.operation.ts
+  s_2e1fa95fc44f8f::t_0c4b55328b2255 6,27
+packages/nodes-base/nodes/Splunk/v2/actions/user/update.operation.ts
+  s_2e1fa95fc44f8f::t_9d0f5fcab58d10 6,83
+packages/nodes-base/nodes/Splunk/v2/actions/versionDescription.ts
+  s_2e1fa95fc44f8f::t_2db9ffc87b82fa 14
+packages/nodes-base/nodes/Splunk/v2/helpers/descriptions/rlc.description.ts
+  s_2e1fa95fc44f8f::t_f311b3a9ad6b6d 24
+packages/nodes-base/nodes/Splunk/v2/helpers/utils.ts
+  s_2e1fa95fc44f8f::t_9978ca878ebec4 2,106-111
+packages/nodes-base/nodes/Splunk/v2/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_8e8f1b6cad02e2 4,24,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd72b836528f8cd8933a0852f6f66d72824c1dea",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

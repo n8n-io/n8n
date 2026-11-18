@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue
+  s_770913b91a0329::t_36ea7b799aacea 9
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPAgentsSelect.vue
+  s_770913b91a0329::t_f26dc53a75b2ec 9
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_770913b91a0329::t_c3591688421ab9 14
+  s_770913b91a0329::t_1596d81d8ff65f 183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9551d6eede5c0575287af46cac9a1c2c3710904b",
+  "prompts": {},
+  "sessions": {
+    "s_770913b91a0329": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4972e6a1-3aa5-4a91-a1c2-df474874260f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+criu-activator/main.go
+  s_492947feb200a2::t_c01b34f407bf02 283,292
+  s_492947feb200a2::t_7ac9d429c333cd 265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0dd43c3731ed901f68366424b7e0f6e249b7b1c3",
+  "prompts": {},
+  "sessions": {
+    "s_492947feb200a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f1005eb-2ba1-4be8-a697-9dc958089742",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

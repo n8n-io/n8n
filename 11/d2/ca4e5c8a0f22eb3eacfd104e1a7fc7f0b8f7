@@ -1,0 +1,62 @@
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.types.ts
+  s_5f52b573b56872::t_473f73c5006344 5
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_5f52b573b56872::t_6255f37e58e9f6 107-108,129,182,191
+  s_094e1f43207e6c::t_1f62d86582c938 114
+packages/cli/test/integration/mcp-registry/mcp-registry-refresh.task.integration.test.ts
+  s_5f52b573b56872::t_746bbebe1f02fa 145-184
+  s_5f52b573b56872::t_516e64a5a75e66 91-102
+  s_5f52b573b56872::t_9c16121d883dbc 88-90
+  s_5f52b573b56872::t_5dfad29c32f5ef 4
+  s_5f52b573b56872::t_ba426ce8b6ecef 28
+  s_5f52b573b56872::t_415b5d18ccbe38 188
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-server.repository.ts
+  s_094e1f43207e6c::t_0642407bb33811 42,44
+  s_094e1f43207e6c::t_1f9c82c38a8797 50
+  s_5f52b573b56872::t_39329766c14161 47,51-52
+  h_32d8cd6a0d6aad 33,41,43
+  s_5f52b573b56872::t_3d773314372c37 6-8,23-28,31-32,34-39,48-49,53,55
+  s_094e1f43207e6c::t_1f62d86582c938 1,15-22
+  s_84bd7d21dafcec::t_a8f8576dcacf46 29-30,40,45-46
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry.service.test.ts
+  s_5f52b573b56872::t_d0f5e319ee2bd2 77,328
+  s_84bd7d21dafcec::t_a8f8576dcacf46 22-23,78,273,330
+  s_5f52b573b56872::t_415b5d18ccbe38 241,262-263,309-310,329,331,345,355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11d2ca4e5c8a0f22eb3eacfd104e1a7fc7f0b8f7",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_094e1f43207e6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2438e740-1aea-4c31-871f-3019989be4f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_5f52b573b56872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fcbd5c18-a0f7-4557-9f3f-740bcd010600",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_84bd7d21dafcec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c06acd5-ea06-438a-a3ba-a4200fd0acb2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

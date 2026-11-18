@@ -1,0 +1,29 @@
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.ts
+  s_be6d12de03f718::t_1f14ae5246f99a 81-96
+  s_be6d12de03f718::t_a4f8b578c973a7 255-256,258-261,263-265
+  s_be6d12de03f718::t_c3a93b6f4ce123 262
+  s_be6d12de03f718::t_a1c304907ae371 62-63
+packages/@n8n/workflow-sdk/src/generate-types/schema-harvest.test.ts
+  s_be6d12de03f718::t_797d08e70fe896 137-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "75a851fb1aa3160107d9cd4ca8ea80866732b8f8",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

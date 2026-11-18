@@ -1,0 +1,61 @@
+packages/frontend/@n8n/stores/src/constants.ts
+  s_76b3c38c5eba33::t_1bb74f504cbf80 55
+packages/cli/src/modules/mcp/__tests__/mcp.settings.controller.api.test.ts
+  s_76b3c38c5eba33::t_b530eb9595ec4d 459-496
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_76b3c38c5eba33::t_d65458b3610803 95-96
+  s_76b3c38c5eba33::t_79f911e020cff1 212-285
+  s_76b3c38c5eba33::t_504b155e73dbda 16-17
+  s_76b3c38c5eba33::t_6babc3c739233d 47
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.ts
+  s_76b3c38c5eba33::t_d8b893ed86620c 56
+  s_76b3c38c5eba33::t_5c8ea18946228d 3
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue
+  s_76b3c38c5eba33::t_17f785f102e384 1-112
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_76b3c38c5eba33::t_37cca24c60f0b2 3228-3234
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_76b3c38c5eba33::t_3245e080acd3ad 38-39
+  s_76b3c38c5eba33::t_89e79c4a5a899e 150-152,160-181
+  s_76b3c38c5eba33::t_f74fcfcadd6907 52
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store.test.ts
+  s_76b3c38c5eba33::t_6dcec09c094084 1-72
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts
+  s_76b3c38c5eba33::t_eec6f5f189d85b 18-19
+  s_76b3c38c5eba33::t_89c47e3aec8aaa 66-67
+packages/cli/src/modules/mcp/dto/update-workflows-availability.dto.ts
+  s_76b3c38c5eba33::t_136e48405fdf6b 9
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/modals.ts
+  s_76b3c38c5eba33::t_986e817a64485c 1-10
+packages/cli/src/modules/mcp/mcp.settings.service.ts
+  s_76b3c38c5eba33::t_d14c122c480c12 111,113,115-117,124
+  s_76b3c38c5eba33::t_34c9204f77d222 284,287-290
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.test.ts
+  s_76b3c38c5eba33::t_3b7b5669ce9ea1 1-123
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/constants.ts
+  s_76b3c38c5eba33::t_b6a2882e95ef49 1
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_76b3c38c5eba33::t_d22059188fa4f4 182
+  s_76b3c38c5eba33::t_5e941e6fa13b60 142-145
+packages/cli/src/modules/mcp/__tests__/mcp.settings.service.test.ts
+  s_76b3c38c5eba33::t_548e8a8626505b 563-613
+  s_76b3c38c5eba33::t_389fab0dba91d3 208-217
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store.ts
+  s_76b3c38c5eba33::t_ddd363f9a94659 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad04ad2c2c53768bcb335989a7a69f7b4ef7c88e",
+  "prompts": {},
+  "sessions": {
+    "s_76b3c38c5eba33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70d8e885-4a04-4884-a7b3-485a5893471f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

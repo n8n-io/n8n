@@ -1,0 +1,33 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  ai_agent 124
+  s_5ef8864054ee6b::t_fc2c9f29d6a5ae 116,128-129,131
+  s_5ef8864054ee6b::t_799031529a9bfd 138-139,148
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_5ef8864054ee6b::t_cfeb044b478186 152-160,162,170-174,176,178-180
+  s_5ef8864054ee6b::t_d3e44d7c4090ee 77
+  s_5ef8864054ee6b::t_d8865b415bdbf8 161
+  s_5ef8864054ee6b::t_1e489b1738ceba 55-57
+  s_5ef8864054ee6b::t_af44ef10e9eb36 99
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_5ef8864054ee6b::t_7eb87d8851a6aa 152-153
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5ef8864054ee6b::t_0f31956af73d3a 498-499
+  s_5ef8864054ee6b::t_5a67448b8553ea 480,482,487-488,490,500,506
+  s_5ef8864054ee6b::t_6dde525b292ec1 436,446-447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "590182212bc0cecb14ccddbab2a50f6cd0a883e8",
+  "prompts": {},
+  "sessions": {
+    "s_5ef8864054ee6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c63a640e-618d-456a-b511-501d52ce31b1",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

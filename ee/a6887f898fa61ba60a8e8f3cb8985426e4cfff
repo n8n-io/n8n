@@ -1,0 +1,34 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importResult.yml
+  s_a5c113d3dab7cc::t_63d2b643690f96 278,286
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_a5c113d3dab7cc::t_439f9a90c32350 186
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_a5c113d3dab7cc::t_b4d9dddea25f8d 259-265
+  s_a5c113d3dab7cc::t_63d2b643690f96 241-242,248
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_a5c113d3dab7cc::t_439f9a90c32350 111-114
+packages/@n8n/cli/src/commands/package/import.ts
+  s_a5c113d3dab7cc::t_63d2b643690f96 95-96
+packages/@n8n/cli/src/client.ts
+  s_a5c113d3dab7cc::t_63d2b643690f96 93
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_a5c113d3dab7cc::t_3b09c028b53ca8 327
+packages/@n8n/cli/docs/commands/package.md
+  s_a5c113d3dab7cc::t_63d2b643690f96 82-83,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eea6887f898fa61ba60a8e8f3cb8985426e4cfff",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

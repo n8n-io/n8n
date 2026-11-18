@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_a55786a50e57d3::t_4601e8635e7008 311
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a55786a50e57d3::t_f29c0848de2963 47
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_a55786a50e57d3::t_9a57c919cbad7d 18,43,45-47,49
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_a55786a50e57d3::t_231c4393ff6cc9 297,300,302,371
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_a55786a50e57d3::t_85db3cb68fd38f 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2a80a39e452b4ecc822a04b1bf57a0b2259c7e58",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a55786a50e57d3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "db696bc5-00ab-49ae-be41-4a4e7ee9fd89",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

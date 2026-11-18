@@ -1,0 +1,21 @@
+packages/cli/test/migration/1784900752603-replace-agent-file-binary-data-id-with-stored-at.test.ts
+  s_701c3478d6707a::t_b17d94d1943eaa 24
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_701c3478d6707a::t_db797913e3f7d5 234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bd3d3bef97805a4453cbbfbc6a1c4d23722e3d4f",
+  "prompts": {},
+  "sessions": {
+    "s_701c3478d6707a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff033f2c-41d7-434c-b328-ad4b53b50d81",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

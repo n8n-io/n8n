@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_fd6e130ca898c8::t_ab6247fa0c2640 72-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "163bcfe41733560997bf604aef4b668dcff7064c",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

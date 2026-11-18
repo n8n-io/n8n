@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.vue
+  s_17c9758bfdf7df::t_437495fe34c458 622-624
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideField.vue
+  s_17c9758bfdf7df::t_437495fe34c458 38,69-70
+  s_17c9758bfdf7df::t_aeddb83a292dd8 71-72
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.test.ts
+  s_17c9758bfdf7df::t_437495fe34c458 127-137
+  s_17c9758bfdf7df::t_c3ee97af0a14dd 121-126,150,155-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "584ff437f71cb52a4d9f0f69bcfed0b94cfe9358",
+  "prompts": {},
+  "sessions": {
+    "s_17c9758bfdf7df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fc9a-3908-7400-bb29-7f163fd0d787",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

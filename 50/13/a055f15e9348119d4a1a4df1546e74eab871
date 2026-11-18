@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_da40b13f6f23be::t_1c048d3f03883f 252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5013a055f15e9348119d4a1a4df1546e74eab871",
+  "prompts": {},
+  "sessions": {
+    "s_da40b13f6f23be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffba5-e221-76b2-ac02-a792f7d85eb1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

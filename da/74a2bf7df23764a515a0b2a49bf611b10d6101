@@ -1,0 +1,103 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentSection.test.ts
+  s_12f0cbc03fb343::t_eb4a6bf6343b0a 49
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/RecentChatIcon.vue
+  s_12f0cbc03fb343::t_0a84481e0d4a87 8,14-15,19
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/N8nChatAgentLibraryView.test.ts
+  s_12f0cbc03fb343::t_eb4a6bf6343b0a 66,73
+packages/@n8n/backend-services/src/services/project-scope.service.ts
+  s_12f0cbc03fb343::t_80d4329b36148f 25-27
+  s_12f0cbc03fb343::t_687a360f1ff545 30-35
+packages/@n8n/api-types/src/agents/types.ts
+  s_12f0cbc03fb343::t_20048c95bbbea9 446-450
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_12f0cbc03fb343::t_14d5600f974ac8 3
+  s_12f0cbc03fb343::t_07c2b17daff1a3 938,950,957-958,964-969,971,973,982,997,999,1001,1008,1032,1048,1074,1079-1119
+  s_12f0cbc03fb343::t_56879de102262f 91,927
+  s_12f0cbc03fb343::t_030e97923179a4 1140,1182
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue
+  s_12f0cbc03fb343::t_09640e1254a590 272
+  s_12f0cbc03fb343::t_0425a5e3b5923d 195
+  s_12f0cbc03fb343::t_7a8e4b566e58d0 23,50,85-88,114-121,126-131,188-194,220-231,271,273-276,336-343
+  s_12f0cbc03fb343::t_0a84481e0d4a87 176
+  s_12f0cbc03fb343::t_cc4d5bfa22f49b 207
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_12f0cbc03fb343::t_499950c8b8b917 335
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nAssistantIdentity.ts
+  s_12f0cbc03fb343::t_0a84481e0d4a87 5,8
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nChatAgents.test.ts
+  s_12f0cbc03fb343::t_eb4a6bf6343b0a 148,161,173,197-203,213-219
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  s_12f0cbc03fb343::t_12122ba256d81f 128,186-195,197-205,207-212,214-220
+  s_12f0cbc03fb343::t_aa316657af25f6 196,206,213,221
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentGrid.vue
+  s_12f0cbc03fb343::t_09640e1254a590 56
+  s_12f0cbc03fb343::t_7a4b35f8c5281b 2,8,21,23-24,26-28,30,32,47-53,55,57-60
+  s_12f0cbc03fb343::t_7155dcb572262a 22,29,31
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentPicker.test.ts
+  s_12f0cbc03fb343::t_c0b9d330b30f0e 3,74
+  s_12f0cbc03fb343::t_eb4a6bf6343b0a 32-38,52,64,70,242-266
+  s_12f0cbc03fb343::t_09640e1254a590 42
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/N8nChatAgentLibraryView.vue
+  s_12f0cbc03fb343::t_31c4ffb1e765dd 94
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_12f0cbc03fb343::t_0a84481e0d4a87 360,381
+packages/cli/src/modules/agents/utils/agent-ref.ts
+  s_12f0cbc03fb343::t_a0722bd0496189 12-19
+packages/cli/src/modules/agents/agents.service.ts
+  s_12f0cbc03fb343::t_80d4329b36148f 465-468,762
+  s_12f0cbc03fb343::t_b35ab06838f775 68
+  s_12f0cbc03fb343::t_20048c95bbbea9 455-458,474,476,478,757-760,763,769
+  s_12f0cbc03fb343::t_a0722bd0496189 73,767
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentSection.vue
+  s_12f0cbc03fb343::t_7a4b35f8c5281b 17,48-53
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentGrid.test.ts
+  s_12f0cbc03fb343::t_eb4a6bf6343b0a 32-45
+packages/frontend/editor-ui/src/features/agents/composables/useAgentProjectBreadcrumb.ts
+  s_12f0cbc03fb343::t_a0722bd0496189 28
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/RecentChatIcon.test.ts
+  s_12f0cbc03fb343::t_0a84481e0d4a87 32,35
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  s_12f0cbc03fb343::t_8790b56087f34c 134
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.router.test.ts
+  s_12f0cbc03fb343::t_eb4a6bf6343b0a 43
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_12f0cbc03fb343::t_9dcb67e2e1316d 41-43
+  s_12f0cbc03fb343::t_97f6f66861f281 230-231
+  s_12f0cbc03fb343::t_a0722bd0496189 253-254
+  s_12f0cbc03fb343::t_13c01fe5940fa3 224-229,232
+  s_12f0cbc03fb343::t_2ff725b805d007 205-223,233-245,317,324-347
+  s_12f0cbc03fb343::t_80d4329b36148f 39-40,44-45,420
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentCard.vue
+  s_12f0cbc03fb343::t_a0722bd0496189 35
+  s_12f0cbc03fb343::t_dd8ad4119f28a9 5-6,21-25,34,42,48-74,76-86,94-96,112-134
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatThreadHistory.test.ts
+  s_12f0cbc03fb343::t_7155dcb572262a 150-153
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentCard.test.ts
+  s_12f0cbc03fb343::t_eb4a6bf6343b0a 35
+  s_12f0cbc03fb343::t_e311bec0236bbb 101-111
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatMakeAvailableModal.vue
+  s_12f0cbc03fb343::t_4438a6ab2fc351 26-28,77-81
+  s_12f0cbc03fb343::t_6c3b103413c908 1-11,13-14,16-25,29-32,34-37,47-61,63-64,66-70,72-76,82-93,95-109
+  s_12f0cbc03fb343::t_7155dcb572262a 12,15,33,45-46,62,65
+  s_12f0cbc03fb343::t_cc4d5bfa22f49b 38-44
+  s_12f0cbc03fb343::t_c90fc35b2c0228 71,94
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_12f0cbc03fb343::t_a0722bd0496189 8597
+  s_12f0cbc03fb343::t_1d0c16902694c6 8594-8596,8598-8600
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da74a2bf7df23764a515a0b2a49bf611b10d6101",
+  "prompts": {},
+  "sessions": {
+    "s_12f0cbc03fb343": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc8c3696-1d2d-4de9-83cb-db7e13c76e39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

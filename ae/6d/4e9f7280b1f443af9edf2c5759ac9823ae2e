@@ -1,0 +1,67 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_3aaa503f47ada7::t_1f7fa3c37c2f13 12,93,401-404
+  s_3aaa503f47ada7::t_fa8a1d61911cd4 396
+  s_3aaa503f47ada7::t_65f166ac182264 399,413,416-425
+  s_3aaa503f47ada7::t_c60812e32b8167 414-415
+  s_3aaa503f47ada7::t_129507e0ecb60d 426-427
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_3aaa503f47ada7::t_242322d03a50c8 1-25
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_3aaa503f47ada7::t_242322d03a50c8 100,107,169,182,184,188
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_3aaa503f47ada7::t_1f7fa3c37c2f13 12,249
+packages/cli/test/migration/1789717191125-add-thread-id-to-agent-checkpoints.test.ts
+  s_3aaa503f47ada7::t_3f78daa1d696a2 1-24,35,51-65,71-124,129-156
+  s_3aaa503f47ada7::t_c60812e32b8167 25-34,36-50,66-70,125-128
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_3aaa503f47ada7::t_242322d03a50c8 12,53,168-172
+packages/@n8n/db/src/migrations/common/1789717191125-AddThreadIdToAgentCheckpoints.ts
+  s_3aaa503f47ada7::t_77e530442a99dc 3-4,6-10,14-23,25-52,54-60
+  s_3aaa503f47ada7::t_c60812e32b8167 11-13
+  s_3aaa503f47ada7::t_5e1e57faefc074 1-2,5,24,53,61-62
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_3aaa503f47ada7::t_ec4d528c10b307 2,12-15,25-26,3057-3088,3091,3098,3104,3116-3119,3160,3163,3172-3175,3180-3188
+  s_3aaa503f47ada7::t_c60812e32b8167 3161-3162,3176-3179
+  s_3aaa503f47ada7::t_1e8ba71a2340cb 3189
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_3aaa503f47ada7::t_c3e16e11c34f2d 1-58,69-88,96-101,115-118,123,146,163-164,169,174-175,184-187,196-197,201-220,224-231
+  s_3aaa503f47ada7::t_c60812e32b8167 59-68,89-95,102-114,119-122,124-145,147-162,165-168,170-173,176-183,188-195,198-200,221-223
+packages/cli/src/modules/agents/entities/agent-checkpoint.entity.ts
+  s_3aaa503f47ada7::t_242322d03a50c8 2,7,19-24
+  s_3aaa503f47ada7::t_2be81a756bf079 25
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_3aaa503f47ada7::t_242322d03a50c8 23,283,287-288
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_3aaa503f47ada7::t_65f166ac182264 60,67,72,77-80,82,86,88
+  s_3aaa503f47ada7::t_1f7fa3c37c2f13 257,268,270-276,281-282,289,298,300-304
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_3aaa503f47ada7::t_242322d03a50c8 20,22
+docs/generated/postgres-schema/README.md
+  s_3aaa503f47ada7::t_bda3bb71ef176e 16,452
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_3aaa503f47ada7::t_8842457b01e946 12,31,47
+docs/generated/postgres-schema/public.agents.md
+  s_3aaa503f47ada7::t_9848714f71c5f0 165
+docs/generated/sqlite-schema/README.md
+  s_3aaa503f47ada7::t_51ba4d81d1e058 16,439
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_3aaa503f47ada7::t_52cf0678d03846 9,23,39,55
+docs/generated/sqlite-schema/agents.md
+  s_3aaa503f47ada7::t_bf65fef27620cc 167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ae6d4e9f7280b1f443af9edf2c5759ac9823ae2e",
+  "prompts": {},
+  "sessions": {
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

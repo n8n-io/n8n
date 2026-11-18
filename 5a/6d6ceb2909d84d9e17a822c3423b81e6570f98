@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_c8a607d5f9da0e::t_b38e2b6fb22aad 9,13
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_c8a607d5f9da0e::t_ad98720edc4b27 61,63-67
+  s_c8a607d5f9da0e::t_19ae70d3c714f8 15
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_c8a607d5f9da0e::t_50ac6dce964fb2 169,172,174-176
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiLauncher.test.ts
+  s_c8a607d5f9da0e::t_782827c9734872 4,9,33,44
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_c8a607d5f9da0e::t_7e36c6c0e748ab 482-492,494,498,500
+packages/frontend/editor-ui/src/features/ai/instanceAi/useInstanceAiLauncher.ts
+  s_c8a607d5f9da0e::t_4419864d39840e 17-28,33-50,52-59
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  ai_agent 39
+  s_c8a607d5f9da0e::t_3bbcee4e11678c 29-36,40-42
+  s_c8a607d5f9da0e::t_6ec28b1f3ed54e 287-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a6d6ceb2909d84d9e17a822c3423b81e6570f98",
+  "prompts": {},
+  "sessions": {
+    "s_c8a607d5f9da0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c297e62-ce10-4935-b40b-a092bee917aa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

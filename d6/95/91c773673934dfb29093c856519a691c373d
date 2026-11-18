@@ -1,0 +1,58 @@
+packages/workflow/test/workflow-expression.test.ts
+  s_a22bd56417b189::t_fa5bb71779e715 26-31,33,56-60,71
+  s_a22bd56417b189::t_f929446200b26b 32
+  s_c5135b087fd565::t_50b9e96ece9886 63-68,70,72-79
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_a22bd56417b189::t_bb37860baaefc1 8,310,313,329,332,355,411-412,415-417,497
+packages/@n8n/expression-runtime/src/bridge/__tests__/host-data-resolver.test.ts
+  s_a22bd56417b189::t_d6d3772720b91a 1-17,20-37,39,65,67-190
+  s_a22bd56417b189::t_fa5bb71779e715 18-19
+  s_a22bd56417b189::t_e66c430ff06706 38,40-49,51,53-55,57-60,62-64,66
+packages/@n8n/expression-runtime/src/bridge/host-data-resolver.ts
+  s_a22bd56417b189::t_4d0eabb867a43b 1-2,5-7,9-25,27,29-32,34,40-44,53-55,57-65,68-84
+  s_a22bd56417b189::t_fa5bb71779e715 8,33
+  h_32d8cd6a0d6aad 26,28,56
+  s_a22bd56417b189::t_91e3b97b528dab 35-39
+  s_a22bd56417b189::t_d0be40e75f1e1a 49-52
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_c5135b087fd565::t_3f542b86f4454c 5
+  s_c5135b087fd565::t_804a09db3b9d29 1108-1126,1128-1129,1131-1138,1141-1170,1172-1177
+  s_a22bd56417b189::t_261596bb6059e0 1127,1139-1140
+  s_c5135b087fd565::t_093ea8c417ea87 1130
+  s_c5135b087fd565::t_72d64cfcfd0ba2 1171
+packages/@n8n/expression-runtime/src/bridge/__tests__/host-functions.test.ts
+  s_a22bd56417b189::t_59ea7b3d383d2d 10
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  s_a22bd56417b189::t_bb37860baaefc1 9,98
+  s_a22bd56417b189::t_b20a6f5f679eb4 17,87-89,92,95,103-105,108-113,126
+  s_a22bd56417b189::t_b6ecd44b8f2d9a 93-94,96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d69591c773673934dfb29093c856519a691c373d",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a22bd56417b189": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1877f-0cb8-7942-af6e-5a276d1edd33",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_c5135b087fd565": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5658192e-c7a3-4427-a41f-f3411eda8735",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

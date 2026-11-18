@@ -1,0 +1,19 @@
+packages/@n8n/engine/docs/adr/ADR-20260904-a-derived-token-authorizes-a-resume-request.md
+  s_73b88526956889::t_b47e3c0ddc4441 95-115,149-150,157,176-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fde3d6cdf42b33e1519f9b41556287f43380d004",
+  "prompts": {},
+  "sessions": {
+    "s_73b88526956889": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe7185e0-13fb-46c8-b126-369875904740",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

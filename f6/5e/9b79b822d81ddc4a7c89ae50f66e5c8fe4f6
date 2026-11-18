@@ -1,0 +1,37 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_9779041469fd1a::t_df59ad6df3a0e0 86
+packages/@n8n/db/src/entities/types-db.ts
+  s_9779041469fd1a::t_df59ad6df3a0e0 69
+packages/@n8n/api-types/src/dto/executions/execution-public.dto.ts
+  s_9779041469fd1a::t_df59ad6df3a0e0 18-22
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecution.generated.yml
+  ai_agent 140-141,144
+packages/cli/test/integration/public-api/executions.test.ts
+  s_9779041469fd1a::t_356bb37d98eee0 121,127,158
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/deleteExecution.generated.yml
+  ai_agent 112-113,116
+packages/cli/src/modules/otel/tracing-context.ts
+  s_9779041469fd1a::t_df59ad6df3a0e0 5
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_9779041469fd1a::t_df59ad6df3a0e0 97
+packages/cli/src/public-api/v1/controllers/executions.public.controller.ts
+  s_9779041469fd1a::t_356bb37d98eee0 439,442-446
+packages/@n8n/api-types/src/dto/executions/execution-public.openapi.ts
+  s_9779041469fd1a::t_356bb37d98eee0 121-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f65e9b79b822d81ddc4a7c89ae50f66e5c8fe4f6",
+  "prompts": {},
+  "sessions": {
+    "s_9779041469fd1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63716222-3eb8-406e-8fa4-7fcaf70370ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

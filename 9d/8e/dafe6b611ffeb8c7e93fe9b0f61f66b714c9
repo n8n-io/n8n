@@ -1,0 +1,39 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_85553b7937dcfa::t_a8236003c6df02 77
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_85553b7937dcfa::t_ad241c256d2507 226-229
+  s_85553b7937dcfa::t_fb06c676b458a8 230-232
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_85553b7937dcfa::t_202abc0f0d3995 100-105,107
+  s_85553b7937dcfa::t_6a8c7997f6178d 108-109
+  s_85553b7937dcfa::t_89dca185799bc9 94-96,99
+  s_85553b7937dcfa::t_1a567f24d48b69 82,93,97-98,106
+  s_85553b7937dcfa::t_729630faa33b69 11
+packages/@n8n/api-types/src/dto/packages/workflow.schema.ts
+  s_85553b7937dcfa::t_a6d99b993ef914 5
+  s_85553b7937dcfa::t_1a567f24d48b69 6
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_85553b7937dcfa::t_56ea6a268d2864 25-27
+  s_85553b7937dcfa::t_a8236003c6df02 109-111,113-114,116,118-125,129
+  s_85553b7937dcfa::t_f275745448fa9c 112,115,117,126-128,130-132,134-137,147-152,155,165,176-181,184
+  s_85553b7937dcfa::t_1d5a637d953414 18
+  s_85553b7937dcfa::t_1a567f24d48b69 108,133
+  s_85553b7937dcfa::t_eeda8ecbeb3978 4
+  s_85553b7937dcfa::t_386c51175e21e9 140-146,153-154,156-164,166-175,182-183,185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9d8edafe6b611ffeb8c7e93fe9b0f61f66b714c9",
+  "prompts": {},
+  "sessions": {
+    "s_85553b7937dcfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7abdebd5-261b-4096-b09b-67b6e4d6245f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

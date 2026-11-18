@@ -1,0 +1,32 @@
+packages/@n8n/instance-ai/evaluations/outcome/event-parser.ts
+  s_842425d35fc733::t_f2c047f98a5a48 7-12
+  s_842425d35fc733::t_5f9882b252c5e6 108-109
+  s_842425d35fc733::t_9c32577b0f8488 219-230,233-251
+packages/@n8n/instance-ai/evaluations/harness/artifacts/config-eval-handler.ts
+  s_842425d35fc733::t_efc5c5f03a8d70 15-16
+packages/@n8n/instance-ai/evaluations/README.md
+  s_842425d35fc733::t_8376870a0997d9 280-285
+packages/@n8n/instance-ai/evaluations/__tests__/event-parser.test.ts
+  s_842425d35fc733::t_9cb8d39b4f6940 340,347-353,356-373,384,388-390,396-401
+  ai_agent 341-345,391-395
+packages/@n8n/instance-ai/evaluations/harness/artifacts/agent-handler.ts
+  s_842425d35fc733::t_fe233b060ee1ce 16-17
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_842425d35fc733::t_079b29ebfb85bc 148-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4b5056615b8a1c40e138dc9adf328b86226b49a",
+  "prompts": {},
+  "sessions": {
+    "s_842425d35fc733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a760909-ed85-4b6f-894c-5d7b2d1c8180",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

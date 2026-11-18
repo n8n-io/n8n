@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_a3084495b50371::t_a1eb16e163a062 122,127-146,148,150-180,215,222,242,261,263,279,294,310-323
+  s_3bda54082ffe46::t_bed6c2caa1e978 200-204,309,412
+  s_3bda54082ffe46::t_d74ba3a8448b5c 66-81,482
+  s_3bda54082ffe46::t_22acd46c49c283 205-207,209-211,213-214,216,219,225-227,230-241,243-260,262,264-278,280-293,295-308
+  s_a3084495b50371::t_32ed60639b09d4 108-113
+  s_3bda54082ffe46::t_8d867998ca63a2 410-411,413
+  s_3bda54082ffe46::t_a57ba1ea3758a3 212
+  s_3bda54082ffe46::t_d0c43790912f67 6,82,84-85,181,183-193,195-199,383,399,401,405,414-422,425-426,430,460,465-466,473,483
+  s_3bda54082ffe46::t_cc87eb7b63034f 83,182
+  s_a3084495b50371::t_4fe8fb90ead709 94,329-332
+  s_a3084495b50371::t_3410d81c70a1b9 91,93,95-104,116-121
+  s_a3084495b50371::t_fa0adcab381f8d 92
+  s_a3084495b50371::t_77ae16b26d12ff 106-107
+  s_a3084495b50371::t_c1602e4541f151 114-115
+  s_a3084495b50371::t_61272ed83c74f2 123-126
+  s_a3084495b50371::t_e452fccab01e74 324
+  s_3bda54082ffe46::t_cfc1c14c854997 381-382
+  s_3bda54082ffe46::t_6188741067a8d9 384-386,396-398
+  s_3bda54082ffe46::t_e38ceb967e02c8 400
+  s_3bda54082ffe46::t_9161e13d6b74cc 402-404
+  s_3bda54082ffe46::t_d5ed3235d20554 406-409
+  s_3bda54082ffe46::t_23d22818be2182 461-464
+  s_3bda54082ffe46::t_49189f1a15e8a9 467-472
+  s_3bda54082ffe46::t_ccf155927a730c 474
+  s_3bda54082ffe46::t_b8b0fa874d8c60 481
+  s_3bda54082ffe46::t_e0fa236e5c4d7d 484
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a3084495b50371::t_582fdd803828ef 8070
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c29dd5d8653d668cbc401afc949f3a6346ebe75",
+  "prompts": {},
+  "sessions": {
+    "s_3bda54082ffe46": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fc43-3a44-734c-95cc-24314b8bbcb9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a3084495b50371": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fc2d-f87d-734c-95cc-242efa02ac4c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_305955daf24d02::t_4ecfb922ece960 330-332
+  s_305955daf24d02::t_0df20879fe2a7a 309-329,333-338
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_305955daf24d02::t_0df20879fe2a7a 337-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0b360eb3df21d0bd4a27139038c71d14669ba4f6",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/Interface.ts
+  s_d3071ee7442fa5::t_022dd3c359491d 12
+  s_d3071ee7442fa5::t_0ffb93b344861b 261-265
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.test.ts
+  s_d3071ee7442fa5::t_b29064a398d65b 438-485
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.ts
+  s_d3071ee7442fa5::t_5e47803f8ad6e3 322-330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3d4118714af3017b24f4ea0f236cc73450d8e3f5",
+  "prompts": {},
+  "sessions": {
+    "s_d3071ee7442fa5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db5c4013-ae8c-4bf8-899f-f09514157f1d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

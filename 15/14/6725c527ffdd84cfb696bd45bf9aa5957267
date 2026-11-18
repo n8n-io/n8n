@@ -1,0 +1,19 @@
+packages/@n8n/permissions/src/scope-information.ts
+  s_a9dc558c81cf08::t_f18798709f8ee9 203,229-230,239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15146725c527ffdd84cfb696bd45bf9aa5957267",
+  "prompts": {},
+  "sessions": {
+    "s_a9dc558c81cf08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d11da13a-126d-4c3f-a4db-c94513be09f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

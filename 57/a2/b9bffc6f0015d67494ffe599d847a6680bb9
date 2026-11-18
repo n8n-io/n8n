@@ -1,0 +1,23 @@
+packages/@n8n/scheduler/src/core/factory.ts
+  s_d15034b3cbc778::t_228ca8770d2fb4 571-573
+packages/@n8n/scheduler/src/core/reconciliation/reconcile.ts
+  s_d15034b3cbc778::t_54f0668520ae8d 28-31,36-37,42-45,89-94,169,172-174,177,211-217,222-223,249,269,291
+packages/@n8n/scheduler/src/core/reconciliation/__tests__/reconcile.test.ts
+  s_d15034b3cbc778::t_03a20d3b399aaf 238-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "57a2b9bffc6f0015d67494ffe599d847a6680bb9",
+  "prompts": {},
+  "sessions": {
+    "s_d15034b3cbc778": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5af38261-8873-4c30-be0a-dee2f9578ac4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

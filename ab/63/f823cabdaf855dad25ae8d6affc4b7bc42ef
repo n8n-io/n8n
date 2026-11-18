@@ -1,0 +1,53 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_c491120e42f4d5::t_d430bb5f4af0a4 712
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_c491120e42f4d5::t_d430bb5f4af0a4 947-950,957,961-965
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_c491120e42f4d5::t_a45a3cb2b9b25b 391-394,396-410,427-431,686,694
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_c491120e42f4d5::t_cf1e12f1cace9b 64-66,524-525,533-535
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_c491120e42f4d5::t_a5161cc4130344 4223-4225,4485-4507,4514-4525,4556,4562-4574
+  s_c491120e42f4d5::t_9be25bf0213f88 4508-4513
+  s_c491120e42f4d5::t_f62ffeb5a937eb 4575
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c491120e42f4d5::t_46edbf0edb8aec 961-962
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_c491120e42f4d5::t_cf1e12f1cace9b 187-188
+packages/cli/src/webhooks/test-webhook-registrations.service.ts
+  s_c491120e42f4d5::t_46edbf0edb8aec 31-32,62-64,85-86,88-90
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_c491120e42f4d5::t_cf1e12f1cace9b 35
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_c491120e42f4d5::t_d430bb5f4af0a4 245-249,252-256,260
+  s_c491120e42f4d5::t_275e1617887bfc 257-259
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_c491120e42f4d5::t_a45a3cb2b9b25b 852-856
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_c491120e42f4d5::t_8d660ae759ef31 2312
+  s_c491120e42f4d5::t_cb5f40b38f5bf8 1799-1811,2115,2241,2243,2278,2302,2305-2311,2320-2323,2325-2326,2334-2340
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_c491120e42f4d5::t_d430bb5f4af0a4 635,791,1456
+packages/cli/src/webhooks/__tests__/test-webhook-registrations.service.test.ts
+  s_c491120e42f4d5::t_46edbf0edb8aec 32-34,54-58,60,62-68
+  s_c491120e42f4d5::t_0f64dc821b65b3 59,61
+  s_c491120e42f4d5::t_4c1a6e91307c05 69-70
+packages/@n8n/instance-ai/docs/tools.md
+  s_c491120e42f4d5::t_cf1e12f1cace9b 592-596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ab63f823cabdaf855dad25ae8d6affc4b7bc42ef",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

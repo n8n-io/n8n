@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.test.ts
+  s_5d6be4e6bc70a6::t_cbdbda56a2697d 19
+  s_5d6be4e6bc70a6::t_ec27080e17298b 1455-1476
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_29782f2871a6fe 275-291
+  s_5d6be4e6bc70a6::t_9dcc1fb73bb4f7 7
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/MetricsTab.vue
+  s_5d6be4e6bc70a6::t_6e4fe95714f1d1 8,13-14
+  s_5d6be4e6bc70a6::t_2f8a37f3561264 36-38,40-41
+  s_5d6be4e6bc70a6::t_072175a2bb33e0 81-88
+  s_5d6be4e6bc70a6::t_a44ca0cb80a1a7 39
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/MetricCriteria.vue
+  s_5d6be4e6bc70a6::t_f89e9fe6b625d4 1-97
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/ScoreChart.vue
+  s_5d6be4e6bc70a6::t_d87f00fbcc23a8 65
+  s_5d6be4e6bc70a6::t_0e1fd825f996a9 8,13-14
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d6be4e6bc70a6::t_4e906570992c92 5760-5762
+  s_5d6be4e6bc70a6::t_2000c2c7b6b141 5755-5759
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareTabs.vue
+  s_5d6be4e6bc70a6::t_d91ece19ddba2b 22-23
+  s_5d6be4e6bc70a6::t_4aa2ae958864d5 104
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_75271a2366e416 113-115
+  s_5d6be4e6bc70a6::t_721c19ce7c5534 221
+  s_5d6be4e6bc70a6::t_f3bd09ca29c672 21,33,38-57
+  s_5d6be4e6bc70a6::t_0cbe4741f954b8 205-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "284a93f193668b7e61109b30abd021f20ae58359",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

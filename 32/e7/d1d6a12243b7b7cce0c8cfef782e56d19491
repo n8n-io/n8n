@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/Shopify/Shopify.node.ts
+  s_2e1fa95fc44f8f::t_15ae771c538f5e 10,126,148,241,249-253,266,321,327-333,363-370,397,407,418,437,443-446
+  s_2e1fa95fc44f8f::t_f43a0fcb2837b6 447-449,472
+packages/nodes-base/nodes/Signl4/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c5758a37f40d84 1-22
+packages/nodes-base/nodes/ServiceNow/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a60260511a591c 59-60
+  s_2e1fa95fc44f8f::t_50e98140e7205e 9-10,12,26,30,43,48,50,75,87,98,110,114
+  s_2e1fa95fc44f8f::t_d37c81733815da 115-125
+packages/nodes-base/nodes/ServiceNow/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5c382c36232de3 1-27
+packages/nodes-base/nodes/Signl4/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c745faaebe313e 7,9,23,29,36
+packages/nodes-base/nodes/Shopify/ShopifyTrigger.node.ts
+  s_2e1fa95fc44f8f::t_9ff64c64124021 10
+  s_2e1fa95fc44f8f::t_15ae771c538f5e 340,355,378-383
+packages/nodes-base/nodes/Shopify/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_944f4bc654e588 1-28
+packages/nodes-base/nodes/Sms77/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c745faaebe313e 8-9,11,22,26,31
+packages/nodes-base/nodes/Shopify/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_2cd26c3bd2ef8f 23
+  s_2e1fa95fc44f8f::t_15ae771c538f5e 10-11,13,18,40,43-45,94
+packages/nodes-base/nodes/Sendy/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c745faaebe313e 8-9,11,16,28,35
+packages/nodes-base/nodes/ServiceNow/ServiceNow.node.ts
+  s_2e1fa95fc44f8f::t_4168910e8be339 10,178,211,233,263,275,291,315,338,361,386,419,442,466,488,520,571,580,596,634,642
+  s_2e1fa95fc44f8f::t_e628632c6286ab 643-646,664,673,694,703,724,733,754,763,781,790,804,823,832,844,881,891,906,926,935,966,984,993,1009,1023,1043,1052,1064,1090,1099,1126,1135
+packages/nodes-base/nodes/Sms77/Sms77.node.ts
+  s_2e1fa95fc44f8f::t_b3618bbf3d15b5 8
+  s_2e1fa95fc44f8f::t_c745faaebe313e 251,265
+packages/nodes-base/nodes/Sendy/Sendy.node.ts
+  s_2e1fa95fc44f8f::t_c745faaebe313e 9,142,171,194,230,255,281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32e7d1d6a12243b7b7cce0c8cfef782e56d19491",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,435 @@
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 933-934
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-userinfo-identifier.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,3,10,16-17,44-52,59-61,71-84,86-87,89,97,102,109-111,121,131,144,152,160,178,186-188,192-194,208-210,221-223,238-240,255-257,272-274
+packages/nodes-base/nodes/MQTT/test/GenericFunctions.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3,40,64
+packages/@n8n/nodes-langchain/nodes/output_parser/OutputParserAutofixing/test/OutputParserAutofixing.node.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 11,44,51,73,89,105
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 578,588-601,605,608,618-628,632
+packages/testing/playwright/tests/performance/canvas/canvas-execution.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 112
+packages/@n8n/instance-ai/knowledge-base/reference/open-ai-output-shape.md
+  s_0b81e125dd2921::t_de603e506bbbab 1-79
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/text/index.ts
+  s_0b81e125dd2921::t_de603e506bbbab 21-24
+packages/nodes-base/nodes/Google/BigQuery/v2/actions/database/executeQuery.operation.ts
+  s_0b81e125dd2921::t_de603e506bbbab 7,433-434
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 166-420
+packages/@n8n/eslint-config/src/configs/base.ts
+  s_0b81e125dd2921::t_de603e506bbbab 337-357
+packages/nodes-base/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 899,914,955,975
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-2,5,94-123
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 44
+packages/nodes-base/nodes/Microsoft/Outlook/v2/transport/index.ts
+  s_0b81e125dd2921::t_de603e506bbbab 14-29,40-41,75
+packages/@n8n/mcp-browser/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 27,29,36
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_0b81e125dd2921::t_de603e506bbbab 35-39
+packages/@n8n/codemirror-lang-sql/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 45
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 680,757
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_0b81e125dd2921::t_de603e506bbbab 13,57-63,129,192-196,204,213-217,219,494-502
+packages/@n8n/instance-ai/src/tools/orchestration/report-verification-verdict.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 110
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 376,579
+packages/cli/src/services/workflow-statistics.service.ts
+  s_0b81e125dd2921::t_de603e506bbbab 9-15,46-47,59-80,112-113,120,122,126,128-131,138-206
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 63,80-84
+packages/@n8n/node-cli/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 50,55,62
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_0b81e125dd2921::t_de603e506bbbab 52,116-122
+packages/frontend/editor-ui/src/features/workflows/templates/setupTemplate.store.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 23
+packages/nodes-base/nodes/Form/common.descriptions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 185-188
+packages/testing/janitor/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 42
+packages/testing/playwright/pages/components/CredentialModal.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,21-22
+packages/nodes-base/nodes/Schedule/test/ScheduleTrigger.node.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 223
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 12,222,227
+packages/testing/playwright/tests/e2e/ai/assistant-basic.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 33,42,65,198,256,277
+packages/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 24,102,150
+packages/nodes-base/nodes/Airtable/v2/helpers/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 4,52,67
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 142-198
+packages/nodes-base/nodes/TheHiveProject/helpers/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3,68
+packages/@n8n/workflow-sdk/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 101
+packages/testing/playwright/pages/CredentialsPage.ts
+  s_0b81e125dd2921::t_de603e506bbbab 11
+packages/frontend/@n8n/stores/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 39-42
+packages/testing/playwright/tests/performance/canvas/canvas-interactions.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 52
+packages/workflow/src/execution-status.ts
+  s_0b81e125dd2921::t_de603e506bbbab 13-14,16-20
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0b81e125dd2921::t_de603e506bbbab 3327-3334
+packages/testing/playwright/tests/e2e/workflows/editor/routing.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 110
+packages/testing/rules-engine/src/suppress.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-48
+packages/testing/playwright/tests/e2e/ai/workflow-builder.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 48,55,72,91,105
+packages/nodes-base/nodes/MQTT/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,70
+packages/@n8n/instance-ai/src/tools/research.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 248-250
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/__tests__/MessageFormatter.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-2,184-256
+packages/@n8n/api-types/src/dto/api-keys/__tests__/list-api-keys-query.dto.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-41
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 11,166
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 6,44,82
+packages/cli/src/controllers/api-keys.controller.ts
+  s_0b81e125dd2921::t_de603e506bbbab 73
+packages/extensions/insights/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 45-46
+packages/@n8n/mcp-apps/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 40-44
+packages/testing/playwright/pages/ChatHubSettingsPage.ts
+  s_0b81e125dd2921::t_de603e506bbbab 15
+packages/cli/src/workflows/workflow.service.ts
+  s_0b81e125dd2921::t_de603e506bbbab 936-937,945-948,950-955,957-962,1052-1053,1055-1057,1059-1065,1392-1426
+packages/@n8n/config/test/config.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 6,221
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3,142,148-150,156-167,174,183-184,186-195,197-199,201-216,223-225
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/error.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,3
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_0b81e125dd2921::t_de603e506bbbab 43-51
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,150-222
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_0b81e125dd2921::t_de603e506bbbab 44-46,161-162,202-203,250-251,532-554
+packages/testing/janitor/src/rules/no-raw-editor-navigation.rule.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 89-123
+packages/cli/src/scaling/job-processor.ts
+  s_0b81e125dd2921::t_de603e506bbbab 19,341-350,466,489-492,494-496
+packages/@n8n/nodes-langchain/nodes/output_parser/OutputParserItemList/test/OutputParserItemList.node.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3,34,47,61,74,89,102,115,130
+packages/frontend/@n8n/stores/src/useAgentRequestStore.ts
+  s_0b81e125dd2921::t_de603e506bbbab 35
+packages/nodes-base/nodes/Magento/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 13,485
+packages/@n8n/instance-ai/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 56-58,78-79
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 28-32,67-71,76-80,91,407
+packages/@n8n/api-types/src/dto/api-keys/list-api-keys-query.dto.ts
+  s_0b81e125dd2921::t_de603e506bbbab 24-46
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 349-449
+packages/@n8n/nodes-langchain/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 221,265,267,284,302,308,312
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.module.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 8,11
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/oauth2-userinfo-identifier.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10,49,121-124,142-144,146-147,150,152-153,159
+packages/cli/test/migration/1784000000024-add-resource-to-oauth-authorization-codes.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-236
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 43,861
+packages/@n8n/instance-ai/src/tools/data-tables.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 96-100,638-641
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.store.ts
+  s_0b81e125dd2921::t_de603e506bbbab 9,28-32,75,79,90-109,161-162,174,187-188
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_0b81e125dd2921::t_de603e506bbbab 15-19,22
+packages/frontend/@n8n/rest-api-client/src/api/__tests__/api-keys.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-77
+packages/@n8n/api-types/src/api-keys.ts
+  s_0b81e125dd2921::t_de603e506bbbab 13-17,50-56
+packages/nodes-base/nodes/Formstack/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 12,142,166,191
+packages/nodes-base/nodes/Microsoft/Outlook/MicrosoftOutlookTrigger.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 31-44,51-67
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyOwnerFilter.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-271
+packages/nodes-base/nodes/HighLevel/v2/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 19,210-213,411
+packages/nodes-base/nodes/ItemLists/V3/helpers/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 7,21
+packages/nodes-base/nodes/Venafi/Datacenter/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10,53
+packages/testing/playwright/composables/TestEntryComposer.ts
+  s_0b81e125dd2921::t_de603e506bbbab 73-83
+pnpm-workspace.yaml
+  s_0b81e125dd2921::t_de603e506bbbab 39,53,85,125,128,138,143,146,153,183
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/oauth2-introspection-identifier.ts
+  s_0b81e125dd2921::t_de603e506bbbab 8,11-12,67,153-156,230-233,235-236,239,241-242,247
+packages/nodes-base/nodes/Microsoft/ToDo/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 11-29,40-41,64
+.github/workflows/release-create-pr.yml
+  s_0b81e125dd2921::t_de603e506bbbab 131
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_0b81e125dd2921::t_de603e506bbbab 5,169-173
+packages/nodes-base/utils/sendAndWait/configureWaitTillDate.util.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,54
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2-12,14-54
+packages/testing/playwright/tests/e2e/nodes/email-send-node.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 77
+packages/nodes-base/nodes/Compression/decompress/BoundedUnzip.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,4,7-15,23-25,27-30,32-35,38-42,44-45,47-53,57-62
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_0b81e125dd2921::t_de603e506bbbab 196
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/methods/listSearch.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3,33
+packages/cli/src/services/public-api-key.service.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3,17,74,88-91,93-95,100,106-128,133-134,138-173
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,4,18,27-79,500-607
+packages/nodes-base/nodes/Bitbucket/BitbucketTrigger.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 218-220
+packages/@n8n/instance-ai/evaluations/system-prompts/mock-execution-verify.ts
+  s_0b81e125dd2921::t_de603e506bbbab 66,82-89
+packages/frontend/@n8n/i18n/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 40-41
+packages/nodes-base/nodes/Microsoft/Outlook/v2/test/transport/index.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 210-241
+packages/nodes-base/nodes/Compression/test/node/BoundedUnzip.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 18-50,85-94,133-146,160,164
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 6-11,406-453
+packages/nodes-base/utils/utilities.ts
+  s_0b81e125dd2921::t_de603e506bbbab 16,156,161
+packages/nodes-base/nodes/Mailcheck/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10,48
+packages/nodes-base/nodes/Merge/v2/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 13,309,316,341-343
+packages/testing/containers/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 33,43-44
+packages/testing/janitor/README.md
+  s_0b81e125dd2921::t_de603e506bbbab 467-475
+packages/@n8n/instance-ai/evaluations/data/workflows/smartassist-form-booking.json
+  s_0b81e125dd2921::t_de603e506bbbab 1-41
+packages/cli/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 65,69,97-98,100-101,103-104,108-110,124-125,127,190,206,209-210,229,239,245
+packages/testing/playwright/tests/e2e/nodes/form-trigger-node.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 190,304
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/oauth2-metadata-http-client.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-102
+packages/frontend/@n8n/composables/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 30-33
+packages/nodes-base/nodes/Transform/utils/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,13
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 284
+packages/@n8n/ai-utilities/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 96,107,111
+packages/testing/playwright/tests/e2e/ai/assistant-support-chat.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 27
+packages/testing/playwright/tests/e2e/nodes/kafka-nodes.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 94
+packages/nodes-base/nodes/MongoDb/MongoDb.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 8,85
+packages/@n8n/codemirror-lang/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 42,45-46
+packages/nodes-base/nodes/Microsoft/ToDo/MicrosoftToDo.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 38-51,55-73
+packages/@n8n/instance-ai/src/tools/attachments/parse-file.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 159
+packages/@n8n/client-oauth2/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 33-34
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 116
+packages/frontend/editor-ui/src/features/workflows/templates/composables/useCredentialSetupState.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10
+packages/nodes-base/nodes/Aws/DynamoDB/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,101
+packages/nodes-base/nodes/Form/test/formNodeUtils.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 169-265
+packages/@n8n/backend-network/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 67
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/ToolWorkflowV2.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,915
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-metadata-http-client.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-106
+packages/frontend/editor-ui/src/app/utils/test-utils/nodeTypeTestData.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-83
+packages/testing/playwright/.janitor-baseline.json
+  s_0b81e125dd2921::t_de603e506bbbab 4
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/update.operation.ts
+  s_0b81e125dd2921::t_de603e506bbbab 7,129
+packages/testing/playwright/pages/TemplateCredentialSetupPage.ts
+  s_0b81e125dd2921::t_de603e506bbbab 11
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_0b81e125dd2921::t_de603e506bbbab 48
+packages/nodes-base/nodes/Google/Sheet/v2/helpers/GoogleSheet.ts
+  s_0b81e125dd2921::t_de603e506bbbab 9,244-248
+packages/testing/rules-engine/src/index.ts
+  s_0b81e125dd2921::t_de603e506bbbab 27
+packages/@n8n/api-types/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 32,37
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 26-28,46-48,60-64,86
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3-8,15,101,103,106-107,213-221,223
+packages/nodes-base/nodes/Todoist/v1/OperationHandler.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,329-331
+packages/@n8n/agents/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 82-88
+packages/@n8n/extension-sdk/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 52
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 313-314
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 965-1060
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10,19-20,27,123,125-191
+packages/cli/src/workflows/publication/publication-result.ts
+  s_0b81e125dd2921::t_de603e506bbbab 24-29
+packages/cli/test/integration/api-keys.api.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 15,564-588,792-842
+packages/frontend/editor-ui/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 39,68,89,96,98-100,122-124,145,150,165
+packages/@n8n/instance-ai/src/knowledge-base/__tests__/materialize-knowledge-base.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 98-99,127-128
+packages/nodes-base/nodes/Aws/DynamoDB/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10,51,57,67
+packages/nodes-base/nodes/DebugHelper/DebugHelper.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 12,281
+packages/nodes-base/nodes/FileMaker/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 9,83
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 16,78
+packages/testing/playwright/tests/performance/canvas/canvas-load.spec.ts
+  s_0b81e125dd2921::t_de603e506bbbab 48
+packages/nodes-base/nodes/Code/throw-execution-error.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,14
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/protocol/MessageFormatter.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-2,33-59
+packages/@n8n/db/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 61
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 63-74
+packages/workflow/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 85
+packages/nodes-base/nodes/Microsoft/Outlook/v2/helpers/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 9,161
+packages/frontend/editor-ui/src/features/workflows/templates/utils/templateActions.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 15
+packages/testing/playwright/pages/InstanceAiPage.ts
+  s_0b81e125dd2921::t_de603e506bbbab 19
+packages/nodes-base/nodes/Microsoft/ToDo/test/authentication.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-38
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10,14-18,250-253,261-264,267,269,273,277,281-285,289,300,305
+packages/nodes-base/nodes/Form/utils/formNodeUtils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 12-18,38,49
+packages/testing/playwright/pages/CanvasPage.ts
+  s_0b81e125dd2921::t_de603e506bbbab 23
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.store.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-97
+packages/@n8n/crdt/src/__tests__/test-matchers.d.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-17
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  s_0b81e125dd2921::t_de603e506bbbab 148-152
+packages/cli/src/controllers/__tests__/api-keys.controller.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 127,132,139,141,148,150
+packages/cli/test/integration/task-runners/task-runner-process.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 16-20,53-55,64-66,85-87,101-103
+packages/frontend/@n8n/rest-api-client/src/api/api-keys.ts
+  s_0b81e125dd2921::t_de603e506bbbab 20,24-30
+packages/nodes-base/nodes/Bitbucket/test/BitbucketTrigger.node.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 56-57,85-115,127
+packages/workflow/src/interfaces.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1360-1367,3328
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-userinfo-identifier.integration.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-119
+packages/@n8n/instance-ai/src/tools/nodes/suggested-nodes-data.ts
+  s_0b81e125dd2921::t_de603e506bbbab 225-227,232-239,254
+packages/nodes-base/nodes/Airtable/v2/transport/index.ts
+  s_0b81e125dd2921::t_de603e506bbbab 12,97
+packages/nodes-base/nodes/LoneScale/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 2,48
+packages/testing/code-health/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 30,38-42
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,34,39-41,44-46,70-71,73,78-94,100-109,149-177
+packages/nodes-base/nodes/Merge/v3/helpers/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 15,311,318,343-345
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_0b81e125dd2921::t_de603e506bbbab 318
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 32,65,96,129-147
+packages/testing/janitor/src/rules/no-raw-editor-navigation.rule.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,32-38,67,90
+packages/nodes-base/nodes/Set/v2/helpers/utils.ts
+  s_0b81e125dd2921::t_de603e506bbbab 6,118
+packages/frontend/@n8n/design-system/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 40,56,72,83
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyOwnerFilter.vue
+  s_0b81e125dd2921::t_de603e506bbbab 1-525
+packages/@n8n/json-schema-to-zod/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 63
+packages/core/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 36,46-47,49,64,90-92
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-2,5-6,27,213-323
+packages/nodes-base/credentials/test/MicrosoftToDoOAuth2Api.credentials.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-153
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-introspection-identifier.integration.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1-134
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_0b81e125dd2921::t_de603e506bbbab 216-217,219-221
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_0b81e125dd2921::t_de603e506bbbab 22,33,59,71-72,79-111,327-352,483-490,496-498
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-introspection-identifier.test.ts
+  s_0b81e125dd2921::t_de603e506bbbab 1,3,6,12,17-18,48-59,62-70,77-79,89-91,93-98,100,107-125,131,136-138,145-147,165,176,182,188,233,241,249,264-266,271-272,274-275,289,307
+packages/nodes-base/nodes/Beeminder/GenericFunctions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 10,29
+packages/nodes-base/credentials/MicrosoftToDoOAuth2Api.credentials.ts
+  s_0b81e125dd2921::t_de603e506bbbab 3-5,16-46,51-52
+packages/@n8n/local-gateway/package.json
+  s_0b81e125dd2921::t_de603e506bbbab 27
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_0b81e125dd2921::t_de603e506bbbab 105-109,406-408,422-426
+packages/nodes-base/nodes/Postgres/PostgresTrigger.functions.ts
+  s_0b81e125dd2921::t_de603e506bbbab 8,31,68,83,118
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  s_0b81e125dd2921::t_de603e506bbbab 472-473,475
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_0b81e125dd2921::t_de603e506bbbab 562-575
+packages/nodes-base/nodes/Microsoft/Outlook/v2/actions/node.description.ts
+  s_0b81e125dd2921::t_de603e506bbbab 33-46,52-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "53e96eefebbedf14be368abaaebef6e4b9a60108",
+  "prompts": {},
+  "sessions": {
+    "s_0b81e125dd2921": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d37f8c6d-7275-467c-841d-041d4add38f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_ffebf45d59c498::t_96fea5ffcdbcbb 262-292,295-298,302-326,329-330
+  ai_agent 299-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66f14b8147af3fdbedb063a68c3bce8e1f4e66c6",
+  "prompts": {},
+  "sessions": {
+    "s_ffebf45d59c498": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0807c-96bc-77cd-92b2-049ba1bb5cba",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Google/Docs/test/GoogleDocs.document.test.ts
+  s_c634471735f25d::t_9fd67a6ba887e7 68-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "337973dd3485b018e10772a1b67a56270f8f06fc",
+  "prompts": {},
+  "sessions": {
+    "s_c634471735f25d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e40f6b82affeHI1eMfDvUZNlvI",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_a18a1a58f39b72::t_e9fd24f93e4209 935-946
+  s_a18a1a58f39b72::t_e14ddfaf62176b 175,181
+  s_a18a1a58f39b72::t_ea9b69344c2f55 947-949
+  s_a18a1a58f39b72::t_c6e2e63b8a1a5a 791-795,838,907,950-954
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_a18a1a58f39b72::t_30de98c7b7a001 576
+  s_a18a1a58f39b72::t_9ebe12c52c6888 488
+  s_a18a1a58f39b72::t_90303df1185766 381,388-392
+  s_a18a1a58f39b72::t_486ca2dccbec3c 356
+  s_a18a1a58f39b72::t_1e0be523e42bb9 290-291,303
+packages/@n8n/instance-ai/src/stream/__tests__/consume-with-hitl.test.ts
+  s_a18a1a58f39b72::t_5aba54708a244e 75-163
+  s_a18a1a58f39b72::t_226fbebea7e6f0 2-6
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_a18a1a58f39b72::t_c6c986436daad7 96-118
+  s_a18a1a58f39b72::t_557a45be7f0a18 216-219
+  s_a18a1a58f39b72::t_242b43a4f7c6c4 1020-1174
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_a18a1a58f39b72::t_6e4b56e8784ac1 2074-2079
+packages/@n8n/instance-ai/src/types.ts
+  s_a18a1a58f39b72::t_8dccb1bbcd0720 40
+  s_a18a1a58f39b72::t_a4a3a369f554dc 1465-1466
+  s_a18a1a58f39b72::t_56559bb7c1b214 43
+packages/@n8n/instance-ai/src/stream/consume-with-hitl.ts
+  s_a18a1a58f39b72::t_79bbf7f6baa565 11
+  s_a18a1a58f39b72::t_9179492f67cbea 140,149
+  s_a18a1a58f39b72::t_5d85ba11a885f8 193,202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d4ea9198c3c9bfc6e4d4d25b6544ebc28153322f",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a18a1a58f39b72": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "63ea6a3b-d78d-4508-ad50-75df323a7e34",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

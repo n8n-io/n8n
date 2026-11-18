@@ -1,0 +1,33 @@
+packages/nodes-base/credentials/ZscalerZiaApi.credentials.ts
+  s_c4a5f94a5acd88::t_abf2311d73add4 10,102
+packages/nodes-base/credentials/Auth0ManagementApi.credentials.ts
+  s_c4a5f94a5acd88::t_d05c202fd178b1 1-8,66
+packages/nodes-base/credentials/test/Auth0ManagementApi.credentials.test.ts
+  s_24dbac2e9c1d82::t_86478a128b5edd 30-43
+packages/nodes-base/credentials/test/ZscalerZiaApi.credentials.test.ts
+  s_24dbac2e9c1d82::t_427ca8bdebe608 34-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79dee6161a22dff4272b00f515e5db445442d16e",
+  "prompts": {},
+  "sessions": {
+    "s_24dbac2e9c1d82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8dcc9e1b96250fc1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c4a5f94a5acd88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2831ed4a0db9a61e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

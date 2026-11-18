@@ -1,0 +1,19 @@
+packages/cli/test/migration/1790605116208-add-agent-queue-message-references.test.ts
+  s_ffa0492de4d6b4::t_56146888fd6d41 338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f487613bfce7f558c4eb1da9e844156d0848bbd4",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

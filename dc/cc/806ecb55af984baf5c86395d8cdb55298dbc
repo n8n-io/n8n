@@ -1,0 +1,35 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-run-observer.test.ts
+  s_ddc54b33f858e5::t_ad14692fa32e83 160-166
+  s_ddc54b33f858e5::t_81dc3601c68130 55,62,98,105,128,143
+  s_ddc54b33f858e5::t_d08bcad7304abf 90,96,116
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_ddc54b33f858e5::t_81dc3601c68130 44,110,122-124,132-133,135,142,147
+packages/cli/src/commands/__tests__/start-system-task-metrics.test.ts
+  s_ddc54b33f858e5::t_81dc3601c68130 146,164,171
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_ddc54b33f858e5::t_d08bcad7304abf 163,188,197-199,208,220,229,246
+  s_ddc54b33f858e5::t_81dc3601c68130 180,193,206,214-215,224,235,258,261,266,272,301,307,359
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_ddc54b33f858e5::t_81dc3601c68130 359,374,542
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_ddc54b33f858e5::t_81dc3601c68130 921,935,970,974,1117,1218,1328,1333
+  s_ddc54b33f858e5::t_d08bcad7304abf 1320
+packages/cli/src/events/maps/system-task-metrics.event-map.ts
+  s_ddc54b33f858e5::t_ad14692fa32e83 10-11,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dccc806ecb55af984baf5c86395d8cdb55298dbc",
+  "prompts": {},
+  "sessions": {
+    "s_ddc54b33f858e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "314a58e3-b05d-4e53-a6da-0fc2dd5704c6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

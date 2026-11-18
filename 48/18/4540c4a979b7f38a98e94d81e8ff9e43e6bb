@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.utils.test.ts
+  s_4e35a572f67cdf::t_68d2156506251d 88,93
+  s_4e35a572f67cdf::t_3beba050173d81 59
+  s_4e35a572f67cdf::t_770035bab5d2a5 19-21
+  s_4e35a572f67cdf::t_ee4fa8f6197a97 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48184540c4a979b7f38a98e94d81e8ff9e43e6bb",
+  "prompts": {},
+  "sessions": {
+    "s_4e35a572f67cdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f73b61-9ece-4878-9dfa-c9c5772f53e2",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

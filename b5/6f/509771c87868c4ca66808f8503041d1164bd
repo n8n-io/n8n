@@ -1,0 +1,26 @@
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_e744e6b8855b97::t_1073b9db36eab5 455
+  s_e744e6b8855b97::t_3418bae6a0878d 456-457
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_e744e6b8855b97::t_79dbc857b945a1 1303
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_e744e6b8855b97::t_a28cdc8f65d56f 593
+packages/cli/src/errors/uninspectable-subworkflow-source.error.ts
+  s_e744e6b8855b97::t_fbb994c5e6d2ac 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b56f509771c87868c4ca66808f8503041d1164bd",
+  "prompts": {},
+  "sessions": {
+    "s_e744e6b8855b97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ff3b229-100e-4701-a81d-80afc2a9f472",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

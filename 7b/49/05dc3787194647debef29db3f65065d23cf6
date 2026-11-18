@@ -1,0 +1,49 @@
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_2aa332997f69a5::t_29a203834a4f2a 322,325,327,336,338,340,346-349,373,476-479,485-487
+  s_2aa332997f69a5::t_0c59667d02adee 229-233,323-324,326,328-335,337,339,341-345,350
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_2aa332997f69a5::t_61c11e2a4f7c92 705-711
+  s_2aa332997f69a5::t_a67c6e67a74a2f 10,15,626-667
+  s_2aa332997f69a5::t_37902a82478468 668
+packages/@n8n/agents/src/sdk/agent.ts
+  s_2aa332997f69a5::t_e495c553951b7d 39
+  s_2aa332997f69a5::t_410b60e1a27655 1199
+  s_2aa332997f69a5::t_39fa509369d7be 30,37,889-893,906,917,1167,1182,1200-1205
+  s_2aa332997f69a5::t_897f19c7d4694a 1410-1412,1421
+packages/@n8n/agents/src/runtime/__tests__/crash-resume.test.ts
+  s_2aa332997f69a5::t_45df9ee3c29ba3 20-25,84-88,97,101,245-297,299-309
+  s_2aa332997f69a5::t_7f7947201cb24a 298
+  s_2aa332997f69a5::t_78e6542b379f5a 310-311
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_2aa332997f69a5::t_18f32faede1337 506,1018-1019,1021-1022
+  s_2aa332997f69a5::t_dcc2948c8471a9 69,130-131,348,1032-1039
+  s_2aa332997f69a5::t_7f7947201cb24a 979,1020
+  s_2aa332997f69a5::t_ec26f34e9c0635 977-978,980-981
+  s_2aa332997f69a5::t_227abe28e5db1d 1040-1041
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_2aa332997f69a5::t_dcc2948c8471a9 412-413
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_2aa332997f69a5::t_c53d8dfaaebae5 401,403,408
+  s_2aa332997f69a5::t_aa0b9027be11b0 527-627
+  s_2aa332997f69a5::t_01f64d0d8d6a11 413-433,436-444,448-453
+  s_2aa332997f69a5::t_47dc61cf88121f 380-383,393,402,404-407
+  s_2aa332997f69a5::t_515615701b28f0 409-412
+  s_2aa332997f69a5::t_d4985291c85f3c 628-630
+  s_2aa332997f69a5::t_607faf27e609e4 631-632
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7b4905dc3787194647debef29db3f65065d23cf6",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

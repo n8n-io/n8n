@@ -1,0 +1,88 @@
+packages/nodes-base/nodes/Twake/Twake.node.ts
+  s_2e1fa95fc44f8f::t_82e498078839be 10
+  s_73f7d245cc2224::t_97703cd9591268 167,220
+packages/nodes-base/nodes/Trello/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c2b38ea0d9c875 1-25
+packages/nodes-base/nodes/Twilio/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b2311af2d2f6b2 1-42
+packages/nodes-base/nodes/Twist/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_727c4d7c8a670a 1-24
+packages/nodes-base/nodes/Typeform/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_866f4e40ebb822 1-25
+packages/nodes-base/nodes/Twake/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_dc091f0daff62b 1-24
+packages/nodes-base/nodes/Trello/Trello.node.ts
+  s_2e1fa95fc44f8f::t_2a3a8ea7b2235c 10,12,149,180,217,234,252,262,275,300,311,328,345,360,378,388,401,426,440,456,475,482,499,518,537,550,582,596,610,625,655,669,679,694,711,724,742,756,771,803,813,823,838,852,871,885
+packages/nodes-base/nodes/Trello/GenericFunctions.ts
+  s_2dd6068abbadea::t_ab64a2d8616f9f 8-9,11,20,26,30,52
+packages/nodes-base/nodes/Trello/TrelloTrigger.node.ts
+  s_0f34e61c0d2ecc::t_f0430978cec576 7,9,97,108-113,126,153,155,158,181,183,186
+packages/nodes-base/nodes/Trello/test/TrelloTrigger.node.test.ts
+  s_0f34e61c0d2ecc::t_6da158df785339 1-2,117-121,140,146
+packages/nodes-base/nodes/Twake/GenericFunctions.ts
+  s_4c8cc20b364bbe::t_cf0cab29ff0774 8-9,11,20,24,29
+packages/nodes-base/nodes/Twilio/GenericFunctions.ts
+  s_0f34e61c0d2ecc::t_b499c846a6b70a 9-10,12,21,37,41,51,54,60
+packages/nodes-base/nodes/Twilio/Twilio.node.ts
+  s_0f34e61c0d2ecc::t_ed979e380e0b54 8,10,219,237,264
+packages/nodes-base/nodes/Twilio/TwilioTrigger.node.ts
+  s_0f34e61c0d2ecc::t_be21f8a51e8cc3 8,82-83,92,103,132,145,155,173,180
+packages/nodes-base/nodes/Twist/GenericFunctions.ts
+  s_2dd6068abbadea::t_f7fc98e18d13aa 8-9,11,16,19,21,25
+packages/nodes-base/nodes/Twist/Twist.node.ts
+  s_0f34e61c0d2ecc::t_8439445bbadef5 12,90,107-113,130-136,153,187-192,198-204,210-216,226-232,248-253,259-265,271-277,316,345-350,356-362,368-374,395-401,439,468-473,514,554,565,580,592,630,662,705,734-739,745-751,757-763,783-789,827,856-861
+packages/nodes-base/nodes/Typeform/GenericFunctions.ts
+  s_4c8cc20b364bbe::t_d0b68b3aca24e0 10-11,13,45,51,56,82,116
+packages/nodes-base/nodes/Typeform/TypeformTrigger.node.ts
+  s_4c8cc20b364bbe::t_5ddf535f17fd54 15,166,185,211
+packages/nodes-base/nodes/Typeform/test/TypeformTrigger.node.test.ts
+  s_0f34e61c0d2ecc::t_2b0db4ff6e0a59 3,87,159-161,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a38dee955631dab834cb20b7679f53711e705e9",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2dd6068abbadea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ca9d3eadcf574b0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4c8cc20b364bbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4513b8b76516693e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_73f7d245cc2224": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a88962095e98c4b57",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

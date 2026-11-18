@@ -1,0 +1,24 @@
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_12659bd645b914::t_9025fdfa88964e 559-560
+packages/@n8n/agents/src/runtime/model/__tests__/provider-credentials.test.ts
+  s_12659bd645b914::t_ac027c4d0853e7 2,62-80
+  s_12659bd645b914::t_14bbffbf0a41e8 81
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_12659bd645b914::t_9025fdfa88964e 153-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ed24121a765c4859ca049380515e452b552d746",
+  "prompts": {},
+  "sessions": {
+    "s_12659bd645b914": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3434a46-1f34-45a3-8e4a-9ddcee290a1d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

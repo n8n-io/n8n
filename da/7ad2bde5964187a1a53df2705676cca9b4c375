@@ -1,0 +1,44 @@
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_abe416d94b4232::t_53c59bb8e0c1ee 2181-2182,2187-2192,2198-2199
+  s_abe416d94b4232::t_c4a13a52dfaf06 2183-2186,2193-2197
+  s_abe416d94b4232::t_78e1b8982286aa 2154-2156,2161-2166,2170-2173,2179-2180,2200-2206,2210-2225,2232-2240
+  s_abe416d94b4232::t_ceb67439ca0594 2157-2160,2167-2169,2174-2178,2207-2209,2226-2231
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_abe416d94b4232::t_ceb67439ca0594 330-334,353-357,361-363,366-373
+  s_abe416d94b4232::t_fe29f0362a6638 429-430
+  s_abe416d94b4232::t_b0be66aff5d892 416,428,431
+  s_abe416d94b4232::t_cb8807d4106292 437
+  s_abe416d94b4232::t_88c5e8a93940f7 8,10,414-415,419-420,424-427,436
+  s_abe416d94b4232::t_9a90edf27b41bb 203-213
+  s_abe416d94b4232::t_53c59bb8e0c1ee 313
+  s_abe416d94b4232::t_78e1b8982286aa 314-329,335-352,358-360,364-365,374-381
+  s_abe416d94b4232::t_81d9e7a51988a9 417-418,421-423,432-435
+  s_abe416d94b4232::t_147a206ee901df 438
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_abe416d94b4232::t_9ab83b51bc95be 11-12,376-379,401
+  s_abe416d94b4232::t_53c59bb8e0c1ee 350,391-393,403
+  s_abe416d94b4232::t_ceb67439ca0594 380-386,394-400,402,404
+  s_abe416d94b4232::t_c4a13a52dfaf06 387-390
+  s_abe416d94b4232::t_0f733cfc7dd084 405-408
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_abe416d94b4232::t_9ab83b51bc95be 508-518
+packages/cli/src/modules/agents/register-user-deletion-handler.ts
+  s_abe416d94b4232::t_9ab83b51bc95be 22-23
+  s_abe416d94b4232::t_b0be66aff5d892 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da7ad2bde5964187a1a53df2705676cca9b4c375",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

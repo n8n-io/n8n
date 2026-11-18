@@ -1,0 +1,11 @@
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  ai_agent 293-314,363-380
+packages/cli/src/webhooks/webhook-helpers.ts
+  ai_agent 326-328,336-338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40eda7f793e04881df0e605daf6285078f80cca9",
+  "prompts": {}
+}

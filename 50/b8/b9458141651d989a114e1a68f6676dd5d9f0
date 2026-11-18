@@ -1,0 +1,24 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e206a956194a4d::t_84e3f7e3e1e146 4504
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_e206a956194a4d::t_84e3f7e3e1e146 111-125,155-156,166-181,335-354
+  s_e206a956194a4d::t_668e8cc16833ff 355
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_e206a956194a4d::t_84e3f7e3e1e146 486-514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "50b8b9458141651d989a114e1a68f6676dd5d9f0",
+  "prompts": {},
+  "sessions": {
+    "s_e206a956194a4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edcb007e-c3b1-4d11-a878-cd4442188de5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

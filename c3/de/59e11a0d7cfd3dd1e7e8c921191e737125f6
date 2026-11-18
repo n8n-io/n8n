@@ -1,0 +1,14 @@
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  h_5d40c27a8fdfd1 151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c3de59e11a0d7cfd3dd1e7e8c921191e737125f6",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

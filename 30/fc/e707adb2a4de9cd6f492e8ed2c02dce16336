@@ -1,0 +1,44 @@
+packages/@n8n/api-types/src/index.ts
+  h_8a472ace01776f 944,974
+packages/@n8n/api-types/src/schemas/__tests__/agent-eval-assignment.schema.test.ts
+  h_8a472ace01776f 2-3,42-81
+packages/@n8n/api-types/src/schemas/agent-eval-assignment.schema.ts
+  h_8a472ace01776f 194-212,221-235,239-243,253,255,257-265,273-274
+packages/@n8n/telemetry/src/events/agents.ts
+  h_8a472ace01776f 1344,1351-1357
+packages/cli/src/modules/agent-evals/assignment/__tests__/agent-eval-assignment.service.test.ts
+  h_8a472ace01776f 211-214,217,220,222-227,230,232-236,239,241-243,247-256,259-262,264,273,276-279,286-288
+packages/cli/src/modules/agent-evals/assignment/__tests__/assignment-coaching.test.ts
+  h_8a472ace01776f 4-5,8-11,13-20,36-37,42-87
+packages/cli/src/modules/agent-evals/assignment/agent-eval-assignment.controller.ts
+  h_8a472ace01776f 6,63,70,76
+packages/cli/src/modules/agent-evals/assignment/agent-eval-assignment.service.ts
+  h_8a472ace01776f 2-15,35,38-39,188-190,195,197-203,207-215,221-222,226,229,242-244,248,250-254,258
+packages/cli/src/modules/agent-evals/assignment/assignment-coaching.ts
+  h_8a472ace01776f 4,16-18,21-22,24-27,30-32,35-36,40,44-57,61,68-70,74-96
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8a472ace01776f 8364-8374
+packages/frontend/editor-ui/src/features/agents/agentEvalAssignment.api.ts
+  h_8a472ace01776f 2,45,52,59
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentCoaching.vue
+  h_8a472ace01776f 3-5,7-9,12-21,23-24,27-31,34-48,52,54,56-132,134-135,137,141,143,148,152-157,160,165,169-183,188-192,201-205,209,213-233
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentScorecard.vue
+  h_8a472ace01776f 16-19,72-74
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/FirstAssignmentPanel.vue
+  h_8a472ace01776f 8-9,19,46-50,83-84,186-202,225-226,231-241,356-359
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/__tests__/FirstAssignmentPanel.test.ts
+  h_8a472ace01776f 120,125,132,134-139,144-147,149-157,166,182-294,363-364
+packages/frontend/editor-ui/src/features/agents/composables/useFirstAssignment.ts
+  h_8a472ace01776f 3,40-47,49-51,81-83,90-91,106-107,115-140,187-188,225-230,232-238,240,242,248,251-252,255-271,275-276,280-297,300-311,314-315,317,322-323,328-329,332,389-390,406-410,418-420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30fce707adb2a4de9cd6f492e8ed2c02dce16336",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  h_52a137d26d774c 14-15,53-69,73,79
+packages/nodes-base/nodes/Airtop/transport/index.ts
+  h_52a137d26d774c 38
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/transport/index.ts
+  h_52a137d26d774c 1,38
+packages/workflow/src/interfaces.ts
+  h_52a137d26d774c 47,588-589,1028-1029,1035-1053
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ccf0c1658d14353d590066cadc0b57107747011",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

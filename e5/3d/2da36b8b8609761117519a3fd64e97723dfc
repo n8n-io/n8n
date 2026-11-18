@@ -1,0 +1,19 @@
+packages/cli/src/deprecation/deprecation.service.ts
+  s_6e360942898e30::t_166aa991196680 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e53d2da36b8b8609761117519a3fd64e97723dfc",
+  "prompts": {},
+  "sessions": {
+    "s_6e360942898e30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e49f818e-927b-477a-8b5a-9c3d496ba19b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

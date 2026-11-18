@@ -1,0 +1,27 @@
+packages/cli/test/integration/project.api.test.ts
+  s_09a437b1b52fd1::t_4f48d82231443f 488
+  s_09a437b1b52fd1::t_84b333c6fdd9ce 443-487,489-513
+  s_09a437b1b52fd1::t_3b38f4810891e0 44
+  s_09a437b1b52fd1::t_d2d969b718ef53 894
+  s_09a437b1b52fd1::t_03e358f502ebe9 69-73,75-78,80-81
+  s_09a437b1b52fd1::t_7a7e5eef97e14b 74,79
+  s_09a437b1b52fd1::t_d482e960eb544e 884,886-893,895-916
+  s_09a437b1b52fd1::t_a9a9869691ce6f 885
+  s_09a437b1b52fd1::t_44ff4c79e7dc96 917
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d78db7d0385c69c50336f7eb375a9c0489f9e4eb",
+  "prompts": {},
+  "sessions": {
+    "s_09a437b1b52fd1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9fd515cb-a3e4-4fce-a9a8-6f84304c6e77",
+        "model": "grok-4.6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

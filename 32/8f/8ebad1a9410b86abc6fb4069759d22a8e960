@@ -1,0 +1,25 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_45741ff70f27eb::t_ace4c17e836eb4 118-132
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_45741ff70f27eb::t_ace4c17e836eb4 234-243
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_45741ff70f27eb::t_ace4c17e836eb4 163-164,175
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_45741ff70f27eb::t_ace4c17e836eb4 171-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "328f8ebad1a9410b86abc6fb4069759d22a8e960",
+  "prompts": {},
+  "sessions": {
+    "s_45741ff70f27eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7b03-c4ec-4087-b014-6e5f8a392673",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_dab2d060d91655::t_7875c3b4f8c8e8 100-105,107
+  s_95de11c49048b8::t_00cedfb0b16be1 100-105
+  s_95de11c49048b8::t_9150a1114cdf80 107
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.ts
+  s_dab2d060d91655::t_7976b4bdff556a 6,188,220
+  s_95de11c49048b8::t_1a2a3be4d1dd74 6
+  s_95de11c49048b8::t_dff98ce09f207f 188,220
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_dab2d060d91655::t_a8513993677c80 9,847,849,852
+  s_95de11c49048b8::t_71c98366d9655d 9
+  s_95de11c49048b8::t_43687f5f412063 847,849,852-853
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_dab2d060d91655::t_523fe64cc964a4 659
+  s_95de11c49048b8::t_56256c8ebdc5f9 659
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_dab2d060d91655::t_babcbb9eef4f43 159-187,191
+  s_95de11c49048b8::t_40a7f1294dfcd5 159-187,191
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_dab2d060d91655::t_a9aad29f6fc9d2 14,43-44,405-416
+  s_95de11c49048b8::t_4afb059956f2d5 43
+  s_95de11c49048b8::t_3c6fa915871cbc 405-414
+  s_95de11c49048b8::t_1f0a7f68e4349c 403-404
+  s_95de11c49048b8::t_1bdb896b43a659 44
+  s_95de11c49048b8::t_46cc0489fd1bee 14
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-connection.test.ts
+  s_dab2d060d91655::t_32b8d7066a73e4 21,59,74,104-107,114,120-122,129-131,139-157
+  s_95de11c49048b8::t_56256c8ebdc5f9 21
+  s_95de11c49048b8::t_6cfcd993d1fcb4 59,74,104-107,114,120-122,129-131,139-153,155
+  s_95de11c49048b8::t_c3ae7f6df48501 154,156-157
+packages/cli/src/modules/mcp-registry/mcp-registry-connection.ts
+  s_dab2d060d91655::t_2bbada59157386 3,13-14,45,84-85,88-92,103-112,119-122,129-137
+  s_95de11c49048b8::t_dff98ce09f207f 3,13-14
+  s_95de11c49048b8::t_a228652a1cb770 45,84-85,88-92,103-112,119-122,129-135
+  s_95de11c49048b8::t_d33f83875f62d0 136-137
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_dab2d060d91655::t_2a7979ad450a83 14,84,101,109,153,169,175,309
+  s_95de11c49048b8::t_045f1d698bfeaf 14,84,101,109,153,169,175,309
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_dab2d060d91655::t_64dea982df8848 10-14,37
+  s_95de11c49048b8::t_92a160d0215969 10-14
+  s_95de11c49048b8::t_045f1d698bfeaf 37
+packages/workflow/src/mcp-helpers.ts
+  s_dab2d060d91655::t_c3687cd726e567 8,11-16,19-41,53-58,60
+  s_95de11c49048b8::t_1764fb5977b460 53-58,60
+  s_95de11c49048b8::t_dff98ce09f207f 34-41
+  s_95de11c49048b8::t_39efc6993eb013 33
+  s_95de11c49048b8::t_1bdb896b43a659 8,12-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0a9dd690a059ee2add1e9641fe782949ee60766a",
+  "prompts": {},
+  "sessions": {
+    "s_95de11c49048b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28dcfb2e-d83c-4b2d-9160-5bf3bcf6d168",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

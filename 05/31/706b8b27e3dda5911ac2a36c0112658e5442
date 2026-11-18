@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_101038ccbc858a::t_a4ca624d7f8016 421
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_101038ccbc858a::t_d6166ddc220500 3,35,88-100,250-267
+  s_101038ccbc858a::t_d75d329c316c75 268-270
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_1361406550107d 2082-2100,2121-2122
+packages/@n8n/api-types/src/dto/data-table/data-table-public.openapi.ts
+  s_101038ccbc858a::t_b54e4edbfea6ce 27
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_0f7b5ed107d150 65-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0531706b8b27e3dda5911ac2a36c0112658e5442",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

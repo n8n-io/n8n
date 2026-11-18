@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_1211055aa32911::t_7088dc2e53b664 59,446
+  s_1211055aa32911::t_9e0ce02ced3945 29-35,49-52,60,67-70,89,297,299,304,306,398,400-404,406,408,410,413,415,417-418,426,447,509,538,548
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_1211055aa32911::t_9e0ce02ced3945 934-948
+  s_1211055aa32911::t_0c479a1987811d 956
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_1211055aa32911::t_eb4db435785424 15-16,90,93,412-414
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_1211055aa32911::t_b7e9025919b86a 130-131
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_1211055aa32911::t_ccad8bafb1843d 241-242,474-477
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_1211055aa32911::t_b7e9025919b86a 43-51
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
+  s_1211055aa32911::t_7088dc2e53b664 57,103
+  s_1211055aa32911::t_c6ce446f207365 15
+  s_1211055aa32911::t_b7e9025919b86a 24,48-56,58-62,67-102,104-110
+  s_1211055aa32911::t_1cd7ef51094548 63-66
+  s_4efe4141401da9::t_d92f28b596387d 111-112
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_1211055aa32911::t_7088dc2e53b664 26,270
+  s_1211055aa32911::t_9e0ce02ced3945 27,239
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_1211055aa32911::t_7088dc2e53b664 187-192
+  s_1211055aa32911::t_f8627f0308c4e3 15-19,36,63-71,107-118,168-186,193-200
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_1211055aa32911::t_eb4db435785424 94-101,130-131
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1211055aa32911::t_9e0ce02ced3945 8020-8021,8351
+  s_1211055aa32911::t_c6ce446f207365 8242
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_1211055aa32911::t_b7e9025919b86a 94-98,108,265-269,278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "28a849d897a02273f2615dc7263877db2af9dffa",
+  "prompts": {},
+  "sessions": {
+    "s_1211055aa32911": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c500-f15a-7422-92f7-4133f49bfe35",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_4efe4141401da9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c95c-d2f5-7440-a151-cc96abc99df1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

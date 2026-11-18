@@ -1,0 +1,62 @@
+packages/workflow/src/expression.ts
+  s_933070d0aea825::t_de965880894b8f 398-400,402-403,405,407,410,414,416,418
+  s_933070d0aea825::t_cb6a64ee59c06b 83-84,970-971
+  s_933070d0aea825::t_309426797bd5e9 862
+  h_32d8cd6a0d6aad 79,82
+  s_933070d0aea825::t_19a7d101c346ee 342,344,346
+  s_933070d0aea825::t_1743a9df792a9e 408-409
+  s_933070d0aea825::t_7c789961989eb5 605,608-613,615,620
+  s_933070d0aea825::t_7d62062aaece6b 71-72,75-78,80-81,85-86
+  s_933070d0aea825::t_193e5767b968bb 957-958,965,978
+packages/@n8n/expression-runtime/README.md
+  s_933070d0aea825::t_cb372f1294e832 209-210
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_933070d0aea825::t_3fcc4835626aa6 300-301
+  s_933070d0aea825::t_d9122e6e87b039 211-212,239-241
+  s_933070d0aea825::t_74b89462bcc316 268-299,302-309
+  s_933070d0aea825::t_cb6a64ee59c06b 250-251,260-261
+  s_933070d0aea825::t_61f88973a03349 245-249,252-259,262-265
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_933070d0aea825::t_e8346520fa3bec 30,69,73,101,105-106,113-114,117,125,137,140,143-147,150-152,154-155,162,172,174,176
+  s_933070d0aea825::t_cb6a64ee59c06b 109-110,134
+packages/@n8n/config/src/configs/__tests__/expression-engine.config.test.ts
+  s_933070d0aea825::t_a8aba118243de5 92-112
+packages/@n8n/config/test/config.test.ts
+  s_933070d0aea825::t_04cceee529d946 708-709
+packages/workflow/src/expressions/native-evaluation/skeleton.ts
+  s_933070d0aea825::t_ff6b9d03356441 6-7
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_933070d0aea825::t_5a8f5b08abcd5f 15-17
+  s_933070d0aea825::t_2b777d22bc6b83 130-131,138
+  s_933070d0aea825::t_90991f75ab266a 133
+  s_933070d0aea825::t_bbfec01c7ae170 14,18
+  s_933070d0aea825::t_72405d61b22bce 124-128
+packages/cli/src/commands/base-command.ts
+  s_933070d0aea825::t_1b5b07bd35b156 305-306,316-320,323-327,329-331
+  s_933070d0aea825::t_cb6a64ee59c06b 321-322,328
+  s_933070d0aea825::t_52e0f537c74898 33
+  s_933070d0aea825::t_08229c251a3c6c 289
+  s_933070d0aea825::t_06c7e113faa4b0 276
+  s_933070d0aea825::t_c4fcc4f19a67d3 307-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6c9ca426a3cf11f88760e6d5f8800e3fae18b830",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_933070d0aea825": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ee3a819-a5dd-4ffe-994f-d18d7afd3f99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

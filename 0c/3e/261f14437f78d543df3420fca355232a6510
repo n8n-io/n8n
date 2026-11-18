@@ -1,0 +1,24 @@
+packages/quality/testing/playwright/tests/e2e/agents/agent-evals-not-graded.spec.ts
+  s_8a5b7ae2a2c24f::t_665e1bacff8111 1-140,145-146,151,153,155-156,158-159,162-166,168,170-171,174-177
+  s_8a5b7ae2a2c24f::t_b5cbfbe8d7de75 147-150
+  s_8a5b7ae2a2c24f::t_2f143dda77adc3 141,143-144,152,154,157,160-161,167,169,172-173
+  s_8a5b7ae2a2c24f::t_2c9923325b14d6 142
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_8a5b7ae2a2c24f::t_3b83d81b652b31 65-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c3e261f14437f78d543df3420fca355232a6510",
+  "prompts": {},
+  "sessions": {
+    "s_8a5b7ae2a2c24f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "807d26c3-e05f-466d-b389-b7ee2f774379",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

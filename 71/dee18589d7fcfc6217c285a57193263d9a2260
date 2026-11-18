@@ -1,0 +1,22 @@
+packages/cli/src/executions/execution.service.ts
+  s_7d752113dacbc8::t_d4ddd1ae349fa9 817
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_7d752113dacbc8::t_b1a71a06cf923d 892
+  s_7d752113dacbc8::t_1d8cbb0c317641 876
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "71dee18589d7fcfc6217c285a57193263d9a2260",
+  "prompts": {},
+  "sessions": {
+    "s_7d752113dacbc8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2ff4029c-313f-4bd6-8094-9a476e1de46b",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/token-count.test.ts
+  s_552547881634b9::t_47c9b074bfec21 1-22
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_552547881634b9::t_b337cd5818ff5d 7
+  s_552547881634b9::t_b7bdd4eb67b8b2 210-217,585-589
+packages/frontend/editor-ui/src/features/agents/utils/token-count.ts
+  s_552547881634b9::t_949c901f9d702d 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3fbdc1a0ec10ca4a2b225688a5ef7146d6a411a",
+  "prompts": {},
+  "sessions": {
+    "s_552547881634b9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a14091-11a5-72be-863b-392cb0e314a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

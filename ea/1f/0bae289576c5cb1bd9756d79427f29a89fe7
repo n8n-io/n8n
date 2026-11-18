@@ -1,0 +1,14 @@
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  h_c63dce324dfc7b 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ea1f0bae289576c5cb1bd9756d79427f29a89fe7",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

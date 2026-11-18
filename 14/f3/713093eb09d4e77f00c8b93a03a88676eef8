@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-form-feedback-into-the-crm-as-notes.workflow.ts
+  s_805dfaf49a4974::t_e2610334c00367 1-154,161-193
+  s_805dfaf49a4974::t_b14b89cd22593c 155-160
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-daily-lead-report-from-the-crm.workflow.ts
+  s_805dfaf49a4974::t_b14b89cd22593c 74-79
+  s_805dfaf49a4974::t_1cd245d15ed438 1-73,80-244
+packages/@n8n/instance-ai/knowledge-base/use-cases/engineering.md
+  s_805dfaf49a4974::t_5020056bc300d4 9-12,14,16,18-21,23,25,27-30,32,34,36-39,41,43,45-47
+  s_805dfaf49a4974::t_68cfc07e21c894 48
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-incident-alerts-from-notification-emails.workflow.ts
+  s_805dfaf49a4974::t_136777332b2130 1-201
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-status-counts-into-a-totals-table.workflow.ts
+  s_805dfaf49a4974::t_b14b89cd22593c 127-129,157,165
+  s_805dfaf49a4974::t_d1db8cc25ed47d 1-7,10-11,15-16,20-25,27-30,32-51,53,57-62,64-66,69-77,79-87,90,94-99,101-104,106-112,114-120,123,131-154,158-163,167-178,180-184,186-187,189-190,192,194-195,197-200,204,206-207,211-212,217,220-221,225-226,230,235-242
+packages/@n8n/instance-ai/knowledge-base/use-cases/templates/engineering-power-outage-roll-call-from-chat-statuses.workflow.ts
+  s_805dfaf49a4974::t_eb0ab2d1ab5539 1-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "14f3713093eb09d4e77f00c8b93a03a88676eef8",
+  "prompts": {},
+  "sessions": {
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

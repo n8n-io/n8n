@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_85629be8996a13::t_e904bea3e2dfb9 3,134-143,288,308-313
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_85629be8996a13::t_c504d50e473ae4 2,41-50
+  s_85629be8996a13::t_b13f76da5ac98b 51-57
+  s_85629be8996a13::t_898dec503de74c 58
+  s_85629be8996a13::t_a0b195fbb54bae 59-60
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_85629be8996a13::t_1a223fb2a2091e 2,27-32
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_85629be8996a13::t_ab065dba3def5e 491-528,621-657,659-662
+  s_85629be8996a13::t_d2ce447774261e 658
+  s_85629be8996a13::t_59bab25ed7bcb1 663
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_85629be8996a13::t_e1fb9ed229396e 36-41,259,265-268
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_85629be8996a13::t_4f2a63e3f05ade 838-887
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_85629be8996a13::t_bef2978f68da71 16,156-163
+  s_85629be8996a13::t_d2ce447774261e 320,551
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_85629be8996a13::t_96985294d66e4b 96-98,126-127,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7d5f52452ebdd72e2ece2413ef6e7ae65cf7cf39",
+  "prompts": {},
+  "sessions": {
+    "s_85629be8996a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa392-cc89-7851-8dc2-697ffc4937ce",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

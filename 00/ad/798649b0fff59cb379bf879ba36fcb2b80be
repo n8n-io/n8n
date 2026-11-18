@@ -1,0 +1,21 @@
+packages/workflow/tsconfig.build.esm.json
+  s_fe728b514eaeff::t_65ab2fdd5cc36f 6-12
+packages/workflow/tsconfig.build.cjs.json
+  s_fe728b514eaeff::t_245413233355dc 5-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "00ad798649b0fff59cb379bf879ba36fcb2b80be",
+  "prompts": {},
+  "sessions": {
+    "s_fe728b514eaeff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6c7c590-2ff2-4d78-a266-d7547585e4f5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

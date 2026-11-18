@@ -1,0 +1,36 @@
+turbo.json
+  s_fb1d6935963fdc::t_38f43ef5cc25fe 128-130,137-139,164-166
+packages/@n8n/json-schema-to-zod/package.json
+  s_fb1d6935963fdc::t_38f43ef5cc25fe 24-25,67,73-74
+packages/@n8n/json-schema-to-zod/oxlint.config.mts
+  s_fb1d6935963fdc::t_198269e417cd20 11
+  s_fb1d6935963fdc::t_38f43ef5cc25fe 1-2,4-10,13-20,22-23
+packages/@n8n/tournament/package.json
+  s_fb1d6935963fdc::t_38f43ef5cc25fe 25-26,41,43,45-46
+packages/@n8n/tournament/oxlint.config.mts
+  s_fb1d6935963fdc::t_38f43ef5cc25fe 1-7,9-14
+  s_fb1d6935963fdc::t_198269e417cd20 8
+packages/@n8n/mcp-browser-extension/oxlint.config.mts
+  s_fb1d6935963fdc::t_38f43ef5cc25fe 1-2,4-8,10,12-18,20-21
+  s_fb1d6935963fdc::t_198269e417cd20 9
+packages/@n8n/mcp-browser-extension/package.json
+  s_fb1d6935963fdc::t_38f43ef5cc25fe 12-13,26,32-33
+pnpm-lock.yaml
+  s_fb1d6935963fdc::t_9eeb99179a648b 3203-3205,3218-3223,3450-3452,3471-3476,4342-4344,4354-4359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "620069d3434bed9f5990f2d495929f20c80bcfab",
+  "prompts": {},
+  "sessions": {
+    "s_fb1d6935963fdc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f08aabc99ffe2W7cZ4P3vyrbP5",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

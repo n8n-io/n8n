@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_aaa3f8c0014b3c::t_beb1fd55e81e62 425-426,451,469
+  s_aaa3f8c0014b3c::t_650ab6662fcb55 588
+  s_aaa3f8c0014b3c::t_7402665ab9f0e3 648-651
+  s_aaa3f8c0014b3c::t_44abd031f17cfd 512
+  s_aaa3f8c0014b3c::t_f7e4dd06d93154 573
+  s_aaa3f8c0014b3c::t_792785124c3e37 473-474,481-491,498-502,557,563-572,574,576-584,599-605,620,634
+  s_aaa3f8c0014b3c::t_2d905fcf13a8b0 575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b785638539b6a60d5d8ea92c2c6d45f089e66455",
+  "prompts": {},
+  "sessions": {
+    "s_aaa3f8c0014b3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168c0-40e6-7a93-8ad9-13970e561dbb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

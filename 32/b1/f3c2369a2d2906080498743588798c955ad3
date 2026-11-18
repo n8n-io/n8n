@@ -1,0 +1,101 @@
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 11,45,139-141
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_4c46dcfe1ba789::t_d5b292306ede0a 23,36-37,39,75
+  s_71c6da2ee47cd3::t_613cff5051c1db 34-35,38
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 113
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 4,46-51
+packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1-83
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 6-7,54,62,162-163
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 2,265
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1155-1158
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 20,65-66
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-response-hooks.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1-50
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 1-2,6-7,14-21,24-25,28,35,37-54,58-72,82-84,92,98,102-103,109,116-118,120-128,130,138-140,178,191,200,210-214,221-228,232-233
+  s_bfdc3c9bc21b40::t_3d0737ff1431aa 3,129
+  s_4c46dcfe1ba789::t_ab1cf56a8e54a1 8,73-81,132,216
+  s_4c46dcfe1ba789::t_a519961dfa21ce 10-13,85-91,93-97,99-101
+  s_4c46dcfe1ba789::t_533d342b8bac27 22-23,26-27,30-34,55-57
+  ai_agent 29,36,229-231
+  s_719e037cee4d57::t_d73bc028dc08bb 104-108,110-115,119
+  s_9a2a7a8eef9b2d::t_dda1f9d2f09e16 154-164
+  s_4c46dcfe1ba789::t_6941e602868b24 193-195
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 43-47
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_9a2a7a8eef9b2d::t_74e41d2d4e4515 143,151,153-156,160,169-176
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 144-150,152,157-159,161-168,177-188
+packages/@n8n/engine/src/index.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 41,47-48
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 1-2,4,11-12,14,19-21,26-27
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 3,28-41
+  s_71c6da2ee47cd3::t_d67313882bd806 5-10,13,15
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-3,13,17,20-21,24,26-29,33-35,39-46,49-52,56,60,67-70,76,84,86,88-89,95,97-98,101-104,133,136,138-139,141-143,149-152,155-156
+  ai_agent 4-7,9
+  s_4c46dcfe1ba789::t_f9dae768d9a165 12,22-23,25,57-59,71-75
+  s_4c46dcfe1ba789::t_08563fce175542 14,18-19,30-32,38,53-55,77-82,85,87,99-100,137,140,153-154
+  s_4c46dcfe1ba789::t_9317a33118b923 15,36,47-48,66
+  s_4c46dcfe1ba789::t_16f6ec4d91ae85 37
+  s_9a2a7a8eef9b2d::t_dda1f9d2f09e16 121
+  s_bfdc3c9bc21b40::t_3d0737ff1431aa 134-135,144-145,147-148
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "32b1f3c2369a2d2906080498743588798c955ad3",
+  "prompts": {},
+  "sessions": {
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_719e037cee4d57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27f603bd-170c-453c-b9f6-0405967390f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    },
+    "s_bfdc3c9bc21b40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e768b0c7-e08a-400c-bc83-3cc0967415bb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

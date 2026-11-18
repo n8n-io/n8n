@@ -1,0 +1,27 @@
+packages/nodes-base/credentials/test/N8nApi.credentials.test.ts
+  s_a14e8bc05ebc6b::t_1fc0de0642abf0 1-19
+packages/nodes-base/credentials/N8nApi.credentials.ts
+  s_a14e8bc05ebc6b::t_d5ae4af187760d 48-54,57-59
+  s_a14e8bc05ebc6b::t_688f5fb230f3cf 55-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be10c8708a3202f0e83e24ade9b119f9e0bb85d3",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a14e8bc05ebc6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad5329ba-bcf1-419d-9a9d-3d9cbc0490c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

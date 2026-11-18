@@ -1,0 +1,103 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_08690fb8a4caf5::t_d755ee02d26dff 34
+packages/@n8n/cli/src/commands/package/export.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 965-991
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  s_08690fb8a4caf5::t_53959781a7ded9 203-215,218-220
+  s_08690fb8a4caf5::t_6cdf2dc533f1a9 216-217
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 117-119,215-217
+packages/cli/src/modules/agents/sub-agents/sub-agent-cleanup.service.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 59-63
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_08690fb8a4caf5::t_fbf885c89a951d 2845-2848,2855-2857,2861-2866
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 866,880,897-900
+  s_08690fb8a4caf5::t_46346dfe68c2d0 309,313
+  s_08690fb8a4caf5::t_2b915a89ec112f 685-686
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-cleanup.service.test.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 81-83
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_08690fb8a4caf5::t_a187fd39332a63 754
+  s_08690fb8a4caf5::t_6699252ac78077 306,308,312-313
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 281
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_08690fb8a4caf5::t_630dba744a027b 255-278
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 249-251,384-386
+packages/frontend/editor-ui/src/features/agents/composables/useAgentArchive.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 13-15,39,41,51-52,57-59,68-69
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_08690fb8a4caf5::t_b83df43a42c224 54-59
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_08690fb8a4caf5::t_56a355defc85d4 281-285
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_08690fb8a4caf5::t_93d91cf5df4566 319,441,493,3050-3051,3057-3058,3061-3062,3070
+  s_08690fb8a4caf5::t_0499552ae4c3ba 3052-3055,3064-3067
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_08690fb8a4caf5::t_cd2228d59d4b71 147,150
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_08690fb8a4caf5::t_2c654e084318e4 216
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_08690fb8a4caf5::t_68dbffb6c2ce04 333-358
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 47
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_08690fb8a4caf5::t_ab4acefcf948ea 56-57
+  s_08690fb8a4caf5::t_22d2b3a1f267d1 190-231
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 20
+  s_08690fb8a4caf5::t_a68ee1a4b97aed 297-304
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentArchive.test.ts
+  s_08690fb8a4caf5::t_a05c5cdc69acf0 68,101-116
+  s_08690fb8a4caf5::t_0c5cb75fb2afe3 27
+  s_08690fb8a4caf5::t_54193844aaf6fb 16
+  s_08690fb8a4caf5::t_1bf7add006824c 9-11
+  s_08690fb8a4caf5::t_35e4816a3821cc 35
+  s_08690fb8a4caf5::t_118a025f61b93e 69-100
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 679-694
+  s_08690fb8a4caf5::t_07e126d0b7931f 901-917
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_08690fb8a4caf5::t_12844926bf7767 1763,1776-1780
+  s_08690fb8a4caf5::t_b0b5509d557163 1717,1729-1734,1781
+  s_08690fb8a4caf5::t_f463da2c288428 1737-1748
+  s_08690fb8a4caf5::t_bc2f4c3480a68a 1735-1736
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 531-533,683-685
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_08690fb8a4caf5::t_93d91cf5df4566 522,1079,1081,1083-1084,1087,1095,1098-1099
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_08690fb8a4caf5::t_d755ee02d26dff 31-33
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_08690fb8a4caf5::t_93d91cf5df4566 76
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_08690fb8a4caf5::t_93d91cf5df4566 35
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  s_08690fb8a4caf5::t_b85b0025ca34eb 3,49
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_08690fb8a4caf5::t_70206beb993a18 118
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_08690fb8a4caf5::t_98520b7c4d1806 32,52,209,407-439
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_08690fb8a4caf5::t_354472f51f385f 220-222,224,230-231,235,238,242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6eeb4d1c24b67b64659b47bb3a018359dbee5e59",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

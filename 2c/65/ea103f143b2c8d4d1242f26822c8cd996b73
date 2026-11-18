@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_90757fd3f4c301::t_fa8d4dda4542f3 264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c65ea103f143b2c8d4d1242f26822c8cd996b73",
+  "prompts": {},
+  "sessions": {
+    "s_90757fd3f4c301": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1596a-4df5-7181-ac5b-c011b87e9d0d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

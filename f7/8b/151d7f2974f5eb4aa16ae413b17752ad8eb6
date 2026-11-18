@@ -1,0 +1,34 @@
+packages/cli/src/utils.ts
+  s_8a60b387177b0b::t_ef4dbe4aa8bdef 32-40,42,44-49
+packages/cli/src/workflows/__tests__/catalog-run.service.test.ts
+  s_8a60b387177b0b::t_df7872c75725f3 1-117
+  s_8a60b387177b0b::t_294459bb582872 118-120
+  s_8a60b387177b0b::t_902e5b8a5d8c75 121-129
+packages/cli/src/workflows/catalog.controller.ts
+  s_8a60b387177b0b::t_126c16830ae631 1-46
+packages/@n8n/api-types/src/dto/workflows/catalog-run.dto.ts
+  s_8a60b387177b0b::t_569e840b1f821c 1,4-14
+  s_8a60b387177b0b::t_69c3111f620b6a 2-3
+packages/cli/src/server.ts
+  s_8a60b387177b0b::t_5b83f7cdf796d5 68
+packages/cli/src/workflows/catalog-run.service.ts
+  s_8a60b387177b0b::t_7e2ef933b87ec0 1-79
+packages/@n8n/api-types/src/dto/index.ts
+  s_8a60b387177b0b::t_ef55f5d72f9230 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f78b151d7f2974f5eb4aa16ae413b17752ad8eb6",
+  "prompts": {},
+  "sessions": {
+    "s_8a60b387177b0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6036dc6f-cbd9-4e33-aeb8-df572d6fed3b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

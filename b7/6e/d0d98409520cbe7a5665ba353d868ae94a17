@@ -1,0 +1,52 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_fb30b1b6ca962d::t_c2cd2a9a078020 128-129,559,609-622,628
+packages/@n8n/api-types/src/dto/workflows/update-workflow.dto.ts
+  s_fb30b1b6ca962d::t_c2cd2a9a078020 6,8-11
+packages/cli/src/workflows/workflows.controller.ts
+  s_fb30b1b6ca962d::t_c2cd2a9a078020 312-320,342
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_fb30b1b6ca962d::t_70b8f10ac7ac87 508-572
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_fb30b1b6ca962d::t_bf3e82bb2891eb 23
+  s_fb30b1b6ca962d::t_c2cd2a9a078020 201-209,222-227,242,285-289,299-300
+  s_fb30b1b6ca962d::t_360e560490c5f7 301-303
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/workflowHistory.store.ts
+  s_fb30b1b6ca962d::t_c312e530e95168 114-115
+packages/frontend/@n8n/rest-api-client/src/api/workflows.ts
+  s_fb30b1b6ca962d::t_c312e530e95168 53-54
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_fb30b1b6ca962d::t_7d719f03d810ca 8,1361-1447
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_0c801c2720c261::t_103f94fecaca31 6,89-92,95-98,148-162
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/workflowHistory.store.test.ts
+  s_fb30b1b6ca962d::t_7c9653c4fd8bd6 188-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b76ed0d98409520cbe7a5665ba353d868ae94a17",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0c801c2720c261": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bda1e85-e6de-47ba-844d-e10169e167f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

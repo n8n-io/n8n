@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportWorkflowsRequest.yml
+  s_b9e402b75ca46c::t_adb86ad647d40f 3-5,16-25
+  s_b9e402b75ca46c::t_9239340ac7c447 26
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_b9e402b75ca46c::t_385d0a86c152da 16-20
+  s_b9e402b75ca46c::t_ca1f376d7701ce 46-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d4ea2263ac3f8232cc0c6f37bf09192f63d2fad",
+  "prompts": {},
+  "sessions": {
+    "s_b9e402b75ca46c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0175b21f-7e7d-491e-a496-459c2da5cb60",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

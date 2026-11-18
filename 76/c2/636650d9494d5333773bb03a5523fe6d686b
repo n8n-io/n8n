@@ -1,0 +1,85 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_cac2aea5b4383e::t_c7ab0e3d5369c0 2680,2683-2703,2705-2707,2709-2713
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.credentials.test.ts
+  s_f0ccaac41280b8::t_3b7e23e38c358a 12,47-48,50,53,56-66,184-211,214-215
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-display-controllers.test.ts
+  s_f0ccaac41280b8::t_f12ce204f887bc 13,15,68-72,80-81,84,89,365-374
+  s_cac2aea5b4383e::t_017c992c4d6af1 273-292,297-303
+  s_cac2aea5b4383e::t_c4b169d7699489 306,313-321
+  s_cac2aea5b4383e::t_46289859f523f6 1-2,14,16-65,85-88,90-165,242-243,385-386
+  s_f0ccaac41280b8::t_d3c17995a0bcb7 66-67,82-83,206
+  s_cac2aea5b4383e::t_0b6e0824bffbdb 3-12,166-205,207-241,244-272,322-364,375-384
+  ai_agent 73-79,293-296,304-305
+  s_cac2aea5b4383e::t_c7ab0e3d5369c0 307-312
+packages/cli/src/modules/n8n-packages/entities/credential/credential-display-controllers.ts
+  s_cac2aea5b4383e::t_e734b5022143f4 65,68-72,74-76,97,104-105
+  s_cac2aea5b4383e::t_c4b169d7699489 3,77-85
+  s_cac2aea5b4383e::t_b909a613de8ada 4,13-64,127,167
+  s_cac2aea5b4383e::t_31e0fdb554c3c9 5-6
+  s_f0ccaac41280b8::t_fe5026405e8263 107-108,114
+  s_cac2aea5b4383e::t_d700fdffa99bb5 152
+  s_cac2aea5b4383e::t_9ccdd7f1deb1f9 2,7-11,66-67,73,89-96,98-103,106,109-112,115-126,139-151,153-159
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  ai_agent 42
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  ai_agent 7,28-33
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  ai_agent 23,30-33,68,507-529
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 123
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionCredentialExpressionValue.generated.yml
+  ai_agent 3,10
+packages/@n8n/cli/src/commands/package/export.ts
+  ai_agent 103
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  ai_agent 31,54-59
+packages/@n8n/api-types/src/dto/packages/credential.schema.ts
+  s_f0ccaac41280b8::t_fe5026405e8263 4
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_f0ccaac41280b8::t_fe5026405e8263 68
+packages/cli/src/modules/n8n-packages/entities/credential/credential-export-policy.ts
+  ai_agent 10,13,25-35
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/postgres-like-credential-type.ts
+  s_f0ccaac41280b8::t_3b7e23e38c358a 1-43
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  ai_agent 113
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.project.test.ts
+  ai_agent 4,38
+packages/@n8n/api-types/src/dto/packages/__tests__/credential.schema.test.ts
+  s_f0ccaac41280b8::t_d3c17995a0bcb7 25-26,29-47
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  ai_agent 1,10-16,51,76,87,117-138
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_cac2aea5b4383e::t_fe19b81f7e233a 374-377,382-384,386-453,464-473
+  s_cac2aea5b4383e::t_10831f948a5123 15,378-381
+  s_cac2aea5b4383e::t_36fd0ff5bcfe2c 8
+  s_cac2aea5b4383e::t_0b6e0824bffbdb 454-461
+  s_cac2aea5b4383e::t_19e117abf2426c 61-63
+  s_f0ccaac41280b8::t_3b7e23e38c358a 14,385
+packages/@n8n/cli/docs/commands/package.md
+  ai_agent 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76c2636650d9494d5333773bb03a5523fe6d686b",
+  "prompts": {},
+  "sessions": {
+    "s_cac2aea5b4383e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbbe1cdb-bf23-4b89-b3ab-bf7514b096ed",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    },
+    "s_f0ccaac41280b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f810e460-60cf-474c-95a5-0bbc8d1b96b6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

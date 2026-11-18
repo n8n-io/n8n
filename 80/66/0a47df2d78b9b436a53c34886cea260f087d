@@ -1,0 +1,56 @@
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_bfcddff662c22e 310-313
+  s_5ddf40544fde37::t_b6b340e1cb69ae 83,86,96,99,201,314,362-364,375
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_ffb50dca27aff9 421-431
+packages/cli/src/modules/git-connections.ee/__tests__/export-tree.test.ts
+  s_5ddf40544fde37::t_e8149543716a07 1-133
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_563b82e9fbe260 578
+  s_5ddf40544fde37::t_51e46152984fc8 617-619
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_0a05c2b6c285cf 150-154
+  s_5ddf40544fde37::t_a19faab5245ebc 82-98,103-121
+  s_5ddf40544fde37::t_e4662448f992f3 231
+  s_5ddf40544fde37::t_51edd279d1ee3d 159
+  s_5ddf40544fde37::t_9aafe8f33b7cac 99-102
+  s_5ddf40544fde37::t_fcda51d648171d 24,26
+  s_5ddf40544fde37::t_fee2a783465204 127,129,132
+  s_5ddf40544fde37::t_2a7bdb44fcfe00 196
+  s_5ddf40544fde37::t_8157c8e247ccdc 138
+  s_5ddf40544fde37::t_c919584b375036 37-40
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_5ddf40544fde37::t_e8038af18dd538 327
+  s_5ddf40544fde37::t_00f1fe9ec89474 10-23
+  s_5ddf40544fde37::t_ad7988bd73d24c 206,208
+  s_5ddf40544fde37::t_80dacf053c8248 300
+  s_5ddf40544fde37::t_6c80a51d18060c 39,41,43
+  s_5ddf40544fde37::t_aa8c975a0bab83 54
+  s_5ddf40544fde37::t_8f7c20e1050587 220-229,232
+packages/cli/src/modules/git-connections.ee/export-tree.ts
+  s_5ddf40544fde37::t_6981f51ec91e3f 80-83,88
+  s_5ddf40544fde37::t_ae648880e4f05d 1-22,24-27,32,34,38-41,45-49,65-77,100-102
+  s_5ddf40544fde37::t_3cb01be93adb9a 28-31,35-37,42-44,50-64,78-79,84-87,89-99
+  s_5ddf40544fde37::t_cd9f6f5b5ba909 23
+  s_5ddf40544fde37::t_14660ce19fc577 33
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_5eb373bc284905 337
+  s_5ddf40544fde37::t_9111acbb0c44f8 304,310,312
+  s_5ddf40544fde37::t_97ccfea2ce5ed7 358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "80660a47df2d78b9b436a53c34886cea260f087d",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

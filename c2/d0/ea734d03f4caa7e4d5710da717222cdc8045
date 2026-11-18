@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_1d360ad69afd30::t_50b78c9a1448cb 3-9,13
+  s_1d360ad69afd30::t_e4b7fd13110393 107-155,157,196
+  s_1d360ad69afd30::t_e2e53c0e670404 156
+  s_1d360ad69afd30::t_f87dade34a0b8f 158,159-185,192,194-195
+  s_1d360ad69afd30::t_2fdb920e962e5f 186-191,193
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_1d360ad69afd30::t_e016995dada6d6 33
+  s_1d360ad69afd30::t_27660f45ac1e49 385-388
+  s_1d360ad69afd30::t_44e937507ec195 506-508,509-517,519,521-525,527-528,530,532-542
+  s_1d360ad69afd30::t_cf42873af71c83 391
+  h_32d8cd6a0d6aad 518,520,526,529,531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c2d0ea734d03f4caa7e4d5710da717222cdc8045",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

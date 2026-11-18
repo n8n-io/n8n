@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_cbd5886bfc5e57::t_24293eececadbd 34
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_812c73ede79770::t_c2cfd352209a75 2,15-24
+  s_812c73ede79770::t_b231c96668f5f8 25
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_cbd5886bfc5e57::t_4db2036e654b5d 195-200,295
+  s_812c73ede79770::t_459fc08ea80461 176-185,305-309
+  s_26a97739d400e9::t_0449cc59b99119 287,291
+  s_ba0cc1f8364042::t_88703d23cd18a5 24
+  s_26a97739d400e9::t_6454ddf128a839 36,61,63-65
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineSidePanel.spec.ts
+  s_ba0cc1f8364042::t_6e43c65553ef23 22-28
+  s_ba0cc1f8364042::t_97d65f24cb55d4 1-21,29-100
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_cbd5886bfc5e57::t_cd796d98cd8423 9-10,12-24,29,31,68,72,76,90-91,94-95,97-101,103-104,106-107,125-126,128-135,139-140,142,144-146,150-153,155,158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a7f90143e8123b2977c08fb8da4de8b9196e9da",
+  "prompts": {},
+  "sessions": {
+    "s_26a97739d400e9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1253d-93f3-75e7-add4-2a75adff589a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_812c73ede79770": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12549-c33f-75e7-add4-2a76b3f852e4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ba0cc1f8364042": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12562-7497-75e7-add4-2a7aaff3be9c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cbd5886bfc5e57": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12576-dd51-75e7-add4-2a7c63123c8b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

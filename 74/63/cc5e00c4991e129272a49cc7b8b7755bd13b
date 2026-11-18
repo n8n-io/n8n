@@ -1,0 +1,31 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_306e9ca97f943f::t_54a8ef225c3081 1440-1444,1456
+  s_306e9ca97f943f::t_9988764f5059c1 1469-1492
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_306e9ca97f943f::t_893c0e264937ea 151-154
+packages/@n8n/config/test/config.test.ts
+  s_306e9ca97f943f::t_54f679b7bf28c0 343
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-checkpoint-store.test.ts
+  s_306e9ca97f943f::t_5aa119c0a1df1a 2
+  s_306e9ca97f943f::t_b2df7baeaa0e76 165-173
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_306e9ca97f943f::t_eda064bfd1dcce 1276,1278-1281,1289-1311
+  s_306e9ca97f943f::t_25aa5ef56072f4 459,466
+  s_306e9ca97f943f::t_c1bb2f6acf5206 482,487-488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7463cc5e00c4991e129272a49cc7b8b7755bd13b",
+  "prompts": {},
+  "sessions": {
+    "s_306e9ca97f943f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6d45adc-fe24-4282-9d1f-698e959ee1e4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

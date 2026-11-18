@@ -1,0 +1,69 @@
+packages/cli/src/modules/agents/builder/skills/sub-agents.skill.ts
+  s_4ac255d31d4818::t_cd3ce1da2e4de5 13,37-38,49-50,54-56,60-61,127
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_4ac255d31d4818::t_fbf4d170d333ac 604-606,614
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_4ac255d31d4818::t_bfc8108c99c7e5 997
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  s_4ac255d31d4818::t_3ddf496d5dfa57 8-9
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_4ac255d31d4818::t_5d1e45f6b36f7c 604,624,644-645
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_4ac255d31d4818::t_e75685dc7f2f1b 473,944
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_4ac255d31d4818::t_517391760cdfce 37
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_4ac255d31d4818::t_6bc240a8385a9c 2390,2412-2426
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_4ac255d31d4818::t_76c90364bb3ea3 399
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_4ac255d31d4818::t_5ad5810b027390 1542-1568
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_4ac255d31d4818::t_8a0e6b3fc26a26 107,111-116
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_4ac255d31d4818::t_083e1f95c70c78 18,23,50,97,485-488,491,496,500-507
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_4ac255d31d4818::t_e5cb4e283ee2b6 407,441-443
+  s_4ac255d31d4818::t_246861663cf3ed 444
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4ac255d31d4818::t_22dd19ee93fec4 7744,7770,7773
+  s_4ac255d31d4818::t_9646a7ec72be9d 7952
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_4ac255d31d4818::t_e035ef11ef2ad3 603,612-637,639
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_4ac255d31d4818::t_642396a90fef52 499,503-505
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_4ac255d31d4818::t_d65a2ae3860704 425,453,479,489,501,536-553,555-593
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_4ac255d31d4818::t_5f9706d5aa076a 919
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_4ac255d31d4818::t_87f7d8156e7d47 38-39,79-80,86,88
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_4ac255d31d4818::t_4ae7579fba148f 718,756-763,765-771
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_4ac255d31d4818::t_102d3990c3b9e7 146-147
+packages/cli/src/modules/agents/sub-agents/sub-agent-cleanup.service.ts
+  s_4ac255d31d4818::t_3858a794bffaab 19-20
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  s_4ac255d31d4818::t_9d81325aff7d32 80-89,91-95,114,123-129,132-134,138-141,153,156,159-162,176,181-183,186-187,190,205
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_4ac255d31d4818::t_86e65190112446 399-402,411-412,421
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_4ac255d31d4818::t_a1db143a52f77f 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "00c0bbd2d37b3850b49f26ad18f363c407de4a47",
+  "prompts": {},
+  "sessions": {
+    "s_4ac255d31d4818": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "59165f5c-6518-4b66-b303-3c73c4371cf1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

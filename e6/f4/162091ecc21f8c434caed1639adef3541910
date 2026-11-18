@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/__tests__/agent-thread.repository.integration.test.ts
+  s_58620fba057bad::t_2b50e281069f55 43-72
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_58620fba057bad::t_d604cc6016da96 7955,7970,7979
+  s_58620fba057bad::t_68c14983b476d5 7942,7957,7960-7962
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_58620fba057bad::t_451fd19c8cdd8a 647-649
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_58620fba057bad::t_451fd19c8cdd8a 87-91
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.test.ts
+  s_58620fba057bad::t_451fd19c8cdd8a 68-85,127-134
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_58620fba057bad::t_c0ca9b419276e0 25
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_58620fba057bad::t_451fd19c8cdd8a 3311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6f4162091ecc21f8c434caed1639adef3541910",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

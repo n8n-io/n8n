@@ -1,0 +1,26 @@
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_7d752113dacbc8::t_8ca27edee155cf 63,65-67
+packages/cli/test/integration/public-api/executions.test.ts
+  s_7d752113dacbc8::t_cb735fde11d47e 277-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7697f600132ca99bacd5360e7d39e09d2b937cf1",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7d752113dacbc8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2ff4029c-313f-4bd6-8094-9a476e1de46b",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

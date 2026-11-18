@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_f0db97e87be686::t_eb901a8bf34ece 348
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.test.ts
+  s_326dd039c6d306::t_3ed5a5be9a4fef 311-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e787033738bc8a5280e6fd3855e0f1b692baa5c4",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    },
+    "s_f0db97e87be686": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "536eefbb-4485-4caa-88d9-a6f9ff917471",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

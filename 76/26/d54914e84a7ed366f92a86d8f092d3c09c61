@@ -1,0 +1,25 @@
+packages/@n8n/ai-workflow-builder.ee/src/tools/introspect.tool.ts
+  s_f8bcded4ea5f7a::t_99d261a114aef8 1,9,53-54
+packages/@n8n/ai-workflow-builder.ee/src/types/langchain.ts
+  s_f8bcded4ea5f7a::t_99d261a114aef8 4
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/discovery.subgraph.ts
+  s_f8bcded4ea5f7a::t_99d261a114aef8 9,35,533
+packages/@n8n/ai-workflow-builder.ee/src/utils/tool-executor.ts
+  s_f8bcded4ea5f7a::t_99d261a114aef8 2,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7626d54914e84a7ed366f92a86d8f092d3c09c61",
+  "prompts": {},
+  "sessions": {
+    "s_f8bcded4ea5f7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0403bfdbffegQkKvvwvumrkEY",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

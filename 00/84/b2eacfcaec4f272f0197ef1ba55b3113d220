@@ -1,0 +1,14 @@
+packages/@n8n/telemetry/src/schemas.ts
+  h_5d40c27a8fdfd1 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0084b2eacfcaec4f272f0197ef1ba55b3113d220",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_f02eeddc17622e::t_9a3950bc902fe8 836,854
+  s_f02eeddc17622e::t_ff17c68be5a1e3 665-697
+  s_f02eeddc17622e::t_8790fe474da433 1021,1033
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_f02eeddc17622e::t_bba857e88ff290 646-647
+  s_f02eeddc17622e::t_22744d1e04c219 442
+  s_f02eeddc17622e::t_63de0879e775ed 604-608
+  s_f02eeddc17622e::t_9ffde3e95bc738 729-732
+  s_f02eeddc17622e::t_6d0ce8398f8d17 745-747,756
+  s_f02eeddc17622e::t_1ac1a83cdb7351 443
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_f02eeddc17622e::t_1876a8144cdf5f 427-428
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/commons.test.ts
+  s_f02eeddc17622e::t_ced04bb62e0d54 1054-1079
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3730d3397ed4494b1ac21698ecf75e9110cbf44c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f02eeddc17622e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0941138b-5c51-4834-b826-7c70feb454a6",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+.github/scripts/owners/required-reviews.test.mjs
+  s_26f03a06609454::t_e1f64795c55737 61,443-476,478,480,483
+  s_26f03a06609454::t_43986a40ad98b1 477
+  s_26f03a06609454::t_d10927dc84d59a 479
+  s_26f03a06609454::t_2ba48714d768e6 481-482
+  s_26f03a06609454::t_530903533158d0 484
+.github/scripts/owners/required-reviews.mjs
+  s_26f03a06609454::t_f5ee4eb3a3a396 241-243
+  s_26f03a06609454::t_e1f64795c55737 37,240,244-245
+.github/WORKFLOWS.md
+  s_26f03a06609454::t_e1f64795c55737 948-951
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c5a843bfd152d09b4ac90f132bda4c02ef5caf99",
+  "prompts": {},
+  "sessions": {
+    "s_26f03a06609454": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3ff0fdaeffeqVe2T2MeCU3qyn",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

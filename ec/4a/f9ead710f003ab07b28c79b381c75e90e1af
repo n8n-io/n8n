@@ -1,0 +1,38 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_6897656fff0b4a::t_79437741a9af7f 495-499
+  s_6897656fff0b4a::t_12d586a3c46342 425-494,500-536
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_6897656fff0b4a::t_b3769195eceb65 45,346-375
+packages/@n8n/agents/src/runtime/model/__tests__/encrypted-reasoning.test.ts
+  s_6897656fff0b4a::t_2c9c83abaf6c76 1-37
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_6897656fff0b4a::t_867f09b4a8bd54 601,620-622,625
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_6897656fff0b4a::t_8fcdb5ea2863dc 63-66
+  s_6897656fff0b4a::t_b3769195eceb65 1222-1231
+packages/@n8n/agents/src/runtime/model/encrypted-reasoning.ts
+  s_6897656fff0b4a::t_8fcdb5ea2863dc 19-21,30-32
+  s_6897656fff0b4a::t_10026f7eaba771 1-5,7-18,22-24,28-29,37,39-67,70-72,75-76
+  s_6897656fff0b4a::t_53da93959f11d8 6,25-27,33-36,38,68-69,73-74
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_6897656fff0b4a::t_b3769195eceb65 284-291
+  s_6897656fff0b4a::t_8fcdb5ea2863dc 19
+packages/@n8n/agents/src/runtime/model/__tests__/openai-stateless-responses.test.ts
+  s_6897656fff0b4a::t_867f09b4a8bd54 31,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec4af9ead710f003ab07b28c79b381c75e90e1af",
+  "prompts": {},
+  "sessions": {
+    "s_6897656fff0b4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e563283-62ce-4b4a-b047-8a2343e393f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

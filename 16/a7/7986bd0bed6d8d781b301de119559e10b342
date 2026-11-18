@@ -1,0 +1,109 @@
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-input.builder.ts
+  s_ce2d87572e1814::t_ccea04213f831d 48
+  s_ce2d87572e1814::t_e0a7158a1ffcd0 302,307
+packages/cli/src/modules/instance-ai/agent-test-handoff.ts
+  s_ce2d87572e1814::t_ccea04213f831d 117-122
+  s_ce2d87572e1814::t_e04478b05eb5b4 14,26,41,53,77,85,88,91,123
+packages/cli/src/modules/instance-ai/__tests__/agent-test-handoff.test.ts
+  s_ce2d87572e1814::t_ccea04213f831d 10
+  s_ce2d87572e1814::t_a2d59caf3450c0 45,52,79,97,112,126,140,150,165,182,203,213,223
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ce2d87572e1814::t_ccea04213f831d 1504,1558,1609,1622,1625,1805,1811,1818,1829,1837,1863,1906,1924,1953,1961,2022,2399,2420,2478,2485,2504,2515,2539,2546
+  s_ce2d87572e1814::t_4444e4d5c7ba82 600,674-675,1462,1481,2561,2582,2605,2626,2631,2651,2675,2698,2744,2754,2787,2797,2969,3013,3024,3035,3057,3061,3068,3079,3112,3140,3289,4479,4751,4757,4770,4788,6708,7006,7028,7037,7043,7057,7078,7112,7130,7135,7146,7167,7172,7189,7197,7202,7209,7213
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ce2d87572e1814::t_ccea04213f831d 1091
+  s_ce2d87572e1814::t_8af3ee70f36d6c 67,113,166-168,250,440,868,1092,3466,3677,3810,3868
+packages/cli/src/modules/agents/TEST_CHAT_RECOVERY.md
+  s_ce2d87572e1814::t_492f97b1153a98 1-31
+scripts/lint-parity/samples.json
+  s_ce2d87572e1814::t_285d9ed3d7584b 200
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_ce2d87572e1814::t_ccea04213f831d 116
+  s_ce2d87572e1814::t_d1595ed53ffc58 25-26,293,329,362
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-test-session-binding.test.ts
+  s_ce2d87572e1814::t_ccea04213f831d 3
+.github/test-metrics/e2e-impact-map.json
+  s_ce2d87572e1814::t_ba960a5dfe122f 1
+packages/@n8n/api-types/src/agents/index.ts
+  s_ce2d87572e1814::t_877a35b0dd6358 10
+packages/@n8n/instance-ai/src/index.ts
+  s_ce2d87572e1814::t_4b9a78a419d550 289
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_ce2d87572e1814::t_7dac97ab87e5f3 17
+packages/cli/src/modules/agents/AGENTS.md
+  s_ce2d87572e1814::t_3172551a08f31d 8
+packages/cli/src/modules/agents/__tests__/agent-chat-relay.service.test.ts
+  s_ce2d87572e1814::t_0ea34cd6cff128 8,43
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_ce2d87572e1814::t_6eba904f1a8193 23,100
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_ce2d87572e1814::t_4661fb995a28df 16,35
+packages/cli/src/modules/agents/__tests__/agent-queued-test-stream.service.test.ts
+  s_ce2d87572e1814::t_c37362518e44d1 11,17,25,42,176
+packages/cli/src/modules/agents/__tests__/agent-session-stop.service.test.ts
+  s_ce2d87572e1814::t_c1f252b46f2731 11,23
+packages/cli/src/modules/agents/agent-chat-relay.service.ts
+  s_ce2d87572e1814::t_2e23d721a84057 18,35,131
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_ce2d87572e1814::t_7ebda928154b7f 16,39
+packages/cli/src/modules/agents/agent-queued-test-stream.service.ts
+  s_ce2d87572e1814::t_6cdfe8dfc8d896 18,114,141,153,159
+packages/cli/src/modules/agents/agent-session-stop.service.ts
+  s_ce2d87572e1814::t_d46d1234f39cf0 13,26
+packages/cli/src/modules/agents/builder/agent-builder-session-context.ts
+  s_ce2d87572e1814::t_796b5b882696fc 1,18
+packages/cli/src/modules/agents/builder/agent-builder-test-path.ts
+  s_ce2d87572e1814::t_c0f7c3d6627807 1
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_ce2d87572e1814::t_559ba41b70b749 77,868
+packages/cli/src/modules/instance-ai/turn-setup/assistant-agent.factory.ts
+  s_ce2d87572e1814::t_3e744ab76296ea 28,206
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_ce2d87572e1814::t_22a9f4602d3499 17-18,211,525,3898,3915
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_ce2d87572e1814::t_36ea4cdfa5bc2b 9,72,74
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_ce2d87572e1814::t_a1c5bc995351a5 139
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestButton.test.ts
+  s_ce2d87572e1814::t_1401d335c88da1 46-47,57
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestDock.test.ts
+  s_ce2d87572e1814::t_f2f7afad6c72a3 7-8,92-93,113-114,152,172-173,179,191,207-208,227-228,334,398,402,421,456,598,607,680,712
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestMoreMenu.test.ts
+  s_ce2d87572e1814::t_acdc2ba306d2b7 11,160,178,201,763,766
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_ce2d87572e1814::t_52cc191eb23734 36,204,260
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_ce2d87572e1814::t_c3e0103dc346af 8,58
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_ce2d87572e1814::t_3b482ab68c186d 39,619
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agentTestUrl.test.ts
+  s_ce2d87572e1814::t_9f8561c263b097 3,5,8,18,29,37,51
+packages/frontend/editor-ui/src/features/agents/utils/agentTestUrl.ts
+  s_ce2d87572e1814::t_9493f227280812 3,8,24,34,37
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_ce2d87572e1814::t_7cae9256a03510 38,308,472,495,533,536-538,573,629,697,715,812,831-832,928-929,1092,1095
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_ce2d87572e1814::t_768f9f5b352fbe 17,32
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_ce2d87572e1814::t_8e4219b3369b7e 5-8,15,289,295
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_ce2d87572e1814::t_60448931f84d21 18,30
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff.ts
+  s_ce2d87572e1814::t_02f1b2056de347 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16a77986bd0bed6d8d781b301de119559e10b342",
+  "prompts": {},
+  "sessions": {
+    "s_ce2d87572e1814": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17e45-49e1-79f1-94ce-d469e4a0f0de",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

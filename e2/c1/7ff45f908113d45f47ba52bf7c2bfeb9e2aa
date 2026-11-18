@@ -1,0 +1,30 @@
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_7442648e2e7e0c::t_575cb654cd5057 157,352,410,423-438
+  s_7442648e2e7e0c::t_537aa1c7e5e9b4 191-199,201-203,206-208,210-216,221-225,244-253
+  s_7442648e2e7e0c::t_0824d4bc5f7328 155
+  s_7442648e2e7e0c::t_861c9af5cf2418 56-76
+  s_7442648e2e7e0c::t_f77cc38be8a042 170,266-271,273-278,285-296,323-325,335-351,409
+  s_7442648e2e7e0c::t_35246e445fdbd1 255,372-373,375,383-385,392,394-408
+  s_7442648e2e7e0c::t_a9a82eadff8ad6 77-79,94,156,158,182,254,256,353-354,371,411,439-441,569
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_7442648e2e7e0c::t_4110edc0fb1c78 54-62
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_7442648e2e7e0c::t_38a2cf013a20f4 29-34,36-39,43-47,53-57
+  s_7442648e2e7e0c::t_2130aafa7416f1 286-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "e2c17ff45f908113d45f47ba52bf7c2bfeb9e2aa",
+  "prompts": {},
+  "sessions": {
+    "s_7442648e2e7e0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dbbd829-e49a-474d-9261-ace47c522bea",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

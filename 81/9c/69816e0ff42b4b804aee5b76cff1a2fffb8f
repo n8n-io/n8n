@@ -1,0 +1,55 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_ff8b9aa92a9930::t_6da1757ba2e389 178-193
+  s_ff8b9aa92a9930::t_25bb13cb5ddfed 9
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_ff8b9aa92a9930::t_f77ceee93b00b2 613
+  s_ff8b9aa92a9930::t_34348883827cc5 724,734-756,760-785
+  s_ff8b9aa92a9930::t_6eac5869824e7b 725-733
+  s_ff8b9aa92a9930::t_b4cb523842caa6 591-599,602-605,607-612,622-646
+  s_ff8b9aa92a9930::t_273c6e557d5299 50-52
+  s_ff8b9aa92a9930::t_fd6a6054618846 44-49,757-759
+  s_ff8b9aa92a9930::t_74c835fc59d8bc 600-601,606,614-621
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ff8b9aa92a9930::t_b516f7878d304f 374,392,516,520-529,1611-1627,1635-1748
+  s_ff8b9aa92a9930::t_c5a6c8b79fee5c 1628-1634
+  s_ff8b9aa92a9930::t_e3071aefcf61f3 1749-1750
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.integration.test.ts
+  s_ff8b9aa92a9930::t_cec918f2e17624 3,126-137,153-160,171-173,176-185,187,189
+  s_ff8b9aa92a9930::t_6eac5869824e7b 174-175
+  s_ff8b9aa92a9930::t_79998b2ef7bfb7 161-170
+  s_ff8b9aa92a9930::t_5c08fb1ca7fd6f 138-152,186,188
+  s_ff8b9aa92a9930::t_d0554e22843dfd 190
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ff8b9aa92a9930::t_0db9f73107650f 627,630-632,635-636
+  s_ff8b9aa92a9930::t_549728615da5fb 568-584,587-596,599-625,628-629,637-645
+  s_ff8b9aa92a9930::t_1f918e532c7c3a 2
+  s_ff8b9aa92a9930::t_8b8b23c3ca8af4 633-634
+  s_ff8b9aa92a9930::t_1aba07cb3518b8 695-705
+  s_ff8b9aa92a9930::t_95f727fcd0b4ba 531
+  s_ff8b9aa92a9930::t_6eac5869824e7b 585-586
+packages/@n8n/api-types/src/dto/index.ts
+  s_ff8b9aa92a9930::t_52ec582e66fe17 808
+  s_ff8b9aa92a9930::t_a27fac2190f35f 821
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_ff8b9aa92a9930::t_a343cea2d022f9 2,6,28,32-35,55-65
+  s_ff8b9aa92a9930::t_6e360101529d66 66-67
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_ff8b9aa92a9930::t_8addefa9e8c921 21,54,789-800
+  s_ff8b9aa92a9930::t_a57a4b24200961 774,776,779,784,788,801-843
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "819c69816e0ff42b4b804aee5b76cff1a2fffb8f",
+  "prompts": {},
+  "sessions": {
+    "s_ff8b9aa92a9930": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f5ab687-045b-4fa4-82f0-836e06007165",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

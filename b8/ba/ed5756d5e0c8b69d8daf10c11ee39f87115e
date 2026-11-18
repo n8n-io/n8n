@@ -1,0 +1,31 @@
+packages/cli/src/services/__tests__/role.service.assignments.test.ts
+  s_57c3811f2e5b52::t_46c7f9cf7a7d72 8,20,29
+packages/cli/src/services/__tests__/role.service.rolesWithScope.test.ts
+  s_57c3811f2e5b52::t_5224a769e6df72 7,19,28
+packages/cli/src/services/__tests__/role.service.customRoles.test.ts
+  h_5d40c27a8fdfd1 112,123-127
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_57c3811f2e5b52::t_342282f44577bb 999-1003
+  s_57c3811f2e5b52::t_2a8eda905f0e84 1036-1040
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b8baed5756d5e0c8b69d8daf10c11ee39f87115e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57c3811f2e5b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c36cba-8c8b-42fb-b560-44173f55ef20",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

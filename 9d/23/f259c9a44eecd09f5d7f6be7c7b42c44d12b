@@ -1,0 +1,110 @@
+packages/cli/test/integration/public-api/users.ee.test.ts
+  s_e2203a10d11968::t_a56c7350c5f3ee 1
+  s_e2203a10d11968::t_f10a5826e34513 285
+  s_e2203a10d11968::t_5145c2f17f21c2 7
+  s_e2203a10d11968::t_0238c8197d8c9d 6
+  s_e2203a10d11968::t_5e31f5853c1301 291-293,295-297,301-303
+  s_e2203a10d11968::t_afb7d37180e070 305-316
+  s_e2203a10d11968::t_46beb9c747b363 304
+  s_e2203a10d11968::t_ef065a30c41d21 285
+  s_e2203a10d11968::t_bc17415943e274 1
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_e2203a10d11968::t_677702f6d9c957 1,3
+  s_e2203a10d11968::t_4f005b3e817f17 221
+  s_f865d7992a33c6::t_142e7d1097c794 143-146
+  s_f865d7992a33c6::t_b3d988359f72c4 219-220,222-229
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_e2203a10d11968::t_ad08ba73aaab2e 468
+  s_e2203a10d11968::t_a5e63b9e453222 398,401
+  s_e2203a10d11968::t_7c93ce8dade4de 418
+  s_e2203a10d11968::t_04324482c0c8f3 427
+  s_e2203a10d11968::t_f201dca6c93418 2-3
+  s_e2203a10d11968::t_715ad322c68dfe 450
+  s_f865d7992a33c6::t_3379ae94d293ea 6,14
+  s_f865d7992a33c6::t_67b356cda6c84d 396-397,399-400,402-417,419-426,428-449,451-467,469-470,476-495
+  s_f865d7992a33c6::t_a2144d7312a15c 471-475
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_e2203a10d11968::t_3a4a9b129585aa 174
+  s_f865d7992a33c6::t_13261027c7b75b 177
+packages/@n8n/decorators/src/controller/index.ts
+  s_f865d7992a33c6::t_d4a487152ddd26 15
+packages/@n8n/decorators/src/controller/types.ts
+  s_f865d7992a33c6::t_5bf52a80130d9c 70-71
+packages/@n8n/decorators/src/controller/requires-user-quota.ts
+  s_f865d7992a33c6::t_385c4024244228 1-7,8-15
+packages/@n8n/decorators/src/controller/__tests__/requires-user-quota.test.ts
+  s_f865d7992a33c6::t_c55d4de07c5687 1-4,6-45,46-61
+packages/@n8n/api-types/src/dto/user/list-users-query.dto.ts
+  s_e2203a10d11968::t_b34d378dccca22 1-12
+packages/@n8n/api-types/src/dto/user/user-public.dto.ts
+  s_e2203a10d11968::t_783ac42b1b762e 10-11
+  s_e2203a10d11968::t_b557019c3c2998 1-9,12-36
+packages/@n8n/api-types/src/dto/user/__tests__/list-users-query.dto.test.ts
+  s_e2203a10d11968::t_1b04935fdad876 1-25,34-35
+  s_e2203a10d11968::t_4839e9b0f1e888 26-33
+packages/@n8n/api-types/src/dto/user/__tests__/user-public.dto.test.ts
+  s_e2203a10d11968::t_f563e4e18efabe 1-39
+packages/cli/src/public-api/v1/handlers/users/users.mapper.ts
+  s_e2203a10d11968::t_d65804b1837d42 1,5,7-12,17-18
+  s_e2203a10d11968::t_344af926f18b6d 22
+packages/@n8n/api-types/src/dto/user/get-user-query.dto.ts
+  s_e2203a10d11968::t_7a518af80cb486 1-6
+packages/@n8n/api-types/src/dto/index.ts
+  s_e2203a10d11968::t_3a6beff7fe9f50 114-116
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_e2203a10d11968::t_0b5ea20aa1db02 214
+packages/cli/src/public-api/v1/controllers/__tests__/users.public.controller.test.ts
+  s_e2203a10d11968::t_13e390c1c14004 154
+  s_e2203a10d11968::t_ce19800248826c 50-55,83-88,101-106
+  s_e2203a10d11968::t_adf927e74142df 1-30,34-49,56-60,66,70-82,89-100,107-128,134,138-153,155-157
+  s_e2203a10d11968::t_92859f354d0959 129-133,135-137
+  s_e2203a10d11968::t_7291d07b8864c3 61-65,67-69
+  s_e2203a10d11968::t_6cdbef2be36d0d 31-33
+packages/@n8n/api-types/src/dto/user/__tests__/get-user-query.dto.test.ts
+  s_e2203a10d11968::t_64cdf5ae191375 1-21
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_e2203a10d11968::t_d6ca1ee1ba1e76 15
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_e2203a10d11968::t_7a0dce0ed39b3e 20
+  s_e2203a10d11968::t_7f17458d857cb1 8-10,12-19,21-50,52-89,91-93,95-111
+  s_e2203a10d11968::t_dbd4dd8375839f 1-5,7
+  s_e2203a10d11968::t_ded7d7c94191cb 6,11
+  s_e2203a10d11968::t_a0cf3707b474e0 51
+  s_e2203a10d11968::t_8ada91a16ff503 90,94
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUser.generated.yml
+  s_e2203a10d11968::t_0119d8754e4f4b 1-13,15-87
+  s_e2203a10d11968::t_d4308d40090f09 14,88-89
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUsers.generated.yml
+  s_e2203a10d11968::t_823b1ebbe681b3 1-101
+  s_e2203a10d11968::t_2b8c61bfb27bca 102-103
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_e2203a10d11968::t_9f24035dba8baa 183-188
+packages/@n8n/api-types/src/index.ts
+  s_e2203a10d11968::t_d32e9826ce29a1 163
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_e2203a10d11968::t_b81a7d981f7a24 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9d23f259c9a44eecd09f5d7f6be7c7b42c44d12b",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_f865d7992a33c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a812bf1-111a-4e2b-b16e-a7af15a606d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

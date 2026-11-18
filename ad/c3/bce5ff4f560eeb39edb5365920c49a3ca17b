@@ -1,0 +1,56 @@
+packages/@n8n/db/src/migrations/common/1789043454467-AddStartedByUserIdToExecutionEntity.ts
+  s_af62986d6ef75e::t_6a679431e51569 1-3,17,22,24-25
+  s_af62986d6ef75e::t_e9ea270455b620 4-16,18-21,23
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_af62986d6ef75e::t_9ac5dd4142af43 138-145
+packages/@n8n/db/src/entities/types-db.ts
+  s_af62986d6ef75e::t_9509b62a61052a 76
+docs/generated/postgres-schema/README.md
+  s_af62986d6ef75e::t_4efdd4428101cf 67,973
+docs/generated/postgres-schema/public.chat_hub_messages.md
+  s_af62986d6ef75e::t_aa9e1943e8ad47 112
+docs/generated/postgres-schema/public.execution_annotations.md
+  s_af62986d6ef75e::t_08768d622cc56e 60
+docs/generated/postgres-schema/public.execution_data.md
+  s_af62986d6ef75e::t_538fe9c175a4d9 53
+docs/generated/postgres-schema/public.execution_entity.md
+  s_af62986d6ef75e::t_59cde73b26c7f6 18,82
+docs/generated/postgres-schema/public.execution_metadata.md
+  s_af62986d6ef75e::t_27c596c040f6ca 55
+docs/generated/postgres-schema/public.test_case_execution.md
+  s_af62986d6ef75e::t_6ddbb0075b3ef4 78
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_af62986d6ef75e::t_28edb95f4c1c6b 209
+docs/generated/sqlite-schema/README.md
+  s_af62986d6ef75e::t_2a07d788ddff14 67,960
+docs/generated/sqlite-schema/chat_hub_messages.md
+  s_af62986d6ef75e::t_728209f5b1fa0d 116
+docs/generated/sqlite-schema/execution_annotations.md
+  s_af62986d6ef75e::t_cdadbf7ac0349f 66
+docs/generated/sqlite-schema/execution_data.md
+  s_af62986d6ef75e::t_f1b328f9619bf1 67
+docs/generated/sqlite-schema/execution_entity.md
+  s_af62986d6ef75e::t_ece62843aa6ba0 9,29,81
+docs/generated/sqlite-schema/execution_metadata.md
+  s_af62986d6ef75e::t_749ff63488b627 61
+docs/generated/sqlite-schema/test_case_execution.md
+  s_af62986d6ef75e::t_fe203ee02f901f 93
+docs/generated/sqlite-schema/workflow_entity.md
+  s_af62986d6ef75e::t_743d6831b2dd47 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "adc3bce5ff4f560eeb39edb5365920c49a3ca17b",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

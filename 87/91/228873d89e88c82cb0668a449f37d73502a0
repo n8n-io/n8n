@@ -1,0 +1,19 @@
+packages/cli/src/telemetry/__tests__/telemetry-pulse.task.test.ts
+  s_f67a24eb464148::t_e8a32763617c63 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8791228873d89e88c82cb0668a449f37d73502a0",
+  "prompts": {},
+  "sessions": {
+    "s_f67a24eb464148": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01fa1eda-8537-4f04-8937-4d5bb1243801",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

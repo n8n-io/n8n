@@ -1,0 +1,36 @@
+packages/@n8n/db/src/repositories/test-case-execution.repository.ee.ts
+  s_526fdf6aabeb40::t_f4afabd2d7dc49 3,9-11,33-35,164-165
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  s_526fdf6aabeb40::t_406c0e104c29b7 21,2643-2664,2983
+  s_526fdf6aabeb40::t_7e4d4e02f7387b 7,12,80-83,91,112,606,932,2428,2509,2580-2588,2617,2632-2639,2930,2984,2995,2999-3008,3011-3012,3021-3022,3025,3029-3030,3033,3036-3053,3600,3603-3611,3613-3624,3628,3632-3643
+packages/@n8n/db/src/repositories/__tests__/test-run.repository.ee.test.ts
+  s_526fdf6aabeb40::t_406c0e104c29b7 3,6,12
+packages/@n8n/db/src/repositories/test-run.repository.ee.ts
+  s_526fdf6aabeb40::t_f4afabd2d7dc49 2-3,10-11,13,20-22,60-70,72-79
+  s_526fdf6aabeb40::t_b8e84e27ff261d 71
+packages/cli/test/integration/test-run.repository.ee.test.ts
+  s_526fdf6aabeb40::t_b42e50f7e0b6bc 128-153,173
+  s_526fdf6aabeb40::t_7d39436e138e3e 3,83-86,88-109,111-123
+  s_526fdf6aabeb40::t_b1e0d214602019 169-172
+  s_526fdf6aabeb40::t_406c0e104c29b7 2,87,110,124-127,154-168,174
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_526fdf6aabeb40::t_b8e84e27ff261d 1260-1262,1299-1300
+  s_526fdf6aabeb40::t_a455cab2150dff 4
+  s_526fdf6aabeb40::t_f4afabd2d7dc49 12,102,1084-1086,1128-1130,1266,1268-1269,1302-1304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a85cc1d2aa989018f379a9a9353a3e8da1746771",
+  "prompts": {},
+  "sessions": {
+    "s_526fdf6aabeb40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01e9b369-468d-43fd-9744-f7f8ac5a2326",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

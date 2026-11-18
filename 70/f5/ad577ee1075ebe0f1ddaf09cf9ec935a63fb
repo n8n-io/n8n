@@ -1,0 +1,120 @@
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_04e1c2df41f1f7::t_01193a1c91e584 56-59
+  s_04e1c2df41f1f7::t_fdcde7b29163b8 55
+  s_04e1c2df41f1f7::t_e5adc2b0209a89 17-18,30-31,53-54
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_04e1c2df41f1f7::t_afafe978cf9ee4 39,278-287
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_04e1c2df41f1f7::t_399d89a57fa246 135-138,164-166
+  s_04e1c2df41f1f7::t_df579f98de485a 167-170
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_04e1c2df41f1f7::t_b790da6194646e 1048
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputList.vue
+  s_04e1c2df41f1f7::t_8d07f8596fdb6d 94,1032
+  s_04e1c2df41f1f7::t_360ae8f4c1fa6a 95,1033
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.test.ts
+  s_04e1c2df41f1f7::t_c1cc62d5b3b8f1 168,175,181-182,184-186
+  s_04e1c2df41f1f7::t_280301435197c1 119-130
+  s_04e1c2df41f1f7::t_5b5021301a93b2 169-174,176-180,183
+  s_04e1c2df41f1f7::t_c15c16cf407309 161
+packages/@n8n/api-types/src/agent-builder-tool-node-types.ts
+  s_04e1c2df41f1f7::t_b957de6c6acfcb 22-23
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_04e1c2df41f1f7::t_1dfe83e9c7ef3c 148-150,198-200
+  s_04e1c2df41f1f7::t_ef1e308ac31dfd 18,44-47
+  s_04e1c2df41f1f7::t_0c5e2c6bede05d 83
+  s_04e1c2df41f1f7::t_936ca2d2a7ce7e 305
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_04e1c2df41f1f7::t_6b81a39c733410 38-42,110-119
+  s_04e1c2df41f1f7::t_fcec1ca489b675 120-122
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_04e1c2df41f1f7::t_f1dba26643c95e 7835
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_04e1c2df41f1f7::t_6c69f4158132e8 54,433
+  s_04e1c2df41f1f7::t_54f419178170a3 53,432
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_04e1c2df41f1f7::t_3a5f713fb3fb35 151,165,584,664,667
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputWrapper.vue
+  s_04e1c2df41f1f7::t_7cb1bd8e049f03 48,203
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_04e1c2df41f1f7::t_147944916e36a9 881,886-895,897-900,914,919,924,927,936-937
+  s_04e1c2df41f1f7::t_b94d355f01ba29 882-885,896,901-913,915-918,920-923,925-926,928-935
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_04e1c2df41f1f7::t_35e77311a7d165 14,46,106,196-208,210-214,226
+  s_04e1c2df41f1f7::t_5a930106e0d924 16,209
+  s_04e1c2df41f1f7::t_f11387d2f6350f 19,215-225,436
+  s_04e1c2df41f1f7::t_ea9c4dcbfc8324 227-232
+  s_04e1c2df41f1f7::t_b6f4ea33058f27 15,80-81
+  s_04e1c2df41f1f7::t_512d24fa097925 98-105,435
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_04e1c2df41f1f7::t_b5f25e3163789e 5
+  s_04e1c2df41f1f7::t_a209dfcf62c00d 88,110,179-181
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.vue
+  s_04e1c2df41f1f7::t_e78e7a6a3e9f02 388,486,504
+  s_04e1c2df41f1f7::t_6c5421dcf15e68 61,75
+  s_04e1c2df41f1f7::t_93e10b2a2d3f9f 62,76,114
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_04e1c2df41f1f7::t_65e4d558ba2cc0 244,252,299-300
+packages/cli/src/modules/agents/builder/resolve-integration.tool.ts
+  s_04e1c2df41f1f7::t_ca0fd6e4591c09 25
+packages/cli/src/modules/agents/utils/__tests__/node-tool-validation.test.ts
+  s_04e1c2df41f1f7::t_68f403379158ec 28-37,40-49,61-75,77
+  s_04e1c2df41f1f7::t_db4e3f9699b89d 3-6,38-39,50-60,76
+  s_a60957d0ee799e::t_8da8174a1c7948 78
+packages/cli/src/modules/agents/utils/node-tool-validation.ts
+  s_04e1c2df41f1f7::t_354783adf884da 3,12-49
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_04e1c2df41f1f7::t_4f6c5f1d50e2df 1-48,61-132
+  s_04e1c2df41f1f7::t_2c4b38f9e2ac5d 49-52,60
+  s_04e1c2df41f1f7::t_56494256946782 53-59
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_04e1c2df41f1f7::t_2bc884bda80186 6,17
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_04e1c2df41f1f7::t_3fc95022e9ef4f 2624-2632
+  s_04e1c2df41f1f7::t_014cf0055eb7cf 2633-2637,2682
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_04e1c2df41f1f7::t_eae804e40551bb 223-257
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_04e1c2df41f1f7::t_0393409502928d 76,164,172,199-207,286,292-311,313
+  s_04e1c2df41f1f7::t_7513b6205190ab 93,98-101
+  s_04e1c2df41f1f7::t_01dff37134c3ca 141
+  s_04e1c2df41f1f7::t_716e7fe3e5b637 290
+  s_04e1c2df41f1f7::t_ec5c3d7e610b5d 60-66,94-97,291,312
+  s_04e1c2df41f1f7::t_b091e9aa7c4d9e 4
+  s_04e1c2df41f1f7::t_f733292102ff9a 314-315
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_04e1c2df41f1f7::t_0daf52273dc9cf 65
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_04e1c2df41f1f7::t_9cff969e8b72bb 15,55
+  s_04e1c2df41f1f7::t_d00dcca0c278b9 14,54
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideField.vue
+  s_04e1c2df41f1f7::t_5c7ef3880d302c 6,9
+  s_04e1c2df41f1f7::t_f4186d2c8d60dc 29-33,75-79
+  s_04e1c2df41f1f7::t_267a3c7c81c375 80-81
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_04e1c2df41f1f7::t_0e7b2e54d41ed8 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "70f5ad577ee1075ebe0f1ddaf09cf9ec935a63fb",
+  "prompts": {},
+  "sessions": {
+    "s_04e1c2df41f1f7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1dcee2aa-cd91-45af-bf2e-5fa279da36a3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a60957d0ee799e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cb0994c3-0758-40f6-b412-9cd1a070bfb0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

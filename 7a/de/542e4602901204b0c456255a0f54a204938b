@@ -1,0 +1,65 @@
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/addProjectToPromotionEnvironment.generated.yml
+  s_f22a30eb938e0c::t_73ddcd7bcaaae6 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_f22a30eb938e0c::t_d2f7fc8de0a471 5-6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_f22a30eb938e0c::t_c06f2bd2f2b94e 5-6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  s_f22a30eb938e0c::t_5280b711ba8d58 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_f22a30eb938e0c::t_db5031eea1624e 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_f22a30eb938e0c::t_e37a52c1c803a0 5-6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionEnvironment.generated.yml
+  s_f22a30eb938e0c::t_4853e7b3faacac 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionProvider.generated.yml
+  s_f22a30eb938e0c::t_d2fee0fc1619e4 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
+  s_f22a30eb938e0c::t_6704296ff276dd 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  s_f22a30eb938e0c::t_9b8549aed96f50 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_f22a30eb938e0c::t_555502e2513adb 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_f22a30eb938e0c::t_164cbfa5d3e7a4 5-6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironment.generated.yml
+  s_f22a30eb938e0c::t_dd7dd15423234f 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentProjects.generated.yml
+  s_f22a30eb938e0c::t_fa4924bd62a85a 5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironments.generated.yml
+  s_f22a30eb938e0c::t_5f796e706541e4 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProvider.generated.yml
+  s_f22a30eb938e0c::t_b52a139844866f 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositories.generated.yml
+  s_f22a30eb938e0c::t_e9e92e9f936a0f 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositoryBranches.generated.yml
+  s_f22a30eb938e0c::t_0f535368610321 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviders.generated.yml
+  s_f22a30eb938e0c::t_302dceffe1b194 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_f22a30eb938e0c::t_b471c642d6d296 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_f22a30eb938e0c::t_b06cdb95880c64 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/removeProjectFromPromotionEnvironment.generated.yml
+  s_f22a30eb938e0c::t_69677fee5e718b 5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  s_f22a30eb938e0c::t_7e5b189f508178 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  s_f22a30eb938e0c::t_73a5415a558023 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ade542e4602901204b0c456255a0f54a204938b",
+  "prompts": {},
+  "sessions": {
+    "s_f22a30eb938e0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "089345ba-a85e-46fe-a596-b06a86f1735f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

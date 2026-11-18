@@ -1,0 +1,40 @@
+packages/@n8n/scheduler/src/core/factory.ts
+  s_3eca03038a0537::t_18b6efe8c61f3d 127-128,131,475-477,479
+  s_3eca03038a0537::t_9a7549cbd24d18 27
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_3eca03038a0537::t_18b6efe8c61f3d 86,95,98-99
+  h_32d8cd6a0d6aad 902,904
+  s_3eca03038a0537::t_9a7549cbd24d18 87,101
+packages/@n8n/scheduler/src/core/index.ts
+  s_3eca03038a0537::t_9a7549cbd24d18 78
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.test.ts
+  s_3eca03038a0537::t_9a7549cbd24d18 9,14
+packages/@n8n/scheduler/src/core/reaper/index.ts
+  s_3eca03038a0537::t_9a7549cbd24d18 11
+packages/@n8n/db/src/repositories/index.ts
+  s_3eca03038a0537::t_9a7549cbd24d18 73
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_3eca03038a0537::t_18b6efe8c61f3d 33,42,45-46,89-90,92
+  s_3eca03038a0537::t_9a7549cbd24d18 34,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d18b1fc47d9929889d24f53a80b375ff31972c40",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3eca03038a0537": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2362364-f41b-4475-afee-1c30f348c01b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

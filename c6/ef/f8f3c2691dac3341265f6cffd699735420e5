@@ -1,0 +1,17 @@
+packages/frontend/editor-ui/src/features/workflows/bulkActions/bulkActions.api.ts
+  ai_agent 111-116
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  ai_agent 615
+packages/frontend/editor-ui/src/app/composables/useResourcesListSelection.ts
+  ai_agent 56-58
+packages/frontend/editor-ui/src/features/workflows/bulkActions/useBulkWorkflowActions.ts
+  ai_agent 24-249
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  ai_agent 572-665
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6eff8f3c2691dac3341265f6cffd699735420e5",
+  "prompts": {}
+}

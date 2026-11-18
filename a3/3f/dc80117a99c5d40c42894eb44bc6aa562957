@@ -1,0 +1,25 @@
+packages/frontend/@n8n/design-system/src/css/fonts/inter.scss
+  s_25a2a736b8af6f::t_858696d3aa7747 2-13
+packages/@n8n/mcp-apps/src/apps/workflow-preview/tokens.scss
+  s_25a2a736b8af6f::t_e98ae45021abe5 3
+packages/@n8n/mcp-browser-extension/src/ui/tokens.scss
+  s_25a2a736b8af6f::t_09f3598b0cb91f 3
+packages/frontend/@n8n/design-system/src/css/fonts.scss
+  s_25a2a736b8af6f::t_f11aed228e15d8 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a33fdc80117a99c5d40c42894eb44bc6aa562957",
+  "prompts": {},
+  "sessions": {
+    "s_25a2a736b8af6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24439408-fc41-4f73-9ad4-fc213a5daeb5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

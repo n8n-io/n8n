@@ -1,0 +1,66 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_3fbc3a6a442865 134
+  s_2e1fa95fc44f8f::t_2aa6d8ee2d0b17 5-6,13,15,143,148,150-155,165-166,186,204-207,217,223,234,236,243,274,278,314,318,362-369,411
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.upload.test.ts
+  s_2e1fa95fc44f8f::t_ed1627418698f6 129
+  s_715e72d26dd7c6::t_23e41f899d0486 4,75,102,162,189,393,421
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_4ccb04e185c8c5 379-381,388-389
+  s_2e1fa95fc44f8f::t_b691ebd34eac2b 10,69,75,91,97,112,118,134,140,156,162,178,184,200,206,222,228-230,249,260,275,289,323-325,351-353,390-400,498,506,512,534-536,542,546-548,690,696,703-705,721,733-736,747,759-761,770,776,783-785,788,796,802,808-811,820,826,832-834,843,849,868,892,898,904-906,923,929,965-968,998,1013
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_2e1fa95fc44f8f::t_4b25576ef67f85 9,116,144-146
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_899dce43cb59a6::t_f8da714db858e9 9,11,144,159,164,184,229,241,245,257,262,289,345,349,371,376,382,392,437,453,477,479,500,504,516,521,540,545,551,561,573,579,638
+packages/nodes-base/nodes/Microsoft/OneDrive/test/MicrosoftOneDriveTrigger.node.test.ts
+  s_64bdca350513e1::t_f0001d2f95b4ca 2,110
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/app-only-ops.test.ts
+  s_715e72d26dd7c6::t_b4f66f94a9e94f 2,23,81,109,130,149,174,193,213,231,243,254,298
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/copy.test.ts
+  s_715e72d26dd7c6::t_15475d445e07b1 62,84
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.download.test.ts
+  s_715e72d26dd7c6::t_3272d82b6a015d 13,22
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/move.test.ts
+  s_64bdca350513e1::t_1239505d963507 79,100,105,119,127,133,155,179,211,231,238,282
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/search.test.ts
+  s_64bdca350513e1::t_961e5479230379 124,133,142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a6b5c6212e892ac421ea905ecf52a14046d7406",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_64bdca350513e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4df3e61c6cc290fc",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_715e72d26dd7c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a62cd39faddbb3da7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_899dce43cb59a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2ead17849041ef22",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

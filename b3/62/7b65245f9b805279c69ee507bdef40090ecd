@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_5519021fef93fb::t_85c297725bad71 119-129
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_5519021fef93fb::t_537dbcdde5ac83 985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b3627b65245f9b805279c69ee507bdef40090ecd",
+  "prompts": {},
+  "sessions": {
+    "s_5519021fef93fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f83f1669-9697-4f55-a886-6faab8e3810f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

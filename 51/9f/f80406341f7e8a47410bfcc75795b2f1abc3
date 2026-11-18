@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_85553b7937dcfa::t_3ac004c0431a54 143-144
+  s_85553b7937dcfa::t_a8236003c6df02 1,15,54,80-82,112-142
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_85553b7937dcfa::t_a8236003c6df02 104-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "519ff80406341f7e8a47410bfcc75795b2f1abc3",
+  "prompts": {},
+  "sessions": {
+    "s_85553b7937dcfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7abdebd5-261b-4096-b09b-67b6e4d6245f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

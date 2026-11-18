@@ -1,0 +1,189 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolCredentialPicker.vue
+  s_d6a732b1ad8602::t_5b4d1a76c56223 324
+  s_d6a732b1ad8602::t_90cff7f4c3322d 257
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_d6a732b1ad8602::t_02d454a82982e9 132-136,139
+  s_d6a732b1ad8602::t_64ca4f050bf500 105-110,112-116,118,120-129,137-138
+  s_d6a732b1ad8602::t_2816722e607d19 29-30,34-37
+  s_d6a732b1ad8602::t_285dda8ba05999 31-33
+  s_d6a732b1ad8602::t_f97b8a260635f2 117
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_d6a732b1ad8602::t_164bb7b4886481 41-47,49-50
+  s_d6a732b1ad8602::t_e2d02a81c9ab22 48
+  s_d6a732b1ad8602::t_beaf7b0d1580a6 59,64,66-72,74-77
+  s_d6a732b1ad8602::t_ca14fb57436dc9 17
+  s_d6a732b1ad8602::t_d6a26a536937f4 73
+  s_d6a732b1ad8602::t_dd1aaa505041cf 184,192,204,212,228,240,248,282,310,332,348,364,380
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_d6a732b1ad8602::t_ab3fdfc2744428 197-199,210-214,219-221
+  s_d6a732b1ad8602::t_6b475bf9dd123f 232,254-255,263,276,279-280
+  s_d6a732b1ad8602::t_d1c29790430346 281-318,320-322,324-336,338-343,346,423-425
+  s_d6a732b1ad8602::t_55f43eaac3b9c6 319,323
+  s_d6a732b1ad8602::t_bd718084f72673 44,49
+  s_d6a732b1ad8602::t_1825c96e0607fa 45-48,50-75
+  s_d6a732b1ad8602::t_95f0493ad9cdc4 233-253,256-262,264-275,277-278
+  s_d6a732b1ad8602::t_e2d5e83238e925 121-126
+  s_d6a732b1ad8602::t_8422c3b40a1d19 414
+  s_d6a732b1ad8602::t_4184ace977defc 415-421
+  s_d6a732b1ad8602::t_fa2f7b71b0f05a 169-170
+  s_d6a732b1ad8602::t_a086f0872a7071 337
+  s_d6a732b1ad8602::t_86b401242516f6 215-218
+  s_d6a732b1ad8602::t_a438587f8e7009 222,344-345,347-349,422,426-427
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_d6a732b1ad8602::t_4ac59b1710c250 495
+  s_d6a732b1ad8602::t_791899d40eff42 281
+  s_d6a732b1ad8602::t_bc0ed5513aafa8 226
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_d6a732b1ad8602::t_3656bba24f35a7 2-7
+  s_d6a732b1ad8602::t_a672315a8daa2b 19
+  s_d6a732b1ad8602::t_06afa61e891e6f 102-103
+  s_d6a732b1ad8602::t_d5f7b886114802 36
+  s_d6a732b1ad8602::t_1f1d85ff9b78c6 74-80,82,89-92,94
+  s_d6a732b1ad8602::t_d6be7f669ffdd9 81,83-88,95,97
+  s_d6a732b1ad8602::t_3b338dd5006d4e 175
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_d6a732b1ad8602::t_5347458f2d8f83 509
+  s_d6a732b1ad8602::t_c52449529450a4 642-644
+  s_d6a732b1ad8602::t_46e726af2558dd 17,19
+  s_d6a732b1ad8602::t_47e2aeaf0309b1 322-330,332-336
+  s_d6a732b1ad8602::t_f6374ccf10f5f7 27
+  s_d6a732b1ad8602::t_cb9e78f4a750ee 40-44
+  s_d6a732b1ad8602::t_0dec1e141b25dd 97-100
+  s_d6a732b1ad8602::t_9ef61bc670c9c5 566-583,586-592,607,609
+  s_d6a732b1ad8602::t_a2c6350e2dd8e9 501
+  s_d6a732b1ad8602::t_a5d52c075daf07 584-585
+  s_d6a732b1ad8602::t_aabbe3d624b48c 7
+  s_d6a732b1ad8602::t_51a9c8255a8e89 521
+  s_d6a732b1ad8602::t_4a663c904c4777 60
+  s_d6a732b1ad8602::t_2a66087f94f606 424-430
+  s_d6a732b1ad8602::t_f8504da45f7de8 305-312
+  s_d6a732b1ad8602::t_3094bf8082301d 94-95
+  s_d6a732b1ad8602::t_7c372558acdc91 534,538,547-549,557
+  s_d6a732b1ad8602::t_eedebf00ae3b3c 546
+  s_d6a732b1ad8602::t_f8184de7e79ddb 452-458
+  s_d6a732b1ad8602::t_e7af97f060d26c 160-165,167
+  s_d6a732b1ad8602::t_f1c3801d56a73c 481
+  s_d6a732b1ad8602::t_895d32baf80b00 654,656
+  s_d6a732b1ad8602::t_545eda2bb38e90 54-59,61-62
+  s_d6a732b1ad8602::t_c8c7559c8b07db 608
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_d6a732b1ad8602::t_d5f447c90f21ba 302
+  s_d6a732b1ad8602::t_5764c3ac184963 243-246
+  s_d6a732b1ad8602::t_0b6f635736aac8 284-285
+  s_d6a732b1ad8602::t_4cdc0635b33274 235-236,239-240
+  s_d6a732b1ad8602::t_fe9b7e7ae79882 249
+  s_d6a732b1ad8602::t_123199485dc0cc 254-255
+  s_d6a732b1ad8602::t_1ddb5baef8b27f 207-208,216,218,223,252,256,262,266,276,281
+  s_d6a732b1ad8602::t_535c246077b9f9 227-230,234,237-238,241-242
+  s_d6a732b1ad8602::t_4d6184d4f3250f 125-126,128-129,131-133,137,139
+  s_d6a732b1ad8602::t_8cef49b74059a9 38-59
+  s_d6a732b1ad8602::t_a03c05323e7c4d 194-195,197,200-203,206,209,259-260,263-265,267-268,273,280,282
+  s_d6a732b1ad8602::t_ca8a38898a5250 226,232-233
+  s_d6a732b1ad8602::t_7aee2aa286a9b5 288,292-293,295-300
+  s_d6a732b1ad8602::t_dd88907f653c7d 271-272,286-287,290-291,301
+  s_d6a732b1ad8602::t_f5887eb620fc93 231
+  s_d6a732b1ad8602::t_f922b8a88cb196 278
+  s_d6a732b1ad8602::t_243da440c1d1db 211-215,217,219-222,224-225
+  s_d6a732b1ad8602::t_0d6757ddab29b3 103
+  s_d6a732b1ad8602::t_792a36ffc682bb 65,69,78,87
+  s_d6a732b1ad8602::t_14f2d764231143 210
+  s_d6a732b1ad8602::t_c365f21744ae1d 306,324,334,344,357
+packages/frontend/editor-ui/src/features/shared/toolsConnection/fixtures.ts
+  s_d6a732b1ad8602::t_3ae1f717416ab7 198
+  s_d6a732b1ad8602::t_6cb15daa9aae8c 225
+  s_d6a732b1ad8602::t_875bf9e16dddd0 329
+  s_d6a732b1ad8602::t_4bb80f62559d27 236
+  s_d6a732b1ad8602::t_2708be594815a0 250-262
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpDetailBody.vue
+  s_d6a732b1ad8602::t_4ce0c70f52e80d 230
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_d6a732b1ad8602::t_a40325e9cc73d0 336
+  s_d6a732b1ad8602::t_cbf2d14c1f7a51 414-422
+  s_d6a732b1ad8602::t_de44f4304a8394 64-68,77-82
+  s_d6a732b1ad8602::t_b3046211bd841b 7-13
+  s_d6a732b1ad8602::t_041798a1616bf4 325
+  s_d6a732b1ad8602::t_9bbf3bf9383c6b 309,311-313,316,323-324
+  s_d6a732b1ad8602::t_c8ceae86c6e5f4 383-384,409-410
+  s_d6a732b1ad8602::t_e74e2e8904d3ce 83
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_d6a732b1ad8602::t_8c3fcb37843be2 27-40
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_d6a732b1ad8602::t_5c72db8ef12257 60-63
+  s_d6a732b1ad8602::t_1378e5c8c3cc49 2
+  s_d6a732b1ad8602::t_540bfcd7d70b4f 18,30-32,34-36,38-45,49,53-59,64-65
+  s_d6a732b1ad8602::t_7f353be7117330 66
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_d6a732b1ad8602::t_0ca0247d5261e1 8-13
+  s_d6a732b1ad8602::t_fd6a64248b5c98 21-39
+  s_d6a732b1ad8602::t_9f94db273c4ba1 58-63
+  s_d6a732b1ad8602::t_4cc3bcefa5322d 113-114,119-127
+  s_d6a732b1ad8602::t_de1f5395a7a545 128,200,203-212,223-227,229-246
+  s_d6a732b1ad8602::t_5541db7eb3cdb0 228
+  s_d6a732b1ad8602::t_262bfa1c9d872a 201-202,213-222
+  s_d6a732b1ad8602::t_f9cfa4530230c9 129
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.test.ts
+  s_d6a732b1ad8602::t_fa6db8f66e30d7 153-207
+  s_d6a732b1ad8602::t_331eaf15a4eb45 10-14
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d6a732b1ad8602::t_0d5eec3de34db2 7721-7722
+  s_d6a732b1ad8602::t_3be6697a82f460 7719-7720,7726-7728
+  s_d6a732b1ad8602::t_61663799e32aa5 7725
+  s_d6a732b1ad8602::t_ab9d353bcbe634 7723-7724
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_d6a732b1ad8602::t_3a0dbd57656005 160,164-168
+  s_d6a732b1ad8602::t_9c304f633d5d55 21,23,32-33,47
+  s_d6a732b1ad8602::t_4a5c711a6ca511 192
+  s_d6a732b1ad8602::t_810d3d32c3cc7c 368-370
+  s_d6a732b1ad8602::t_67af57b68ad949 172,174-175
+  s_d6a732b1ad8602::t_d164b30497902c 363-364
+  s_d6a732b1ad8602::t_49ea9ddab23ae1 137,141,143
+  s_d6a732b1ad8602::t_8ea6a8f3d8116c 113,115-117,119-120,122,126-129,131,147-151,170-171,178-184,186-188,191,193-194
+  s_d6a732b1ad8602::t_10c67e19e9b8c9 366
+  s_d6a732b1ad8602::t_9851e7e6b8d7e4 153,157-158,161-163
+  s_d6a732b1ad8602::t_f9251be56758a5 209-211
+  s_d6a732b1ad8602::t_e14c1e6d32d964 145
+  s_d6a732b1ad8602::t_01ddabba4dbc86 371
+  s_d6a732b1ad8602::t_cd7e1cc9765f56 90
+  s_d6a732b1ad8602::t_b83bc268360861 200-203
+  s_d6a732b1ad8602::t_3c0d73a3393a2d 304,306-309,312-313
+  s_d6a732b1ad8602::t_fd7facf7ed9b05 206-208
+  s_d6a732b1ad8602::t_61cbd0efb3db80 3-11
+  s_d6a732b1ad8602::t_2d3fa2222265de 195-199,204-205
+  s_d6a732b1ad8602::t_7b5faa363cc128 185
+  s_d6a732b1ad8602::t_d5f9ecb0c8045b 67,73
+  s_d6a732b1ad8602::t_c9dddfb0792a0a 134-136,144
+  s_d6a732b1ad8602::t_42e11743f188c7 138-140,142
+  s_d6a732b1ad8602::t_f1d01ad95b5cca 154-156,159
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_d6a732b1ad8602::t_6a13eba682b82f 116-118,120-128
+  s_d6a732b1ad8602::t_99137788c29d4b 26-31,33-34,38
+  s_d6a732b1ad8602::t_03a2ec30c227a2 62-71
+  s_d6a732b1ad8602::t_29a862e9ae4cb7 276,306-325
+  s_d6a732b1ad8602::t_bd76bde4244254 277-282,287-292
+  s_d6a732b1ad8602::t_ea3c2e4408dafc 156-163
+  s_d6a732b1ad8602::t_e0d783a8caa52e 119
+  s_d6a732b1ad8602::t_3d1c08492cadb1 3,5
+  s_d6a732b1ad8602::t_642f1b040f4558 165-179,181-182,185-188
+  s_d6a732b1ad8602::t_c01e7f85510f39 208,241,293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7788df53549a05b3b18b9d4e9293d05610c83dfe",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d6a732b1ad8602": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "423d4104-71c0-4d01-bee6-b57ae207ef91",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_a4556b837ab6e9::t_ed0d94104a1b02 667-674
+  s_a4556b837ab6e9::t_59b48732438b31 675-691
+packages/cli/src/auth/auth.service.ts
+  s_a4556b837ab6e9::t_ab4a3ae9726a09 41-46,50,52-58
+  s_a4556b837ab6e9::t_84b4aea97f0c84 51,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b19e15a7437560d082a9bb30e4b38c5a96f82f4d",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

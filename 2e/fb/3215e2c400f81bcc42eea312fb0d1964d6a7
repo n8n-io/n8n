@@ -1,0 +1,196 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_e4b4d59605d361::t_04beb858d7fff3 5
+  s_e4b4d59605d361::t_7875249c314e8b 47,226-231
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 2,95-112
+  s_e4b4d59605d361::t_8f780f0e527aad 113-114
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1,10,23,27-36
+  s_e4b4d59605d361::t_8839e7fb735305 13-14,16
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_e4b4d59605d361::t_8839e7fb735305 3617
+  s_e4b4d59605d361::t_77c15ec7e573d9 3585,3600,3624,3630,3633-3642
+  s_e4b4d59605d361::t_a18727811f4444 11,3570-3575,3578-3584,3586-3599,3601-3614,3616,3618-3622,3625-3629,3631-3632,3643-3653
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_e4b4d59605d361::t_04beb858d7fff3 2
+  s_e4b4d59605d361::t_7875249c314e8b 26,112-117
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_e4b4d59605d361::t_7875249c314e8b 46,220-225
+  s_e4b4d59605d361::t_04beb858d7fff3 1
+packages/cli/src/modules/agents/integrations/integration-origin-support.ts
+  s_e4b4d59605d361::t_accc5d46c1cf3e 7,23-28,34,41,45-46
+packages/cli/src/modules/agents/integrations/integration-origin.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 37-68
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_e4b4d59605d361::t_7875249c314e8b 34-39,428-436
+  s_e4b4d59605d361::t_e38b07f90fac1b 437
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1-2,9,20-27
+  s_e4b4d59605d361::t_7875249c314e8b 12
+  s_e4b4d59605d361::t_29f999ede251d3 28
+packages/cli/test/integration/database/repositories/agent-message.repository.test.ts
+  s_e4b4d59605d361::t_9178f09a8250a4 1-74
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 39,68,938,1000,1006,1014-1025,1027-1028
+  s_e4b4d59605d361::t_ebac21a1d57ba2 14,69
+  s_e4b4d59605d361::t_7c36107a7a4e54 1001-1005
+  s_e4b4d59605d361::t_4f29a5b0f35c67 1026,1029-1030
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1,10,13-14,16,27-33
+  s_e4b4d59605d361::t_ae99de4e0389e8 34-35
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_e4b4d59605d361::t_5bfce54dd6d9f7 1,7-13,24-25,55,70,133,165-167,169-171,173,175-180,182,285-431
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_38d78cd106326f::t_33a42c40a2a2b1 28,326-327,329-332
+  s_38d78cd106326f::t_757448800a5418 78,310,328,333-336
+  s_38d78cd106326f::t_840a926ab76fe8 85-92
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_38d78cd106326f::t_1db66a5bc83123 121-128
+packages/@n8n/api-types/src/agents/types.ts
+  s_38d78cd106326f::t_bb526ae0b1aba1 267-273,275-289,291-294
+  s_38d78cd106326f::t_d75c02a0cca1fe 274
+  s_a87ab30323b2bf::t_edb22a9c824741 249-266,295-316
+  s_a87ab30323b2bf::t_eabfc858ff9daa 290
+  s_a87ab30323b2bf::t_7a59f06f38d149 317
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-61,68-97,114-122,124-125,127-131,150,162-190
+  s_38d78cd106326f::t_a4e103e25842f9 123,126
+  s_38d78cd106326f::t_dba274b3e25264 98-105,107-113
+  s_38d78cd106326f::t_d54fcc7f5de9f5 106
+  s_a87ab30323b2bf::t_9be631d76d10b0 62-67
+  s_a87ab30323b2bf::t_edb22a9c824741 132-145,147-149,151-161
+  s_a87ab30323b2bf::t_5a8b3e2bacf70b 146
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_38d78cd106326f::t_b139e0daa32d8c 9037-9055
+  s_a87ab30323b2bf::t_bcb2b439d7b011 9056
+  s_a87ab30323b2bf::t_edb22a9c824741 9057-9063
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryEntriesPanel.test.ts
+  s_38d78cd106326f::t_f8bb002711746e 1-7,9-11,13-15,17-69,71-104,114-138,207-208,212-221,244-271,339
+  s_38d78cd106326f::t_649445e09b31f9 105-113,242
+  s_38d78cd106326f::t_f0ae6420c9654f 209-211,222-241
+  s_6ed1267be3207d::t_07e4c06c744d36 243
+  s_38d78cd106326f::t_840a926ab76fe8 139-155
+  s_38d78cd106326f::t_fedb76c180ce78 156-183
+  s_38d78cd106326f::t_dba274b3e25264 184-206
+  s_a87ab30323b2bf::t_93e50a729966df 273,282-292,294,298,301,317,325,327
+  s_a87ab30323b2bf::t_edb22a9c824741 8,12,16,70,272,274-281,293,295-297,299-300,302-316,318-324,326,328-337
+  s_a87ab30323b2bf::t_8a538ad10f1c4b 338
+packages/cli/src/modules/agents/agent-memory.controller.ts
+  s_38d78cd106326f::t_9d4a25fd69433f 1-23,35-47
+  s_a87ab30323b2bf::t_edb22a9c824741 24-32
+  s_a87ab30323b2bf::t_8d0b4d8c0b44be 33-34
+packages/cli/src/modules/agents/utils/memory-entry-source.ts
+  s_38d78cd106326f::t_675e3a512640f8 1-14,16,23-50,53-70,74-82
+  s_38d78cd106326f::t_19abf960018cc5 15,20-22,71-73
+  s_38d78cd106326f::t_96f73430c38a00 51-52
+  s_a87ab30323b2bf::t_edb22a9c824741 17-19
+packages/@n8n/api-types/src/agents/dto.ts
+  s_38d78cd106326f::t_bb526ae0b1aba1 133-135,140-141
+  s_a87ab30323b2bf::t_edb22a9c824741 20-24,136-139
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_38d78cd106326f::t_22b152c9bcbb2f 1,3,5-7,12-47,53-93,95-101,103-128,305
+  s_38d78cd106326f::t_0fe800c2434d9b 94,102
+  s_a87ab30323b2bf::t_edb22a9c824741 2,4,8-11,48-52,129-303
+  s_a87ab30323b2bf::t_869ff5e47e5061 304
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_38d78cd106326f::t_757567cc29683f 19,404-407,409,410-413,427-441
+  s_38d78cd106326f::t_48127104e59bcd 442
+  s_a87ab30323b2bf::t_edb22a9c824741 20,45,399-403,414-426
+  s_a87ab30323b2bf::t_bcb2b439d7b011 408
+packages/cli/src/modules/agents/agents.module.ts
+  s_38d78cd106326f::t_8dd010b1420753 33
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryEntriesPanel.vue
+  s_38d78cd106326f::t_5e40536675472b 1-2,4,10-15,22,25-40,42-46,48,64,68-72,77,80-82,84,86,89-92,95-97,110-112,117-118,125-151,154-160,161-162,164-170,172-196,201-207,212-213,223-225,267,269,277,319-321,341-389
+  s_38d78cd106326f::t_18bc25024beaa6 94
+  s_38d78cd106326f::t_d79fdafe841274 152
+  s_38d78cd106326f::t_22eddb6aeed6c0 88
+  s_38d78cd106326f::t_b267f6f0419224 47
+  s_38d78cd106326f::t_757448800a5418 49-50,226-266,268-269,273-277,279-285,287-312,315-318,322-328,335-340
+  s_38d78cd106326f::t_fedb76c180ce78 65-67,76,83,153,211,313
+  s_38d78cd106326f::t_ba3f2307b72118 73-75,78-79,87,93,98
+  s_a87ab30323b2bf::t_edb22a9c824741 2,5-9,16-21,23-24,41,51-52,54-55,57-63,102-116,119-124,163,171,197-200,208-210,214-218,220-222,270-272,278,329-330,332-333
+  s_a87ab30323b2bf::t_bcb2b439d7b011 3,53,56,85,219,331
+  s_a87ab30323b2bf::t_4e3c09d2754a2e 334
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_38d78cd106326f::t_88dce19e810fdc 48-57,121
+  s_38d78cd106326f::t_9d4a25fd69433f 1-3,5-16,21-47,61-78,80-81,89-95,107-120,122-145,149-153,160-161
+  s_38d78cd106326f::t_ba3f2307b72118 58-60
+  s_38d78cd106326f::t_dba274b3e25264 154-159
+  s_a87ab30323b2bf::t_edb22a9c824741 4,17-20,79,82-88,96-106,146-148
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_38d78cd106326f::t_1a55ccf981a59c 68-72,74,86-87,90-91,112-114,118
+  s_38d78cd106326f::t_485566e6da5528 116-117,119
+  s_38d78cd106326f::t_0fe800c2434d9b 108-111,115
+  s_a87ab30323b2bf::t_edb22a9c824741 10,12,15-51,73,75-85,88-105,187-259
+packages/cli/src/modules/agents/__tests__/agent-memory.controller.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-18,20-40,51-57
+  s_a87ab30323b2bf::t_edb22a9c824741 19,41-48
+  s_a87ab30323b2bf::t_2b5029a15bfd61 49-50
+packages/cli/src/modules/agents/utils/__tests__/memory-entry-source.test.ts
+  s_38d78cd106326f::t_f59b0a453fc445 1-28,51-134
+  s_38d78cd106326f::t_96f73430c38a00 29-50
+docs/generated/sqlite-schema/README.md
+  s_38d78cd106326f::t_47244f9c589e6d 238
+  s_38d78cd106326f::t_de9fe2efedb5c9 239-240
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_38d78cd106326f::t_4c6e72e4c50199 212
+  s_38d78cd106326f::t_e4d93c9cca23f7 351,353,355-356
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_38d78cd106326f::t_8a76481f24685a 85
+packages/@n8n/agents/src/runtime/memory/memory-lifecycle.ts
+  s_38d78cd106326f::t_8a76481f24685a 1
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_38d78cd106326f::t_159f98c8100ba0 25
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_38d78cd106326f::t_967fa0a0e1c39c 9,36-37,39
+packages/cli/src/modules/agents/utils/memory-source-filter.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 1-199
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemorySourceFilter.test.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 1-80
+packages/cli/src/modules/agents/utils/__tests__/memory-source-filter.test.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 1-92
+packages/frontend/editor-ui/src/features/agents/components/AgentMemorySourceFilter.vue
+  s_a87ab30323b2bf::t_edb22a9c824741 1-180
+packages/frontend/editor-ui/src/features/agents/composables/useAgentMemorySourceLabels.ts
+  s_a87ab30323b2bf::t_edb22a9c824741 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2efb3215e2c400f81bcc42eea312fb0d1964d6a7",
+  "prompts": {},
+  "sessions": {
+    "s_38d78cd106326f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72f82e0e-bc8a-42f7-9266-687432dab6a9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_6ed1267be3207d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c99a7bb3-9db4-4c6e-afda-b88bccd884df",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e4b4d59605d361": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3d22b93-1b6d-4d71-b1eb-adbe2d413cff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

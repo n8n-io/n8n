@@ -1,0 +1,42 @@
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-consent.service.test.ts
+  s_243dc6e2d858a5::t_df65456f9245b9 52,67,82,115,130
+  s_243dc6e2d858a5::t_13ed459e608669 144
+  s_243dc6e2d858a5::t_21ce97913b3815 246
+  s_243dc6e2d858a5::t_3fdf765ffd11db 291
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_243dc6e2d858a5::t_cc602a7a66d2c0 26-28,30-61
+  s_243dc6e2d858a5::t_a18d65273fc0d8 131-138
+  s_243dc6e2d858a5::t_aae178746b369b 5
+  s_243dc6e2d858a5::t_ba8639e0f22f7a 29
+packages/cli/src/modules/mcp/mcp.auth.consent.controller.ts
+  s_243dc6e2d858a5::t_b01f132ceb2c52 35
+packages/cli/src/modules/mcp/mcp-oauth-consent.service.ts
+  s_243dc6e2d858a5::t_2b68a5d2d2ed6f 32,48
+packages/frontend/@n8n/rest-api-client/src/api/consent.ts
+  s_243dc6e2d858a5::t_ce302d815f9465 7
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_243dc6e2d858a5::t_d8b9b305eef3fe 6
+  s_243dc6e2d858a5::t_ce83ef3645c15d 68-101
+  s_243dc6e2d858a5::t_b997479044ec52 30-35
+  s_243dc6e2d858a5::t_3ecb31d591a3e9 25
+packages/cli/src/modules/mcp/__tests__/mcp.auth.consent.controller.api.test.ts
+  s_243dc6e2d858a5::t_5d70d827e460bd 64
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_243dc6e2d858a5::t_0ca69614431792 2429-2430,2433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "512a6f499e812f831bf963ccc90b11f0db671666",
+  "prompts": {},
+  "sessions": {
+    "s_243dc6e2d858a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3cd39b5-ab31-4f9c-82e4-dadde7982301",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

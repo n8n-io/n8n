@@ -1,0 +1,24 @@
+packages/@n8n/agents/docs/prompt-caching.md
+  s_3867156de1fad7::t_e9508234b4588a 307-308
+  s_3867156de1fad7::t_d3f77350ca8109 305-306
+packages/@n8n/agents/src/runtime/model/openrouter-prompt-cache.ts
+  s_3867156de1fad7::t_e9508234b4588a 30
+packages/@n8n/agents/src/runtime/model/openrouter.ts
+  s_3867156de1fad7::t_e9508234b4588a 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa3b91f8701b0c2ebf68b373b05c2577f957239d",
+  "prompts": {},
+  "sessions": {
+    "s_3867156de1fad7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-caf3-7693-9d01-bca408146de3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

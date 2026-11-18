@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
+  s_0fb5ca8665e7ea::t_d34bb6f1a49085 28-31,40,96-97,101,107-109,229,260,272,286,300,429-453,486,498-551
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_0fb5ca8665e7ea::t_a72d3595c40142 329-330,336,354
+  s_0fb5ca8665e7ea::t_a4279ac4921550 358-359
+  s_0fb5ca8665e7ea::t_7810f4035d0ffa 15,19,183-196,206,249-250,252,285-286,288,290
+  s_0fb5ca8665e7ea::t_fb92e1fd3a6d17 328
+  s_0fb5ca8665e7ea::t_aa6f105864cf9b 306-327,331-335,337-353,355-357,360-405
+  s_0fb5ca8665e7ea::t_72c1c37e9203cd 427,441,448,467,482,508,518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "69c70c21f6a9a07b9e1dbe70f52a43a1cd443044",
+  "prompts": {},
+  "sessions": {
+    "s_0fb5ca8665e7ea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7221a347-94d1-4ea1-a49d-40e256de9f7a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

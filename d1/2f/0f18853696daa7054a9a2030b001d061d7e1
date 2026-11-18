@@ -1,0 +1,125 @@
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_a65a5a88327681::t_1639c32925eb25 136,192,368,398,420
+  s_a65a5a88327681::t_a1666b2b5066a6 635-646
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_a65a5a88327681::t_d2cfa86986c871 179,191-192,206
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_a65a5a88327681::t_d2cfa86986c871 390,404-408,681-687,709
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolRefAdapter.test.ts
+  s_a65a5a88327681::t_0a9d3a65bcd846 198-199,218-219
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_a65a5a88327681::t_1639c32925eb25 180,393
+packages/cli/src/modules/agents/utils/sub-agent-resolver.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 23-24
+  s_a65a5a88327681::t_1639c32925eb25 4,25
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-resolver.ts
+  s_a65a5a88327681::t_1639c32925eb25 58-60
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 101-105
+  s_a65a5a88327681::t_61ba9d6ccd6710 91,95-100,106-110
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_a65a5a88327681::t_0f321cda63bd89 8-12,14,51-52,70,91,122,124,127,132,280,290-292,295,379,402-405,407-412,414-416,439,443,544,566-567,571-575,585-589,591,620,625,643,673-678,681,700,706,719-724,726,753-756
+  s_a65a5a88327681::t_78588224eb2945 13,125,406,413,615-619
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 940,942-943
+  s_a65a5a88327681::t_d2cfa86986c871 657,659,662,664,676-683,937-938
+  s_a65a5a88327681::t_e4bfa6d2af1476 691-712
+  s_a65a5a88327681::t_7c57e2e5ae0279 713-714,925-926,939,944-945
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_a65a5a88327681::t_61ba9d6ccd6710 379-381,383-385,388-390,578
+  s_a65a5a88327681::t_d2cfa86986c871 392
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 24-31,41-46,540-549
+  s_a65a5a88327681::t_61ba9d6ccd6710 14-23,32-40,47-49
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_a65a5a88327681::t_d083611f53557e 430-431,435-437,556
+  s_a65a5a88327681::t_a1666b2b5066a6 256-279,281-283,432-434
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 143-175,177-179,181-182,184,186-192,194-214
+  s_a65a5a88327681::t_1fa02d9026e5f8 176,180,185,193,215
+  s_a65a5a88327681::t_c9dcdfab2ecab8 183
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 925-929,932-933,944-947,949,953-955
+  s_a65a5a88327681::t_0a9d3a65bcd846 919-924,930-931,935-943,950-952,956-959
+  s_a65a5a88327681::t_99dfca0dff95fb 934
+  s_a65a5a88327681::t_33b8f24c212868 948
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_a65a5a88327681::t_1639c32925eb25 397
+  s_a65a5a88327681::t_a1666b2b5066a6 713-715
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_a65a5a88327681::t_d083611f53557e 45,80,142,150,195
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_a65a5a88327681::t_8b3010aed18de9 277-280,298,335-338,346,365-370,374-378,395-397,409-410,450,453-455,459-460,464,468-472
+  s_a65a5a88327681::t_a1666b2b5066a6 281-297,299-334,339-345,348-364,371-373,379-394,398-408,411-445,456-458,461-463,465-467
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillsSection.vue
+  s_a65a5a88327681::t_d083611f53557e 14-15,23,32,52-58,64
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_a65a5a88327681::t_d083611f53557e 2,4,11,26,37,58-60,80-85,87,137-144
+  s_a65a5a88327681::t_5af48fdddf2da9 145
+packages/frontend/editor-ui/src/features/agents/components/AgentItemContextMenu.vue
+  s_a65a5a88327681::t_467733f5efedff 16,34-43,45,53-54
+  s_a65a5a88327681::t_d083611f53557e 9-12,17-33,46-50,52,66
+  s_a65a5a88327681::t_559e7d3bb4b5d0 44
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_a65a5a88327681::t_61ba9d6ccd6710 332-336,484-487,491-494,517
+  s_a65a5a88327681::t_a1666b2b5066a6 488-490
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 327-328,335-341
+  s_a65a5a88327681::t_1fa02d9026e5f8 325-326,329-334,342-348
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_a65a5a88327681::t_1fa02d9026e5f8 36-37
+  s_a65a5a88327681::t_8adf5cbc43926f 34-35,38-44,53-54
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.utils.ts
+  s_a65a5a88327681::t_d083611f53557e 16,32,42,61,73
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a65a5a88327681::t_8adf5cbc43926f 8554-8556
+packages/cli/src/modules/agents/utils/agent-missing-skill-ids.ts
+  s_a65a5a88327681::t_1639c32925eb25 12
+packages/cli/src/modules/agents/utils/node-tool-validation.ts
+  s_a65a5a88327681::t_1639c32925eb25 57,70-72
+packages/quality/testing/playwright/tests/infrastructure/agents/capability-activation.spec.ts
+  s_a65a5a88327681::t_d11834fbee3b7c 23-29,44-48,50-52,55-62,65-68,76-82,85-87,91-100,102,104-142,144-161,166-168,176-177,179-195,197-221,223-232
+  s_a65a5a88327681::t_670f7d82780ede 1-22,30-43,49,53-54,63-64,69-75,83-84,88-90,143,162-165,169,171-175,178,196,222
+  s_a65a5a88327681::t_30e8c50b690494 101,103,170
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a65a5a88327681::t_d083611f53557e 2929
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_a65a5a88327681::t_ecb477162ccd5d 76,270-271
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 121-124,129-134
+  s_a65a5a88327681::t_0a9d3a65bcd846 119,125-128,135-137
+  s_a65a5a88327681::t_8b3010aed18de9 120
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_a65a5a88327681::t_a1666b2b5066a6 460,462
+  s_a65a5a88327681::t_1639c32925eb25 432,470,472-476,484-486
+  s_a65a5a88327681::t_99dfca0dff95fb 459,461,467-469,471
+  s_a65a5a88327681::t_d56e155301f791 493-497
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.types.ts
+  s_a65a5a88327681::t_d083611f53557e 23,33,63
+packages/cli/src/modules/agents/utils/__tests__/node-tool-validation.test.ts
+  s_a65a5a88327681::t_1fa02d9026e5f8 6,111-114,121-125
+  s_a65a5a88327681::t_a1666b2b5066a6 115-120
+  s_a65a5a88327681::t_df1cf2b229191c 126
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_a65a5a88327681::t_1639c32925eb25 286,310-312,315,411,529
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_a65a5a88327681::t_ecb477162ccd5d 130-134,214-215,221
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_a65a5a88327681::t_d2cfa86986c871 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d12f0f18853696daa7054a9a2030b001d061d7e1",
+  "prompts": {},
+  "sessions": {
+    "s_a65a5a88327681": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f799-dd8b-7be3-bdcc-3de578ddb55f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

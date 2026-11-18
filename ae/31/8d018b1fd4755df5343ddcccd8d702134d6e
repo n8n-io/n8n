@@ -1,0 +1,56 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_45e2f6fac3868c::t_f9b2bf7ee2109c 561,570,573,585,594-606,608-610,612-613,615,622-627,656-657,659,661-663
+  s_45e2f6fac3868c::t_8e6f770b7546e4 607
+  s_45e2f6fac3868c::t_b63f9313c65da3 611,614,616,618-621
+  s_45e2f6fac3868c::t_17bfcb4b83b595 30,78,617
+packages/cli/src/modules/instance-ai/__tests__/run-trace-metadata.test.ts
+  s_45e2f6fac3868c::t_2546dbdc49851f 64-99
+packages/cli/src/modules/instance-ai/run-trace-metadata.ts
+  s_45e2f6fac3868c::t_9193dc8524b6f7 65-71
+packages/cli/src/modules/instance-ai/liveness/instance-ai-liveness.service.ts
+  s_45e2f6fac3868c::t_83913a320473a0 105-116,138,248-253,264-273
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_45e2f6fac3868c::t_40d98abc6120bf 400
+  s_45e2f6fac3868c::t_8e6f770b7546e4 17-20,149,370
+  s_45e2f6fac3868c::t_e6262743a2471f 15-16,21-24,98-100,145-148,150,153-158,336-343
+  s_45e2f6fac3868c::t_b63f9313c65da3 383,391-393,403,481,483-484,489
+  s_45e2f6fac3868c::t_38cc2a0d0c08d2 76-78,377-380,389,397-398,421,474-480,482,485-486
+  s_45e2f6fac3868c::t_17bfcb4b83b595 368-369,371-376
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_45e2f6fac3868c::t_c3b92c701eac62 52-55,58-62
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-liveness.service.test.ts
+  s_45e2f6fac3868c::t_516b63e3f0c43c 237-259
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_45e2f6fac3868c::t_4ec4f6b06c0ad0 375
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_45e2f6fac3868c::t_dfa2da4f596e92 1,121
+  s_45e2f6fac3868c::t_6b60775ae8671a 59-67,77,111,291,295
+  s_45e2f6fac3868c::t_8b24a71a726123 304-320,323-326
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_45e2f6fac3868c::t_a0d7329c3100ba 188-191,196
+  s_45e2f6fac3868c::t_8e6f770b7546e4 41,175
+  s_45e2f6fac3868c::t_40d98abc6120bf 197-216
+  s_45e2f6fac3868c::t_b231bd25c9e3aa 192-195
+  s_45e2f6fac3868c::t_102a183e06813b 217-219,223,228
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_45e2f6fac3868c::t_219c82aaa9baee 880-882,884,901-903,906-907,6786-6792,6794-6797,6824,6826
+  s_45e2f6fac3868c::t_4ec4f6b06c0ad0 883,885,4353,5615,5702,5779,6454
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_45e2f6fac3868c::t_e44395d13898aa 2
+  s_45e2f6fac3868c::t_b58df8722e7c46 98-145
+  s_45e2f6fac3868c::t_80db5c7004bec5 62-63
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_45e2f6fac3868c::t_0acd51cfb0eeff 38-43,45,62,568,571-582,585-587,594,596,598,605,607,611
+  s_45e2f6fac3868c::t_d811990d6b36a7 172-180,182-185,543,552,562,570,584,601,629,635
+  s_45e2f6fac3868c::t_1e78a7ed5a6d7f 588-593,595,597,599-600,602-604
+packages/cli/src/modules/instance-ai/tracing/index.ts
+  s_45e2f6fac3868c::t_92cb791c78ad5e 4
+packages/@n8n/instance-ai/docs/configuration.md
+  s_45e2f6fac3868c::t_8e54e43c08ae6e 199-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae318d018b1fd4755df5343ddcccd8d702134d6e",
+  "prompts": {}
+}

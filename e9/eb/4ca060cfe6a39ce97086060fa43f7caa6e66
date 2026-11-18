@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Taiga/test/TaigaTrigger.node.test.ts
+  s_4ebde64ab825df::t_155cb1bc762ce9 1,119-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9eb4ca060cfe6a39ce97086060fa43f7caa6e66",
+  "prompts": {},
+  "sessions": {
+    "s_4ebde64ab825df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9b9b2bb511b5c44a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

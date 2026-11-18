@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_38e13a72a40e85::t_fdd3c1b3d8b5ad 468-480
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_38e13a72a40e85::t_06cfdb89667101 405-407
+  s_38e13a72a40e85::t_40f9e841452194 404
+  s_38e13a72a40e85::t_2a084ab1019ee6 408-409
+  s_38e13a72a40e85::t_acc28a6e8c1305 365-368,373,377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cabb9cf0fbf46045418b3468fb1611d4ec62a0b",
+  "prompts": {},
+  "sessions": {
+    "s_38e13a72a40e85": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab25-a648-775a-944f-5e7d172319de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

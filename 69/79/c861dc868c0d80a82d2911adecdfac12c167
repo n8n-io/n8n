@@ -1,0 +1,16 @@
+packages/cli/src/middlewares/list-query/__tests__/list-query.test.ts
+  h_b49cecddc99496 26
+packages/cli/src/response-helper.ts
+  h_b49cecddc99496 98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6979c861dc868c0d80a82d2911adecdfac12c167",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

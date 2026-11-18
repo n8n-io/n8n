@@ -1,0 +1,51 @@
+packages/@n8n/cli/src/index.ts
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 29,173
+  s_7d92849ff15ae6::t_e2c84883db5edb 29,173
+packages/@n8n/cli/src/client.ts
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 35-45,735-754
+  s_a78dc62f1d7fa6::t_0fffe5f47a5f2c 755-758
+  s_7d92849ff15ae6::t_3e93a40382e65e 35-45,735-758
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 19-23,79-80
+  s_a78dc62f1d7fa6::t_10f1dec57e8551 18,81
+  s_7d92849ff15ae6::t_fddc6d86485098 18-23,79-81
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 1-81
+  s_7d92849ff15ae6::t_2b81bb96d8ed29 1-81
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 7-26
+  s_7d92849ff15ae6::t_3bef1569eebbff 7-26
+packages/@n8n/cli/docs/commands/package.md
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 122-158
+  s_7d92849ff15ae6::t_51721d5b5ceb94 122-158
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 1-187
+  s_7d92849ff15ae6::t_f11ba7255295a8 1-187
+packages/@n8n/cli/README.md
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 66
+  s_7d92849ff15ae6::t_fe74d7efabb43f 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfeec0bfe074a90b16a3bc63126ea3707f47ca28",
+  "prompts": {},
+  "sessions": {
+    "s_7d92849ff15ae6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b926ff1f-b15f-4ce1-85be-a0fb73556029",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a78dc62f1d7fa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "340040a2-879d-454b-b9a8-49ba33255e03",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

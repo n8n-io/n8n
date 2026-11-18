@@ -1,0 +1,78 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_71ad2034164515::t_ab9d13b966b21d 329,347
+packages/cli/src/modules/agents/agent-save-completion.service.ts
+  s_71ad2034164515::t_f7077b8e86006e 2-4,12,23-29,46-48
+  s_71ad2034164515::t_a49133799730af 30-45
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_71ad2034164515::t_864f4b0293a75c 3
+  s_71ad2034164515::t_068c01292ada71 82-93
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
+  s_71ad2034164515::t_8d6364b90430c1 2,5,139-140
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_ae7d6c93018d41 15,128,517-522,536
+packages/workflow/src/node-helpers.ts
+  s_71ad2034164515::t_5e5ff01f707cbd 2203-2225
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_71ad2034164515::t_69d53bae07552b 8,31,33
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_71ad2034164515::t_623aba0d6bdad5 1
+packages/cli/src/modules/agents/utils/agent-definition.ts
+  s_71ad2034164515::t_0981f60bc736f5 24-43
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_cddd6d522c4778 1-203,210-366,369-498,500-521
+  s_71ad2034164515::t_d0ef454e3aab63 367-368
+  s_71ad2034164515::t_d0bafde75566a7 204-209,499
+packages/cli/src/modules/agents/__tests__/agent-setup-completion.service.test.ts
+  s_71ad2034164515::t_813e1c76ed78b3 66-68,70-97
+  s_71ad2034164515::t_80c29d39aae40f 69
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_762132ecb341d7 5,8,12-13,25,38,44-104,281,283,285,298-306
+  s_71ad2034164515::t_3a32ab499a73c5 307
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_71ad2034164515::t_b38a1dc27fafce 18,62-64,71,81,83,89-94
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_71ad2034164515::t_0db356c172cfbe 114,210
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_71ad2034164515::t_47d3a212379a6e 2
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_3097b8575b721a 6,23,32-39
+  s_71ad2034164515::t_a7a5120ac1ee66 40
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_71ad2034164515::t_63a7bf2f1fb00f 248,381
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_71ad2034164515::t_eb58b51a209d2a 863,908
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_75fe8e74dd1202 17,672-676,691-694,702-703
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_71ad2034164515::t_702d4ca943b7f8 70,84-85,87,90
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_71ad2034164515::t_f3d6e350fc50e3 225,243,295-296,306-311
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_9735e83dddc19d 66-85,167-173,184,241-321,656-660
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_2ff5036875946c 8-9,20-21,28-29,44-48,104-177,487
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_71ad2034164515::t_c34ec2f5bffb6a 92
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_71ad2034164515::t_d7276bf3346509 27-29,80-84
+  s_71ad2034164515::t_f61c3386343e33 10-12,14,17,21-25,46-79,85-200,202-203,206-209
+  s_71ad2034164515::t_14d4f1f26af004 44-45,201,204-205
+packages/cli/src/modules/agents/agent-setup-completion.service.ts
+  s_71ad2034164515::t_aa3841ba8d2b76 2-6,59,65-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1aaab752ffbe74809b9dc50daa1766ae9b22f2b",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

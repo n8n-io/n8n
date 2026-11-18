@@ -1,0 +1,299 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_fc91c47aa0e63f::t_9e141f1b2eca52 860,862
+  s_cc6190893cf461::t_6514fc777dec9a 3-10
+  s_fc91c47aa0e63f::t_b9986ceab3b0d7 1114-1115
+packages/frontend/@n8n/design-system/src/components/N8nChatMessage/ChatMessage.vue
+  s_fc91c47aa0e63f::t_d9a4cb215987b7 58,63-74
+  s_fc91c47aa0e63f::t_ad2b59d06e1801 75
+  s_3acdc9921843f9::t_61da5bfed253ee 102
+  s_3acdc9921843f9::t_0ce60b471870a9 84
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_fc91c47aa0e63f::t_9eee887be6b04f 2
+packages/modules/inbox/frontend/src/self-healing/SelfHealingResultContent.vue
+  s_fc91c47aa0e63f::t_047b605df2a26e 367
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_fc91c47aa0e63f::t_a6ee4ede8b2993 181
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_cc6190893cf461::t_805a5fe6f7db70 165-180
+  s_cc6190893cf461::t_60cef0bccd5845 162-164
+  s_cc6190893cf461::t_6b6c593ed8fbba 181-183
+packages/frontend/@n8n/design-system/src/css/mixins/markdown.scss
+  s_fc91c47aa0e63f::t_6da9fc84c4f940 1-4
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useChatHubMarkdownOptions.ts
+  s_fc91c47aa0e63f::t_fa61cfc7d07a45 1-2
+  s_fc91c47aa0e63f::t_677a4283d571f4 8,10-12
+packages/frontend/@n8n/design-system/src/css/markdown.scss
+  s_cc6190893cf461::t_2a405bca358335 68
+  s_fc91c47aa0e63f::t_4bc0a060fde6e0 70,75,80,85,91
+  s_13c839fa16106b::t_aac01929807bf1 30-31,36,55-59,89,103,126-128,149-150,152-153,180,298-300,363,373
+  s_13c839fa16106b::t_f941a82604af8c 32,37,42,46,51,60,69,74,79,84,90,95,99,104,109,117,121,129,134,145,154,173,181,186,190,194,199,205,215,220,227,231,236,241,246,252,256,262,268,272,277,281,287,292,301,307,321,326,342,347,364,369,374,378,382,390
+  s_cf79c6f2d70007::t_4deab734465cfb 329-330,335,351-352,356-360,366
+  s_7b07eaf15e4224::t_197092e38aa4e0 166,202,313,333,393
+  s_7b07eaf15e4224::t_52193ee2a66ffe 157,309,370,379,383,385
+  s_27afc3a77af281::t_87ab386a7071ef 167,174-177,394-413
+  s_7b07eaf15e4224::t_21b5acdd0629fc 163,165
+  s_cf79c6f2d70007::t_9c9930629ad729 334
+  s_cf79c6f2d70007::t_eca2651a834a6a 336-338
+  h_f8b427917eda26 24-26,139,328
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  s_fc91c47aa0e63f::t_3629c91b95f7b7 485,487,491,498
+  s_4a32ae9cadbb6a::t_927c340d072553 444-445
+  s_13c839fa16106b::t_f10e166e092d8f 472,479,486,490,497,501,509,513,520,526,537,544,551,558,567,574,582,586,593,596,601,607,610,614,619,623,628,633,638,642
+  s_13c839fa16106b::t_70e8a84b88002b 158,467-471,476-478,494-496,508,534-536,606
+  s_13c839fa16106b::t_b6dfbe3f132a22 139,149
+  s_13c839fa16106b::t_3bfd46fc59414f 159,161
+  s_13c839fa16106b::t_765c21d3907de0 115,118-120,132-138,162,199-206,221,227,361
+  s_27afc3a77af281::t_08d0c99d620a27 427,434,449-451,453-455,459-460,463-464
+  s_27afc3a77af281::t_46f3c8c697c137 456-457
+  s_6308b592d4960a::t_6d883bbff7b2a9 527-528
+  s_df2e1ebfb91bd3::t_58fb0cfe6aeade 353-360
+  h_f8b427917eda26 7,121-131,140-148,150-157,160,188,198,219,443
+  s_afc3a163d24cbf::t_d5f9a551ac0c26 79-80,98,104,116
+packages/frontend/@n8n/design-system/src/css/_tokens.scss
+  s_fc91c47aa0e63f::t_7c5ba0ac00d9d9 1244-1246
+  s_fc91c47aa0e63f::t_a30ebd437b444f 149-150
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_fc91c47aa0e63f::t_4346de8a4b6f9f 2
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue
+  s_fc91c47aa0e63f::t_0c9b3578b3a454 73-74
+  s_fc91c47aa0e63f::t_04a8e18a2e8024 70-72
+  s_fc91c47aa0e63f::t_586e9301bb74f0 75-77
+  s_342f112c3be80a::t_6edb6bb22b69ec 32-39,44,46
+  s_c9652ad82efea6::t_c28c6d33656d57 6
+  s_342f112c3be80a::t_f9471c008fb97f 10-14,16-19,21-27
+  s_342f112c3be80a::t_7e9b69248c03df 4,28-31,53-58
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.stories.ts
+  s_13c839fa16106b::t_c9f4a4727e3bf1 191
+  s_4a32ae9cadbb6a::t_f52f367d42a2d5 4,114-115,117-124,127-190,192-223
+  s_df2e1ebfb91bd3::t_d8c553cc4bd356 7-53
+  s_df2e1ebfb91bd3::t_827edfc277b427 5-6
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  s_13c839fa16106b::t_8844d92d2c039c 46
+  s_13c839fa16106b::t_c1744978aafd14 43-45
+  s_13c839fa16106b::t_fc881cb7c3d499 47-49
+  s_13c839fa16106b::t_c85a41370be99c 36-42,50-55
+  h_f8b427917eda26 2,57-58,63-135,471-473
+  s_afc3a163d24cbf::t_f27602d2d1a458 56,59-62
+packages/frontend/@n8n/design-system/src/components/N8nCodeBlock/CodeBlock.vue
+  s_20ce479774c5f3::t_391e89064217cc 9,14,37-64,67-68,72,74-75,77,112-116,171,177-178,180-192,221-223,246-262
+  s_20ce479774c5f3::t_3792bd2a931172 263
+  s_20ce479774c5f3::t_f2e6e29cb209bf 268-269
+  h_f8b427917eda26 5,17-19,73,119-120
+packages/frontend/@n8n/design-system/src/components/N8nCodeBlock/CodeBlock.test.ts
+  s_20ce479774c5f3::t_460a651e26ec15 32,39,58-61,87-100
+  s_20ce479774c5f3::t_c3725389927cb0 29-31
+  s_20ce479774c5f3::t_f0c2621eaab4a0 33-34,36-38
+  s_20ce479774c5f3::t_2fc7f8b2fe0c1c 40
+  s_20ce479774c5f3::t_8d70fba4c871a2 27-28
+  h_f8b427917eda26 35,62-86
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/resourceLinks.test.ts
+  s_0b4e552efc358c::t_2e5ce5f4497df7 24-26
+  s_0b4e552efc358c::t_41aa703128250a 5-8,10-12,15-23,27-29,31-32,35-42
+  s_0b4e552efc358c::t_46a344cc618b6c 14,33-34
+  s_0b4e552efc358c::t_a653cdcb7be138 3-4
+  s_0b4e552efc358c::t_bb677902f04ae4 13
+  s_0b4e552efc358c::t_999d92b1ad6c50 43
+  s_0b4e552efc358c::t_28dbcfa048c9fb 1
+  h_f8b427917eda26 9,30
+  s_c9652ad82efea6::t_887ce3c797f782 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_0b4e552efc358c::t_dcef17c7f7c3f0 170
+  s_afc3a163d24cbf::t_6a3c9f5cab579a 61-62,130
+  s_7697af894b7e28::t_01482002fa203d 24-59,96,138-139,154-163,166,168-169,171-181
+  s_7697af894b7e28::t_6a2168f58d8167 2,13,18-19,23,60,63-68,94-95,97-100,102,104,106-109,111-129,131-137,140-153,182-184
+packages/frontend/@n8n/design-system/src/css/markdownStyles.test.ts
+  h_f8b427917eda26 1-35
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMarkdownChunk.test.ts
+  h_f8b427917eda26 1-30,32-40
+  s_342f112c3be80a::t_6e191547376a59 31
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMarkdownChunk.vue
+  h_f8b427917eda26 2,22,25-27,29
+packages/frontend/editor-ui/src/app/components/__snapshots__/WhatsNewModal.test.ts.snap
+  h_f8b427917eda26 21,147,375-378
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMessage.test.ts
+  h_f8b427917eda26 6-7,104-106,125,127-129
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.utils.test.ts
+  s_7697af894b7e28::t_01482002fa203d 8-10,24-26,34-36,40-42,47-49,58-63
+  s_342f112c3be80a::t_8600e2e1156937 5-7,11-23,27-33,37-39,43-46,50-57,64
+  s_c9652ad82efea6::t_c2d4fdac80edc5 2
+  s_7697af894b7e28::t_bf61d10eca560c 1,3-4,65
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils.ts
+  s_c9652ad82efea6::t_653adcd80b719b 1-68
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.utils.ts
+  s_7697af894b7e28::t_01482002fa203d 1-124
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/useChatMarkdownOptions.ts
+  s_342f112c3be80a::t_c3295be07df2d2 2,70,77
+  s_342f112c3be80a::t_3c34706cabd1b4 131,156-157
+  s_342f112c3be80a::t_d9371531c7ae87 85-88
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.test.ts
+  s_7697af894b7e28::t_01482002fa203d 13-93
+  s_7697af894b7e28::t_f504329df0f1b7 1-12,94-97
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.vue
+  s_c9652ad82efea6::t_f65837a98f34ad 11
+  s_bde6aa465172a8::t_5be013af966cf9 136
+  s_afc3a163d24cbf::t_369877c2844ace 24-29,31-34,45-55,57-60,62-86,88-112,114-126,129
+  s_bde6aa465172a8::t_fd86a260c0e529 137
+  s_c9652ad82efea6::t_158f666003ccb0 6,12-19
+  s_bde6aa465172a8::t_8589ce275dd1e1 135
+  s_afc3a163d24cbf::t_fb8f7663bffd84 21-22,140
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.test.ts
+  s_7697af894b7e28::t_01482002fa203d 20-30
+  s_342f112c3be80a::t_17c2488c5f05ba 1-19,31-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8d751cdf52df2b684c0a6023289681185cf7bc9",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0b4e552efc358c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17dbf-78a3-7210-a0f1-7de0f08c30e3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_13c839fa16106b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d82-ccea-7210-a0f1-7dcebdca7295",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_20ce479774c5f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d81-8dbf-7210-a0f1-7dcc94fd4beb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_27afc3a77af281": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d97-1ce3-7210-a0f1-7dd28aa8a4ba",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_342f112c3be80a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1826c-a21e-7797-835a-715531d776c1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_3acdc9921843f9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17dd8-a866-7210-a0f1-7de6e8773c52",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_4a32ae9cadbb6a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d74-0278-7210-a0f1-7dc581f266aa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_6308b592d4960a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17da8-0826-7210-a0f1-7dd8a719af63",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7697af894b7e28": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18278-bbae-7797-835a-71590a3e3e5c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7b07eaf15e4224": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d9e-d798-7210-a0f1-7dd595011616",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_96273ca926aa94": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179d1-da56-7018-b64e-4335d16e551d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_afc3a163d24cbf": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18260-8b40-7797-835a-714fd395a8fc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_bde6aa465172a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c494b1a-8a8a-4030-af50-7bc1f8b00e35",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c9652ad82efea6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1825e-7f3c-7797-835a-714c34b650da",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cc6190893cf461": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17cdc-94e4-7210-a0f1-7db4e5fa62a9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cf79c6f2d70007": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d91-8a4b-7210-a0f1-7dd06820c45d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_df2e1ebfb91bd3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17daa-7c33-7210-a0f1-7ddadc41fc83",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fc91c47aa0e63f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17d5e-fd71-7210-a0f1-7dc045d513a5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

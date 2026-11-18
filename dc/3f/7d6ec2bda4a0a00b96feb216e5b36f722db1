@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_0198629be8aa08::t_525cba02226f60 610
+  s_0198629be8aa08::t_9764cd2a092c71 505-511
+  s_0198629be8aa08::t_94006fc7c4742f 589,600-603,622-624
+packages/workflow/test/errors/failure.test.ts
+  s_0198629be8aa08::t_9feb59eb62b0ae 30,34,40
+  s_0198629be8aa08::t_346c57643ed9c3 87-100
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_0198629be8aa08::t_92b5fa1f40d614 518-526
+  s_0198629be8aa08::t_e181d55f005d4d 515-517
+packages/workflow/src/errors/failure.ts
+  s_0198629be8aa08::t_9298cd86b6bf27 40
+  s_0198629be8aa08::t_26cca0fe5d5dcc 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc3f7d6ec2bda4a0a00b96feb216e5b36f722db1",
+  "prompts": {},
+  "sessions": {
+    "s_0198629be8aa08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3100295-a40f-4df9-bdda-6dc9332bf839",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/testing/playwright/package.json
+  s_9fc8be0aa06faa::t_85a601125841cd 7
+packages/testing/playwright/global-teardown.ts
+  s_9fc8be0aa06faa::t_eef87000b6a9f3 3-4,8-16
+.github/workflows/test-dev-server-smoke-reusable.yml
+  s_9fc8be0aa06faa::t_3d755231d23fb9 41-45
+packages/testing/playwright/playwright.config.ts
+  s_9fc8be0aa06faa::t_9e31cb379112d2 85-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8b3f50ac336954a8c086b9061ee9f349b82c2b84",
+  "prompts": {},
+  "sessions": {
+    "s_9fc8be0aa06faa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f94f504-960b-4cfe-94a8-ec5cab89ea33",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

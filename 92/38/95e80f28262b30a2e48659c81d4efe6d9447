@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_01f3c9d813b042::t_75bd8b2a5f52ab 560,573,576,588
+  s_01f3c9d813b042::t_0a6600b9edd26a 561-572,574-575,577-587,589-597
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_01f3c9d813b042::t_f5afc64d4aa1e6 146-155
+  s_01f3c9d813b042::t_4d10669015473b 602-603,605
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "923895e80f28262b30a2e48659c81d4efe6d9447",
+  "prompts": {},
+  "sessions": {
+    "s_01f3c9d813b042": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eff4a-27d6-77e3-934d-57a5e6d59dea",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

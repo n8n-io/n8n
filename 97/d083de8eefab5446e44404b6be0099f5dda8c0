@@ -1,0 +1,35 @@
+packages/modules/apps/backend/src/serving/__tests__/inspector-script.test.ts
+  s_f642d601d434a5::t_501c04d5e7c960 212-223
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantElementAttachments.ts
+  s_f642d601d434a5::t_c23e37f0ba6e22 30
+  s_f642d601d434a5::t_501c04d5e7c960 1-4
+  s_f642d601d434a5::t_75b1d3032136a8 10-15,22,31-36
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_f642d601d434a5::t_501c04d5e7c960 1044
+  s_f642d601d434a5::t_9f39d7d7e2909d 1016,1048-1061
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantElementAttachments.test.ts
+  s_f642d601d434a5::t_ce022f560274cc 15,20,22,27,31-36,39-41
+packages/modules/apps/backend/src/serving/inspector-script.ts
+  s_f642d601d434a5::t_ffe0d2e5479be5 92-93,149,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97d083de8eefab5446e44404b6be0099f5dda8c0",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f642d601d434a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c7f81e-bd86-4e1f-88c9-69e2ad0fd6b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

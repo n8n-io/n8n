@@ -1,0 +1,26 @@
+packages/cli/src/collaboration/__tests__/collaboration.state.test.ts
+  s_8cf70cfd2525f5::t_0c4b210c41ae60 270-317
+  s_8cf70cfd2525f5::t_fb0b6e709a7637 318-340
+packages/cli/src/collaboration/__tests__/collaboration.service.agent.test.ts
+  s_8cf70cfd2525f5::t_a9a9d5ab44f1e2 91,179
+packages/cli/src/collaboration/collaboration.service.ts
+  s_8cf70cfd2525f5::t_86dcd9a239571b 139,198,204,213,220,472,529,535,544,551
+packages/cli/src/collaboration/collaboration.state.ts
+  s_8cf70cfd2525f5::t_1832e313f37bc8 217,223,227,234-237,268-272,276,389,395,399,438-442,446
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c589e0b92ed67422bfff8cc0b3f6a3826a7fdae5",
+  "prompts": {},
+  "sessions": {
+    "s_8cf70cfd2525f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64919103-ec15-4cc7-93fe-79ef2dc050bf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,192 @@
+docs/generated/sqlite-schema/agent_files.md
+  ai_agent 74
+docs/generated/sqlite-schema/agent_version_skill_dependency.md
+  ai_agent 61-62
+packages/cli/src/modules/agents/__tests__/agent-version-initializer.test.ts
+  s_5785bc20fb92a9::t_c39ce141ea234f 16-19,22-25,29-32
+  s_5785bc20fb92a9::t_beb72a651ee448 1-13,15,26-28,33-36
+  s_5785bc20fb92a9::t_5235b5ca3b9247 14,20-21
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  ai_agent 70
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  ai_agent 66
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  ai_agent 59
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  ai_agent 50
+docs/generated/sqlite-schema/agent_history.md
+  ai_agent 9,21-22,28,54,63-64,80,129-137
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 108
+docs/generated/postgres-schema/public.agent_task_snapshot.md
+  ai_agent 60-61
+docs/generated/sqlite-schema/agents.md
+  ai_agent 9,21,25,70,93,107-108,236-244
+docs/generated/sqlite-schema/agents_memory_entries.md
+  ai_agent 86
+docs/generated/sqlite-schema/agent_publish_history.md
+  ai_agent 1-116
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  ai_agent 83
+docs/generated/postgres-schema/public.agent_files.md
+  ai_agent 71
+packages/cli/src/modules/agents/entities/agent-history.entity.ts
+  s_5785bc20fb92a9::t_3124a6a4486d50 16,56,58
+  s_5785bc20fb92a9::t_d78b8758edccb5 41-46
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 395,402,425
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  ai_agent 66
+docs/generated/postgres-schema/README.md
+  ai_agent 28,32,40,239-241,694-695,733-742,803
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  ai_agent 60
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  ai_agent 81
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,56,196-197,205-213
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  ai_agent 59
+packages/cli/src/modules/agents/entities/agent-publish-history.entity.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 2-10
+  s_5785bc20fb92a9::t_d78b8758edccb5 1,11-53
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_5785bc20fb92a9::t_d78b8758edccb5 101-104
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 110
+packages/cli/test/migration/1792668224044-create-agent-publish-history.test.ts
+  s_5785bc20fb92a9::t_af11f70bc888fe 27,29,31,55,73,76,153,156
+  s_5785bc20fb92a9::t_7ecc7ceab76db6 121-122,132,140-141
+  s_5785bc20fb92a9::t_77af4488ab28ea 123-131,133-139
+  s_5785bc20fb92a9::t_c39ce141ea234f 1-7,33-53,62-65,69-70,81-95,97-103,108-116,143-150,159-161
+  s_5785bc20fb92a9::t_4eacbc2a5c0f57 8-26,28,30,32,54,56-61,66-67,71-72,74-75,77-80,96,104-107,117-120,142,151-152,154-155,157-158,162-165
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  ai_agent 54
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,62,202-203,211-219
+packages/@n8n/db/src/migrations/common/1792668223826-AddAgentVersionMetadata.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 7-9,15-17
+  s_5785bc20fb92a9::t_32a3da80a566bb 1-3,11-12,19-20
+  s_5785bc20fb92a9::t_d78b8758edccb5 4-6,10,13-14,18
+docs/generated/postgres-schema/public.agent_channel_status.md
+  ai_agent 71
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  ai_agent 91
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  ai_agent 60
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  ai_agent 66
+docs/generated/postgres-schema/public.agent_history.md
+  ai_agent 10-11,17,47,56-57,73,122-130
+docs/generated/sqlite-schema/agent_channel_status.md
+  ai_agent 78
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 105,202-203
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 75-105
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  ai_agent 64
+docs/generated/sqlite-schema/README.md
+  ai_agent 28,32,40,221-223,680-681,719-728,789
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 1-2,11,27,34-78
+docs/generated/sqlite-schema/agent_checkpoints.md
+  ai_agent 67
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  ai_agent 56
+docs/generated/sqlite-schema/agents_observations.md
+  ai_agent 85
+docs/generated/postgres-schema/public.skill.md
+  ai_agent 69
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 10,14,38,69,92,106-107,235-243
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5785bc20fb92a9::t_c39ce141ea234f 619-623
+  s_5785bc20fb92a9::t_0058157852f99e 51,133,284,640,675
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  ai_agent 59
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 105,202-203
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  ai_agent 85
+docs/generated/postgres-schema/public.agent_publish_history.md
+  ai_agent 1-112
+packages/cli/src/modules/agents/agent-version-initializer.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 1-27
+docs/generated/sqlite-schema/agents_observation_locks.md
+  ai_agent 70
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  ai_agent 57
+packages/@n8n/db/src/migrations/common/1792668224044-CreateAgentPublishHistory.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 17-20,23-25,31-35,42-44
+  s_5785bc20fb92a9::t_d78b8758edccb5 4,11-16,21-22,26,28-30,36-37,40-41,45-49,51
+  s_5785bc20fb92a9::t_c39ce141ea234f 27
+  s_5785bc20fb92a9::t_32a3da80a566bb 1-3,38-39,55-56
+  s_5785bc20fb92a9::t_beb72a651ee448 5-10,50,52-54
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  ai_agent 63
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  ai_agent 78
+docs/generated/sqlite-schema/agent_task_snapshot.md
+  ai_agent 65-66
+docs/generated/sqlite-schema/project.md
+  ai_agent 158
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5785bc20fb92a9::t_0058157852f99e 1,280,375
+packages/cli/src/modules/agents/__tests__/agent-definition.service.test.ts
+  s_5785bc20fb92a9::t_c39ce141ea234f 21-28,35-41,44-48,55-65,68-71,73-79,86-88
+  s_5785bc20fb92a9::t_4eacbc2a5c0f57 2-20,30-33,52-54,66-67,72,80-85,89-92
+  s_5785bc20fb92a9::t_beb72a651ee448 1
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_3088cffeb88b3d 106,179,183,211-217
+  s_5785bc20fb92a9::t_0058157852f99e 1,171
+  s_5785bc20fb92a9::t_77af4488ab28ea 218-224
+docs/generated/postgres-schema/public.agents_observations.md
+  ai_agent 82
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  ai_agent 63
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  ai_agent 76
+packages/cli/src/modules/agents/repositories/agent-publish-history.repository.ts
+  s_5785bc20fb92a9::t_bcdf401d8ceb6f 39-46
+  s_5785bc20fb92a9::t_2c0a3295c3add2 1-38,47-48
+docs/generated/postgres-schema/public.agent_version_skill_dependency.md
+  ai_agent 52-53
+docs/generated/sqlite-schema/skill.md
+  ai_agent 76
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  ai_agent 50
+packages/cli/src/modules/agents/agents.module.ts
+  s_5785bc20fb92a9::t_d78b8758edccb5 273,329
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_5785bc20fb92a9::t_0058157852f99e 1,89
+packages/cli/src/modules/agents/repositories/agent-history.repository.ts
+  s_5785bc20fb92a9::t_2c0a3295c3add2 36-37,42-44
+  s_5785bc20fb92a9::t_3124a6a4486d50 28
+docs/generated/postgres-schema/public.agent_task_definition.md
+  ai_agent 62
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  ai_agent 75
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  ai_agent 92
+docs/generated/postgres-schema/public.project.md
+  ai_agent 152
+docs/generated/sqlite-schema/agent_task_definition.md
+  ai_agent 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4a5263791b14db92d8b08d23a7a82080d85ef78",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

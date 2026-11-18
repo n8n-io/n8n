@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_7a118b07ee147d::t_bd34fda1779ceb 191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9c6fdea25062f73c87364891389c745004b8825",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

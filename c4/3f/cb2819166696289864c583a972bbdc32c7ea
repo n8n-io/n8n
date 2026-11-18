@@ -1,0 +1,32 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/token-provider.test.ts
+  s_894c4e86d9aaa6::t_b23e59ce542686 566
+  s_894c4e86d9aaa6::t_3c61f4b8166c8c 581
+  s_894c4e86d9aaa6::t_5b5358a5d1e72f 492-508,512
+  s_894c4e86d9aaa6::t_13fb106214f070 529-547
+  s_894c4e86d9aaa6::t_65f9c833b171f4 598
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_894c4e86d9aaa6::t_be99afc43c428e 121-129
+  s_894c4e86d9aaa6::t_5fe3b428432c82 134-136
+  s_894c4e86d9aaa6::t_490c0374b11000 184-185,187
+  s_894c4e86d9aaa6::t_d1951e63a094a1 186
+  s_894c4e86d9aaa6::t_eab6e1a177a798 11
+  s_894c4e86d9aaa6::t_a421c77edced1e 131-133
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/error-handling.ts
+  s_894c4e86d9aaa6::t_59c8c3562519bb 6-16,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c43fcb2819166696289864c583a972bbdc32c7ea",
+  "prompts": {},
+  "sessions": {
+    "s_894c4e86d9aaa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56ec0584-63f8-42b4-aa55-e67df50c5303",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

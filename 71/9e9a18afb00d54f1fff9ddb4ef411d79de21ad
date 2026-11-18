@@ -1,0 +1,45 @@
+packages/cli/src/modules/agents/agent-conversation-lease.service.ts
+  s_d27d09d94cc9ff::t_10991e90dee6c5 22-29,108-115,145-154,156,158-159,163-164,166-167,194
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_d27d09d94cc9ff::t_10991e90dee6c5 304,307
+packages/cli/test/migration/1789499956927-create-agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_243e7791a63224 83-110
+  s_d27d09d94cc9ff::t_f1ade0977adc21 111-113,124-126
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_d27d09d94cc9ff::t_10991e90dee6c5 150-154
+  s_d27d09d94cc9ff::t_ddc25aee06528d 155-156,162
+packages/cli/test/integration/agents/agent-conversation-lease.test.ts
+  s_d27d09d94cc9ff::t_243e7791a63224 21-24,66-103,304-321
+  s_d27d09d94cc9ff::t_3b6249d73aa65e 322-330
+packages/@n8n/db/src/migrations/common/1789499956927-CreateAgentMessageQueue.ts
+  s_d27d09d94cc9ff::t_10991e90dee6c5 4-8,47-49
+  s_d27d09d94cc9ff::t_19f466c5339173 50-53
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_243e7791a63224 791-826,842-843
+  s_d27d09d94cc9ff::t_10991e90dee6c5 706
+  s_d27d09d94cc9ff::t_be01b7196fe2ff 707-708,827-841
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_d27d09d94cc9ff::t_10991e90dee6c5 9,22,54
+packages/cli/src/modules/agents/repositories/agent-conversation-lease.repository.ts
+  s_d27d09d94cc9ff::t_10991e90dee6c5 33,43-44
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_d27d09d94cc9ff::t_c4792ba23209aa 45
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_d27d09d94cc9ff::t_9058988a4d42cd 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "719e9a18afb00d54f1fff9ddb4ef411d79de21ad",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

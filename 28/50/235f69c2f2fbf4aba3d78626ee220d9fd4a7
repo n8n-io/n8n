@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/tags.test.ts
+  s_9a008403d71942::t_b0c098413c58ab 193-197,199,201-209
+  s_9a008403d71942::t_973eff5de09d54 198,200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2850235f69c2f2fbf4aba3d78626ee220d9fd4a7",
+  "prompts": {},
+  "sessions": {
+    "s_9a008403d71942": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49cc0e38-95e7-41da-b306-5bffe1ec96d7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

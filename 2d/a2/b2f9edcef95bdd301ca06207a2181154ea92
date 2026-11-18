@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_f38eb6a6383110::t_c752118a7fdb3c 127
+  s_f38eb6a6383110::t_f90b9973c53e5c 11
+  s_f38eb6a6383110::t_0fb86745863c42 530-603,607-614
+  s_f38eb6a6383110::t_521a8fa487a480 4
+  ai_agent 604-606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2da2b2f9edcef95bdd301ca06207a2181154ea92",
+  "prompts": {},
+  "sessions": {
+    "s_f38eb6a6383110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6210298e-5c34-4114-aa5a-a990cfea49fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

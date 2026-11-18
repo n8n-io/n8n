@@ -1,0 +1,29 @@
+packages/core/src/constants.ts
+  s_53cef6894d9656::t_16ea52894545b7 8-22
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_53cef6894d9656::t_653eda621df919 38
+  s_53cef6894d9656::t_340300523801a7 349-351
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_53cef6894d9656::t_7fd94a71cbbc4e 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a791218d2e3ad6668513e285a8e6642a20024dbc",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

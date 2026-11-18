@@ -1,0 +1,50 @@
+packages/frontend/editor-ui/src/app/api/workflows.ts
+  s_0c801c2720c261::t_e8a6a10950736c 15,123-133
+  s_0c801c2720c261::t_87b09c9de7be5c 134-135
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_0c801c2720c261::t_e8a6a10950736c 26,1936-1941,1943-1945,1948-1951,1953-1955,5534-5656
+  s_0c801c2720c261::t_94c1e5c727768e 5657-5658
+packages/@n8n/api-types/src/dto/index.ts
+  s_0c801c2720c261::t_e8a6a10950736c 243-246
+  s_0c801c2720c261::t_b9734c518ad2bd 242
+packages/frontend/editor-ui/src/features/ndv/parameters/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.vue
+  s_0c801c2720c261::t_e8a6a10950736c 101,188
+packages/cli/src/workflows/workflow.service.ts
+  s_0c801c2720c261::t_e8a6a10950736c 2-6,34-40,329-334,336-345,347-349,352-364
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_0c801c2720c261::t_e8a6a10950736c 871-872,901,1122,1159-1161,1184-1190,1192-1199,1201-1227,1229-1231,1233-1234,1237-1246,1251-1253,1255,1260-1266
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_0c801c2720c261::t_e8a6a10950736c 185-199,345
+packages/@n8n/api-types/src/dto/workflows/list-callable-subworkflows-query.dto.ts
+  s_0c801c2720c261::t_e8a6a10950736c 1-28
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.test.ts
+  s_0c801c2720c261::t_e8a6a10950736c 15,24-39,52,259-334
+packages/cli/src/workflows/workflows.controller.ts
+  s_0c801c2720c261::t_e8a6a10950736c 8,12,710-723
+  s_0c801c2720c261::t_e537a597b64f32 724-725
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.ts
+  s_0c801c2720c261::t_e8a6a10950736c 2-3,30-32,45-48,54-57,62,84-92,94-101,103-116,133-143,146,148,188
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_0c801c2720c261::t_e8a6a10950736c 73,218-219,221-224,226-230,232-234,236-239,241-246,251-271,273-276,278-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc8e61a5996521ef591a82257d1e53f2a1ab1dff",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0c801c2720c261": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bda1e85-e6de-47ba-844d-e10169e167f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

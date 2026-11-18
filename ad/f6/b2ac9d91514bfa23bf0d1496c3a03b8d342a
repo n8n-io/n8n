@@ -1,0 +1,37 @@
+packages/cli/test/migration/1785421760814-reclassify-pseudo-triggers-as-persisted.test.ts
+  s_7e260be078ba21::t_1cd6b3051ac071 1-114,120-128,130-134,136-141,143-151,153-195,200-214
+  s_7e260be078ba21::t_684524e98ca52e 196-199
+  s_7e260be078ba21::t_50163314021a07 115-119,129,135,142,152
+  s_7e260be078ba21::t_5666be045c15c3 215-222
+packages/@n8n/db/src/migrations/common/1785421760814-ReclassifyPseudoTriggersAsPersisted.ts
+  s_7e260be078ba21::t_1ff2fe5581ea87 1-11
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_7e260be078ba21::t_c90211e868e897 17
+  s_7e260be078ba21::t_e12584d66b825d 354-389
+  s_7e260be078ba21::t_5ef10187fd2c01 62-70
+  s_7e260be078ba21::t_4fbb0f93d72439 76
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_7e260be078ba21::t_1ff2fe5581ea87 230,461
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_7e260be078ba21::t_f7c0624eaffa5a 166-185
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_7e260be078ba21::t_1ff2fe5581ea87 238,479
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_7e260be078ba21::t_c9780703834d4a 43-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "adf6b2ac9d91514bfa23bf0d1496c3a03b8d342a",
+  "prompts": {},
+  "sessions": {
+    "s_7e260be078ba21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "563ddd4e-d5e2-48ee-aac3-3b7c03d27616",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

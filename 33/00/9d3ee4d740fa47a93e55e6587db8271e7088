@@ -1,0 +1,23 @@
+packages/workflow/test/expression-array-proxy-semantics.test.ts
+  s_52ebfe1ffb87fb::t_321a316a4f14ae 82-88,91-93,99,105,110-112,118,124-126,131-183
+packages/@n8n/expression-runtime/src/extensions/array-extensions.ts
+  s_52ebfe1ffb87fb::t_30c2cc6c95e0b1 33-38
+packages/workflow/src/extensions/array-extensions.ts
+  s_52ebfe1ffb87fb::t_ff32547b10a200 33-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "33009d3ee4d740fa47a93e55e6587db8271e7088",
+  "prompts": {},
+  "sessions": {
+    "s_52ebfe1ffb87fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "deaa7c0e-2dcb-468c-afaf-442d735dfc87",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

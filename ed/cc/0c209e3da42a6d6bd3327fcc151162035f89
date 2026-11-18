@@ -1,0 +1,22 @@
+packages/cli/src/executions/parse-range-query.middleware.ts
+  s_aa1fa843ac22ac::t_c5828c00fb37cb 43-45
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_aa1fa843ac22ac::t_df2b9b9122131f 137-138,147-148
+  s_aa1fa843ac22ac::t_647cc58827f540 99,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "edcc0c209e3da42a6d6bd3327fcc151162035f89",
+  "prompts": {},
+  "sessions": {
+    "s_aa1fa843ac22ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "834d5d8f-14ba-470d-852b-feab376c3308",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

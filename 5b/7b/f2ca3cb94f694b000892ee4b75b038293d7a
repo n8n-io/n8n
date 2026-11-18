@@ -1,0 +1,31 @@
+packages/nodes-base/credentials/common/aws/index.ts
+  s_8a9e0dcd051b91::t_5a66529cb4355a 1-4
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_8a9e0dcd051b91::t_d6ac6dfac543c2 28
+  s_8a9e0dcd051b91::t_4747790765ef06 18-19
+  s_8a9e0dcd051b91::t_41a42563b6dbc4 1
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_8a9e0dcd051b91::t_36847bbd3945e5 4-11
+packages/nodes-base/package.json
+  s_8a9e0dcd051b91::t_298ebb2af9cdc3 25-27
+packages/nodes-base/aws-credentials.js
+  s_8a9e0dcd051b91::t_46e898427460bf 1
+packages/nodes-base/aws-credentials.d.ts
+  s_8a9e0dcd051b91::t_4fe5307cbeb9bb 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "5b7bf2ca3cb94f694b000892ee4b75b038293d7a",
+  "prompts": {},
+  "sessions": {
+    "s_8a9e0dcd051b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83f4c075-2049-4a3e-b48a-caafe7069d0d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

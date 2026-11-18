@@ -1,0 +1,53 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-requirements.test.ts
+  s_668f89615e24b8::t_79a7f5a462595a 41-53
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_668f89615e24b8::t_e8cc021291a3f6 176-182,253-255
+  s_668f89615e24b8::t_049a4707593834 185-189,191-229,295-298
+  s_668f89615e24b8::t_0c673cd9a64d93 230-234,236-252,256-257,259
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_668f89615e24b8::t_a91151a114751b 16-17,60,81,84
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_668f89615e24b8::t_79a7f5a462595a 62-88
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_668f89615e24b8::t_83b8728f0663c6 19
+  s_668f89615e24b8::t_a91151a114751b 120,143-144,204-205,207-210,214,218-241
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-requirements.ts
+  s_668f89615e24b8::t_a91151a114751b 4,8-9
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_668f89615e24b8::t_049a4707593834 167-169
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_668f89615e24b8::t_734a9e972900e7 73
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_668f89615e24b8::t_79a7f5a462595a 18,271-314
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.types.ts
+  s_668f89615e24b8::t_a91151a114751b 1-4
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_668f89615e24b8::t_a91151a114751b 17-22,50-53,58
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_668f89615e24b8::t_a91151a114751b 3,8,16
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_668f89615e24b8::t_e8cc021291a3f6 164
+  s_668f89615e24b8::t_049a4707593834 181-183
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/package-workflow-requirement.validator.test.ts
+  s_668f89615e24b8::t_79a7f5a462595a 5,9-12,18-21,24-27,33-39,45-51
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_668f89615e24b8::t_79a7f5a462595a 4,19-22,26-30,34,40,46-50,56,60
+packages/cli/src/modules/n8n-packages/entities/workflow/package-workflow-requirement.validator.ts
+  s_668f89615e24b8::t_a91151a114751b 4,11,16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "942d4c144b2c420ce34a409c351d72bd7f2317f9",
+  "prompts": {},
+  "sessions": {
+    "s_668f89615e24b8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f64db-06d7-7213-822b-3e8cfeed41cd",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

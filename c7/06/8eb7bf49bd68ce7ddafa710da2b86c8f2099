@@ -1,0 +1,33 @@
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_302a0341cc705a::t_6f33af954752cb 47-52,97-105,128-133,136-140
+packages/cli/test/integration/activity-event-relay.test.ts
+  ai_agent 67-71
+packages/cli/test/integration/activity-event.repository.test.ts
+  s_302a0341cc705a::t_15a1b1b46b1b2d 112,139,144,238
+  ai_agent 34-38,64-68,81-85,103-106,130-133,206-210,212-218,249-253,300-304
+packages/cli/test/integration/instance-context.service.test.ts
+  ai_agent 119-123,134-138,161-165,172-174,186-261,359-363
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_302a0341cc705a::t_dae0c338aee94e 365-463
+  s_302a0341cc705a::t_c07015a3c08d79 303-305,351-352,355,698-704,713-727,736-737
+packages/@n8n/db/src/repositories/__tests__/activity-event.repository.test.ts
+  s_302a0341cc705a::t_6f33af954752cb 86-90,93,99-134,136-140,151,158-162,173-177
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_302a0341cc705a::t_6f33af954752cb 48-51,53,56-58,66,68-75,91,93-94,99-100,108-130,201-202,208-210,212-213,237-238,263,266-269,273,291,294-298,329,332-338,344,348-349,352-354,373-379,381,388,435-436,443-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c7068eb7bf49bd68ce7ddafa710da2b86c8f2099",
+  "prompts": {},
+  "sessions": {
+    "s_302a0341cc705a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d232b129-92fc-4812-a387-ad182690ea21",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

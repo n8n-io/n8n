@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/static-sub-workflow-id.test.ts
+  s_af5d1a42132501::t_a39db47e2886de 1-39,41-64,66-122
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-id.ts
+  s_af5d1a42132501::t_df4d5e9fde25d0 1-38
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_af5d1a42132501::t_e16d09ec4bdc0b 185-228
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-requirements.extractor.test.ts
+  s_af5d1a42132501::t_950669f4509a7a 71-78,85-88
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirements.extractor.ts
+  s_af5d1a42132501::t_6807fd7a2a266e 5
+  s_af5d1a42132501::t_9b4a54efd24a02 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "80a7a9ac14cb660e91c8e535191916c3be67da0e",
+  "prompts": {},
+  "sessions": {
+    "s_af5d1a42132501": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a7029c4-a23a-4438-8e91-676ae3a000b5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

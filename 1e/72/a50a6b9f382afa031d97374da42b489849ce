@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_1fa72f8e433695::t_ec696a210a7e6e 145-150
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SubagentStepTimeline.test.ts
+  s_1fa72f8e433695::t_75ef727df7e6a8 138-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e72a50a6b9f382afa031d97374da42b489849ce",
+  "prompts": {},
+  "sessions": {
+    "s_1fa72f8e433695": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17504-725e-70f0-9e17-29f9dd0e36ec",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

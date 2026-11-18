@@ -1,0 +1,24 @@
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_72c806d61e12d2::t_55bbea6e6f2279 30-34
+  s_72c806d61e12d2::t_30b06f2dd5f193 120
+packages/cli/src/workflows/publication/workflow-publication-lifecycle-lock.ts
+  s_72c806d61e12d2::t_d90db5782d6a8f 16-18,23-25
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_72c806d61e12d2::t_9922801da96adc 267-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "606eec11fd93edc5b9f2d74def1b56e1c9ad8f2a",
+  "prompts": {},
+  "sessions": {
+    "s_72c806d61e12d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3454581-e439-4779-af65-52bc313bbe43",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

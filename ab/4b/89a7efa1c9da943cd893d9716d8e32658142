@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/ERPNext/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6cb817e9dda654 1-29
+packages/nodes-base/nodes/ERPNext/ERPNext.node.ts
+  s_6082a1b9696fe7::t_746230416be5c3 11,14,65,79,98,147,160,231,248,277
+packages/nodes-base/nodes/ERPNext/GenericFunctions.ts
+  s_8f00b81cf677a0::t_152dde6898365e 9-10,12,14-20,25,30,32,40-43,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab4b89a7efa1c9da943cd893d9716d8e32658142",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6082a1b9696fe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aced4535e855cb6de",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8f00b81cf677a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a51afceeaf7461dc7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

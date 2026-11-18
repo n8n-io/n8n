@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/download.ts
+  s_2fcfe6308a74d6::t_6f60e0402c6be0 23-26
+  s_2fcfe6308a74d6::t_32e52c03e38482 1-22,27-39
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/tsconfig.json
+  s_2fcfe6308a74d6::t_6f60e0402c6be0 14-22
+  s_2fcfe6308a74d6::t_a62dbc153dc5bf 1-13,23
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/index.html
+  s_2fcfe6308a74d6::t_4b34bec6a6c0aa 1
+  s_2fcfe6308a74d6::t_f04d3369de8407 2-12
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/WorkflowConstellation.vue
+  s_2fcfe6308a74d6::t_f04d3369de8407 35-39,44-49
+  s_2fcfe6308a74d6::t_7594b59cd3313c 1-34,40-43,50
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/vite.config.ts
+  s_2fcfe6308a74d6::t_4b34bec6a6c0aa 1-12,19-20
+  s_2fcfe6308a74d6::t_6f60e0402c6be0 13-18
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/main.ts
+  s_2fcfe6308a74d6::t_4b34bec6a6c0aa 1-4
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/Demo.vue
+  s_2fcfe6308a74d6::t_4b34bec6a6c0aa 1-13,28-35,38,42-43,49-52,57,63,129,145-149,152,356
+  s_2fcfe6308a74d6::t_f04d3369de8407 14-27,36-37,39-41,44-48,53-56,58-62,64-66,68-128,130-144,153-355
+  s_2fcfe6308a74d6::t_aeab025de29a9f 150-151
+  s_2fcfe6308a74d6::t_c4599b37b8dfc3 67
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/README.md
+  s_2fcfe6308a74d6::t_a57bda4f08e3f0 1-64
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/sample.ts
+  s_2fcfe6308a74d6::t_6f60e0402c6be0 16-34,44-49
+  s_2fcfe6308a74d6::t_4b34bec6a6c0aa 1-15,35-43,50-52
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/graph.ts
+  s_2fcfe6308a74d6::t_6f60e0402c6be0 36-37,82-86
+  s_2fcfe6308a74d6::t_7345a856d526fe 1-35,38-81,87
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/demo/.gitignore
+  s_2fcfe6308a74d6::t_a62dbc153dc5bf 1-2
+  s_2fcfe6308a74d6::t_befd31a8a8ab8a 3
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/ConstellationArtwork.vue
+  s_2fcfe6308a74d6::t_7345a856d526fe 1-16,26-40,51,60-63,72-73,84,90-94,114-115,133-135,146-149,151,158-163,173-174
+  s_2fcfe6308a74d6::t_f04d3369de8407 17-25,41-50,52-59,64-71,74-83,85-89,95-113,116-132,136-145,152-157,164-172
+  s_2fcfe6308a74d6::t_7594b59cd3313c 150
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/graph.test.ts
+  s_2fcfe6308a74d6::t_a62dbc153dc5bf 1-19,32-35,40-44,53,58-60,71-73
+  s_2fcfe6308a74d6::t_6f60e0402c6be0 20-31,36-39,45-52,54-57,61-70
+packages/frontend/editor-ui/src/features/workflows/canvas/components/constellation/ConstellationView.vue
+  s_2fcfe6308a74d6::t_29514635b0ec2f 107-113,115-132,135-138,140,142-153,155-189
+  s_2fcfe6308a74d6::t_27b6c972258fdd 60,72-77,80,98,100
+  s_2fcfe6308a74d6::t_f04d3369de8407 55-59,61-65,68-71,78-79,81,89-95,114,133-134,139,141,154,195-211,214-328,330-346,349-354
+  s_2fcfe6308a74d6::t_9c733ba8b0bc88 2,26,38,43
+  s_2fcfe6308a74d6::t_32e52c03e38482 1,3-25,27-37,39-42,44-54,66-67,82-88,96-97,99,101-106,190-194,212-213,329,347-348,355-356
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_2fcfe6308a74d6::t_7594b59cd3313c 17,2132
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2fcfe6308a74d6::t_93c81a11cd64b4 2-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "793ecec1014291709b03f38a8fac6276e76029d1",
+  "prompts": {},
+  "sessions": {
+    "s_2fcfe6308a74d6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ee4b-4e64-7e80-9a78-f633d225a1cf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

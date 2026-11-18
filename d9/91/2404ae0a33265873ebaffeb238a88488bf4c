@@ -1,0 +1,165 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 2,33
+packages/@n8n/eslint-plugin-community-nodes/src/utils/index.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 5
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/operation-standard-action.md
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-63
+packages/@n8n/eslint-plugin-community-nodes/src/rules/operation-standard-action.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-79
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 2-3,7,21-22,30,75-82,93-100,111-135,138-162,164-172,177-184,193-195,202,214-218,227-281,285,287-323
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 99,103,164,170,185,190,273,277,344,350,366,371,390,395
+packages/cli/src/modules/agents/entities/agent-file-grant.entity.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-22
+packages/cli/src/modules/agents/repositories/agent-file-grant.repository.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-59
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 3,10,1923-1924,1935-1942
+packages/cli/src/scaling/__tests__/bull-idle-claim.integration.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 15,72,84,95-96,99-101,103,105,107,118,120,141,150-178
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_55c39027ebcd2f::t_428c0be36a40a0 81-82
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 130,354
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 367-370
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 615-636
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 19,78,84,165,172,174-188,225-237,259,615,618-630,632-674,879-902,1027-1040,1110,1593-1609
+  s_55c39027ebcd2f::t_bb1ec106492395 1610-1611
+packages/@n8n/eslint-plugin-community-nodes/src/utils/operation-parameters.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-102
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 356-366,2698-2905
+  s_55c39027ebcd2f::t_17143f25912f21 2906-2908
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 9,196,212,335-336,517-518,575-576,701,711,739,815,861,897,938,959,973,1046,1080,1331,1342-1343,1387-1388,1425-1426,1488-1489,1525-1526,1553-1554,1589-1590,1621-1622,1656-1657,1688-1689,1715-1716,1836-1837,1879-1880,1909-1910,2068,2178-2179,2258-2259,2299-2300,2386-2387,2419-2420,2450-2451,2803,2841,2869,2896,2941,2966,3009,3051,3105,3134,3167,3197,3232-3233,3292,3318,3346,3376,3412,3447,3560,3582,3606,3652,3666,3744,3756,3765,3776
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 654-679
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 5326-5654
+packages/cli/test/integration/agents/agent-thread-repository-queries.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 246
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/operation-name-repeats-resource.md
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-59
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 147,178
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 2,23,33,63,92-96
+  s_55c39027ebcd2f::t_e19e2b4f96b566 97
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 35-36,99-100
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 74-77
+packages/cli/src/modules/promotions.ee/__tests__/promotion-telemetry.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-84
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 8,49,83-88,121-126
+  s_55c39027ebcd2f::t_745144a38fab37 127
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 16,62,67-70,88-98,129,164-179,187-197
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 2,38-39,96,107,112-152
+  s_55c39027ebcd2f::t_19454c78494e91 153
+packages/cli/src/modules/promotions.ee/promotions-git.error.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-10
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 326
+packages/@n8n/eslint-plugin-community-nodes/src/rules/operation-name-repeats-resource.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-137
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 8,14,32,56-64,73,78-81,89,102,104-105,127-196,313-318,321-337,343-349
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 10,42,84,173-195
+packages/@n8n/db/src/migrations/common/1793118209000-AddCreatedByThreadIdToAgentChatAttachments.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-55
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 11,14,31-32,34-42,46,49,55,769-796
+  s_55c39027ebcd2f::t_00c608c5c49964 797
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 68-69,121-122
+packages/cli/src/events/maps/relay.event-map.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 7-11,29,1353-1473
+  s_55c39027ebcd2f::t_bd882125fefc18 1474-1476
+packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-58
+packages/@n8n/eslint-plugin-community-nodes/src/rules/operation-standard-action.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-134
+packages/cli/test/integration/agents/agent-file-grants.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-178
+packages/@n8n/db/src/migrations/common/1793118209500-CreateAgentFileGrantsTable.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-29
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 10,17-31,38-41,47,115-149,193-270,315-346
+  s_55c39027ebcd2f::t_8336c1deaf9fc3 347
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1,6,212-217,220,484-492,522-529
+packages/cli/src/modules/agents/entities/agent-chat-attachment.entity.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 34-37,41-43
+  s_55c39027ebcd2f::t_a557f308ced321 44
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 5-17,19-203
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 11,26,872-874,878-893
+  s_55c39027ebcd2f::t_e79820458332da 894-895
+patches/bull@4.16.4.patch
+  s_55c39027ebcd2f::t_428c0be36a40a0 23,26-54,71-80,82-85,87,89,91-93,97-134
+packages/cli/src/modules/agents/agents.module.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 264,322
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 3,37,83-89,182,204,224-256,263,672-697,728-735,889-892,1314-1317,1788-1795,2251-2259,2342-2345,2419-2422,2437-2440
+packages/@n8n/eslint-plugin-community-nodes/src/rules/operation-name-repeats-resource.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-73
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-provider.repository.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 64-65,67-68
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 19-20,33,53,56-77,143-147,152-175,200,208-209,213-221
+packages/@n8n/eslint-plugin-community-nodes/src/utils/operation-parameters.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-53
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  s_55c39027ebcd2f::t_428c0be36a40a0 34-36,42
+packages/cli/test/migration/1793118209000-add-created-by-thread-id-to-agent-chat-attachments.test.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 1-72
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_55c39027ebcd2f::t_428c0be36a40a0 20-26
+docs/generated/postgres-schema/README.md
+  s_55c39027ebcd2f::t_d4b7405d5021e7 16,27,235,549,697-702
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_55c39027ebcd2f::t_270cfa85858216 10,13,30,54,61,90-95
+docs/generated/postgres-schema/public.agent_file_grants.md
+  s_55c39027ebcd2f::t_2da67e71e2f738 1-61
+docs/generated/postgres-schema/public.agents.md
+  s_55c39027ebcd2f::t_85e388b8c7bbe9 157
+docs/generated/postgres-schema/public.project.md
+  s_55c39027ebcd2f::t_0534fb0db491ab 115
+docs/generated/sqlite-schema/README.md
+  s_55c39027ebcd2f::t_b527758032814e 16,27,217,535,683-688
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_55c39027ebcd2f::t_6e6857fbaf11a5 9,21,24,55,62,91-96
+docs/generated/sqlite-schema/agent_file_grants.md
+  s_55c39027ebcd2f::t_bb068d951719f9 1-70
+docs/generated/sqlite-schema/agents.md
+  s_55c39027ebcd2f::t_a33b8ce22b243c 158
+docs/generated/sqlite-schema/project.md
+  s_55c39027ebcd2f::t_e0283a26014089 121
+pnpm-lock.yaml
+  s_55c39027ebcd2f::t_4a4d923549a442 1100,2867-2869,2876-2878,2889-2891,4892,15304-15306,32779-32780,34592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9912404ae0a33265873ebaffeb238a88488bf4c",
+  "prompts": {},
+  "sessions": {
+    "s_55c39027ebcd2f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17d71-a970-7082-a7e6-59caf2bd4104",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/metrics/prometheus/agent-metrics.service.ts
+  s_664c3e6ae8c7b1::t_cc1c42a00bde04 28
+packages/@n8n/config/test/config.test.ts
+  s_664c3e6ae8c7b1::t_cc1c42a00bde04 296
+packages/cli/src/metrics/prometheus/__tests__/agent-metrics.service.test.ts
+  s_664c3e6ae8c7b1::t_cc1c42a00bde04 52-55,77-87
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_664c3e6ae8c7b1::t_0754a15f9d0b10 145-146
+  s_664c3e6ae8c7b1::t_cc1c42a00bde04 144,147-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aca81aceb4893bb9a40df6195fa2cd8b03c3f54b",
+  "prompts": {},
+  "sessions": {
+    "s_664c3e6ae8c7b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02bd6ac4-ec37-4eaf-b213-588960a3d03f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_5b6031f8d743d2::t_ae8e71ca438cbe 20,322,331-333,338,344,348
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_5b6031f8d743d2::t_ae8e71ca438cbe 127-129,206,208-209,244,248,264-268,274
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_5b6031f8d743d2::t_c489e71e57a5f4 73,558,594,633
+  s_5b6031f8d743d2::t_654c3fb023d37f 18,61-65,69-71,79,84,91,93,183,201,511-514,518-530,539-543,573,578
+  s_5b6031f8d743d2::t_9eb469745da62a 291,516-517
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_5b6031f8d743d2::t_a4fd5af1bd771e 268-297,605-624
+  s_5b6031f8d743d2::t_c489e71e57a5f4 526,536,544,565,581,595,632,648,665,671,687
+  s_5b6031f8d743d2::t_4c2aaac29710d6 625
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d979551e67a664a14bcf903a0a4ca17de0fcafac",
+  "prompts": {},
+  "sessions": {
+    "s_5b6031f8d743d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1100f-e115-7691-90fc-3bee634d1eaf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

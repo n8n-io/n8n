@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.vue
+  s_d4ad8f5383db85::t_4907b8860e33a0 45,362-366,405-409
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.virtualization.test.ts
+  s_d4ad8f5383db85::t_e0480a26b4b87d 50-67,69-70
+  s_d4ad8f5383db85::t_13c1a79b5845e8 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "14c8f6e8e4d262cee566e4716c86ccb7fe91fdde",
+  "prompts": {},
+  "sessions": {
+    "s_d4ad8f5383db85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8192-3c05-7930-9be3-075943acd148",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_73289d460c0380::t_f69f51fdc5c5a9 345
+  s_73289d460c0380::t_ab8f6548f77d1c 137-138
+  s_73289d460c0380::t_027ee0c4c19cd7 303
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_73289d460c0380::t_bb244069080e92 192-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b16b8e76da3750447e85e4c0d7257719a680f63b",
+  "prompts": {},
+  "sessions": {
+    "s_73289d460c0380": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a3d5474-5723-429a-afa7-13afa91f1405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

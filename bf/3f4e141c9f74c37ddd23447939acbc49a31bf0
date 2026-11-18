@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Discourse/test/Discourse.node.test.ts
+  s_2e1fa95fc44f8f::t_9c64b65254e1f5 1-59
+packages/nodes-base/nodes/Discourse/Discourse.node.ts
+  s_bb620577c8a5fc::t_c9257722c84b25 10,95-99,134-139,147-153,179,195-202,210-216,224-230,249-256,273-278,284-290,297-303,316,318,347,405-410,415,418,421,452,475,490
+packages/nodes-base/nodes/Discourse/GenericFunctions.ts
+  s_deeb0320f0a5cd::t_f32f940ee70a5d 8-9,11,16,24,28,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf3f4e141c9f74c37ddd23447939acbc49a31bf0",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_bb620577c8a5fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1bf36ff5c21062d8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_deeb0320f0a5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5d46f28701a1c020",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

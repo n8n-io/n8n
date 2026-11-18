@@ -1,0 +1,42 @@
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_4d4515bb8fac55::t_3abfb066ea2933 29,44-48
+  s_4d4515bb8fac55::t_aded52dfa81071 49
+packages/@n8n/backend-test-utils/oxlint.config.mts
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 1-7
+packages/@n8n/benchmark/package.json
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 12-13,44,47-48
+packages/testing/test-impact/package.json
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 28-29,44,48-49
+packages/@n8n/mcp-browser/oxlint.config.mts
+  s_4d4515bb8fac55::t_66129be957e6a3 1-7
+packages/@n8n/benchmark/oxlint.config.mts
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 1-11
+packages/@n8n/cli/package.json
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 24-25,87,91-92
+packages/testing/test-impact/oxlint.config.mts
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 1-8
+packages/@n8n/mcp-browser/package.json
+  s_4d4515bb8fac55::t_66129be957e6a3 19-20,41,49-50
+packages/@n8n/backend-test-utils/package.json
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 12-13,38,40-41
+packages/@n8n/cli/oxlint.config.mts
+  s_4d4515bb8fac55::t_69c7cb769eb6b1 1-7
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_b74737e9dc08e3 1851,1853,1857-1862,1882-1884,1891-1896,1996-1998,2008-2013,3263-3265,3287-3292,7880-7882,7892-7897
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32fba4218d2d0714c6de77c0115d17f943070f69",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

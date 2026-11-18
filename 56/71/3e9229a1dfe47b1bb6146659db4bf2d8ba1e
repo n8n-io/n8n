@@ -1,0 +1,47 @@
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_9c30e64d236bdf::t_412c8f1e276bf7 7,174-263
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_9c30e64d236bdf::t_f6a56d66e730d3 43-44
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_9c30e64d236bdf::t_e15237938ab8c7 1,18-20,55-56,58,63-90
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_9c30e64d236bdf::t_b70c9d2e698b50 31
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_9c30e64d236bdf::t_b0eab55e87f0bb 32
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_9c30e64d236bdf::t_e65ea732a5eb33 240,271-273
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9c30e64d236bdf::t_31d2c304ef36f9 86,520-540,755-756,768-769
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_9c30e64d236bdf::t_15f5978277501b 68,478-505
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_9c30e64d236bdf::t_be96a69070dbe5 58-59,62-76
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_9c30e64d236bdf::t_b42d5be6ca0439 3-21
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_9c30e64d236bdf::t_2b30004a1d9ced 16,76-80,139-145
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_9c30e64d236bdf::t_c4ce95df612fe9 60,67-69,79-97
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_9c30e64d236bdf::t_1fa831f999a119 35-41,47
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_9c30e64d236bdf::t_31fdb83f36ebbe 75,78-79,227
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_9c30e64d236bdf::t_35c086e8e788b0 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "56713e9229a1dfe47b1bb6146659db4bf2d8ba1e",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

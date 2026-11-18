@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_0bfa65df1483fd::t_9e49d5817705d7 365-369,374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "033bfa086abbc3c4ca2ed9c757520c6ef8780f4b",
+  "prompts": {},
+  "sessions": {
+    "s_0bfa65df1483fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6431814-906d-402f-8378-ef3dda678863",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

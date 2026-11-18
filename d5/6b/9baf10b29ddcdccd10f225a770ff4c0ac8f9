@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_4316e79fc12313::t_204b58023422de 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d56b9baf10b29ddcdccd10f225a770ff4c0ac8f9",
+  "prompts": {},
+  "sessions": {
+    "s_4316e79fc12313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a71b6bd-0517-4e71-8876-e67d7de1a8b3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

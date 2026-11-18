@@ -1,0 +1,22 @@
+pnpm-lock.yaml
+  ai_agent 6819-6821,6825-6827,6841-6843,6862-6864,6886-6888
+packages/modules/type-availability-policies/frontend/package.json
+  s_326dd039c6d306::t_6b7fa57c398070 22,24,38
+  s_326dd039c6d306::t_034adc2dc6568e 31,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "164128601ecce0b79d618cf6c6052439656142b5",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

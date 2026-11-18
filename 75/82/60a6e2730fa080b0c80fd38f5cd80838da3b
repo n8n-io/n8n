@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_bf4e1392c01b66::t_7a0d8a655d0ed0 357
+  s_bf4e1392c01b66::t_03e17072f54cc3 321
+  s_bf4e1392c01b66::t_26c40edf95d520 320,322-324
+  s_bf4e1392c01b66::t_6636973b889ece 64-65
+  s_bf4e1392c01b66::t_a03f6e05e3139f 319
+packages/@n8n/instance-ai/evaluations/README.md
+  s_bf4e1392c01b66::t_a81ef579b6b5b2 590-592,595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "758260a6e2730fa080b0c80fd38f5cd80838da3b",
+  "prompts": {},
+  "sessions": {
+    "s_bf4e1392c01b66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33912259-f6f6-49c4-8fb3-ce60e7ba0c28",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

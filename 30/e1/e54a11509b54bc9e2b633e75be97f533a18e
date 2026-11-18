@@ -1,0 +1,25 @@
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_b370a35485f958::t_5143078dabc2b0 36-41
+packages/@n8n/ai-utilities/src/llm-output/extract-json.test.ts
+  s_b370a35485f958::t_703c274faa33b2 54-61
+packages/@n8n/ai-utilities/src/llm-output/extract-json.ts
+  s_b370a35485f958::t_256dfd08c6d642 44-49,53
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_b370a35485f958::t_030cb38f67bc9d 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "30e1e54a11509b54bc9e2b633e75be97f533a18e",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

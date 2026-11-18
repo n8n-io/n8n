@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/webhook-helper-functions.test.ts
+  s_e26f462999ffae::t_c659292af7278d 11,152-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "951a44bfab0eb501f2cf0a204195556070c3d677",
+  "prompts": {},
+  "sessions": {
+    "s_e26f462999ffae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_e26f462999ffae",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

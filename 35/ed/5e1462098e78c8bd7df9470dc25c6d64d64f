@@ -1,0 +1,14 @@
+pnpm-lock.yaml
+  ai_agent 1139-1157,5845,7681,11833,18296,19304-19305,20805-20806,21501,24075,27790,30938,36563,38639,40368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "35ed5e1462098e78c8bd7df9470dc25c6d64d64f",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

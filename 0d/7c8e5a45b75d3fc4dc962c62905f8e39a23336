@@ -1,0 +1,69 @@
+packages/nodes-base/nodes/Snowflake/__tests__/executeQuery.test.ts
+  s_bef64c16cb8405::t_8dfab33b4f651f 131-132,142-143
+packages/nodes-base/nodes/MySql/test/v2/operations.test.ts
+  s_bef64c16cb8405::t_4f9f0f283aa639 431
+  s_bef64c16cb8405::t_9cfbe7f79b2404 415
+  s_bef64c16cb8405::t_2c2521d7d22922 381,384,391
+packages/nodes-base/utils/sql-query-parameters.ts
+  s_bef64c16cb8405::t_b98a64dfc6a578 93-96,98,103-105,114,116
+  s_bef64c16cb8405::t_0cc6b170332133 1,9-11
+  s_bef64c16cb8405::t_fd03e37c2275cc 50-53
+  s_bef64c16cb8405::t_85710522cd900b 3,7-8
+  s_bef64c16cb8405::t_2b95e2c07eb72b 59-65,68,70-79,84
+  s_bef64c16cb8405::t_9c9bfb2ed6b525 90-92,97,100-102
+  s_bef64c16cb8405::t_c88cf2f111bbd4 12
+packages/nodes-base/nodes/MySql/v2/helpers/utils.ts
+  s_bef64c16cb8405::t_daaa885bea5695 25-33
+  s_bef64c16cb8405::t_68b41e6036e405 181-186
+  s_bef64c16cb8405::t_bb5042ef517dbe 91
+packages/nodes-base/nodes/MySql/test/v1/executeQuery.queryParameterCommas.test.ts
+  s_bef64c16cb8405::t_8e43e205c53595 22-23
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  s_bef64c16cb8405::t_eea097cddca4bf 11
+  s_bef64c16cb8405::t_0384584cf63785 302-305
+packages/nodes-base/nodes/MySql/v2/actions/database/executeQuery.operation.ts
+  s_bef64c16cb8405::t_285c9bba4e10f8 76
+packages/nodes-base/nodes/MySql/v1/MySqlV1.node.ts
+  s_bef64c16cb8405::t_6bfe05009eeb8e 350
+  s_bef64c16cb8405::t_1c2e95b7a89fe8 17
+packages/nodes-base/nodes/Merge/v3/actions/mode/combineBySql.ts
+  s_bef64c16cb8405::t_6cf48bf980d8b6 13
+  s_bef64c16cb8405::t_c5e2cb011eaf29 154,170-174
+  s_bef64c16cb8405::t_154f285b2b7be1 169
+  s_bef64c16cb8405::t_1c07b366b04910 232
+packages/nodes-base/nodes/Merge/test/v3/operations.test.ts
+  s_bef64c16cb8405::t_f59b9c143fbeff 254-279
+packages/nodes-base/nodes/Microsoft/Sql/test/MicrosoftSql.node.test.ts
+  s_bef64c16cb8405::t_a9233ce0e1bd53 254,258-259,264,269-270
+  s_bef64c16cb8405::t_b3ab822c05c218 271
+packages/nodes-base/nodes/MySql/test/v1/executeQuery.queryParameterCommas.workflow.json
+  s_bef64c16cb8405::t_61a627566ac441 34,36
+  s_bef64c16cb8405::t_302bafdd16c508 17-18
+packages/nodes-base/utils/sql-query-parameters.test.ts
+  s_bef64c16cb8405::t_e93087adb20796 54,56,61-62,88-97,101,106-138,140
+  s_bef64c16cb8405::t_9453fb684b9fe7 102-105
+  s_bef64c16cb8405::t_503f2539aa9375 157
+  s_bef64c16cb8405::t_160df3a124bd99 1,6
+  s_bef64c16cb8405::t_421cb9c704e3e2 139,141-156
+  s_bef64c16cb8405::t_26f1488e376aa6 7
+packages/nodes-base/nodes/MySql/test/v2/utils.test.ts
+  s_bef64c16cb8405::t_638f14872f0126 172-173,175,179
+  s_bef64c16cb8405::t_4dae9f7776235e 4
+  s_bef64c16cb8405::t_7f97e5feaf0f27 170-171,174,176-178,180-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d7c8e5a45b75d3fc4dc962c62905f8e39a23336",
+  "prompts": {},
+  "sessions": {
+    "s_bef64c16cb8405": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cb8dc37-f44c-4585-a8f1-ed3cd9dbf43c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

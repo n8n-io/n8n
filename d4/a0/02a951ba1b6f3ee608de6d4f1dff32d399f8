@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_d3c0f6f6f7d41c::t_1a9e4e0af438c7 131-141
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_47d9c24d147bdc::t_0ca5dd545f2a30 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4a002a951ba1b6f3ee608de6d4f1dff32d399f8",
+  "prompts": {},
+  "sessions": {
+    "s_47d9c24d147bdc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bc9-65a1-7110-9789-34497cba967e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

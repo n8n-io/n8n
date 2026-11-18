@@ -1,0 +1,38 @@
+packages/cli/src/workflow-execute-additional-data.ts
+  ai_agent 378-379,381,391,406
+packages/cli/src/modules/agents/utils/agent-execution-counter.ts
+  s_e8596a764fed53::t_43cab992b433dd 1-30
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  ai_agent 1-3,7,14,18,145-151,237-240,446
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_e8596a764fed53::t_8fd05cbd915b57 446-556
+  s_e8596a764fed53::t_43cab992b433dd 1-445,557-764
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_e8596a764fed53::t_43cab992b433dd 40,1235,1244-1245,1261-1262,1287,1317,1352,1390,1423,1449,1462,1485,1516-1517,1550-1551
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_e8596a764fed53::t_c09daf635d5edf 454
+  s_e8596a764fed53::t_e455bc44750965 2,8
+  s_e8596a764fed53::t_5b3591e7ef101f 502-507,510-512,515-517
+  s_e8596a764fed53::t_b9f9723dcfcaeb 420
+  s_e8596a764fed53::t_1715408d2a303d 539
+  s_e8596a764fed53::t_43cab992b433dd 1,3-7,9-144,149-151,153-167,169-419,421-453,455-501,508-509,513-514,518-538,540-549
+  s_e8596a764fed53::t_a836d5c3fcac9f 145-148,152,168
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  ai_agent 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da6152265b365207a4c22bd2edd71f1b174ec4ce",
+  "prompts": {},
+  "sessions": {
+    "s_e8596a764fed53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "579e3553-9680-4b38-8d21-5fff0a053271",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

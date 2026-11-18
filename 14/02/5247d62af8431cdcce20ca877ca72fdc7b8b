@@ -1,0 +1,23 @@
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/manifest.json
+  s_c77c9c67421351::t_e119e6043ed873 107-111
+packages/@n8n/workflow-sdk/src/codegen/codegen-roundtrip.test.ts
+  s_c77c9c67421351::t_cdd67b18e9791e 2751-2766
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/10.json
+  s_c77c9c67421351::t_fbdd69ff836fed 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "14025247d62af8431cdcce20ca877ca72fdc7b8b",
+  "prompts": {},
+  "sessions": {
+    "s_c77c9c67421351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd7b1752-695a-4039-902a-08408f1d312e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

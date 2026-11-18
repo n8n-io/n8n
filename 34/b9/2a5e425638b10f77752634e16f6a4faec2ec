@@ -1,0 +1,28 @@
+packages/cli/src/executions/execution.service.ts
+  s_cdca0ffb67006b::t_a29294c24b89db 2,46,100,501
+packages/frontend/editor-ui/src/features/execution/executions/executions.types.ts
+  s_cdca0ffb67006b::t_a29294c24b89db 7,11,31,46
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_cdca0ffb67006b::t_a29294c24b89db 9,153
+  s_cdca0ffb67006b::t_52cc40ff3c79d9 154-159
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+  s_cdca0ffb67006b::t_3df925db90b265 19,254
+packages/@n8n/db/src/entities/types-db.ts
+  s_cdca0ffb67006b::t_a29294c24b89db 20,237,428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34b92a5e425638b10f77752634e16f6a4faec2ec",
+  "prompts": {},
+  "sessions": {
+    "s_cdca0ffb67006b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f443b2e4-3325-43af-879b-834762b1d7fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

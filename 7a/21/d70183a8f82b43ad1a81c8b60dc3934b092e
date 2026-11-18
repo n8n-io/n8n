@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_020cd5339b06b5::t_8626adcf214905 16,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7a21d70183a8f82b43ad1a81c8b60dc3934b092e",
+  "prompts": {},
+  "sessions": {
+    "s_020cd5339b06b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3052e20a-9b55-466b-99f4-025979520963",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

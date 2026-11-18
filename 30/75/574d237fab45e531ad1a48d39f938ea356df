@@ -1,0 +1,31 @@
+packages/@n8n/ai-utilities/src/node-catalog/dynamic-node-parameters.ts
+  s_11a83649651c0a::t_a032aa2bda6a04 218-226,236,243-244
+packages/@n8n/ai-workflow-builder.ee/src/tools/get-resource-locator-options.tool.ts
+  s_11a83649651c0a::t_5b1066923e45d1 100,102
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-resource-locator-options.tool.test.ts
+  s_11a83649651c0a::t_c4ab16eab7e63a 8,227-282
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_11a83649651c0a::t_09cff2414f1bd6 500-585
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/dynamic-node-parameters.test.ts
+  s_11a83649651c0a::t_3e861c3a169a40 172-189,191-192
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_11a83649651c0a::t_90666e223b43d2 189-190
+  s_11a83649651c0a::t_25eaf33305947b 169-171,179,185
+  s_11a83649651c0a::t_45f26e2b95de90 109,112-114,123-126,139,157-160,162-167,172-178,180-184,187-188,191-224,347,368,371-373,481-484,596-599
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "3075574d237fab45e531ad1a48d39f938ea356df",
+  "prompts": {},
+  "sessions": {
+    "s_11a83649651c0a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9383-13d9-7601-80f7-8ae04b01bd59",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

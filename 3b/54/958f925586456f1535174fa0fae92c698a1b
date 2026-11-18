@@ -1,0 +1,30 @@
+packages/cli/src/public-api/media-types/request-body/types.ts
+  s_8631ec10eb1199::t_5e08f244b448db 2,13-17,19
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_8631ec10eb1199::t_9b99b4ea7e471a 7-12,20,22-23
+  s_8631ec10eb1199::t_33a1f10107165d 174,262-301
+  s_8631ec10eb1199::t_c2d89fd2b254f8 302-304
+packages/cli/src/public-api/media-types/request-body/multipart.request-body.ts
+  s_8631ec10eb1199::t_0546c8c3ae9a2b 1
+  s_8631ec10eb1199::t_8431e4af7fed03 57
+  s_8631ec10eb1199::t_cf3786d08b3a23 60,64,66,69,72,74
+  s_8631ec10eb1199::t_93d41b4fd47b04 67
+packages/cli/src/public-api/media-types/request-body/json.request-body.ts
+  s_8631ec10eb1199::t_1afb2b610f6920 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3b54958f925586456f1535174fa0fae92c698a1b",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

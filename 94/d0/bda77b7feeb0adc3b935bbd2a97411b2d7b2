@@ -1,0 +1,127 @@
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_e96b2a058a8d23::t_a24db66c801e66 232-249,251-257
+  s_e96b2a058a8d23::t_758f6f2b6dd6bf 13,82,100,111-112,122,124,223,229,250
+  s_e96b2a058a8d23::t_96a53b891b2dc7 258
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_e96b2a058a8d23::t_ce667fbbadf984 10,21,90-96
+  s_e96b2a058a8d23::t_291e04d317d0dd 97-98
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_e96b2a058a8d23::t_e367092dca53cf 29,218-219,224-229,430-431,436
+  s_e96b2a058a8d23::t_c308b84ca6b0c8 220-223
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_e96b2a058a8d23::t_7732d6d9b0f74d 202,209,234,236-237
+  s_e96b2a058a8d23::t_bd38e18979354d 221-222
+  s_e96b2a058a8d23::t_d8f1e4b45b412b 167,169-182,250-251
+  s_e96b2a058a8d23::t_e367092dca53cf 43-44,59,168
+  s_e96b2a058a8d23::t_03a8585421591d 46-51,115-118
+  s_e96b2a058a8d23::t_f3f7f47b5a857a 252-253
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_e96b2a058a8d23::t_84dd6fab145ffe 493
+  s_e96b2a058a8d23::t_4b961ec046a4b6 509,514-518,522-523,527-528
+  s_e96b2a058a8d23::t_bc866ba5ba6d93 2,114
+  s_e96b2a058a8d23::t_758f6f2b6dd6bf 519-521,524
+  s_e96b2a058a8d23::t_03f8476f0a1c35 43-46,217-232
+  s_e96b2a058a8d23::t_39c926b6db6a27 47-48,109-113,115-117,169-171,184-216,233-268
+  s_e96b2a058a8d23::t_a6c556f150e1c6 491,525-526
+  s_e96b2a058a8d23::t_0e1d52035d6e6d 269
+packages/@n8n/api-types/src/agents/types.ts
+  s_e96b2a058a8d23::t_ce667fbbadf984 638-641
+packages/cli/src/modules/agents/agent-session-stop.service.ts
+  s_e96b2a058a8d23::t_e367092dca53cf 40
+  s_e96b2a058a8d23::t_ce667fbbadf984 1,3-20,22-39,41-44,46-53,55-58
+  s_e96b2a058a8d23::t_70504b42a11cff 2,21,45,54
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentThreadsApi.test.ts
+  s_e96b2a058a8d23::t_2c6799d7957a2f 10,90-101
+  s_e96b2a058a8d23::t_06d3233bf18d47 102-103
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.executionError.test.ts
+  s_e96b2a058a8d23::t_581f331513a625 62-65,87-90,102-105,119-123,150-151,166-170
+  s_e96b2a058a8d23::t_a9b1d594abf468 111-116,125-142
+  s_e96b2a058a8d23::t_1727669eaee913 124,143-149
+  s_e96b2a058a8d23::t_a24db66c801e66 66-86,91-101,106-110,117-118,152-165
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e96b2a058a8d23::t_e367092dca53cf 1699,1733
+  s_e96b2a058a8d23::t_d8f1e4b45b412b 1700
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_e96b2a058a8d23::t_d8f1e4b45b412b 167-171,174-178,180,200,202,204,283
+  s_e96b2a058a8d23::t_a24db66c801e66 173,284
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_e96b2a058a8d23::t_bc6226bf2214e1 250-255,314-315
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e96b2a058a8d23::t_ce667fbbadf984 386-391
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_e96b2a058a8d23::t_a24db66c801e66 276-289,291,294-306
+  s_e96b2a058a8d23::t_04e0edefc1f354 3,58,3922-3924
+  s_e96b2a058a8d23::t_84dd6fab145ffe 292,3921,3925
+  s_e96b2a058a8d23::t_581f331513a625 290,293,307
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_e96b2a058a8d23::t_a24db66c801e66 269-274
+  s_e96b2a058a8d23::t_bc1b6d46618522 9,244-253,267,276,428-433
+  s_e96b2a058a8d23::t_758f6f2b6dd6bf 268,275
+  s_e96b2a058a8d23::t_ed358f1e467015 333-335,351-353
+  s_e96b2a058a8d23::t_a02800f16dd602 331-332,376
+  s_e96b2a058a8d23::t_f91693227d9437 434
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_e96b2a058a8d23::t_581f331513a625 594-605,609,617-622,628-635
+  s_e96b2a058a8d23::t_a24db66c801e66 606-608,610-616,623-627
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_e96b2a058a8d23::t_d8f1e4b45b412b 267,346,354-357,553,608,615-616,623
+  s_e96b2a058a8d23::t_a24db66c801e66 617-622
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_e96b2a058a8d23::t_bc1b6d46618522 42,1288-1291,1296-1304
+  s_e96b2a058a8d23::t_a24db66c801e66 1292-1295
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_e96b2a058a8d23::t_2c6799d7957a2f 43-50,52-54,59,259-260,275,279,283-289,304-308,312-324,328-333
+  s_e96b2a058a8d23::t_bc866ba5ba6d93 2,51
+  s_e96b2a058a8d23::t_03f8476f0a1c35 276-278,280-282,290-303,309-311,325-327
+  s_e96b2a058a8d23::t_b40d59436b8cc6 334
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e96b2a058a8d23::t_a6c556f150e1c6 52-53
+  s_e96b2a058a8d23::t_bc1b6d46618522 50-51,54
+  s_e96b2a058a8d23::t_4b961ec046a4b6 55-56
+  s_e96b2a058a8d23::t_e367092dca53cf 46-49,57
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_e96b2a058a8d23::t_70504b42a11cff 67,123
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_e96b2a058a8d23::t_bc6226bf2214e1 22,24-32
+  s_e96b2a058a8d23::t_90508dbab9563a 23
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_e96b2a058a8d23::t_39f03d326e25e8 33
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSessionStop.ts
+  s_e96b2a058a8d23::t_e367092dca53cf 1-22,24-34
+  s_e96b2a058a8d23::t_03f8476f0a1c35 23
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_e96b2a058a8d23::t_e367092dca53cf 8,179-188
+  s_e96b2a058a8d23::t_57f12aa4d836b9 189-191
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e96b2a058a8d23::t_ce8a6f2e66fbf5 592-604
+packages/cli/src/modules/agents/__tests__/agent-session-stop.service.test.ts
+  s_e96b2a058a8d23::t_03f8476f0a1c35 51-53,65-71,78-84,90-92,99-101,108-110,125-128
+  s_e96b2a058a8d23::t_556d70f966b510 1-50,54-64,72-77,85-89,93-98,102-107,111-124,129-137
+packages/cli/src/scaling/constants.ts
+  s_e96b2a058a8d23::t_a2fd5c01a28ad7 51
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_e96b2a058a8d23::t_ce667fbbadf984 164-167
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_e96b2a058a8d23::t_ce8a6f2e66fbf5 5,33,43,55,139,170-180,184-188
+  s_e96b2a058a8d23::t_03f8476f0a1c35 96,181-183,189-194
+  s_e96b2a058a8d23::t_17079df1669b9a 195-196
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_e96b2a058a8d23::t_70504b42a11cff 199
+  s_e96b2a058a8d23::t_e367092dca53cf 9,73,194-198,200-202,235-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94d0bda77b7feeb0adc3b935bbd2a97411b2d7b2",
+  "prompts": {},
+  "sessions": {
+    "s_e96b2a058a8d23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17996-09b4-7210-950e-5df432b2f229",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

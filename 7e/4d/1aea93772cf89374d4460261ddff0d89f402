@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_b9148aec13e783::t_c5f1f5c7f85f72 138
+  s_b9148aec13e783::t_0940e54093c2c2 140-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e4d1aea93772cf89374d4460261ddff0d89f402",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b9148aec13e783": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8555340f-5489-44ff-8084-cb9e4cacf129",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

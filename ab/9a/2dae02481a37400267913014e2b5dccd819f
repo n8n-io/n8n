@@ -1,0 +1,80 @@
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/credentials/ExampleApi.credentials.ts
+  s_db33480b8c9c64::t_fa357e39c03b03 1-45
+packages/@n8n/scan-community-package/src/scanner.test.ts
+  s_db33480b8c9c64::t_e5451f37d4405d 86,308-347
+  s_db33480b8c9c64::t_d20ed5081f5d3b 5,21-22
+  s_db33480b8c9c64::t_4e54465c6133fe 23,348
+packages/@n8n/node-cli/src/commands/new/prompts.ts
+  s_db33480b8c9c64::t_d8456a791d42f8 30
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/icons/example.dark.svg
+  s_db33480b8c9c64::t_e2a697569e3c56 1-13
+packages/@n8n/node-cli/src/template/trigger-templates.test.ts
+  s_db33480b8c9c64::t_03965c3b45b0f8 1-91
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/nodes/ExamplePollingTrigger/ExamplePollingTrigger.node.ts
+  s_db33480b8c9c64::t_d702b9d688e5a5 1-3,5-47,50-62
+  s_db33480b8c9c64::t_caef5f078e6abe 4
+  s_db33480b8c9c64::t_5be1b977e4527a 48-49
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template.ts
+  s_db33480b8c9c64::t_4e12cb963521d1 1-9
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/package.json
+  s_db33480b8c9c64::t_d6f139c3d3ffa8 1-50
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/icons/example.dark.svg
+  s_db33480b8c9c64::t_e2a697569e3c56 1-13
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/nodes/ExampleWebhookTrigger/ExampleWebhookTrigger.node.json
+  s_db33480b8c9c64::t_d6f139c3d3ffa8 1-18
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/nodes/ExampleWebhookTrigger/ExampleWebhookTrigger.node.ts
+  s_db33480b8c9c64::t_27e9acf505eca7 102
+  s_db33480b8c9c64::t_b512e794053712 1-8,10-48,50-101,103-113,115-125
+  s_db33480b8c9c64::t_5be1b977e4527a 9,49,114
+packages/@n8n/node-cli/package.json
+  s_db33480b8c9c64::t_42a18657a49030 72
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/README.md
+  s_db33480b8c9c64::t_32ee34bb499307 1-48
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/tsconfig.json
+  s_db33480b8c9c64::t_e2a697569e3c56 1-25
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template.ts
+  s_db33480b8c9c64::t_4e12cb963521d1 1-9
+packages/@n8n/node-cli/src/configs/eslint.ts
+  s_db33480b8c9c64::t_78349df3eb5539 48-49
+packages/@n8n/scan-community-package/src/scanner.ts
+  s_db33480b8c9c64::t_e5451f37d4405d 344-348
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/tsconfig.json
+  s_db33480b8c9c64::t_e2a697569e3c56 1-25
+packages/@n8n/node-cli/src/template/templates/index.ts
+  s_db33480b8c9c64::t_273dd8c77263f1 3-4
+  s_db33480b8c9c64::t_e00119aed611a0 15-16
+packages/@n8n/node-cli/README.md
+  s_db33480b8c9c64::t_d8456a791d42f8 69
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/credentials/ExampleApi.credentials.ts
+  s_db33480b8c9c64::t_fa357e39c03b03 1-45
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/icons/example.svg
+  s_db33480b8c9c64::t_e2a697569e3c56 1-13
+packages/@n8n/node-cli/src/commands/new/index.ts
+  s_db33480b8c9c64::t_41b39aaac1ceda 45-46
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/package.json
+  s_db33480b8c9c64::t_d6f139c3d3ffa8 1-50
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/nodes/ExamplePollingTrigger/ExamplePollingTrigger.node.json
+  s_db33480b8c9c64::t_d6f139c3d3ffa8 1-18
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/icons/example.svg
+  s_db33480b8c9c64::t_e2a697569e3c56 1-13
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/README.md
+  s_db33480b8c9c64::t_32ee34bb499307 1-48
+pnpm-lock.yaml
+  s_db33480b8c9c64::t_e383db94141f1f 3644-3646
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab9a2dae02481a37400267913014e2b5dccd819f",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

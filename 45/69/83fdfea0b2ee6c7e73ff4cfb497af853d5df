@@ -1,0 +1,44 @@
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/NodeIcon.test.ts
+  s_af62986d6ef75e::t_bed63a2124df3c 180-197
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/IconContent.vue
+  s_af62986d6ef75e::t_7184dd2a288535 91-104,106-121
+  s_af62986d6ef75e::t_429d256de8d0f4 5,12-25,32
+packages/frontend/editor-ui/src/app/utils/nodeIcon.ts
+  s_af62986d6ef75e::t_16b54b635180b2 25-30,33
+packages/frontend/editor-ui/src/features/resolvers/composables/useNodeRunAsBadge.ts
+  s_af62986d6ef75e::t_62ae7ed5cad50b 40-51
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/NodeIcon.vue
+  s_af62986d6ef75e::t_42b28342c9fda1 6,22
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_af62986d6ef75e::t_cf64b90d8b3b58 177-179,181-183
+  s_af62986d6ef75e::t_2193ecb4cd4589 55
+packages/frontend/editor-ui/src/features/resolvers/composables/useNodeRunAsBadge.test.ts
+  s_af62986d6ef75e::t_59fd27fbf52d8e 52-53,58
+  s_af62986d6ef75e::t_8fce4a32898a39 79-85
+  s_af62986d6ef75e::t_28ef480551adfe 102-109
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.test.ts
+  s_af62986d6ef75e::t_8a3811d2e2e317 67
+  s_af62986d6ef75e::t_c31e315e221d76 104
+  s_af62986d6ef75e::t_39cc77711688e7 157,161-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "456983fdfea0b2ee6c7e73ff4cfb497af853d5df",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

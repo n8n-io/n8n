@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Storage/test/container/containerPath.test.ts
+  s_2e1fa95fc44f8f::t_aa9a505d817980 1,25-37
+packages/nodes-base/nodes/Microsoft/Storage/test/container/container_delete_relative_name.workflow.json
+  s_2e1fa95fc44f8f::t_79ac9ab2e9c705 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e374c578e9af549aebea7ff5485404cda41f85f6",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_8df4463f3c6a3c::t_b8ab93eb90cdd2 2671,2676,2696,2703,2715,2722,2729
+  s_8df4463f3c6a3c::t_f456605d7d8bff 2709-2711
+  s_8df4463f3c6a3c::t_e01280d13d953b 606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d78c2cd4c6395a55aac159e72656d2368ef63d9",
+  "prompts": {},
+  "sessions": {
+    "s_8df4463f3c6a3c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11137-790b-7795-b004-edb76428f7aa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

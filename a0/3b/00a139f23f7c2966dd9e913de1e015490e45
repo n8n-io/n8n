@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.ts
+  s_983eea3c47ac98::t_ce36176526649d 123-137
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.test.ts
+  s_983eea3c47ac98::t_a689a3a106eaf6 120-122
+  s_983eea3c47ac98::t_da43db2d25d49d 7
+  s_983eea3c47ac98::t_bf1ab254eb3b14 109-119,123-127
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_983eea3c47ac98::t_ebf8ef6d2496dc 171
+  s_983eea3c47ac98::t_308d3b8b73f36a 81-85
+  s_983eea3c47ac98::t_33aabd25c964a6 294-295
+  s_983eea3c47ac98::t_3c6b7a84008b5b 14
+  s_983eea3c47ac98::t_cdb177aca70695 185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a03b00a139f23f7c2966dd9e913de1e015490e45",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
