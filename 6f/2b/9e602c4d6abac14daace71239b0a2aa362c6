@@ -1,0 +1,20 @@
+scripts/zero-trust-vault/compromise.mjs
+  s_293d023a29dd97::t_6bcd4740ac0f53 1-21,25-27,31-37,44-84,87-98,102-104,108-117,122-126,130-131,135-158,163-165,175-178,182-184,188,201,206,216-219
+  s_293d023a29dd97::t_e8dbd635f833bc 22-24,28-30,38-43,85-86,99-101,105-107,118-121,127-129,132-134,159-162,166-174,179-181,185-187,189-200,202-205,207-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f2b9e602c4d6abac14daace71239b0a2aa362c6",
+  "prompts": {},
+  "sessions": {
+    "s_293d023a29dd97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ed4163-15ff-44f2-a2f6-48db5f846d4f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

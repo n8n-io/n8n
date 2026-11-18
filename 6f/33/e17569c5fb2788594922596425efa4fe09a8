@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/pages/CanvasPage.ts
+  s_1cc2f8126f45e6::t_6a8a3b2c1b99c5 959-962
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f33e17569c5fb2788594922596425efa4fe09a8",
+  "prompts": {},
+  "sessions": {
+    "s_1cc2f8126f45e6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1eebb-47fd-7e83-98cf-3ac7e8c5b5a1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
