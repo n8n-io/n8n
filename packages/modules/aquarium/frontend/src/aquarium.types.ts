@@ -24,6 +24,29 @@ export interface AquariumEntity {
 	metrics: EntityMetrics;
 }
 
+/**
+ * Live run counts from the backend. They change every few seconds, so they reach creatures
+ * directly and do not go through the trait rules.
+ */
+export interface EntityActivity {
+	/** Runs that started and did not end yet. */
+	running: number;
+	/** Counts for the last `windowSeconds` of the activity snapshot. */
+	started: number;
+	succeeded: number;
+	failed: number;
+	/** Starts in each full second of the window, oldest first. The current second is not in it. */
+	startedPerSecond: number[];
+	/** Time of the last start or end, in ms. */
+	lastEventAt: number;
+}
+
+export interface ActivitySnapshot {
+	windowSeconds: number;
+	/** Keyed like `AquariumEntity.key`. Entities with no recent runs are absent. */
+	byKey: Map<string, EntityActivity>;
+}
+
 export interface EntityMetricsPatch {
 	key: string;
 	metrics: Partial<EntityMetrics>;

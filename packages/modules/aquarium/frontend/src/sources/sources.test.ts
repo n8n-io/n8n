@@ -143,3 +143,27 @@ describe('source mappers', () => {
 		]);
 	});
 });
+
+describe('executionsSource', () => {
+	it('follows the next cursor to load more pages', async () => {
+		const restApiClient = await import('@n8n/rest-api-client');
+		const execution = (id: string) => ({
+			id,
+			workflowId: 'w',
+			status: 'success' as const,
+			startedAt: new Date(0),
+			stoppedAt: new Date(10),
+		});
+		const request = vi
+			.spyOn(restApiClient, 'makeRestApiRequest')
+			.mockResolvedValueOnce({ results: [execution('2')], nextCursor: 'next-page' })
+			.mockResolvedValueOnce({ results: [execution('1')], nextCursor: null });
+		const { executionsSource } = await import('./executions.source');
+
+		const patches = await executionsSource.load(context);
+
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(request.mock.calls[1][3]).toEqual({ limit: 100, cursor: 'next-page' });
+		expect(patches[0].metrics.executionCount).toBe(2);
+	});
+});

@@ -20,6 +20,8 @@ extend the module, and which rules to obey.
 | Page header, demo switch, warnings | `src/views/AquariumView.vue` |
 | Sidebar link (in the shell) | `packages/frontend/editor-ui/src/app/components/MainSidebar.vue` |
 | Fake data for development | `src/sources/demo.source.ts` |
+| Live activity (polling, demo activity) | `src/aquarium.store.ts`, `src/sources/activity.source.ts`, `src/sources/demo-activity.ts` |
+| Live activity (backend counts) | `../backend/src/` |
 
 ## Recipes
 
@@ -59,11 +61,36 @@ Use failure rate as the model. `failedCount` and `executionCount` are already lo
 6. Give some entities in `demo.source.ts` values that show the new look.
 7. Add a test in `traits.test.ts`.
 
+### Show live activity
+
+Live activity is on `creature.activity` (`EntityActivity`): `running`, `started`, `succeeded`,
+`failed`, `startedPerSecond` and `lastEventAt`. Swim speed already uses `startedPerSecond`, through
+`targetSpeedOf()` in `simulation.ts`. Read `creature.speed`, not `creature.traits.speed`, for the
+current speed. It is `undefined` when the workflow had no runs in the window.
+
+1. Read `creature.activity` in an effect or in `stepCreature`. Do not read it in a trait rule:
+   rules run only when the entity list changes, not when activity changes.
+2. Treat `undefined` as "idle".
+3. To see the effect without real traffic, turn on demo mode. `demo-activity.ts` makes new fake
+   counts on each poll.
+
+The tooltip in `AquariumTank.vue` shows the counts, so you can compare your effect with the data.
+
 ### Add an effect
 
 1. Implement `CreatureEffect` in `src/engine/effects.ts`.
 2. Add it to the effect registry in the same file.
 3. Add its id to `traits.effects` from a trait rule. Do not add it from the renderer.
+
+### Add a live field
+
+1. Count it in `ActivityTracker` in `../backend/src/activity-tracker.ts`. Keep the memory fixed:
+   use the one-second buckets, not one entry for each run.
+2. Add it to `aquariumWorkflowActivitySchema` in
+   `packages/@n8n/api-types/src/schemas/aquarium.schema.ts`.
+3. Map it in `toActivitySnapshot` (`src/sources/activity.source.ts`) and add it to
+   `EntityActivity`.
+4. Give it a fake value in `demo-activity.ts`.
 
 ### Add a data source
 
@@ -115,6 +142,14 @@ Each rule gets the traits of the rules before it. `speciesRule` reads `sizeTier`
 - Metrics sources later in the list win. Put the most accurate source last.
 - Most sources need a license, a module or a permission. The page warns only when every entity
   source or every metrics source fails (`isPartial` in the store).
+
+### Live activity
+
+- The page and the sidebar link need the backend module. It is on by default, and
+  `N8N_DISABLED_MODULES=aquarium` turns it off. Demo mode needs it too, because the route checks it.
+- The store polls only while `AquariumView` is mounted. Call `stopLiveUpdates()` when you add
+  another view that starts the polling.
+- A failed poll keeps the last snapshot and sets `hasActivityError`. Do not clear the creatures.
 
 ### Module boundaries
 

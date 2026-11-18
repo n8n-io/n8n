@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import { N8nButton, N8nCallout, N8nHeading, N8nSwitch, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nSwitch, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAquariumStore } from '../aquarium.store';
@@ -18,7 +18,9 @@ const documentTitle = useDocumentTitle();
 const isDemo = computed(() => route.query.demo === 'true');
 
 async function load() {
-	await store.load({ demo: isDemo.value });
+	const options = { demo: isDemo.value };
+	await store.load(options);
+	store.startLiveUpdates(options);
 }
 
 async function setDemo(value: string | number | boolean) {
@@ -34,13 +36,15 @@ onMounted(async () => {
 	await load();
 });
 
+onBeforeUnmount(() => store.stopLiveUpdates());
+
 watch(isDemo, load);
 </script>
 
 <template>
 	<div :class="$style.view">
 		<div :class="$style.tank">
-			<AquariumTank :entities="store.entities" @select="onSelect" />
+			<AquariumTank :entities="store.entities" :activity="store.activity" @select="onSelect" />
 		</div>
 
 		<!-- The overlay lets pointer events through, so creatures under its gaps stay clickable. -->
@@ -60,13 +64,13 @@ watch(isDemo, load);
 					@update:model-value="setDemo"
 				/>
 				<N8nButton
-					type="secondary"
+					variant="outline"
 					size="small"
-					icon="refresh-cw"
 					:loading="store.isLoading"
 					data-test-id="aquarium-refresh"
 					@click="load"
 				>
+					<template #icon><N8nIcon icon="refresh-cw" size="small" /></template>
 					{{ i18n.baseText('aquarium.refresh') }}
 				</N8nButton>
 			</div>

@@ -266,6 +266,13 @@ export {
 } from './schemas/content-import-policy-result.schema';
 
 export {
+	aquariumActivitySchema,
+	aquariumWorkflowActivitySchema,
+	type AquariumActivity,
+	type AquariumWorkflowActivity,
+} from './schemas/aquarium.schema';
+
+export {
 	insightsSummarySchema,
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,

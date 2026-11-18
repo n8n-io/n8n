@@ -136,6 +136,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('aquarium.title'),
 		position: 'bottom',
 		route: { to: { name: AQUARIUM_VIEW } },
+		available: settingsStore.isModuleActive('aquarium'),
 	},
 	{
 		// A plain link: the settings layout has its own left nav for the individual pages.

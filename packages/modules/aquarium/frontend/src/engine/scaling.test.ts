@@ -1,6 +1,13 @@
-import { SWIM_SPEED } from '../aquarium.constants';
+import { LIVE_SPEED, SWIM_SPEED } from '../aquarium.constants';
 import { emptyMetrics } from '../sources/source.utils';
-import { complexityScore, failureRateOf, sizeTierFor, swimSpeedFor } from './scaling';
+import {
+	complexityScore,
+	failureRateOf,
+	liveSpeedBoostFor,
+	recentRate,
+	sizeTierFor,
+	swimSpeedFor,
+} from './scaling';
 
 describe('complexityScore', () => {
 	it('grows with node count and with run time', () => {
@@ -45,5 +52,27 @@ describe('failureRateOf', () => {
 
 	it('divides failed by total executions', () => {
 		expect(failureRateOf({ ...emptyMetrics(), executionCount: 10, failedCount: 3 })).toBe(0.3);
+	});
+});
+
+describe('recentRate', () => {
+	it('averages the last full seconds', () => {
+		expect(recentRate([0, 0, 5, 5, 15, 15, 15, 15, 15], 5)).toBe(15);
+		expect(recentRate([5, 5, 5, 15, 15], 5)).toBe(9);
+	});
+
+	it('returns 0 for an empty series', () => {
+		expect(recentRate([])).toBe(0);
+	});
+});
+
+describe('liveSpeedBoostFor', () => {
+	it('is 0 without runs and capped at the maximum', () => {
+		expect(liveSpeedBoostFor(0)).toBe(0);
+		expect(liveSpeedBoostFor(LIVE_SPEED.saturationPerSecond * 10)).toBe(LIVE_SPEED.maxBoost);
+	});
+
+	it('gives a clearly bigger boost at 15 runs per second than at 5', () => {
+		expect(liveSpeedBoostFor(15) - liveSpeedBoostFor(5)).toBeGreaterThan(5);
 	});
 });

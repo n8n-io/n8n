@@ -47,18 +47,19 @@ export const executionsSource: MetricsSource = {
 	id: 'executions',
 	async load({ restApiContext }) {
 		const executions: ExecutionSample[] = [];
-		let lastId: string | undefined;
+		let cursor: string | undefined;
 
 		for (let page = 0; page < MAX_PAGES; page++) {
-			const { results } = await makeRestApiRequest<{ results: ExecutionSample[] }>(
-				restApiContext,
-				'GET',
-				'/executions',
-				{ limit: PAGE_SIZE, ...(lastId ? { lastId } : {}) },
-			);
-			executions.push(...results);
-			if (results.length < PAGE_SIZE) break;
-			lastId = results[results.length - 1]?.id;
+			const response = await makeRestApiRequest<{
+				results: ExecutionSample[];
+				nextCursor?: string | null;
+			}>(restApiContext, 'GET', '/executions', {
+				limit: PAGE_SIZE,
+				...(cursor ? { cursor } : {}),
+			});
+			executions.push(...response.results);
+			if (!response.nextCursor) break;
+			cursor = response.nextCursor;
 		}
 
 		return toExecutionPatches(executions);

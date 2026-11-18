@@ -1,6 +1,7 @@
-import { SWIM_SPEED } from '../aquarium.constants';
-import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
+import { MAX_SWIM_SPEED, SPEED_EASING_SECONDS } from '../aquarium.constants';
+import type { AquariumEntity, CreatureTraits, EntityActivity } from '../aquarium.types';
 import { spriteSize, type SpeciesDefinition } from '../species/species.types';
+import { liveSpeedBoostFor, recentRate } from './scaling';
 
 /** Tank size in logical pixels. Creatures stay above `floor`. */
 export interface TankBounds {
@@ -23,6 +24,10 @@ export interface Creature {
 	wanderIn: number;
 	/** Seconds alive. Drives the animation. */
 	age: number;
+	/** Current speed in logical pixels per second. It eases toward `targetSpeedOf()`. */
+	speed: number;
+	/** Live run counts. Undefined when the entity had no recent runs. */
+	activity?: EntityActivity;
 }
 
 export type RandomFn = () => number;
@@ -68,6 +73,7 @@ export function spawnCreature(
 		targetY: y,
 		wanderIn: random() * 4,
 		age: random() * 10,
+		speed: traits.speed,
 	};
 }
 
@@ -89,6 +95,12 @@ export function clampToTank(creature: Creature, bounds: TankBounds): void {
 	creature.targetY = Math.min(Math.max(0, creature.targetY), maxY(creature, bounds));
 }
 
+/** Resting speed from the traits, plus a boost from the live start rate. */
+export function targetSpeedOf(creature: Creature): number {
+	const rate = creature.activity ? recentRate(creature.activity.startedPerSecond) : 0;
+	return creature.traits.speed + liveSpeedBoostFor(rate);
+}
+
 /** Moves the creature for `dt` seconds. Mutates it to save allocations in the frame loop. */
 export function stepCreature(
 	creature: Creature,
@@ -97,7 +109,9 @@ export function stepCreature(
 	random: RandomFn = Math.random,
 ): void {
 	const motion = MOTION[creature.species.motion];
-	const speed = creature.traits.speed;
+	const easing = 1 - Math.exp(-dt / SPEED_EASING_SECONDS);
+	creature.speed += (targetSpeedOf(creature) - creature.speed) * easing;
+	const speed = creature.speed;
 
 	creature.age += dt;
 	creature.wanderIn -= dt;
@@ -126,7 +140,7 @@ export function stepCreature(
 /** Faster creatures also flap faster. */
 export function frameIndexOf(creature: Creature): number {
 	const frameCount = creature.species.sprite.frames.length;
-	const tempo = 0.5 + (1.5 * creature.traits.speed) / SWIM_SPEED.max;
+	const tempo = 0.5 + (1.5 * creature.speed) / MAX_SWIM_SPEED;
 	return Math.floor(creature.age * creature.species.frameRate * tempo) % frameCount;
 }
 

@@ -4,7 +4,7 @@ import { AQUARIUM_VIEW } from './aquarium.constants';
 
 const AquariumView = async () => await import('./views/AquariumView.vue');
 
-/** Frontend-only, with no backend twin: the route skips the `custom` module guard. */
+/** Shown only while the backend module is active. It is on by default. */
 export const AquariumModule = defineFrontendModule({
 	id: 'aquarium',
 	name: 'Aquarium',
@@ -15,7 +15,8 @@ export const AquariumModule = defineFrontendModule({
 			path: '/aquarium',
 			name: AQUARIUM_VIEW,
 			component: AquariumView,
-			meta: { middleware: ['authenticated'] },
+			// `custom` hides the page unless the backend module is active.
+			meta: { middleware: ['authenticated', 'custom'] },
 		},
 	],
 });

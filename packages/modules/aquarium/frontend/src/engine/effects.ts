@@ -1,4 +1,4 @@
-import { SWIM_SPEED } from '../aquarium.constants';
+import { MAX_SWIM_SPEED } from '../aquarium.constants';
 import type { Creature } from './simulation';
 
 /** Draws extra pixels for a creature after its sprite. Must not keep state between frames. */
@@ -18,7 +18,7 @@ export const bubblesEffect: CreatureEffect = {
 		const mouthX = creature.facing === 1 ? creature.x + creature.width : creature.x - 1;
 		const mouthY = creature.y + mouthRow * scale;
 		// Busy creatures breathe faster.
-		const cycle = 3 - (2 * creature.traits.speed) / SWIM_SPEED.max;
+		const cycle = 3 - (2 * creature.speed) / MAX_SWIM_SPEED;
 
 		ctx.fillStyle = BUBBLE_COLOR;
 		for (let i = 0; i < 3; i++) {

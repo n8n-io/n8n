@@ -74,6 +74,7 @@ describe('eligibleModules', () => {
 		'promotions',
 		'type-availability-policies',
 		'execution-limits',
+		'aquarium',
 	])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
 	});
@@ -181,6 +182,7 @@ describe('eligibleModules', () => {
 			'scim',
 			'type-availability-policies',
 			'execution-limits',
+			'aquarium',
 		]);
 	});
 
@@ -231,6 +233,7 @@ describe('eligibleModules', () => {
 			'scim',
 			'type-availability-policies',
 			'execution-limits',
+			'aquarium',
 			'engine-v2',
 		]);
 	});

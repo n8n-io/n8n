@@ -1,4 +1,4 @@
-import { SIZE_TIER_THRESHOLDS, SWIM_SPEED } from '../aquarium.constants';
+import { LIVE_SPEED, SIZE_TIER_THRESHOLDS, SWIM_SPEED } from '../aquarium.constants';
 import type { EntityMetrics, SizeTier } from '../aquarium.types';
 
 export const SIZE_TIERS: readonly SizeTier[] = ['tiny', 'small', 'medium', 'large', 'huge'];
@@ -28,4 +28,21 @@ export function swimSpeedFor(executionCount: number): number {
 export function failureRateOf(metrics: EntityMetrics): number {
 	if (metrics.executionCount <= 0) return 0;
 	return clamp01(metrics.failedCount / metrics.executionCount);
+}
+
+/** Mean starts per second over the last `seconds` entries of the series. */
+export function recentRate(
+	startedPerSecond: readonly number[],
+	seconds: number = LIVE_SPEED.rateSeconds,
+): number {
+	const recent = startedPerSecond.slice(-seconds);
+	if (recent.length === 0) return 0;
+	return recent.reduce((total, count) => total + count, 0) / recent.length;
+}
+
+/** Log scale, so a busy workflow still speeds up visibly when its rate grows. */
+export function liveSpeedBoostFor(ratePerSecond: number): number {
+	const ratio =
+		Math.log10(1 + Math.max(0, ratePerSecond)) / Math.log10(1 + LIVE_SPEED.saturationPerSecond);
+	return LIVE_SPEED.maxBoost * clamp01(ratio);
 }

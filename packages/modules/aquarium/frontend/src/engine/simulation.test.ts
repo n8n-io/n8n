@@ -7,6 +7,7 @@ import {
 	frameIndexOf,
 	spawnCreature,
 	stepCreature,
+	targetSpeedOf,
 	updateCreature,
 	type TankBounds,
 } from './simulation';
@@ -94,5 +95,42 @@ describe('simulation', () => {
 		expect(findCreatureAt([below, above], 3, 3)?.entity.key).toBe('workflow:2');
 		expect(findCreatureAt([below, above], 25, 10)?.entity.key).toBe('workflow:1');
 		expect(findCreatureAt([below, above], 99, 49)).toBeUndefined();
+	});
+
+	describe('speed', () => {
+		const activityAt = (perSecond: number) => ({
+			running: 1,
+			started: perSecond * 60,
+			succeeded: perSecond * 60,
+			failed: 0,
+			startedPerSecond: new Array(60).fill(perSecond),
+			lastEventAt: 0,
+		});
+
+		function settle(perSecond: number | undefined) {
+			const creature = spawnCreature(entity, deriveTraits(entity), minnow, bounds, seededRandom());
+			creature.activity = perSecond === undefined ? undefined : activityAt(perSecond);
+			for (let i = 0; i < 200; i++) stepCreature(creature, 0.05, bounds, seededRandom());
+			return creature.speed;
+		}
+
+		it('rests at the trait speed without live activity', () => {
+			expect(settle(undefined)).toBeCloseTo(deriveTraits(entity).speed, 1);
+		});
+
+		it('swims faster at 15 runs per second than at 5', () => {
+			expect(settle(15)).toBeGreaterThan(settle(5) + 5);
+		});
+
+		it('eases toward a new target instead of jumping', () => {
+			const creature = spawnCreature(entity, deriveTraits(entity), minnow, bounds, seededRandom());
+			creature.activity = activityAt(15);
+			const target = targetSpeedOf(creature);
+
+			stepCreature(creature, 0.1, bounds, seededRandom());
+
+			expect(creature.speed).toBeGreaterThan(deriveTraits(entity).speed);
+			expect(creature.speed).toBeLessThan(target);
+		});
 	});
 });
