@@ -23,6 +23,10 @@ const renderComponent = createComponentRenderer(DataTableTable, {
 });
 
 describe('DataTableTable loading', () => {
+	beforeAll(async () => {
+		await import('@n8n/design-system/components/N8nDataGrid/DataGrid.vue');
+	});
+
 	afterEach(() => {
 		vi.useRealTimers();
 	});
@@ -37,16 +41,16 @@ describe('DataTableTable loading', () => {
 
 		await vi.advanceTimersByTimeAsync(999);
 		expect(store.fetchDataTableContent).toHaveBeenCalledOnce();
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
-		expect(queryByTestId('data-table-no-rows-overlay')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-no-rows')).not.toBeInTheDocument();
 
 		await vi.advanceTimersByTimeAsync(1);
-		expect(getByTestId('data-table-loading')).toHaveTextContent('Loading...');
+		expect(getByTestId('data-grid-loading')).toHaveTextContent('Loading...');
 		expect(getByTestId('data-table-grid')).toHaveAttribute('aria-busy', 'true');
 
 		rows.resolve({ data: [], count: 0 });
 		await flushPromises();
-		expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 		expect(getByTestId('data-table-grid')).toHaveAttribute('aria-busy', 'false');
 	});
 
@@ -68,10 +72,10 @@ describe('DataTableTable loading', () => {
 			await fireEvent.click(getByTestId('pagination-next'));
 			await vi.advanceTimersByTimeAsync(999);
 			expect(store.fetchDataTableContent).toHaveBeenCalledTimes(2);
-			expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+			expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 			expect(getByTestId('data-table-grid')).toHaveTextContent('Notebook');
 			await vi.advanceTimersByTimeAsync(1);
-			expect(getByTestId('data-table-loading')).toBeVisible();
+			expect(getByTestId('data-grid-loading')).toBeVisible();
 
 			if (result === 'success') {
 				rows.resolve({ data: [{ id: 21, name: 'Pencil' }], count: 40 });
@@ -79,7 +83,7 @@ describe('DataTableTable loading', () => {
 				rows.reject(new Error('Request failed'));
 			}
 			await flushPromises();
-			expect(queryByTestId('data-table-loading')).not.toBeInTheDocument();
+			expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
 			expect(getByTestId('data-table-grid')).toHaveAttribute('aria-busy', 'false');
 		},
 	);
@@ -92,19 +96,19 @@ describe('DataTableTable loading', () => {
 
 		const { container, queryByTestId } = renderComponent({ pinia });
 
-		expect(queryByTestId('data-table-no-rows-overlay')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-no-rows')).not.toBeInTheDocument();
 		await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalled());
 		await flushPromises();
 
 		expect(container.querySelector('.ag-header-cell[col-id="name-column"]')).toBeInTheDocument();
-		expect(queryByTestId('data-table-no-rows-overlay')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-no-rows')).not.toBeInTheDocument();
 		expect(container.querySelector('.ag-overlay-loading-center')).not.toBeInTheDocument();
 
 		rows.resolve({ data: [{ id: 1, name: 'Notebook' }], count: 1 });
 		await waitFor(() => {
 			expect(container.querySelector('.ag-row[row-id="1"]')).toHaveTextContent('Notebook');
 		});
-		expect(queryByTestId('data-table-no-rows-overlay')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-no-rows')).not.toBeInTheDocument();
 	});
 
 	it('shows the empty state only after the first row request finishes', async () => {
@@ -116,11 +120,11 @@ describe('DataTableTable loading', () => {
 		const { container, queryByTestId, findByTestId, emitted } = renderComponent({ pinia });
 		await waitFor(() => expect(store.fetchDataTableContent).toHaveBeenCalled());
 		await flushPromises();
-		expect(queryByTestId('data-table-no-rows-overlay')).not.toBeInTheDocument();
+		expect(queryByTestId('data-grid-no-rows')).not.toBeInTheDocument();
 
 		rows.resolve({ data: [], count: 0 });
 
-		expect(await findByTestId('data-table-no-rows-overlay')).toBeVisible();
+		expect(await findByTestId('data-grid-no-rows')).toBeVisible();
 		expect(container.querySelector('.ag-header-cell[col-id="name-column"]')).toBeInTheDocument();
 		expect(container.querySelector('.ag-overlay-loading-center')).not.toBeInTheDocument();
 		expect(emitted('ready')).toHaveLength(1);

@@ -1,307 +1,171 @@
-import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
-import { createPinia, setActivePinia } from 'pinia';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
+import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
+import { getGridApi, type GridApi } from 'ag-grid-community';
 
-// Mock ag-grid-vue3
-interface MockComponentInstance {
-	$emit: (event: string, payload: unknown) => void;
-}
+import DataTableTable from './DataTableTable.vue';
 
-vi.mock('ag-grid-vue3', () => ({
-	AgGridVue: {
-		name: 'AgGridVue',
-		template:
-			'<div data-test-id="ag-grid-vue" :data-row-selection="rowSelection && typeof rowSelection === \'object\' && rowSelection.isRowSelectable && rowSelection.isRowSelectable({ data: { id: 1 } }) ? \'enabled\' : \'disabled\'" :data-suppress-movable-columns="!!suppressMovableColumns" />',
-		props: [
-			'rowData',
-			'columnDefs',
-			'domLayout',
-			'animateRows',
-			'theme',
-			'rowSelection',
-			'suppressMovableColumns',
-		],
-		emits: ['gridReady'],
-		mounted(this: MockComponentInstance) {
-			this.$emit('gridReady', {
-				api: {
-					refreshHeader: vi.fn(),
-					applyTransaction: vi.fn(),
-					setGridOption: vi.fn(),
-				},
-			});
-		},
-	},
-}));
-
-// Mock ag-grid-community modules
-vi.mock('ag-grid-community', () => ({
-	ModuleRegistry: {
-		registerModules: vi.fn(),
-	},
-	ClientSideRowModelModule: {},
-	TextEditorModule: {},
-	LargeTextEditorModule: {},
-	ColumnAutoSizeModule: {},
-	CheckboxEditorModule: {},
-	NumberEditorModule: {},
-	RowSelectionModule: {},
-	RenderApiModule: {},
-	DateEditorModule: {},
-	ClientSideRowModelApiModule: {},
-	ValidationModule: {},
-	UndoRedoEditModule: {},
-	CellStyleModule: {},
-	ScrollApiModule: {},
-	PinnedRowModule: {},
-	ColumnApiModule: {},
-	TextFilterModule: {},
-	NumberFilterModule: {},
-	DateFilterModule: {},
-	EventApiModule: {},
-}));
-
-// Mock the n8n theme
-vi.mock('@/features/core/dataTable/components/dataGrid/n8nTheme', () => ({
-	n8nTheme: 'n8n-theme',
-}));
-
-// Mock composables
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({
-		showError: vi.fn(),
-		showSuccess: vi.fn(),
-	}),
-}));
-
-const setCurrentPageMock = vi.fn();
-vi.mock('@/features/core/dataTable/composables/useDataTablePagination', () => ({
-	useDataTablePagination: () => ({
-		totalItems: 0,
-		setTotalItems: vi.fn(),
-		ensureItemOnPage: vi.fn(),
-		currentPage: 1,
-		setCurrentPage: setCurrentPageMock,
-	}),
-}));
-
-vi.mock('@n8n/i18n', async (importOriginal) => ({
-	...(await importOriginal()),
-	useI18n: () => ({
-		baseText: (key: string) => {
-			const translations: Record<string, string> = {
-				'dataTable.addRow.label': 'Add Row',
-				'dataTable.addRow.disabled.tooltip': 'Add a column first',
-			};
-			return translations[key] || key;
-		},
-	}),
-}));
-
-vi.mock('@/features/core/dataTable/composables/useDataTableTypes', () => ({
-	useDataTableTypes: () => ({
-		mapToAGCellType: (type: string) => {
-			const typeMap: Record<string, string> = {
-				string: 'text',
-				number: 'number',
-				boolean: 'boolean',
-				date: 'date',
-			};
-			return typeMap[type] || 'text';
-		},
-	}),
-}));
-
-const mockDataTable: DataTable = {
-	id: 'test-dataTable-1',
-	name: 'Test DataTable',
+const dataTable: DataTable = {
+	id: 'table-1',
+	name: 'Products',
 	projectId: 'project-1',
 	columns: [
-		{ id: 'col1', name: 'firstName', type: 'string', index: 1 },
-		{ id: 'col2', name: 'age', type: 'number', index: 2 },
-		{ id: 'col3', name: 'isActive', type: 'boolean', index: 3 },
+		{ id: 'price-column', name: 'price', type: 'number', index: 1 },
+		{ id: 'name-column', name: 'name', type: 'string', index: 0 },
 	],
-	createdAt: '2024-01-01T00:00:00Z',
-	updatedAt: '2024-01-01T00:00:00Z',
+	createdAt: '2026-01-01T00:00:00Z',
+	updatedAt: '2026-01-01T00:00:00Z',
 	sizeBytes: 0,
 };
 
+const renderComponent = createComponentRenderer(DataTableTable, {
+	props: { dataTable },
+});
+
+const setup = () => {
+	const pinia = createTestingPinia();
+	const store = useDataTableStore();
+	vi.mocked(store.fetchDataTableContent).mockResolvedValue({
+		data: [
+			{ id: 1, name: 'Notebook', price: 3 },
+			{ id: 2, name: 'Pencil', price: 1 },
+		],
+		count: 2,
+	});
+	return { pinia, store };
+};
+
+const getApi = async (container: Element): Promise<GridApi> => {
+	let api: GridApi | undefined;
+	await waitFor(() => {
+		const gridElement = container.querySelector('[grid-id]')?.parentElement;
+		api = gridElement ? getGridApi(gridElement) : undefined;
+		expect(api?.getRowNode('1')).toBeDefined();
+	});
+	if (!api) throw new Error('Grid API not found');
+	return api;
+};
+
 describe('DataTableTable', () => {
-	const renderComponent = createComponentRenderer(DataTableTable, {
-		props: {
-			dataTable: mockDataTable,
-		},
+	it('should show the id, the user columns by index and the system columns', async () => {
+		const { pinia } = setup();
+		const { container } = renderComponent({ pinia });
+		const api = await getApi(container);
+
+		expect(api.getAllDisplayedColumns().map((column) => column.getColId())).toEqual([
+			'ag-Grid-SelectionColumn',
+			'id',
+			'name-column',
+			'price-column',
+			'createdAt',
+			'updatedAt',
+			'__n8n_data_grid_append__',
+		]);
 	});
 
-	let dataTableStore: ReturnType<typeof useDataTableStore>;
+	it('should fetch rows sorted by id when no column is sorted', async () => {
+		const { pinia, store } = setup();
+		renderComponent({ pinia });
 
-	beforeEach(() => {
-		setActivePinia(createPinia());
-		dataTableStore = useDataTableStore();
-		dataTableStore.addDataTableColumn = vi.fn().mockResolvedValue({
-			id: 'new-col',
-			name: 'newColumn',
-			type: 'string',
-			index: 4,
-		});
+		await waitFor(() =>
+			expect(store.fetchDataTableContent).toHaveBeenCalledWith(
+				'table-1',
+				'project-1',
+				1,
+				20,
+				'id:asc',
+				undefined,
+				undefined,
+			),
+		);
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	it('should show the add row button and the add column button', async () => {
+		const { pinia } = setup();
+		const { container, getByTestId, findByRole } = renderComponent({ pinia });
+		await getApi(container);
+
+		expect(await findByRole('button', { name: 'Add Row' })).toBeEnabled();
+		expect(getByTestId('data-table-add-column-trigger-button')).toBeEnabled();
 	});
 
-	describe('Component Initialization', () => {
-		it('should render the component with AG Grid', () => {
-			const { getByTestId } = renderComponent();
+	it('should fetch the first page again when the search changes', async () => {
+		const { pinia, store } = setup();
+		const { container, rerender } = renderComponent({ pinia });
+		await getApi(container);
+		vi.mocked(store.fetchDataTableContent).mockClear();
 
-			expect(getByTestId('ag-grid-vue')).toBeInTheDocument();
-		});
+		await rerender({ dataTable, search: 'pen' });
 
-		it('should render pagination controls', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('data-table-content-pagination')).toBeInTheDocument();
-		});
+		await waitFor(() =>
+			expect(store.fetchDataTableContent).toHaveBeenCalledWith(
+				'table-1',
+				'project-1',
+				1,
+				20,
+				'id:asc',
+				undefined,
+				'pen',
+			),
+		);
 	});
 
-	describe('Empty DataTable', () => {
-		it('should show grid for empty data table', () => {
-			const emptyDataTable: DataTable = {
-				...mockDataTable,
-				columns: [],
-			};
+	it('should allow cell edits, row selection and column moves when nothing is read-only', async () => {
+		const { pinia } = setup();
+		const { container } = renderComponent({ pinia });
+		const api = await getApi(container);
+		const row = api.getRowNode('1')!;
 
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: emptyDataTable,
-				},
-			});
-
-			expect(getByTestId('ag-grid-vue')).toBeInTheDocument();
-		});
+		expect(api.getColumn('name-column')?.isCellEditable(row)).toBe(true);
+		expect(row.selectable).toBe(true);
+		expect(api.getGridOption('suppressMovableColumns')).toBe(false);
 	});
 
-	describe('Search behavior', () => {
-		it('resets to first page when search changes', async () => {
-			const { rerender } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-					search: '',
-				},
-			});
-
-			await rerender({
-				dataTable: mockDataTable,
-				search: 'john',
-			});
-
-			await waitFor(() => {
-				expect(setCurrentPageMock).toHaveBeenCalledWith(1);
-			});
+	it('should lock cells, row selection and columns when read-only', async () => {
+		const { pinia } = setup();
+		const { container, findByRole, getByTestId } = renderComponent({
+			pinia,
+			props: { dataTable, readOnly: true },
 		});
+		const api = await getApi(container);
+		const row = api.getRowNode('1')!;
+
+		expect(api.getColumn('name-column')?.isCellEditable(row)).toBe(false);
+		expect(row.selectable).toBe(false);
+		expect(api.getColumn('ag-Grid-SelectionColumn')).toBeDefined();
+		expect(api.getGridOption('suppressMovableColumns')).toBe(true);
+		expect(await findByRole('button', { name: 'Add Row' })).toBeDisabled();
+		expect(getByTestId('data-table-add-column-trigger-button')).toBeDisabled();
 	});
 
-	describe('Read-only behavior', () => {
-		it('should render component when readOnly is true', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-					readOnly: true,
-				},
-			});
-
-			await waitFor(() => {
-				const agGridVue = getByTestId('ag-grid-vue');
-				expect(agGridVue).toBeInTheDocument();
-			});
+	it('should keep rows editable and lock columns when only the schema is read-only', async () => {
+		const { pinia } = setup();
+		const { container, findByRole, getByTestId } = renderComponent({
+			pinia,
+			props: { dataTable, schemaReadOnly: true },
 		});
+		const api = await getApi(container);
+		const row = api.getRowNode('1')!;
 
-		it('should disable row selection when readOnly is true', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-					readOnly: true,
-				},
-			});
+		expect(api.getColumn('name-column')?.isCellEditable(row)).toBe(true);
+		expect(row.selectable).toBe(true);
+		expect(api.getGridOption('suppressMovableColumns')).toBe(true);
+		expect(await findByRole('button', { name: 'Add Row' })).toBeEnabled();
+		expect(getByTestId('data-table-add-column-trigger-button')).toBeDisabled();
+	});
 
-			await waitFor(() => {
-				const agGridVue = getByTestId('ag-grid-vue');
-				expect(agGridVue).toBeInTheDocument();
-				expect(agGridVue.getAttribute('data-row-selection')).toBe('disabled');
-			});
-		});
+	it('should save a cell edit', async () => {
+		const { pinia, store } = setup();
+		const { container } = renderComponent({ pinia });
+		const api = await getApi(container);
 
-		it('should render component when readOnly is false', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-					readOnly: false,
-				},
-			});
+		api.getRowNode('1')?.setDataValue('name-column', 'Notepad');
 
-			await waitFor(() => {
-				const agGridVue = getByTestId('ag-grid-vue');
-				expect(agGridVue).toBeInTheDocument();
-			});
-		});
-
-		it('should enable row selection when readOnly is false', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-					readOnly: false,
-				},
-			});
-
-			await waitFor(() => {
-				const agGridVue = getByTestId('ag-grid-vue');
-				expect(agGridVue).toBeInTheDocument();
-				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
-			});
-		});
-
-		it('should keep row selection and lock column moves when only the schema is read-only', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-					schemaReadOnly: true,
-				},
-			});
-
-			await waitFor(() => {
-				const agGridVue = getByTestId('ag-grid-vue');
-				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
-				expect(agGridVue.getAttribute('data-suppress-movable-columns')).toBe('true');
-			});
-		});
-
-		it('should allow column moves when nothing is read-only', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-				},
-			});
-
-			await waitFor(() => {
-				const agGridVue = getByTestId('ag-grid-vue');
-				expect(agGridVue.getAttribute('data-suppress-movable-columns')).toBe('false');
-			});
-		});
-
-		it('should enable row selection when readOnly is undefined', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					dataTable: mockDataTable,
-				},
-			});
-
-			await waitFor(() => {
-				const agGridVue = getByTestId('ag-grid-vue');
-				expect(agGridVue).toBeInTheDocument();
-				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
-			});
-		});
+		await waitFor(() =>
+			expect(store.updateRow).toHaveBeenCalledWith('table-1', 'project-1', 1, { name: 'Notepad' }),
+		);
+		await waitFor(() => expect(api.getRowNode('1')?.data.name).toBe('Notepad'));
 	});
 });

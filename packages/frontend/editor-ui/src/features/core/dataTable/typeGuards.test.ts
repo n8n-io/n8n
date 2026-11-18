@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isDataTableValue, isAGGridCellType, isDataTableColumnType } from './typeGuards';
+import { isDataTableValue, isDataTableColumnType } from './typeGuards';
 
 describe('dataTable typeGuards', () => {
 	describe('isDataTableValue', () => {
@@ -33,23 +33,6 @@ describe('dataTable typeGuards', () => {
 			expect(isDataTableValue({})).toBe(false);
 			expect(isDataTableValue([])).toBe(false);
 			expect(isDataTableValue(Symbol('test'))).toBe(false);
-		});
-	});
-
-	describe('isAGGridCellType', () => {
-		it('should return true for valid AG Grid cell types', () => {
-			expect(isAGGridCellType('text')).toBe(true);
-			expect(isAGGridCellType('number')).toBe(true);
-			expect(isAGGridCellType('boolean')).toBe(true);
-			expect(isAGGridCellType('date')).toBe(true);
-		});
-
-		it('should return false for invalid cell types', () => {
-			expect(isAGGridCellType('invalid')).toBe(false);
-			expect(isAGGridCellType('')).toBe(false);
-			expect(isAGGridCellType(null)).toBe(false);
-			expect(isAGGridCellType(123)).toBe(false);
-			expect(isAGGridCellType(undefined)).toBe(false);
 		});
 	});
 

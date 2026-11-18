@@ -1,298 +1,67 @@
-import { describe, it, expect, vi } from 'vitest';
-import { processTextFilter, processNumberFilter, processDateFilter } from './filterProcessors';
-import type { FilterModel, FilterOperation } from '../types/dataTableFilters.types';
+import { describe, it, expect } from 'vitest';
 
-vi.mock('./filterMappings', () => ({
-	mapTextTypeToBackend: vi.fn((type: string) => {
-		const mapping: Record<string, string> = {
-			contains: 'ilike',
-			equals: 'eq',
-			notEqual: 'neq',
-			startsWith: 'ilike',
-			endsWith: 'ilike',
-			isEmpty: 'eq',
-			notEmpty: 'neq',
-			null: 'eq',
-			notNull: 'neq',
-			true: 'eq',
-			false: 'eq',
-		};
-		return mapping[type] || 'unknown';
-	}),
-	mapNumberDateTypeToBackend: vi.fn((type: string) => {
-		const mapping: Record<string, string> = {
-			equals: 'eq',
-			notEqual: 'neq',
-			lessThan: 'lt',
-			lessThanOrEqual: 'lte',
-			greaterThan: 'gt',
-			greaterThanOrEqual: 'gte',
-			null: 'eq',
-			notNull: 'neq',
-		};
-		return mapping[type] || 'unknown';
-	}),
-}));
+import { toBackendFilter } from './filterProcessors';
 
-describe('filterProcessors', () => {
-	describe('processTextFilter', () => {
-		const createTextFilter = (type: FilterOperation, filter?: string): FilterModel[string] => ({
-			filterType: 'text',
-			type,
-			filter,
-		});
+describe('toBackendFilter', () => {
+	it('should return undefined without filters', () => {
+		expect(toBackendFilter([])).toBeUndefined();
+	});
 
-		it('should process contains filter', () => {
-			const filter = createTextFilter('contains', 'test');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'ilike',
-				value: 'test',
-			});
-		});
-
-		it('should process startsWith filter with % suffix', () => {
-			const filter = createTextFilter('startsWith', 'test');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'ilike',
-				value: 'test%',
-			});
-		});
-
-		it('should process endsWith filter with % prefix', () => {
-			const filter = createTextFilter('endsWith', 'test');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'ilike',
-				value: '%test',
-			});
-		});
-
-		it('should process isEmpty filter with empty string value', () => {
-			const filter = createTextFilter('isEmpty');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: '',
-			});
-		});
-
-		it('should process notEmpty filter with empty string value', () => {
-			const filter = createTextFilter('notEmpty');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'neq',
-				value: '',
-			});
-		});
-
-		it('should process null filter', () => {
-			const filter = createTextFilter('null');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: null,
-			});
-		});
-
-		it('should process boolean true filter', () => {
-			const filter = createTextFilter('true');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: true,
-			});
-		});
-
-		it('should process boolean false filter', () => {
-			const filter = createTextFilter('false');
-			const result = processTextFilter(filter, 'columnName');
-
-			expect(result).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: false,
-			});
+	it.each([
+		['contains', 'ilike', 'test'],
+		['equals', 'eq', 'test'],
+		['notEqual', 'neq', 'test'],
+		['lessThan', 'lt', 5],
+		['lessThanOrEqual', 'lte', 5],
+		['greaterThan', 'gt', 5],
+		['greaterThanOrEqual', 'gte', 5],
+	] as const)('should map %s to %s with its value', (operator, condition, value) => {
+		expect(toBackendFilter([{ field: 'col', operator, value }])).toEqual({
+			type: 'and',
+			filters: [{ columnName: 'col', condition, value }],
 		});
 	});
 
-	describe('processNumberFilter', () => {
-		const createNumberFilter = (
-			type: FilterOperation,
-			filter?: string,
-			filterTo?: string,
-		): FilterModel[string] => ({
-			filterType: 'number',
-			type,
-			filter,
-			filterTo,
-		});
-
-		it('should process equals filter', () => {
-			const filter = createNumberFilter('equals', '42');
-			const result = processNumberFilter(filter, 'columnName');
-
-			expect(result).toEqual([
-				{
-					columnName: 'columnName',
-					condition: 'eq',
-					value: '42',
-				},
-			]);
-		});
-
-		it('should process greaterThan filter', () => {
-			const filter = createNumberFilter('greaterThan', '100');
-			const result = processNumberFilter(filter, 'columnName');
-
-			expect(result).toEqual([
-				{
-					columnName: 'columnName',
-					condition: 'gt',
-					value: '100',
-				},
-			]);
-		});
-
-		it('should process null filter with null value', () => {
-			const filter = createNumberFilter('null');
-			const result = processNumberFilter(filter, 'columnName');
-
-			expect(result).toEqual([
-				{
-					columnName: 'columnName',
-					condition: 'eq',
-					value: null,
-				},
-			]);
-		});
-
-		it('should process notNull filter with null value', () => {
-			const filter = createNumberFilter('notNull');
-			const result = processNumberFilter(filter, 'columnName');
-
-			expect(result).toEqual([
-				{
-					columnName: 'columnName',
-					condition: 'neq',
-					value: null,
-				},
-			]);
-		});
-
-		it('should process between filter', () => {
-			const filter = createNumberFilter('between', '100', '200');
-			const result = processNumberFilter(filter, 'columnName');
-
-			expect(result).toEqual([
-				{ columnName: 'columnName', condition: 'gte', value: '100' },
-				{ columnName: 'columnName', condition: 'lte', value: '200' },
-			]);
+	it.each([
+		['isEmpty', 'eq', ''],
+		['notEmpty', 'neq', ''],
+		['null', 'eq', null],
+		['notNull', 'neq', null],
+		['true', 'eq', true],
+		['false', 'eq', false],
+	] as const)('should map %s to %s with a fixed value', (operator, condition, value) => {
+		expect(toBackendFilter([{ field: 'col', operator }])).toEqual({
+			type: 'and',
+			filters: [{ columnName: 'col', condition, value }],
 		});
 	});
 
-	describe('processDateFilter', () => {
-		const createDateFilter = (
-			type: FilterOperation,
-			dateFrom?: string,
-			dateTo?: string,
-		): FilterModel[string] => ({
-			filterType: 'date',
-			type,
-			dateFrom,
-			dateTo,
+	it('should map between to a gte and an lte condition', () => {
+		expect(toBackendFilter([{ field: 'age', operator: 'between', value: 1, valueTo: 9 }])).toEqual({
+			type: 'and',
+			filters: [
+				{ columnName: 'age', condition: 'gte', value: 1 },
+				{ columnName: 'age', condition: 'lte', value: 9 },
+			],
 		});
+	});
 
-		it('should process equals filter with dateFrom', () => {
-			const filter = createDateFilter('equals', '2023-12-01');
-			const result = processDateFilter(filter, 'columnName');
+	it('should send dates as ISO strings', () => {
+		const from = new Date('2026-01-01T00:00:00.000Z');
+		const to = new Date('2026-02-01T00:00:00.000Z');
 
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: new Date('2023-12-01').toISOString(),
-			});
-		});
-
-		it('should process inRange filter with two filters', () => {
-			const filter = createDateFilter('inRange', '2023-12-01', '2023-12-31');
-			const result = processDateFilter(filter, 'columnName');
-
-			expect(result).toHaveLength(2);
-			expect(result[0]).toEqual({
-				columnName: 'columnName',
-				condition: 'gte',
-				value: new Date('2023-12-01').toISOString(),
-			});
-			expect(result[1]).toEqual({
-				columnName: 'columnName',
-				condition: 'lte',
-				value: new Date('2023-12-31').toISOString(),
-			});
-		});
-
-		it('should process null filter', () => {
-			const filter = createDateFilter('null');
-			const result = processDateFilter(filter, 'columnName');
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: null,
-			});
-		});
-
-		it('should process notNull filter', () => {
-			const filter = createDateFilter('notNull');
-			const result = processDateFilter(filter, 'columnName');
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({
-				columnName: 'columnName',
-				condition: 'neq',
-				value: null,
-			});
-		});
-
-		it('should process greaterThan filter', () => {
-			const filter = createDateFilter('greaterThan', '2023-12-01');
-			const result = processDateFilter(filter, 'columnName');
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({
-				columnName: 'columnName',
-				condition: 'gt',
-				value: new Date('2023-12-01').toISOString(),
-			});
-		});
-
-		it('should handle missing dateFrom gracefully', () => {
-			const filter = createDateFilter('equals');
-			const result = processDateFilter(filter, 'columnName');
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({
-				columnName: 'columnName',
-				condition: 'eq',
-				value: null,
-			});
+		expect(
+			toBackendFilter([
+				{ field: 'createdAt', operator: 'lessThan', value: from },
+				{ field: 'updatedAt', operator: 'between', value: from, valueTo: to },
+			]),
+		).toEqual({
+			type: 'and',
+			filters: [
+				{ columnName: 'createdAt', condition: 'lt', value: '2026-01-01T00:00:00.000Z' },
+				{ columnName: 'updatedAt', condition: 'gte', value: '2026-01-01T00:00:00.000Z' },
+				{ columnName: 'updatedAt', condition: 'lte', value: '2026-02-01T00:00:00.000Z' },
+			],
 		});
 	});
 });
