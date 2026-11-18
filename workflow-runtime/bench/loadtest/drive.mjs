@@ -42,7 +42,7 @@ import http from 'node:http';
 import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
-import { pool, readBundle, rebasedBytes, rng, snapshotBase, snapshotPut } from './lib/bundle.mjs';
+import { GYM, pool, readBundle, rebasedBytes, rng, snapshotBase, snapshotPut } from './lib/bundle.mjs';
 import { leafKinds, mutateSnapshot, runSeed, varyItems } from './lib/vary.mjs';
 import { keyOf, readPool } from './lib/poolfile.mjs';
 
@@ -73,6 +73,11 @@ fs.mkdirSync(OUT, { recursive: true });
 const manifest = JSON.parse(fs.readFileSync(arg('manifest', 'manifest.json'), 'utf8'));
 const keys = fs.readFileSync(arg('keys', 'keys.txt'), 'utf8').split('\n').filter(Boolean);
 const rows = new Map(readPool(arg('pool', 'pool.jsonl')).map((r) => [keyOf(r.id), r]));
+// A copy of a workflow (compiled.mjs, LT_COPIES): the key of the workflow plus c<n>; its tenant has the same suffix.
+for (const k of keys) {
+	const m = /^([0-9a-f]{12})(c\d+)$/.exec(k);
+	if (m && rows.has(m[1])) rows.set(k, { ...rows.get(m[1]), tenant: `${rows.get(m[1]).tenant}-${m[2]}` });
+}
 const components = JSON.parse(fs.readFileSync(arg('components', 'components.json'), 'utf8'));
 const bodies = new Map();
 for (const k of keys) {
@@ -115,6 +120,58 @@ function baseOf(key) {
 	bases.set(key, b);
 	return b;
 }
+// ---- --reset live: the gym drops what a run wrote when the run ends (POST /_gym/v1/tenants/reset) ----
+// A key has one run in flight at a time and takes no new run until its reset is done. The resets go in
+// batches from this process, so the engine does nothing for them.
+const RESET_LIVE = arg('reset', '') === 'live';
+const RESET_EVERY_MS = Number(arg('reset-every-ms', '50'));
+const RESET_SETTLE_MS = Number(arg('reset-settle-ms', '0'));
+const busyKeys = new Set();
+// --repeat on: a key takes a new run while another run of it is in flight; its tenant is reset when no run of it is in flight.
+const REPEAT = arg('repeat', 'off') === 'on';
+const inFlight = new Map();
+let resetQueue = [];
+const resetStats = { calls: 0, reset: 0, busy: 0, failed: 0, skipped: 0, ms: 0 };
+const keyOfTenant = new Map();
+async function flushResets() {
+	if (resetQueue.length === 0) return;
+	const now = performance.now();
+	const due = resetQueue.filter((e) => e.at <= now && !(REPEAT && (inFlight.get(e.key) ?? 0) > 0));
+	if (due.length === 0) return;
+	resetQueue = resetQueue.filter((e) => e.at > now);
+	const tenants = due.map((e) => rows.get(e.key).tenant);
+	const t0 = performance.now();
+	let answer;
+	try {
+		const r = await fetch(`${GYM}/_gym/v1/tenants/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tenants, wait_ms: 20 }) });
+		answer = r.ok ? await r.json() : undefined;
+		if (!r.ok && resetStats.failed === 0) console.error(`reset: HTTP ${r.status} ${(await r.text()).slice(0, 160)}`);
+	} catch (e) {
+		if (resetStats.failed === 0) console.error(`reset: ${e.message}`);
+	}
+	resetStats.calls++;
+	resetStats.ms += performance.now() - t0;
+	if (!answer) {
+		resetStats.failed += due.length;
+		for (const e of due) busyKeys.delete(e.key);
+		return;
+	}
+	const again = new Set(answer.busy ?? []);
+	const bad = (answer.no_baseline?.length ?? 0) + (answer.refused?.length ?? 0) + (answer.unknown?.length ?? 0);
+	if (bad > 0 && resetStats.failed === 0) console.error(`reset: not reset: ${JSON.stringify({ no_baseline: answer.no_baseline?.length, refused: answer.refused?.length, unknown: answer.unknown?.length })}`);
+	resetStats.failed += bad;
+	for (const e of due) {
+		if (again.has(rows.get(e.key).tenant) && e.tries < 20) {
+			resetStats.busy++;
+			resetQueue.push({ key: e.key, at: performance.now() + RESET_EVERY_MS, tries: e.tries + 1 });
+		} else {
+			if (!again.has(rows.get(e.key).tenant)) resetStats.reset++;
+			else resetStats.failed++;
+			busyKeys.delete(e.key);
+		}
+	}
+}
+if (RESET_LIVE) setInterval(() => void flushResets(), RESET_EVERY_MS).unref();
 const locks = new Map();
 async function withKey(key, fn) {
 	const prev = locks.get(key) ?? Promise.resolve();
@@ -154,6 +211,7 @@ function variedBody(key, seed) {
 	return { body: JSON.stringify(items.length === 1 ? items[0] : { items }), original };
 }
 
+const failureTexts = new Map();
 function send(key, body = bodies.get(key)) {
 	const e = manifest.entries[key];
 	const t0 = performance.now();
@@ -170,6 +228,19 @@ function send(key, body = bodies.get(key)) {
 				timeout: TIMEOUT_MS,
 			},
 			(res) => {
+				// The text of a failed answer, with ids and numbers removed, counted for each step.
+				if (res.statusCode >= 400 && failureTexts.size < 4096) {
+					let text = '';
+					res.setEncoding('utf8');
+					res.on('data', (d) => { if (text.length < 400) text += d; });
+					res.on('end', () => {
+						const k = `${res.statusCode} ${text.slice(0, 300).replace(/[0-9a-f]{8,}/gi, 'ID').replace(/[0-9]+/g, 'N')}`;
+						failureTexts.set(k, (failureTexts.get(k) ?? 0) + 1);
+						resolve({ status: res.statusCode, ms: performance.now() - t0 });
+					});
+					res.on('error', () => resolve({ status: 'reset', ms: performance.now() - t0 }));
+					return;
+				}
 				res.resume();
 				res.on('end', () => resolve({ status: res.statusCode, ms: performance.now() - t0 }));
 				res.on('error', () => resolve({ status: 'reset', ms: performance.now() - t0 }));
@@ -250,8 +321,11 @@ const stats = (xs) => {
 };
 
 // ---- one step ----
+let restoredOnce = false;
 async function restore(tenantKeys) {
 	if (RESTORE === 'none' || VARY_STATE) return 0;
+	if (RESET_LIVE && restoredOnce) return 0;
+	restoredOnce = true;
 	const t0 = Date.now();
 	const list = RESTORE === 'all' ? keys : [...tenantKeys];
 	await pool(list, 16, async (k) => {
@@ -283,6 +357,15 @@ async function step(conc) {
 		while (!stopping) {
 			const i = seqNext++;
 			const key = keyAt(i);
+			if (RESET_LIVE) {
+				if (REPEAT) inFlight.set(key, (inFlight.get(key) ?? 0) + 1);
+				else if (busyKeys.has(key)) {
+					resetStats.skipped++;
+					if (resetStats.skipped % 64 === 0) await new Promise((r) => setTimeout(r, 1));
+					continue;
+				}
+				if (!REPEAT) busyKeys.add(key);
+			}
 			touched.add(key);
 			let r;
 			let rec = {};
@@ -299,6 +382,11 @@ async function step(conc) {
 						})
 					: await send(key, v.body);
 			} else r = await send(key);
+			if (RESET_LIVE && REPEAT) {
+				const left = (inFlight.get(key) ?? 1) - 1;
+				inFlight.set(key, left);
+				if (left === 0) resetQueue.push({ key, at: performance.now() + RESET_SETTLE_MS, tries: 0 });
+			} else if (RESET_LIVE) resetQueue.push({ key, at: performance.now() + RESET_SETTLE_MS, tries: 0 });
 			if (startedMeasured && measuring) {
 				results.push({ key, status: r.status, ms: r.ms });
 				reqFile.write(`${JSON.stringify({ i, key, status: r.status, ms: Math.round(r.ms * 10) / 10, ...rec })}\n`);
@@ -341,6 +429,11 @@ async function step(conc) {
 	const wall = (performance.now() - w0) / 1000;
 	stopping = true;
 	await Promise.all(workers);
+	if (RESET_LIVE) console.log(`live reset: ${JSON.stringify({ ...resetStats, ms: Math.round(resetStats.ms) })}`);
+	if (failureTexts.size > 0) {
+		fs.writeFileSync(path.join(OUT, `failures-${tag}.json`), JSON.stringify([...failureTexts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 60), null, 1));
+		failureTexts.clear();
+	}
 	reqFile.end();
 	sampFile.end();
 

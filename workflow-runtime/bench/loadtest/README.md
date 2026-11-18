@@ -50,6 +50,8 @@ RSS come from the cgroups.
 | `native26.sh` | rebuilds isolated-vm for Node 26 after `setup.sh`; `compiled.mjs` stops when Node 26 cannot load it |
 | `engine.sh` | starts one engine setup on a budget and lists its cgroups |
 | `drive.mjs` | the closed-loop driver with the ramp and the sampling |
+| `multi.sh` | a run with copies of each workflow and six driver processes (see "High load") |
+| `compare-v1.sh` | replays bundles on the compiled engine and compares each node with the v1 reference of the bundle |
 | `ramp.sh`, `full.sh` | one ramp; every ramp of the test |
 | `summarize.mjs` | `summary.md` of a run |
 | `profile/` | the deep profile of the compiled engine (perf, V8 profile, step profile, per-workflow attribution, step cost, native classes) |
@@ -63,6 +65,34 @@ RSS come from the cgroups.
    fails ("IsolatePool failed to create any bridges").
 4. Point `src` at the tree, and write the pack name, its SHA-256 and the gym
    build to `BUILD_ID`. `ramp.sh` puts it on every step.
+
+## High load
+
+One driver process and one tenant for each workflow cannot load the compiled engine fully. Three things lift the limit:
+
+- `LT_COPIES=<n>` (`compiled.mjs`) loads each workflow n times. A copy has the same module, its own webhook prefix
+  (`/webhook-c<j>`), its own gym tenant (the snapshot of the bundle under `<tenant>-c<j>`) and its own token values.
+  The key of a copy is the key of the workflow plus `c<j>`. A copy of a workflow whose credentials do not survive the
+  token rewrite fails each run: run a short step first and keep the copies that pass.
+- `multi.sh` splits the keys between six driver processes on separate vCPUs and adds their steps.
+  One driver process stops near 4,500 requests a second.
+- `LT_WFRT_ARGS="--target-in-flight 4096"` raises the number of runs in flight of each shard.
+
+`--repeat on` (`drive.mjs`) lets a key take a new run while another run of it is in flight. It did not raise the
+throughput in the run of 18 November 2026; the copies did.
+
+Measured on 18 November 2026 with ten copies (1,519 fully compiled workflows, 10,942 keys): one executor core peaks
+at 5,984 successful workflows a second; four shards in a 4-vCPU budget give 9,539 a second with about 2.5 vCPUs in use.
+With 40 copies the throughput fell (7,209 a second at 15,000 runs in flight, with long response times) while the
+shards used under half a core each: the limit is outside the engine there, and it is not identified.
+
+## Comparison with v1
+
+`compare-v1.sh <set under results/> [concurrency]` runs `harness/replay.mjs` of the engine test bed with the adapter
+of the tree (`scripts/gym/engine-test-adapter.mjs`). The set folder holds `bundles/` with a link to each bundle.
+`GYM_ADDR` names the gym machine. The result of each bundle is `exact`, `structure` (the same nodes, items and keys,
+some values differ), `status` or `mismatch`. The replay deletes the tenant of each bundle: restore the tenants before
+the next load run.
 
 ## Method
 

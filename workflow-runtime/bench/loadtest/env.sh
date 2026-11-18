@@ -17,7 +17,7 @@ SRC=$LT/src
 RESULTS=$LT/results
 TOOLS=$LT/tools
 NODE26=$LT/e2e-cache/node-v26.7.0/bin
-N8N_BIN=$LT/e2e-cache/n8n-2.42.2-node26/node_modules/.bin/n8n
+N8N_BIN=${N8N_BIN:-$LT/e2e-cache/n8n-2.42.2-node26/node_modules/.bin/n8n}
 GYM_REPO=$LT/ai-gym
 CA=$DATA/engine-test/harness/ca
 SYS_CPUS=0
@@ -29,10 +29,10 @@ GYM_HTTPS_PORT=47443
 GYM_DNS_PORT=47053
 GYM_PG_PORT=56432
 GYM_MYSQL_PORT=53306
-export GYM_ADMIN=http://127.0.0.1:$GYM_ADMIN_PORT
-export GYM_ADDR=10.255.0.53
-export GYM_DNS=127.0.0.1:$GYM_DNS_PORT
-export GYM_PORT_MAP=443=$GYM_HTTPS_PORT,5432=$GYM_PG_PORT,3306=$GYM_MYSQL_PORT
+export GYM_ADMIN=${GYM_ADMIN:-http://127.0.0.1:$GYM_ADMIN_PORT}
+export GYM_ADDR=${GYM_ADDR:-10.255.0.53}
+export GYM_DNS=${GYM_DNS:-127.0.0.1:$GYM_DNS_PORT}
+export GYM_PORT_MAP=${GYM_PORT_MAP-443=$GYM_HTTPS_PORT,5432=$GYM_PG_PORT,3306=$GYM_MYSQL_PORT}
 export ENGINE_TEST_DIR=$DATA/engine-test
 UIDGID="--uid=$(id -u) --gid=$(id -g)"
 
@@ -52,7 +52,7 @@ unit() {
 	shift 4
 	mkdir -p "$LT/logs"
 	sudo systemctl reset-failed "lt-$name" > /dev/null 2>&1 || true
-	sudo systemd-run --quiet --unit="lt-$name" --slice=lt.slice $UIDGID \
+	sudo systemd-run --quiet --unit="lt-$name" --slice=lt.slice -p LimitNOFILE=524288 $UIDGID \
 		-p AllowedCPUs="$cpus" -p MemoryMax="$mem" -p MemorySwapMax=0 -p KillMode=control-group \
 		-p StandardOutput="append:$LT/logs/$name.log" -p StandardError="append:$LT/logs/$name.log" \
 		--working-directory="$dir" -p EnvironmentFile="$LT/logs/$name.env" "$@"

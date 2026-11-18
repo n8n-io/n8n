@@ -49,7 +49,9 @@ const { buildCredentialsFile } = await imp('packages/@n8n/workflow-lang/src/cred
 const { credentialRegistry } = await imp('packages/@n8n/workflow-lang/scripts/gym/credentials.ts');
 const { resolveCredentialData } = await imp('packages/@n8n/workflow-lang/scripts/gym/v1-credentials.ts');
 
-function credentialsFor(slots, bundle) {
+const NC = process.env.NODE_COMPILE === '0' ? null : await (await import('./lib/node-compiler.mjs')).nodeCompiler(SRC);
+
+function credentialsFor(slots, bundle, derivations) {
 	const file = {};
 	for (const [slot, { id, type }] of Object.entries(slots)) {
 		const c = bundle.credentials.find((x) => x.key === id) ?? bundle.credentials.find((x) => x.type === type);
@@ -60,6 +62,12 @@ function credentialsFor(slots, bundle) {
 			mappings: new Map([[slot, slot]]),
 			registry: credentialRegistry(),
 		});
+		// Values that compiled nodes take from the credential (n8n computes them where the credential is).
+		const list = derivations?.[slot];
+		if (NC && list?.length && built.file[slot]?.data) {
+			const derived = NC.derived(list, resolveCredentialData(c.type, c.data));
+			if (Object.keys(derived).length > 0) built.file[slot].data.n8nDerived = { ...(built.file[slot].data.n8nDerived ?? {}), ...derived };
+		}
 		Object.assign(file, built.file);
 	}
 	return file;
@@ -96,13 +104,14 @@ fs.mkdirSync(path.join(WORK, 'host-home'), { recursive: true });
 fs.mkdirSync(path.join(WORK, 'dedup'), { recursive: true });
 const gymEnv = {
 	GYM_ADDR: process.env.GYM_ADDR ?? '10.255.0.53',
+	...(process.env.GYM_REMOTE ? { GYM_REMOTE: process.env.GYM_REMOTE } : {}),
 	GYM_HOSTS: (await gymHosts()).join(','),
 	GYM_DNS: process.env.GYM_DNS ?? '127.0.0.1:47053',
 	GYM_PORT_MAP: process.env.GYM_PORT_MAP ?? '443=47443,5432=56432,3306=53306',
 };
 const socket = path.join(WORK, 'fb.sock');
 startUnit('host', {
-	cpus: CPUS,
+	cpus: process.env.LT_SUPPORT_CPUS ?? CPUS,
 	mem: MEM,
 	dir: WORK,
 	env: {
@@ -137,19 +146,16 @@ for (let k = 0; k < SHARDS; k++) {
 	const port = PORT + k;
 	const admin = `http://127.0.0.1:${PORT + 100 + k}`;
 	startUnit(`wfrt-${k}`, {
-		cpus: CPUS,
+		cpus: process.env.LT_WFRT_CPUS ?? CPUS,
 		mem: MEM,
 		dir: WORK,
 		env: { ...gymEnv, WFRT_ADMIN_SECRET: secret, TZ: 'UTC' },
 		argv: [
-			process.env.LT_WFRT ?? path.join(SRC, 'workflow-runtime/zig-out/bin/wfrt'), 'serve', '--profile', 'embedded',
-			// The tables of the shard for this many executions at one time (docs/limits.md).
-			// `GET /_admin/limits` on the admin port gives the fill and the wait counts.
-			...(process.env.LT_WFRT_IN_FLIGHT ? ['--target-in-flight', process.env.LT_WFRT_IN_FLIGHT] : []),
-			'--port', String(port), '--shards', '1',
-			'--max-modules', '4096', '--module-store-mb', '512',
+			process.env.LT_WFRT ?? path.join(SRC, 'workflow-runtime/zig-out/bin/wfrt'), 'serve', '--profile', 'embedded', '--port', String(port), '--shards', '1',
+			'--max-modules', process.env.LT_MAX_MODULES ?? '16384', '--module-store-mb', process.env.LT_MODULE_STORE_MB ?? '2048',
 			'--admin-port', String(PORT + 100 + k), '--admin-secret-env', 'WFRT_ADMIN_SECRET', '--log-dir', logDir,
 			'--fallback', socket, '--gym-env', '--ca-file', CA,
+			...(process.env.LT_WFRT_ARGS ? process.env.LT_WFRT_ARGS.split(' ') : []),
 		],
 	});
 	units.push(`wfrt-${k}`);
@@ -158,7 +164,7 @@ for (let k = 0; k < SHARDS; k++) {
 const auth = { authorization: `Bearer ${secret}`, 'content-type': 'application/json' };
 // The backend of `ctx.service` calls (Data Table, deduplication): wfrt waits for its answers.
 startUnit('svc', {
-	cpus: CPUS,
+	cpus: process.env.LT_SUPPORT_CPUS ?? CPUS,
 	mem: '4G',
 	dir: WORK,
 	env: { PATH: `${path.dirname(NODE26)}:/usr/bin:/bin`, HOME: WORK, LT, WFRT_ADMIN_SECRET: secret, WF_FALLBACK_DEDUPLICATION_DIR: path.join(WORK, 'dedup'), TZ: 'UTC' },
@@ -194,13 +200,17 @@ const needsRefresh = (m) => Object.values(m.credentials).some((c) => c.data?.oau
 async function put(key, m) {
 	const credentials = structuredClone(m.credentials);
 	if (needsRefresh(m)) refreshed[key] = await refreshOAuth(credentials, CA);
-	const body = JSON.stringify({ versionId: 'v1', module: m.module, active: true, webhookPrefix: '/webhook', credentials });
+	const body = JSON.stringify({ versionId: 'v1', module: m.module, active: true, webhookPrefix: m.prefix ?? '/webhook', credentials });
 	const res = await fetch(`${shards[m.owner].admin}/_admin/workflows/${key}`, { method: 'PUT', headers: auth, body });
 	if (!res.ok) throw new Error(`load: ${res.status} ${(await res.text()).slice(0, 200)}`);
 }
 const entries = {};
 const failed = {};
 const refreshed = {};
+// LT_COPIES: each workflow is loaded this many times. A copy has the same module, its own webhook prefix, its own
+// gym tenant (the snapshot of the bundle under a new tenant id) and its own token values, so runs of two copies share no state.
+const COPIES = Number(process.env.LT_COPIES ?? '1');
+let copyFailed = 0;
 let convertMs = 0;
 let compileMs = 0;
 let loadMs = 0;
@@ -227,16 +237,17 @@ await pool(rows, 4, async (row) => {
 			cached++;
 		} else {
 			const c0 = performance.now();
-			const converted = convertWorkflow(wf, {
+			const options = {
 				name: String(b.meta.name ?? b.meta.id),
 				resolveWorkflow: (id) => (id === 'GYM_STUB_SUBWORKFLOW' ? b.resources.subworkflow : undefined),
 				trigger: w.webhookName,
 				trace: 'none',
 				codeNodes: CODE,
-			});
+			};
+			const converted = NC ? NC.convert(convertWorkflow, wf, options, b) : convertWorkflow(wf, options);
 			const c1 = performance.now();
 			if (!converted.ok) throw new Error(`convert: ${converted.diagnostics.find((d) => d.severity === 'error')?.message ?? 'failed'}`);
-			const compiled = compile(converted.source, { fileName: '/workflow.ts' });
+			const compiled = compile(converted.source, { fileName: '/workflow.ts', ...(converted.nodes ? { extraNodes: converted.nodes } : {}) });
 			const c2 = performance.now();
 			convertMs += c1 - c0;
 			compileMs += c2 - c1;
@@ -245,19 +256,44 @@ await pool(rows, 4, async (row) => {
 				module: Buffer.from(compiled.module).toString('base64'),
 				slots: converted.credentials ?? {},
 				fallbackNodes: converted.fallbackNodes ?? [],
+				derivations: converted.credentialDerivations ?? {},
+				compiledNodes: Object.keys(converted.nodes ?? {}).length,
 				convertMs: c1 - c0,
 				compileMs: c2 - c1,
 			};
 			fs.writeFileSync(cacheFile, JSON.stringify(unit));
 		}
 		const owner = parseInt(key.slice(0, 8), 16) % SHARDS;
-		const loaded = { owner, module: unit.module, credentials: credentialsFor(unit.slots, b), tenant: row.tenant, dir: row.dir };
+		const loaded = { owner, module: unit.module, credentials: credentialsFor(unit.slots, b, unit.derivations), tenant: row.tenant, dir: row.dir };
 		if (needsRefresh(loaded)) await snapshotPut(row.tenant, b.snapshot());
 		const l0 = performance.now();
 		await put(key, loaded);
 		loadMs += performance.now() - l0;
 		modules.set(key, loaded);
 		entries[key] = { port: shards[owner].port, path: `/webhook/${w.path}`, owner };
+		if (COPIES > 1) {
+			const snap = b.snapshot().toString('utf8');
+			const tokens = [...new Set((JSON.parse(snap).creds ?? []).map((c) => c.value).filter((v) => typeof v === 'string' && v.length >= 8))].sort((x, y) => y.length - x.length);
+			const credText = JSON.stringify(loaded.credentials);
+			for (let j = 1; j < COPIES; j++) {
+				const sfx = `c${j}`;
+				const sub = (t) => {
+					for (const v of tokens) t = t.split(v).join(v + sfx);
+					return t;
+				};
+				try {
+					const doc = JSON.parse(sub(snap));
+					doc.tenant = `${row.tenant}-${sfx}`;
+					const copy = { owner, module: unit.module, credentials: JSON.parse(sub(credText)), tenant: doc.tenant, dir: row.dir, prefix: `/webhook-${sfx}` };
+					await snapshotPut(doc.tenant, Buffer.from(JSON.stringify(doc)));
+					await put(`${key}${sfx}`, copy);
+					modules.set(`${key}${sfx}`, copy);
+					entries[`${key}${sfx}`] = { port: shards[owner].port, path: `/webhook-${sfx}/${w.path}`, owner };
+				} catch (e) {
+					if (copyFailed++ === 0) console.error(`copy ${sfx}: ${String(e.message).slice(0, 200)}`);
+				}
+			}
+		}
 	} catch (e) {
 		failed[key] = String(e.message).slice(0, 300);
 	}
@@ -266,7 +302,7 @@ const manifest = {
 	engine: `compiled-${CODE}`,
 	shards: SHARDS,
 	workers: WORKERS,
-	cpus: CPUS,
+	cpus: process.env.LT_WFRT_CPUS ?? CPUS,
 	units,
 	loaded: Object.keys(entries).length,
 	failed,
