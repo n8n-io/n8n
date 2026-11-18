@@ -69,3 +69,56 @@ export const rawCustomFieldKeysOption: INodeProperties = {
 	description:
 		'Whether to provide raw Pipedrive field keys and option IDs instead of human-readable names',
 };
+
+/**
+ * Standard organization fields of the Pipedrive API v2. In v1 these lived in the
+ * organization's field list and were set through custom properties; in v2 they are
+ * top-level body fields (website, linkedin, industry, annual_revenue, employee_count,
+ * address), so they need their own inputs.
+ */
+export const organizationStandardFields: INodeProperties[] = [
+	{
+		displayName: 'Address',
+		name: 'address',
+		type: 'string',
+		default: '',
+		description:
+			'Full address of the organization. Pipedrive splits it into street, city, postal code and country.',
+	},
+	{
+		displayName: 'Annual Revenue',
+		name: 'annual_revenue',
+		type: 'number',
+		default: 0,
+		description: 'The annual revenue of the organization',
+	},
+	{
+		displayName: 'Employee Count',
+		name: 'employee_count',
+		type: 'number',
+		default: 0,
+		description: 'The number of employees in the organization',
+	},
+	{
+		displayName: 'Industry ID',
+		name: 'industry',
+		type: 'number',
+		default: 0,
+		description:
+			'ID of the industry option, as listed for the Industry field under Company settings > Data fields',
+	},
+	{
+		displayName: 'LinkedIn Profile URL',
+		name: 'linkedin',
+		type: 'string',
+		default: '',
+		description: 'The LinkedIn profile URL of the organization',
+	},
+	{
+		displayName: 'Website',
+		name: 'website',
+		type: 'string',
+		default: '',
+		description: 'The website of the organization',
+	},
+];
