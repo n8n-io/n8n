@@ -13,25 +13,49 @@ import { nodeNameToToolName } from 'n8n-workflow';
 
 export const TOOL_POLICY_VIOLATION_KIND = 'agent-tool-policy';
 
+/** Where a policy comes from. It decides which tools the policy's tool refs can name. */
+export type ToolPolicySource =
+	/** The policy of an agent: the agent of the call, or an agent that delegated to it. */
+	| { kind: 'agent'; agentId: string }
+	/** A policy above agents, such as one for a project. Its tool refs name no tool. */
+	| { kind: 'scope'; scope: string };
+
+export interface SourcedToolPolicy {
+	source: ToolPolicySource;
+	policy: ToolPolicy;
+}
+
 export interface ToolPolicyDecision {
 	action: 'allow' | 'deny';
-	/** The rules that decided. Empty when the default action decided. */
+	/** The rules that denied, or that allowed when the call is allowed. Default decisions add none. */
 	ruleIds: string[];
-	/** One violation for each deny rule, or one for a default deny. Empty for allow. */
+	/** One violation for each deny rule and each default deny. Empty when the call is allowed. */
 	violations: PolicyViolation[];
 }
 
 export interface EvaluateToolCallInput {
-	policy: ToolPolicy;
+	/**
+	 * Every policy that applies to the call. The call runs only if each of them allows it.
+	 * Usually the agent's own policy, the policy of each agent that delegated to it, and
+	 * policies above agents.
+	 */
+	policies: readonly SourcedToolPolicy[];
 	context: PreToolExecutionContext;
 	/** Written on each violation, so the audit log names the check. */
 	checkId: string;
 	/**
-	 * Describes the tool of an earlier call by its runtime name. History records carry only
-	 * the name, so without this an earlier call matches only rules that name the tool. Rules
-	 * on MCP servers, node types, workflow tools, and categories then never see earlier calls.
+	 * Describes the tool of an earlier call, by the agent that made the call and the runtime
+	 * name. History records carry only the name. A call that this cannot describe counts as
+	 * unknown: see {@link evaluateToolCall}.
 	 */
-	describeTool?: (toolName: string) => ToolPolicyToolIdentity | undefined;
+	describeTool?: (agentId: string | null, toolName: string) => ToolPolicyToolIdentity | undefined;
+}
+
+/** A tool call, with the agent that made it. `identity` is absent when the tool is unknown. */
+interface CallTarget {
+	agentId: string | null;
+	toolName: string;
+	identity?: ToolPolicyToolIdentity;
 }
 
 /** The tool of the call being decided, from what the runtime sends. */
@@ -46,14 +70,28 @@ export function identifyPolicedTool(tool: PolicedTool): ToolPolicyToolIdentity {
 }
 
 /**
- * A rule names a node tool by its config name. The runtime runs it under the sanitized form
- * of that name, so both forms match, like tool guardrail refs.
+ * Whether a selector of a policy covers a call. The answer is `unknown` only for a call whose
+ * tool cannot be described.
+ *
+ * A tool ref names a tool in one agent's config. It matches only calls of that agent, because
+ * a tool of the same name in another agent is a different tool. Node types, packages, and
+ * categories match the calls of every agent.
  */
-function matches(selector: ToolPolicySelector, tool: ToolPolicyToolIdentity): boolean {
-	if (selector.kind === 'tool' && selector.ref.type === 'node' && tool.type === 'node') {
-		return selector.ref.name === tool.name || nodeNameToToolName(selector.ref.name) === tool.name;
+function selectorMatches(
+	selector: ToolPolicySelector,
+	source: ToolPolicySource,
+	call: CallTarget,
+): boolean | 'unknown' {
+	if (selector.kind === 'tool') {
+		if (source.kind !== 'agent' || source.agentId !== call.agentId) return false;
+		const { ref } = selector;
+		// A node tool runs under the sanitized form of its config name, like tool guardrail refs.
+		if (ref.type === 'node' && (call.identity === undefined || call.identity.type === 'node')) {
+			return ref.name === call.toolName || nodeNameToToolName(ref.name) === call.toolName;
+		}
 	}
-	return toolPolicySelectorMatches(selector, tool);
+	if (call.identity === undefined) return 'unknown';
+	return toolPolicySelectorMatches(selector, call.identity);
 }
 
 function isPolicyRefusal(output: unknown): boolean {
@@ -73,19 +111,38 @@ function hasRun(call: PolicedToolCallRecord): boolean {
 	return call.status !== 'pending' && !isPolicyRefusal(call.output);
 }
 
+/**
+ * An unknown earlier call is treated as the call that makes a deny rule apply, and never as
+ * the call that makes an allow rule apply. So a tool that cannot be described can only make
+ * the decision stricter.
+ */
 function conditionHolds(
 	condition: ToolPolicyCondition,
-	used: readonly ToolPolicyToolIdentity[],
+	rule: ToolPolicyRule,
+	source: ToolPolicySource,
+	used: readonly CallTarget[],
 ): boolean {
 	if ('toolUsed' in condition) {
-		return used.some((tool) => condition.toolUsed.some((selector) => matches(selector, tool)));
+		return used.some((call) =>
+			condition.toolUsed.some((selector) => {
+				const match = selectorMatches(selector, source, call);
+				return match === 'unknown' ? rule.action === 'deny' : match;
+			}),
+		);
 	}
-	if ('all' in condition) return condition.all.every((part) => conditionHolds(part, used));
-	return condition.any.some((part) => conditionHolds(part, used));
+	if ('all' in condition) {
+		return condition.all.every((part) => conditionHolds(part, rule, source, used));
+	}
+	return condition.any.some((part) => conditionHolds(part, rule, source, used));
+}
+
+function sourceLabel(source: ToolPolicySource): string {
+	return source.kind === 'agent' ? `agent:${source.agentId}` : source.scope;
 }
 
 function violation(
 	input: EvaluateToolCallInput,
+	source: ToolPolicySource,
 	message: string,
 	rule?: ToolPolicyRule,
 ): PolicyViolation {
@@ -95,54 +152,42 @@ function violation(
 		message,
 		subject: input.context.tool.name,
 		subjectType: 'agentTool',
+		scope: sourceLabel(source),
 		projectId: input.context.projectId,
 		...(rule && { matchedRuleId: rule.id }),
 	};
 }
 
-function deny(input: EvaluateToolCallInput, rules: ToolPolicyRule[]): ToolPolicyDecision {
-	return {
-		action: 'deny',
-		ruleIds: rules.map((rule) => rule.id),
-		violations: rules.map((rule) =>
-			violation(input, rule.message ?? DEFAULT_TOOL_POLICY_DENY_MESSAGE, rule),
-		),
-	};
+interface PolicyVerdict {
+	action: 'allow' | 'deny';
+	ruleIds: string[];
+	violations: PolicyViolation[];
 }
 
-/**
- * Decides one tool call. Among the rules that cover the tool and whose condition holds, a
- * deny wins over an allow, and the default action applies when no rule does. Rule order has
- * no effect.
- *
- * Earlier calls come from every session in `sessionHistory`, so a sub-agent inherits what its
- * parents used. The history is read only when a rule that covers the tool has a condition.
- */
-export async function evaluateToolCall(input: EvaluateToolCallInput): Promise<ToolPolicyDecision> {
-	const { policy, context } = input;
-	const tool = identifyPolicedTool(context.tool);
-	const covering = policy.rules.filter((rule) => rule.tools.some((s) => matches(s, tool)));
-
-	// A deny without a condition decides alone, so the history is not needed.
-	const unconditionalDenies = covering.filter((rule) => rule.action === 'deny' && !rule.when);
-	if (unconditionalDenies.length > 0) return deny(input, unconditionalDenies);
-
-	let used: ToolPolicyToolIdentity[] = [];
-	if (covering.some((rule) => rule.when)) {
-		const sessions = await context.sessionHistory();
-		used = sessions
-			.flatMap((session) => session.toolCalls)
-			.filter((call) => call.toolCallId !== context.toolCallId && hasRun(call))
-			.map(
-				(call): ToolPolicyToolIdentity =>
-					input.describeTool?.(call.toolName) ?? { type: 'node', name: call.toolName },
-			);
-	}
-
-	const active = covering.filter((rule) => !rule.when || conditionHolds(rule.when, used));
+function decideOne(
+	input: EvaluateToolCallInput,
+	{ source, policy }: SourcedToolPolicy,
+	current: CallTarget,
+	used: () => readonly CallTarget[],
+): PolicyVerdict {
+	// The current tool is always described, so a match is never `unknown` here.
+	const covering = policy.rules.filter((rule) =>
+		rule.tools.some((selector) => selectorMatches(selector, source, current) === true),
+	);
+	const active = covering.filter(
+		(rule) => !rule.when || conditionHolds(rule.when, rule, source, used()),
+	);
 
 	const denies = active.filter((rule) => rule.action === 'deny');
-	if (denies.length > 0) return deny(input, denies);
+	if (denies.length > 0) {
+		return {
+			action: 'deny',
+			ruleIds: denies.map((rule) => rule.id),
+			violations: denies.map((rule) =>
+				violation(input, source, rule.message ?? DEFAULT_TOOL_POLICY_DENY_MESSAGE, rule),
+			),
+		};
+	}
 
 	const allows = active.filter((rule) => rule.action === 'allow');
 	if (allows.length > 0) {
@@ -153,8 +198,68 @@ export async function evaluateToolCall(input: EvaluateToolCallInput): Promise<To
 		return {
 			action: 'deny',
 			ruleIds: [],
-			violations: [violation(input, DEFAULT_TOOL_POLICY_DENY_MESSAGE)],
+			violations: [violation(input, source, DEFAULT_TOOL_POLICY_DENY_MESSAGE)],
 		};
 	}
 	return { action: 'allow', ruleIds: [], violations: [] };
+}
+
+function needsHistory({ source, policy }: SourcedToolPolicy, current: CallTarget): boolean {
+	return policy.rules.some(
+		(rule) =>
+			rule.when !== undefined &&
+			rule.tools.some((selector) => selectorMatches(selector, source, current) === true),
+	);
+}
+
+/**
+ * Decides one tool call against every policy that applies to it. The call runs only if each
+ * policy allows it.
+ *
+ * Inside one policy, a deny rule wins over an allow rule, and the default action applies when
+ * no rule applies. Rule order and policy order have no effect.
+ *
+ * Earlier calls come from every session in `sessionHistory`, so an agent sees what the agents
+ * that delegated to it used. The history is read once, and only when a rule with a condition
+ * covers the tool.
+ */
+export async function evaluateToolCall(input: EvaluateToolCallInput): Promise<ToolPolicyDecision> {
+	const { context } = input;
+	const current: CallTarget = {
+		agentId: context.agentId,
+		toolName: context.tool.name,
+		identity: identifyPolicedTool(context.tool),
+	};
+
+	let used: CallTarget[] = [];
+	if (input.policies.some((sourced) => needsHistory(sourced, current))) {
+		const sessions = await context.sessionHistory();
+		used = sessions.flatMap((session) =>
+			session.toolCalls
+				.filter((call) => call.toolCallId !== context.toolCallId && hasRun(call))
+				.map((call): CallTarget => {
+					const identity = input.describeTool?.(session.agentId, call.toolName);
+					return {
+						agentId: session.agentId,
+						toolName: call.toolName,
+						...(identity && { identity }),
+					};
+				}),
+		);
+	}
+
+	const verdicts = input.policies.map((sourced) => decideOne(input, sourced, current, () => used));
+	const denied = verdicts.filter((verdict) => verdict.action === 'deny');
+	if (denied.length > 0) {
+		return {
+			action: 'deny',
+			ruleIds: denied.flatMap((verdict) => verdict.ruleIds),
+			violations: denied.flatMap((verdict) => verdict.violations),
+		};
+	}
+	return {
+		action: 'allow',
+		ruleIds: verdicts.flatMap((verdict) => verdict.ruleIds),
+		violations: [],
+	};
 }
