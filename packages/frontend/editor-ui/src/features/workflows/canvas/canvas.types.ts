@@ -277,6 +277,8 @@ export type CanvasEventBusEvents = {
 	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
+	/** Selects the nodes and moves the view to them with an animation. Waits for a canvas that is not ready. */
+	'nodes:zoomTo': { ids: string[] };
 	'nodes:selectAll': never;
 	'nodes:action': {
 		ids: string[];

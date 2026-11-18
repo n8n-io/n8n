@@ -118,6 +118,7 @@ import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
+import { useCanvasNodeZoom } from '../composables/useCanvasNodeZoom';
 import {
 	useAddNodesToChat,
 	type AddNodesToChatSource,
@@ -1966,11 +1967,23 @@ function onRequestSetConnectionsOnInit(connections: IConnections) {
 	pendingConnections = connections;
 }
 
+const { zoomToNodes } = useCanvasNodeZoom({
+	isCanvasReady: isPaneReady,
+	fitView,
+	selectNodes: (ids) => onSelectNodes({ ids }),
+	onNodesInitialized,
+});
+
+function onZoomToNodes({ ids }: CanvasEventBusEvents['nodes:zoomTo']) {
+	void zoomToNodes(ids);
+}
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
+	props.eventBus.on('nodes:zoomTo', onZoomToNodes);
 	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
@@ -1982,6 +1995,7 @@ onUnmounted(() => {
 	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
+	props.eventBus.off('nodes:zoomTo', onZoomToNodes);
 	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
