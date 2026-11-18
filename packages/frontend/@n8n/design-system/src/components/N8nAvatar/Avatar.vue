@@ -10,6 +10,8 @@ interface AvatarProps {
 	lastName?: string | null;
 	size?: AvatarSize;
 	colors?: string[];
+	/** A CSS color for a solid circle, in place of the generated pattern */
+	color?: string;
 }
 
 defineOptions({ name: 'N8nAvatar' });
@@ -39,15 +41,28 @@ const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 
 <template>
 	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
+		<span
+			v-if="name && color"
+			:class="$style.solid"
+			:style="{
+				backgroundColor: color,
+				width: `${getSize(size)}px`,
+				height: `${getSize(size)}px`,
+			}"
+			data-test-id="avatar-solid"
+		/>
 		<Avatar
-			v-if="name"
+			v-else-if="name"
 			:size="getSize(size)"
 			:name="name"
 			variant="marble"
 			:colors="getColors(colors)"
 		/>
 		<div v-else :class="[$style.empty, $style[size]]"></div>
-		<span v-if="firstName || lastName" :class="[$style.initials, $style[`text-${size}`]]">
+		<span
+			v-if="firstName || lastName"
+			:class="[$style.initials, $style[`text-${size}`], { [$style.initialsOnSolid]: color }]"
+		>
 			{{ initials }}
 		</span>
 	</span>
@@ -65,6 +80,11 @@ const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 	}
 }
 
+.solid {
+	display: block;
+	border-radius: 50%;
+}
+
 .empty {
 	display: block;
 	border-radius: 50%;
@@ -79,6 +99,12 @@ const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 	color: var(--avatar--color--text);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;
+}
+
+// A solid color reads well without the shadow that lifts the initials off the pattern.
+.initialsOnSolid {
+	color: var(--color--neutral-white);
+	text-shadow: none;
 }
 
 .text-xxsmall,

@@ -288,6 +288,9 @@ function onSignOut() {
 
 // The shortcut is the keyboard's route to About, so it counts as a help click too.
 useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
+
+// The user's own avatar is one solid purple, which sits well beside the brand pink.
+const ACCOUNT_AVATAR_COLOR = 'var(--color--purple-700)';
 </script>
 
 <template>
@@ -326,6 +329,7 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 								:first-name="user?.firstName"
 								:last-name="user?.lastName"
 								:size="isCollapsed ? 'small' : 'xxsmall'"
+								:color="ACCOUNT_AVATAR_COLOR"
 							/>
 							<span
 								v-if="hasUnread"
@@ -344,7 +348,12 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 
 				<template #content>
 					<div :class="$style.header" data-test-id="main-sidebar-account-header">
-						<N8nAvatar :first-name="user?.firstName" :last-name="user?.lastName" size="small" />
+						<N8nAvatar
+							:first-name="user?.firstName"
+							:last-name="user?.lastName"
+							size="small"
+							:color="ACCOUNT_AVATAR_COLOR"
+						/>
 						<div :class="$style.identity">
 							<!-- Name at the menu's item size; the email one step down, as a caption. -->
 							<N8nTooltip
