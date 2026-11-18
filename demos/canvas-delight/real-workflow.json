@@ -1,0 +1,61 @@
+{
+	"name": "Hackmation \u00b7 A quiet moment",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "delight-trigger",
+			"name": "When you are ready",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [320, 560]
+		},
+		{
+			"parameters": {},
+			"id": "delight-work",
+			"name": "Carry on",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [608, 560]
+		},
+		{
+			"parameters": {
+				"jsCode": "return $input.all();"
+			},
+			"id": "delight-sleeper",
+			"name": "Taking a little nap",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [960, 368]
+		},
+		{
+			"parameters": {
+				"content": "## A small paper escape\n\nEven a busy canvas deserves a quiet moment.\n\n**Fold this corner \u2197** and watch this note take flight.\n\nThe Code node is having a nap. Move your pointer to wake it.",
+				"height": 300,
+				"width": 500,
+				"color": 3
+			},
+			"id": "delight-note",
+			"name": "A small paper escape",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [304, 96]
+		}
+	],
+	"connections": {
+		"When you are ready": {
+			"main": [
+				[
+					{
+						"node": "Carry on",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"binaryMode": "separate"
+	}
+}

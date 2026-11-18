@@ -1,4 +1,29 @@
-# Canvas delight demo
+# Canvas delight
+
+## Full n8n app
+
+The running n8n editor is at <http://127.0.0.1:8083/workflow/kkM8mfNMrpuVBrCm?hackmation=delight>.
+Open the tab in the **Eggs · Canvas delight** Orca worktree. That tab is signed in to the local demo account.
+
+This is the normal n8n app with its backend, database, workflow editor, node parameters, and sticky-note editor. The workflow is saved as **Hackmation · A quiet moment**. The instance data is in `/private/tmp/n8n-canvas-delight-instance`. It does not use your usual n8n database.
+
+1. Leave the canvas idle for 3 seconds. The disconnected Code node sleeps.
+2. Move the pointer to wake it. Select it to use **Sleep now**.
+3. Click the sticky note's top-right corner. The note folds into a bird and returns.
+4. Double-click the note to edit it. Double-click the Code node to open its parameters.
+
+Import [real-workflow.json](real-workflow.json) into another running instance of this branch to repeat the demo. Add `?hackmation=delight` to that workflow URL.
+
+The running editor uses this worktree's source. The backend reuses the main checkout's existing build. The Orca terminals are **Canvas delight backend** and **Canvas delight real editor**.
+
+For a checkout with built backend dependencies, start these commands in separate terminals:
+
+```sh
+N8N_USER_FOLDER=/private/tmp/n8n-canvas-delight-instance N8N_PORT=5683 N8N_LISTEN_ADDRESS=127.0.0.1 N8N_DIAGNOSTICS_ENABLED=false N8N_SECURE_COOKIE=false N8N_EDITOR_BASE_URL=http://127.0.0.1:8083 pnpm start
+N8N_PORT=5683 N8N_EDITOR_PORT=8083 pnpm --dir packages/frontend/editor-ui exec vite --host 127.0.0.1
+```
+
+## Standalone animation harness
 
 Open http://127.0.0.1:5183/.
 

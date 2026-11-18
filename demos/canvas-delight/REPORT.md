@@ -1,5 +1,21 @@
 # Canvas delight implementation report
 
+## Full-app verification
+
+The normal n8n app runs at <http://127.0.0.1:8083/workflow/kkM8mfNMrpuVBrCm?hackmation=delight>. The backend runs on port 5683 with a task-owned SQLite database. The editor runs from this worktree on port 8083.
+
+Verified on the saved workflow in the full editor:
+
+- The disconnected Code node sleeps after idle time. Pointer movement wakes it.
+- The actual sticky-note corner starts the flight.
+- The same sticky-note DOM element, text, size, and inline style return after flight.
+- The saved workflow nodes remain unchanged after the animation.
+- Double-click opens the real sticky-note text editor and the Code node parameter panel.
+- Sticky-note dragging works. Undo restores its original position.
+- Browser error output was empty during these checks.
+
+Full-app evidence is in `evidence/real-app/`. Broad editor regression tests remain unrun.
+
 ## Result
 
 Implemented sleeping nodes and sticky-note origami. Both effects run in the real workflow canvas behind `?hackmation=delight`. The standalone harness imports the same effect components.
@@ -59,6 +75,6 @@ The browser compared the note's DOM identity, text, complete bounding rectangle,
 
 The harness uses a fixed representative workflow and simplified dragging. Real workflow JSON can be imported through n8n's normal editor. The harness has no import or download controls, so no download test applies.
 
-Full-editor runtime, resize, selection, and full CI checks remain for the normal n8n development environment. The app integration was compiled and linted but was not run against a backend. Full frontend typechecking and the broad test suites remain for CI.
+The full-app checks above supplement the initial standalone checks. Comprehensive resize, selection, frontend typechecking, and regression suites remain for CI.
 
-No workflow data, credentials, execution state, telemetry, or backend persistence changed. The UI state remains local. All changes are staged. The sandbox blocked the local commit because the worktree index is outside the writable checkout. The coordinator will make the local commit, as agreed. No commit ID is available from this worker.
+The effects do not modify workflow data or execution state. The initial implementation is saved in local commit `5d20afc86c6`. The full-app check created one demo workflow and one local account in a separate task-owned database. No workflow was published or executed.
