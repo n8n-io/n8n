@@ -30,6 +30,7 @@ import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
+import AgentToolPolicyPanel from './AgentToolPolicyPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
@@ -420,6 +421,11 @@ defineExpose({ onSetupTaskAction });
 							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
+							@update:config="emit('update:config', $event)"
+						/>
+						<AgentToolPolicyPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
 							@update:config="emit('update:config', $event)"
 						/>
 						<N8nCard

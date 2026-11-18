@@ -160,6 +160,15 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentToolPolicyPanel.vue', () => ({
+	default: {
+		name: 'AgentToolPolicyPanel',
+		template: '<div data-testid="agent-tool-policy-panel-stub" />',
+		props: ['config', 'disabled'],
+		emits: ['update:config'],
+	},
+}));
+
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
@@ -615,6 +624,22 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('renders the tool policy panel on the Settings tab and forwards its config update', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+		await flushPromises();
+
+		const toolPolicyPanel = wrapper.findComponent({ name: 'AgentToolPolicyPanel' });
+		expect(toolPolicyPanel.exists()).toBe(true);
+		expect(toolPolicyPanel.props('disabled')).toBe(false);
+
+		const changes = {
+			config: { guardrails: { toolPolicy: { defaultAction: 'deny' as const, rules: [] } } },
+		};
+		toolPolicyPanel.vm.$emit('update:config', changes);
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {

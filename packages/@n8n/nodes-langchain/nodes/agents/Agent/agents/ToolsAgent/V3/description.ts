@@ -4,6 +4,11 @@ import type { INodeProperties } from 'n8n-workflow';
 import { getBatchingOptionFields } from '@n8n/ai-utilities';
 
 import { commonOptions } from '../options';
+import {
+	toolPoliciesOption,
+	toolPolicyDefaultOption,
+	toolPolicyTemplatesOption,
+} from './toolPolicies';
 
 const enableStreaminOption: INodeProperties = {
 	displayName: 'Enable Streaming',
@@ -44,5 +49,8 @@ export const toolsAgentProperties: INodeProperties = {
 		getBatchingOptionFields(undefined, 1),
 		maxTokensFromMemoryOption,
 		forceToolCallOnFirstIterationOption,
+		toolPolicyDefaultOption,
+		toolPolicyTemplatesOption,
+		toolPoliciesOption,
 	],
 };

@@ -3,6 +3,11 @@ import { z, type ZodError } from 'zod';
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
+import {
+	collectToolPolicySelectors,
+	ToolPolicySchema,
+	type ToolPolicyToolRef,
+} from './agent-tool-policy.schema';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
@@ -694,6 +699,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 			guardrails: z
 				.object({
 					budget: BudgetGuardrailConfigSchema.optional(),
+					toolPolicy: ToolPolicySchema.optional(),
 					tools: z
 						.array(ToolGuardrailConfigSchema)
 						.superRefine((guardrails, ctx) => {
@@ -890,6 +896,54 @@ export function findToolGuardrailRefIssues(
 				(ref.type === 'workflow' && workflowIds.has(ref.workflowId)) ||
 				(ref.type === 'node' && nodeNames.has(ref.name));
 			if (!matches) issues.push({ guardrailIndex, toolIndex, ref });
+		}
+	}
+	return issues;
+}
+
+export interface ToolPolicyRefIssue {
+	ruleIndex: number;
+	ref: ToolPolicyToolRef;
+}
+
+/** True when the agent has the tool or MCP server that `ref` points at. */
+export function isToolPolicyRefOnAgent(
+	config: Pick<AgentJsonConfig, 'tools' | 'mcpServers'>,
+	ref: ToolPolicyToolRef,
+): boolean {
+	if (ref.type === 'mcpServer') {
+		return (config.mcpServers ?? []).some((server) => server.name === ref.name);
+	}
+	return (config.tools ?? []).some((tool) =>
+		ref.type === 'workflow'
+			? tool.type === 'workflow' && tool.workflowId === ref.workflowId
+			: tool.type === 'node' && tool.name === ref.name,
+	);
+}
+
+/**
+ * Flags tool policy selectors of kind `tool` that point at no configured tool
+ * or MCP server. It checks `tools` and `when` of each rule. It reports each
+ * missing ref one time for each rule. The same rules as for tool guardrail
+ * refs apply: disabled tools count, and draft save tolerates dangling refs.
+ */
+export function findToolPolicyRefIssues(
+	config: Pick<AgentJsonConfig, 'config' | 'tools' | 'mcpServers'>,
+): ToolPolicyRefIssue[] {
+	const rules = config.config?.guardrails?.toolPolicy?.rules;
+	if (!rules?.length) return [];
+
+	const issues: ToolPolicyRefIssue[] = [];
+	for (const [ruleIndex, rule] of rules.entries()) {
+		const seen = new Set<string>();
+		for (const selector of collectToolPolicySelectors(rule)) {
+			if (selector.kind !== 'tool') continue;
+			const key = JSON.stringify(selector.ref);
+			if (seen.has(key)) continue;
+			seen.add(key);
+			if (!isToolPolicyRefOnAgent(config, selector.ref)) {
+				issues.push({ ruleIndex, ref: selector.ref });
+			}
 		}
 	}
 	return issues;

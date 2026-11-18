@@ -1339,6 +1339,102 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result.issues.filter((i) => i.path.startsWith('config.guardrails.tools'))).toEqual([]);
 	});
 
+	it.each(['publish', 'runtime'] as const)(
+		'flags a tool policy rule with a ref that points at no configured tool (%s scope)',
+		async (scope) => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					tools: [{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1' }],
+					config: {
+						guardrails: {
+							toolPolicy: {
+								defaultAction: 'allow',
+								rules: [
+									{
+										id: 'ok_rule',
+										action: 'allow',
+										tools: [{ kind: 'tool', ref: { type: 'workflow', workflowId: 'wf-1' } }],
+									},
+									{
+										id: 'no-email-after-db',
+										action: 'deny',
+										tools: [{ kind: 'tool', ref: { type: 'node', name: 'Send Email' } }],
+										when: {
+											toolUsed: [{ kind: 'tool', ref: { type: 'mcpServer', name: 'crm' } }],
+										},
+									},
+								],
+							},
+						},
+					},
+				}),
+			);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				scope,
+			);
+
+			expect(result.status).toBe('invalid');
+			expect(
+				result.issues.filter((i) => i.path.startsWith('config.guardrails.toolPolicy')),
+			).toEqual([
+				{
+					code: 'invalid_value',
+					path: 'config.guardrails.toolPolicy.rules.1',
+					capability: { kind: 'toolPolicy', id: 'no-email-after-db' },
+				},
+			]);
+		},
+	);
+
+	it('reports no tool policy issue when every ref resolves', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1' }],
+				mcpServers: [
+					{ name: 'crm', url: 'https://example.com/mcp', transport: 'sse', authentication: 'none' },
+				],
+				config: {
+					guardrails: {
+						toolPolicy: {
+							defaultAction: 'deny',
+							rules: [
+								{
+									id: 'r1',
+									action: 'allow',
+									tools: [
+										{ kind: 'tool', ref: { type: 'workflow', workflowId: 'wf-1' } },
+										{ kind: 'nodeType', value: 'n8n-nodes-base.gmailTool' },
+									],
+									when: {
+										toolUsed: [{ kind: 'tool', ref: { type: 'mcpServer', name: 'crm' } }],
+									},
+								},
+							],
+						},
+					},
+				},
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues.filter((i) => i.path.startsWith('config.guardrails.toolPolicy'))).toEqual(
+			[],
+		);
+	});
+
 	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentTaskRepository.findByAgentId.mockResolvedValue([

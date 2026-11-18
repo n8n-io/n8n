@@ -2128,6 +2128,12 @@ export interface INodePropertyTypeOptions {
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
 	loadOptions?: ILoadOptions; // Supported by: options
+	// Supported by: options, multiOptions. The editor lists the nodes connected to this node's input of `connectionType`.
+	optionsFromConnectedNodes?: {
+		connectionType: NodeConnectionType;
+		/** `nodeName` lists each connected node. `nodeType` lists each distinct type of them. */
+		value: 'nodeName' | 'nodeType';
+	};
 	maxValue?: number; // Supported by: number
 	minValue?: number; // Supported by: number
 	multipleValues?: boolean; // Supported by: <All>

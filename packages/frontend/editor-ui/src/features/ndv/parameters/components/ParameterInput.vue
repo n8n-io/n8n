@@ -131,6 +131,7 @@ import {
 } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getConnectedNodeOptions } from '../utils/connectedNodeOptions.utils';
 import {
 	isPlaceholderValue,
 	extractPlaceholderLabels,
@@ -365,8 +366,22 @@ const hasRemoteMethod = computed<boolean>(() => {
 	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
 });
 
+const connectedNodeOptions = computed<INodePropertyOptions[] | undefined>(() => {
+	const config = getTypeOption('optionsFromConnectedNodes');
+	if (!config || !node.value) return undefined;
+	return getConnectedNodeOptions(node.value.name, config, {
+		getParentNodes: (name, type, depth) =>
+			workflowDocumentStore.value.getParentNodes(name, type, depth),
+		getNodeByName: (name) => workflowDocumentStore.value.getNodeByName(name),
+		getNodeTypeDisplayName: (type, version) =>
+			nodeTypesStore.getNodeType(type, version)?.displayName,
+	});
+});
+
 const parameterOptions = computed(() => {
-	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
+	const options =
+		connectedNodeOptions.value ??
+		(hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options);
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
 	const displayableOptions = getParameterDisplayableOptions(

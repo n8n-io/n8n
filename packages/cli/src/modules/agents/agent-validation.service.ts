@@ -6,6 +6,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findToolGuardrailRefIssues,
+	findToolPolicyRefIssues,
 	findVectorStoreToolNameCollisions,
 	getAgentModelProviderCredentialTypes,
 	getWorkflowToolIncompatibilityReason,
@@ -377,6 +378,7 @@ export class AgentValidationService {
 		// Runs in both scopes: a dangling guardrail ref blocks publish and run,
 		// but never the draft save (which does not reach this service).
 		this.collectToolGuardrailRefIssues(config, issues);
+		this.collectToolPolicyRefIssues(config, issues);
 		await this.collectMainCredentialIssues(
 			config,
 			findCredential,
@@ -647,6 +649,23 @@ export class AgentValidationService {
 				issue('invalid_value', `config.guardrails.tools.${guardrailIndex}.tools.${toolIndex}`, {
 					kind: 'guardrail',
 					id: guardrails[guardrailIndex].id,
+				}),
+			);
+		}
+	}
+
+	/** A dangling tool policy ref blocks publish and run, never the draft save. */
+	private collectToolPolicyRefIssues(
+		config: AgentJsonConfig,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const rules = config.config?.guardrails?.toolPolicy?.rules ?? [];
+		const ruleIndexes = new Set(findToolPolicyRefIssues(config).map(({ ruleIndex }) => ruleIndex));
+		for (const ruleIndex of ruleIndexes) {
+			issues.push(
+				issue('invalid_value', `config.guardrails.toolPolicy.rules.${ruleIndex}`, {
+					kind: 'toolPolicy',
+					id: rules[ruleIndex].id,
 				}),
 			);
 		}
