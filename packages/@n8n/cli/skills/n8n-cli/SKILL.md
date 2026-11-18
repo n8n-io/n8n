@@ -208,11 +208,7 @@ jq -r '.publicKey' provider.json   # add to the repository as a deploy key
 n8n-cli promotion-environment create --file=promote.json
 n8n-cli promotion-environment create --file=apply.json
 
-# 3. Connect each environment before you use it.
-n8n-cli promotion-environment connect <promoteId>
-n8n-cli promotion-environment connect <applyId>
-
-# 4. Promote from this instance, or apply to it.
+# 3. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
 
@@ -232,7 +228,7 @@ remote URL and the branch names from it instead of guessing them:
 n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only   # providerId
 n8n-cli promotion-provider list-repositories <providerId> --search=flows --json  # remoteUrl, fullPath
 n8n-cli promotion-provider list-branches <providerId> <fullPath> --json          # isDefault marks the default branch
-# Put remoteUrl and a branch name in the environment JSON, then create and connect as above.
+# Put remoteUrl and a branch name in the environment JSON, then create the environment as above.
 ```
 
 Apply a reviewed commit only:
@@ -309,7 +305,8 @@ n8n-cli promotion-environment list --provider=<providerId>
 n8n-cli promotion-environment get <id>
 echo '{"name":"New name"}' | n8n-cli promotion-environment update <id> --stdin
 n8n-cli promotion-environment delete <id>
-n8n-cli promotion-environment disconnect <id>
+n8n-cli promotion-environment connect <id>      # optional: clone the branch now
+n8n-cli promotion-environment disconnect <id>   # remove the local checkout
 
 # Change the settings. The write replaces the whole settings object,
 # so send every setting you want to keep. Direction and scope cannot change.
@@ -339,8 +336,9 @@ Key points:
   shortens values longer than 60 characters to `...`.
 - `createBranchOnPromotion` is always required in promote settings.
 - `promote` and `apply` work on an `instance` environment of their direction
-  only, and need it connected first. Connecting one environment does not make another
-  ready.
+  only.
+- `connect` is optional. The other commands prepare the environment when they
+  need it. Do not run `connect` before each command.
 - A project can have one environment for each direction. A direction without a
   project environment uses the instance environment.
 - `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
