@@ -168,6 +168,21 @@ ${SAFE_METHODS_SENTENCE}
 
 ${NODE_GROUPS_REFERENCE}
 
+## Workflow settings
+
+Pass workflow-level settings in the third argument of \`workflow(...)\`. The
+Schedule Trigger has no timezone parameter: it fires in the workflow timezone.
+When the user gives a local time ("9:00 Berlin time"), set the IANA zone here:
+
+\`\`\`typescript
+export default workflow('id', 'Daily report', { settings: { timezone: 'Europe/Berlin' } })
+  .add(schedule)
+  .to(report);
+\`\`\`
+
+Other keys: \`errorWorkflow\`, \`executionTimeout\`, \`saveDataErrorExecution\`,
+\`saveDataSuccessExecution\`, \`saveManualExecutions\`, \`callerPolicy\`.
+
 ## Forbidden constructs
 
 ${renderForbiddenLines()}
