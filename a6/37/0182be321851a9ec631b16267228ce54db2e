@@ -1,0 +1,52 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_3dd47ea0104342::t_67f84b4ad7fb70 767-768
+  s_3dd47ea0104342::t_f89621e86a7243 368-369
+  s_3dd47ea0104342::t_ea205cf2094cba 769
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_3dd47ea0104342::t_5a833b92452749 328-331
+  s_3dd47ea0104342::t_6a6b503480aa6a 313-314,317-318,322-327,332-346,356,358-361
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_3dd47ea0104342::t_f89621e86a7243 21-25,61-63,68-73
+  s_3dd47ea0104342::t_38c4378c53ac23 74
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_3dd47ea0104342::t_6a6b503480aa6a 233-234
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_3dd47ea0104342::t_f89621e86a7243 39-43
+packages/cli/src/modules/n8n-packages/entities/credential/credential-dependencies.ts
+  s_3dd47ea0104342::t_6a6b503480aa6a 66
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_3dd47ea0104342::t_f89621e86a7243 89-90
+packages/cli/src/modules/n8n-packages/entities/cross-project-resources.ts
+  s_3dd47ea0104342::t_7e17b6a9a298b2 1-84
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_3dd47ea0104342::t_f89621e86a7243 111-115
+packages/cli/src/credentials/credentials.service.ts
+  s_3dd47ea0104342::t_4eaead3dadcf68 1249-1251,2689-2702
+  s_3dd47ea0104342::t_b58ddb14dbc522 2703
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_3dd47ea0104342::t_d3bfc5c7094a86 413
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_3dd47ea0104342::t_f89621e86a7243 443-448,531
+  s_3dd47ea0104342::t_6a6b503480aa6a 532-536
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_3dd47ea0104342::t_f89621e86a7243 106-107
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_3dd47ea0104342::t_0713d643f3aee7 19
+  s_3dd47ea0104342::t_f89621e86a7243 466-480,487,499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6370182be321851a9ec631b16267228ce54db2e",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

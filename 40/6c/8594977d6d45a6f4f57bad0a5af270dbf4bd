@@ -1,0 +1,37 @@
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3dd47ea0104342::t_b17d528e7c0150 550-551
+  s_3dd47ea0104342::t_7f9b9bff231ad9 1157
+  s_3dd47ea0104342::t_44b53e04ed18f0 290-299
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyResultDialog.vue
+  s_3dd47ea0104342::t_e563e5ae5d055b 384-389
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_3dd47ea0104342::t_e563e5ae5d055b 119-120
+  s_3dd47ea0104342::t_44b53e04ed18f0 57-58,66,94-96
+  s_3dd47ea0104342::t_ac3d07a68ab19b 10-15
+  s_3dd47ea0104342::t_0787f99307e523 329-333,499-501
+  s_3dd47ea0104342::t_b17d528e7c0150 121-131,136,269-275
+  s_3dd47ea0104342::t_f41374b8cba549 502-503
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_3dd47ea0104342::t_44b53e04ed18f0 63-64,67-75,84
+packages/modules/promotions/frontend/src/composables/usePromotionDependencyLabels.ts
+  s_3dd47ea0104342::t_44b53e04ed18f0 176-182,185
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_44b53e04ed18f0 11204,11435
+  s_3dd47ea0104342::t_b17d528e7c0150 11300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "406c8594977d6d45a6f4f57bad0a5af270dbf4bd",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

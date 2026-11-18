@@ -1,0 +1,67 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_3dd47ea0104342::t_5d9fa91c2cd848 89-92
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3dd47ea0104342::t_5d9fa91c2cd848 8,185-186,245-246
+packages/cli/src/modules/promotions.ee/promotion-moves.service.ts
+  s_3dd47ea0104342::t_f7bd577a0a364e 1-270,272,274-299,301-304,307,310-317,319-352,355-370,373-374,376-517
+  s_3dd47ea0104342::t_c3a449cb2eb7f3 271,273,300,305-306,308-309,318,353-354,371-372,375
+packages/cli/src/modules/promotions.ee/project-moves.ts
+  s_3dd47ea0104342::t_86dda1d6647bfd 224-226,245,410-452,458-518,521-553,556-568
+  s_3dd47ea0104342::t_6901cc82ab4c0a 453-457,519-520
+  s_3dd47ea0104342::t_5d9fa91c2cd848 554-555
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_3dd47ea0104342::t_fc0c2bd5980cf1 10-18,21-23
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_3dd47ea0104342::t_396391705be9c2 8,18,39,89-90,92-98,196-197,199-205
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_3dd47ea0104342::t_5d9fa91c2cd848 170-186,202-203,350-364
+  s_3dd47ea0104342::t_5351550af3ca5e 365
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_3dd47ea0104342::t_396391705be9c2 179-180
+  s_3dd47ea0104342::t_46615dc7bd4ce6 154-161
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_3dd47ea0104342::t_853b56c6239052 355-356,448-450,452,454,457-461,463,465,507-512
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_3dd47ea0104342::t_6901cc82ab4c0a 415
+  s_3dd47ea0104342::t_4935064c2712b3 28,65-66,68,80-81,87,106-108,141-142,145,164,174,180-181,187,196-219,221-222,224-230,238,252,257,290-292,306-334,336-344,352,379,383,398-414,425-431,438,593-596,604-635,674-675,682
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3dd47ea0104342::t_fbed328ca45e05 65-70,87-91,192,554-556,601-604,692,698-737,811,816-823,832,879,972,983,993,1093-1094,1100-1119,1122-1144,1201,1206-1215,1326-1327,1333,1350,1359,1365,1614,1624,1631-1650,1653-1667,1675-1677,1691,1740,1752-1763,1765-1768,1798,1922-1924,2125-2128,2162-2164,2166-2171,2577-2578
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyEnvironmentSelection.generated.yml
+  s_3dd47ea0104342::t_48b79b594b7be5 84
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_3dd47ea0104342::t_0435f79ef4b8e6 52
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_3dd47ea0104342::t_469f882e7f9042 64
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChanges.generated.yml
+  s_3dd47ea0104342::t_4a03986eab7f3e 99-105,144-150
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_3dd47ea0104342::t_06cf1146b26144 121-127,166-172
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentChanges.generated.yml
+  s_3dd47ea0104342::t_03918d45247e29 150-156,195-201
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_3dd47ea0104342::t_5e567c1bc4c865 283-329,447-453
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_3dd47ea0104342::t_04378d2e00465c 480-513
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_3dd47ea0104342::t_fdc074a87903e1 1255-1261,1345-1401
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionDependencyReport.generated.yml
+  s_3dd47ea0104342::t_65a92948666d67 254-260,339-341
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionGap.generated.yml
+  s_3dd47ea0104342::t_06a262c76124f2 122-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8310ebde05c721de9eaf23eb1ffc1b366a05481",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

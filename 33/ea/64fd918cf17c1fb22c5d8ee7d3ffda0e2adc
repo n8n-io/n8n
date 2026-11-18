@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-dependency.dto.ts
+  s_e05d1fd29d331f::t_6f2f617a27c4e5 98-112,137,188-191,264-265
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_e05d1fd29d331f::t_9299957a5e7891 13-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33ea64fd918cf17c1fb22c5d8ee7d3ffda0e2adc",
+  "prompts": {},
+  "sessions": {
+    "s_e05d1fd29d331f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0b0be5243deec8fe",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
