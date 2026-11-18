@@ -48,8 +48,8 @@ export const PROP_LAYOUT = {
 	 * Big tanks draw furniture, seaweed and waves larger instead of repeating them: one scale step
 	 * for each `heightPerScale` pixels of tank height. Small tanks stay at scale 1.
 	 */
-	heightPerScale: 50,
-	maxScale: 4,
+	heightPerScale: 100,
+	maxScale: 2,
 	/** Opacity lost for each scale step, so the big furniture of a big tank stays in the back. */
 	fadePerScale: 0.08,
 } as const;
@@ -101,13 +101,30 @@ export const TANK_HEALTH = {
 } as const;
 
 /** One fixed colour, so the renderer caches one tinted sprite for each species. */
-export const SICK_TINT = '#7fbf3f';
+export const SICK_TINT = '#2f5a26';
 
-/** Seconds for one on-and-off cycle of the sick tint. */
-export const SICK_BLINK_SECONDS = 1;
+/** A sick creature glitches about once in this many seconds, on its own irregular clock. */
+export const SICK_GLITCH_EVERY_SECONDS = 1.6;
 
 /** Share of the normal swim speed that a sick creature keeps. */
 export const SICK_SPEED_FACTOR = 0.4;
+
+/** A skeleton barely moves. */
+export const SKELETON_SPEED_FACTOR = 0.15;
+
+/** A wave of gold that sweeps over a creature while its workflow runs. */
+export const SHIMMER = {
+	everySeconds: 1.8,
+	/** Seconds for the wave to cross the creature. */
+	sweepSeconds: 0.7,
+	/** Width of the wave, in sprite pixels. */
+	band: 5,
+	/** Sprite pixels that the wave leans back for each row, so it slants. */
+	slant: 0.6,
+	gold: '#f2cd61',
+	/** The bright leading edge. */
+	edge: '#fff4cf',
+} as const;
 
 /** Delay between two polls of the live activity endpoint. */
 export const ACTIVITY_POLL_MS = 2_000;

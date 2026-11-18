@@ -1,9 +1,11 @@
 import {
 	BUBBLES_MIN_EXECUTIONS,
-	SICK_BLINK_SECONDS,
 	SICK_FAILURE_RATE,
+	SICK_GLITCH_EVERY_SECONDS,
 	SICK_SPEED_FACTOR,
 	SICK_TINT,
+	SKELETON_SPEED_FACTOR,
+	TANK_HEALTH,
 } from '../aquarium.constants';
 import type { AquariumEntity, CreatureTraits } from '../aquarium.types';
 import { pickSpecies } from '../species/species.registry';
@@ -45,18 +47,42 @@ export const securityRule: TraitRule = (entity, traits) =>
 export const skillStrandsRule: TraitRule = (entity, traits) =>
 	entity.kind === 'agent' ? { ...traits, effects: [...traits.effects, 'skillStrands'] } : traits;
 
-/** A creature that fails often blinks green and swims slowly. */
+/** A creature that fails often glitches green now and then, and swims slowly. */
 export const sickRule: TraitRule = (entity, traits) =>
 	failureRateOf(entity.metrics) > SICK_FAILURE_RATE
 		? {
 				...traits,
 				tint: SICK_TINT,
-				tintBlinkSeconds: SICK_BLINK_SECONDS,
+				glitchEverySeconds: SICK_GLITCH_EVERY_SECONDS,
 				speedFactor: SICK_SPEED_FACTOR,
 			}
 		: traits;
 
-/** Order matters: `speciesRule` reads the tier from `sizeRule`. */
+/**
+ * Every run failed: the creature becomes a skeleton and barely moves. It overrides the sick look.
+ * It recovers as soon as one run succeeds.
+ */
+export const skeletonRule: TraitRule = (entity, traits) =>
+	entity.metrics.executionCount >= TANK_HEALTH.minRuns && failureRateOf(entity.metrics) === 1
+		? {
+				...traits,
+				skeleton: true,
+				tint: undefined,
+				glitchEverySeconds: undefined,
+				speedFactor: SKELETON_SPEED_FACTOR,
+			}
+		: traits;
+
+/** A workflow shimmers gold while it runs. Sick creatures and skeletons do not shimmer. */
+export const shimmerRule: TraitRule = (entity, traits) =>
+	entity.kind === 'workflow' && !traits.skeleton && traits.glitchEverySeconds === undefined
+		? { ...traits, shimmer: true }
+		: traits;
+
+/**
+ * Order matters: `speciesRule` reads the tier from `sizeRule`, `skeletonRule` overrides
+ * `sickRule`, and `shimmerRule` reads both.
+ */
 export const defaultTraitRules: TraitRule[] = [
 	sizeRule,
 	speciesRule,
@@ -65,6 +91,8 @@ export const defaultTraitRules: TraitRule[] = [
 	securityRule,
 	skillStrandsRule,
 	sickRule,
+	skeletonRule,
+	shimmerRule,
 ];
 
 const BASE_TRAITS: CreatureTraits = {

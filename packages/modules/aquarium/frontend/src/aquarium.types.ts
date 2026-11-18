@@ -131,8 +131,15 @@ export interface CreatureTraits {
 	speed: number;
 	/** CSS colour blended over the sprite. */
 	tint?: string;
-	/** Seconds for one on-and-off cycle of the tint. Without it, the tint stays on. */
-	tintBlinkSeconds?: number;
+	/**
+	 * Seconds between glitches. A glitch shows the tint for a moment, with a 1 px offset and
+	 * scrambled rows. Without it, the tint stays on.
+	 */
+	glitchEverySeconds?: number;
+	/** Draws the species in bone colours with ribs. It overrides the tint. */
+	skeleton?: boolean;
+	/** A wave of gold sweeps over the creature while its workflow runs (live activity). */
+	shimmer?: boolean;
 	/** Multiplies the whole swim speed, live boost included. Without it, the factor is 1. */
 	speedFactor?: number;
 	/** Ids of effects in the effect registry. */

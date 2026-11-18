@@ -69,7 +69,7 @@ The species says what an entity is and how big it is. Speed says how busy it is.
 | --- | --- | --- | --- |
 | Node count, plus a little for run time | How complex the workflow is | Species by size: minnow, tetra, angelfish, shark, whale | Built. Open: size from node count only |
 | Execution count | How busy it is | Resting swim speed on a log scale. Bubbles from 10 runs | Built |
-| Live run rate | Busy right now | Faster swimming, fins and bubbles | Built |
+| Live run rate | Busy right now | Faster swimming, fins and bubbles. A wave of gold sweeps over it while a run is in progress (`shimmerRule`, `shimmerProgressAt`) | Built |
 | Small workflow with many runs | A busy little helper | A fast minnow. Planned: a school of fish | Partly |
 | Agent | It exists, with a number of skills | A seahorse that holds one seaweed strand for each skill (`skillStrandsEffect`), coloured by the agent id | Built |
 | Many workflows | A large instance | Zoom and pan, and a tank for each project | Built |
@@ -84,9 +84,9 @@ Health comes from failures. The worse a workflow does, the less its fish acts li
 | --- | --- | --- | --- |
 | 0% failures, with 10 or more runs | Positive | A golden glint or sparkle | Planned |
 | Under 20% failures, or fewer than 10 runs | Neutral | Normal colours | Built |
-| 20–50% failures | Negative | Sick: blinks green and swims at 40% speed (`sickRule`). Planned: glitches like a 90s game sprite | Partly |
+| 20–50% failures | Negative | Sick: glitches dark green often (3 px jump, scrambled rows, a green ghost) and swims at 40% speed (`sickRule`, `glitchStageAt`) | Built |
 | Over 50% failures | Critical | Belly-up, floating at the top | Planned |
-| Every run failed, with 10 or more runs | Critical | A skeleton or zombie fish | Planned |
+| Every run failed, with 10 or more runs | Critical | A skeleton: the species in bone colours with ribs, barely moving, with a rattle (`skeletonRule`, `toSkeleton`). It recovers when a run succeeds | Built |
 | Failures in the last 60 s | Recent health | Hooked by a fishing line | Planned |
 | A run that waits now | Paused, not broken | Asleep on the sand | Planned. The data is ready |
 
@@ -178,15 +178,15 @@ The same entity always gets the same species.
 ### Show a new metric
 
 `sickRule` in `src/engine/traits.ts` is a worked example: a failure rate over
-`SICK_FAILURE_RATE` gives a blinking green tint and a lower `speedFactor`. Copy its shape.
+`SICK_FAILURE_RATE` gives a green glitch and a lower `speedFactor`. Copy its shape.
 
 1. If no source gives the value, add a field to `EntityMetrics`. Set its default in
    `emptyMetrics()` in `src/sources/source.utils.ts`. Set the value in a source mapper.
 2. If the mapping is numeric, put it in `scaling.ts` as a pure function, with its limits in
    `aquarium.constants.ts`.
 3. Write a `TraitRule` in `src/engine/traits.ts`. Put its limits and colours in
-   `aquarium.constants.ts`. A rule can set `tint`, `tintBlinkSeconds`, `speedFactor`, the species
-   or `effects`.
+   `aquarium.constants.ts`. A rule can set `tint`, `glitchEverySeconds`, `skeleton`,
+   `speedFactor`, the species or `effects`.
 
 4. Add the rule to `defaultTraitRules`. See "Rule order" below.
 5. Add a row to the tooltip in `AquariumTank.vue` if a user must see the number.

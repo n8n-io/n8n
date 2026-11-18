@@ -1,4 +1,9 @@
-import { SICK_BLINK_SECONDS, SICK_SPEED_FACTOR, SICK_TINT } from '../aquarium.constants';
+import {
+	SICK_GLITCH_EVERY_SECONDS,
+	SICK_SPEED_FACTOR,
+	SICK_TINT,
+	SKELETON_SPEED_FACTOR,
+} from '../aquarium.constants';
 import type { AquariumEntity } from '../aquarium.types';
 import { emptyMetrics } from '../sources/source.utils';
 import { failureRateOf } from './scaling';
@@ -41,17 +46,17 @@ describe('deriveTraits', () => {
 	});
 
 	it('adds bubbles only to creatures that run often', () => {
-		expect(deriveTraits(entity({ executionCount: 0 })).effects).toEqual([]);
-		expect(deriveTraits(entity({ executionCount: 100 })).effects).toEqual(['bubbles']);
+		expect(deriveTraits(entity({ executionCount: 0 })).effects).not.toContain('bubbles');
+		expect(deriveTraits(entity({ executionCount: 100 })).effects).toContain('bubbles');
 	});
 
 	it('adds a watching cat only to creatures with a security risk', () => {
-		expect(deriveTraits(entity({ securityRisks: 0 })).effects).toEqual([]);
-		expect(deriveTraits(entity({})).effects).toEqual([]);
-		expect(deriveTraits(entity({ securityRisks: 2 })).effects).toEqual(['cat']);
+		expect(deriveTraits(entity({ securityRisks: 0 })).effects).not.toContain('cat');
+		expect(deriveTraits(entity({})).effects).not.toContain('cat');
+		expect(deriveTraits(entity({ securityRisks: 2 })).effects).toContain('cat');
 	});
 
-	it('makes creatures that fail often blink green and swim slowly', () => {
+	it('makes creatures that fail often glitch green and swim slowly', () => {
 		const healthy = deriveTraits(entity({ executionCount: 100, failedCount: 10 }));
 		const sick = deriveTraits(entity({ executionCount: 100, failedCount: 45 }));
 
@@ -59,9 +64,32 @@ describe('deriveTraits', () => {
 		expect(healthy).not.toHaveProperty('speedFactor');
 		expect(sick).toMatchObject({
 			tint: SICK_TINT,
-			tintBlinkSeconds: SICK_BLINK_SECONDS,
+			glitchEverySeconds: SICK_GLITCH_EVERY_SECONDS,
 			speedFactor: SICK_SPEED_FACTOR,
 		});
+	});
+
+	it('turns a creature whose every run failed into a skeleton, over the sick look', () => {
+		const skeleton = deriveTraits(entity({ executionCount: 20, failedCount: 20 }));
+
+		expect(skeleton).toMatchObject({ skeleton: true, speedFactor: SKELETON_SPEED_FACTOR });
+		expect(skeleton.tint).toBeUndefined();
+		expect(skeleton.glitchEverySeconds).toBeUndefined();
+	});
+
+	it('waits for enough runs before it shows a skeleton, and lets it recover', () => {
+		expect(deriveTraits(entity({ executionCount: 5, failedCount: 5 })).skeleton).toBeUndefined();
+		expect(deriveTraits(entity({ executionCount: 20, failedCount: 19 })).skeleton).toBeUndefined();
+	});
+
+	it('lets workflows shimmer while they run, but not sick ones, skeletons or agents', () => {
+		const shimmers = (overrides: Partial<AquariumEntity['metrics']>, kind?: 'agent') =>
+			deriveTraits(entity(overrides, kind)).shimmer === true;
+
+		expect(shimmers({ executionCount: 100 })).toBe(true);
+		expect(shimmers({ executionCount: 100, failedCount: 45 })).toBe(false);
+		expect(shimmers({ executionCount: 20, failedCount: 20 })).toBe(false);
+		expect(shimmers({ executionCount: 100 }, 'agent')).toBe(false);
 	});
 
 	it('applies extra rules after the default rules', () => {

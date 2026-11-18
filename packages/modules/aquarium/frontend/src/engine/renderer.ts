@@ -1,4 +1,4 @@
-import { PROP_LAYOUT } from '../aquarium.constants';
+import { PROP_LAYOUT, SHIMMER } from '../aquarium.constants';
 import {
 	isPropDead,
 	layoutProps,
@@ -16,6 +16,8 @@ import { getEffect } from './effects';
 import { FRAME_THICKNESS, paintFrame } from './frames';
 import type { TankRegion } from './layout';
 import { frameIndexOf, type Creature, type TankBounds } from './simulation';
+import { GLITCH_STAGES, glitchStageAt, shimmerProgressAt } from './glitch';
+import { toSkeleton } from './skeleton';
 
 /**
  * Water from the surface down, for each tank health. Neutral is the "water shallows" palette.
@@ -89,7 +91,7 @@ const BUBBLE_COLUMN_SPACING = 80;
 /** Extra pixels around the view, so effects and highlights at the edge still draw. */
 const CULL_MARGIN = 16;
 const HIGHLIGHT = '#ffffff';
-const TINT_ALPHA = 0.45;
+const TINT_ALPHA = 0.65;
 
 interface Plant {
 	x: number;
@@ -132,6 +134,9 @@ export class AquariumRenderer {
 	private readonly plantsByTank = new Map<string, Plant[]>();
 
 	private readonly propsByTank = new Map<string, PlacedProp[]>();
+
+	/** Bone versions of the species sprites, made the first time a species dies. */
+	private readonly skeletons = new Map<string, PixelSprite>();
 
 	/** Keyed by sprite, so a frame finds a prop image with no string keys. */
 	private readonly propImages = new WeakMap<PixelSprite, HTMLCanvasElement>();
@@ -315,29 +320,124 @@ export class AquariumRenderer {
 	}
 
 	private drawCreature(creature: Creature): void {
-		const { tint, tintBlinkSeconds } = creature.traits;
-		// Age, not tank time, so blinking creatures are out of step, and reduced motion stops it.
-		const tintOn = !tintBlinkSeconds || creature.age % tintBlinkSeconds < tintBlinkSeconds / 2;
-		const frames = this.spriteFrames(
-			creature.species.id,
-			creature.species.sprite,
-			tintOn ? tint : undefined,
-		);
-		const frame = frames[frameIndexOf(creature)];
+		const { tint, glitchEverySeconds, skeleton } = creature.traits;
+		// Age, not tank time, so creatures glitch out of step, and reduced motion stops it.
+		const stage = glitchEverySeconds ? glitchStageAt(creature.age, glitchEverySeconds) : -1;
+		const tinted = tint !== undefined && (!glitchEverySeconds || stage >= 0);
+		const scrambled = stage === GLITCH_STAGES.scrambled || stage === GLITCH_STAGES.scrambledAgain;
+		let offsetX = stage === GLITCH_STAGES.jump ? 3 : 0;
+		// A sick creature twitches between glitches; a skeleton rattles now and then.
+		if (glitchEverySeconds && stage < 0 && creature.age % 0.8 < 0.07) {
+			offsetX = Math.floor(creature.age * 30) % 2 ? 2 : -2;
+		}
+		if (skeleton && creature.age % 3.3 < 0.12) offsetX = Math.floor(creature.age * 40) % 2 ? 1 : -1;
+
+		const frames = skeleton
+			? this.spriteFrames(`${creature.species.id}:skeleton`, this.skeletonOf(creature))
+			: this.spriteFrames(creature.species.id, creature.species.sprite, tinted ? tint : undefined);
+		const frameIndex = frameIndexOf(creature);
+		const frame = frames[frameIndex];
 		if (!frame) return;
 
 		const ctx = this.ctx;
-		const x = Math.round(creature.x);
-		const y = Math.round(creature.y);
-		if (creature.facing === 1) {
-			ctx.drawImage(frame, x, y, creature.width, creature.height);
-			return;
+		let x = Math.round(creature.x) + offsetX;
+		let y = Math.round(creature.y);
+		if (creature.facing === -1) {
+			ctx.save();
+			ctx.translate(x + creature.width, y);
+			ctx.scale(-1, 1);
+			x = 0;
+			y = 0;
 		}
-		ctx.save();
-		ctx.translate(x + creature.width, y);
-		ctx.scale(-1, 1);
-		ctx.drawImage(frame, 0, 0, creature.width, creature.height);
-		ctx.restore();
+		if (scrambled) {
+			// A green ghost copy behind the scrambled fish, like a broken screen.
+			ctx.globalAlpha = 0.5;
+			ctx.drawImage(frame, x - 2, y, creature.width, creature.height);
+			ctx.globalAlpha = 1;
+			this.drawScrambled(frame, creature, x, y, stage);
+		} else {
+			ctx.drawImage(frame, x, y, creature.width, creature.height);
+		}
+		if (creature.traits.shimmer && creature.activity && creature.activity.running > 0) {
+			const progress = shimmerProgressAt(creature.age, hashString(creature.entity.id));
+			if (progress >= 0) this.drawShimmer(creature, frameIndex, x, y, progress);
+		}
+		if (creature.facing === -1) ctx.restore();
+	}
+
+	/**
+	 * A slanted band of gold that crosses the creature from tail to head, with a bright leading
+	 * edge. It lights only the creature's own pixels.
+	 */
+	private drawShimmer(
+		creature: Creature,
+		frameIndex: number,
+		x: number,
+		y: number,
+		progress: number,
+	): void {
+		const { id, sprite } = creature.species;
+		const gold = this.spriteFrames(id, sprite, SHIMMER.gold)[frameIndex];
+		const edge = this.spriteFrames(id, sprite, SHIMMER.edge)[frameIndex];
+		if (!gold || !edge) return;
+
+		const ctx = this.ctx;
+		const scale = creature.traits.scale;
+		const front = progress * (gold.width + SHIMMER.band + gold.height * SHIMMER.slant);
+		for (let row = 0; row < gold.height; row++) {
+			const right = Math.round(front - row * SHIMMER.slant);
+			const from = Math.max(0, right - SHIMMER.band);
+			const to = Math.min(gold.width, right);
+			if (to <= from) continue;
+			const dy = y + row * scale;
+			ctx.drawImage(
+				gold,
+				from,
+				row,
+				to - from,
+				1,
+				x + from * scale,
+				dy,
+				(to - from) * scale,
+				scale,
+			);
+			if (right <= gold.width) {
+				ctx.drawImage(edge, right - 1, row, 1, 1, x + (right - 1) * scale, dy, scale, scale);
+			}
+		}
+	}
+
+	/** A glitch frame: each row shifts up to 4 px to the side. Each stage scrambles other rows. */
+	private drawScrambled(
+		frame: HTMLCanvasElement,
+		creature: Creature,
+		x: number,
+		y: number,
+		stage: number,
+	): void {
+		const scale = creature.traits.scale;
+		for (let row = 0; row < frame.height; row++) {
+			const shift = ((row * 7 + stage * 5) % 9) - 4;
+			this.ctx.drawImage(
+				frame,
+				0,
+				row,
+				frame.width,
+				1,
+				x + shift * scale,
+				y + row * scale,
+				frame.width * scale,
+				scale,
+			);
+		}
+	}
+
+	private skeletonOf(creature: Creature): PixelSprite {
+		const cached = this.skeletons.get(creature.species.id);
+		if (cached) return cached;
+		const skeleton = toSkeleton(creature.species.sprite);
+		this.skeletons.set(creature.species.id, skeleton);
+		return skeleton;
 	}
 
 	private drawHighlight(creature: Creature): void {

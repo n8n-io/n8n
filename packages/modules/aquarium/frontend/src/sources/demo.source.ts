@@ -101,7 +101,8 @@ export const DEMO_ENTITIES: AquariumEntity[] = [
 	demo('Old FTP sync', 'legacy', 'workflow', 8, 240, 200, 6_000, {
 		design: { codeNodeCount: 3, disabledNodeCount: 2 },
 	}),
-	demo('Fax gateway', 'legacy', 'workflow', 3, 60, 40, 900),
+	// Every run fails, so it shows as a skeleton.
+	demo('Fax gateway', 'legacy', 'workflow', 3, 60, 60, 900),
 	demo('Support triage', 'support', 'agent', 3, 400, 12, 15_000),
 	demo('Research assistant', 'data', 'agent', 18, 60, 4, 90_000),
 	demo('Onboarding buddy', 'support', 'agent', 1, 5, 0, 5_000),

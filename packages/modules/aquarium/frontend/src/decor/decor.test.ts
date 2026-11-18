@@ -46,7 +46,8 @@ describe('layoutProps', () => {
 describe('tankScaleOf', () => {
 	it('keeps small tanks at scale 1 and draws big tanks larger', () => {
 		expect(tankScaleOf({ width: 96, height: 54, floor: 44 })).toBe(1);
-		expect(tankScaleOf({ width: 400, height: 120, floor: 110 })).toBe(2);
+		expect(tankScaleOf({ width: 400, height: 120, floor: 110 })).toBe(1);
+		expect(tankScaleOf({ width: 400, height: 240, floor: 230 })).toBe(2);
 		expect(tankScaleOf({ width: 4_000, height: 2_000, floor: 1_990 })).toBe(PROP_LAYOUT.maxScale);
 	});
 
