@@ -927,3 +927,354 @@ body[data-palette='high-contrast-light'] {
 	--canvas--dot--color: #8a8a8a;
 	--code--gutter--color--foreground: var(--color--neutral-600);
 }
+
+// A light preset from one palette map, built like `gruvbox-light-hard`.
+// Neutral keys, from light to dark: surface (cards, nodes), bg (subtle background), bg-strong (fills),
+// line (dots, guides), fg-muted (disabled text), fg-subtler, fg-subtle and fg (main text).
+// Accent keys and the `high-contrast-semantics` keys match `dark-preset`.
+@mixin light-preset($c) {
+	$surface: map.get($c, surface);
+	$bg: map.get($c, bg);
+	$bg-strong: map.get($c, bg-strong);
+	$line: map.get($c, line);
+	$fg-subtle: map.get($c, fg-subtle);
+	$fg: map.get($c, fg);
+	$fg-deep: color.mix($fg, #000, 80%);
+
+	--color--neutral-white: #{$surface};
+	--color--neutral-50: #{color.mix($surface, $bg, 50%)};
+	--color--neutral-100: #{$bg};
+	--color--neutral-125: #{color.mix($bg, $bg-strong, 75%)};
+	--color--neutral-150: #{color.mix($bg, $bg-strong, 50%)};
+	--color--neutral-200: #{color.mix($bg, $bg-strong, 25%)};
+	--color--neutral-250: #{$bg-strong};
+	--color--neutral-300: #{color.mix($bg-strong, $line, 50%)};
+	--color--neutral-400: #{$line};
+	--color--neutral-500: #{map.get($c, fg-muted)};
+	--color--neutral-600: #{map.get($c, fg-subtler)};
+	--color--neutral-700: #{$fg-subtle};
+	--color--neutral-750: #{color.mix($fg-subtle, $fg, 60%)};
+	--color--neutral-800: #{color.mix($fg-subtle, $fg, 30%)};
+	--color--neutral-850: #{color.mix($fg-subtle, $fg, 10%)};
+	--color--neutral-900: #{$fg};
+	--color--neutral-950: #{$fg};
+	--color--neutral-black: #{$fg-deep};
+
+	// n8n calls the brand ramp pink. Here it holds the accent.
+	@include ramp('pink', map.get($c, primary), $surface, $fg-deep);
+	@include ramp('purple', map.get($c, purple), $surface, $fg-deep);
+	@include ramp('green', map.get($c, green), $surface, $fg-deep);
+	@include ramp('red', map.get($c, red), $surface, $fg-deep);
+	@include ramp('yellow', map.get($c, yellow), $surface, $fg-deep);
+	@include ramp('orange', map.get($c, orange), $surface, $fg-deep);
+	// The warning tokens read the gold ramp. The info tokens read the blue ramp.
+	@include ramp('gold', map.get($c, yellow), $surface, $fg-deep);
+	@include ramp('blue', map.get($c, blue), $surface, $fg-deep);
+	@include ramp('mint', map.get($c, mint), $surface, $fg-deep);
+
+	@include alpha-ramp(
+		'orange',
+		map.get($c, orange),
+		(
+			100: 0.1,
+			150: 0.15,
+			200: 0.2,
+			300: 0.3,
+			400: 0.4,
+			500: 0.5,
+			600: 0.6,
+			700: 0.7,
+			800: 0.8,
+			900: 0.9,
+			950: 0.95,
+		)
+	);
+	@include alpha-ramp(
+		'green',
+		map.get($c, green),
+		(
+			100: 0.15,
+			200: 0.25,
+		)
+	);
+	@include alpha-ramp(
+		'purple',
+		map.get($c, purple),
+		(
+			100: 0.1,
+			200: 0.25,
+			300: 0.4,
+			400: 0.6,
+			500: 0.8,
+		)
+	);
+	@include alpha-ramp(
+		'red',
+		map.get($c, red),
+		(
+			'020': 0.2,
+		)
+	);
+	@include alpha-ramp(
+		'gold',
+		map.get($c, yellow),
+		(
+			'020': 0.2,
+		)
+	);
+
+	// `[data-theme='light']` already declares all the semantic tokens on the body.
+	@include high-contrast-semantics($c);
+
+	--focus--outline-color: #{map.get($c, focus)};
+	--focus--border-color: #{map.get($c, focus)};
+	--border-color--stronger: #{$fg};
+	--color--foreground--shade-2: #{$fg};
+
+	// The solid button and the brand fill are deep. Their labels take the surface.
+	--text-color--inverse: #{$surface};
+	--icon-color--inverse: #{$surface};
+	--background--inverse: #{$fg};
+
+	--canvas--dot--color: #{$line};
+	// Light mode reads these from the 200 step, which is a fill here. Use the text steps, like dark mode.
+	--icon-color--subtle: var(--color--neutral-500);
+	--color--text--tint-2: var(--color--neutral-600);
+	--code--gutter--color--foreground: var(--color--neutral-600);
+}
+
+// https://ethanschoonover.com/solarized/ (light). Blue is the accent. Cyan is the info colour.
+$solarized-light: (
+	surface: #fdf6e3,
+	bg: #eee8d5,
+	bg-strong: color.mix(#eee8d5, #93a1a1, 70%),
+	line: #93a1a1,
+	fg-muted: color.mix(#657b83, #93a1a1, 60%),
+	fg-subtler: #657b83,
+	fg-subtle: #586e75,
+	// base01 is only 5:1 on base3. base02 keeps the main text darker.
+	fg: #073642,
+	border-subtle: color.mix(#eee8d5, #93a1a1, 50%),
+	border: #93a1a1,
+	border-strong: #657b83,
+	hover: #eee8d5,
+	active: color.mix(#268bd2, #fdf6e3, 25%),
+	focus: #268bd2,
+	primary: #268bd2,
+	purple: #6c71c4,
+	green: #859900,
+	red: #dc322f,
+	yellow: #b58900,
+	orange: #cb4b16,
+	blue: #2aa198,
+	mint: #2aa198,
+	code-string: #2aa198,
+	code-primitive: #d33682,
+	code-keyword: #859900,
+	code-parameter: #cb4b16,
+	code-function: #268bd2,
+	code-invalid: #dc322f,
+	// Solarized comments are base1 (#93a1a1). That is 2.6:1, too low for this preset.
+	code-comment: #657b83,
+);
+
+// https://ethanschoonover.com/solarized/ (dark)
+$solarized-dark: (
+	fg: #93a1a1,
+	fg-subtle: #839496,
+	fg-subtler: color.mix(#839496, #586e75, 75%),
+	// base01 (#586e75) is below 3:1 on base03. This is closer to base0.
+	fg-muted: color.mix(#839496, #586e75, 50%),
+	line: color.mix(#586e75, #073642, 45%),
+	bg-subtle: #073642,
+	bg-raised: color.mix(#073642, #002b36, 50%),
+	bg: #002b36,
+	bg-deep: color.mix(#002b36, #000, 70%),
+	border-subtle: color.mix(#586e75, #073642, 70%),
+	border: #586e75,
+	border-strong: #839496,
+	hover: color.mix(#586e75, #073642, 25%),
+	active: color.mix(#268bd2, #002b36, 30%),
+	focus: #268bd2,
+	primary: #268bd2,
+	purple: #6c71c4,
+	green: #859900,
+	red: #dc322f,
+	yellow: #b58900,
+	orange: #cb4b16,
+	blue: #2aa198,
+	mint: #2aa198,
+	code-string: #2aa198,
+	code-primitive: #d33682,
+	code-keyword: #859900,
+	code-parameter: #cb4b16,
+	code-variable: #268bd2,
+	code-function: #268bd2,
+	code-type: #b58900,
+	code-invalid: #dc322f,
+	code-comment: color.mix(#839496, #586e75, 50%),
+);
+
+// https://primer.style/primitives/colors (light)
+$github-light: (
+	surface: #fff,
+	bg: #f6f8fa,
+	bg-strong: #eaeef2,
+	line: #d0d7de,
+	fg-muted: #6e7781,
+	fg-subtler: #59636e,
+	fg-subtle: #424a53,
+	fg: #1f2328,
+	border-subtle: #d8dee4,
+	border: #d0d7de,
+	border-strong: #afb8c1,
+	hover: #eaeef2,
+	active: #ddf4ff,
+	focus: #0969da,
+	primary: #0969da,
+	purple: #8250df,
+	green: #1a7f37,
+	red: #d1242f,
+	yellow: #9a6700,
+	orange: #bc4c00,
+	blue: #0969da,
+	mint: #1b7c83,
+	code-string: #0a3069,
+	code-primitive: #0550ae,
+	code-keyword: #cf222e,
+	code-parameter: #953800,
+	code-function: #8250df,
+	code-invalid: #82071e,
+	code-comment: #6e7781,
+);
+
+// https://primer.style/primitives/colors (dark)
+$github-dark: (
+	fg: #e6edf3,
+	fg-subtle: color.mix(#e6edf3, #9198a1, 50%),
+	fg-subtler: #9198a1,
+	fg-muted: #7d8590,
+	line: #30363d,
+	bg-subtle: #21262d,
+	bg-raised: #161b22,
+	bg: #0d1117,
+	bg-deep: #010409,
+	border-subtle: #30363d,
+	border: #3d444d,
+	border-strong: #656c76,
+	hover: #262c36,
+	active: #1c3a63,
+	focus: #1f6feb,
+	primary: #4493f8,
+	purple: #ab7df8,
+	green: #3fb950,
+	red: #f85149,
+	yellow: #d29922,
+	orange: #db6d28,
+	blue: #4493f8,
+	mint: #39c5cf,
+	code-string: #a5d6ff,
+	code-primitive: #79c0ff,
+	code-keyword: #ff7b72,
+	code-parameter: #ffa657,
+	code-variable: #ffa657,
+	code-function: #d2a8ff,
+	code-invalid: #ffa198,
+	code-comment: #8b949e,
+);
+
+// https://rosepinetheme.com/palette/ (Dawn). Iris is the accent. Pine is success and foam is info.
+$rose-pine-dawn: (
+	surface: #fffaf3,
+	bg: #faf4ed,
+	bg-strong: #f2e9e1,
+	line: #cecacd,
+	// Muted (#9893a5) is 2.6:1 on the base. This is closer to subtle.
+	fg-muted: color.mix(#9893a5, #797593, 50%),
+	fg-subtler: #797593,
+	fg-subtle: color.mix(#797593, #575279, 50%),
+	fg: #575279,
+	border-subtle: #dfdad9,
+	border: #cecacd,
+	border-strong: #9893a5,
+	hover: #f4ede8,
+	active: color.mix(#907aa9, #fffaf3, 25%),
+	focus: #907aa9,
+	primary: #907aa9,
+	purple: #d7827e,
+	green: #286983,
+	red: #b4637a,
+	// Gold (#ea9d34) is 2.2:1 on the base. This is the same hue, darker.
+	yellow: color.mix(#ea9d34, #000, 75%),
+	orange: #d7827e,
+	blue: #56949f,
+	mint: #56949f,
+	code-string: color.mix(#ea9d34, #000, 75%),
+	code-primitive: #d7827e,
+	code-keyword: #286983,
+	code-parameter: #907aa9,
+	code-function: #b4637a,
+	code-invalid: #b4637a,
+	code-comment: #797593,
+);
+
+// https://rosepinetheme.com/palette/ (Moon)
+$rose-pine-moon: (
+	fg: #e0def4,
+	fg-subtle: color.mix(#e0def4, #908caa, 50%),
+	fg-subtler: #908caa,
+	// Muted (#6e6a86) is 3.1:1 on the base. This is closer to subtle.
+	fg-muted: color.mix(#908caa, #6e6a86, 50%),
+	line: #44415a,
+	bg-subtle: #393552,
+	bg-raised: #2a273f,
+	bg: #232136,
+	bg-deep: color.mix(#232136, #000, 75%),
+	border-subtle: #44415a,
+	border: #56526e,
+	border-strong: #908caa,
+	hover: #393552,
+	active: color.mix(#c4a7e7, #232136, 30%),
+	focus: #c4a7e7,
+	primary: #c4a7e7,
+	purple: #ea9a97,
+	green: #9ccfd8,
+	red: #eb6f92,
+	yellow: #f6c177,
+	orange: #ea9a97,
+	blue: #3e8fb0,
+	mint: #9ccfd8,
+	code-string: #f6c177,
+	code-primitive: #ea9a97,
+	code-keyword: #3e8fb0,
+	code-parameter: #c4a7e7,
+	code-variable: #e0def4,
+	code-function: #ea9a97,
+	code-type: #9ccfd8,
+	code-invalid: #eb6f92,
+	code-comment: #908caa,
+);
+
+body[data-palette='solarized-light'] {
+	@include light-preset($solarized-light);
+}
+
+body[data-palette='solarized-dark'] {
+	@include dark-preset($solarized-dark);
+}
+
+body[data-palette='github-light'] {
+	@include light-preset($github-light);
+}
+
+body[data-palette='github-dark'] {
+	@include dark-preset($github-dark);
+}
+
+body[data-palette='rose-pine-dawn'] {
+	@include light-preset($rose-pine-dawn);
+}
+
+body[data-palette='rose-pine-moon'] {
+	@include dark-preset($rose-pine-moon);
+}

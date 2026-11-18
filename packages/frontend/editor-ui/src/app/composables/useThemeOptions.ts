@@ -26,6 +26,9 @@ const THEME_FAMILY_LABELS: Record<ThemeFamily, BaseTextKey> = {
 	cyberdream: 'settings.personal.theme.cyberdream',
 	moonfly: 'settings.personal.theme.moonfly',
 	nightfly: 'settings.personal.theme.nightfly',
+	solarized: 'settings.personal.theme.solarized',
+	github: 'settings.personal.theme.github',
+	'rose-pine': 'settings.personal.theme.rosePine',
 	custom: 'settings.personal.theme.custom',
 };
 
@@ -39,6 +42,9 @@ const THEME_FAMILY_ORDER: ThemeFamily[] = [
 	'cyberdream',
 	'moonfly',
 	'nightfly',
+	'solarized',
+	'github',
+	'rose-pine',
 	'custom',
 ];
 

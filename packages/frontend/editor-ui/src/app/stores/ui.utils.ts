@@ -39,6 +39,10 @@ export const THEME_FAMILIES: Record<
 	cyberdream: { dark: 'cyberdream' },
 	moonfly: { dark: 'moonfly' },
 	nightfly: { dark: 'nightfly' },
+	solarized: { light: 'solarized-light', dark: 'solarized-dark' },
+	github: { light: 'github-light', dark: 'github-dark' },
+	// Dawn is the light variant. Moon is the dark variant.
+	'rose-pine': { light: 'rose-pine-dawn', dark: 'rose-pine-moon' },
 	// The user's own theme has only the variant of its mode. Its CSS is generated at runtime.
 	custom: {
 		get light() {

@@ -89,6 +89,56 @@ export const CUSTOM_THEME_PRESETS: Record<string, { label: string; seeds: Custom
 			accent: '#d33682',
 		},
 	},
+	'solarized-dark': {
+		label: 'Solarized dark',
+		seeds: {
+			background: '#001e26',
+			surface: '#002b36',
+			text: '#93a1a1',
+			primary: '#268bd2',
+			accent: '#6c71c4',
+		},
+	},
+	'github-light': {
+		label: 'GitHub light',
+		seeds: {
+			background: '#f6f8fa',
+			surface: '#ffffff',
+			text: '#1f2328',
+			primary: '#0969da',
+			accent: '#8250df',
+		},
+	},
+	'github-dark': {
+		label: 'GitHub dark',
+		seeds: {
+			background: '#010409',
+			surface: '#0d1117',
+			text: '#e6edf3',
+			primary: '#4493f8',
+			accent: '#ab7df8',
+		},
+	},
+	'rose-pine-dawn': {
+		label: 'Rosé Pine Dawn',
+		seeds: {
+			background: '#faf4ed',
+			surface: '#fffaf3',
+			text: '#575279',
+			primary: '#907aa9',
+			accent: '#d7827e',
+		},
+	},
+	'rose-pine-moon': {
+		label: 'Rosé Pine Moon',
+		seeds: {
+			background: '#1a1928',
+			surface: '#232136',
+			text: '#e0def4',
+			primary: '#c4a7e7',
+			accent: '#ea9a97',
+		},
+	},
 };
 
 type Rgb = [number, number, number];

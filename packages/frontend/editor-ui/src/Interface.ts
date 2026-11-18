@@ -983,6 +983,12 @@ export type ThemePalette =
 	| 'cyberdream'
 	| 'moonfly'
 	| 'nightfly'
+	| 'solarized-light'
+	| 'solarized-dark'
+	| 'github-light'
+	| 'github-dark'
+	| 'rose-pine-dawn'
+	| 'rose-pine-moon'
 	| 'custom';
 /** A group of palettes. A family has a light and a dark variant, or only one of them. */
 export type ThemeFamily =
@@ -995,6 +1001,9 @@ export type ThemeFamily =
 	| 'cyberdream'
 	| 'moonfly'
 	| 'nightfly'
+	| 'solarized'
+	| 'github'
+	| 'rose-pine'
 	| 'custom';
 export interface ThemeSelection {
 	mode: ThemeMode;
