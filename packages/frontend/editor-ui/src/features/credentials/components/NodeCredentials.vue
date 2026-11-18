@@ -847,6 +847,7 @@ function createNewCredential(
 		props.node.name,
 		props.node,
 		{
+			...(props.forAgent ? { fixedCredentialsOnly: true } : {}),
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
 			...(isToolContext ? { appendToBody: true } : {}),
@@ -1196,6 +1197,7 @@ function editCredential(credentialType: string): void {
 	assert(credential?.id);
 
 	uiStore.openExistingCredential(credential.id, {
+		...(props.forAgent ? { fixedCredentialsOnly: true } : {}),
 		hideAskAssistant: hideAskAssistant.value,
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
@@ -1495,6 +1497,8 @@ function onCredentialOptionSelected(
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
 	selectRefs.value.forEach((select) => select.blur());
 	await nextTick();
+	// The closing dropdown refocuses the select, and the modal would restore focus there and reopen it.
+	selectRefs.value.forEach((select) => select.blur());
 	createNewCredential(type.name, true, showMixedCredentials(type));
 }
 

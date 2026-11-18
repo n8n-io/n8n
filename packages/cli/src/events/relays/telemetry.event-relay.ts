@@ -1167,6 +1167,7 @@ export class TelemetryEventRelay extends EventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 		failureReason,
+		source,
 	}: RelayEventMap['community-package-installed']) {
 		this.telemetry.track('cnr package install finished', {
 			user_id: user.id,
@@ -1178,6 +1179,7 @@ export class TelemetryEventRelay extends EventRelay {
 			package_author: packageAuthor,
 			package_author_email: packageAuthorEmail,
 			failure_reason: failureReason,
+			source,
 		});
 	}
 
@@ -2309,9 +2311,21 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
+			license_consumer_id: this.getLicenseConsumerId(),
 			otel,
 			settings_managed_by_env_vars: settingsManagedByEnvVars,
 		});
+	}
+
+	/**
+	 * The license server's consumer ID for this install's license, so the
+	 * warehouse can join a license to telemetry. Absent without a license, and
+	 * for ephemeral licenses, which all share one placeholder consumer ID.
+	 */
+	private getLicenseConsumerId(): string | undefined {
+		if (this.license.isEphemeral()) return undefined;
+		const consumerId = this.license.getConsumerId();
+		return consumerId !== 'unknown' ? consumerId : undefined;
 	}
 
 	// Instance information available at group level on PostHog & Rudderstack

@@ -60,6 +60,7 @@ import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-valid
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -76,7 +77,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
-import { getAllowedToolNames } from './mcp-scopes';
+import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
@@ -294,6 +295,7 @@ export class McpService {
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly preferencesNoteService: McpPreferencesNoteService,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -580,6 +582,11 @@ export class McpService {
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
+
+			if (FOLDER_FEATURE_TOOLS.has(tool.name) && !this.licenseState.isFoldersLicensed()) {
+				return;
+			}
+
 			registerTool(tool);
 		};
 
@@ -620,6 +627,9 @@ export class McpService {
 		);
 		registerIfAllowed(searchExecutionsTool);
 
+		const publicationStatusService = this.workflowsConfig.useWorkflowPublicationService
+			? this.workflowPublicationStatusService
+			: undefined;
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,
 			this.urlService.getWebhookBaseUrl(),
@@ -635,6 +645,7 @@ export class McpService {
 			this.roleService,
 			this.projectService,
 			this.urlService.getTestWebhookBaseUrl(),
+			publicationStatusService,
 		);
 		registerIfAllowed(workflowDetailsTool);
 
@@ -668,6 +679,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			publicationStatusService,
 			ctx,
 		);
 		registerIfAllowed(publishWorkflowTool);

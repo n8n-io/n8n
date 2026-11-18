@@ -45,6 +45,7 @@ import {
 import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
+import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -82,6 +83,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -303,6 +305,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
 			mockInstance(McpPreferencesNoteService),
+			mockInstance(WorkflowPublicationStatusService),
 		);
 
 	beforeEach(() => {
@@ -772,6 +775,27 @@ describe('McpService scope enforcement', () => {
 		expect(registered).not.toContain('move_workflows_to_folder');
 		expect(registered).toContain('search_projects');
 	});
+
+	it.each([false, true])(
+		'gates Agent move registration on the folder license: %s',
+		async (foldersLicensed) => {
+			mockInstance(McpAgentToolsService, {
+				registerTools: vi.fn((registerTool) => {
+					for (const name of ['move_agent', 'create_agent']) {
+						registerTool({ name, config: {}, handler: vi.fn() });
+					}
+				}),
+			});
+			const server = await buildService({ foldersLicensed, agentsActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered.has('move_agent')).toBe(foldersLicensed);
+			expect(registered).toContain('create_agent');
+		},
+	);
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();

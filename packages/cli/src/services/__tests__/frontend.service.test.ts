@@ -101,6 +101,7 @@ describe('FrontendService', () => {
 	const instanceSettings = mock<InstanceSettings>({
 		isDocker: false,
 		instanceId: 'test-instance',
+		installId: 'test-install',
 		isMultiMain: false,
 		hostId: 'test-host',
 		staticCacheDir: '/tmp/test-cache',
@@ -770,6 +771,15 @@ describe('FrontendService', () => {
 			expect(settings).toEqual(expectedPublicSettings);
 		});
 
+		it('should include the install ID in the settings for signed-in users', async () => {
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.instanceId).toBe('test-instance');
+			expect(settings.installId).toBe('test-install');
+		});
+
 		it('should include the active modules and no settings that need a user', async () => {
 			moduleRegistry.getActiveModules.mockReturnValue(['data-table', 'insights']);
 
@@ -778,6 +788,7 @@ describe('FrontendService', () => {
 
 			expect(publicSettings.activeModules).toEqual(['data-table', 'insights']);
 			expect(publicSettings).not.toHaveProperty('instanceId');
+			expect(publicSettings).not.toHaveProperty('installId');
 			expect(publicSettings).not.toHaveProperty('urlBaseWebhook');
 			expect(publicSettings).not.toHaveProperty('telemetry');
 			expect(publicSettings).not.toHaveProperty('mfa');

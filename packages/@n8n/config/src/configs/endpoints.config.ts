@@ -144,6 +144,14 @@ export class PrometheusMetricsConfig {
 	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
 	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
 	workflowPublicationMetricInterval: number = 60;
+
+	/**
+	 * Whether to include metrics for the `execution-ledger` module: runs waiting to be
+	 * counted, the time of the last successful count, and failures for each counting step.
+	 * Only main instances report them, and only when you enable the module.
+	 */
+	@Env('N8N_METRICS_INCLUDE_EXECUTION_LEDGER_METRICS')
+	includeExecutionLedgerMetrics: boolean = false;
 }
 
 @Config

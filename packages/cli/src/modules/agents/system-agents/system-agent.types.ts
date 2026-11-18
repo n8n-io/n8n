@@ -240,6 +240,13 @@ export interface SystemAgentThreadDeletionScope {
 	memory: ObservationLogObserverMemory;
 }
 
+/** The thread of a turn that a user stopped. */
+export interface SystemAgentUserStopScope {
+	agentId: string;
+	threadId: string;
+	userId: string;
+}
+
 /** Work that runs after the thread deletion commits. */
 export type SystemAgentAfterThreadDeletion = () => Promise<void>;
 
@@ -315,6 +322,13 @@ export interface SystemAgentProvider<TLease = unknown> {
 	onBeforeThreadDeletion?(
 		scope: SystemAgentThreadDeletionScope,
 	): Promise<SystemAgentAfterThreadDeletion | undefined>;
+	/**
+	 * Called after a user stopped a turn of this agent through a chat route.
+	 * The runtime calls it only when the stop took effect: a turn was running,
+	 * or a suspended run was cancelled. A failure is logged and does not change
+	 * the stop result.
+	 */
+	onUserStoppedTurn?(scope: SystemAgentUserStopScope): void | Promise<void>;
 	/**
 	 * Called once for each execution of a run that a turn of this agent
 	 * delegated, foreground or background, after the runner tries to store

@@ -29,6 +29,7 @@ describe('DatabaseMetricQueryService', () => {
 		outboxRepository,
 		taskRepository,
 		jobRepository,
+		mock(),
 	);
 
 	beforeEach(() => {
