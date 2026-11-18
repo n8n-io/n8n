@@ -1,4 +1,4 @@
-import type { DeterminismSummaryDto } from '@n8n/api-types';
+import type { DeterminismSuggestionsDto, DeterminismSummaryDto } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { GeneratedFromSourceType } from 'n8n-workflow';
@@ -24,4 +24,16 @@ export async function dismissDeterminismSuggestion(
 	source: DeterminismSourceRef,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', `${sourcePath(source)}/dismiss`);
+}
+
+export async function listDeterminismSuggestions(
+	context: IRestApiContext,
+	projectId: string,
+	sourceType: GeneratedFromSourceType,
+): Promise<DeterminismSuggestionsDto> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/determinism/${sourceType}`,
+	);
 }

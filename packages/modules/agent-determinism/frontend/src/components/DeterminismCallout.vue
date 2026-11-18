@@ -11,6 +11,7 @@ import {
 	getDeterminismSummary,
 	type DeterminismSourceRef,
 } from '../agent-determinism.api';
+import { useDeterminismSuggestionsStore } from '../agent-determinism.store';
 
 const props = defineProps<DeterminismSourceRef>();
 
@@ -35,6 +36,7 @@ async function onReview() {
 
 async function onDismiss() {
 	suggestion.value = null;
+	useDeterminismSuggestionsStore().forget(props.projectId, props.sourceType, props.sourceId);
 	await dismissDeterminismSuggestion(rootStore.restApiContext, props);
 }
 

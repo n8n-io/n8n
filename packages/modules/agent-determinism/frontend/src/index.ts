@@ -7,3 +7,5 @@ export const loadDeterminismCallout = async () =>
 
 export const loadGeneratedDraftBanner = async () =>
 	await import('./components/GeneratedDraftBanner.vue');
+
+export const loadDeterminismBadge = async () => await import('./components/DeterminismBadge.vue');

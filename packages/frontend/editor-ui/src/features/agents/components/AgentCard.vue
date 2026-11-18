@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { loadDeterminismBadge } from '@n8n/frontend-module-agent-determinism';
 import dateformat from 'dateformat';
 import {
 	N8nActionToggle,
@@ -52,6 +53,7 @@ const locale = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const DeterminismBadge = defineAsyncComponent(loadDeterminismBadge);
 const mcpStore = useMCPStore();
 const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
@@ -261,6 +263,12 @@ async function toggleMCPAccess(enabled: boolean) {
 				>
 					{{ locale.baseText('agents.list.readonly') }}
 				</N8nBadge>
+				<DeterminismBadge
+					v-if="settingsStore.isModuleActive('agent-determinism') && !agent.isArchived"
+					:project-id="projectId"
+					source-type="agent"
+					:source-id="agent.id"
+				/>
 			</N8nText>
 		</template>
 		<N8nText

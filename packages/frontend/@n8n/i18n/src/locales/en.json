@@ -9673,6 +9673,8 @@
 	"agents.n8nChatPage.picker.tryAskingAssistant": "Try asking n8n Assistant",
 	"agents.backToWorkflow": "Back to workflow",
 	"agentDeterminism.cta.title": "This agent could be {gain}% more deterministic.",
+	"agentDeterminism.badge.label": "{gain}% more deterministic",
+	"agentDeterminism.badge.tooltip": "A deterministic draft workflow passed checks on past runs. Click to review it.",
 	"agentDeterminism.cta.detail": "A draft workflow matched {matched} of {total} past runs.",
 	"agentDeterminism.cta.review": "Review draft",
 	"agentDeterminism.cta.dismiss": "Dismiss",
