@@ -71,6 +71,11 @@ export class ScopeInfo {
 		return this.reassigned.has(symbol);
 	}
 
+	/** True when a closure that captures the variable is made before its declaration ends. */
+	isCapturedEarly(symbol: ts.Symbol): boolean {
+		return this.captured.has(symbol) && this.early.has(symbol);
+	}
+
 	private walk(node: ts.Node) {
 		if (ts.isIdentifier(node)) this.visitIdentifier(node);
 		if (ts.isShorthandPropertyAssignment(node)) {

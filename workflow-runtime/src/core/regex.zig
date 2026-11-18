@@ -14,9 +14,10 @@
 //! alternation, greedy and lazy quantifiers, captures that each iteration of
 //! a quantifier resets, empty-iteration checks, lookahead, backreferences and
 //! the `i` canonicalization of the non-Unicode mode. It supports the subset
-//! that `regex-syntax.ts` of the compiler accepts: no lookbehind, no Unicode
-//! property escapes, no `u` with `i`, no legacy octal escapes, no quantified
-//! assertions.
+//! that `regex-syntax.ts` of the compiler accepts: no lookbehind, no `u` with
+//! `i`, no legacy octal escapes, no quantified assertions. A Unicode property
+//! escape (`\p{…}`, `\P{…}` with the `u` flag) is a class item that names a
+//! table of `uniprop.zig`.
 //!
 //! Every match attempt counts its steps. A pattern that backtracks too much
 //! ends the execution with the fuel limit, so the result never depends on
@@ -24,6 +25,7 @@
 const std = @import("std");
 const Arena = @import("arena.zig").Arena;
 const unicase = @import("unicase.zig");
+const uniprop = @import("uniprop.zig");
 
 pub const Error = error{ Syntax, TooLarge, StepLimit, ArenaFull };
 
@@ -83,6 +85,25 @@ const space_ranges = [_]Range{
 
 fn inRanges(rs: []const Range, c: u21) bool {
     for (rs) |r| if (c >= r.lo and c <= r.hi) return true;
+    return false;
+}
+
+/// A class item that is a Unicode property and not a range: `lo` is one of these marks
+/// (`\p` and `\P`), which no code point reaches, and `hi` is the table of `uniprop.zig`.
+const prop_mark: u21 = 0x1FFFFF;
+const not_prop_mark: u21 = 0x1FFFFE;
+
+comptime {
+    std.debug.assert(not_prop_mark > 0x10FFFF);
+}
+
+/// True when `c` is in an item of a class: a range, or a property (`prop_mark`).
+fn inClass(rs: []const Range, c: u21) bool {
+    for (rs) |r| {
+        if (r.lo >= not_prop_mark) {
+            if (uniprop.has(@intCast(r.hi), c) == (r.lo == prop_mark)) return true;
+        } else if (c >= r.lo and c <= r.hi) return true;
+    }
     return false;
 }
 
@@ -586,7 +607,33 @@ const Compiler = struct {
             c.pos += 1;
             return c.addClass(start, false);
         }
+        if (c.flags.unicode and (ch == 'p' or ch == 'P')) {
+            const start = c.n_ranges;
+            try c.addProperty();
+            return c.addClass(start, false);
+        }
         try c.char(try c.characterEscape(false));
+    }
+
+    /// Adds the class item of `p{…}` or `P{…}` at `pos` (Unicode mode): a property of
+    /// `uniprop.zig`. A name that ECMAScript does not have is a syntax error.
+    fn addProperty(c: *Compiler) Error!void {
+        std.debug.assert(c.flags.unicode);
+        const mark: u21 = if (c.src[c.pos] == 'p') prop_mark else not_prop_mark;
+        if (c.peek(1) != '{') return error.Syntax;
+        var name: [uniprop.max_name_len]u8 = @splat(0);
+        var n: usize = 0;
+        var i = c.pos + 2;
+        // The name buffer bounds the loop.
+        while (i < c.src.len and c.src[i] != '}') : (i += 1) {
+            if (n >= name.len or c.src[i] > 0x7F) return error.Syntax;
+            name[n] = @intCast(c.src[i]);
+            n += 1;
+        }
+        if (i >= c.src.len) return error.Syntax;
+        const table = uniprop.find(name[0..n]) orelse return error.Syntax;
+        c.pos = i + 1;
+        try c.addRange(mark, table);
     }
 
     fn addClass(c: *Compiler, start: u32, negated: bool) Error!void {
@@ -652,6 +699,10 @@ const Compiler = struct {
         if (setOf(e) != null) {
             try c.addSet(e);
             c.pos += 1;
+            return null;
+        }
+        if (c.flags.unicode and (e == 'p' or e == 'P')) {
+            try c.addProperty();
             return null;
         }
         if (e >= '1' and e <= '9') return error.Syntax;
@@ -801,12 +852,12 @@ const Matcher = struct {
 
     fn classMatches(m: *const Matcher, cls: Class, c: u21) bool {
         const rs = m.ranges[cls.lo..cls.hi];
-        var hit = inRanges(rs, c);
+        var hit = inClass(rs, c);
         if (!hit and m.flags.ignore_case and c <= 0xFFFF) {
             // Any member whose canonical form is the canonical form of c.
             var buf: [unicase.max_inverse]u16 = undefined;
             for (unicase.canonicalizeInverse(unicase.canonicalize(@intCast(c)), &buf)) |x| {
-                if (inRanges(rs, x)) {
+                if (inClass(rs, x)) {
                     hit = true;
                     break;
                 }
@@ -1109,7 +1160,7 @@ test "rejects what the subset does not have" {
     var buf: [1 << 16]u8 = undefined;
     var arena = Arena.init(&buf);
     const bad = [_][2][]const u8{
-        .{ "(", "" },   .{ "a**", "" },    .{ "(?<=a)b", "" }, .{ "\\p{L}", "u" },
+        .{ "(", "" },   .{ "a**", "" },    .{ "(?<=a)b", "" }, .{ "\\p{Latin}", "u" },
         .{ "a", "gg" }, .{ "a", "iu" },    .{ "[b-a]", "" },   .{ "\\1(a)\\2", "" },
         .{ "^*", "" },  .{ "a{2,1}", "" }, .{ "\\07", "" },
     };
