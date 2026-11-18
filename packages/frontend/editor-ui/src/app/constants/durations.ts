@@ -47,6 +47,15 @@ export const LOADING_ANIMATION_MIN_DURATION = 1000;
 /** How long a settings page waits for a linked setting to render before it gives up. */
 export const SETTINGS_ANCHOR_WAIT_TIMEOUT = 5 * TIME.SECOND;
 
+/**
+ * How long a settings page settles before it scrolls to a linked setting.
+ * Android Settings uses the same wait.
+ */
+export const SETTINGS_ANCHOR_REVEAL_DELAY = 600;
+
+/** How long a linked setting can take to scroll into view before its highlight plays anyway. */
+export const SETTINGS_ANCHOR_SCROLL_TIMEOUT = 1.5 * TIME.SECOND;
+
 export const AGENT_EXTERNAL_UPDATE_NOTICE_DURATION = 5 * TIME.MINUTE;
 
 /** Shows the summary fallback if background results never reach the agent. */

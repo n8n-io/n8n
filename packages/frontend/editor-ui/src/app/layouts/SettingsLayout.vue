@@ -65,20 +65,53 @@ onMounted(() => {
 	max-width: 1600px;
 	padding: 0 var(--spacing--2xl);
 
-	/* Highlights a setting that the user opened from a link, e.g. from the command bar. */
+	/*
+	 * Highlights a setting that the user opened from a link, e.g. from the command bar.
+	 * The timing follows Android Settings: 200 ms in and 200 ms out, ending on the third peak
+	 * after 1 s. The tint then stays for 1.5 s and fades out over 500 ms.
+	 */
 	:global([data-settings-anchor-highlighted]) {
-		animation: settings-anchor-highlight 2s ease-out;
+		--settings-anchor--color--background: color-mix(
+			in srgb,
+			var(--background--brand) 26%,
+			transparent
+		);
+
+		animation: settings-anchor-highlight 3s var(--easing--ease-in-out);
+
+		/* No flashes: the tint fades in once, stays, and fades out. */
+		@media (prefers-reduced-motion: reduce) {
+			animation-name: settings-anchor-highlight-steady;
+		}
 	}
 }
 
+/* Each step up or down takes 200 ms of the 3 s, i.e. 6.667%. */
 @keyframes settings-anchor-highlight {
 	0%,
-	40% {
-		background-color: var(--background--active);
-	}
-
+	13.333%,
+	26.667%,
 	100% {
 		background-color: transparent;
+	}
+
+	6.667%,
+	20%,
+	33.333%,
+	83.333% {
+		background-color: var(--settings-anchor--color--background);
+	}
+}
+
+@keyframes settings-anchor-highlight-steady {
+	0%,
+	100% {
+		background-color: transparent;
+	}
+
+	6.667%,
+	83.333% {
+		background-color: var(--settings-anchor--color--background);
 	}
 }
 </style>
