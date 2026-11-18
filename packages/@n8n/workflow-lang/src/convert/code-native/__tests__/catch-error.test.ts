@@ -1,180 +1,164 @@
 /**
- * `catch` blocks that read the error in native Code nodes.
+ * `catch` blocks that read the error in native Code nodes, against n8n's real task runner.
  *
- * The fallback host runs the code with n8n's v1 sandbox. The native code runs
- * in the bytecode VM. The results (items or error) must be equal, and a form
- * that cannot be equal (`e.stack`, line numbers) must keep the node in the host.
+ * The oracle is the real task runner of v1 (`runner-oracle.ts`): each case runs as native
+ * code in the bytecode VM and as a Code node in n8n's engine with its task runner process,
+ * on the same items. The results (items, or the message of the error with the line that the
+ * task runner adds) must be the same. A form that cannot be equal must be refused: the
+ * translation blocks it and the Code node runs in the fallback host.
+ *
+ * The cases are made up. They need the built n8n CLI and task runner packages; without them
+ * the suite is skipped.
  */
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-import { hostRunners } from '../../__tests__/behaviour/compare.ts';
-import { allItemsCode, eachItemCode } from '../../code-node.ts';
-import { runModule } from '../../../testing/vm.ts';
-import { checkTranslation } from '../check.ts';
+import { useUtc } from '../../../reference/runner.ts';
 import type { CodeMode } from '../translate.ts';
 import { translateCode } from '../translate.ts';
+import { nativeCode, runnerCode, startRunner, taskRunnerAvailable } from './runner-oracle.ts';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const hostDist = join(here, '../../../../../workflow-fallback-host/dist');
+useUtc();
 
-type Outcome = { ok: true; value: unknown } | { ok: false; error: string };
-
-/** Runs `code` through the fallback host (v1 behaviour). */
-async function host(code: string, mode: CodeMode): Promise<Outcome> {
-	hostRunners();
-	const req = createRequire(join(hostDist, 'index.js'));
-	const mod = req(join(hostDist, 'code-step.js')) as {
-		runCodeStepAsync: (args: unknown) => Promise<unknown>;
-		parseCodeStepArgs: (args: unknown) => unknown;
-	};
-	const body = mode === 'each' ? eachItemCode(code, false, false) : allItemsCode(code, false, false);
-	try {
-		const value = await mod.runCodeStepAsync(
-			mod.parseCodeStepArgs({ name: 'code', code: body, items: [{ a: 1 }] }),
-		);
-		return { ok: true, value };
-	} catch (e) {
-		return { ok: false, error: String(e) };
-	}
+interface Case {
+	name: string;
+	code: string;
+	mode?: CodeMode;
 }
 
-/** Runs `code` natively in the bytecode VM. */
-function native(code: string, mode: CodeMode): Outcome {
-	const t = translateCode({ code, mode, kind: 'code', hasNode: () => false, timezone: 'system' });
-	if (!t.ok)
-		throw new Error(`blocked: ${t.blockers.map((b) => `${b.feature}: ${b.message}`).join(', ')}`);
-	const c = checkTranslation(t.translation, mode);
-	if (!c.ok) throw new Error(`does not compile: ${c.blockers.map((b) => b.message).join('; ')}`);
-	if (!c.compiled.data) throw new Error('no module');
-	const out = runModule(c.compiled.data, {
-		trigger: { body: { input: [{ a: 1 }], nodes: [] } },
-		now: 1_700_000_000_000,
-		seed: 1,
-		effects: {},
-	});
-	if (out.status === 'ok') return { ok: true, value: out.result as unknown };
-	const r: unknown = out.result;
-	const message =
-		typeof r === 'object' && r !== null ? String(Reflect.get(r, 'message')) : String(r);
-	return { ok: false, error: message };
+const ITEMS = [{ a: 1 }, { a: 2 }];
+
+/** Each error that a native form can raise, and each read of it. */
+const READS: Case[] = [
+	{
+		name: 'e.message and e.name of a TypeError on a read of undefined',
+		code: 'try { items[0].json.zz.y; } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }',
+	},
+	{
+		name: 'e.message and e.name of a read on null',
+		code: 'try { items[0].json.a.zz; } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }',
+	},
+	{
+		name: 'e.message and e.name of a thrown Error',
+		code: "try { throw new Error('boom'); } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }",
+	},
+	{
+		name: 'e.message and e.name of a thrown TypeError',
+		code: "try { throw new TypeError('bad type'); } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }",
+	},
+	{
+		name: 'e.message and e.name of a thrown string',
+		code: "try { throw 'just text'; } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }",
+	},
+	{
+		name: 'e.message and e.name of a thrown number',
+		code: 'try { throw 42; } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }',
+	},
+	{
+		name: 'e.message of JSON.parse',
+		code: "try { JSON.parse('x'); } catch (e) { return [{ json: { message: e.message } }]; }",
+	},
+	{
+		name: 'e.message of JSON.parse of a bad literal',
+		code: 'try { JSON.parse(\'{"a":}\'); } catch (e) { return [{ json: { message: e.message } }]; }',
+	},
+	{
+		name: 'String(e) and the template of a TypeError',
+		code: 'try { items[0].json.zz.y; } catch (e) { return [{ json: { text: String(e), template: `${e}`, own: e.toString() } }]; }',
+	},
+	{
+		name: 'String(e) and the template of a thrown Error',
+		code: "try { throw new Error('boom'); } catch (e) { return [{ json: { text: String(e), template: `$" + "{e}`, own: e.toString() } }]; }",
+	},
+	{
+		name: 'String(e) of a thrown string and a concat',
+		code: "try { throw 'just text'; } catch (e) { return [{ json: { text: String(e), concat: 'prefix: ' + e } }]; }",
+	},
+	{
+		name: 'String(e) of a thrown object without a message',
+		code: 'try { throw { a: 1 }; } catch (e) { return [{ json: { text: String(e) } }]; }',
+	},
+	{
+		name: 'a truthy test and typeof of the error',
+		code: 'try { items[0].json.zz.y; } catch (e) { return [{ json: { truthy: e ? 1 : 0, kind: typeof e, not: !e } }]; }',
+	},
+	{
+		name: 'a missing property of the error gives undefined',
+		code: 'try { items[0].json.zz.y; } catch (e) { return [{ json: { code: e.code ?? null, extra: e.extra ?? null } }]; }',
+	},
+	{
+		name: 'rethrow of a TypeError',
+		code: 'const a = 1;\ntry {\n  items[0].json.zz.y;\n} catch (e) {\n  throw e;\n}',
+	},
+	{
+		name: 'rethrow of a thrown Error',
+		code: "try { throw new Error('kept'); } catch (e) { throw e; }",
+	},
+	{
+		name: 'rethrow of a thrown string',
+		code: "try { throw 'kept text'; } catch (e) { throw e; }",
+	},
+	{
+		name: 'catch in each mode reads the message',
+		code: 'try { const v = $json.zz.y; return { json: { v } }; } catch (e) { return { json: { message: e.message } }; }',
+		mode: 'each',
+	},
+	{
+		name: 'catch in each mode gives String(e)',
+		code: 'try { const v = $json.zz.y; return { json: { v } }; } catch (e) { return { json: { text: String(e) } }; }',
+		mode: 'each',
+	},
+	{
+		name: 'a caught error and a throw of a new Error with its message',
+		code: "try { items[0].json.zz.y; } catch (e) { throw new Error('wrapped: ' + e.message); }",
+	},
+];
+
+/** Runs both sides and requires the same result. */
+async function same(c: Case): Promise<void> {
+	const items = ITEMS;
+	const mode = c.mode ?? 'all';
+	const runner = await runnerCode(c.code, mode, items);
+	expect(nativeCode(c.code, mode, items)).toEqual(runner);
 }
 
-type OutcomeResult = { ok: true; value: unknown[] } | { ok: false; error: string };
-function resultOf(out: Outcome): OutcomeResult {
-	if (out.ok) return { ok: true, value: out.value as unknown[] };
-	return out;
-}
+describe.skipIf(!taskRunnerAvailable())('native Code nodes against the task runner: catch reads the error', () => {
+	beforeAll(async () => await startRunner(), 120_000);
 
-/** True when `translateCode` blocks the code. */
-function blocked(code: string): boolean {
-	const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false, timezone: 'system' });
-	return !t.ok;
-}
-
-/** Runs both sides and compares. */
-async function same(code: string, mode: CodeMode = 'all'): Promise<OutcomeResult> {
-	const h = await host(code, mode);
-	const n = native(code, mode);
-	expect(resultOf(n)).toEqual(resultOf(h));
-	return resultOf(h);
-}
-
-describe('catch reads the error: message, name, and text', () => {
-	it('reads e.message and e.name of a TypeError', async () => {
-		const code = `try { items[0].json.zz.y; } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }`;
-		await same(code);
-	});
-
-	it('reads e.message and e.name of a thrown Error', async () => {
-		const code = "try { throw new Error('boom'); } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }";
-		await same(code);
-	});
-
-	it('reads e.message and e.name of a thrown string', async () => {
-		const code = "try { throw 'just text'; } catch (e) { return [{ json: { message: e.message, name: e.name } }]; }";
-		await same(code);
-	});
-
-	it('reads e.message of JSON.parse', async () => {
-		const code = "try { JSON.parse('x'); } catch (e) { return [{ json: { message: e.message } }]; }";
-		await same(code);
-	});
-
-	it('reads String(e) of a TypeError', async () => {
-		const code = 'try { items[0].json.zz.y; } catch (e) { return [{ json: { text: String(e), template: `${e}` } }]; }';
-		await same(code);
-	});
-
-	it('reads String(e) of a thrown Error', async () => {
-		const code = "try { throw new Error('boom'); } catch (e) { return [{ json: { text: String(e), template: `$" + "{e}` } }]; }";
-		await same(code);
-	});
-
-	it('reads String(e) of a thrown string', async () => {
-		const code = "try { throw 'just text'; } catch (e) { return [{ json: { text: String(e), concat: 'prefix: ' + e } }]; }";
-		await same(code);
-	});
-
-	it('rethrows the error of a TypeError', async () => {
-		const code = 'try { items[0].json.zz.y; } catch (e) { throw e; }';
-		const h = await host(code, 'all');
-		const n = native(code, 'all');
-		expect(h.ok).toBe(false);
-		expect(n.ok).toBe(false);
-		// The host prefixes with "ERROR: ". Compare the suffix.
-		if (!h.ok && !n.ok) {
-			expect(h.error).toContain(n.error);
-		}
-	});
-
-	it('rethrows a thrown Error', async () => {
-		const code = "try { throw new Error('boom'); } catch (e) { throw e; }";
-		const h = await host(code, 'all');
-		const n = native(code, 'all');
-		expect(h.ok).toBe(false);
-		expect(n.ok).toBe(false);
-		if (!h.ok && !n.ok) {
-			expect(h.error).toContain(n.error);
-		}
-	});
-
-	it('catches and returns the error in each mode', async () => {
-		const code = 'try { const v = $json.zz.y; return { json: { v } }; } catch (e) { return { json: { message: e.message } }; }';
-		await same(code, 'each');
-	});
-
-	it('catches and returns String(e) in each mode', async () => {
-		const code = 'try { const v = $json.zz.y; return { json: { v } }; } catch (e) { return { json: { text: String(e) } }; }';
-		await same(code, 'each');
-	});
+	it.each(READS)('gives the same result or error as v1: $name', async (c) => {
+		await same(c);
+	}, 60_000);
 });
 
-describe('catch reads the error: forms kept in the host', () => {
-	it('keeps a catch that reads e.stack in the host', () => {
-		const code = 'try { items[0].json.zz.y; } catch (e) { return [{ json: { s: e.stack } }]; }';
-		expect(blocked(code)).toBe(true);
-	});
+/** Forms that cannot be equal: the translation must refuse them. */
+const REFUSED: Array<[string, string]> = [
+	['a read of e.stack', 'try { items[0].json.zz.y; } catch (e) { return [{ json: { s: e.stack } }]; }'],
+	[
+		'a read of e.constructor',
+		'try { items[0].json.zz.y; } catch (e) { return [{ json: { c: e.constructor } }]; }',
+	],
+	['the error as a value', 'try { items[0].json.zz.y; } catch (e) { return [{ json: { e } }]; }'],
+	[
+		'a shorthand of the error',
+		'try { items[0].json.zz.y; } catch (e) { return [{ json: { e } }]; }',
+	],
+	[
+		'a write to e.name',
+		"try {\n  items[0].json.zz.y;\n} catch (e) {\n  e.name = 'Custom';\n  throw e;\n}",
+	],
+	[
+		'a method of the error',
+		'try { items[0].json.zz.y; } catch (e) { return [{ json: { s: e.hasOwnProperty("x") } }]; }',
+	],
+	[
+		'the error as JSON',
+		'try { items[0].json.zz.y; } catch (e) { return [{ json: { s: JSON.stringify(e) } }]; }',
+	],
+];
 
-	it('keeps a catch that reads e.constructor in the host', () => {
-		const code = 'try { items[0].json.zz.y; } catch (e) { return [{ json: { c: e.constructor } }]; }';
-		expect(blocked(code)).toBe(true);
-	});
-
-	it('keeps a catch that uses the error as a value in the host', () => {
-		const code = 'try { items[0].json.zz.y; } catch (e) { return [{ json: { e } }]; }';
-		expect(blocked(code)).toBe(true);
-	});
-
-	it('keeps a write to e.name in the host', () => {
-		const code = "try {\n  items[0].json.zz.y;\n} catch (e) {\n  e.name = 'CustomName';\n  throw e;\n}";
-		expect(blocked(code)).toBe(true);
-	});
-
-	it('keeps a throw of a new Error that reads e.message in the host', () => {
-		const code = "try { items[0].json.zz.y; } catch (e) { throw new Error('wrapped: ' + e.message); }";
-		expect(blocked(code)).toBe(false);
+describe('catch reads the error: forms that must stay in the host', () => {
+	it.each(REFUSED)('refuses %s', (_, code) => {
+		const t = translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false, timezone: 'system' });
+		expect(t.ok).toBe(false);
+		if (!t.ok) expect(t.blockers.map((b) => b.feature)).toContain('catch reads the error');
 	});
 });
