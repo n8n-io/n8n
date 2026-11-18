@@ -287,6 +287,16 @@ describe('Delete a skill source', () => {
 				.expect(state === 'used' ? 409 : 400);
 
 			expect(await snapshot()).toEqual(before);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL_SOURCE,
+				{
+					user_id: expect.any(String),
+					provider: 'github',
+					skills_kept: false,
+					status: 'failure',
+					reason: state === 'used' ? 'skills_in_use' : 'stale',
+				},
+			);
 		},
 	);
 

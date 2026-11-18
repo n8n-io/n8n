@@ -617,6 +617,8 @@ export class SkillSourceService {
 			throw new ForbiddenError('You are not allowed to delete this source.');
 		}
 		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		// A stale request is a normal race, so telemetry must not report it as a bug.
+		let stale = false;
 		try {
 			await this.txRunner.run({}, async (ctx) => {
 				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
@@ -633,6 +635,7 @@ export class SkillSourceService {
 				// Stop syncing or a skill delete may have finished while the locks waited.
 				const current = await this.sourceRepository.findLinksBySource(sourceId, ctx);
 				if (onlySkillId && (current.length !== 1 || current[0].skillId !== onlySkillId)) {
+					stale = true;
 					throw new BadRequestError('The source skills changed. Refresh the list and try again.');
 				}
 				if (keepSkills) {
@@ -678,7 +681,7 @@ export class SkillSourceService {
 					provider: source.type,
 					skills_kept: keepSkills,
 					status: 'failure',
-					reason: error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
+					reason: stale ? 'stale' : error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
 				},
 				user.id,
 			);

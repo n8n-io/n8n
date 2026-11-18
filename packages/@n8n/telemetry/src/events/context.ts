@@ -643,7 +643,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL_SOURCE: {
 		name: 'User deleted skill source',
 		description:
-			'A user removed a source. The user deleted its synced skills, or kept them as normal skills that n8n can edit (`skills_kept`). Fires after the transaction commits or fails. An agent draft or published pin blocks a delete of the skills with reason skills_in_use. Contains no skill, source, agent, or project names.',
+			'A user removed a source. The user deleted its synced skills, or kept them as normal skills that n8n can edit (`skills_kept`). Fires after the transaction commits or fails. An agent draft or published pin blocks a delete of the skills with reason skills_in_use. A request for a skill list that changed in the meantime fails with reason stale. Contains no skill, source, agent, or project names.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
@@ -653,7 +653,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 					'True when the user chose Stop syncing in the dialog, so the skills stay. This choice does not fire `User stopped skill sync`',
 				),
 			status: skillSourceStatus,
-			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+			reason: z.enum(['skills_in_use', 'stale', 'unexpected']).optional(),
 		}),
 	},
 	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
