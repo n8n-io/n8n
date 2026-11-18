@@ -555,6 +555,7 @@ export class ExecutionService {
 		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,
 			mode,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			workflowData,
 			workflowId: workflow.id,
