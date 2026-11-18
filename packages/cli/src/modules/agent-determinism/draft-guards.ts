@@ -44,7 +44,7 @@ function booleanCheck(name: string, expression: string, position: [number, numbe
 	};
 }
 
-function findTrigger(draft: WorkflowJSON) {
+export function findTrigger(draft: Pick<WorkflowJSON, 'nodes' | 'connections'>) {
 	const targets = new Set(
 		Object.values(draft.connections).flatMap((outputs) =>
 			(outputs.main ?? []).flat().map((connection) => connection?.node),

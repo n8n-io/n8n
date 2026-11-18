@@ -3,6 +3,7 @@ import { UserRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import pLimit from 'p-limit';
 
+import { judgeWithModel } from '@/modules/agent-evals/agent-eval-judge';
 import { OwnershipService } from '@/services/ownership.service';
 
 import { MAX_COLLECTED_RUNS } from './agent-determinism.constants';
@@ -16,7 +17,12 @@ import { DeterminismSourceRepository } from './database/determinism-source.repos
 import { wrapWithGuards } from './draft-guards';
 import { DraftWorkflowWriter } from './draft-workflow.writer';
 import { buildAgentFallback, buildWorkflowFallback } from './fallback-node';
-import { prepareRuns } from './run-preparation';
+import { DeterminismModelResolver } from './determinism-model.resolver';
+import { scoreDraft, type ReplayedRun } from './determinism-score';
+import { DraftReplayRunner } from './draft-replay.runner';
+import { matchOutput, type TextJudge } from './output-match';
+import { prepareRuns, redactJson } from './run-preparation';
+import { classifyRunDataSteps, sumRunDataTokens } from './step-classification';
 
 @Service()
 export class DeterminismAnalysisService {
@@ -28,6 +34,8 @@ export class DeterminismAnalysisService {
 		private readonly clusterer: RunClusterer,
 		private readonly translator: WorkflowTranslator,
 		private readonly draftWriter: DraftWorkflowWriter,
+		private readonly replayRunner: DraftReplayRunner,
+		private readonly modelResolver: DeterminismModelResolver,
 		private readonly userRepository: UserRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly ownershipService: OwnershipService,
@@ -73,13 +81,41 @@ export class DeterminismAnalysisService {
 		const draft = wrapWithGuards(translated, cluster.runs, await this.buildFallback(source));
 		const saved = await this.draftWriter.write(actor, source, draft);
 
-		this.logger.info('Determinism draft created', {
+		const model = await this.modelResolver.resolve(actor, source.projectId);
+		if (!model) throw new Error('No model credential is available in the project');
+
+		const replayed: ReplayedRun[] = [];
+		for (const run of holdout) {
+			const { runData, output } = await this.replayRunner.replay(saved, run, actor.id);
+			const judge: TextJudge = async (expected, actual) => {
+				const verdict = await judgeWithModel(
+					model,
+					{
+						input: JSON.stringify(redactJson(run.input)),
+						output: actual,
+						criteria: null,
+						expectedOutput: expected,
+					},
+					this.logger,
+				);
+				return verdict.status === 'completed' && verdict.outcome === 'pass';
+			};
+			replayed.push({
+				recorded: run.steps,
+				draft: classifyRunDataSteps(runData, saved),
+				matched: await matchOutput(run.output, output, judge),
+				recordedTokens: run.totalTokens,
+				draftTokens: sumRunDataTokens(runData),
+			});
+		}
+
+		const result = scoreDraft(replayed, total, cluster.trafficShare);
+		this.logger.info('Determinism analysis finished', {
 			sourceId: source.id,
 			draftWorkflowId: saved.id,
-			holdoutRuns: holdout.length,
-			totalRuns: total,
+			...result,
 		});
-		await this.sourceRepository.saveResult(source, saved.id, null);
+		await this.sourceRepository.saveResult(source, saved.id, result);
 	}
 
 	private async buildFallback(source: DeterminismSource) {
