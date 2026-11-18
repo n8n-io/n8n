@@ -1334,3 +1334,46 @@ body[data-palette='n8n-extreme'] {
 		)
 	);
 }
+
+// n8n Extreme disco lights: two layers of colored spots turn in opposite directions over the page.
+// Each turn takes many seconds and the edges are soft, so nothing flashes. Clicks pass through.
+body[data-palette='n8n-extreme']::before,
+body[data-palette='n8n-extreme']::after {
+	content: '';
+	position: fixed;
+	// The layers are twice the viewport, so a turn never shows a corner without light.
+	inset: -50%;
+	z-index: 2147483646; // Above the app, below the Jan sparkles.
+	pointer-events: none;
+	mix-blend-mode: multiply;
+	will-change: transform;
+}
+
+body[data-palette='n8n-extreme']::before {
+	background:
+		radial-gradient(circle at 30% 35%, rgb(0 220 255 / 40%), transparent 14%),
+		radial-gradient(circle at 70% 40%, rgb(255 230 0 / 45%), transparent 13%),
+		radial-gradient(circle at 45% 70%, rgb(120 255 80 / 35%), transparent 12%);
+	animation: n8n-extreme-disco-turn 9s linear infinite;
+}
+
+body[data-palette='n8n-extreme']::after {
+	background:
+		radial-gradient(circle at 65% 65%, rgb(150 60 255 / 40%), transparent 14%),
+		radial-gradient(circle at 35% 55%, rgb(255 40 140 / 40%), transparent 13%),
+		radial-gradient(circle at 60% 28%, rgb(255 140 0 / 35%), transparent 12%);
+	animation: n8n-extreme-disco-turn 14s linear infinite reverse;
+}
+
+@keyframes n8n-extreme-disco-turn {
+	to {
+		transform: rotate(1turn);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body[data-palette='n8n-extreme']::before,
+	body[data-palette='n8n-extreme']::after {
+		display: none;
+	}
+}
