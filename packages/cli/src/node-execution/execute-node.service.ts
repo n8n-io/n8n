@@ -7,6 +7,7 @@ import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	INode,
 	INodeCredentials,
@@ -48,9 +49,25 @@ export interface ExecuteNodeRequest {
 		parameters: INodeParameters;
 		credentials?: INodeCredentials;
 	};
-	input?: Array<{ json: IDataObject }>;
+	/**
+	 * Input items. The `binary` entries of an item point to bytes that n8n
+	 * already stores, so nothing is copied.
+	 */
+	input?: Array<{ json: IDataObject; binary?: IBinaryKeyData }>;
+	/**
+	 * Keep the files of the output items. The temporary execution and its binary
+	 * data are deleted after the run, so the callback must copy the bytes. It
+	 * runs only for a successful run whose data is not redacted.
+	 */
+	storeOutputFiles?: (items: INodeExecutionData[]) => Promise<ExecuteNodeStoredFiles>;
 	timeoutMs?: number;
 	projectId: string;
+}
+
+/** The output files that `storeOutputFiles` kept, and the files it skipped. */
+export interface ExecuteNodeStoredFiles {
+	files?: Array<{ fileId: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	skippedFiles?: Array<{ fileName: string; reason: string }>;
 }
 
 export interface ExecuteNodeOutputItem {
@@ -70,7 +87,7 @@ export interface ExecuteNodeError {
 }
 
 export type ExecuteNodeResult =
-	| { status: 'success'; output: ExecuteNodeOutputItem[][] }
+	| ({ status: 'success'; output: ExecuteNodeOutputItem[][] } & ExecuteNodeStoredFiles)
 	| { status: 'error'; error: ExecuteNodeError }
 	/**
 	 * n8n redacted the run's data for the user, the same way the executions API
@@ -137,7 +154,14 @@ export class ExecuteNodeService {
 				const { message, description } = refusal;
 				return { status: 'error', error: { message, description, refused: true } };
 			}
-			return await this.execute(user, workflow, node, inputItems, timeoutMs);
+			return await this.execute(
+				user,
+				workflow,
+				node,
+				inputItems,
+				timeoutMs,
+				request.storeOutputFiles,
+			);
 		} catch (error) {
 			return { status: 'error', error: this.toErrorResponse(error) };
 		} finally {
@@ -268,6 +292,7 @@ export class ExecuteNodeService {
 		node: INode,
 		inputItems: INodeExecutionData[],
 		timeoutMs: number,
+		storeOutputFiles?: ExecuteNodeRequest['storeOutputFiles'],
 	): Promise<ExecuteNodeResult> {
 		const executionData = createRunExecutionData({
 			startData: {},
@@ -298,7 +323,7 @@ export class ExecuteNodeService {
 			};
 		}
 
-		return await this.extractResult(executionId, node.type, user);
+		return await this.extractResult(executionId, node.type, user, storeOutputFiles);
 	}
 
 	private async waitForCompletion(executionId: string, timeoutMs: number): Promise<boolean> {
@@ -358,6 +383,7 @@ export class ExecuteNodeService {
 		executionId: string,
 		nodeTypeName: string,
 		user: User,
+		storeOutputFiles?: ExecuteNodeRequest['storeOutputFiles'],
 	): Promise<ExecuteNodeResult> {
 		const execution = await loadExecutionForViewer(executionId, user);
 
@@ -404,7 +430,11 @@ export class ExecuteNodeService {
 			};
 		}
 
-		return { status: 'success', output: this.toOutput(branches) };
+		// The caller deletes the execution after this read, so its files are kept now.
+		const storedFiles = storeOutputFiles
+			? await storeOutputFiles(branches.flatMap((branch) => branch ?? []))
+			: {};
+		return { status: 'success', output: this.toOutput(branches), ...storedFiles };
 	}
 
 	private toOutput(branches: Array<INodeExecutionData[] | null>): ExecuteNodeOutputItem[][] {

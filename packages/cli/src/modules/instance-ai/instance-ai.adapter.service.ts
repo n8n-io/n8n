@@ -997,6 +997,17 @@ export class InstanceAiAdapterService {
 				// The caller supplies the node type and parameters, so a standalone run
 				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
 				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
+				// The privacy setting hides the output items, so it keeps their files out of the chat too.
+				const { storeOutputFile } = request;
+				const storeOutputFiles =
+					storeOutputFile && allowSendingParameterValues
+						? async (items: Array<{ binary?: IBinaryKeyData }>) =>
+								await storeItemFiles(
+									items,
+									storeOutputFile,
+									`one node run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
+								)
+						: undefined;
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
@@ -1004,7 +1015,8 @@ export class InstanceAiAdapterService {
 						parameters: request.config.parameters as INodeParameters,
 						credentials: request.config.credentials,
 					},
-					input: request.input as Array<{ json: IDataObject }> | undefined,
+					input: request.input as Array<{ json: IDataObject; binary?: IBinaryKeyData }> | undefined,
+					...(storeOutputFiles ? { storeOutputFiles } : {}),
 					timeoutMs: request.timeoutMs,
 					projectId,
 				});
@@ -5591,11 +5603,16 @@ export function redactExecuteNodeResult(
 	// The items come from whatever service the node called, so they carry the same
 	// boundary tag the workflow-execution path puts on node output.
 	const output = wrapUntrustedData(JSON.stringify(kept, null, 2), 'execution-output');
-	if (shownItems === totalItems) return { status: 'success', output };
+	const storedFiles = {
+		...(result.files ? { files: result.files } : {}),
+		...(result.skippedFiles ? { skippedFiles: result.skippedFiles } : {}),
+	};
+	if (shownItems === totalItems) return { status: 'success', output, ...storedFiles };
 
 	return {
 		status: 'success',
 		output,
+		...storedFiles,
 		truncated: {
 			totalItems,
 			shownItems,
