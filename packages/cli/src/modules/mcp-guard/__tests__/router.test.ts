@@ -178,3 +178,62 @@ describe('GuardRouter read of a feature that the gym lacks', () => {
 		expect(calls.hydrated).toBe(1);
 	});
 });
+
+describe('GuardRouter writes', () => {
+	const build = (gymFails = false) => {
+		const calls = { upstream: [] as string[], gym: [] as string[], hydratedWrites: [] as string[] };
+		const router = new GuardRouter({
+			upstream: {
+				callTool: async (name: string) => {
+					calls.upstream.push(name);
+					return text('real');
+				},
+				listTools: async () => [
+					{ name: 'save_issue', inputSchema: { type: 'object' as const } },
+					{ name: 'list_issues', inputSchema: { type: 'object' as const } },
+					{ name: 'hidden_tool', inputSchema: { type: 'object' as const } },
+				],
+			} as McpCaller,
+			gym: {
+				callTool: async (name: string) => {
+					calls.gym.push(name);
+					if (gymFails) throw new Error('gym down');
+					return text('gym');
+				},
+				listTools: async () => [],
+			} as McpCaller,
+			hydrator: {
+				hydrate: async () => undefined,
+				hydrateWrite: async (name: string) => {
+					calls.hydratedWrites.push(name);
+				},
+			},
+			readTools: new Set(['list_issues']),
+			writeTools: new Set(['save_issue']),
+		});
+		return { router, calls };
+	};
+
+	it.each(['save_issue', 'a_tool_nobody_listed'])('sends %s to the gym only', async (name) => {
+		const { router, calls } = build();
+		expect(await router.callTool(name, {})).toEqual(text('gym'));
+		expect(calls.upstream).toEqual([]);
+		expect(calls.gym).toEqual([name]);
+		expect(calls.hydratedWrites).toEqual([name]);
+	});
+
+	it('never falls back to the real service when the gym fails', async () => {
+		const { router, calls } = build(true);
+		const res = await router.callTool('save_issue', {});
+		expect(res.isError).toBe(true);
+		expect(calls.upstream).toEqual([]);
+	});
+
+	it('lists only the tools of the read and write lists', async () => {
+		const { router } = build();
+		expect((await router.listTools()).map((t) => t.name).sort()).toEqual([
+			'list_issues',
+			'save_issue',
+		]);
+	});
+});

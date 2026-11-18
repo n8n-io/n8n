@@ -2,7 +2,6 @@ import { Container } from '@n8n/di';
 
 import { currentChatId } from './chat-scope';
 import type { HydrationModel } from './hydration-llm';
-import { McpGuardService } from './mcp-guard.service';
 import { GUARD_PROFILES, guardMode } from './services';
 
 type FetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -54,6 +53,8 @@ export function withMcpGuard<T extends FetchFn>(
 		}
 		// OAuth and discovery requests of the same host go to the real server.
 		if (path !== '/mcp') return await baseFetch(input, init);
+		// Load the guard only when a call needs it. Most chats never do.
+		const { McpGuardService } = await import('./mcp-guard.service.js');
 		return await Container.get(McpGuardService).handleMcp(host, chatRunId(runId), req, model);
 	};
 }
