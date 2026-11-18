@@ -27,6 +27,7 @@ import { useAgentFolderBreadcrumb } from '../composables/useAgentFolderBreadcrum
 import { PROJECT_AGENTS } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
+import DocsHeaderButton from '@/features/docPages/components/DocsHeaderButton.vue';
 import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
 import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
 import { useCreateAgent } from '../composables/useCreateAgent';
@@ -250,6 +251,11 @@ function onMenuSelect(id: string) {
 				v-if="tasks && tasks.length > 0 && !agent?.isArchived"
 				:tasks="tasks"
 				@action="emit('setup-task-action', $event)"
+			/>
+			<DocsHeaderButton
+				v-if="!artifactMode && agent?.activeVersionId"
+				resource-type="agent"
+				:resource-id="agentId"
 			/>
 			<N8nHoverCard side="bottom" align="end">
 				<template #trigger>

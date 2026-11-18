@@ -143,6 +143,11 @@
 			"name": "ExecutionLedgerEntity",
 			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
+		},
+		{
+			"name": "DocPageEntity",
+			"path": "packages/cli/src/modules/doc-pages/doc-page.entity.ts",
+			"reason": "Documentation pages. Dropped via FK cascade with the project. A transferred workflow or agent gets a new empty page on the next open."
 		}
 	]
 }

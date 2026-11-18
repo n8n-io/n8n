@@ -678,6 +678,21 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return { threads, hasMore };
 	}
 
+	/** Latest session update time of each agent that has a session, in epoch ms. */
+	async findLatestSessionTimes(agentIds: string[]): Promise<Map<string, number>> {
+		const latest = new Map<string, number>();
+		for (const ids of chunk(agentIds, 500)) {
+			const rows = await this.createQueryBuilder('thread')
+				.select('thread.agentId', 'agentId')
+				.addSelect('MAX(thread.updatedAt)', 'latest')
+				.where('thread.agentId IN (:...ids)', { ids })
+				.groupBy('thread.agentId')
+				.getRawMany<{ agentId: string; latest: string | Date }>();
+			for (const row of rows) latest.set(row.agentId, new Date(row.latest).getTime());
+		}
+		return latest;
+	}
+
 	async findIdsByAgentId(agentId: string): Promise<string[]> {
 		const threads = await this.find({ select: { id: true }, where: { agentId } });
 		return threads.map((thread) => thread.id);

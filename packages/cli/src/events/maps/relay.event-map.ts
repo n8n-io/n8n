@@ -1451,6 +1451,13 @@ export type RelayEventMap = ModuleEventMap & {
 		projectId: string;
 	};
 
+	/** A version of the agent went live. Fires on every publish, not only the first. */
+	'agent-published': {
+		agentId: string;
+		projectId: string;
+		user: UserLike;
+	};
+
 	'agent-archived': {
 		user: UserLike;
 		agentId: string;

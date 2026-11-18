@@ -70,6 +70,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
+| [doc_page](doc_page.md) | 14 |  | table |
 | [dynamic_credential_entry](dynamic_credential_entry.md) | 6 |  | table |
 | [dynamic_credential_resolver](dynamic_credential_resolver.md) | 6 |  | table |
 | [dynamic_credential_user_entry](dynamic_credential_user_entry.md) | 6 |  | table |
@@ -310,6 +311,9 @@ erDiagram
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"doc_page" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"doc_page" }o--o| "doc_page" : "FOREIGN KEY (parentId) REFERENCES doc_page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"doc_page" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "dynamic_credential_resolver" : "FOREIGN KEY (resolver_id) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1167,6 +1171,22 @@ erDiagram
   varchar_64_ type
   datetime_3_ updatedAt
   TEXT value
+}
+"doc_page" {
+  TEXT content
+  TEXT contentText
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_16_ kind
+  TEXT markdown
+  varchar_36_ parentId FK
+  varchar_36_ projectId FK
+  varchar_36_ resourceId
+  varchar_16_ resourceType
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar updatedById FK
+  varchar_36_ writtenAgainstVersionId
 }
 "dynamic_credential_entry" {
   datetime_3_ createdAt

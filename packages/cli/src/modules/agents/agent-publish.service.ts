@@ -192,6 +192,7 @@ export class AgentPublishService {
 
 		await this.commitPublication(agent, expectedPublicationRevision, user, targetHistory, metadata);
 		this.eventService.emit('agent-saved', { agentId });
+		this.eventService.emit('agent-published', { agentId, projectId, user });
 		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);

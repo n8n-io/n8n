@@ -70,6 +70,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.data_table](public.data_table.md) | 5 |  | BASE TABLE |
 | [public.data_table_column](public.data_table_column.md) | 7 |  | BASE TABLE |
 | [public.deployment_key](public.deployment_key.md) | 7 |  | BASE TABLE |
+| [public.doc_page](public.doc_page.md) | 14 |  | BASE TABLE |
 | [public.dynamic_credential_entry](public.dynamic_credential_entry.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) | 6 |  | BASE TABLE |
 | [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) | 6 |  | BASE TABLE |
@@ -328,6 +329,9 @@ erDiagram
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
 "public.data_table" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.data_table_column" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.doc_page" }o--o| "public.user" : "FOREIGN KEY (#quot;updatedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.doc_page" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.doc_page" }o--o| "public.doc_page" : "FOREIGN KEY (#quot;parentId#quot;) REFERENCES doc_page(id) ON DELETE CASCADE"
 "public.dynamic_credential_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_entry" }o--|| "public.dynamic_credential_resolver" : "FOREIGN KEY (resolver_id) REFERENCES dynamic_credential_resolver(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -1181,6 +1185,22 @@ erDiagram
   varchar_64_ type
   timestamp_3__with_time_zone updatedAt
   text value
+}
+"public.doc_page" {
+  json content
+  text contentText
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_16_ kind
+  text markdown
+  varchar_36_ parentId FK
+  varchar_36_ projectId FK
+  varchar_36_ resourceId
+  varchar_16_ resourceType
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  uuid updatedById FK
+  varchar_36_ writtenAgainstVersionId
 }
 "public.dynamic_credential_entry" {
   timestamp_3__with_time_zone createdAt

@@ -6,6 +6,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { DOC_OVERVIEW_VIEW, DOC_PAGES_MODULE_NAME } from '@/features/docPages/constants';
 
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
@@ -14,6 +15,7 @@ const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
 const ExecutionsView = async () =>
 	await import('@/features/execution/executions/views/ExecutionsView.vue');
 const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
+const DocOverview = async () => await import('@/features/docPages/views/DocOverview.vue');
 
 function refreshInsightsSummary() {
 	void import('@n8n/frontend-module-insights')
@@ -181,7 +183,12 @@ export const projectsRoutes: RouteRecordRaw[] = [
 		meta: {
 			middleware: ['authenticated'],
 		},
-		redirect: '/home/workflows',
+		// The empty child below matches `/home` first, so this redirect only runs on
+		// navigation by the `HOMEPAGE` name.
+		redirect: () =>
+			useSettingsStore().isModuleActive(DOC_PAGES_MODULE_NAME)
+				? { name: DOC_OVERVIEW_VIEW }
+				: '/home/workflows',
 		beforeEnter: (_to, _from, next) => {
 			const settingsStore = useSettingsStore();
 			if (settingsStore.isChatFeatureEnabled && hasRole(['global:chatUser'])) {
@@ -196,11 +203,21 @@ export const projectsRoutes: RouteRecordRaw[] = [
 
 			next();
 		},
-		children: commonChildRoutes.map((route, idx) => ({
-			...route,
-			name: commonChildRouteExtensions.home[idx].name,
-			middleware: ['authenticated'],
-		})),
+		children: [
+			{
+				path: '',
+				name: DOC_OVERVIEW_VIEW,
+				component: DocOverview,
+				meta: { middleware: ['authenticated'] },
+				beforeEnter: () =>
+					useSettingsStore().isModuleActive(DOC_PAGES_MODULE_NAME) || '/home/workflows',
+			},
+			...commonChildRoutes.map((route, idx) => ({
+				...route,
+				name: commonChildRouteExtensions.home[idx].name,
+				middleware: ['authenticated'],
+			})),
+		],
 	},
 	{
 		path: '/shared',

@@ -94,6 +94,8 @@ export class ModuleRegistry {
 		// init, and the agents module reads `isActive('knowledge')` in `settings()`.
 		'knowledge',
 		'agents',
+		// doc-pages reads agents and the instance-ai model, so it starts after both.
+		'doc-pages',
 		'agent-evals',
 		'scim',
 		'type-availability-policies',

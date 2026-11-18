@@ -4,6 +4,7 @@ import { MCPModule } from '@n8n/frontend-module-mcp/mcp.module';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
+import { DocPagesModule } from '@/features/docPages/module.descriptor';
 import { InboxModule } from '@n8n/frontend-module-inbox';
 import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 import { OtelModule } from '@n8n/frontend-module-otel';
@@ -36,6 +37,7 @@ export const modules: FrontendModuleDescription[] = [
 	ChatModule,
 	InstanceAiModule,
 	AgentsModule,
+	DocPagesModule,
 	OtelModule,
 	InboxModule,
 	InstanceRegistryModule,

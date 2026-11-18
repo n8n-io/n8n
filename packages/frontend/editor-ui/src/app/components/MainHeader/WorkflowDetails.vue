@@ -35,6 +35,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import DocsHeaderButton from '@/features/docPages/components/DocsHeaderButton.vue';
+import { detectDocPageKind } from '@/features/docPages/docPages.utils';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -54,6 +57,7 @@ const projectsStore = useProjectsStore();
 const collaborationStore = useCollaborationStore();
 const sourceControlStore = useSourceControlStore();
 const foldersStore = useFoldersStore();
+const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 
 const router = useRouter();
@@ -75,6 +79,18 @@ const isNewWorkflow = computed(() => {
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 );
+
+// Uses the draft nodes, not the published version. The backend makes the final call.
+const isDocumentable = computed(() => {
+	const doc = workflowDocumentStore?.value;
+	if (!doc?.active) return false;
+	return (
+		detectDocPageKind(
+			doc.allNodes.map((node) => node.type),
+			nodeTypesStore.isTriggerNode,
+		) !== null
+	);
+});
 
 const readOnly = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
@@ -388,6 +404,7 @@ onBeforeUnmount(() => {
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
+				<DocsHeaderButton v-if="isDocumentable" resource-type="workflow" :resource-id="id" />
 			</span>
 		</span>
 

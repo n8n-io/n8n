@@ -704,6 +704,11 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
+		expect(eventService.emit).toHaveBeenCalledWith('agent-published', {
+			agentId,
+			projectId,
+			user: person,
+		});
 		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
 			{ projectId, agentId, source: 'builder' },
 			undefined,
