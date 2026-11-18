@@ -199,9 +199,13 @@ export class DuplicateLogicRule extends AstRule<{ rootDir: string }> {
 	private findDuplicateTests(testFiles: SourceFile[], allFiles: SourceFile[]): Violation[] {
 		const violations: Violation[] = [];
 		const testIndex = new Map<string, TestFingerprint[]>();
+		const excludePaths = getConfig().rules[this.id]?.excludeTestBodyPaths ?? [];
 
 		// Build test fingerprint index
 		for (const file of testFiles) {
+			const relativePath = getRelativePath(file.getFilePath()).replaceAll('\\', '/');
+			if (excludePaths.some((pattern) => pattern.test(relativePath))) continue;
+
 			const tests = this.extractTestBodies(file);
 
 			for (const test of tests) {
