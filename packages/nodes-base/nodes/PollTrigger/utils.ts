@@ -42,8 +42,12 @@ export function parseDate(value: unknown): number | string {
 	return ms;
 }
 
-/** Returns the ID as a number, or an error message for the user. */
-export function parseId(value: unknown): number | string {
+/** Returns the ID as a number, or as a bigint above 2^53, or an error message for the user. */
+export function parseId(value: unknown): number | bigint | string {
+	if (typeof value === 'string' && /^-?\d+$/.test(value.trim())) {
+		const id = BigInt(value.trim());
+		return Number.isSafeInteger(Number(id)) ? Number(id) : id;
+	}
 	const id =
 		typeof value === 'number' ? value : typeof value === 'string' ? Number(value.trim()) : NaN;
 	if (!Number.isFinite(id) || (typeof value === 'string' && value.trim() === '')) {

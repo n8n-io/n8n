@@ -46,7 +46,7 @@ type Settings = {
 	skewMs: number;
 };
 
-type Computed = { key: string; sortKey: number };
+type Computed = { key: string; sortKey: number | bigint };
 
 type FullResponse = { body: unknown; headers: IDataObject; statusCode: number };
 
@@ -240,7 +240,7 @@ function readPage(
 		if (isEmpty(key)) {
 			throw new NodeOperationError(this.getNode(), `The Item Key of item ${index} is empty`);
 		}
-		let sortKey: number | string = 0;
+		let sortKey: number | bigint | string = 0;
 		if (usesDate(settings.style)) {
 			sortKey = parseDate(this.getNodeParameter('sortDate', undefined, options));
 		} else if (usesId(settings.style)) {
@@ -539,9 +539,11 @@ export class PollTrigger implements INodeType {
 			const items = page.items.filter(isDataObject).map((item) => {
 				const { key, sortKey } = lookup(item);
 				const shownSortKey = usesDate(settings.style)
-					? new Date(sortKey).toISOString()
+					? new Date(Number(sortKey)).toISOString()
 					: usesId(settings.style)
-						? sortKey
+						? typeof sortKey === 'bigint'
+							? sortKey.toString()
+							: sortKey
 						: null;
 				return { ...item, _poll: { key, sortKey: shownSortKey } };
 			});
