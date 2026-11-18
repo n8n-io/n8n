@@ -893,13 +893,13 @@ See [Slack Notifications](#slack-notifications) for the calling pattern.
 
 ## Telemetry
 
-CI metrics are collected via webhooks to n8n, then stored in BigQuery for analysis.
+CI metrics are collected via webhooks to n8n, then stored in ClickHouse for analysis.
 
 See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 - Common data points (git, CI context, runner info)
 - Existing implementations (build stats, container stack)
 - How to add new telemetry
-- BigQuery schema patterns and queries
+- ClickHouse schema patterns and queries
 
 ---
 
