@@ -120,7 +120,7 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			icon: 'trash-2',
 			disabled: deleteBlocked !== undefined,
 			tooltip: deleteBlocked,
-			// The shared destructive style also colors the icon.
+			// The shared destructive style is red only on hover, and it colors the icon too.
 			class: $style.deleteAction,
 		},
 	];
@@ -510,7 +510,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 <style lang="scss" module>
 .deleteAction:not([data-disabled]) {
 	:global(.n8n-text) {
-		color: var(--color--danger);
+		color: var(--text-color--danger);
 	}
 }
 

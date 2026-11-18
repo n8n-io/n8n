@@ -122,6 +122,27 @@ describe('SkillSourceDeleteDialog', () => {
 		});
 	});
 
+	it('shows progress only on the action that runs', async () => {
+		let finish = () => {};
+		mockedStore(useSkillsStore).deleteSource.mockReturnValue(
+			new Promise<void>((resolve) => {
+				finish = resolve;
+			}),
+		);
+		const { getByRole, emitted } = renderDialog();
+		await userEvent.click(getByRole('button', { name: 'Stop syncing' }));
+
+		const keep = getByRole('button', { name: 'Stop syncing' });
+		const destroy = getByRole('button', { name: 'Delete skills' });
+		expect(keep).toHaveAttribute('aria-busy', 'true');
+		expect(destroy).toBeDisabled();
+		expect(destroy).not.toHaveAttribute('aria-busy', 'true');
+		expect(getByRole('button', { name: 'Cancel' })).toBeDisabled();
+
+		finish();
+		await waitFor(() => expect(emitted('deleted')).toEqual([[]]));
+	});
+
 	it('lists blocking agents and still lets the user keep their skills', async () => {
 		mockedStore(useSkillsStore).deleteSource.mockRejectedValue(
 			new ResponseError('In use', {

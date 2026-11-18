@@ -1828,6 +1828,52 @@ describe('SettingsSkillsView', () => {
 				},
 			);
 
+			it('counts the blocking agents when agent use blocks the last-skill source removal', async () => {
+				const view = await renderWithSource();
+				confirmMock.mockImplementationOnce(async (content: VNode) => {
+					const confirmation = render({ render: () => content });
+					await userEvent.click(confirmation.getByRole('checkbox'));
+					return 'confirm';
+				});
+				skillsStore.deleteSource.mockRejectedValue(
+					new ResponseError('Remove the skills from these agents first.', {
+						httpStatusCode: 409,
+						meta: {
+							reason: 'skills_in_use',
+							agents: [
+								{ agentId: 'a1', agentName: 'Research', projectId: 'p1', projectName: 'Marketing' },
+							],
+							hiddenAgents: 1,
+						},
+					}),
+				);
+
+				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await userEvent.click(await screen.findByTestId('action-delete'));
+
+				await waitFor(() =>
+					expect(showMessageMock).toHaveBeenCalledWith({
+						title: 'Could not delete the skill',
+						message: 'Used by 2 agents. Remove the skill from each agent first.',
+						type: 'error',
+						duration: 0,
+					}),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+			});
+
+			it('omits source removal for a skill that is not from the single-skill source', async () => {
+				const view = await renderWithSource();
+				skillsStore.skills = [skill()];
+				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await userEvent.click(await screen.findByTestId('action-delete'));
+				await waitFor(() => expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1'));
+				expect(confirmMock.mock.calls[0][0]).toBe(
+					"This will permanently delete the skill and all its versions. This can't be undone.",
+				);
+				expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+			});
+
 			it.each([{ skillCount: 2 }, { canDelete: false }])(
 				'omits source removal when the source is not eligible: %j',
 				async (overrides) => {

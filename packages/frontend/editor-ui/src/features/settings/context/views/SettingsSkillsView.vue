@@ -20,6 +20,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
 	skillScopeSchema,
+	skillSourceDeleteBlockSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
@@ -868,7 +869,24 @@ async function onDelete(skill: SkillListItem, onDeleted?: () => void) {
 		});
 	} catch (error) {
 		// An agent may have attached the skill since the list loaded: that answers 409.
-		showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		// The source delete names its agents in a payload, which a toast cannot list.
+		const block = skillSourceDeleteBlockSchema.safeParse(
+			error instanceof ResponseError && error.httpStatusCode === 409 ? error.meta : undefined,
+		);
+		if (block.success) {
+			const count = block.data.agents.length + block.data.hiddenAgents;
+			showMessage({
+				title: i18n.baseText('settings.context.skills.error.delete'),
+				message: i18n.baseText('settings.context.skills.delete.inUse', {
+					interpolate: { count },
+					adjustToNumber: count,
+				}),
+				type: 'error',
+				duration: 0,
+			});
+		} else {
+			showError(error, i18n.baseText('settings.context.skills.error.delete'));
+		}
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();

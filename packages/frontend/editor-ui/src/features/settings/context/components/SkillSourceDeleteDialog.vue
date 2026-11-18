@@ -17,12 +17,13 @@ const emit = defineEmits<{ close: []; deleted: [] }>();
 const i18n = useI18n();
 const skillsStore = useSkillsStore();
 const { showError, showMessage } = useToast();
-const deleting = ref(false);
+/** The action that runs, so that only its button shows progress. */
+const pending = ref<'delete' | 'keep'>();
 const block = ref<SkillSourceDeleteBlock>();
 
 async function deleteSource(keepSkills = false) {
-	if (deleting.value || !props.source.canDelete) return;
-	deleting.value = true;
+	if (pending.value || !props.source.canDelete) return;
+	pending.value = keepSkills ? 'keep' : 'delete';
 	try {
 		if (keepSkills) await skillsStore.deleteSource(props.source.id, { keepSkills: true });
 		else await skillsStore.deleteSource(props.source.id);
@@ -42,7 +43,7 @@ async function deleteSource(keepSkills = false) {
 		if (parsed.success) block.value = parsed.data;
 		else showError(error, i18n.baseText('settings.context.skills.sources.delete.error'));
 	} finally {
-		deleting.value = false;
+		pending.value = undefined;
 	}
 }
 </script>
@@ -58,7 +59,7 @@ async function deleteSource(keepSkills = false) {
 			)
 		"
 		data-test-id="skill-source-delete-dialog"
-		@update:open="!$event && !deleting && emit('close')"
+		@update:open="!$event && !pending && emit('close')"
 	>
 		<N8nDialogBody aria-live="polite" :class="$style.message">
 			<template v-if="block">
@@ -102,13 +103,14 @@ async function deleteSource(keepSkills = false) {
 			</N8nText>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<N8nButton variant="outline" :disabled="deleting" @click="emit('close')">
+			<N8nButton variant="outline" :disabled="!!pending" @click="emit('close')">
 				{{ i18n.baseText(block ? 'generic.close' : 'generic.cancel') }}
 			</N8nButton>
 			<N8nButton
 				v-if="source.skillCount"
 				variant="outline"
-				:disabled="deleting || !source.canDelete"
+				:loading="pending === 'keep'"
+				:disabled="!!pending || !source.canDelete"
 				@click="deleteSource(true)"
 			>
 				{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
@@ -116,8 +118,8 @@ async function deleteSource(keepSkills = false) {
 			<N8nButton
 				v-if="!block"
 				variant="destructive"
-				:loading="deleting"
-				:disabled="!source.canDelete"
+				:loading="pending === 'delete'"
+				:disabled="!!pending || !source.canDelete"
 				@click="deleteSource()"
 			>
 				{{

@@ -1890,10 +1890,10 @@ function onRemove() {
 }
 
 .deleteItem:not([data-disabled]) {
-	color: var(--color--danger);
+	color: var(--text-color--danger);
 
 	:global(svg) {
-		color: var(--color--danger) !important;
+		color: var(--icon-color--danger) !important;
 	}
 }
 
