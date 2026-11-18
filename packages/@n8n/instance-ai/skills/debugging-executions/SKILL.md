@@ -174,6 +174,9 @@ deliver them again.
 ### Studying a node on its own with `mockInput`
 
 `mockInput` runs the node on items you supply and skips everything above it.
+Give each item as `{ json }`, for example `[{ json: { amount: 0 } }]`. When the
+tool offers `files` on an item, use it to give the item conversation files as
+binary data.
 This is a good way to study one node by itself, and a normal thing to do while
 debugging:
 

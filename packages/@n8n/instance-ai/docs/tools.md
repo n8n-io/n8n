@@ -674,7 +674,7 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `workflowId` | string | yes | — | Workflow that owns the node |
 | `nodeName` | string | yes | — | Node to run |
 | `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
-| `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `mockInput` | object[] | no | — | Items `{ json, files? }` to feed the target, skipping every node above it. `files` maps a binary property name to a fileId, and the files become binary data of that item. `files` is there only when the host can store files |
 | `toolArguments` | object \| string | no | — | Arguments for a tool target — what an agent would fill from `$fromAI` |
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |

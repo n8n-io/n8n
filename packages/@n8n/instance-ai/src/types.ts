@@ -768,9 +768,10 @@ export interface InstanceAiExecutionService {
 			reuseExecutionId?: string;
 			/**
 			 * Items to feed the target node, which skips every node above it.
-			 * Applied to each of the target's direct inputs.
+			 * Applied to each of the target's direct inputs. The `binary` entries of
+			 * an item point to stored bytes, such as a conversation file.
 			 */
-			mockInput?: Array<Record<string, unknown>>;
+			mockInput?: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }>;
 			/**
 			 * Arguments for a tool target — the values an agent would fill from its
 			 * `$fromAI` calls. A string for a tool that takes one free-text input.
