@@ -513,7 +513,8 @@ describe('node compiler: folds that keep the result of v1', () => {
 		expect(skips.errors).toEqual([]);
 		expect(skips.source).toContain('skipTokenRefresh: tokenOptions.skipTokenRefresh === true');
 		expect(skips.source).toContain('tokenExpiredStatusCode: tokenOptions.tokenExpiredStatusCode');
-		expect(skips.source).toContain('skipTokenRefresh: true }, false)');
+		expect(skips.source).toContain('skipTokenRefresh: true }, false, true)');
+		expect(skips.source).toContain('throw failure;');
 		const nested = run(
 			`return [this.helpers.returnJsonArray(await this.helpers.requestWithAuthentication.call(this, 'sampleOAuth2Api', { method: 'GET', uri: 'https://api.example.test/a', json: true }, { oauth2: { tokenExpiredStatusCode: [401, 403] } }))];`,
 		);

@@ -1,6 +1,12 @@
 import { getNodeParameters } from '../convert/node-parameters.ts';
 import type { Json, WalkMember, WalkNode, WalkProperty } from './walk.ts';
-import { propertiesOf, resolveParameters } from './walk.ts';
+import {
+	displayedProperty,
+	locatorRule,
+	locatorSample,
+	propertiesOf,
+	resolveParameters,
+} from './walk.ts';
 
 const FIXED_CHOICES = new Set(['resource', 'operation', 'authentication']);
 
@@ -15,6 +21,7 @@ export interface Variant {
 	values: unknown[];
 	form?: { value: unknown; fields: Record<string, unknown[]> };
 	rejected?: { value: unknown; fields: Record<string, unknown[]> };
+	settled?: boolean;
 }
 
 const MAX_CHOICES = 12;
@@ -280,6 +287,67 @@ function shownProperty(
 	return shown.length === 1 ? properties[shown[0]] : undefined;
 }
 
+export function filledGroups(
+	node: WalkNode,
+	version: number,
+	parameters: Json,
+	itemExpression: (field: string) => string,
+): Json | undefined {
+	let out: Json | undefined;
+	for (const [name, value] of Object.entries(resolveParameters(node, version, parameters))) {
+		if (!isRecord(value) || Object.keys(value).length > 0) continue;
+		const property = shownProperty(node, version, parameters, name);
+		if (property?.type !== 'fixedCollection') continue;
+		const [group] = property.options ?? [];
+		const variant = group === undefined ? undefined : groupVariant(property, group, itemExpression);
+		if (variant) out = withVariant(out ?? parameters, variant, variant.values[0]);
+	}
+	return out;
+}
+
+const MAX_LOCATOR_MODES = 4;
+const LOCATOR_WRONG = 'not a value of the mode';
+
+export function locatorVariants(
+	node: WalkNode,
+	version: number,
+	parameters: Json,
+	itemExpression: (field: string) => string,
+): Variant[] {
+	const resolved = resolveParameters(node, version, parameters);
+	const variants: Variant[] = [];
+	for (const [name, current] of Object.entries(parameters)) {
+		if (!isRecord(current) || current.__rl !== true || typeof current.mode !== 'string') continue;
+		const property = displayedProperty(node, version, resolved, name);
+		if (property?.type !== 'resourceLocator' || !Array.isArray(property.modes)) continue;
+		const modes = property.modes.filter((mode) => typeof mode.name === 'string');
+		const ordered = [
+			...modes.filter((mode) => mode.name !== current.mode),
+			...modes.filter((mode) => mode.name === current.mode),
+		].slice(-MAX_LOCATOR_MODES);
+		for (const mode of ordered) {
+			const rule = locatorRule(mode);
+			const sample = mode.name === current.mode ? current.value : locatorSample(mode);
+			const fits = (value: unknown) =>
+				typeof value === 'string' && (rule === undefined || rule.exec(value) !== null);
+			const wrong = rule !== undefined && !fits(LOCATOR_WRONG) ? [LOCATOR_WRONG, 5] : [5];
+			const field = fieldNameOf(`${name}_${String(mode.name)}`);
+			const locator = (value: unknown): Json => ({ __rl: true, mode: mode.name, value });
+			variants.push({
+				condition: name,
+				name,
+				settled: true,
+				values: [...(fits(sample) ? [sample] : []), ...wrong].map(locator),
+				rejected: {
+					value: locator(itemExpression(field)),
+					fields: { [field]: [fits(sample) ? sample : wrong[0], wrong[0], wrong.at(-1)] },
+				},
+			});
+		}
+	}
+	return variants;
+}
+
 export function parameterVariants(
 	node: WalkNode,
 	version: number,
@@ -296,6 +364,10 @@ export function parameterVariants(
 		cases += variant.values.length;
 		variants.push(variant);
 	};
+	for (const variant of locatorVariants(node, version, parameters, itemExpression)) {
+		cases += variant.values.length;
+		variants.push(variant);
+	}
 	const mappers: Variant[] = [];
 	for (const [name, value] of Object.entries(resolveParameters(node, version, parameters))) {
 		if (name in fixed || FIXED_CHOICES.has(name)) continue;

@@ -416,6 +416,48 @@ describe('node compiler: URL', () => {
 	});
 });
 
+describe('node compiler: a parameter of URLSearchParams from text', () => {
+	const expression = "[new URLSearchParams(text).get('p'), new URLSearchParams(text).get('a b')]";
+	const texts = [
+		'',
+		'?',
+		'p',
+		'p=',
+		'p=1',
+		'?p=1',
+		'??p=1',
+		'x=1&p=2&p=3',
+		'&&p=a+b%20c&&',
+		'=x&p==y=z',
+		'a+b=1&a%20b=2',
+		'P=upper',
+		'p=%E2%82%AC&q=1',
+		'https://www.acme.test/page?v=1&p=0123456789abcdef&pm=s',
+		'https://www.acme.test/page?p=one#p=two',
+		'x=1;p=2',
+		'p=\u00e9\ud83d\ude00',
+	];
+
+	it('gives the value of Node.js for text', async () => {
+		const expected = texts.map((text) => {
+			const params = new URLSearchParams(text);
+			return [params.get('p'), params.get('a b')];
+		});
+		expect(await values('', expression, texts)).toEqual(expected);
+	});
+
+	it.each([
+		{ label: 'an escape that is not UTF-8', text: 'p=%ff' },
+		{ label: 'an escape that is not complete', text: 'p=100%' },
+		{ label: 'an escape that is not hexadecimal', text: 'p=%zz' },
+		{ label: 'an object', text: { p: '1' } },
+		{ label: 'a list of pairs', text: [['p', '1']] },
+	])('stops with an error for $label', async ({ text }) => {
+		const out = await run('', expression, [text]);
+		expect(JSON.stringify(out.result)).toContain('has no compiled form');
+	});
+});
+
 describe('node compiler: Buffer for text', () => {
 	const encode = `[
 	Buffer.from(text).toString('base64'),

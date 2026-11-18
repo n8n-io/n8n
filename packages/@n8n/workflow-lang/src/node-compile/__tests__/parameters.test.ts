@@ -224,6 +224,71 @@ describe('extractValue', () => {
 		expect(result.errors).toEqual([`execute: ${OPTIONS_ERROR}`]);
 	});
 
+	describe('with the label of the property', () => {
+		const LABELLED: ParameterKind = { ...LOCATOR, label: 'Board' };
+		const RULE = '"https://acme\\\\.test/b/([a-z0-9]+)", "", "Board")';
+
+		it('checks at run time a value that the rule of the mode does not match', () => {
+			const result = compileWith(EXTRACT, locator('url', 'https://other.test/b/abc9'), {
+				boardId: LABELLED,
+			});
+			expect(result.errors).toEqual([]);
+			expect(result.source).toContain(`__locatorValue("https://other.test/b/abc9", ${RULE}`);
+			expect(result.source).toContain(
+				"'ERROR: ' + label + \" parameter's value is invalid. This is likely because the URL entered is incorrect\"",
+			);
+		});
+
+		it('checks at run time a value that is not text', () => {
+			const result = compileWith(EXTRACT, locator('url', 7), { boardId: LABELLED });
+			expect(result.errors).toEqual([]);
+			expect(result.source).toContain(`__locatorValue(7, ${RULE}`);
+		});
+
+		it('extracts at run time the resolved value of an expression', () => {
+			const result = compileWith(EXTRACT, locator('url', '={{ $json.url }}'), {
+				boardId: LABELLED,
+			});
+			expect(result.errors).toEqual([]);
+			expect(result.source).toContain(`__locatorValue(__perItem[i]["boardId"]?.value, ${RULE}`);
+		});
+
+		it('still gives the group of a value that the rule matches', () => {
+			const result = compileWith(EXTRACT, locator('url', 'https://acme.test/b/abc9?x=1'), {
+				boardId: LABELLED,
+			});
+			expect(result.errors).toEqual([]);
+			expect(result.source).toContain('"https://acme.test/abc9"');
+			expect(result.source).not.toContain('__locatorValue');
+		});
+
+		it('does not compile a rule with more than one group', () => {
+			const kind: ParameterKind = {
+				...LABELLED,
+				modes: { url: { pattern: '(b)/([a-z0-9]+)', flags: '' } },
+			};
+			const result = compileWith(EXTRACT, locator('url', '={{ $json.url }}'), { boardId: kind });
+			expect(result.errors).toEqual([`execute: ${OPTIONS_ERROR}`]);
+		});
+	});
+
+	it('keeps the name that v1 shows when node code calls a text method on a locator value', () => {
+		const body =
+			"const board = this.getNodeParameter('boardId', i, {}) as any; id = (board.value as string).match(/b\\/([a-z]+)/)?.[1];";
+		const result = compileWith(body, locator('url', '={{ $json.url }}'), { boardId: LOCATOR });
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__textOf(board.value, "board.value.match")');
+		expect(result.source).toContain("callee + ' is not a function'");
+		const plain = compileWith(
+			body,
+			{ boardId: '={{ $json.url }}' },
+			{
+				boardId: { type: 'string', extract: false },
+			},
+		);
+		expect(plain.source ?? '').not.toContain('__textOf');
+	});
+
 	it('does not compile an expression when the kind of the parameter is not known', () => {
 		const result = compileWith(EXTRACT, { boardId: '={{ $json.board }}' });
 		expect(result.errors).toEqual([`execute: ${OPTIONS_ERROR}`]);
@@ -256,24 +321,49 @@ describe('extractValue', () => {
 });
 
 describe('the kind of a parameter from the node description', () => {
-	const property = (regex: string | RegExp) => ({
+	const property = (regex: string | RegExp, show?: Record<string, unknown[]>) => ({
 		name: 'boardId',
+		displayName: 'Board',
 		type: 'resourceLocator',
+		...(show === undefined ? {} : { displayOptions: { show } }),
 		modes: [{ name: 'id' }, { name: 'url', extractValue: { type: 'regex', regex } }],
+	});
+	const kind = (pattern: string, flags = '') => ({
+		type: 'resourceLocator',
+		extract: false,
+		label: 'Board',
+		modes: { id: null, url: { pattern, flags } },
 	});
 
 	it('has the extraction rule of each mode', () => {
 		const description = { name: 'acme', properties: [property(/b\/([a-z]+)/i)] };
-		expect(parameterKindOf(description, 'boardId')).toEqual({
-			type: 'resourceLocator',
-			extract: false,
-			modes: { id: null, url: { pattern: 'b\\/([a-z]+)', flags: 'i' } },
-		});
+		expect(parameterKindOf(description, 'boardId', {}, 1)).toEqual(kind('b\\/([a-z]+)', 'i'));
 	});
 
-	it('is not known when two properties with the name have different rules', () => {
-		const description = { name: 'acme', properties: [property('b/(x)'), property('b/(y)')] };
-		expect(parameterKindOf(description, 'boardId')).toBeUndefined();
+	it('is the kind of the first property with the name that the parameters display', () => {
+		const description = {
+			name: 'acme',
+			properties: [
+				property('b/(x)', { operation: ['get'] }),
+				property('b/(y)', { operation: ['update', 'delete'] }),
+				property('b/(z)', { operation: ['delete'] }),
+			],
+		};
+		expect(parameterKindOf(description, 'boardId', { operation: 'get' }, 1)).toEqual(kind('b/(x)'));
+		expect(parameterKindOf(description, 'boardId', { operation: 'delete' }, 1)).toEqual(
+			kind('b/(y)'),
+		);
+	});
+
+	it('is not known when no property with the name is displayed and the rules are different', () => {
+		const description = {
+			name: 'acme',
+			properties: [
+				property('b/(x)', { operation: ['get'] }),
+				property('b/(y)', { operation: ['update'] }),
+			],
+		};
+		expect(parameterKindOf(description, 'boardId', { operation: 'list' }, 1)).toBeUndefined();
 	});
 
 	it('is not known when the description does not have the modes of a locator', () => {
@@ -281,7 +371,7 @@ describe('the kind of a parameter from the node description', () => {
 			name: 'acme',
 			properties: [{ name: 'boardId', type: 'resourceLocator' }],
 		};
-		expect(parameterKindOf(description, 'boardId')).toBeUndefined();
-		expect(parameterKindOf(description, 'cardId')).toBeUndefined();
+		expect(parameterKindOf(description, 'boardId', {}, 1)).toBeUndefined();
+		expect(parameterKindOf(description, 'cardId', {}, 1)).toBeUndefined();
 	});
 });

@@ -519,6 +519,8 @@ export function itemFailureExpression(field: string): string {
 
 class ExpressionFailure extends Error {}
 
+const SIBLING_PART = /^=\{\{\$parameter\["&(\w+)"\]\.split\("\|"\)\[(\d+)\]\}\}$/;
+
 function valueForItem(value: unknown, item: Record<string, unknown>): unknown {
 	if (typeof value === 'string') {
 		const failing = FAILS_FOR_ITEM.exec(value)?.[1];
@@ -533,10 +535,17 @@ function valueForItem(value: unknown, item: Record<string, unknown>): unknown {
 		return value;
 	}
 	if (Array.isArray(value)) return value.map((member: unknown) => valueForItem(member, item));
-	if (isRecord(value))
-		return Object.fromEntries(
-			Object.entries(value).map(([key, member]) => [key, valueForItem(member, item)]),
-		);
+	if (isRecord(value)) {
+		const sibling = (member: unknown): unknown => {
+			const found = typeof member === 'string' ? SIBLING_PART.exec(member) : null;
+			if (found === null) return valueForItem(member, item);
+			const other = valueForItem(value[found[1]], item);
+			if (typeof other !== 'string')
+				throw new Error(`the check has no value for the expression ${String(member)}`);
+			return other.split('|')[Number(found[2])];
+		};
+		return Object.fromEntries(Object.entries(value).map(([key, member]) => [key, sibling(member)]));
+	}
 	return value;
 }
 
