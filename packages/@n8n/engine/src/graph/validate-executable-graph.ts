@@ -54,11 +54,16 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		}
 	}
 
+	const raceNodeIds = new Set(
+		graph.nodes.filter((node) => node.type === 'race').map((node) => node.id),
+	);
+
 	// TODO(CAT-3982): same-slot convergence gets a defined meaning (concatenation);
-	// until then it is rejected rather than given accidental semantics.
+	// until then it is rejected rather than given accidental semantics. A race
+	// node takes one input whatever its slot, so it has no such ambiguity.
 	const seenInputSlots = new Set<string>();
 	for (const edge of graph.edges) {
-		if (edge.isBackEdge) continue;
+		if (edge.isBackEdge || raceNodeIds.has(edge.to)) continue;
 		const slot = `${edge.to}#${edge.inputIndex}`;
 		if (seenInputSlots.has(slot)) {
 			throw new UnimplementedError(

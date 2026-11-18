@@ -66,7 +66,12 @@ describe('decideSuccessors', () => {
 			new Map(),
 		);
 
-		expect(decisions).toEqual({ toQueue: [keyFor('b')], toSeed: [keyFor('a')], toSkip: [] });
+		expect(decisions).toEqual({
+			toQueue: [keyFor('b')],
+			toSeed: [keyFor('a')],
+			toRace: [],
+			toSkip: [],
+		});
 	});
 
 	it('queues the live branch and skips the dead one', () => {
@@ -78,7 +83,12 @@ describe('decideSuccessors', () => {
 			makeSteps(summary('trigger', 'completed', [true]), summary('if', 'completed', [true, false])),
 		);
 
-		expect(decisions).toEqual({ toQueue: [keyFor('a')], toSeed: [], toSkip: [keyFor('b')] });
+		expect(decisions).toEqual({
+			toQueue: [keyFor('a')],
+			toSeed: [],
+			toRace: [],
+			toSkip: [keyFor('b')],
+		});
 	});
 
 	it('decides a merge once its last predecessor settles', () => {
@@ -95,7 +105,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [keyFor('m')], toSeed: [], toSkip: [] });
+		expect(decisions).toEqual({ toQueue: [keyFor('m')], toSeed: [], toRace: [], toSkip: [] });
 	});
 
 	it('leaves a merge undecided while a predecessor is still unsettled', () => {
@@ -112,7 +122,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toRace: [], toSkip: [] });
 	});
 
 	it('cascades a skip one hop at a time through the event loop', () => {
@@ -132,6 +142,7 @@ describe('decideSuccessors', () => {
 		expect(decideLoopless(graph, keyFor('if'), steps)).toEqual({
 			toQueue: [keyFor('a')],
 			toSeed: [],
+			toRace: [],
 			toSkip: [keyFor('b')],
 		});
 
@@ -139,6 +150,7 @@ describe('decideSuccessors', () => {
 		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({
 			toQueue: [],
 			toSeed: [],
+			toRace: [],
 			toSkip: [keyFor('c')],
 		});
 
@@ -146,6 +158,7 @@ describe('decideSuccessors', () => {
 		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
 			toQueue: [],
 			toSeed: [],
+			toRace: [],
 			toSkip: [keyFor('d')],
 		});
 	});
@@ -170,6 +183,7 @@ describe('decideSuccessors', () => {
 		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({
 			toQueue: [],
 			toSeed: [],
+			toRace: [],
 			toSkip: [],
 		});
 
@@ -177,6 +191,7 @@ describe('decideSuccessors', () => {
 		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
 			toQueue: [],
 			toSeed: [],
+			toRace: [],
 			toSkip: [keyFor('d')],
 		});
 	});
@@ -196,7 +211,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toRace: [], toSkip: [] });
 	});
 
 	it('routes an N-output fan-out per slot', () => {
@@ -219,6 +234,7 @@ describe('decideSuccessors', () => {
 		expect(decisions).toEqual({
 			toQueue: [keyFor('a'), keyFor('c')],
 			toSeed: [],
+			toRace: [],
 			toSkip: [keyFor('b')],
 		});
 	});
@@ -235,7 +251,104 @@ describe('decideSuccessors', () => {
 			makeSteps(summary('trigger', 'completed', [true]), summary('a', 'completed', [true])),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [keyFor('b')] });
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toRace: [], toSkip: [keyFor('b')] });
+	});
+});
+
+describe('decideSuccessors for a race node', () => {
+	/** trigger -> if -> {a (out 0), b (out 1)} -> r, where r is a race node. */
+	const race: WorkflowGraph = {
+		...diamond,
+		edges: diamond.edges.map((edge) =>
+			edge.to === 'm' ? { ...edge, to: 'r', inputIndex: 0 } : edge,
+		),
+		nodes: [
+			...diamond.nodes.filter((node) => node.id !== 'm'),
+			{ id: 'r', name: 'R', type: 'race' },
+		],
+	};
+
+	it('decides the race on the first live input while the other is still running', () => {
+		const decisions = decideLoopless(
+			race,
+			keyFor('b'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [true, true]),
+				summary('a', 'running'),
+				summary('b', 'completed', [true]),
+			),
+		);
+
+		expect(decisions).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [],
+			toRace: [{ key: keyFor('r'), winner: keyFor('b'), outputIndex: 0 }],
+		});
+	});
+
+	it('leaves the race undecided when the first input to settle is dead', () => {
+		const decisions = decideLoopless(
+			race,
+			keyFor('b'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [true, false]),
+				summary('a', 'running'),
+				summary('b', 'skipped'),
+			),
+		);
+
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [], toRace: [] });
+	});
+
+	it('skips the race once every input has settled dead', () => {
+		const decisions = decideLoopless(
+			race,
+			keyFor('b'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [true, true]),
+				summary('a', 'completed', [false]),
+				summary('b', 'skipped'),
+			),
+		);
+
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [keyFor('r')], toRace: [] });
+	});
+
+	it('picks the first live input in edge order when the settled step is not live', () => {
+		// b settled dead after a completed, but a's own settlement was not handled
+		// yet, as when reconciliation recomputes the decision.
+		const decisions = decideLoopless(
+			race,
+			keyFor('b'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [true, true]),
+				summary('a', 'completed', [true]),
+				summary('b', 'skipped'),
+			),
+		);
+
+		expect(decisions.toRace).toEqual([{ key: keyFor('r'), winner: keyFor('a'), outputIndex: 0 }]);
+	});
+
+	it('ignores a later arrival once the race step exists', () => {
+		const decisions = decideLoopless(
+			race,
+			keyFor('a'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [true, true]),
+				summary('a', 'completed', [true]),
+				summary('b', 'completed', [true]),
+				summary('r', 'completed', [true]),
+			),
+		);
+
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [], toRace: [] });
 	});
 });
 
@@ -415,7 +528,12 @@ describe('decideSuccessors over loop iterations', () => {
 	it('queues the body at the batch row iteration, and leaves the exit undecided', () => {
 		const steps = makeSteps(at('B', 0, 'completed', [false, true]));
 
-		expect(decide(key('B', 0), steps)).toEqual({ toQueue: [key('x', 0)], toSeed: [], toSkip: [] });
+		expect(decide(key('B', 0), steps)).toEqual({
+			toQueue: [key('x', 0)],
+			toSeed: [],
+			toRace: [],
+			toSkip: [],
+		});
 	});
 
 	it('advances the iteration across the return edge', () => {
@@ -424,7 +542,12 @@ describe('decideSuccessors over loop iterations', () => {
 			at('x', 0, 'completed', [true]),
 		);
 
-		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
+		expect(decide(key('x', 0), steps)).toEqual({
+			toQueue: [key('B', 1)],
+			toSeed: [],
+			toRace: [],
+			toSkip: [],
+		});
 	});
 
 	it('skips the next iteration when the body returns nothing', () => {
@@ -433,7 +556,12 @@ describe('decideSuccessors over loop iterations', () => {
 			at('x', 0, 'completed', [false]),
 		);
 
-		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [], toSeed: [], toSkip: [key('B', 1)] });
+		expect(decide(key('x', 0), steps)).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toRace: [],
+			toSkip: [key('B', 1)],
+		});
 	});
 
 	it('queues what follows the loop from the terminal row only', () => {
@@ -443,6 +571,7 @@ describe('decideSuccessors over loop iterations', () => {
 		expect(decide(key('B', 2), steps, terminals)).toEqual({
 			toQueue: [key('d', 0)],
 			toSeed: [],
+			toRace: [],
 			toSkip: [],
 		});
 	});
@@ -464,7 +593,12 @@ describe('decideSuccessors over loop iterations', () => {
 			at('B', 1, 'completed', [false, true]),
 		);
 
-		expect(decide(key('B', 1), steps)).toEqual({ toQueue: [key('x', 1)], toSeed: [], toSkip: [] });
+		expect(decide(key('B', 1), steps)).toEqual({
+			toQueue: [key('x', 1)],
+			toSeed: [],
+			toRace: [],
+			toSkip: [],
+		});
 	});
 
 	/**
@@ -503,6 +637,7 @@ describe('decideSuccessors over loop iterations', () => {
 		).toEqual({
 			toQueue: [],
 			toSeed: [],
+			toRace: [],
 			toSkip: [],
 		});
 
@@ -521,6 +656,7 @@ describe('decideSuccessors over loop iterations', () => {
 		).toEqual({
 			toQueue: [key('d', 0)],
 			toSeed: [],
+			toRace: [],
 			toSkip: [],
 		});
 	});
@@ -530,6 +666,7 @@ describe('decideSuccessors over loop iterations', () => {
 		expect(decide(key('trigger', 0), entry)).toEqual({
 			toQueue: [key('B', 0)],
 			toSeed: [],
+			toRace: [],
 			toSkip: [],
 		});
 
@@ -538,6 +675,11 @@ describe('decideSuccessors over loop iterations', () => {
 			at('B', 0, 'completed', [false, true]),
 			at('x', 0, 'completed', [true]),
 		);
-		expect(decide(key('x', 0), second)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
+		expect(decide(key('x', 0), second)).toEqual({
+			toQueue: [key('B', 1)],
+			toSeed: [],
+			toRace: [],
+			toSkip: [],
+		});
 	});
 });

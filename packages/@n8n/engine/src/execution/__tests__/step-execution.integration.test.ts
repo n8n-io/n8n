@@ -626,6 +626,117 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	}
 
+	// The slow branch holds a worker until the race's successor has run, so each
+	// case needs at least two step workers.
+	it.each<Concurrency>([
+		{ step: 2, orchestration: 1 },
+		{ step: 4, orchestration: 4 },
+	])(
+		'continues after a race node on the first branch, while the other still runs (concurrency $step)',
+		continuesAfterRace,
+	);
+	async function continuesAfterRace(concurrency: Concurrency) {
+		const raceGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-fast', name: 'Fast', type: 'v1-node' },
+				{ id: 'node-slow', name: 'Slow', type: 'v1-node' },
+				{ id: 'node-race', name: 'Race', type: 'race' },
+				{ id: 'node-after', name: 'After', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-fast', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-slow', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-fast', to: 'node-race', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-slow', to: 'node-race', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-race', to: 'node-after', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		let afterRan!: () => void;
+		const afterHasRun = new Promise<void>((resolve) => (afterRan = resolve));
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				if (request.node.id === 'node-slow') await afterHasRun;
+				if (request.node.id === 'node-after') afterRan();
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps, events } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-race',
+			concurrency,
+			graph: raceGraph,
+		});
+
+		// the engine runs the race itself, so no executor saw it
+		expect(requests.map(({ node }) => node.id).sort()).toEqual([
+			'node-after',
+			'node-fast',
+			'node-slow',
+		]);
+		const after = requests.find(({ node }) => node.id === 'node-after');
+		expect(after?.inputs).toEqual([[{ json: { ran: 'node-fast' } }]]);
+
+		const race = steps.find(({ nodeId }) => nodeId === 'node-race');
+		expect(race?.status).toBe('completed');
+		expect(race?.outputs).toEqual([[{ json: { ran: 'node-fast' } }]]);
+		expect(steps.find(({ nodeId }) => nodeId === 'node-slow')?.status).toBe('completed');
+		expect(steps).toHaveLength(5);
+
+		expect(events).toContainEqual(
+			expect.objectContaining({ type: 'step:completed', nodeName: 'Race' }),
+		);
+		// the losing branch settles before the execution ends
+		expect(execution.status).toBe('completed');
+	}
+
+	it.each(concurrencies)(
+		'continues after a race node on the live branch when the first to settle is dead (concurrency $step)',
+		raceIgnoresDeadBranch,
+	);
+	async function raceIgnoresDeadBranch(concurrency: Concurrency) {
+		// trigger -> if -> {a (out 0), b (out 1)} -> race: if fills only slot 1, so
+		// a is skipped at once and b, which has to run first, wins.
+		const raceGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-if', name: 'If', type: 'v1-node' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-race', name: 'Race', type: 'race' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-if', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-if', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-if', to: 'node-b', outputIndex: 1, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-race', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-race', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				await Promise.resolve();
+				if (request.node.id === 'node-if') return { outputs: [null, [{ json: {} }]] };
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-race-dead',
+			concurrency,
+			graph: raceGraph,
+		});
+
+		expect(steps.find(({ nodeId }) => nodeId === 'node-a')?.status).toBe('skipped');
+		const race = steps.find(({ nodeId }) => nodeId === 'node-race');
+		expect(race?.status).toBe('completed');
+		expect(race?.outputs).toEqual([[{ json: { ran: 'node-b' } }]]);
+		expect(execution.status).toBe('completed');
+	}
+
 	it.each(concurrencies)(
 		'settles a conditional diamond: dead chain skipped, merge runs on the live side (concurrency $step)',
 		settlesConditionalDiamond,

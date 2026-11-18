@@ -139,6 +139,19 @@ describe('validateExecutableGraph', () => {
 		);
 	});
 
+	it('accepts two edges into the same input slot of a race node', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'r', name: 'R', type: 'race' }],
+			edges: [
+				...validGraph.edges,
+				{ from: 'trigger', to: 'r', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'r', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
 	it('accepts a well-formed loop', () => {
 		// trigger -> B, B loop slot -> x, x returns to B, B done slot -> d
 		const graph: WorkflowGraph = {

@@ -5,7 +5,7 @@ import { MAX_SLOT_INDEX } from '../graph';
 
 export const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
-const stepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
+const stepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch', 'race']);
 
 // Non-empty: lifecycle events reship both as identifiers.
 const graphNodeSchema = z.object({

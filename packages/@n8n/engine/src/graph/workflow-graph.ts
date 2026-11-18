@@ -4,7 +4,7 @@
  * start, immutable for the execution's lifetime.
  */
 
-export type StepType = 'trigger' | 'v1-node' | 'wait' | 'subworkflow' | 'batch';
+export type StepType = 'trigger' | 'v1-node' | 'wait' | 'subworkflow' | 'batch' | 'race';
 
 /**
  * Per-step configuration. The engine persists it with the graph without

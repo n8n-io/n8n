@@ -1,0 +1,17 @@
+{
+	"node": "n8n-nodes-base.race",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.race/"
+			}
+		]
+	},
+	"alias": ["First", "Fastest", "Promise", "Any"],
+	"subcategories": {
+		"Core Nodes": ["Flow"]
+	}
+}

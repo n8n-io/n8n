@@ -293,6 +293,91 @@ describe('StepSettledHandler', () => {
 		});
 	});
 
+	describe('a race successor', () => {
+		/** The same graph, with m as a race node that both branches feed on slot 0. */
+		const raceGraph: WorkflowGraph = {
+			nodes: graph.nodes.map((node) => (node.id === 'm' ? { ...node, type: 'race' } : node)),
+			edges: graph.edges.map((edge) => (edge.to === 'm' ? { ...edge, inputIndex: 0 } : edge)),
+		};
+		const bOutputs: StepSlots = [[{ json: { from: 'b' } }]];
+		const settledB = { id: 'step-b', nodeId: 'b', status: 'completed' as const, outputs: bOutputs };
+		const bSettledEvent = { ...event, stepId: 'step-b' };
+		const summaries = [
+			...defaultSummaries,
+			summary('b', 'completed', [true]),
+			summary('c', 'running'),
+		];
+
+		it('is recorded completed with the winner value, without waiting on the other branch', async () => {
+			const stepStore = makeStepStore(settledB, {}, summaries);
+			const { handler, stepQueue, orchestrationQueue, lifecycleEventPublisher } = makeHandler(
+				stepStore,
+				{ executionStore: makeExecutionStore({ graph: raceGraph }) },
+			);
+
+			await handler.handle(bSettledEvent);
+
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'm', iteration: 0, status: 'completed', outputs: bOutputs },
+			]);
+			// the winner is the settled step, already in hand
+			expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
+			expect(stepQueue.publish).not.toHaveBeenCalled();
+			expect(orchestrationQueue.publish).toHaveBeenCalledExactlyOnceWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-m',
+			});
+			expect(lifecycleEventPublisher.publish).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'step:started', stepId: 'step-m', nodeName: 'M' }),
+			);
+			expect(lifecycleEventPublisher.publish).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'step:completed', stepId: 'step-m', outputs: bOutputs }),
+			);
+		});
+
+		it('announces nothing when another planner created the race step first', async () => {
+			const stepStore = makeStepStore(
+				settledB,
+				{ createSteps: vi.fn().mockResolvedValue([]) },
+				summaries,
+			);
+			const { handler, orchestrationQueue, lifecycleEventPublisher } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ graph: raceGraph }),
+			});
+
+			await handler.handle(bSettledEvent);
+
+			expect(orchestrationQueue.publish).not.toHaveBeenCalled();
+			expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		});
+
+		it('loads the winner when the settled step lost', async () => {
+			// c settled dead, but b had already completed: b wins.
+			const stepStore = makeStepStore(
+				{ id: 'step-c', nodeId: 'c', status: 'skipped' },
+				{
+					loadStepsByKeys: vi.fn().mockResolvedValue({
+						[stepKeyId({ nodeId: 'b', iteration: 0 })]: { ...settledB, iteration: 0 },
+					}),
+				},
+				[...defaultSummaries, summary('b', 'completed', [true]), summary('c', 'skipped')],
+			);
+			const { handler } = makeHandler(stepStore, {
+				executionStore: makeExecutionStore({ graph: raceGraph }),
+			});
+
+			await handler.handle({ ...event, stepId: 'step-c' });
+
+			expect(stepStore.loadStepsByKeys).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'b', iteration: 0 },
+			]);
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'm', iteration: 0, status: 'completed', outputs: bOutputs },
+			]);
+		});
+	});
+
 	it("plans the trigger's successors like any other node's", async () => {
 		// execution start only announces the trigger's settlement; the first
 		// steps are planned here, through the same rules as the rest

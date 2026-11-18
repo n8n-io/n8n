@@ -47,7 +47,22 @@ import type { StepSummary } from './step-store';
  *   the body into a further iteration, and on forever. The exclusion lives in
  *   `decideNodeFate`, so anything recomputing fates reaches the same answer,
  *   reconciliation included.
+ *
+ * A race node is the one exception to rule 3. It is decidable as soon as one
+ * incoming edge is live, even while other sources are still unsettled, and it
+ * is skipped only once every source has settled dead. The engine runs no code
+ * for it: the planner records it as completed with the winning edge's value.
+ * Its step exists once decided, so later arrivals find it and change nothing.
  */
+
+/** A race step to record as completed, and the live edge whose value it takes. */
+export interface RaceDecision {
+	key: StepKey;
+	/** The settled source step whose output wins the race. */
+	winner: StepKey;
+	/** The winner's output slot that feeds the race node. */
+	outputIndex: number;
+}
 
 export interface SuccessorDecisions {
 	/** Successor steps with a live input, to enqueue — in edge order. */
@@ -56,6 +71,8 @@ export interface SuccessorDecisions {
 	toSeed: StepKey[];
 	/** Successor steps with settled but all-dead inputs, to record as skipped. */
 	toSkip: StepKey[];
+	/** Race successors with a live input, to record as completed with the winner's value. */
+	toRace: RaceDecision[];
 }
 
 /**
@@ -73,7 +90,7 @@ export function decideSuccessors(
 	steps: Record<StepKeyId, StepSummary>,
 	terminalIterations: Map<string, number>,
 ): SuccessorDecisions {
-	const decisions: SuccessorDecisions = { toQueue: [], toSeed: [], toSkip: [] };
+	const decisions: SuccessorDecisions = { toQueue: [], toSeed: [], toSkip: [], toRace: [] };
 	const seededIds = new Set(graph.seeded);
 	const batchStep = loops.some((loop) => loop.batchNodeId === settled.nodeId)
 		? steps[stepKeyId(settled)]
@@ -91,6 +108,14 @@ export function decideSuccessors(
 		// Two edges into one step are one candidate, decided once.
 		if (steps[targetId] || decided.has(targetId)) continue;
 		decided.add(targetId);
+
+		if (isRaceNode(graph, target.nodeId) && !seededIds.has(target.nodeId)) {
+			const race = decideRaceFate(graph, loops, target, settled, steps, terminalIterations);
+			if (race.fate === 'queued') {
+				decisions.toRace.push({ key: target, winner: race.winner, outputIndex: race.outputIndex });
+			} else if (race.fate === 'skipped') decisions.toSkip.push(target);
+			continue;
+		}
 
 		const fate = decideNodeFate(graph, loops, target, steps, terminalIterations);
 		if (fate === 'queued')
@@ -151,6 +176,69 @@ function decideNodeFate(
 	if (applicable === 0) return 'outside';
 
 	return live ? 'queued' : 'skipped';
+}
+
+function isRaceNode(graph: WorkflowGraph, nodeId: string): boolean {
+	return graph.nodes.some((node) => node.id === nodeId && node.type === 'race');
+}
+
+/**
+ * Decides a race candidate. The first live edge decides it, so an unsettled
+ * source does not hold it back once another source is live.
+ *
+ * The winner is the step whose settlement is being handled, when its edge is
+ * live. Otherwise, as when reconciliation recomputes the decision, it is the
+ * first live source in edge order. Input slots carry no meaning here: every
+ * branch usually feeds slot 0.
+ */
+function decideRaceFate(
+	graph: WorkflowGraph,
+	loops: WorkflowLoop[],
+	candidate: StepKey,
+	settled: StepKey,
+	steps: Record<StepKeyId, StepSummary>,
+	terminalIterations: Map<string, number>,
+):
+	| ({ fate: 'queued' } & Omit<RaceDecision, 'key'>)
+	| { fate: 'skipped' | 'undecidable' | 'outside' } {
+	if (isPastLoopEnd(loops, candidate, steps)) return { fate: 'outside' };
+
+	let applicable = 0;
+	let unsettled = false;
+	const live: Array<Omit<RaceDecision, 'key'>> = [];
+	const incomingEdges = graph.edges.filter((edge) => edge.to === candidate.nodeId);
+
+	for (const edge of incomingEdges) {
+		const source = sourceRow(
+			edge,
+			classifyEdge(edge, loops),
+			candidate,
+			terminalIterations.get(edge.from),
+		);
+		if (source.kind === 'none') continue;
+
+		applicable += 1;
+		if (source.kind === 'pending') {
+			unsettled = true;
+			continue;
+		}
+		const sourceStep = steps[stepKeyId(source.key)];
+		if (!sourceStep || !isSettledStatus(sourceStep.status)) {
+			unsettled = true;
+			continue;
+		}
+		if (isLive(sourceStep, edge)) {
+			live.push({ winner: source.key, outputIndex: edge.outputIndex });
+		}
+	}
+
+	if (live.length > 0) {
+		const settledId = stepKeyId(settled);
+		const winner = live.find((entry) => stepKeyId(entry.winner) === settledId) ?? live[0];
+		return { fate: 'queued', ...winner };
+	}
+	if (applicable === 0) return { fate: 'outside' };
+	return { fate: unsettled ? 'undecidable' : 'skipped' };
 }
 
 /**

@@ -21,7 +21,7 @@ import {
 	type StepSlots,
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
-import { decideSuccessors, decisionKeys } from './settlement';
+import { decideSuccessors, decisionKeys, type RaceDecision } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
 import {
 	collectSubExecutionResult,
@@ -141,19 +141,23 @@ export class StepSettledHandler {
 			execution.id,
 			decisionKeys(execution.graph, loops, step, terminalIterations),
 		);
-		const { toQueue, toSeed, toSkip } = decideSuccessors(
+		const { toQueue, toSeed, toSkip, toRace } = decideSuccessors(
 			execution.graph,
 			loops,
 			step,
 			steps,
 			terminalIterations,
 		);
-		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
+		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0 && toRace.length === 0) {
+			return 0;
+		}
 
 		// Seeded steps had their outputs passed in at execution start, so we just
 		// write them to the step store and announce completion rather than
 		// enqueueing them to run.
 		const seededOutputs = await this.executionStore.loadSeededOutputs(execution.id, toSeed);
+		// A race step runs no code: it completes with the winning edge's value.
+		const raceOutputs = await this.raceOutputs(execution.id, step, toRace);
 
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
@@ -169,14 +173,90 @@ export class StepSettledHandler {
 				outputs: seededOutputsFor(execution.id, key, seededOutputs),
 			})),
 			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
+			...[...raceOutputs.values()].map(({ key, outputs }) => ({
+				...key,
+				status: 'completed' as const,
+				outputs,
+			})),
 		]);
 
+		this.announceRaceSteps(execution, created, raceOutputs);
 		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
 	}
 
 	/**
+	 * The outputs of each race step: the winner's value on the edge into the
+	 * race, as the race's only output slot. The winner is usually the step this
+	 * settlement is about, which is already loaded.
+	 */
+	private async raceOutputs(
+		executionId: string,
+		settled: StepRecord,
+		toRace: RaceDecision[],
+	): Promise<Map<StepKeyId, { key: StepKey; outputs: StepSlots }>> {
+		const outputs = new Map<StepKeyId, { key: StepKey; outputs: StepSlots }>();
+		if (toRace.length === 0) return outputs;
+
+		const settledId = stepKeyId(settled);
+		const others = toRace.filter(({ winner }) => stepKeyId(winner) !== settledId);
+		const rows: Record<StepKeyId, StepRecord> =
+			others.length === 0
+				? {}
+				: await this.stepStore.loadStepsByKeys(
+						executionId,
+						others.map(({ winner }) => winner),
+					);
+		rows[settledId] = settled;
+
+		for (const { key, winner, outputIndex } of toRace) {
+			const winnerOutputs = rows[stepKeyId(winner)]?.outputs;
+			if (!winnerOutputs) {
+				// The decision read the winner as completed, and settled steps never
+				// change, so its row must hold outputs.
+				throw new UnexpectedError(
+					`Execution ${executionId} picked step ${winner.nodeId} as the winner of race ${key.nodeId}, but it holds no outputs`,
+				);
+			}
+			outputs.set(stepKeyId(key), { key, outputs: [winnerOutputs[outputIndex] ?? null] });
+		}
+		return outputs;
+	}
+
+	/**
+	 * Publishes the lifecycle events of the race steps this planner created. A
+	 * race step settles at birth, so these stand in for the ones a worker
+	 * publishes for a step it runs. Only created rows are announced, so a
+	 * planner that lost the insert stays silent.
+	 */
+	private announceRaceSteps(
+		execution: ExecutionRecord,
+		created: Array<{ id: string } & StepKey>,
+		raceOutputs: Map<StepKeyId, { key: StepKey; outputs: StepSlots }>,
+	): void {
+		if (raceOutputs.size === 0) return;
+		const publisher = this.lifecycleEventPublisherFactory.create(execution);
+		for (const { id: stepId, ...key } of created) {
+			const race = raceOutputs.get(stepKeyId(key));
+			const node = execution.graph.nodes.find((graphNode) => graphNode.id === key.nodeId);
+			if (!race || !node) continue;
+			const { outputs } = race;
+
+			const fields = {
+				executionId: execution.id,
+				stepId,
+				nodeId: key.nodeId,
+				nodeName: node.name,
+				iteration: key.iteration,
+				at: new Date().toISOString(),
+			};
+			publisher.publish({ type: 'step:started', ...fields });
+			publisher.publish({ type: 'step:completed', ...fields, outputs });
+		}
+	}
+
+	/**
 	 * Announces the created rows — `step:ready` for queued ones, `step:settled`
-	 * for skips and seeded steps, which settle at birth — and returns how many
+	 * for skips, seeded steps and race steps, which settle at birth — and returns how many
 	 * were queued. Published only after the rows exist, so a consumer can always
 	 * load them.
 	 */

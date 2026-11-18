@@ -376,6 +376,30 @@ describe('V1WorkflowConverter', () => {
 		});
 	});
 
+	describe('race nodes', () => {
+		it('maps a Race node to a race step fed by every branch connected to its input', () => {
+			const race = node('race-uuid', 'Race', { type: 'n8n-nodes-base.race' });
+			const graph = converter.convert(
+				workflow({
+					nodes: [manualTrigger, node('a-uuid', 'A'), node('b-uuid', 'B'), race],
+					connections: {
+						'When clicking Execute': { main: [[main('A'), main('B')]] },
+						A: { main: [[main('Race')]] },
+						B: { main: [[main('Race')]] },
+					},
+				}),
+			);
+
+			expect(graph.nodes).toContainEqual({ id: 'race-uuid', name: 'Race', type: 'race' });
+			expect(graph.edges).toEqual(
+				expect.arrayContaining([
+					{ from: 'a-uuid', to: 'race-uuid', outputIndex: 0, inputIndex: 0 },
+					{ from: 'b-uuid', to: 'race-uuid', outputIndex: 0, inputIndex: 0 },
+				]),
+			);
+		});
+	});
+
 	describe('unsupported constructs', () => {
 		const mergeNode = (parameters: INode['parameters']): INode =>
 			node('merge-uuid', 'Merge', { type: 'n8n-nodes-base.merge', typeVersion: 3.2, parameters });

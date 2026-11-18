@@ -41,6 +41,8 @@ import type { SubWorkflowCalls } from './sub-workflow-calls';
 import {
 	MAIN_CONNECTION_TYPE,
 	MANUAL_TRIGGER_TYPE,
+	RACE_TYPE,
+	RACE_TYPE_VERSION,
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
@@ -77,6 +79,10 @@ function toV1Nodes(graph: WorkflowGraph): INode[] {
 
 		if (graphNode.type === 'batch') {
 			return [toV1BatchNode(graphNode)];
+		}
+
+		if (graphNode.type === 'race') {
+			return [toV1RaceNode(graphNode)];
 		}
 
 		if (!isV1NodeStepConfig(graphNode.config)) return [];
@@ -208,6 +214,17 @@ function toV1BatchNode(graphNode: GraphNode): INode {
 		typeVersion: SPLIT_IN_BATCHES_TYPE_VERSION,
 		position: [0, 0],
 		parameters: batchSize === undefined ? {} : { batchSize },
+	};
+}
+
+function toV1RaceNode(graphNode: GraphNode): INode {
+	return {
+		id: graphNode.id,
+		name: graphNode.name,
+		type: RACE_TYPE,
+		typeVersion: RACE_TYPE_VERSION,
+		position: [0, 0],
+		parameters: {},
 	};
 }
 

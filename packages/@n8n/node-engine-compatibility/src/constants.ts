@@ -3,6 +3,10 @@ export const MANUAL_TRIGGER_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EXECUTE_WORKFLOW_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const MERGE_TYPE = 'n8n-nodes-base.merge';
 export const SPLIT_IN_BATCHES_TYPE = 'n8n-nodes-base.splitInBatches';
+/** Engine v2 runs this node itself, as a `race` step. */
+export const RACE_TYPE = 'n8n-nodes-base.race';
+/** The version the shim rebuilds a race node at. */
+export const RACE_TYPE_VERSION = 1;
 
 /** The version the shim rebuilds a batch node at, matching SplitInBatchesV3. */
 export const SPLIT_IN_BATCHES_TYPE_VERSION = 3;

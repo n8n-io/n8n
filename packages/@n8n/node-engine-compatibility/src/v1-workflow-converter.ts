@@ -7,6 +7,7 @@ import {
 	DEFAULT_BATCH_SIZE,
 	MAIN_CONNECTION_TYPE,
 	MERGE_TYPE,
+	RACE_TYPE,
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
@@ -145,6 +146,10 @@ export class V1WorkflowConverter {
 
 		if (node.type === SPLIT_IN_BATCHES_TYPE) {
 			return { id: node.id, name: node.name, type: 'batch', config: toBatchConfig(node) };
+		}
+
+		if (node.type === RACE_TYPE) {
+			return { id: node.id, name: node.name, type: 'race' };
 		}
 
 		const config: V1NodeStepConfig = {
