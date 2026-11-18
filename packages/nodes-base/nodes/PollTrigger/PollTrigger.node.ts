@@ -398,13 +398,17 @@ function createFetchPage(
 	};
 }
 
-function checkTool(this: IPollFunctions, tool: ConnectedTool, settings: Settings) {
-	const keys = schemaKeys(tool.schema);
-	const toolParameters = this.getParentNodes(this.getNode().name, {
+function connectedToolNodes(this: IPollFunctions) {
+	return this.getParentNodes(this.getNode().name, {
 		connectionType: NodeConnectionTypes.AiTool,
 		depth: 1,
 		includeNodeParameters: true,
-	}).map((node) => node.parameters);
+	});
+}
+
+function checkTool(this: IPollFunctions, tool: ConnectedTool, settings: Settings) {
+	const keys = schemaKeys(tool.schema);
+	const toolParameters = connectedToolNodes.call(this).map((node) => node.parameters);
 	if (keys === undefined && toolParameters.length === 0) return;
 	const source = JSON.stringify(toolParameters);
 	const uses = (variable: string, argument: string) =>
@@ -566,7 +570,13 @@ export class PollTrigger implements INodeType {
 		}
 
 		const staticData = this.getWorkflowStaticData('node') as PollStaticData;
-		const scope = hashScope(rawParameters.call(this, SCOPE_PARAMETERS));
+		const tools =
+			this.getNodeParameter('source', 'request') === 'tool'
+				? connectedToolNodes
+						.call(this)
+						.map(({ type, typeVersion, parameters }) => ({ type, typeVersion, parameters }))
+				: undefined;
+		const scope = hashScope({ ...rawParameters.call(this, SCOPE_PARAMETERS), tools });
 		if (staticData.scope !== scope) {
 			staticData.scope = scope;
 			delete staticData.poller;
