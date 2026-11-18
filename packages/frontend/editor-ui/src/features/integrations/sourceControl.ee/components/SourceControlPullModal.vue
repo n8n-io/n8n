@@ -501,13 +501,6 @@ function openDiffModal(id: string) {
 	});
 }
 
-const modalHeight = computed(() =>
-	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow]?.length ||
-	groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential]?.length
-		? 'min(80vh, 850px)'
-		: 'auto',
-);
-
 // Load data when modal opens
 onMounted(() => {
 	// Only load fresh data if we don't have any initial data
@@ -522,12 +515,7 @@ onMounted(() => {
 		v-if="!isLoading"
 		:open="modalOpen"
 		size="2xlarge"
-		:container-class="
-			[
-				$style.sourceControlPull,
-				modalHeight === 'auto' ? $style.autoHeight : $style.fixedHeight,
-			].join(' ')
-		"
+		:container-class="$style.fixedHeight"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogHeader>
@@ -545,285 +533,279 @@ onMounted(() => {
 			</div>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<div style="display: flex; flex-direction: column; height: 100%">
-				<N8nCallout
-					v-if="policyBlockedCount > 0"
-					theme="warning"
-					class="mb-xs"
-					data-test-id="source-control-pull-policy-callout"
+			<N8nCallout
+				v-if="policyBlockedCount > 0"
+				theme="warning"
+				class="mb-xs"
+				data-test-id="source-control-pull-policy-callout"
+			>
+				{{
+					i18n.baseText('settings.sourceControl.modals.pull.policyBlockedCallout', {
+						adjustToNumber: policyBlockedCount,
+						interpolate: { count: `${policyBlockedCount}` },
+					})
+				}}
+			</N8nCallout>
+			<N8nCallout
+				v-if="policyCheckFailedCount > 0"
+				theme="warning"
+				class="mb-xs"
+				data-test-id="source-control-pull-policy-check-failed-callout"
+			>
+				{{
+					i18n.baseText('settings.sourceControl.modals.pull.policyCheckFailedCallout', {
+						adjustToNumber: policyCheckFailedCount,
+						interpolate: { count: `${policyCheckFailedCount}` },
+					})
+				}}
+			</N8nCallout>
+			<div :class="$style.autoPublishSection">
+				<N8nText tag="div" bold size="medium" color="text-dark">
+					{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.title') }}
+				</N8nText>
+				<N8nSelect
+					v-model="autoPublish"
+					size="medium"
+					:class="$style.select"
+					data-test-id="auto-publish-select"
 				>
-					{{
-						i18n.baseText('settings.sourceControl.modals.pull.policyBlockedCallout', {
-							adjustToNumber: policyBlockedCount,
-							interpolate: { count: `${policyBlockedCount}` },
-						})
-					}}
-				</N8nCallout>
-				<N8nCallout
-					v-if="policyCheckFailedCount > 0"
-					theme="warning"
-					class="mb-xs"
-					data-test-id="source-control-pull-policy-check-failed-callout"
-				>
-					{{
-						i18n.baseText('settings.sourceControl.modals.pull.policyCheckFailedCallout', {
-							adjustToNumber: policyCheckFailedCount,
-							interpolate: { count: `${policyCheckFailedCount}` },
-						})
-					}}
-				</N8nCallout>
-				<div :class="$style.autoPublishSection">
-					<N8nText tag="div" bold size="medium" color="text-dark">
-						{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublish.title') }}
-					</N8nText>
-					<N8nSelect
-						v-model="autoPublish"
-						size="medium"
-						:class="$style.select"
-						data-test-id="auto-publish-select"
+					<N8nOption
+						v-for="option in autoPublishOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+						:disabled="option.disabled"
 					>
-						<N8nOption
-							v-for="option in autoPublishOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-							:disabled="option.disabled"
+						<div :class="$style.listOption">
+							<N8nText bold>{{ option.label }}</N8nText>
+							<N8nText v-if="option.description" size="small" color="text-light">
+								{{ option.description }}
+							</N8nText>
+						</div>
+					</N8nOption>
+				</N8nSelect>
+			</div>
+			<div style="display: flex; flex: 1">
+				<div :class="$style.tabs">
+					<template v-for="tab in tabs" :key="tab.value">
+						<button
+							type="button"
+							:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
+							:data-test-id="`source-control-pull-modal-tab-${tab.value}`"
+							@click="activeTab = tab.value"
 						>
-							<div :class="$style.listOption">
-								<N8nText bold>{{ option.label }}</N8nText>
-								<N8nText v-if="option.description" size="small" color="text-light">
-									{{ option.description }}
-								</N8nText>
-							</div>
-						</N8nOption>
-					</N8nSelect>
+							<div>{{ tab.label }}</div>
+							<N8nText tag="div" color="text-light">
+								{{
+									i18n.baseText('settings.sourceControl.modals.pull.itemCount', {
+										adjustToNumber: tab.total,
+										interpolate: { count: `${tab.total}` },
+									})
+								}}
+							</N8nText>
+						</button>
+					</template>
 				</div>
-				<div style="display: flex; flex: 1">
-					<div :class="$style.tabs">
-						<template v-for="tab in tabs" :key="tab.value">
-							<button
-								type="button"
-								:class="[$style.tab, { [$style.tabActive]: activeTab === tab.value }]"
-								:data-test-id="`source-control-pull-modal-tab-${tab.value}`"
-								@click="activeTab = tab.value"
-							>
-								<div>{{ tab.label }}</div>
-								<N8nText tag="div" color="text-light">
-									{{
-										i18n.baseText('settings.sourceControl.modals.pull.itemCount', {
-											adjustToNumber: tab.total,
-											interpolate: { count: `${tab.total}` },
-										})
-									}}
-								</N8nText>
-							</button>
-						</template>
-					</div>
-					<div :class="$style.listColumn">
-						<div :class="[$style.table]">
-							<div :class="[$style.tableHeader]">
-								<div :class="$style.headerTitle">
-									<N8nText>{{
-										i18n.baseText('settings.sourceControl.modals.tableHeader.title')
-									}}</N8nText>
-								</div>
+				<div :class="$style.listColumn">
+					<div :class="[$style.table]">
+						<div :class="[$style.tableHeader]">
+							<div :class="$style.headerTitle">
+								<N8nText>{{
+									i18n.baseText('settings.sourceControl.modals.tableHeader.title')
+								}}</N8nText>
 							</div>
-							<div style="flex: 1; overflow: hidden">
-								<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
-									{{ filtersNoResultText }}
-								</N8nInfoTip>
-								<DynamicScroller
-									v-if="activeRows.length"
-									:class="[$style.scroller]"
-									:items="activeRows"
-									:min-item-size="57"
-									item-class="scrollerItem"
-								>
-									<template #default="{ item: row, active, index }">
-										<DynamicScrollerItem
-											:item="row"
-											:active="active"
-											:size-dependencies="[
-												row.type,
-												row.type === 'file'
-													? row.file.name
-													: row.type === 'folder'
-														? row.name
-														: row.count,
-												row.id,
-												row.depth,
+						</div>
+						<div style="flex: 1; overflow: hidden">
+							<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
+								{{ filtersNoResultText }}
+							</N8nInfoTip>
+							<DynamicScroller
+								v-if="activeRows.length"
+								:class="[$style.scroller]"
+								:items="activeRows"
+								:min-item-size="57"
+								item-class="scrollerItem"
+							>
+								<template #default="{ item: row, active, index }">
+									<DynamicScrollerItem
+										:item="row"
+										:active="active"
+										:size-dependencies="[
+											row.type,
+											row.type === 'file'
+												? row.file.name
+												: row.type === 'folder'
+													? row.name
+													: row.count,
+											row.id,
+											row.depth,
+										]"
+										:data-index="index"
+									>
+										<div
+											v-if="row.type === 'folder'"
+											:class="[
+												$style.folderRow,
+												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
 											]"
-											:data-index="index"
+											:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
+											data-test-id="source-control-pull-modal-folder-row"
+										>
+											<N8nText tag="span" color="text-light">
+												{{ row.name }}
+											</N8nText>
+											<button
+												type="button"
+												:class="$style.folderToggle"
+												data-test-id="source-control-pull-modal-folder-toggle"
+												@click.stop="toggleFolderCollapse(row.id)"
+												@mousedown.stop
+												@pointerdown.stop
+											>
+												<N8nIcon
+													:icon="isFolderCollapsed(row.id) ? 'chevron-right' : 'chevron-down'"
+													color="text-light"
+													size="small"
+												/>
+											</button>
+										</div>
+										<div
+											v-else-if="row.type === 'policyGroup'"
+											:class="$style.policyGroupRow"
+											data-test-id="source-control-pull-policy-group"
+										>
+											<N8nText tag="span" size="small" bold color="text-dark">
+												{{
+													i18n.baseText('settings.sourceControl.modals.pull.policyBlockedGroup', {
+														interpolate: { count: `${row.count}` },
+													})
+												}}
+											</N8nText>
+										</div>
+										<div
+											v-else
+											:class="[
+												$style.listItem,
+												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+											]"
+											data-test-id="pull-modal-item"
 										>
 											<div
-												v-if="row.type === 'folder'"
-												:class="[
-													$style.folderRow,
-													{ [$style.rowNoBorder]: index === activeRows.length - 1 },
-												]"
-												:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
-												data-test-id="source-control-pull-modal-folder-row"
+												:class="[$style.itemContent]"
+												:style="{ paddingLeft: `${row.depth * 16}px` }"
 											>
-												<N8nText tag="span" color="text-light">
-													{{ row.name }}
-												</N8nText>
-												<button
-													type="button"
-													:class="$style.folderToggle"
-													data-test-id="source-control-pull-modal-folder-toggle"
-													@click.stop="toggleFolderCollapse(row.id)"
-													@mousedown.stop
-													@pointerdown.stop
+												<N8nText
+													tag="div"
+													bold
+													:color="isBlockedByPolicy(row.file) ? 'text-light' : 'text-dark'"
+													:class="[$style.listItemName]"
 												>
-													<N8nIcon
-														:icon="isFolderCollapsed(row.id) ? 'chevron-right' : 'chevron-down'"
-														color="text-light"
-														size="small"
-													/>
-												</button>
-											</div>
-											<div
-												v-else-if="row.type === 'policyGroup'"
-												:class="$style.policyGroupRow"
-												data-test-id="source-control-pull-policy-group"
-											>
-												<N8nText tag="span" size="small" bold color="text-dark">
-													{{
-														i18n.baseText('settings.sourceControl.modals.pull.policyBlockedGroup', {
-															interpolate: { count: `${row.count}` },
-														})
-													}}
-												</N8nText>
-											</div>
-											<div
-												v-else
-												:class="[
-													$style.listItem,
-													{ [$style.rowNoBorder]: index === activeRows.length - 1 },
-												]"
-												data-test-id="pull-modal-item"
-											>
-												<div
-													:class="[$style.itemContent]"
-													:style="{ paddingLeft: `${row.depth * 16}px` }"
-												>
-													<N8nText
-														tag="div"
-														bold
-														:color="isBlockedByPolicy(row.file) ? 'text-light' : 'text-dark'"
-														:class="[$style.listItemName]"
+													<RouterLink
+														v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.credential"
+														target="_blank"
+														rel="noopener noreferrer"
+														:to="{
+															name: VIEWS.CREDENTIALS,
+															params: { credentialId: row.file.id },
+														}"
 													>
-														<RouterLink
-															v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.credential"
-															target="_blank"
-															rel="noopener noreferrer"
-															:to="{
-																name: VIEWS.CREDENTIALS,
-																params: { credentialId: row.file.id },
-															}"
-														>
-															{{ row.file.name }}
-														</RouterLink>
-														<RouterLink
-															v-else-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-															target="_blank"
-															rel="noopener noreferrer"
-															:to="{ name: VIEWS.WORKFLOW, params: { workflowId: row.file.id } }"
-														>
-															{{ row.file.name }}
-														</RouterLink>
-														<span v-else>{{ row.file.name }}</span>
+														{{ row.file.name }}
+													</RouterLink>
+													<RouterLink
+														v-else-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+														target="_blank"
+														rel="noopener noreferrer"
+														:to="{ name: VIEWS.WORKFLOW, params: { workflowId: row.file.id } }"
+													>
+														{{ row.file.name }}
+													</RouterLink>
+													<span v-else>{{ row.file.name }}</span>
+												</N8nText>
+												<div :class="$style.statusLine">
+													<N8nText v-if="row.file.updatedAt" color="text-light" size="small">
+														{{ renderUpdatedAt(row.file) }}
 													</N8nText>
-													<div :class="$style.statusLine">
-														<N8nText v-if="row.file.updatedAt" color="text-light" size="small">
-															{{ renderUpdatedAt(row.file) }}
-														</N8nText>
-														<N8nText
-															v-if="row.file.willBeAutoPublished"
-															color="success"
-															size="small"
-															bold
-														>
-															{{
-																i18n.baseText('settings.sourceControl.modals.pull.autoPublishing')
-															}}
-														</N8nText>
-														<N8nText
-															v-if="row.file.isRemoteArchived"
-															color="warning"
-															size="small"
-															bold
-														>
-															{{
-																i18n.baseText('settings.sourceControl.modals.pull.willBeArchived')
-															}}
-														</N8nText>
-													</div>
-												</div>
-												<span :class="[$style.badges]">
-													<N8nHoverCard
-														v-if="isBlockedByPolicy(row.file)"
-														side="top"
-														:open-delay="200"
-														max-width="320px"
+													<N8nText
+														v-if="row.file.willBeAutoPublished"
+														color="success"
+														size="small"
+														bold
 													>
-														<template #trigger>
-															<N8nBadge
-																variant="warning"
-																size="xsmall"
-																data-test-id="source-control-pull-policy-blocked"
-															>
-																{{
-																	i18n.baseText('settings.sourceControl.modals.pull.policyBlocked')
-																}}
-															</N8nBadge>
-														</template>
-														<template #content>
-															<div :class="$style.policyCard">
-																<N8nText tag="p" size="small" color="text-dark">
-																	{{
-																		i18n.baseText(
-																			'settings.sourceControl.modals.pull.policyBlocked.tooltip',
-																		)
-																	}}
-																</N8nText>
-																<PolicyViolationList
-																	:violations="row.file.contentImportPolicy?.violations ?? []"
-																	:label-of="policyViolationLabelOf"
-																/>
-															</div>
-														</template>
-													</N8nHoverCard>
-													<N8nNewBadge
-														v-if="row.file.status === 'created'"
-														:text="getStatusText(row.file.status)"
-														size="xsmall"
-													/>
-													<N8nBadge v-else :variant="getStatusTheme(row.file.status)" size="xsmall">
-														{{ getStatusText(row.file.status) }}
-													</N8nBadge>
-													<template v-if="isWorkflowDiffsEnabled">
-														<N8nTooltip
-															v-if="
-																row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
-																row.file.status === 'modified'
-															"
-															:content="i18n.baseText('workflowDiff.compare')"
-															placement="top"
-														>
-															<N8nIconButton
-																variant="outline"
-																icon="file-diff"
-																@click="openDiffModal(row.file.id)"
-															/>
-														</N8nTooltip>
-													</template>
-												</span>
+														{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublishing') }}
+													</N8nText>
+													<N8nText
+														v-if="row.file.isRemoteArchived"
+														color="warning"
+														size="small"
+														bold
+													>
+														{{ i18n.baseText('settings.sourceControl.modals.pull.willBeArchived') }}
+													</N8nText>
+												</div>
 											</div>
-										</DynamicScrollerItem>
-									</template>
-								</DynamicScroller>
-							</div>
+											<span :class="[$style.badges]">
+												<N8nHoverCard
+													v-if="isBlockedByPolicy(row.file)"
+													side="top"
+													:open-delay="200"
+													max-width="320px"
+												>
+													<template #trigger>
+														<N8nBadge
+															variant="warning"
+															size="xsmall"
+															data-test-id="source-control-pull-policy-blocked"
+														>
+															{{
+																i18n.baseText('settings.sourceControl.modals.pull.policyBlocked')
+															}}
+														</N8nBadge>
+													</template>
+													<template #content>
+														<div :class="$style.policyCard">
+															<N8nText tag="p" size="small" color="text-dark">
+																{{
+																	i18n.baseText(
+																		'settings.sourceControl.modals.pull.policyBlocked.tooltip',
+																	)
+																}}
+															</N8nText>
+															<PolicyViolationList
+																:violations="row.file.contentImportPolicy?.violations ?? []"
+																:label-of="policyViolationLabelOf"
+															/>
+														</div>
+													</template>
+												</N8nHoverCard>
+												<N8nNewBadge
+													v-if="row.file.status === 'created'"
+													:text="getStatusText(row.file.status)"
+													size="xsmall"
+												/>
+												<N8nBadge v-else :variant="getStatusTheme(row.file.status)" size="xsmall">
+													{{ getStatusText(row.file.status) }}
+												</N8nBadge>
+												<template v-if="isWorkflowDiffsEnabled">
+													<N8nTooltip
+														v-if="
+															row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+															row.file.status === 'modified'
+														"
+														:content="i18n.baseText('workflowDiff.compare')"
+														placement="top"
+													>
+														<N8nIconButton
+															variant="outline"
+															icon="file-diff"
+															@click="openDiffModal(row.file.id)"
+														/>
+													</N8nTooltip>
+												</template>
+											</span>
+										</div>
+									</DynamicScrollerItem>
+								</template>
+							</DynamicScroller>
 						</div>
 					</div>
 				</div>
@@ -878,35 +860,9 @@ onMounted(() => {
 </template>
 
 <style module lang="scss">
-.sourceControlPull.sourceControlPull {
-	/* Previous shell width. No spacing token for 812px. */
-	--dialog--max-width: min(812px, calc(100dvw - var(--spacing--lg)));
-
-	header {
-		/* The close button switches the header to a row. Keep the title above the description. */
-		flex-direction: column;
-		align-items: stretch;
-		padding-bottom: var(--spacing--xs);
-	}
-
-	footer {
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		width: 100%;
-	}
-}
-
 .fixedHeight {
-	/* Previous dialog height. No spacing token for 850px. */
 	height: min(80vh, 850px);
-	display: flex;
-	flex-direction: column;
 	overflow: hidden;
-}
-
-.autoHeight {
-	height: auto;
 }
 
 .filtersRow {
