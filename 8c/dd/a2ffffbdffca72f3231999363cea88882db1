@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolLabels.ts
+  ai_agent 167
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  ai_agent 30-31,154,199-205,320,334
+packages/@n8n/instance-ai/src/index.ts
+  ai_agent 777-778
+packages/@n8n/instance-ai/src/tools/workflows/summarize-workflow.ts
+  ai_agent 27-37
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  ai_agent 84-87
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils.ts
+  ai_agent 11,22-23
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  ai_agent 1827,1851,1899-1900,1924
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 1946-1949,2013,9511-9613
+packages/@n8n/instance-ai/docs/tools.md
+  ai_agent 104,355-359,1360-1394
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.coverage.test.ts
+  ai_agent 26
+packages/@n8n/instance-ai/src/tools/__tests__/create-page.tool.test.ts
+  ai_agent 1-110
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 155-156,1320-1338,1809-1810
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  ai_agent 74,710
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  ai_agent 6,61,719,3621-3647,6073
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.test.ts
+  ai_agent 123-124
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.pages.test.ts
+  ai_agent 1-28
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  ai_agent 222
+packages/@n8n/instance-ai/src/tools/create-page.tool.ts
+  ai_agent 1-75
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  ai_agent 78,160-163
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  ai_agent 1114-1133,1151
+packages/@n8n/instance-ai/src/tools/index.ts
+  ai_agent 58-60,262-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cdda2ffffbdffca72f3231999363cea88882db1",
+  "prompts": {}
+}
