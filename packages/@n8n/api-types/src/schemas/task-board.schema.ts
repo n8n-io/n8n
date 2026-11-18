@@ -22,6 +22,17 @@ export const TASK_BOARD_TEMPLATE_KEYS = ['agent-dev'] as const;
 export const taskBoardTemplateKeySchema = z.enum(TASK_BOARD_TEMPLATE_KEYS);
 export type TaskBoardTemplateKey = z.infer<typeof taskBoardTemplateKeySchema>;
 
+export const TASK_BOARD_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
+export const taskBoardSeveritySchema = z.enum(TASK_BOARD_SEVERITIES);
+export type TaskBoardSeverity = z.infer<typeof taskBoardSeveritySchema>;
+
+export const TASK_BOARD_MAX_TAGS = 10;
+export const TASK_BOARD_TAG_MAX_LENGTH = 32;
+/** The backend stores tags in lower case and without duplicates. */
+export const taskBoardTagsSchema = z
+	.array(z.string().trim().min(1).max(TASK_BOARD_TAG_MAX_LENGTH))
+	.max(TASK_BOARD_MAX_TAGS);
+
 export const taskBoardAssigneeInputSchema = z.object({
 	type: taskBoardAssigneeTypeSchema,
 	id: z.string().min(1),
@@ -41,6 +52,21 @@ export interface TaskBoardAssigneeRef {
 	name: string;
 }
 
+/** Token totals of agent runs. `cost` is in USD, and null when no run reported a price. */
+export interface TaskBoardUsageTotals {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost: number | null;
+}
+
+/** The usage of one agent on one task. */
+export interface TaskBoardAgentUsage extends TaskBoardUsageTotals {
+	agentId: string;
+	agentName: string;
+	runs: number;
+}
+
 export interface TaskBoardColumn {
 	id: string;
 	boardId: string;
@@ -58,6 +84,10 @@ export interface TaskBoardTask {
 	title: string;
 	description: string;
 	assignee: TaskBoardAssigneeRef | null;
+	severity: TaskBoardSeverity | null;
+	tags: string[];
+	/** Summed over every agent run on the task. */
+	usage: TaskBoardUsageTotals;
 	createdBy: TaskBoardActorRef;
 	position: number;
 	createdAt: string;
@@ -88,8 +118,11 @@ export interface TaskBoardSummary {
 export interface TaskBoardDetail extends TaskBoardSummary {
 	columns: TaskBoardColumn[];
 	tasks: TaskBoardTask[];
+	/** The team of the board: the agents that can take its tasks. */
+	agentIds: string[];
 }
 
 export interface TaskBoardTaskDetail extends TaskBoardTask {
 	comments: TaskBoardComment[];
+	usageByAgent: TaskBoardAgentUsage[];
 }

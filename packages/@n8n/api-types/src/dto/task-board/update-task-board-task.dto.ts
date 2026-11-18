@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { taskBoardAssigneeInputSchema } from '../../schemas/task-board.schema';
+import {
+	taskBoardAssigneeInputSchema,
+	taskBoardSeveritySchema,
+	taskBoardTagsSchema,
+} from '../../schemas/task-board.schema';
 import { Z } from '../../zod-class';
 
 export class UpdateTaskBoardTaskDto extends Z.class({
@@ -9,4 +13,7 @@ export class UpdateTaskBoardTaskDto extends Z.class({
 	columnId: z.string().min(1).optional(),
 	/** `null` removes the assignee. */
 	assignee: taskBoardAssigneeInputSchema.nullable().optional(),
+	/** `null` removes the severity. */
+	severity: taskBoardSeveritySchema.nullable().optional(),
+	tags: taskBoardTagsSchema.optional(),
 }) {}

@@ -1335,6 +1335,19 @@ export type TaskBoardAssigneeInput = { type: 'user' | 'agent'; id: string };
 
 export type TaskBoardAssigneeData = TaskBoardAssigneeInput & { name: string };
 
+export type TaskBoardSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+/** Token totals of the agent runs on a task. `cost` is in USD, and null when no run reported a price. */
+export type TaskBoardUsageTotals = {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost: number | null;
+};
+
+/** One agent on the board's project that a task can be handed off to. */
+export type TaskBoardTeamMember = { id: string; name: string; description: string };
+
 export type TaskBoardColumnData = {
 	id: string;
 	boardId: string;
@@ -1351,6 +1364,9 @@ export type TaskBoardTaskData = {
 	title: string;
 	description: string;
 	assignee: TaskBoardAssigneeData | null;
+	severity: TaskBoardSeverity | null;
+	tags: string[];
+	usage: TaskBoardUsageTotals;
 	createdBy: TaskBoardNamedRef;
 	position: number;
 	createdAt: string;
@@ -1373,6 +1389,12 @@ export type TaskBoardTaskContext = {
 	comments: TaskBoardCommentData[];
 	/** The task title, description and comments as one plain-text thread. */
 	threadText: string;
+	/** The agents of the board's project, without the current assignee. */
+	team: TaskBoardTeamMember[];
+	/** The team as plain text, one agent for each line, for an agent prompt. */
+	teamText: string;
+	/** Hand-offs since a person last commented on or assigned the task. */
+	handoffCount: number;
 };
 
 export interface ITaskBoardProxy {
@@ -1387,8 +1409,41 @@ export interface ITaskBoardProxy {
 			columnId?: string;
 			columnRole?: string;
 			assignee?: TaskBoardAssigneeInput;
+			severity?: TaskBoardSeverity | null;
+			tags?: string[];
 		},
 		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+	/** Changes the given fields only. A null severity removes it. */
+	updateTask(
+		taskId: string,
+		fields: {
+			title?: string;
+			description?: string;
+			severity?: TaskBoardSeverity | null;
+			tags?: string[];
+		},
+		actor: TaskBoardActor,
+	): Promise<TaskBoardTaskData>;
+	/**
+	 * Assigns the task to another agent of the board. `to` is an agent id or an agent name.
+	 * At the hand-off limit the task moves to the needs-input column and `handedOff` is false.
+	 */
+	handoffTask(
+		taskId: string,
+		to: string,
+		actor: TaskBoardActor,
+	): Promise<{ task: TaskBoardTaskData; handedOff: boolean }>;
+	/** Adds the usage of one agent run to the task. Emits no task event. */
+	recordUsage(
+		taskId: string,
+		usage: {
+			agentId: string;
+			promptTokens: number;
+			completionTokens: number;
+			totalTokens: number;
+			cost?: number | null;
+		},
 	): Promise<TaskBoardTaskData>;
 	addComment(taskId: string, body: string, actor: TaskBoardActor): Promise<TaskBoardCommentData>;
 	moveTask(
@@ -2732,6 +2787,8 @@ export interface ExecuteAgentData {
 		promptTokens: number;
 		completionTokens: number;
 		totalTokens: number;
+		/** Cost of the call in USD, when the model provider reports one. */
+		cost?: number | null;
 	} | null;
 	/** Tool calls the agent made during execution. */
 	toolCalls: Array<{
