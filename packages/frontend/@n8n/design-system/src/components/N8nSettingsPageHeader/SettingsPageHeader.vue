@@ -104,7 +104,7 @@ const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.tit
 				{{ title }}
 			</N8nHeading>
 			<N8nFeatureMaturityBadges
-				v-if="showFeatureBadges"
+				v-if="feature && showFeatureBadges"
 				:feature="feature"
 				:hide-preview="hidePreview"
 				:hide-enterprise="hideEnterprise"

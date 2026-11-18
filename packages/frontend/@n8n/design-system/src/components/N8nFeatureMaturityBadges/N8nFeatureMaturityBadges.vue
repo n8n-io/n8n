@@ -14,9 +14,9 @@ const props = withDefaults(
 		/**
 		 * Feature id from the list the app provides.
 		 * The entry decides which badges render.
-		 * An omitted id renders nothing.
+		 * Render this component only when the callsite has an id.
 		 */
-		feature?: string;
+		feature: string;
 		/** Hide the Preview badge at this callsite. */
 		/** @default false */
 		hidePreview?: boolean;
@@ -25,7 +25,6 @@ const props = withDefaults(
 		hideEnterprise?: boolean;
 	}>(),
 	{
-		feature: undefined,
 		hidePreview: false,
 		hideEnterprise: false,
 	},

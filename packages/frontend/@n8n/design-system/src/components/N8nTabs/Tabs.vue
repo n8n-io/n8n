@@ -158,6 +158,7 @@ function scroll(direction: 'left' | 'right') {
 								size="small"
 							/>
 							<N8nFeatureMaturityBadges
+								v-if="option.feature"
 								v-bind="featureBadgeProps"
 								:feature="option.feature"
 								:class="$style.badge"
@@ -176,6 +177,7 @@ function scroll(direction: 'left' | 'right') {
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
 						<N8nFeatureMaturityBadges
+							v-if="option.feature"
 							v-bind="featureBadgeProps"
 							:feature="option.feature"
 							:class="$style.badge"
@@ -216,6 +218,7 @@ function scroll(direction: 'left' | 'right') {
 							size="small"
 						/>
 						<N8nFeatureMaturityBadges
+							v-if="option.feature"
 							v-bind="featureBadgeProps"
 							:feature="option.feature"
 							:class="$style.badge"

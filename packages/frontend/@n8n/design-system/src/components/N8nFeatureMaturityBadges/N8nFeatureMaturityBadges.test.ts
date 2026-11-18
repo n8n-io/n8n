@@ -30,12 +30,6 @@ describe('N8nFeatureMaturityBadges', () => {
 		warn.mockRestore();
 	});
 
-	it('renders nothing when no feature id is set', () => {
-		const { container } = render(FeatureMaturityBadges);
-
-		expect(container).toBeEmptyDOMElement();
-	});
-
 	it('renders the badges listed for the feature', () => {
 		const previewOnly = render(FeatureMaturityBadges, {
 			...featureList,

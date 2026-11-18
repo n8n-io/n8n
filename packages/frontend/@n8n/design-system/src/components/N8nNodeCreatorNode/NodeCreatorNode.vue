@@ -48,7 +48,11 @@ const { t } = useI18n();
 		<div :class="$style.body">
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<N8nFeatureMaturityBadges :feature="tag?.feature" :class="$style.previewBadge" />
+				<N8nFeatureMaturityBadges
+					v-if="tag?.feature"
+					:feature="tag.feature"
+					:class="$style.previewBadge"
+				/>
 				<N8nBadge
 					v-if="!tag?.feature && tag?.pill"
 					size="xxsmall"

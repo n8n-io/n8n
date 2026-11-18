@@ -92,7 +92,7 @@ function onEnabledChange(value: boolean) {
 					</N8nText>
 				</label>
 				<N8nFeatureMaturityBadges
-					v-if="hasBadges"
+					v-if="feature && hasBadges"
 					:feature="feature"
 					:hide-preview="hidePreview"
 					:hide-enterprise="hideEnterprise"
