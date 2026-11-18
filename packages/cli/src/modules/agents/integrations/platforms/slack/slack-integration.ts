@@ -221,6 +221,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
 		slackThreadContext?: SlackThreadContext;
+		integration?: AgentIntegrationConfig;
 	}): Promise<BridgeResumeExecutionContext> {
 		return await createSlackResumeExecutionContext(params);
 	}

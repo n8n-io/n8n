@@ -3,6 +3,7 @@ import { sleep } from '@n8n/utils/sleep';
 import type { Message, Thread } from 'chat';
 import escapeRegExp from 'lodash/escapeRegExp';
 
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type {
 	BridgeExecutionContext,
 	BridgeMessageContextParams,
@@ -47,7 +48,20 @@ interface SlackAssistantStatusAdapter {
 		status: string,
 		loadingMessages?: string[],
 	): Promise<void>;
+	/** The Slack Web API client. Used for the session API, which the adapter does not wrap. */
+	webClient?: { apiCall(method: string, options?: Record<string, unknown>): Promise<unknown> };
 }
+
+/**
+ * Instance connections of a system agent use the session status API. Slack shows
+ * a working Stop button only for a session that the app set with that API. The
+ * instance connection stores its workspace id, which a project agent never does.
+ */
+export function usesSlackSessionStatus(integration: AgentIntegrationConfig | undefined): boolean {
+	return integration?.type === 'slack' && integration.settings?.teamId !== undefined;
+}
+
+type SessionStatus = 'processing' | 'active';
 
 export function getSlackPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
 	const adapter = chat.getAdapter('slack');
@@ -131,6 +145,7 @@ export async function createSlackBridgeExecutionContext(
 					agentId: params.agentId,
 					slackThreadContext,
 					statusRetry: params.statusRetry,
+					sessionStatus: usesSlackSessionStatus(params.integration),
 				}),
 		shouldFetchHistory
 			? fetchSlackThreadHistory(
@@ -158,6 +173,7 @@ export async function createSlackResumeExecutionContext(params: {
 	logger: BridgeMessageContextParams['logger'];
 	agentId: string;
 	slackThreadContext?: SlackThreadContext;
+	integration?: AgentIntegrationConfig;
 }): Promise<BridgeResumeExecutionContext> {
 	const slackThreadContext =
 		params.slackThreadContext ?? getSlackResumeThreadContext(params.thread);
@@ -170,6 +186,7 @@ export async function createSlackResumeExecutionContext(params: {
 			agentId: params.agentId,
 			slackThreadContext,
 			statusRetry: new AbortController(),
+			sessionStatus: usesSlackSessionStatus(params.integration),
 		}),
 	};
 }
@@ -182,6 +199,7 @@ async function startSlackThinkingStatus(
 		agentId: string;
 		slackThreadContext?: SlackThreadContext;
 		statusRetry?: AbortController;
+		sessionStatus?: boolean;
 	},
 ): Promise<BridgeStatusHandle | undefined> {
 	const { slackThreadContext, statusRetry } = options;
@@ -260,6 +278,7 @@ async function setSlackAssistantStatus(
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
 		statusRetry?: AbortController;
+		sessionStatus?: boolean;
 	},
 ): Promise<void> {
 	const adapter = getSlackAssistantStatusAdapter(options.chat);
@@ -274,13 +293,14 @@ async function clearSlackAssistantStatus(
 		chat: ChatInstance;
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
+		sessionStatus?: boolean;
 	},
 ): Promise<void> {
 	const adapter = getSlackAssistantStatusAdapter(options.chat);
 	if (!adapter) return;
 
 	try {
-		await adapter.setAssistantStatus(context.channelId, context.threadTs, '');
+		await writeSlackStatus(adapter, context, 'active', options);
 	} catch (error) {
 		options.logger.warn('[AgentChatBridge] Failed to clear Slack assistant status', {
 			agentId: options.agentId,
@@ -291,6 +311,57 @@ async function clearSlackAssistantStatus(
 	}
 }
 
+/**
+ * Set the status of the Slack thread. An instance connection uses the session
+ * API: `processing` shows the working state and the Stop button, `active` ends
+ * it. Slack does not end the working state when the app posts a message. Other
+ * connections use the assistant status, which a posted message clears.
+ */
+async function writeSlackStatus(
+	adapter: SlackAssistantStatusAdapter,
+	context: SlackThreadContext,
+	status: SessionStatus,
+	options: {
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+		sessionStatus?: boolean;
+	},
+): Promise<void> {
+	if (options.sessionStatus && adapter.webClient) {
+		const response = await adapter.webClient.apiCall('agents.sessions.setStatus', {
+			channel_id: context.channelId,
+			thread_ts: context.threadTs,
+			status,
+		});
+		// Slack warns when the app does not subscribe to the Stop event.
+		const warnings = isRecord(response) ? readSlackWarnings(response) : undefined;
+		if (warnings) {
+			options.logger.warn('[AgentChatBridge] Slack session status returned a warning', {
+				agentId: options.agentId,
+				warnings,
+			});
+		}
+		return;
+	}
+	if (status === 'active') {
+		await adapter.setAssistantStatus(context.channelId, context.threadTs, '');
+		return;
+	}
+	await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
+		SLACK_THINKING_STATUS,
+	]);
+}
+
+function readSlackWarnings(response: Record<string, unknown>): string | undefined {
+	const metadata = response.response_metadata;
+	const fromMetadata =
+		isRecord(metadata) && Array.isArray(metadata.warnings)
+			? metadata.warnings.join(',')
+			: undefined;
+	const direct = typeof response.warning === 'string' ? response.warning : undefined;
+	return fromMetadata ?? direct;
+}
+
 async function setSlackAssistantStatusWithRetry(
 	adapter: SlackAssistantStatusAdapter,
 	context: SlackThreadContext,
@@ -298,12 +369,11 @@ async function setSlackAssistantStatusWithRetry(
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
 		statusRetry?: AbortController;
+		sessionStatus?: boolean;
 	},
 ): Promise<void> {
 	try {
-		await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
-			SLACK_THINKING_STATUS,
-		]);
+		await writeSlackStatus(adapter, context, 'processing', options);
 		return;
 	} catch (error) {
 		if (getSlackErrorCode(error) !== 'invalid_thread_ts') {
@@ -327,9 +397,7 @@ async function setSlackAssistantStatusWithRetry(
 	if (options.statusRetry?.signal.aborted) return;
 
 	try {
-		await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
-			SLACK_THINKING_STATUS,
-		]);
+		await writeSlackStatus(adapter, context, 'processing', options);
 	} catch (error) {
 		const errorCode = getSlackErrorCode(error);
 		const logPayload = {

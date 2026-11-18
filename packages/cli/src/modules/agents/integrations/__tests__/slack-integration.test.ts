@@ -489,6 +489,86 @@ describe('SlackIntegration', () => {
 		},
 	);
 
+	describe('an instance connection', () => {
+		const instanceConnection = {
+			type: 'slack' as const,
+			credentialId: 'cred-1',
+			settings: { messagingExperience: 'agent' as const, teamId: 'T1' },
+		};
+		const channel = 'D123';
+		const threadTs = '1779466577.518139';
+
+		async function resumeContext(integrationConfig?: typeof instanceConnection) {
+			const apiCall = vi.fn().mockResolvedValue({ ok: true });
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			const warn = vi.fn();
+			const thread = mock<Thread<unknown, unknown>>({
+				id: `slack:${channel}:${threadTs}`,
+				adapter: mock<Thread['adapter']>({
+					decodeThreadId: vi.fn().mockReturnValue({ channel, threadTs }),
+				}),
+			});
+			const context = await integration.createResumeExecutionContext({
+				chat: mock<ChatInstance>({
+					getAdapter: () => ({ setAssistantStatus, webClient: { apiCall } }),
+				}),
+				thread,
+				logger: { warn } as never,
+				agentId: 'assistant',
+				integration: integrationConfig,
+			});
+			return { context, apiCall, setAssistantStatus, warn };
+		}
+
+		it('sets the session to processing and back to active', async () => {
+			const { context, apiCall, setAssistantStatus } = await resumeContext(instanceConnection);
+
+			await context.statusHandle?.resumeAfterResponse?.();
+			expect(apiCall).toHaveBeenLastCalledWith('agents.sessions.setStatus', {
+				channel_id: channel,
+				thread_ts: threadTs,
+				status: 'processing',
+			});
+
+			await context.statusHandle?.clearBeforeResponse();
+			expect(apiCall).toHaveBeenLastCalledWith('agents.sessions.setStatus', {
+				channel_id: channel,
+				thread_ts: threadTs,
+				status: 'active',
+			});
+			expect(setAssistantStatus).not.toHaveBeenCalled();
+		});
+
+		it('logs a warning that Slack returns for the session status', async () => {
+			const { context, apiCall, warn } = await resumeContext(instanceConnection);
+			apiCall.mockResolvedValue({
+				ok: true,
+				response_metadata: { warnings: ['missing_agent_session_stopped_event_subscription'] },
+			});
+
+			await context.statusHandle?.resumeAfterResponse?.();
+
+			expect(warn).toHaveBeenCalledWith(
+				expect.stringContaining('session status'),
+				expect.objectContaining({ warnings: 'missing_agent_session_stopped_event_subscription' }),
+			);
+		});
+
+		it('keeps the assistant status for a connection without a workspace id', async () => {
+			const { context, apiCall, setAssistantStatus } = await resumeContext({
+				...instanceConnection,
+				settings: { messagingExperience: 'agent' as const } as never,
+			});
+
+			await context.statusHandle?.resumeAfterResponse?.();
+
+			expect(apiCall).not.toHaveBeenCalled();
+			expect(setAssistantStatus).toHaveBeenLastCalledWith(channel, threadTs, 'Thinking...', [
+				'Thinking...',
+			]);
+		});
+	});
+
 	describe('getReplyExpectation', () => {
 		const platformAgentContext = { agentUserId: 'U_BOT' };
 
