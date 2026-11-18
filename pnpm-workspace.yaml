@@ -258,7 +258,7 @@ catalog:
   nodemailer: 10.1.4
   openai: 6.46.0
   oracledb: 6.10.0
-  oxlint: 1.94.0
+  oxlint: 1.93.0
   oxlint-tsgolint: ^7.0.2007
   p-limit: ^3.1.0
   pdf-parse: 2.4.5
