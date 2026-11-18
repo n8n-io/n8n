@@ -4,6 +4,7 @@ import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
+import { useTestButtonPrimaryColorExperiment } from '@/experiments/testButtonPrimaryColor/useTestButtonPrimaryColorExperiment';
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
@@ -130,6 +131,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const agentTelemetry = useAgentTelemetry();
+const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
@@ -200,6 +202,7 @@ defineExpose({ onSetupTaskAction });
 						:is-runnable="props.agent?.isRunnable === true"
 						:is-preview-open="props.isPreviewOpen"
 						:validation-issues="props.configValidationIssues ?? []"
+						:variant="testButtonPrimaryColorExperiment.isEnabled.value ? 'solid' : 'outline'"
 						test-id="agent-header-preview-btn"
 						@open-preview="emit('open-preview', 'primary')"
 						@close-preview="emit('close-preview')"
