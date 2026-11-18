@@ -474,6 +474,23 @@ describe('Source Control Helper', () => {
 
 			expect(isWorkflowModified(local, remote, direction)).toBe(true);
 		});
+
+		test.each(directions)(
+			'should detect modifications when only a version-scoped setting changes (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ versionedSettings: { engineType: 'v2' } });
+				const remote = createWorkflowVersion({ versionedSettings: { engineType: 'v1' } });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
+
+		test.each(directions)('should treat a missing engine type as v1 (%s)', (direction) => {
+			const local = createWorkflowVersion({ versionedSettings: { engineType: 'v1' } });
+			const remote = createWorkflowVersion({ versionedSettings: {} });
+
+			expect(isWorkflowModified(local, remote, direction)).toBe(false);
+		});
 	});
 
 	describe('hasOwnerChanged', () => {

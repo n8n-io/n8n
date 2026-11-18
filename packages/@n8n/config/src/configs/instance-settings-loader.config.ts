@@ -149,6 +149,21 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_SKILL_SYNC_ENABLED')
 	skillSyncEnabled: boolean = false;
 
+	/**
+	 * Whether `N8N_PREFERENCES_ENABLED` controls the Preferences setting. When true, n8n applies
+	 * that value on every startup and admins can't change the setting in the UI.
+	 */
+	@Env('N8N_PREFERENCES_MANAGED_BY_ENV')
+	preferencesManagedByEnv: boolean = false;
+
+	/**
+	 * Whether users can save preferences that n8n Assistant and MCP clients apply. n8n reads
+	 * this value only when `N8N_PREFERENCES_MANAGED_BY_ENV` is true. Turning it off keeps the
+	 * saved preferences.
+	 */
+	@Env('N8N_PREFERENCES_ENABLED')
+	preferencesEnabled: boolean = false;
+
 	// --- Community packages ---
 
 	/**

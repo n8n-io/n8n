@@ -293,6 +293,9 @@ const {
 	isReorderingQueue,
 	isSubmitting,
 	isLoadingHistory,
+	hasOlderMessages,
+	loadOlderMessages,
+	getFullHistory,
 	isStreaming,
 	isStreamAttached,
 	refresh,
@@ -1537,8 +1540,9 @@ async function submitQueuedExternalMessage() {
 	}
 }
 
-function getConversationMarkdown(): string {
-	return messages.value
+/** The whole conversation, also the older turns that the chat did not load. */
+async function getConversationMarkdown(): Promise<string> {
+	return (await getFullHistory())
 		.filter((message) => message.content.trim().length > 0)
 		.map((message) => {
 			const speaker = message.role === CHAT_MESSAGE_ROLE.USER ? 'User' : 'Agent';
@@ -1833,6 +1837,8 @@ onBeforeUnmount(() => {
 			:budget-increase-pending="budgetIncreasePending"
 			:retry-message-id="retryMessageId"
 			:retry-disabled="retryDisabled"
+			:has-older-messages="hasOlderMessages"
+			:load-older-messages="loadOlderMessages"
 			:task-trace-route="
 				continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 			"

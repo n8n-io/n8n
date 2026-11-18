@@ -308,6 +308,7 @@ describe('GlobalConfig', () => {
 				includeWorkflowPublicationMetrics: false,
 				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
+				includeExecutionLedgerMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			agentWebhook: 'agent-webhook',
@@ -373,6 +374,7 @@ describe('GlobalConfig', () => {
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			browserUseEnabled: true,
+			cloudBrowserEnabled: true,
 			observerMessageTokens: 30_000,
 			utilityModel: '',
 			approvalJudgeModel: '',
@@ -535,12 +537,12 @@ describe('GlobalConfig', () => {
 			jitterRatio: 0.1,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'new',
-			enabledForPollTriggers: false,
+			enabledForPollTriggers: true,
 			pollTimeoutSeconds: 45,
 			maxAttempts: 5,
 			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
-			durableCursorsEnabled: false,
+			durableCursorsEnabled: true,
 			enabledForSystemTasks: false,
 			enabledForAgentTasks: false,
 			ownerReconciliationEnabled: true,
@@ -549,6 +551,9 @@ describe('GlobalConfig', () => {
 			ownerReconciliationBatchSize: 500,
 			ownerQuarantineGraceSeconds: 86400,
 			ownerSettleSeconds: 300,
+		},
+		leases: {
+			enabled: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -765,6 +770,8 @@ describe('GlobalConfig', () => {
 			mcpAccessEnabled: false,
 			skillSyncManagedByEnv: false,
 			skillSyncEnabled: false,
+			preferencesManagedByEnv: false,
+			preferencesEnabled: false,
 			communityPackagesManagedByEnv: false,
 			communityPackages: '',
 		},
@@ -814,11 +821,11 @@ describe('GlobalConfig', () => {
 
 	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {
 		process.env = {
-			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
 
-		expect(config.scheduler.durableCursorsEnabled).toBe(true);
+		expect(config.scheduler.durableCursorsEnabled).toBe(false);
 	});
 
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {

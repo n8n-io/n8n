@@ -22,6 +22,7 @@ export class SkillSourceCheckTask implements SystemTask {
 		// A failed run is not retried: the next run checks every source again. A run may take
 		// half an hour, and the sources it did not reach go first next time.
 		scheduler: { retryOnFailure: false, timeoutSeconds: 30 * Time.minutes.toSeconds },
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {},
 	});
 

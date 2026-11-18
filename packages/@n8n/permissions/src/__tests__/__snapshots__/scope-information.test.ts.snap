@@ -19,6 +19,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "aiPreference:update",
   "aiPreference:delete",
   "aiPreference:list",
+  "aiPreference:manage",
   "projectAiPreference:create",
   "projectAiPreference:read",
   "projectAiPreference:update",

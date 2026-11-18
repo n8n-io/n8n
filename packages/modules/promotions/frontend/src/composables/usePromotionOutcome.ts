@@ -1,18 +1,23 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { getProject, ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { promoteSuccessToast, withFolderNotes } from '../promotionResult';
 import { promotionEventBus } from '../promotions.eventBus';
 import type { AppliedResult } from '../promotions.types';
 
-/** The toasts and events after a promote or an apply of a project selection. */
+/** The toasts and events after a promote or an apply. */
 export function usePromotionOutcome() {
 	const i18n = useI18n();
 	const toast = useToast();
 	const rootStore = useRootStore();
+	const projectContext = capabilityRegistry.use(capabilities.projectContext);
+	const usersStore = useUsersStore();
 
 	function showPromoted(projectId: string, result: PromotePackageResultDto) {
 		promotionEventBus.emit('promoted', { projectId });
@@ -65,6 +70,51 @@ export function usePromotionOutcome() {
 		});
 	}
 
+	function showInstanceApplied(result: AppliedResult) {
+		const { projects, workflows } = result.counts;
+		const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
+		const interpolate = {
+			projectsCreated: String(projects.created),
+			projectsDeleted: String(projects.deleted),
+			created: String(workflows.created),
+			updated: String(workflows.updated),
+			archived: String(workflows.archived),
+			deleted: String(workflows.deleted),
+			notPublished: String(notPublished),
+		};
+		// A workflow can be imported and still fail to publish, so success alone would mislead.
+		toast.showMessage({
+			title: i18n.baseText('settings.promotions.apply.toast.success.title'),
+			message: withFolderNotes(
+				i18n,
+				i18n.baseText(
+					notPublished
+						? 'settings.promotions.apply.toast.success.messageNotPublished'
+						: 'settings.promotions.apply.toast.success.message',
+					{ interpolate },
+				),
+				result.counts,
+			),
+			type: notPublished ? 'warning' : 'success',
+		});
+	}
+
+	// An instance apply can create and delete projects. Reload the stores that the project
+	// sidebar reads. Users who can list every project also read the full list.
+	async function refreshProjects() {
+		try {
+			await Promise.all([
+				projectContext.getMyProjects(),
+				projectContext.getProjectsCount(),
+				...(getResourcePermissions(usersStore.currentUser?.globalScopes).project.list
+					? [projectContext.getAllProjects()]
+					: []),
+			]);
+		} catch {
+			// The apply went through. A stale project list is fixed by the next page load.
+		}
+	}
+
 	// The open views refresh once the outcome for this project is known, so none of them
 	// asks for a project the package removed.
 	async function announceApplied(projectId: string) {
@@ -85,5 +135,5 @@ export function usePromotionOutcome() {
 		}
 	}
 
-	return { showPromoted, showApplied, announceApplied };
+	return { showPromoted, showApplied, showInstanceApplied, refreshProjects, announceApplied };
 }

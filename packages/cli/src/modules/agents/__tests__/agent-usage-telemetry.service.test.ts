@@ -45,6 +45,28 @@ describe('AgentUsageTelemetryService', () => {
 			fakeTestSystemTime(firstMessageAt);
 		});
 
+		test.each(['__proto__', 'constructor'])(
+			'should keep counts for source "%s" as an own entry',
+			(source) => {
+				service.trackAgentExecution({
+					agent_id: 'agent-1',
+					run_type: 'test',
+					source,
+					message_count: 1,
+				});
+
+				const [counts] = Object.values(service.getAgentExecutionCountsBuffer());
+				expect(Object.hasOwn(counts.counts_by_source, source)).toBe(true);
+				expect(counts.counts_by_source[source]).toEqual({
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				});
+				expect(Object.hasOwn(Object.prototype, 'message_count')).toBe(false);
+				expect(Object.hasOwn(Object, 'message_count')).toBe(false);
+			},
+		);
+
 		test('should aggregate agent execution counters by agent ID', () => {
 			service.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
 			service.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', token_count: 15 });
@@ -589,6 +611,62 @@ describe('AgentUsageTelemetryService', () => {
 			expect(payload).not.toHaveProperty('thread_id');
 			expect(JSON.stringify(payload)).not.toContain('thread-1');
 		});
+
+		const firstTurnMetrics = {
+			latency_ms: 100,
+			cost: 10,
+			token_count: 1000,
+			tool_call_count: 1,
+			turn_count: 1,
+		};
+
+		test.each(['__proto__', 'constructor'])(
+			'should keep session metrics for thread id "%s" as an own entry',
+			(threadId) => {
+				service.trackAgentTurnFinished({
+					agent_id: 'agent-1',
+					thread_id: threadId,
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					latency_ms: 100,
+					cost: 10,
+					token_count: 1000,
+					tool_call_count: 1,
+				});
+
+				const [bucket] = Object.values(service.getAgentSessionMetricsBuffer());
+				expect(Object.hasOwn(bucket.sessions, threadId)).toBe(true);
+				expect(bucket.sessions[threadId]).toMatchObject(firstTurnMetrics);
+				expect(bucket.sessions_by_source.unknown[threadId]).toMatchObject(firstTurnMetrics);
+				expect(Object.hasOwn(Object.prototype, 'latency_ms')).toBe(false);
+				expect(Object.hasOwn(Object, 'latency_ms')).toBe(false);
+			},
+		);
+
+		test.each(['__proto__', 'constructor'])(
+			'should keep session metrics for source "%s" as an own entry',
+			(source) => {
+				service.trackAgentTurnFinished({
+					agent_id: 'agent-1',
+					thread_id: 'thread-1',
+					source,
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					latency_ms: 100,
+					cost: 10,
+					token_count: 1000,
+					tool_call_count: 1,
+				});
+
+				const [bucket] = Object.values(service.getAgentSessionMetricsBuffer());
+				expect(Object.hasOwn(bucket.sessions_by_source, source)).toBe(true);
+				expect(bucket.sessions_by_source[source]['thread-1']).toMatchObject(firstTurnMetrics);
+				expect(Object.hasOwn(Object.prototype, 'thread-1')).toBe(false);
+				expect(Object.hasOwn(Object, 'thread-1')).toBe(false);
+			},
+		);
 
 		test('should not buffer when telemetry is off', () => {
 			telemetryProxy.isEnabled.mockReturnValue(false);

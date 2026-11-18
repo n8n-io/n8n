@@ -8,10 +8,12 @@ import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
-const flags = vi.hoisted(() => ({ skills: false }));
+const flags = vi.hoisted(() => ({ skills: false, preferences: true, managePreferences: false }));
 
 vi.mock('../context.utils', () => ({
 	isContextSkillsEnabled: () => flags.skills,
+	isContextPreferencesEnabled: () => flags.preferences,
+	canManageContextPreferences: () => flags.managePreferences,
 }));
 const showErrorMock = vi.fn();
 
@@ -31,6 +33,8 @@ describe('SettingsContextView', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		flags.skills = false;
+		flags.preferences = true;
+		flags.managePreferences = false;
 		push.mockClear();
 		showErrorMock.mockClear();
 	});
@@ -94,6 +98,35 @@ describe('SettingsContextView', () => {
 		await userEvent.click(getByTestId('settings-context-preferences-row'));
 
 		expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+	});
+
+	describe('with preferences off', () => {
+		beforeEach(() => {
+			flags.preferences = false;
+		});
+
+		it('hides the preferences row from a member and reads no count', async () => {
+			const contextStore = mockedStore(useContextStore);
+			const { queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(queryByTestId('settings-context-preferences-row')).toBeNull();
+			expect(contextStore.fetchPreferenceCount).not.toHaveBeenCalled();
+		});
+
+		it('shows an admin a disabled row that opens the switch', async () => {
+			flags.managePreferences = true;
+			const contextStore = mockedStore(useContextStore);
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			const row = getByTestId('settings-context-preferences-row');
+
+			expect(row).toHaveTextContent('Disabled');
+			expect(contextStore.fetchPreferenceCount).not.toHaveBeenCalled();
+
+			await userEvent.click(row);
+			expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+		});
 	});
 
 	describe('with the skills module on', () => {

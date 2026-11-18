@@ -6,8 +6,11 @@ import {
 	type TransactionRunner,
 	type User,
 } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import { PROJECT_ROOT } from 'n8n-workflow';
+
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 
 import { FolderContentService, type FolderContentHandler } from '../folder-content.service';
 import { FolderService } from '../folder.service';
@@ -111,29 +114,51 @@ describe.each(['workflow', 'agent'] as const)('%s folder operations', (resourceT
 		);
 	});
 
-	it('rejects a relocation into the other resource tree before writes', async () => {
-		repository.findOneOrFailFolderInProject.mockImplementation(
-			async (id, _projectId, expectedType) => {
-				const result = folder(
-					id,
-					null,
-					id === 'target' ? (resourceType === 'agent' ? 'workflow' : 'agent') : resourceType,
-				);
+	it.each(['create', 'move', 'relocate'] as const)(
+		'rejects %s into the other resource tree as not found before writes',
+		async (operation) => {
+			repository.findOneOrFailFolderInProject.mockImplementation(
+				async (id, _projectId, expectedType) => {
+					const result = folder(
+						id,
+						null,
+						id === 'target' ? (resourceType === 'agent' ? 'workflow' : 'agent') : resourceType,
+					);
 
-				if (expectedType && result.resourceType !== expectedType) {
-					throw new Error('Folder not found');
+					if (expectedType && result.resourceType !== expectedType) {
+						throw new Error('Folder not found');
+					}
+
+					return result;
+				},
+			);
+
+			const result = (async () => {
+				if (operation === 'create') {
+					return await service.createFolder(
+						{ name: 'New folder', parentFolderId: 'target', resourceType },
+						'project',
+					);
 				}
 
-				return result;
-			},
-		);
+				if (operation === 'move') {
+					return await service.updateFolder('source', 'project', { parentFolderId: 'target' });
+				}
 
-		await expect(
-			service.deleteFolder(user, 'source', 'project', { transferToFolderId: 'target' }),
-		).rejects.toThrow('Could not find the folder: target');
+				return await service.deleteFolder(user, 'source', 'project', {
+					transferToFolderId: 'target',
+				});
+			})();
 
-		expect(transactions.run).not.toHaveBeenCalled();
-	});
+			await expect(result).rejects.toThrow(
+				operation === 'relocate' ? NotFoundError : FolderNotFoundError,
+			);
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.update).not.toHaveBeenCalled();
+			expect(transactions.run).not.toHaveBeenCalled();
+		},
+	);
 
 	it('rejects relocation into a descendant', async () => {
 		repository.findOneOrFailFolderInProject.mockImplementation(async (id) => folder(id));
