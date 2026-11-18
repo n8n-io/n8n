@@ -38,12 +38,13 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 		escape,
 		isSqlite,
 	}: MigrationContext) {
-		const [kind, agentId, ownerProjectId, isGlobal, name] = [
+		const [kind, agentId, ownerProjectId, isGlobal, name, description] = [
 			'kind',
 			'agentId',
 			'ownerProjectId',
 			'isGlobal',
 			'name',
+			'description',
 		].map((columnName) => escape.columnName(columnName));
 		const falseValue = isSqlite ? '0' : 'FALSE';
 
@@ -56,7 +57,7 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 						'Name of a shared collection, unique in its project. NULL for an agent collection',
 					),
 				column('description').text.comment(
-					'Tells the agent when to use a shared collection. The service requires it for a shared collection',
+					'Tells the agent when to use a shared collection. Required for a shared collection',
 				),
 				column('slug')
 					.varchar(24)
@@ -101,11 +102,11 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			// The service checks the description of a shared collection: '' would pass a NOT NULL here.
+			// The service also rejects an empty description and checks its length.
 			.withCheck(
 				`CHK_${tablePrefix}knowledge_collection_kind`,
 				`(${kind} = 'agent' AND ${agentId} IS NOT NULL AND ${ownerProjectId} IS NULL AND ${isGlobal} = ${falseValue})` +
-					` OR (${kind} = 'shared' AND ${agentId} IS NULL AND ${ownerProjectId} IS NOT NULL AND ${name} IS NOT NULL)`,
+					` OR (${kind} = 'shared' AND ${agentId} IS NULL AND ${ownerProjectId} IS NOT NULL AND ${name} IS NOT NULL AND ${description} IS NOT NULL)`,
 			);
 	}
 

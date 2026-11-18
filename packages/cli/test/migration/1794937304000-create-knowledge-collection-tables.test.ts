@@ -286,10 +286,17 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 					({ agentId }) => ({ kind: 'agent', agentId, isGlobal: true }),
 				],
 				['an agent collection without an agent', () => ({ kind: 'agent' })],
-				['a shared collection without a project', () => ({ kind: 'shared', name: 'Handbook' })],
+				[
+					'a shared collection without a project',
+					() => ({ kind: 'shared', name: 'Handbook', description: 'HR' }),
+				],
 				[
 					'a shared collection without a name',
-					({ projectId }) => ({ kind: 'shared', ownerProjectId: projectId }),
+					({ projectId }) => ({ kind: 'shared', ownerProjectId: projectId, description: 'HR' }),
+				],
+				[
+					'a shared collection without a description',
+					({ projectId }) => ({ kind: 'shared', ownerProjectId: projectId, name: 'Handbook' }),
 				],
 				[
 					'a shared collection with an agent',
@@ -297,6 +304,7 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 						kind: 'shared',
 						ownerProjectId: projectId,
 						name: 'Handbook',
+						description: 'HR',
 						agentId,
 					}),
 				],
@@ -316,13 +324,6 @@ describe('CreateKnowledgeCollectionTables migration', () => {
 				await expect(insertRow('knowledge_collection', row)).rejects.toThrow(
 					`CHK_${context.tablePrefix}knowledge_collection_kind`,
 				);
-			});
-
-			// The service checks the description: an empty string would pass a NOT NULL anyway.
-			it('accepts a shared collection without a description', async () => {
-				const id = await insertSharedCollection(await insertProject(), { description: null });
-
-				expect(await countRows('knowledge_collection', 'id', id)).toBe(1);
 			});
 
 			it('accepts a global shared collection', async () => {

@@ -852,7 +852,7 @@ describe('ImportService', () => {
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
 		});
 
-		it('should reject a 2.49.0 archive with agent_files rows in knowledgefile.jsonl before any insert', async () => {
+		it('should reject a 2.49.0 archive before any insert', async () => {
 			// 2.48 and 2.49 wrote the `agent_files` rows to a file named after the entity class of that
 			// time. The class `KnowledgeFile` now maps `knowledge_file`, so only this check keeps them out.
 			// The last migration of 2.49.0 against the migration of the collection tables.

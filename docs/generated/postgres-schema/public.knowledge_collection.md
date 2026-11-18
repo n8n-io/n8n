@@ -7,7 +7,7 @@
 | agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Agent that owns a private collection. NULL for a shared collection |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
-| description | text |  | true |  |  | Tells the agent when to use a shared collection. The service requires it for a shared collection |
+| description | text |  | true |  |  | Tells the agent when to use a shared collection. Required for a shared collection |
 | id | varchar(16) |  | false | [public.agent_knowledge_dependency](public.agent_knowledge_dependency.md) [public.knowledge_file](public.knowledge_file.md) [public.knowledge_vector_store](public.knowledge_vector_store.md) [public.shared_knowledge_collection](public.shared_knowledge_collection.md) |  | Application-generated n8n nano ID |
 | isGlobal | boolean | false | false |  |  | Every agent on the instance can use a global collection |
 | kind | varchar(16) |  | false |  |  | 'shared' (belongs to a project) or 'agent' (the private collection of one agent) |
@@ -20,7 +20,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_knowledge_collection_kind | CHECK | CHECK (((((kind)::text = 'agent'::text) AND ("agentId" IS NOT NULL) AND ("ownerProjectId" IS NULL) AND ("isGlobal" = false)) OR (((kind)::text = 'shared'::text) AND ("agentId" IS NULL) AND ("ownerProjectId" IS NOT NULL) AND (name IS NOT NULL)))) |
+| CHK_knowledge_collection_kind | CHECK | CHECK (((((kind)::text = 'agent'::text) AND ("agentId" IS NOT NULL) AND ("ownerProjectId" IS NULL) AND ("isGlobal" = false)) OR (((kind)::text = 'shared'::text) AND ("agentId" IS NULL) AND ("ownerProjectId" IS NOT NULL) AND (name IS NOT NULL) AND (description IS NOT NULL)))) |
 | FK_2db6cab650ebf156debd84c3772 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_3dbb6554cfa9ce504a94274c64f | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_9a2316d690a0d7beac2fce60fc6 | FOREIGN KEY | FOREIGN KEY ("ownerProjectId") REFERENCES project(id) ON DELETE CASCADE |
