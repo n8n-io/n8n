@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fb30b1b6ca962d::t_70786c62160901 1252-1253
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.vue
+  s_fb30b1b6ca962d::t_70786c62160901 315,332-342,377
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_fb30b1b6ca962d::t_cd5be962db79cb 835,865-867,902-904
+  s_fb30b1b6ca962d::t_a0efe8a1f610ca 58-60,680,703,707,711,715,748,780,862,899,1107,1148-1149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6e0a8be3a0e42912d19960ba044eb45e77813b2",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

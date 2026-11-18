@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.test.ts
+  s_1ab0d0ded9ae37::t_fc6b0f16ef79fd 206-247
+  s_1ab0d0ded9ae37::t_47e1a5bdaee477 7,9
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useEvaluationsLicense.test.ts
+  s_1ab0d0ded9ae37::t_7cc1d2a708c7e2 10,13-19
+  s_1ab0d0ded9ae37::t_237a6561483173 41
+  s_1ab0d0ded9ae37::t_14ca88ca9af4e3 109-120
+  s_3cfae5a580bc4d::t_a60994f0e635c4 20
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.ts
+  s_1ab0d0ded9ae37::t_d60dcb6d9434f6 210
+  s_1ab0d0ded9ae37::t_759a0ab9200c0e 99
+  s_1ab0d0ded9ae37::t_879a77cc264e6b 319-329
+  s_1ab0d0ded9ae37::t_7f678a739b444f 28
+  s_1ab0d0ded9ae37::t_a4e72e9c3bdcf6 231
+  s_1ab0d0ded9ae37::t_3fda1def9b7412 97-98
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useEvaluationsLicense.ts
+  s_1ab0d0ded9ae37::t_30c2f5854548bd 2,10,15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8ce5c771ed6a3092cb358eaa785c0d2b075922c4",
+  "prompts": {},
+  "sessions": {
+    "s_1ab0d0ded9ae37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5bd97a2-590f-460b-b9a4-b4271e4a51ed",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_3cfae5a580bc4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d6c3dbe-4c51-44f0-a312-dcd227e636a5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

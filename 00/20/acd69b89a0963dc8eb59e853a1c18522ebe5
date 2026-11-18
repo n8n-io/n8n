@@ -1,0 +1,53 @@
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_51905c85750cff::t_9fae45cbfb6e58 30-33
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/message-event-bus-destination-sentry.ee.test.ts
+  s_51905c85750cff::t_4ca8b3dce409aa 1,6,36-37,39-45
+  s_51905c85750cff::t_9fae45cbfb6e58 4,38
+packages/cli/src/abstract-server.ts
+  s_51905c85750cff::t_44534b479fa614 124
+packages/core/src/observability/tracing/span-sampling.ts
+  s_51905c85750cff::t_30424e395ca89f 7
+  s_51905c85750cff::t_a41f0a400ab9e3 81
+  s_51905c85750cff::t_c8a4277bbff4e7 63
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee.ts
+  s_51905c85750cff::t_b6b87264fcf25b 53-54
+packages/core/src/observability/tracing/__tests__/span-sampling.test.ts
+  s_51905c85750cff::t_497236e280a86d 15,23
+  s_51905c85750cff::t_c33bd2f952f91d 72-74,108,129,207,238
+pnpm-workspace.yaml
+  s_51905c85750cff::t_9c916e20ef0201 335-338
+packages/cli/src/task-runners/task-broker/task-broker-server.ts
+  s_51905c85750cff::t_0a23eef725b80d 171
+packages/core/src/errors/error-reporter.ts
+  s_51905c85750cff::t_983566f35e6a6f 263-266
+  s_51905c85750cff::t_e494a5d52e99f1 307-309
+  s_51905c85750cff::t_0fa620ddfe62ec 82-101
+  s_51905c85750cff::t_6dd6640193d74f 6
+  s_51905c85750cff::t_99728a33fa0abe 56
+  s_51905c85750cff::t_9ec617579859fe 293-294,297
+  s_51905c85750cff::t_2bc3fe80e72baf 246
+packages/@n8n/task-runner/src/config/sentry-config.ts
+  s_51905c85750cff::t_9fae45cbfb6e58 10-13
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_51905c85750cff::t_b711ba65c12673 418-432,436-439,441,445-460,464-486
+  s_51905c85750cff::t_c8bf2225eb8151 47-50
+  s_51905c85750cff::t_7838fd2bff7728 440,442-444
+  s_51905c85750cff::t_fe87fac6c548cc 4-5
+  s_51905c85750cff::t_9fae45cbfb6e58 433-435,461-463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0020acd69b89a0963dc8eb59e853a1c18522ebe5",
+  "prompts": {},
+  "sessions": {
+    "s_51905c85750cff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "011d2e03-ed32-4a10-9e34-0553b00a0c1c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

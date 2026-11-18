@@ -1,0 +1,27 @@
+packages/core/src/execution-engine/routing-node.ts
+  s_1374dc7f24df46::t_f2f3b1c43ce347 257-258,264
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_1374dc7f24df46::t_ba279ade617978 2942,2949-2964
+  s_1374dc7f24df46::t_570aa1f653316b 2965-2966
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f164249147a74cce745d03f6efa4874723ec15b9",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1374dc7f24df46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff88f298-6ca3-4870-a374-95e01a758781",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/quality/testing/playwright/pages/settings-promotions-page.ts
+  s_20bc5da4e9fe52::t_dafb186d1ab5bd 1-25,27-60
+  s_20bc5da4e9fe52::t_4dd8ef8f771a72 26
+packages/quality/testing/playwright/pages/n8nPage.ts
+  s_20bc5da4e9fe52::t_18345935f6fe1d 106,199
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environments.spec.ts
+  s_20bc5da4e9fe52::t_e83b35c972b73a 9-13
+  s_20bc5da4e9fe52::t_ae2ef3f16b7095 1-8,14-20,34,53,64-65
+  s_20bc5da4e9fe52::t_98801c308903c7 21
+  ai_agent 22-33,35-52,54-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9e9392322087b3da70e6b21a6dd3a5e8bd54532",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

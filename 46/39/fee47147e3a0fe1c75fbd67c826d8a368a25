@@ -1,0 +1,19 @@
+packages/cli/src/external-hooks.ts
+  s_5922ddbcc4eb4a::t_dbacb40f153dae 48-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4639fee47147e3a0fe1c75fbd67c826d8a368a25",
+  "prompts": {},
+  "sessions": {
+    "s_5922ddbcc4eb4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2402e5e-afcd-4025-9719-07a1d3ebf9b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

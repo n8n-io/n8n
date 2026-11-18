@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_0d092cfbae12ea::t_9b5b64620c8a3f 51-54
+packages/@n8n/cli/docs/commands/package.md
+  s_0d092cfbae12ea::t_692d455d87b890 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88e72faeebdbedd9c50e615eb79bbd528e697273",
+  "prompts": {},
+  "sessions": {
+    "s_0d092cfbae12ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f70a6-c35c-7073-b95a-ccb62d7bc9ec",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/cli/src/modules/n8n-packages/entities/skill/__tests__/skill-import.types.test.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 2,4,8,15-19,22,25,32-45
+  s_127a9acd7ce7b7::t_51f740a68e403d 46-47
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 172-178
+packages/cli/src/modules/n8n-packages/entities/skill/skill-import.types.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 1-2,16-20,23,26-27,40-41,43-65
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 349,777-833,864-882
+  s_127a9acd7ce7b7::t_eaead1e95b56a3 883
+packages/cli/src/modules/agents/utils/agent-definition.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 33-34
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 33,360,372-378
+  s_127a9acd7ce7b7::t_88e0157a181c4a 379-380
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 125
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 520,526-531
+packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
+  s_127a9acd7ce7b7::t_5090c35ca99a69 1,4,52,62,94,104-105,125-128,131,161-188,298-306,309-310,320-324
+  s_127a9acd7ce7b7::t_0e341e58ca3b27 325-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f5f3b54ef07f58141a2230e4ece4cdb1e603e77",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

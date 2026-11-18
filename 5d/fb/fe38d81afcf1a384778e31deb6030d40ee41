@@ -1,0 +1,21 @@
+packages/modules/apps/frontend/src/views/AppsListView.test.ts
+  s_55fab4d6e7841e::t_83bc0d811415f4 59
+packages/modules/apps/frontend/src/components/AppCard.test.ts
+  s_55fab4d6e7841e::t_a10a6eca859f63 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5dfbfe38d81afcf1a384778e31deb6030d40ee41",
+  "prompts": {},
+  "sessions": {
+    "s_55fab4d6e7841e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75b5cb9b-ed1e-4b91-9cb8-d26a0fbb9ba9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

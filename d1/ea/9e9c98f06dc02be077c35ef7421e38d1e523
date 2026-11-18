@@ -1,0 +1,43 @@
+packages/@n8n/api-types/src/dto/evaluations/llm-judge-providers.ts
+  s_db547d1f734bf2::t_970c5c49fa1c4f 43,45,48
+packages/@n8n/nodes-langchain/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.ts
+  s_db547d1f734bf2::t_c5aaab747754d8 9,29,33,59
+packages/@n8n/nodes-langchain/credentials/AzureOpenAiApi.credentials.ts
+  s_db547d1f734bf2::t_e7aff3f184ed1b 6,17,21,55
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_db547d1f734bf2::t_03ee683e023609 19,30,32,47-55
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_db547d1f734bf2::t_5c362d81b985ed 30
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_db547d1f734bf2::t_dd5b6a8dcaccf7 40,49,66-73,292,296
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/LmChatAzureOpenAi.node.test.ts
+  s_db547d1f734bf2::t_8dcbdf6c2d8ff0 73-74,89,281
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/error-handling.test.ts
+  s_db547d1f734bf2::t_25137cf97b27ad 94-96
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_db547d1f734bf2::t_737d79130c6b46 63,77
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_db547d1f734bf2::t_911ffa8c80a851 30
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/properties.ts
+  s_db547d1f734bf2::t_034e80579b43f7 57,68,89,114
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_db547d1f734bf2::t_493bf27951f5c1 45
+packages/@n8n/utils/src/search/snapshots/toplevel.snapshot.json
+  s_db547d1f734bf2::t_2653f1d66269f7 11621,11623,11643-11650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1ea9e9c98f06dc02be077c35ef7421e38d1e523",
+  "prompts": {},
+  "sessions": {
+    "s_db547d1f734bf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd28e799-2a21-45a0-b4f6-a0697e5725e2",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

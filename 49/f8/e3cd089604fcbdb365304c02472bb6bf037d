@@ -1,0 +1,35 @@
+packages/modules/page/demo/README.md
+  ai_agent 1-33
+packages/modules/page/demo/manifest.json
+  ai_agent 1-34
+packages/modules/page/demo/pages/daily-sales-report.md
+  ai_agent 1-9
+packages/modules/page/demo/workflows/lead-capture-to-crm.json
+  ai_agent 1-300
+packages/modules/page/demo/workflows/support-ticket-triage.json
+  ai_agent 1-451
+packages/modules/page/demo/workflows/new-employee-onboarding.json
+  ai_agent 1-240
+packages/modules/page/demo/workflows/sync-orders-to-crm.json
+  ai_agent 1-91
+packages/modules/page/demo/seed.mjs
+  ai_agent 1-173
+packages/modules/page/demo/workflows/website-uptime-monitor.json
+  ai_agent 1-310
+packages/modules/page/demo/workflows/ai-inbox-assistant.json
+  ai_agent 1-381
+packages/modules/page/demo/workflows/invoice-payment-reminders.json
+  ai_agent 1-273
+packages/modules/page/demo/pages/orders-runbook.md
+  ai_agent 1-15
+packages/modules/page/demo/workflows/daily-sales-report.json
+  ai_agent 1-40
+packages/modules/page/demo/workflows/refund-approval-api.json
+  ai_agent 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49f8e3cd089604fcbdb365304c02472bb6bf037d",
+  "prompts": {}
+}

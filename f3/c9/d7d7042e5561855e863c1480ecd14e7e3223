@@ -1,0 +1,83 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  h_435b1d7d3e52c0 382,617-629
+packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source.entity.ts
+  h_435b1d7d3e52c0 33-34
+  s_a073fa9d8a702c::t_43af35cb353df3 31
+  s_a073fa9d8a702c::t_f2b05b185b652c 32
+packages/@n8n/inbound-auth/src/contracts.ts
+  h_435b1d7d3e52c0 208-209
+packages/cli/test/migration/1793267886562-add-first-authenticated-at-to-trusted-source.test.ts
+  s_a073fa9d8a702c::t_760ea7e4b8662b 1-157
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_a073fa9d8a702c::t_ffeaa119241d62 305-308,316
+  s_a073fa9d8a702c::t_baffcec34e209e 6118-6129
+packages/@n8n/db/src/migrations/sqlite/1793267886562-AddFirstAuthenticatedAtToTrustedSource.ts
+  s_a073fa9d8a702c::t_e5cf8ae06bb050 1-11
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication-pipeline.test.ts
+  s_a073fa9d8a702c::t_c55b7058b921ea 2,15
+  s_a073fa9d8a702c::t_b7c048de56f470 40
+  s_a073fa9d8a702c::t_fa2ee3d63a3bf2 126-189
+  s_a073fa9d8a702c::t_40ff8691880344 54-55,61-62
+packages/@n8n/inbound-auth/src/trusted-source.ts
+  h_435b1d7d3e52c0 86
+packages/cli/src/modules/inbound-auth-core/authentication-pipeline.ts
+  h_435b1d7d3e52c0 13,23-24,39-43,64-78
+  s_a073fa9d8a702c::t_d65a9e0207b4a9 3,11-12
+  s_a073fa9d8a702c::t_857f0f9a9ba785 79
+packages/cli/src/events/maps/relay.event-map.ts
+  h_435b1d7d3e52c0 55,1075
+  h_435b1d7d3e52c0 1076
+packages/@n8n/telemetry/src/events/trusted-sources.ts
+  s_a073fa9d8a702c::t_44cd4e8ca626e7 66-76
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_a073fa9d8a702c::t_6397b15c93e921 395-428,433-439
+  s_a073fa9d8a702c::t_e8f3295524bc5d 429-432
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  h_435b1d7d3e52c0 114-120,354
+  s_a073fa9d8a702c::t_d5a26d8038e49b 110-113
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  h_435b1d7d3e52c0 91-101
+  s_a073fa9d8a702c::t_7fa31ddc4841bb 90
+packages/cli/src/modules/inbound-auth-core/__tests__/oauth2-bearer.driver.test.ts
+  s_a073fa9d8a702c::t_21f8d31b11137b 67
+packages/@n8n/db/src/migrations/common/1793267886562-AddFirstAuthenticatedAtToTrustedSource.ts
+  h_435b1d7d3e52c0 1-2,4-13
+  s_a073fa9d8a702c::t_ef00f7d159faf8 3
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.service.test.ts
+  s_a073fa9d8a702c::t_66436b5b4ee057 66
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication.service.test.ts
+  s_a073fa9d8a702c::t_a765735dd39402 51
+docs/generated/postgres-schema/README.md
+  h_435b1d7d3e52c0 155,1934
+docs/generated/postgres-schema/public.trusted_source.md
+  h_435b1d7d3e52c0 12,61
+docs/generated/postgres-schema/public.trusted_source_identity.md
+  h_435b1d7d3e52c0 62
+docs/generated/sqlite-schema/README.md
+  h_435b1d7d3e52c0 155,1922
+docs/generated/sqlite-schema/trusted_source.md
+  h_435b1d7d3e52c0 9,23,63
+docs/generated/sqlite-schema/trusted_source_identity.md
+  h_435b1d7d3e52c0 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3c9d7d7042e5561855e863c1480ecd14e7e3223",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a073fa9d8a702c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "809324ae-b7ec-4c6e-a695-c965041caa84",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

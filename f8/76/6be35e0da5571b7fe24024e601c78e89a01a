@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_5f0b8b63fb02ca::t_6bd789f0dc8c35 15,22-26,265-268,270-272,274-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8766be35e0da5571b7fe24024e601c78e89a01a",
+  "prompts": {},
+  "sessions": {
+    "s_5f0b8b63fb02ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a540-b6f2-7653-aeb8-9213c2e9e6df",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

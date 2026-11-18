@@ -1,0 +1,39 @@
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_395cb384d598bb::t_6b14c0b29bddfd 301-307,316,330-333
+  s_395cb384d598bb::t_3f8612ecb7ca49 18,274-276,299-300,308-315,317-318,328-329,334-337,465-474,476-494,496,498-513,515-516
+  s_173a17b907efa1::t_64d13713cb813f 475,495,497,514
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_395cb384d598bb::t_f2d0b3d40486b4 368,372
+  s_395cb384d598bb::t_de928bfc11469d 393-398
+  s_395cb384d598bb::t_65834082fa765f 19,179,221-224,345-357,359-367,388-392,408,420,423,432-437,445-449
+  s_395cb384d598bb::t_02b00c0d87dd99 439-444
+  s_173a17b907efa1::t_38c71551869a9b 358
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_395cb384d598bb::t_3f8612ecb7ca49 4,13-14,430-436,438-470,472,474-480,483
+  s_395cb384d598bb::t_f2d0b3d40486b4 437
+  s_395cb384d598bb::t_1200ad337504fe 481-482,484-485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6f6b1a051f0b6b222de5c55aa851d2c395143734",
+  "prompts": {},
+  "sessions": {
+    "s_173a17b907efa1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f659-a1bf-7fe2-b9e2-d9a60123cd80",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_395cb384d598bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f65a-77b6-7822-8f50-27a7712ae668",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

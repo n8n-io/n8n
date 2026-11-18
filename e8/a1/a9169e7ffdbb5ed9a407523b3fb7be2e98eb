@@ -1,0 +1,32 @@
+packages/cli/src/modules/oauth-server/database/repositories/oauth-grant.repository.ts
+  s_c5924177b26556::t_4570724504e776 12
+  s_c5924177b26556::t_fd3dd52543c2bf 3,16-23,42-43
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_c5924177b26556::t_fd3dd52543c2bf 25
+packages/cli/src/modules/ldap.ee/helpers.ee.ts
+  s_c5924177b26556::t_fd3dd52543c2bf 1,177,243-244,246-248
+  s_c5924177b26556::t_0f31a0b69420d0 245
+packages/cli/src/modules/ldap.ee/__tests__/helpers.test.ts
+  s_c5924177b26556::t_fd3dd52543c2bf 101,111-112,143,190,229,271,309
+  s_c5924177b26556::t_4570724504e776 144-145,191-192,230-231,272-273,310-311
+packages/cli/src/modules/oauth-server/__tests__/oauth-grant.service.integration.test.ts
+  s_c5924177b26556::t_0735ec76d30a78 2,4,13,60,76,130,132,147,193-195,285-291,293,298-304,308-309,335,341,359,361,385,389-391
+  s_c5924177b26556::t_0f31a0b69420d0 91
+  s_c5924177b26556::t_4570724504e776 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8a1a9169e7ffdbb5ed9a407523b3fb7be2e98eb",
+  "prompts": {},
+  "sessions": {
+    "s_c5924177b26556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a8b-b624-7770-93c3-9d4ab55dd05d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

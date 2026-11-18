@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_ba2ae60894487d::t_1f84e5e9bda3cc 2
+  s_ba2ae60894487d::t_f22d307507348e 129
+  s_ba2ae60894487d::t_d64494bc9cde08 144
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.ts
+  s_ba2ae60894487d::t_12af497f755160 8
+  s_ba2ae60894487d::t_190f66c85b2d62 20-25
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_ba2ae60894487d::t_cac61b03404c21 46-52
+  s_ba2ae60894487d::t_6a63c6b3c58e75 171
+  s_ba2ae60894487d::t_33bd51089ca006 292
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.test.ts
+  s_ba2ae60894487d::t_0c38e872911859 13-17
+  s_ba2ae60894487d::t_6a240d88971b0a 59-61,63-64,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "144b609c2fc242e02bb9b6bf004e3cf456997cfd",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

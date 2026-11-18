@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOptions.ts
+  s_9b00bc4d58fdcd::t_ba505dfe813b05 2,28-31,50,58-59,62,64-69,75-95,105,111
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.test.ts
+  s_9b00bc4d58fdcd::t_11d248067265b9 160,180-181,183-192,225-238,240-242,303,331-354,360
+  s_9b00bc4d58fdcd::t_714f11f78a909f 224
+  s_9b00bc4d58fdcd::t_fe8f7fc76647e9 295-302,304-313,315-330
+  s_9b00bc4d58fdcd::t_07597040fd4b3b 314
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9b00bc4d58fdcd::t_ba505dfe813b05 1052-1053
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialOptionsInput.vue
+  s_9b00bc4d58fdcd::t_f7d43ea1a8d4ee 105
+  s_9b00bc4d58fdcd::t_fe8f7fc76647e9 2-9
+  s_9b00bc4d58fdcd::t_deb7f2b9120597 40-45
+  s_9b00bc4d58fdcd::t_ba505dfe813b05 30-39,46,50-60,81,83-85,98-104,106-107,110,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8648832af6aa399a2a47b0021121c7b1fbeff5d",
+  "prompts": {},
+  "sessions": {
+    "s_9b00bc4d58fdcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1207a-0bd9-7c50-8eb8-14d91fa82095",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

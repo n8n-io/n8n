@@ -1,0 +1,25 @@
+packages/cli/test/integration/workflows/durable-poller-gate.test.ts
+  s_5c28558b5e8d58::t_952857c4dc2c26 116-137
+packages/cli/src/workflows/triggers/durable-poller-gate.service.ts
+  s_5c28558b5e8d58::t_cba0c38f6ddf65 5,14-20,23,29,52,55-59,61,63,65-74,78-86,96-97
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_5c28558b5e8d58::t_391d72ccb40803 28-32
+packages/cli/src/workflows/triggers/__tests__/durable-poller-gate.service.test.ts
+  s_5c28558b5e8d58::t_7ac7668e6eced4 207-241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ea84fd510f819f883bec6722b4b9f2653f1a8a53",
+  "prompts": {},
+  "sessions": {
+    "s_5c28558b5e8d58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdd8402-ff44-4aa2-a4cd-54dcb8c3a3e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

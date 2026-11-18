@@ -1,0 +1,49 @@
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_199eb212df495c::t_b95f0167a30bb8 3-4,135,144
+  s_199eb212df495c::t_04a4d0d11c322d 109-134,136-143
+packages/workflow/src/workflow-data-proxy.ts
+  s_199eb212df495c::t_04a4d0d11c322d 1192-1198
+  s_1850a56fc8119e::t_2b9953a6e853a5 1115,1117-1119,1121-1127,1137,1144,1147-1148,1158,1162,1180
+  s_1850a56fc8119e::t_dabb559cbfeeb7 47-51
+  s_199eb212df495c::t_3eab88cc0dd139 74-83,1083-1108,1110-1114,1116,1120,1128-1136,1138-1143,1145-1146,1149-1153,1156-1157,1161,1168,1188,1203,1216-1228,1231
+  s_1850a56fc8119e::t_84721a5b77c1a7 68-73
+packages/workflow/test/workflow-data-proxy-paired-item-memo.test.ts
+  s_1850a56fc8119e::t_f3f5585a49aeeb 8,11-12,15,19-24,29-33,44-45
+packages/workflow/test/fixtures/paired-item-pagination.ts
+  s_199eb212df495c::t_04a4d0d11c322d 1-7
+  s_199eb212df495c::t_b95f0167a30bb8 8-96
+packages/workflow/src/workflow-data-proxy-paired-item-memo.ts
+  s_1850a56fc8119e::t_05a620ca45b05f 3,7-10,18-20,23-25
+packages/workflow/test/workflow-data-proxy.test.ts
+  s_1850a56fc8119e::t_c366e526f88090 817,824,828
+  s_199eb212df495c::t_c5096726cc78b6 825-827,2458
+  s_1850a56fc8119e::t_9cc26daf5a10d3 6
+  s_1850a56fc8119e::t_673296cf71173a 810,813-816,846-847
+  s_199eb212df495c::t_a940877e4f5d6f 819-823,829,2559
+  s_199eb212df495c::t_b95f0167a30bb8 8,811-812,818
+  s_199eb212df495c::t_14a72b31ee369b 830-845,2548-2558,2560-2564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0a4bf269f06529589a92d110ec62652ad082e21",
+  "prompts": {},
+  "sessions": {
+    "s_1850a56fc8119e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a744648-d382-4362-aac5-7c5fbd63818b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_199eb212df495c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18cae-e7d2-7911-a886-88306f8e592f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

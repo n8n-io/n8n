@@ -1,0 +1,19 @@
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  s_8d63f5eacd2966::t_124c3bb9d6b785 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c883243d4516d4fe3c3c1e4acb6094d1726080b6",
+  "prompts": {},
+  "sessions": {
+    "s_8d63f5eacd2966": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d37ed0c0-4688-4375-8cbf-1937e54032fd",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

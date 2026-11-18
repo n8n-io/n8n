@@ -1,0 +1,42 @@
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_c3bfc5c0c19207::t_02df43e733d2af 18,24,45,60,101,117,132,140,166,174,375,382,388,401,414,427-428,432-433,441,451,453
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_c3bfc5c0c19207::t_dde38a70acc729 201-202,206,212
+  s_c3bfc5c0c19207::t_a40f7bc0f19e9c 86,99,111
+  s_c3bfc5c0c19207::t_9d7473842bce03 28,30-34,36,45,51,58,65
+  s_c3bfc5c0c19207::t_08971a6c293ae1 130-131
+packages/core/src/execution-engine/index.ts
+  s_c3bfc5c0c19207::t_b8dac176e11de1 100-101
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_c3bfc5c0c19207::t_4cecd1b3ef928b 504
+  s_c3bfc5c0c19207::t_6a4b0890472717 7
+  s_c3bfc5c0c19207::t_dc62acaf95dc11 538
+  s_c3bfc5c0c19207::t_35c44ac040c5dd 326
+  s_c3bfc5c0c19207::t_f6d444e1982727 335
+  s_c3bfc5c0c19207::t_265354c3112bcf 345
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_c3bfc5c0c19207::t_31c690b4203730 1499
+packages/core/src/execution-engine/workflow-active-triggers-state.ts
+  s_c3bfc5c0c19207::t_82dbc36a53c838 1-24
+packages/cli/src/active-workflow-manager.ts
+  s_c3bfc5c0c19207::t_577e145624e639 87
+  s_c3bfc5c0c19207::t_31a6f6c8257abd 132,151,463,664,1108,1110,1157
+  s_c3bfc5c0c19207::t_938009bb511e5d 16
+  s_c3bfc5c0c19207::t_01a55d78b52d1c 681
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b41b16dbba62c77f84689fdb2882c2d2f458b167",
+  "prompts": {},
+  "sessions": {
+    "s_c3bfc5c0c19207": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6634efc3-36d2-4bc1-8af2-d85a59f18d5e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

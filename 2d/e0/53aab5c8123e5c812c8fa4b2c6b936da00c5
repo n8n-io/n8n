@@ -1,0 +1,23 @@
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_28d43d3741c173::t_067923977a829a 1270-1313
+packages/cli/src/public-api/v1/handlers/credentials/credentials.middleware.ts
+  s_28d43d3741c173::t_7d1f8370f59f14 25,33-40
+  s_28d43d3741c173::t_1f476594697e11 120-122
+  s_28d43d3741c173::t_62e9bdf3d99c5d 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2de053aab5c8123e5c812c8fa4b2c6b936da00c5",
+  "prompts": {},
+  "sessions": {
+    "s_28d43d3741c173": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db8e5adf-ba6f-40fb-87ca-e03c2570a9d8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/credentials/test/CiscoUmbrellaApi.credentials.test.ts
+  s_2e1fa95fc44f8f::t_dfcf5a9fed1530 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfd180f6739c3c60e92a896443020697122999bb",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

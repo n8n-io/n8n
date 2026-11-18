@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useDynamicCredentialsStatus.test.ts
+  s_7d0d025d53633e::t_df47cc81479827 402,448,483,547
+packages/frontend/editor-ui/src/features/credentials/composables/oauthCallback.ts
+  s_7d0d025d53633e::t_df47cc81479827 18-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf5a7b1cba06b5f707feaa8a6a7d71affe58d52f",
+  "prompts": {},
+  "sessions": {
+    "s_7d0d025d53633e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f80110d2-fcad-4b01-8d98-9e11543451d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

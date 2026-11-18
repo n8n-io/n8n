@@ -1,0 +1,36 @@
+packages/@n8n/agents/src/runtime/model/native-tool-deferral/anthropic.ts
+  s_7f94f638060727::t_531f14529d7749 7-9,25-29,33-36
+packages/@n8n/agents/src/runtime/model/native-tool-deferral.ts
+  s_7f94f638060727::t_531f14529d7749 1,15,18-40,97-102
+  s_7f94f638060727::t_6d7ac4e9c1fe23 16-17
+  s_e99de54a53d3e4::t_c4b806a562b6f9 103
+packages/@n8n/agents/src/runtime/model/native-tool-deferral/openai.ts
+  s_7f94f638060727::t_531f14529d7749 9-11,28-32,36
+  s_7f94f638060727::t_6d7ac4e9c1fe23 27
+packages/@n8n/agents/docs/prompt-caching.md
+  s_7f94f638060727::t_531f14529d7749 71-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96dd5cfb21dbac549864e649ccb8a4caefd916a5",
+  "prompts": {},
+  "sessions": {
+    "s_7f94f638060727": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1209b-fb8f-7f92-8296-d5f5a456bc8c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

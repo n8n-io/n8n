@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_5da2fe073f2f3a::t_7ab0788cd7ccf2 14-27
+  s_5da2fe073f2f3a::t_d4961513dc583b 41
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_5da2fe073f2f3a::t_a855207cc5a4f4 139
+  s_5da2fe073f2f3a::t_d4961513dc583b 23-26,32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8aa6d8403413aa86eeac2b9d331961c864adfbc",
+  "prompts": {},
+  "sessions": {
+    "s_5da2fe073f2f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c08877c-0969-4b5a-9bc2-3d40e58743ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

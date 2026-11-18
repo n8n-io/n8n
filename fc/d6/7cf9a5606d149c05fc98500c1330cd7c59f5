@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  h_435b1d7d3e52c0 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fcd67cf9a5606d149c05fc98500c1330cd7c59f5",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

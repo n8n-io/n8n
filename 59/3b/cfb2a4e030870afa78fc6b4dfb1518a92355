@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-agents-api.test.ts
+  s_f31807e8ae1d38::t_282f9c6994e465 1-48,50-78,80-86,88-99,101-110,112-145,147-164,167-184,186-193,195-230,233-328,330-333,335-343,346-349
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-v2-events.test.ts
+  s_f31807e8ae1d38::t_1d567613d3ba48 1-27,29-61,63-91,93-235,237-260,262-334
+packages/@n8n/instance-ai/evaluations/clients/assistant-agents-api.ts
+  s_f31807e8ae1d38::t_7d656c1680859f 1-350
+packages/@n8n/instance-ai/evaluations/harness/assistant-v2.ts
+  s_f31807e8ae1d38::t_61295296ee53dc 1-56,59-70,72-127,129-292
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-v2-wait.test.ts
+  s_f31807e8ae1d38::t_39a48366c3de33 1-32,34-58,60-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "593bcfb2a4e030870afa78fc6b4dfb1518a92355",
+  "prompts": {},
+  "sessions": {
+    "s_f31807e8ae1d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21450f3-8c62-4fc8-9200-ea83fc876d2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

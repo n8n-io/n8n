@@ -1,0 +1,78 @@
+docs/generated/postgres-schema/public.user.md
+  ai_agent 78,396,399-401,403-406
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_baed01bb8131dd::t_f36cb766e048c8 108,110,116-121,124-126
+  s_baed01bb8131dd::t_fd486e70b77787 3,10
+  s_baed01bb8131dd::t_ccd0be692e0fc4 20,22,30,32
+  s_baed01bb8131dd::t_8ecce86c8d88a7 74
+  s_47d1e0264915a8::t_011411a217fc81 111
+docs/generated/sqlite-schema/promotion_connection.md
+  ai_agent 80-81,84
+packages/cli/src/modules/promotions.ee/database/entities/promotion-run.entity.ts
+  s_baed01bb8131dd::t_352f43c964e141 3-13,15-16,20-32,34,44,48,53-56
+  s_47d1e0264915a8::t_0b9246d5aedae9 35-37,41
+docs/generated/postgres-schema/public.promotion_review.md
+  ai_agent 14,23,28,36,45,55,75-77,80-81
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-run.repository.ts
+  s_baed01bb8131dd::t_329277cf02e4cf 1-6,8-9,11-20,22
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_47d1e0264915a8::t_f7e6c934f04351 36
+  s_47d1e0264915a8::t_abf3d3def878e9 64,70-71
+  s_baed01bb8131dd::t_8651a57be1ebe8 92,80,94,104
+  s_47d1e0264915a8::t_cfd23fa9bf618d 182,185,193,195-196,204,206-207,215-216,221-222,225-226,236,239,69,97,121,180,198,209
+  s_baed01bb8131dd::t_616b537c7e15cc 11,15
+  s_baed01bb8131dd::t_22f1df7dce5494 26
+  s_baed01bb8131dd::t_1036280ca4f430 37
+  s_baed01bb8131dd::t_72d090f3ec1f46 63,66,75
+  s_baed01bb8131dd::t_80e63065cf4713 131-133,167
+  s_baed01bb8131dd::t_d3097f4684f32a 228-229
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 86,89
+docs/generated/sqlite-schema/user.md
+  ai_agent 84,405,408-412
+docs/generated/sqlite-schema/promotion_run.md
+  ai_agent 1-8,10-17,21-23,25-30,33-39,41-47,49,51-52,56-60,62-64,68-94,97-102
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_baed01bb8131dd::t_b7e89c52753a9c 29,36
+docs/generated/postgres-schema/README.md
+  ai_agent 124-125,371-372,1573,1576-1578,1580-1583
+docs/generated/postgres-schema/public.promotion_run.md
+  ai_agent 1-8,10-11,13-19,21-32,34-40,42-47,49-53,55-57,61-95
+docs/generated/sqlite-schema/README.md
+  ai_agent 354,1562,1565-1569
+packages/@n8n/db/src/migrations/common/1791794659012-CreatePromotionReviewTable.ts
+  s_47d1e0264915a8::t_83d0ebe566d38d 5,22,92,11,19,25-29,31,34-38,40-46,48-52
+  s_baed01bb8131dd::t_32b4aa8d89a3bb 17
+  s_baed01bb8131dd::t_2e6496583026dd 3,8-9,62,93
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  s_baed01bb8131dd::t_07600001896c3f 14
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_baed01bb8131dd::t_fd2a3175d478fd 4,10
+  s_baed01bb8131dd::t_be9bc08a664cfe 41,43
+  s_baed01bb8131dd::t_86314253613f29 91,93,99-101,103-104,107-109
+  s_47d1e0264915a8::t_db5f6542590e4b 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9db44e6c01bbfb39a8bd409cf3bc08804ec0b7e3",
+  "prompts": {},
+  "sessions": {
+    "s_47d1e0264915a8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "60e62fb0-397a-40d4-9c2f-b454af702013",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_baed01bb8131dd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "29647ce9-c4b7-4a62-8dc8-858dbff270ec",
+        "model": "grok-4.7"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

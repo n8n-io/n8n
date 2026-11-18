@@ -1,0 +1,21 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0ad8b53f9fe30d::t_8534cc69030759 7937
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_0ad8b53f9fe30d::t_8534cc69030759 56-59,63-70,81-82,99,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5334dc9cf9fb0f4fc2b5bb6ddf6a9ff20288c184",
+  "prompts": {},
+  "sessions": {
+    "s_0ad8b53f9fe30d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01fba-8c97-72c1-95d8-beeec4e76ed3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

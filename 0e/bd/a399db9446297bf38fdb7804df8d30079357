@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_b58def8bfaa5ac::t_1a34a76a95cf58 457-463,800-911
+  s_b58def8bfaa5ac::t_f3cfffb1d503b4 912-914
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_b58def8bfaa5ac::t_1a34a76a95cf58 172,176,191-194,206,209-212,217,239-241,243-244,249-250,253,260,264-278
+  s_b58def8bfaa5ac::t_3879591b5069d0 10,91-99,107,110-111,126-131,137,148,153,279-281,305,360-365,392-394,459-460,502,506-508,543,548-549
+packages/cli/src/modules/agents/agent-default-model-resolver.service.ts
+  s_b58def8bfaa5ac::t_1a34a76a95cf58 58-59
+  s_b58def8bfaa5ac::t_92f950b726b93f 50-54,92-93,95
+packages/cli/src/modules/agents/llm-provider-defaults.ts
+  s_b58def8bfaa5ac::t_1a34a76a95cf58 1-2,21-25,96-97
+packages/cli/src/modules/agents/builder/model-lookup.types.ts
+  s_b58def8bfaa5ac::t_25c28926e8b000 9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ebda399db9446297bf38fdb7804df8d30079357",
+  "prompts": {},
+  "sessions": {
+    "s_b58def8bfaa5ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f4e-f2c9-7461-b685-b0553dd0cc7d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

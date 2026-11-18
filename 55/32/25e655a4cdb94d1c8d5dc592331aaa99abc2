@@ -1,0 +1,21 @@
+packages/@n8n/cli/src/client.ts
+  s_0e3b2a4d1ffb59::t_04d0b65e571213 393,399-403,411
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_0e3b2a4d1ffb59::t_17d25cb0d25830 355,359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "553225e655a4cdb94d1c8d5dc592331aaa99abc2",
+  "prompts": {},
+  "sessions": {
+    "s_0e3b2a4d1ffb59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "734024f6-ef8c-453e-818a-d42b1dcc9057",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

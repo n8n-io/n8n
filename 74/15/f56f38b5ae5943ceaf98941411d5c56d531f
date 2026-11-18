@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useTabDragReorder.test.ts
+  s_dff57e7b253b23::t_d14f748de344f3 1-207
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_dff57e7b253b23::t_659dcb4b3775fc 1309-1321
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useOpenArtifactTabs.test.ts
+  s_dff57e7b253b23::t_659dcb4b3775fc 174-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7415f56f38b5ae5943ceaf98941411d5c56d531f",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

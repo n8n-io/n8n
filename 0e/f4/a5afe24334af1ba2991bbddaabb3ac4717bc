@@ -1,0 +1,29 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 68,272,1186-1187
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  ai_agent 35,373,414
+packages/@n8n/instance-ai/docs/sandboxing.md
+  ai_agent 138-143
+packages/@n8n/instance-ai/src/skills/runtime-skills.ts
+  ai_agent 22,38-44,47-58
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  ai_agent 33,754
+packages/@n8n/instance-ai/src/index.ts
+  ai_agent 333-334
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.refineTitle.test.ts
+  ai_agent 20
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  ai_agent 319-330,675-680
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  ai_agent 16
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.builderAskedForInput.test.ts
+  ai_agent 16
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  ai_agent 60,2922-2924
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ef4a5afe24334af1ba2991bbddaabb3ac4717bc",
+  "prompts": {}
+}

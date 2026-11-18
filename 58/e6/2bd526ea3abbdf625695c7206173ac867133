@@ -1,0 +1,39 @@
+packages/@n8n/expression-runtime/src/runtime/error-transfer.ts
+  s_55e7bac45100a5::t_05c428abc2b2b1 10-18
+  s_55e7bac45100a5::t_487cc8cb7212fb 59,62,79,81,92,98-99,134-136,139,148,157
+packages/@n8n/expression-runtime/src/__tests__/replaced-builtins.test.ts
+  s_55e7bac45100a5::t_5b3d14b7ef1199 1-8,12-14,16-25,27,33-50,67-72,74-81,83-84,86-104,106-109,113-114,116-118
+  s_55e7bac45100a5::t_0390fbb8ece8fc 51-55,57-58,60-62,105,111-112
+  s_55e7bac45100a5::t_2d0e9c3c4fc307 15,26,30-32,73,82,85
+  s_55e7bac45100a5::t_5563035e44a2d7 56,59
+  s_55e7bac45100a5::t_baae8bd6535c46 9-11,110,115
+  s_55e7bac45100a5::t_8e747b60ad5de8 28-29
+packages/@n8n/expression-runtime/src/runtime/serialize.ts
+  s_55e7bac45100a5::t_05c428abc2b2b1 2
+  s_55e7bac45100a5::t_487cc8cb7212fb 80,96
+packages/@n8n/expression-runtime/src/runtime/transfer.ts
+  s_55e7bac45100a5::t_05c428abc2b2b1 16-24
+  s_55e7bac45100a5::t_487cc8cb7212fb 84,116,151,165,178,188,213,231
+packages/@n8n/expression-runtime/src/runtime/intrinsics.ts
+  s_55e7bac45100a5::t_2d0e9c3c4fc307 2-3,6-7
+  s_55e7bac45100a5::t_60f1c3c6f9b481 12,17-18,23
+  s_55e7bac45100a5::t_6707f1ffac4240 1,4-5,8-9,11,13-16,19-20,22,24,26-27
+packages/@n8n/expression-runtime/vitest.config.ts
+  s_55e7bac45100a5::t_f56d800f133c54 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "58e62bd526ea3abbdf625695c7206173ac867133",
+  "prompts": {},
+  "sessions": {
+    "s_55e7bac45100a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f19b6791-41d7-4213-aa4f-f9d70641b2b7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

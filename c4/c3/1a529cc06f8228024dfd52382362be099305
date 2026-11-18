@@ -1,0 +1,21 @@
+packages/@n8n/scheduler/src/core/executor/lease-heartbeat.ts
+  s_44da6851c9aebe::t_a5ba2d2834d3d7 90,95,121-122
+packages/@n8n/scheduler/src/core/executor/__tests__/lease-heartbeat.test.ts
+  s_44da6851c9aebe::t_a3b5ef810fd6db 73-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4c31a529cc06f8228024dfd52382362be099305",
+  "prompts": {},
+  "sessions": {
+    "s_44da6851c9aebe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "552efafd-a684-4064-95f0-f0e291fb5b03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

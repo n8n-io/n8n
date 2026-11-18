@@ -1,0 +1,127 @@
+packages/@n8n/agents/src/harness/stream.ts
+  s_e2504e875a073c::t_62a3155ca17c2a 15-47
+packages/@n8n/agents/src/harness/n8n-sandbox-provider.ts
+  s_e2504e875a073c::t_60ec3c2496b304 34
+  s_e2504e875a073c::t_8eb9784d386384 477-478
+  s_e2504e875a073c::t_9e1d449cb53756 479-481
+  s_e2504e875a073c::t_05b64b6d919036 474-476,482-483
+  s_e2504e875a073c::t_990af6d3874016 7,32-33,35-53,203,223-225,374,433-441,453-454,488-495
+packages/cli/src/modules/agents/integrations/n8n-harness-session-cleanup.service.ts
+  s_e2504e875a073c::t_e9acf6a6094055 43-47,49-52
+  s_e2504e875a073c::t_251952f6a376f4 48
+  s_e2504e875a073c::t_c4791e7ac61ec4 1-37,39-42,53-69
+  s_e2504e875a073c::t_930bfa9b8930dd 38
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e2504e875a073c::t_4ff709e74159f4 22-38
+packages/cli/src/services/project.service.ee.ts
+  s_e2504e875a073c::t_54bb0b5ed216d8 276
+packages/@n8n/agents/src/__tests__/harness-runtime-agent.test.ts
+  s_e2504e875a073c::t_cfad3ac6788052 62-65,77-79,94,130-131,145
+  s_e2504e875a073c::t_dd1c2066c3e6c4 1-25,29-56,58,60-61,66-76,80-93,95-129,132-144,146-153,193-194
+  s_e2504e875a073c::t_eaf22f0c9b58ff 57,59,154-192
+  s_e2504e875a073c::t_930bfa9b8930dd 26-28
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e2504e875a073c::t_d86622d861b4a9 15,70,88,101,288,353,767
+  s_e2504e875a073c::t_e56a31c19b436d 950-953,989
+packages/cli/src/modules/agents/__tests__/n8n-harness-session-store.test.ts
+  s_e2504e875a073c::t_930bfa9b8930dd 76-93
+  s_e2504e875a073c::t_a9abfdda36da21 43,122-129
+  s_e2504e875a073c::t_c5cc22255b1646 1-42,44-75,94-121,130-132
+packages/@n8n/agents/src/harness/index.ts
+  s_e2504e875a073c::t_62a3155ca17c2a 9-13,17-18
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e2504e875a073c::t_79a9230acf995e 52,66,1061-1126
+  s_e2504e875a073c::t_d86622d861b4a9 4,76
+  s_e2504e875a073c::t_dbca215e9bf916 1127-1128
+packages/@n8n/agents/src/__tests__/n8n-harness-sandbox-provider.test.ts
+  s_e2504e875a073c::t_88b569c3e7e52a 1-8,14-115,117-122,125,129,139
+  s_e2504e875a073c::t_cfad3ac6788052 9-13
+  s_e2504e875a073c::t_90af5cc699d92c 116,123-124
+  s_e2504e875a073c::t_e1bb40765c7674 130-138
+  s_e2504e875a073c::t_251952f6a376f4 126-128
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_e2504e875a073c::t_54bb0b5ed216d8 5,20
+  s_e2504e875a073c::t_3255cb149705a6 40,49
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e2504e875a073c::t_44ff5b3e7b84b6 9,307
+  s_e2504e875a073c::t_930bfa9b8930dd 341
+  s_e2504e875a073c::t_1713bbf0a8e44b 69-75,86-92,299-306,308-340,342
+  s_e2504e875a073c::t_f5748e2a9c4064 343
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_e2504e875a073c::t_dd99bc4b0d170f 46
+  s_e2504e875a073c::t_930bfa9b8930dd 20
+  s_e2504e875a073c::t_d86622d861b4a9 5,16,24
+  s_e2504e875a073c::t_e56a31c19b436d 50-53,59-62
+packages/cli/src/modules/agents/agents.service.ts
+  s_e2504e875a073c::t_54bb0b5ed216d8 325
+packages/cli/src/modules/agents/__tests__/agent-harness-session.repository.test.ts
+  s_e2504e875a073c::t_dd99bc4b0d170f 1-6,12-16,19-25,29,50-52,57,63,71-74,76-77,81,86-88
+  s_e2504e875a073c::t_aa44a35d2e07e7 7-11,17-18,26-28,30-49,53-56,58-62,64-70,75,78-80,82-85,89-103
+packages/@n8n/agents/src/harness/tool-adapter.ts
+  s_e2504e875a073c::t_b693b4fffecfd5 2,35-37
+packages/cli/src/modules/agents/__tests__/harness-runtime-identity.test.ts
+  s_e2504e875a073c::t_930bfa9b8930dd 45-47
+  s_e2504e875a073c::t_c5cc22255b1646 1-44,48-49
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_e2504e875a073c::t_e56a31c19b436d 291,309-312
+packages/cli/src/modules/agents/utils/harness-runtime-identity.ts
+  s_e2504e875a073c::t_03734552f83810 1-49,53
+  s_e2504e875a073c::t_930bfa9b8930dd 50-52
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e2504e875a073c::t_54bb0b5ed216d8 20,107,457-458
+  s_e2504e875a073c::t_3255cb149705a6 447
+  s_e2504e875a073c::t_dc7bf249eecdd7 459-460
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_e2504e875a073c::t_4ff709e74159f4 87,368,397-413
+  s_e2504e875a073c::t_7c9842a3ae0996 9
+packages/cli/src/modules/agents/integrations/n8n-harness-session-store.ts
+  s_e2504e875a073c::t_cbe1da5e22747a 47-49,56,64-68
+  s_e2504e875a073c::t_e9acf6a6094055 91-101
+  s_e2504e875a073c::t_930bfa9b8930dd 44-46
+  s_e2504e875a073c::t_c4791e7ac61ec4 18,79,90,102-111
+  s_e2504e875a073c::t_4da658c5fa6a53 69
+packages/@n8n/agents/package.json
+  s_e2504e875a073c::t_62a3155ca17c2a 130
+packages/@n8n/agents/src/harness/harness-runtime-agent.ts
+  s_e2504e875a073c::t_16285d62bde2b4 266-270
+  s_e2504e875a073c::t_1544d029dda2b0 316-317
+  s_e2504e875a073c::t_60ec3c2496b304 131
+  s_e2504e875a073c::t_a84de44f8a724b 252
+  s_e2504e875a073c::t_b693b4fffecfd5 7,21,23-27,52-57,65,74,104,124-130,132-133,135-138,163-167,183-195,207,231,238-245,251,284,311-315,318
+packages/cli/src/modules/agents/repositories/agent-harness-session.repository.ts
+  s_e2504e875a073c::t_c4791e7ac61ec4 26-30,126-133,136-148,151-175,200-209
+  s_e2504e875a073c::t_e9acf6a6094055 176-199
+  s_e2504e875a073c::t_210bcc678297d0 210
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_e2504e875a073c::t_a1573c78adc105 9,134-145,158-159,226-236
+packages/@n8n/agents/src/harness/session-store.ts
+  s_e2504e875a073c::t_62a3155ca17c2a 19
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_e2504e875a073c::t_7d338eb8d8dcd1 67,298,316-320
+packages/@n8n/agents/src/__tests__/harness-stream.test.ts
+  s_e2504e875a073c::t_88b569c3e7e52a 1-4,8-27,29,31-36,38-44
+  s_e2504e875a073c::t_930bfa9b8930dd 5-7,30
+  s_e2504e875a073c::t_cfad3ac6788052 28,37
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e2504e875a073c::t_03734552f83810 87,571-577
+packages/cli/src/modules/agents/__tests__/n8n-harness-session-cleanup.service.test.ts
+  s_e2504e875a073c::t_c5cc22255b1646 1-61
+pnpm-lock.yaml
+  s_e2504e875a073c::t_f1e2aaee0f4a4c 1043-1045
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b57873a3f0cacb9990139c6cb1f7ce387912776f",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

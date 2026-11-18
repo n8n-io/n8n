@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_909fa6f565ea9a::t_0fd020292f5d35 7,9-10,12-13,15-16,18-19
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
+  ai_agent 2,7-9,18-35,37,39,41,42,51-58,64-77
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  ai_agent 2,7-13,15-21,23,38-43,45-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47f4bc8d1ee34d04e96dc228b74d53dac7bcb8b8",
+  "prompts": {},
+  "sessions": {
+    "s_909fa6f565ea9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff7411a-ff0e-4742-bbd8-41ee448e0c30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

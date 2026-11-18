@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 14-15,21-80,93-123,136,142-143,160-210,307-338,351-353,365,432,539,570,575-677
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82789c69de1855::t_d229d7a0c82ba4 24,80-101,137-140,303,311,412-413,1183-1219,1607-1753,1755-1771,1793-1932,1936,1941,1957,1960,1974,1980-1981,1993-2001,2005,2010,2018,2020,2024-2026,2076-2088,2107,2114-2128,2426-2454,2494-2514
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_82789c69de1855::t_d229d7a0c82ba4 8-9,20-36,43-44,48-57,69-70,81-89,93-97,100-108,112-116,118,121,129,134,137,142-150,224-226,229-231,240,243,263-265,268-270,278,281,292-327,343-346,350-361
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_82789c69de1855::t_d229d7a0c82ba4 8738-8747,8752
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_d229d7a0c82ba4 69,90-91,253,283-353,562-634,639-641,646-651,654-685,693,877-920,922-926,1713-1715,1724-1761,1844,1849,1855,1862-1874,1945-1953,2241-2249
+  s_82789c69de1855::t_b85d66d12df70c 1695
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62555e122dc0ec836ec2dc84cf160e34ec82ec3d",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

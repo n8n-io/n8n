@@ -1,0 +1,39 @@
+packages/cli/src/modules/workflow-tests/workflow-tests.config.ts
+  ai_agent 1-8
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 261
+packages/cli/test/integration/shared/types.ts
+  s_b6a90f73377b2b::t_277396eea642e3 93-94
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  ai_agent 54
+packages/cli/src/modules/workflow-tests/__tests__/workflow-tests.controller.integration.test.ts
+  s_b6a90f73377b2b::t_fbde3e10a9d95a 1-12,17-21,26-103,109-123,129-130
+  s_b6a90f73377b2b::t_48dab8bd7b1332 13-16,22-25,104-108,124-128
+packages/@n8n/api-types/src/dto/workflows/run-workflow-test.dto.ts
+  ai_agent 1-8
+packages/cli/src/modules/workflow-tests/workflow-tests.module.ts
+  ai_agent 1-9
+packages/cli/src/modules/workflow-tests/workflow-tests.controller.ts
+  ai_agent 1-20
+packages/cli/src/modules/workflow-tests/workflow-test-run.service.ts
+  s_b6a90f73377b2b::t_960f5b35768887 123-126
+  s_b6a90f73377b2b::t_94d9c6b8dd6f06 1-55,61-103,105-122,127-129,132-146
+  s_b6a90f73377b2b::t_b0269350c45814 104
+  s_b6a90f73377b2b::t_48dab8bd7b1332 56-60,130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "847e4bb688319d31f5ddbbb8addb9978c12c8913",
+  "prompts": {},
+  "sessions": {
+    "s_b6a90f73377b2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978893ef-109c-4252-81d2-d747a3c43297",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

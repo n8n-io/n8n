@@ -1,0 +1,68 @@
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_f3d2ec4529fb2a::t_af2bbc5795ed59 185-191,201-202
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  ai_agent 1,3-5,8-18,21-53,55-73,79-84,86-96,98-109,112,114-120,122-129,131-137,145-147,152,155,201,235-246,251-268,270-276,278-293,299,324-411,416,428,435,445,456,488,513,525
+  s_71e25d45a5ee90::t_49ecef14d5449c 7
+  s_9a6001e67297f0::t_8c11286202abcb 19
+  s_e3560b551eac11::t_74b46c3001a67d 20,413,424,431,438,444,447-449,451,455
+  s_e3560b551eac11::t_e49e6472b76e64 54,269,277
+  s_e3560b551eac11::t_863fffe373b02b 74-75,85
+  s_e3560b551eac11::t_a5e50f5a2e80ee 76-78
+  s_e3560b551eac11::t_be9d0b7fac2c72 97
+  s_e3560b551eac11::t_88f7975da7b113 111
+  s_f3d2ec4529fb2a::t_1879ed10cfa4d2 130
+  s_9a6001e67297f0::t_7b59cb0ffd0c2d 138-140,142-144
+  s_9a6001e67297f0::t_359225e70d9d35 148,153,300,304,412
+  s_9a6001e67297f0::t_74f46878a5e248 149-151,154,156-157,186,189-190,192-193,200,202,206-207,209-210,222-223,226,228-230,232,294-295,301,308,322-323,414-415,417-418,423,425-426,429,432-433,436,439,441-442,446,450,452-453,457,460,485-486,489-512,514-524,526
+  s_e3560b551eac11::t_f4c230a3b19a59 158-183,194-199,225,233-234
+  s_e3560b551eac11::t_0ee8acbb1e9f5c 184-185,187-188,191
+  s_e3560b551eac11::t_f57dcce2b43867 203-205,208,211,224,227,231
+  s_e3560b551eac11::t_5c79530f8ae35f 212-221
+  s_f3d2ec4529fb2a::t_148d0bfdecab72 249-250
+  s_71e25d45a5ee90::t_085ac6e1305a33 296,302
+  s_71e25d45a5ee90::t_0d7548f1490eb0 298,303,305-307
+  s_71e25d45a5ee90::t_fdf12071c94f1d 309-312,314-321
+  s_f3d2ec4529fb2a::t_759d7ed9593e1e 313
+  s_e3560b551eac11::t_7f4026992ef04c 419-421,427,430,434,437,440,443,454,458,461,487
+  s_e3560b551eac11::t_9b662867526c78 422,459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4720e276f5c08349b4ac040bb8cc7f6b70e04010",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

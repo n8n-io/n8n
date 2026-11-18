@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_e5a64625bc5cd1::t_292052475218da 311
+  s_e5a64625bc5cd1::t_7174f25bc33f4d 299,301,305-310,312,317
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_e5a64625bc5cd1::t_43d98ccdcc43df 555,575-577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "95becc4c52e8f3c2df5b547bd4e4e436801333e9",
+  "prompts": {},
+  "sessions": {
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

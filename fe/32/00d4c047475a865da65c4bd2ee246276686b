@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/sourceControl.yml
+  s_44141d8bd6c445::t_588fbf73f621c3 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe3200d4c047475a865da65c4bd2ee246276686b",
+  "prompts": {},
+  "sessions": {
+    "s_44141d8bd6c445": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d88a839d-5616-4684-b72d-34fc58a9c3a3",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

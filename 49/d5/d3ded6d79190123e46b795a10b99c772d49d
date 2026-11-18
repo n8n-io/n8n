@@ -1,0 +1,87 @@
+packages/testing/code-health/src/packed-consumer/catalog-versions.test.ts
+  s_f6945ec489dbea::t_d7a3fa26422ce8 1-37
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_f6945ec489dbea::t_700f7eadec4bda 6
+.github/workflows/test-packed-consumer-reusable.yml
+  s_f6945ec489dbea::t_4b2ce62940f55d 1-68
+packages/testing/code-health/src/packed-consumer/verify-packed-consumer.ts
+  s_f6945ec489dbea::t_eb5fb160209443 143-147,151-152,154-186
+  s_f6945ec489dbea::t_d95a8f4d7522fe 153
+  s_f6945ec489dbea::t_f2ec4ab01e09b2 304-312
+  s_f6945ec489dbea::t_09347504340cca 374-378,382
+  s_f6945ec489dbea::t_7c8d07b83985c0 1-38,56-142,187-203,208-240,246-277,279-303,313-330,332-337,341-358,369,379-381,383-416
+  s_f6945ec489dbea::t_c23040affca1fd 204-207,331,338-340,359-368
+  s_f6945ec489dbea::t_6e3c6d1e485c36 278
+  s_f6945ec489dbea::t_f63ebf8c74195e 370-373
+  s_f6945ec489dbea::t_609f8cded7fcde 39-55
+  s_f6945ec489dbea::t_1ca1b5efdff5bd 241-245
+  s_f6945ec489dbea::t_231c6b3d0f78ee 148-150
+packages/testing/code-health/src/packed-consumer/catalog-versions.ts
+  s_f6945ec489dbea::t_a07977dcd2d85c 1-3,6-29
+  s_f6945ec489dbea::t_4195b36256923b 4-5
+packages/testing/code-health/src/cli/arg-parser.ts
+  s_f6945ec489dbea::t_e48fb9e39edfc7 2-8
+packages/testing/code-health/src/packed-consumer/consumer-specifiers.ts
+  s_f6945ec489dbea::t_7efe9861272b62 15-21,28-30
+  s_f6945ec489dbea::t_526a7d200e48f9 31-33
+  s_f6945ec489dbea::t_21c3151daba8c4 1-14,22-27,34-45,49-51,53-140
+  s_f6945ec489dbea::t_94186b3cf3a767 46-48,52
+packages/testing/code-health/src/single-instance/verify-npm-install.test.ts
+  s_f6945ec489dbea::t_c23040affca1fd 3-4
+packages/testing/code-health/src/single-instance/verify-npm-install.ts
+  s_f6945ec489dbea::t_794623ff2d12cf 2,4,7
+  s_f6945ec489dbea::t_c23040affca1fd 9-13
+  s_f6945ec489dbea::t_8887242c3f3615 124
+packages/testing/code-health/src/packed-consumer/exports-map.test.ts
+  s_f6945ec489dbea::t_93db613579c3e9 1-108
+packages/testing/code-health/src/packed-consumer/consumer-specifiers.test.ts
+  s_f6945ec489dbea::t_aafd50ab25b78f 37-39
+  s_f6945ec489dbea::t_3bff673afa60d0 1-36,40-83
+packages/testing/code-health/src/packed-consumer/README.md
+  s_f6945ec489dbea::t_bf1b1c27def1d8 1-60,69-107
+  s_f6945ec489dbea::t_f6e06c8b007932 61-68
+packages/testing/code-health/src/packed-consumer/fixture.test.ts
+  s_f6945ec489dbea::t_0bc5b6d47e187c 17-29
+  s_f6945ec489dbea::t_453192da17925c 49
+  s_f6945ec489dbea::t_3cb2b554fe7719 1-16,30-48,50-100
+packages/testing/code-health/src/packed-consumer/exports-map.ts
+  s_f6945ec489dbea::t_d3bdb12ad5d4fd 1-152
+packages/testing/code-health/src/cli.ts
+  s_f6945ec489dbea::t_a6ac19cbe54bae 16
+  s_f6945ec489dbea::t_bf87df509f8ca2 43-46
+packages/testing/code-health/src/packed-consumer/fixture.ts
+  s_f6945ec489dbea::t_e9416a43997b01 281-284
+  s_f6945ec489dbea::t_b96a2427c0f28f 188-196,200-207
+  s_f6945ec489dbea::t_b4388a12918482 45-56
+  s_f6945ec489dbea::t_fdc542342e354d 132
+  s_f6945ec489dbea::t_0d55419e5808e1 356
+  s_f6945ec489dbea::t_97143f52117812 1-44,57-80,82-131,133-187,197-199,208-219,231-251,255-277,285,294,300-301,303,306,314-315,317-321,323-355,357-362
+  s_f6945ec489dbea::t_6740935092bab1 252-253
+  s_f6945ec489dbea::t_965f47999f2925 81
+  s_f6945ec489dbea::t_10afc06fcf46b3 254
+  s_f6945ec489dbea::t_4a188bd1d3aca9 220-230
+  s_f6945ec489dbea::t_fa4ab108f019cf 278-280,286-293,295-299,302,304-305,307-313,316,322
+packages/testing/code-health/src/utils/pack-workspace.ts
+  s_f6945ec489dbea::t_f9b5fb677775ab 1-79
+.github/workflows/ci-master.yml
+  s_f6945ec489dbea::t_e27865dafba92a 65-75,79
+.github/workflows/ci-pull-requests.yml
+  s_f6945ec489dbea::t_222cbbddd86aa7 254-270
+  s_f6945ec489dbea::t_100d2b93d5b9a5 425
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "49d5d3ded6d79190123e46b795a10b99c772d49d",
+  "prompts": {},
+  "sessions": {
+    "s_f6945ec489dbea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7866479a-d77a-4173-8879-141c6af75006",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

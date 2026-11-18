@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.vue
+  s_a2967ec392b10a::t_2d1201cc0f307b 1-4,7-48,65,97-99,101,104-110,112,128-130
+  s_a2967ec392b10a::t_0d36d9030364ce 5,68-93,111,113-114,116-127
+  s_a2967ec392b10a::t_738a0e00e69032 6,49-60,62-64,66-67,94-96,100,103
+  s_a2967ec392b10a::t_6e63d8a8e715bc 102
+  s_a2967ec392b10a::t_659688df32f186 115
+  s_a2967ec392b10a::t_04420e1e6aec42 61
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  s_a2967ec392b10a::t_3eb5c16bb18e27 1-2,4-5,16,20-32,34-54,61,70-84,92-95,101-108,124-125,127-136,138-139,141-143,181-193,196-199,207-210,212-213,223-226,228,230-231,233,239,243-245,254-255,277-279,331-338,60,86,91,249,272-273,290-291,299-300,304-305,313-314,322,329-330
+  s_a2967ec392b10a::t_985e91b5d04987 6,8-15
+  s_a2967ec392b10a::t_b4b8badcfc6456 62-66
+  s_a2967ec392b10a::t_34658fdd81cbb7 67-69
+  s_a2967ec392b10a::t_cdfbd2b564bfde 85,264-265,3,7,17-19,33,55-59,87-90,126,145-178,236-238,242,248,250-253,260,266-271,275-276,283-289,292-298,301-303,306-312,315-321,323-328
+  s_a2967ec392b10a::t_556ae846d43f40 96-100
+  s_a2967ec392b10a::t_7f56b2544c0ac2 109-123
+  s_a2967ec392b10a::t_6f2c1528c839db 137,140,180
+  s_a2967ec392b10a::t_3ddb3d43b9d453 144,179
+  s_a2967ec392b10a::t_bce32d9f18d1a0 194
+  h_760178ed151f13 195
+  s_a2967ec392b10a::t_c92232d1a62fec 200-206
+  s_a2967ec392b10a::t_dfc3f0a7c26a8d 211,227,229
+  s_a2967ec392b10a::t_e9c64cc71ce165 214-222
+  s_a2967ec392b10a::t_b2ff309e427456 232,234-235,246,274
+  s_a2967ec392b10a::t_070fadca37d7a5 240
+  s_a2967ec392b10a::t_636a115b00a003 241
+  s_a2967ec392b10a::t_78400792448667 247
+  s_a2967ec392b10a::t_b2778185595ec4 256-259,261-263
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a2967ec392b10a::t_03b27420633611 5016,5018-5024,5028-5029
+  s_a2967ec392b10a::t_8284d13733e462 5017
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1c97e0da8f41f3a38424416c105f6d5df141afa",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

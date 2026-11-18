@@ -1,0 +1,54 @@
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  h_435b1d7d3e52c0 11,42,82,96
+packages/cli/test/integration/token-exchange/embed-auth.api.test.ts
+  s_2849e5883d4e96::t_08a6bb69a12508 13
+  s_2849e5883d4e96::t_31c6859bbb61d7 199
+  s_2849e5883d4e96::t_c62a56e40b77cb 216-218
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  h_435b1d7d3e52c0 254
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_2849e5883d4e96::t_a8192b9ee81a20 7
+  s_2849e5883d4e96::t_13d58974d11a03 34-37,50,64
+  s_2849e5883d4e96::t_08f3dd2649d456 94-102
+  s_2849e5883d4e96::t_db361bd3b8cc5a 184-185,187
+  s_2849e5883d4e96::t_21dccd942bbf72 197-202,204-205,215,217-218,220-240
+  s_2849e5883d4e96::t_13940bf70c9f6c 206-214,216,219
+packages/cli/test/integration/token-exchange/identity-resolution.service.test.ts
+  s_2849e5883d4e96::t_c6a413b58557d7 11-16,25-26,35-36,47-48
+  s_2849e5883d4e96::t_8f87bb05ddf7d4 63-65
+  s_2849e5883d4e96::t_0b8b5e7c0475b2 70-72
+  s_2849e5883d4e96::t_8277142aee0236 94
+  s_2849e5883d4e96::t_7409fe4e24cb9c 169
+  s_2849e5883d4e96::t_b63d9a037b8e46 201
+  s_2849e5883d4e96::t_9ba6e4f16ac730 275-277
+  s_2849e5883d4e96::t_f1dd99d1b96b02 299
+  s_2849e5883d4e96::t_9b8da8e001889e 332
+  s_2849e5883d4e96::t_259d77d6cf5bfc 340
+  s_2849e5883d4e96::t_92c8439d99a966 357
+  s_2849e5883d4e96::t_1699f19b5d2463 377
+  s_2849e5883d4e96::t_6893cc26be98f5 406-408
+  s_2849e5883d4e96::t_eb55cd0f33658b 436-467,469-503
+packages/cli/test/integration/token-exchange/trusted-key.service.integration.test.ts
+  s_2849e5883d4e96::t_28b319788301c9 465-474,476-478,480-488,490-492,494-502,504-515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "1826f037e4561f18ad887017c397e7ce15f10821",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2849e5883d4e96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b1fa914-dd16-4a28-9180-954fd9428adc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

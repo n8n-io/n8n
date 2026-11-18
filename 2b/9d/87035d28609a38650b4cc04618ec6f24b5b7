@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_bd3d673206bcb6::t_afbd039f3a1116 233-235
+  s_bd3d673206bcb6::t_6a620469e85eb8 7-9
+  s_bd3d673206bcb6::t_f3490e442ad942 236
+  s_bd3d673206bcb6::t_d7c1dcb0387c28 32-60
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_bd3d673206bcb6::t_afbd039f3a1116 658-659
+  s_bd3d673206bcb6::t_6a620469e85eb8 660
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b9d87035d28609a38650b4cc04618ec6f24b5b7",
+  "prompts": {},
+  "sessions": {
+    "s_bd3d673206bcb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "006838ea-1da2-4621-abd1-68aba2249287",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

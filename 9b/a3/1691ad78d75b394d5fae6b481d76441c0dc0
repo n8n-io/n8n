@@ -1,0 +1,32 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_eb9295e8672673::t_f954ef59ab8d95 4605,4609-4614,4616
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_eb9295e8672673::t_bda7a2ba928978 533-535,551,568-569,600-606,608-613,621-627,630,667-669,697,699-701,580,585,588,597
+  s_eb9295e8672673::t_ffab39533af5d6 567,577-578,614,549,553,561-566,579,581-584,586-587,589-596,598-599,607,615-620,628,632,640-645
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  s_eb9295e8672673::t_8ba19520ccae79 21
+  s_eb9295e8672673::t_77a69651dbdea4 48-58,60-62
+  s_eb9295e8672673::t_eea6044f019538 109
+  s_eb9295e8672673::t_0c9897efcf9958 201-202,204-206,210,217-218,230,256-259,261-266,268,272-273,276-278,242,250
+  s_eb9295e8672673::t_a21d9240a50c1a 370,379
+  s_eb9295e8672673::t_d19887f3673bbc 402,416-417,421
+  s_eb9295e8672673::t_607a44c4588e78 585,247,255,586-590,592-602,604-609
+  s_eb9295e8672673::t_e6a447024f61d5 45-46
+  s_eb9295e8672673::t_ecb1718c339f9d 232-234,236,240-241,243-246,248-249,251-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "9ba31691ad78d75b394d5fae6b481d76441c0dc0",
+  "prompts": {},
+  "sessions": {
+    "s_eb9295e8672673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5a13f8c-0337-46bf-976e-7e6f21af25ec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

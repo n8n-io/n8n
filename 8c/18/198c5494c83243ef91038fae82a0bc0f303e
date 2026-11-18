@@ -1,0 +1,93 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_80d185abd37303::t_435e7ee76d7d68 14-16,19-20
+  s_80d185abd37303::t_6bcca9eef76702 17-18
+  s_80d185abd37303::t_5245efedc5901a 40-43
+  s_80d185abd37303::t_c9a653a7b3886b 21
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_80d185abd37303::t_9cacb36fa5c438 14,18-19,71,76-82,179-199,210,231,275-283,285-305,307-321,323-324
+  s_80d185abd37303::t_ec7c1fa583108a 219-222
+  s_80d185abd37303::t_b45b09fe247610 284,306,322,329-331
+  s_80d185abd37303::t_8c0f66c5fe79bf 325
+  s_80d185abd37303::t_11c013e924d84a 332
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_80d185abd37303::t_c3224db614d05b 108-110
+  s_80d185abd37303::t_0adf9bb75a345a 42,49,114,206
+  s_80d185abd37303::t_b0af81fe69a164 111-113,205
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_80d185abd37303::t_0ed58a8040fcd5 124-127
+  s_80d185abd37303::t_f55f9f42a5d2ea 80-83,95,120-123
+  s_80d185abd37303::t_01c7d1105af99a 128-129
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_80d185abd37303::t_c22ede6cd79fbe 92-96,99-100,117,322,403
+  s_80d185abd37303::t_62b242e319041f 97-98,101-116
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_80d185abd37303::t_7a74dc91eeb02e 6715
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.test.ts
+  s_80d185abd37303::t_d487ecf3d63727 143,169
+  s_80d185abd37303::t_4e67588840fde4 162
+  s_80d185abd37303::t_d7560118042246 574-575
+  s_80d185abd37303::t_9f046aa98f6c19 175-177
+  s_80d185abd37303::t_0efe6da8200a02 147-161,163-168,170-174
+  s_80d185abd37303::t_79c298887e5f54 27-30,146,581
+  s_80d185abd37303::t_7f67347db5b8fb 31
+  s_80d185abd37303::t_a455219751ef7d 144-145
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  s_80d185abd37303::t_a507981f33ccc0 87
+  s_80d185abd37303::t_71597adf520ad1 3-4,14-15,42-51,65,68-69,78-79,82-86,88-90,117-140,160,176,182-183,185
+  s_80d185abd37303::t_8bfe74513b3996 10-13,16-17
+  s_80d185abd37303::t_5d02651bb7b1f5 9,18,34-41,52,57,59-64,66-67,70-72,144-149,153-157,179-180,184
+  s_80d185abd37303::t_0a8b0c4492524f 58
+  s_80d185abd37303::t_ee2aed49e11881 175
+  s_80d185abd37303::t_45aaab1d308d04 107-108,150-152,158-159,161-167,169-174,177-178
+  s_80d185abd37303::t_41b7fa01374de5 181
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_80d185abd37303::t_6ed4473586b539 28-37,121,123,146,168,322-381
+  s_80d185abd37303::t_6149b122dfe8f9 382-384
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_80d185abd37303::t_dab238a2a72711 101-102
+  s_80d185abd37303::t_343f5d16a2e58f 98-100,103-104
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentIdentityHeader.spec.ts
+  s_80d185abd37303::t_4fd11a55de4f27 13,49-55,60,87,89-99,101,104-107,110,113-114,125,127-131,133-136
+  s_80d185abd37303::t_1a04ae08618c32 20-22,33-34,100,102,108-109,115-124,126,132
+  s_80d185abd37303::t_bfc2bc038456a7 103
+  s_80d185abd37303::t_e0c86b28279b3e 24-32
+  s_80d185abd37303::t_7af3ee6a2d01d0 23
+  s_80d185abd37303::t_c4ba8ba0566e17 88,111-112
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_80d185abd37303::t_9bc639dbfee551 37-45,47-48
+  s_80d185abd37303::t_b2ca7da7b459e3 19-36
+  s_80d185abd37303::t_95af6e2ac411d4 46
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_80d185abd37303::t_deecf812b21da7 141
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_80d185abd37303::t_c3379e0daa87df 81,183,400-409
+  s_80d185abd37303::t_613efa88ed32f7 410
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_80d185abd37303::t_40699866dd6ed4 112-113,123-144
+  s_80d185abd37303::t_396d1ca210a486 157
+  s_80d185abd37303::t_160e3598cc9859 105-111,114-122,145-156,158-165
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_80d185abd37303::t_b16990bef79bbb 266-332
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.vue
+  s_80d185abd37303::t_7157d19a2d0596 51,64,112,114-116,168,276,310
+  s_80d185abd37303::t_bd3cb1bdb4a6a8 50
+  s_80d185abd37303::t_1485436fffc81e 384-387
+  s_80d185abd37303::t_3a8ec35f39806a 271-275,503-505
+  s_80d185abd37303::t_ca9d179326e1d9 506-508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "8c18198c5494c83243ef91038fae82a0bc0f303e",
+  "prompts": {},
+  "sessions": {
+    "s_80d185abd37303": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2231-958a-77f0-881a-1fca61d763de",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,82 @@
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_de807c7b884146::t_7773acb85ae7d7 1,4-5,7-8
+  s_de807c7b884146::t_4d979d5aed93bd 529-535,545-546
+  s_de807c7b884146::t_752607643b2f90 549-551
+  s_de807c7b884146::t_c69b6b37665fe3 429-445
+  s_de807c7b884146::t_4346f52387be1e 64-70
+  s_de807c7b884146::t_3d556abbd11d50 471-474
+  s_de807c7b884146::t_94ffcd82684c05 476
+  s_de807c7b884146::t_c06c1d992b38c0 470
+  s_de807c7b884146::t_9b23016469829e 446-448,454,458,464,466,468-469,478-479,482,485,488,491-492,494,499,505,509-522,526
+  s_de807c7b884146::t_5f9f8e0ce6c3ce 455-457
+  s_d3f6ecf4ef182f::t_98d3157c6dadfd 483-484
+  s_d3f6ecf4ef182f::t_1e2ae9e5f8cab4 407-408,413,415-417,426-428,475,480-481,496-497,500-504,506-508,523-525,527-528,536-541,547-548,552
+  s_de807c7b884146::t_51ffaaad0a653b 486-487,489-490,495
+  s_de807c7b884146::t_a40e5ac0587ecf 343-347
+  s_de807c7b884146::t_0feb8307ebf686 409-411,414,419
+  s_d3f6ecf4ef182f::t_bf896125291a51 477
+  s_d3f6ecf4ef182f::t_5c7dd19fa5258f 493,542-544
+  s_de807c7b884146::t_c7991e084beff1 560
+  s_de807c7b884146::t_e8b273e80b3b3b 412
+  s_d3f6ecf4ef182f::t_2b34de54b9b805 553-559
+  s_de807c7b884146::t_6e57f26585c2cb 418,420-425
+  s_6435630122b6fe::t_cee5eb2df3835f 498
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_d3f6ecf4ef182f::t_831745b60f8492 160
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_d3f6ecf4ef182f::t_bf11626046d3ef 5
+  s_de807c7b884146::t_2bc9073f87ae74 292-307,324-337
+  s_d3f6ecf4ef182f::t_9104a414e71005 75-85,99-101,103,115-119,133-135,137,174,177,179-181,202-204,206,229-233,245-246,258,260,263-265,280,282,284-286
+  s_de807c7b884146::t_6dc11a6ddbd9c8 308-323
+  s_d3f6ecf4ef182f::t_844aa7f0581432 6-16,26
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_de807c7b884146::t_74f7b74efc682b 75,172,217-218,221,225,233-234
+  s_de807c7b884146::t_19af50f472fe11 1-4,122-152,154-167,169-171,235
+  s_de807c7b884146::t_df7472c0806d9c 5
+  s_de807c7b884146::t_7031fc2c9e9970 153,168
+  s_de807c7b884146::t_bae6c766dfe3bf 174-213
+  s_de807c7b884146::t_a638afb2b80fcb 77-84
+  s_de807c7b884146::t_fd71b222c0b8b5 6-15,21-31,55-74,85-121,214-216,219-220,222-224,226-232
+  s_de807c7b884146::t_51acd2011a0845 16-20
+  s_de807c7b884146::t_42aaf86d79f023 32-54
+  s_de807c7b884146::t_e509d847d9b77b 76
+  s_de807c7b884146::t_b114e8018eeb6a 173
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_d3f6ecf4ef182f::t_fc2eea215c0920 99
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_d3f6ecf4ef182f::t_f06eb715a74185 94-95
+  s_d3f6ecf4ef182f::t_66c7db5c66188c 7-19,26-29,58,85,91-93
+  s_d3f6ecf4ef182f::t_c6bdecaa76807e 83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "9677df87a184f23b466b1a19a40890ff7b315bcc",
+  "prompts": {},
+  "sessions": {
+    "s_6435630122b6fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1284f13f-fda3-4cd9-bdc7-8b06173bf825",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_de807c7b884146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "289bcd83-7b99-424b-939a-8908368bbadf",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

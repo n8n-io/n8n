@@ -1,0 +1,61 @@
+packages/nodes-base/nodes/Google/Calendar/test/node/event.getAll.test.ts
+  s_2e1fa95fc44f8f::t_1a39a9c09d0362 4,85,123,135,147
+packages/nodes-base/nodes/Google/Calendar/GoogleCalendar.node.ts
+  s_2e1fa95fc44f8f::t_2277baaabaf726 13,116
+  s_2e1fa95fc44f8f::t_cd7488814f36da 130-134,192,219,362,369,380,387,404,416,433,501,510,528,592,603,674,782
+packages/nodes-base/nodes/Google/Calendar/test/node/event.update.test.ts
+  s_2e1fa95fc44f8f::t_1a39a9c09d0362 4,59,87,120,124
+packages/nodes-base/nodes/Google/Calendar/test/GoogleCalendarTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_ee3b7d15991a23 231-248,250-254
+  s_ecc2ddcd36ada6::t_fc77d92bc1ee8f 4
+  s_899dce43cb59a6::t_407d47fbaa6e69 192,223,249,344,400,483,573
+packages/nodes-base/nodes/Google/Calendar/GoogleCalendarTrigger.node.ts
+  s_2e1fa95fc44f8f::t_2277baaabaf726 9
+  s_2e1fa95fc44f8f::t_5760cf0c368e3a 11,134,196,206
+packages/nodes-base/nodes/Google/Calendar/GenericFunctions.ts
+  s_3e99e189766603::t_973c5b656560a4 14-16,18,28,31,34,41,61,87,258,261
+packages/nodes-base/nodes/Google/Calendar/test/GenericFunctions.test.ts
+  s_ecc2ddcd36ada6::t_1612522e0db549 4,152,161,175,186,200,221,242,248,266-271,282,324,354,372,389,722,740,758,775,791,802,809
+packages/nodes-base/nodes/Google/Calendar/test/workflow/event.workflow.test.ts
+  s_2e1fa95fc44f8f::t_78a75b053906ee 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2593352ffa2ac6e4fcffc71ced6463edb3564060",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_3e99e189766603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a04fda06e16eb887b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_899dce43cb59a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2ead17849041ef22",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_ecc2ddcd36ada6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae92da18183804c8e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

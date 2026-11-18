@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/tests/e2e/app-config/embedded-settings.spec.ts
+  s_cb59abb13cfee3::t_b9816916f4890b 40-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c2962de361f1662c50fb0a571b78e9a3e8d22df",
+  "prompts": {},
+  "sessions": {
+    "s_cb59abb13cfee3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ee2fa45-d4d2-4b55-80c1-cc42a5201dc3",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

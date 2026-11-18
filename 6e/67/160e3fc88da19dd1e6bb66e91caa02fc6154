@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/runtime/loop/checkpoint-data.ts
+  s_c5954c3047b5ed::t_7b3f42f5bcb705 1-94
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_7b3f42f5bcb705 4-10,356,364,417,469,1171,1173,1203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6e67160e3fc88da19dd1e6bb66e91caa02fc6154",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

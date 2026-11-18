@@ -1,0 +1,16 @@
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  ai_agent 5,254,258,260-267
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  ai_agent 23,740-809
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ead16a420148663cebcae4c9d0967d60269f458c",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

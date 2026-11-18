@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  s_21f685f27718a6::t_27e9a41ce1f707 534-545
+  s_21f685f27718a6::t_13ffcbaa0290e8 1240-1243,1245-1251
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_21f685f27718a6::t_997df00db56679 4134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0083c1397e04bc2c37cc55a016a45320eefdb6cc",
+  "prompts": {},
+  "sessions": {
+    "s_21f685f27718a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30e0933d-5bed-4743-8226-2c6251c41d0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

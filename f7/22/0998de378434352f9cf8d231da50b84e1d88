@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionRecovered.test.ts
+  s_04cc7fb026ea40::t_9f8571e7180b08 45
+  s_04cc7fb026ea40::t_a940bc743f357f 4
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.test.ts
+  s_04cc7fb026ea40::t_3ecd22400d6f05 788
+  s_04cc7fb026ea40::t_6ed602654b1c52 12-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7220998de378434352f9cf8d231da50b84e1d88",
+  "prompts": {},
+  "sessions": {
+    "s_04cc7fb026ea40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4937b44e-3fa2-4694-a35b-721885b09d58",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

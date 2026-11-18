@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentWebSearchSection.vue
+  s_ff07656b7c0569::t_eec03f29aaf9c7 288
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_ff07656b7c0569::t_9099e65896029d 8,218,224-225
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentWebSearchSection.test.ts
+  s_ff07656b7c0569::t_3942160a4b9f28 131,230-241,243-270
+  s_ff07656b7c0569::t_158d7542b47f99 242
+  s_ff07656b7c0569::t_73c501356cf499 103-107
+  s_ff07656b7c0569::t_8b1e451760adac 271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2977a48c5487cd394027af50dde558c0d5cd002",
+  "prompts": {},
+  "sessions": {
+    "s_ff07656b7c0569": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a955-a2db-765f-96ef-85d4696043ff",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

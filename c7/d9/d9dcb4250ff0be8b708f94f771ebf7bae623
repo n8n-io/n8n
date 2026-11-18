@@ -1,0 +1,53 @@
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_7852c738975ebf::t_cf9ed10715dc2c 320-369
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_7852c738975ebf::t_889c6210644550 48
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_7852c738975ebf::t_6a25b09ab9fca1 157-167
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_7852c738975ebf::t_4bdee25d239dda 275-276
+packages/@n8n/instance-ai/src/types.ts
+  s_7852c738975ebf::t_5563398a3d7161 902-905
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_7852c738975ebf::t_b01b015be0331d 72-74
+packages/@n8n/instance-ai/docs/tools.md
+  s_7852c738975ebf::t_9361f97212d24a 733-742
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_7852c738975ebf::t_21b025705bf0d3 3616-3618
+  s_7852c738975ebf::t_ab803ffab76bad 3612-3615,3619-3627
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_7852c738975ebf::t_f20dc130990ff6 241-256
+  s_7852c738975ebf::t_12cbf993f998fe 43-46
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_7852c738975ebf::t_24bb31489fe244 200
+  s_7852c738975ebf::t_3da2b7119478f0 36
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_7852c738975ebf::t_f2b5782589eed9 16
+  s_7852c738975ebf::t_678dcca58254bc 61
+packages/@n8n/instance-ai/src/tools/__tests__/agents.tool.test.ts
+  s_7852c738975ebf::t_3718fbc30d169b 1-3,9-23,36-48,52-60
+  s_7852c738975ebf::t_21b025705bf0d3 4-8,24-35,49-51
+packages/@n8n/instance-ai/src/tools/agents.tool.ts
+  s_7852c738975ebf::t_8c42ba4c0bbb11 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c7d9d9dcb4250ff0be8b708f94f771ebf7bae623",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7852c738975ebf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2a271de2-a680-4fd8-ab81-cd7b0f82277f",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

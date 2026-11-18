@@ -1,0 +1,53 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditorToolbar.vue
+  s_69938a814b90cd::t_d9b772b99c0204 34-35,314,359,452,474,496-503,507-508,510
+  s_69938a814b90cd::t_315f16bf7defc5 504-506
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_69938a814b90cd::t_d9b772b99c0204 346,454,528-529,535-536
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_69938a814b90cd::t_ef7eb4576fe35c 28-34
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_69938a814b90cd::t_d9b772b99c0204 231
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_69938a814b90cd::t_d9b772b99c0204 12,25,61,63,65-66,74-75,80-85,96,99-101,266-268,287-288,328-329,372,374,392-393
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_69938a814b90cd::t_d9b772b99c0204 256-257
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvInlineControls.vue
+  s_69938a814b90cd::t_d9b772b99c0204 74
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/component-markdown-editor.md
+  s_69938a814b90cd::t_ef7eb4576fe35c 5-7,16,27,35,80,129,139-142,187-191
+  s_69938a814b90cd::t_86455cafdd1e0c 192
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.stories.ts
+  s_69938a814b90cd::t_ef7eb4576fe35c 42-45,137-152
+  s_69938a814b90cd::t_bfb8ee700bfdee 153-154
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.types.ts
+  s_69938a814b90cd::t_d9b772b99c0204 9-10
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_69938a814b90cd::t_d9b772b99c0204 482
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/composables/useMarkdownEditor.ts
+  s_69938a814b90cd::t_d9b772b99c0204 48,82,95-101,108,117-118,125,136-137,142
+  s_69938a814b90cd::t_f1db0dc94ff628 88-94
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_69938a814b90cd::t_d9b772b99c0204 454
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  s_69938a814b90cd::t_aa83919853ef9d 572-576
+  s_69938a814b90cd::t_1a94abafb8e141 571,589-591,646-651,653-656,658-679,681-697,699-731
+  s_69938a814b90cd::t_243edc33f10f5e 2,4,568-570,577-588,592-645
+  s_69938a814b90cd::t_bb45bb6338727f 652,657,680
+  s_69938a814b90cd::t_1e568274e2f0ec 698,732
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fed0aed6ddc860405c9e49adb6ddd6e6c3564e3a",
+  "prompts": {},
+  "sessions": {
+    "s_69938a814b90cd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f786-21c9-7b63-b8b5-b8865a5ef1bb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

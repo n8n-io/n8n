@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/oauth2.handler.test.ts
+  s_7bef3589dedc22::t_efadc4978fbe24 9-20,27,44-48,100-140
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_7bef3589dedc22::t_bb7d5e84765daf 6,40-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc00f4323ad4b6ed2e13e1c0ec9d1699ad0087df",
+  "prompts": {},
+  "sessions": {
+    "s_7bef3589dedc22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aca3bc7e-edf8-49b0-8cc1-20fb47609fad",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

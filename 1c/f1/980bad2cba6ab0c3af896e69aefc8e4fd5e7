@@ -1,0 +1,22 @@
+packages/cli/src/__tests__/external-hooks.test.ts
+  s_ae3b058676b7cc::t_36f263b907217c 140-193
+  s_ae3b058676b7cc::t_407cb0d2f59281 8-9,16
+packages/cli/src/external-hooks.ts
+  s_ae3b058676b7cc::t_016ab0b9f5409b 31-33,37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1cf1980bad2cba6ab0c3af896e69aefc8e4fd5e7",
+  "prompts": {},
+  "sessions": {
+    "s_ae3b058676b7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9e82bcb-b056-4edf-8abe-3d495d4f1845",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

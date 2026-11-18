@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.test.ts
+  s_da16d27fdbc50c::t_e93ddfd12e9c97 162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b78e85520e0e42478364a8b3618bf758cedfe21",
+  "prompts": {},
+  "sessions": {
+    "s_da16d27fdbc50c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6539e871-7d8b-4491-bffe-9496311199dc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/cli/test/integration/public-api/projects.test.ts
+  s_6d4882c98256c7::t_f822d956f1c71c 461
+  s_6d4882c98256c7::t_07941090a5c280 546
+  s_6d4882c98256c7::t_5bf263108adaa6 509-530,542-545,547,549-551,553,556-558,560
+  s_6d4882c98256c7::t_5de21905b687c9 409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c48d55655b220971c44cdab2a0b842f8c68f5b7f",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6d4882c98256c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc298fff-4000-43c5-a73f-35bd3b6074fc",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

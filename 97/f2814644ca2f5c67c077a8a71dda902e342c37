@@ -1,0 +1,16 @@
+packages/nodes-base/nodes/Form/utils/utils.ts
+  h_8fb27e0cdf6d1e 2,1142,1146,1151,1166-1182,1185-1188
+packages/nodes-base/utils/sendAndWait/utils.ts
+  h_8fb27e0cdf6d1e 16,502-504,506,510
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97f2814644ca2f5c67c077a8a71dda902e342c37",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

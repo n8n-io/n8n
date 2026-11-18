@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/installPackage.generated.yml
+  s_9baa1e4b52dd7f::t_17054e3217eeee 35
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/updatePackage.generated.yml
+  s_9baa1e4b52dd7f::t_671ba566d2d1fb 36
+packages/cli/src/public-api/v1/shared/spec/schemas/communityPackagePublicDto.generated.yml
+  s_9baa1e4b52dd7f::t_db0b4e5c7397c6 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e2b269dcfa5f58b5a7c5d724121581d755265a49",
+  "prompts": {},
+  "sessions": {
+    "s_9baa1e4b52dd7f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1fe859e-22f1-46c1-9764-8579979b9830",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

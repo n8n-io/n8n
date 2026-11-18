@@ -1,0 +1,30 @@
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_c2545253921151::t_c527677e3dc226 557,562-563,570,572-577,581-582,584-587,589,591-593,595-601,603,605-628,631-632,637
+  s_c2545253921151::t_114eccf59c3746 558-561,569,578-580,583,588,594,602,629-630,635
+  s_c2545253921151::t_f19dd672942d45 492-498
+  s_c2545253921151::t_e223beb8e7500c 499-504
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_c2545253921151::t_4f5ddcc24fd2c4 286,288-290,293-329
+  s_c2545253921151::t_75a79567c6f97a 261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f58d5c33f13eaba1e74d8abd6ff49c754201d81",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c2545253921151": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a828c-fa83-4ad6-907e-5e8fe68d0e71",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

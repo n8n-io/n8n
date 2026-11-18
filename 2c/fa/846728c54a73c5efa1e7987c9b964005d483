@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_fc89baa43a0d3c::t_f9720978a51979 63-65,67-79,95,133-137,160-164
+packages/cli/src/modules/agents/integrations/__tests__/slack-operations.test.ts
+  s_fc89baa43a0d3c::t_f9720978a51979 42,44,49,51
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-operations.ts
+  s_fc89baa43a0d3c::t_f9720978a51979 191,199-206,208-213,215-222,228
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_fc89baa43a0d3c::t_f9720978a51979 255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2cfa846728c54a73c5efa1e7987c9b964005d483",
+  "prompts": {},
+  "sessions": {
+    "s_fc89baa43a0d3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f07-c638-74e0-aed0-251af56be3fb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.vue
+  s_f40a0dcab82208::t_5e8b3d13303e11 1341-1344,1365
+  s_f40a0dcab82208::t_563dbe5db38672 1307-1309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "93e470be993216dc493d78d3e8dfed4043a8825c",
+  "prompts": {},
+  "sessions": {
+    "s_f40a0dcab82208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d91658f8-18bd-4205-8e6a-19d13979e3f9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

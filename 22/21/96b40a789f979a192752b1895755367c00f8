@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_1944b731c51571::t_f83efc481cb7b5 1012-1023
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "222196b40a789f979a192752b1895755367c00f8",
+  "prompts": {},
+  "sessions": {
+    "s_1944b731c51571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "524d6f71-5f56-4140-b73b-bb9250f60da3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

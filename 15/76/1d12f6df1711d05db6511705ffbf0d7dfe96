@@ -1,0 +1,75 @@
+packages/@n8n/db/src/repositories/__tests__/credentials-save-content.repository.test.ts
+  s_02f30e88687580::t_6a5f3d25cee590 45-56,60-65,70-72
+  s_02f30e88687580::t_beecfa995b3ce0 43-44,57-59,66-69,73-76
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_02f30e88687580::t_efea5585212da3 3949
+packages/@n8n/instance-ai/src/types.ts
+  s_02f30e88687580::t_ab233056b9ff35 822-823
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_02f30e88687580::t_d04f66ae696b3a 140,179-185,200-201,206-210
+  s_02f30e88687580::t_6a5f3d25cee590 141-178,186-199,202-205
+  s_02f30e88687580::t_ea8c22ab67efdd 38-43
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_02f30e88687580::t_efea5585212da3 31
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_02f30e88687580::t_6a5f3d25cee590 365-368,602-605
+  s_02f30e88687580::t_7595442873cdb1 1252-1253,1258-1259
+  s_02f30e88687580::t_efea5585212da3 2,5-8,13,362-363,492,511,521,528-539,577,584,595-596,1240,1251,1254-1257,1260-1267
+packages/@n8n/instance-ai/docs/tools.md
+  s_02f30e88687580::t_7c244ac2ff1d6e 925,936
+  s_02f30e88687580::t_d04f66ae696b3a 55,875,915-924,926-935,937-938
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_02f30e88687580::t_ab233056b9ff35 250-261
+packages/@n8n/ai-utilities/src/utils/credential-description.ts
+  s_02f30e88687580::t_ab233056b9ff35 6,8
+  s_02f30e88687580::t_459fec6b782116 7
+packages/cli/src/modules/mcp/tools/update-credential-description.tool.ts
+  s_02f30e88687580::t_6a5f3d25cee590 15-17,46-50
+  s_02f30e88687580::t_efea5585212da3 1-14,18-45,51-67
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_02f30e88687580::t_6a5f3d25cee590 744-761
+  s_02f30e88687580::t_d04f66ae696b3a 762
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_02f30e88687580::t_efea5585212da3 119,675-679
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_02f30e88687580::t_6a5f3d25cee590 656-667
+  s_02f30e88687580::t_d04f66ae696b3a 85,652-655
+packages/cli/src/modules/mcp/__tests__/update-credential-description.tool.test.ts
+  s_02f30e88687580::t_6a5f3d25cee590 18-47,50-52,61-63,65-67
+  s_02f30e88687580::t_beecfa995b3ce0 1-17,48-49,53-60,64,68-69
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_02f30e88687580::t_7595442873cdb1 100,197,202,207-208,212-214
+  s_02f30e88687580::t_efea5585212da3 3,115
+  s_02f30e88687580::t_6a5f3d25cee590 209-211
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_02f30e88687580::t_8984d76b390017 180,389-394
+  s_02f30e88687580::t_d04f66ae696b3a 6,93
+  s_02f30e88687580::t_6a5f3d25cee590 80-92,378-388
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_02f30e88687580::t_459fec6b782116 92
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_02f30e88687580::t_6a5f3d25cee590 1774-1779,1787-1790,1796-1798,1801-1814,1817-1820,1826-1828,1834-1840,1846-1848,1854-1856,1861-1863,1870-1872,1879-1883,1886-1896,1901-1903
+  s_02f30e88687580::t_d04f66ae696b3a 1772-1773,1780-1786,1791-1795,1799-1800,1815-1816,1821-1825,1829-1833,1841-1845,1849-1853,1857-1860,1864-1869,1873-1876,1899-1900,1904-1907
+  s_02f30e88687580::t_8984d76b390017 1877-1878,1884-1885,1897-1898
+packages/cli/src/credentials/credentials.service.ts
+  s_02f30e88687580::t_6a5f3d25cee590 1126-1129,1133-1140
+  s_02f30e88687580::t_ab233056b9ff35 1102-1125,1130-1132,1141-1159
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_02f30e88687580::t_ab233056b9ff35 3015-3019
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "15761d12f6df1711d05db6511705ffbf0d7dfe96",
+  "prompts": {},
+  "sessions": {
+    "s_02f30e88687580": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1688e-5ff5-76a0-a4b7-22494ec8b06c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

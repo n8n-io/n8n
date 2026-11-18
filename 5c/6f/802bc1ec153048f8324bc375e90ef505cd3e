@@ -1,0 +1,35 @@
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_f066721bbfd491::t_ef245b63fe7601 54,67,72-73,78
+  s_f066721bbfd491::t_bba1161f874664 48-53,55-66,68-71,74-77,79-80
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_f066721bbfd491::t_f00d67377a95b8 38-39,158-165
+  s_f066721bbfd491::t_685c18f9fb7808 12,98-100,106
+  s_f066721bbfd491::t_bba1161f874664 102-105,107-108,117-118
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_f066721bbfd491::t_37a8d1a7d0e4f9 3,38,59-64,70-88
+  s_f066721bbfd491::t_4d1376c15961c3 2,15,17-19,43-45,51-53
+  s_f066721bbfd491::t_bba1161f874664 14,16,20-21,23,39-42,46-50,54-58,65-67,69
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_f066721bbfd491::t_a3dfe8d55181a3 19,22-23,27-28,31-34,39
+  s_f066721bbfd491::t_bba1161f874664 12,26,29-30,35-38,40,43-47
+  s_f066721bbfd491::t_d9625f55d57136 2,6-11,21,24-25,41-42
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_f066721bbfd491::t_7f1ddce90979d1 11,40,43,46
+  s_f066721bbfd491::t_bba1161f874664 10,12-15,33-39,41-42,44-45,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c6f802bc1ec153048f8324bc375e90ef505cd3e",
+  "prompts": {},
+  "sessions": {
+    "s_f066721bbfd491": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4161-0a6a-70a2-88e5-eed58ce13450",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

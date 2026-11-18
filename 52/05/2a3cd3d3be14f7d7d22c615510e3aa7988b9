@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/eslint.vue-projectless.config.mjs
+  s_75904bc20d652b::t_1fff502ad110d7 19
+  s_75904bc20d652b::t_6f3f1dcee78957 1-7,11-18,20-49,51-63,68-70
+  s_75904bc20d652b::t_178ce9cd526471 8-10,50,64-67
+packages/frontend/editor-ui/.oxlintrc.vize.json
+  s_75904bc20d652b::t_a2bc39749b5ba9 16-37,39-59
+  s_75904bc20d652b::t_b45487ee86ce7e 1-4,8-15,38,60-61
+  s_75904bc20d652b::t_f280cf90444505 5-7
+packages/frontend/editor-ui/package.json
+  s_75904bc20d652b::t_b45487ee86ce7e 152
+  s_75904bc20d652b::t_6f3f1dcee78957 18,131,167
+  s_75904bc20d652b::t_b977a292e5d833 17
+  s_75904bc20d652b::t_c3e1466cb880d1 19
+pnpm-lock.yaml
+  s_75904bc20d652b::t_d4a85b111418aa 6327-6329,6387-6389,6435-6437,12502-12505,15177-15228,21142-21146,31007-31008,33413-33428,33441-33452,33502-33510,33567-33570,33587-33598,33668-33682,33732-33742,34069-34092,41402-41414,44643-44653
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52052a3cd3d3be14f7d7d22c615510e3aa7988b9",
+  "prompts": {},
+  "sessions": {
+    "s_75904bc20d652b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4c53e3b8ffeufsnhgNztH9pd5",
+        "model": "gpt-5.6-terra-pro"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

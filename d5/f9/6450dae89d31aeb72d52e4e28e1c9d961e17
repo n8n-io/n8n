@@ -1,0 +1,62 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_983eea3c47ac98::t_358f73a715b596 9923-9924
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_983eea3c47ac98::t_8884335244214c 88
+  s_13fdf695fc0ff1::t_2aca2ba9ed5b96 8,47-52,76-77
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_983eea3c47ac98::t_0ab348ac4c09b9 30,70-71
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/preview.fixtures.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 8-10
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.test.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 347
+  s_983eea3c47ac98::t_e5ef44b089198c 356
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionSelection.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 28-33
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_983eea3c47ac98::t_e5ef44b089198c 75-78
+  s_983eea3c47ac98::t_7e62f85c5972fa 79-81
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 52-53,55
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.test.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 74
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.tree.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 98-100,119-123
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_983eea3c47ac98::t_62f48dd0076380 130-153
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionEntryPoints.ts
+  s_13fdf695fc0ff1::t_2aca2ba9ed5b96 44,46
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBanners.test.ts
+  s_13fdf695fc0ff1::t_2aca2ba9ed5b96 98,118-120,129-134,153,168-170,181-186,206-211,232,248,277,302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5f96450dae89d31aeb72d52e4e28e1c9d961e17",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

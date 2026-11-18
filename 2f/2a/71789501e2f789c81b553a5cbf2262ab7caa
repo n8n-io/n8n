@@ -1,0 +1,440 @@
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.test.ts
+  s_71ad2034164515::t_c8b86c63322bd1 58,63
+  s_71ad2034164515::t_640a7ab7cf9d08 224-229,231,233-248
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 191-198,200-206,215-217,219-226,230-236
+  s_71ad2034164515::t_c93767295366b0 190,199,207-214,218,227-229,237-239,287
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_71ad2034164515::t_0800e2a5291ac7 64
+packages/cli/src/modules/mcp/tools/agents/agent-slack-setup.ts
+  s_71ad2034164515::t_8948990ed4371d 4,10,12-13,18-22
+packages/frontend/editor-ui/src/features/agents/channels/telegram/AgentChannelTelegramSetup.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 27-32,44-46
+  s_71ad2034164515::t_c509fa1c07b71d 23,25-26,33-42,47-48
+  s_71ad2034164515::t_2ebe48a3079738 24,43
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_71ad2034164515::t_917a76673747fe 91,110,179,198
+  s_71ad2034164515::t_d8611e49bbea86 22-59,101,109,189,197
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_71ad2034164515::t_cddd5c45e00dd7 91
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_71ad2034164515::t_c698723f243727 49
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-managed-setup.service.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 317-320,324-325,327-331,411-412,414-415
+  s_71ad2034164515::t_f1fc45ddfd0688 13,65,268,409-410,413,416,443-444,446-448,920
+  s_71ad2034164515::t_f9174f3be8664b 421-422
+  s_71ad2034164515::t_9cec2bdacf20f8 280,921
+  s_71ad2034164515::t_aaa1d89ad3ec19 269-270,312-316,321-323,326,332-334
+  s_d3c0f6f6f7d41c::t_2dd0aa048baafe 335-336
+docs/generated/postgres-schema/public.project.md
+  s_71ad2034164515::t_a5b875aad6843c 148
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_71ad2034164515::t_c8b86c63322bd1 89
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.ts
+  s_71ad2034164515::t_918d5c532108b3 173,259
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_71ad2034164515::t_8ca27d4779ca81 15,49,97
+  s_71ad2034164515::t_d62548dfabf60c 98,255,264-284,319,328-333,381,389,393,416,1379,1382,1397,1409-1428
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_71ad2034164515::t_96ea5bba2e7e2d 4,134
+  s_71ad2034164515::t_703e7436c38e84 16,40,66,94-103,127,130-133,137
+  s_71ad2034164515::t_640a7ab7cf9d08 135-136
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_71ad2034164515::t_740d0aa94f83d2 7,36-41
+  s_d3c0f6f6f7d41c::t_28acebccf7c4c4 42
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-manual-setup.service.ts
+  s_71ad2034164515::t_9cec2bdacf20f8 89,120
+  s_71ad2034164515::t_f1fc45ddfd0688 19,22,57,119
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_71ad2034164515::t_24a3112bf501f7 50
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_71ad2034164515::t_86a0bd675cb029 507
+  s_71ad2034164515::t_b1b1eda16c6561 487,494-497,501-502,506,508-511
+  s_71ad2034164515::t_640a7ab7cf9d08 498-500,503-505,895-902
+  s_71ad2034164515::t_764b3c3bdbd08a 907,932
+  s_71ad2034164515::t_4d2dd713bf18c8 512
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_71ad2034164515::t_71e3a2903b9d70 59
+packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
+  s_71ad2034164515::t_764b3c3bdbd08a 11,19-20
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 83-84
+  s_71ad2034164515::t_2c1e99d59664ab 82
+packages/cli/src/modules/n8n-packages/entities/publishing.ts
+  s_71ad2034164515::t_1aec548eff6203 13-14
+packages/@n8n/api-types/src/agents/index.ts
+  s_71ad2034164515::t_740d0aa94f83d2 6
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_71ad2034164515::t_a87115f2b51152 1680
+  s_71ad2034164515::t_0eac76038bc953 282
+  s_71ad2034164515::t_640a7ab7cf9d08 239-281,478-479,1198-1199,1666,1669-1671
+  s_71ad2034164515::t_67c741b370a2b7 227,234
+  s_71ad2034164515::t_5b569c25dc7c5a 1667-1668
+  s_71ad2034164515::t_bb851684d20d36 385,477,1197
+  s_71ad2034164515::t_d3f95fecf4512d 1681
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_71ad2034164515::t_7df4574e469803 80
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 102-107,112-120
+  s_71ad2034164515::t_42f7489a8aa105 94-101,108-111,121-124
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_71ad2034164515::t_65cacd1b16c25e 90
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_71ad2034164515::t_2b05402a0380c1 62
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_71ad2034164515::t_403feb17d829c8 358
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_71ad2034164515::t_68cc482aa6391c 75
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_71ad2034164515::t_b793399d5e8c2a 136-150
+  s_71ad2034164515::t_c7cb7d464075d6 173-174
+  s_71ad2034164515::t_640a7ab7cf9d08 157-159
+  s_71ad2034164515::t_ce41b58cd2e9a4 152-154
+  s_71ad2034164515::t_aaa1d89ad3ec19 151,155-156,160-162
+  s_71ad2034164515::t_b37bc03876c635 163-172,176
+  s_71ad2034164515::t_e694a302597200 175
+packages/cli/src/modules/agents/json-config/agent-config-composition.ts
+  s_71ad2034164515::t_ca58af41457efe 6,15,21
+packages/cli/src/modules/agents/utils/__tests__/agent-channel-setup.test.ts
+  s_71ad2034164515::t_28fabb65bf52c7 21-23
+  s_71ad2034164515::t_86a0bd675cb029 10
+  s_71ad2034164515::t_abb7d573c65e5d 17
+  s_71ad2034164515::t_9ad5e6cf5b314e 1-9,11-16,18-20,24-28,38-51,58-59,67-71
+  s_71ad2034164515::t_2877d55c5d3133 66
+  s_71ad2034164515::t_640a7ab7cf9d08 29-37,52-57,60-65
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_71ad2034164515::t_253157025d8423 85
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  s_71ad2034164515::t_ae88c06a609cfe 53
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 136-138
+  s_71ad2034164515::t_02ba167503dc2a 119
+  s_71ad2034164515::t_7155d6970824cf 130-132
+  s_71ad2034164515::t_29b0010ad702a5 9,12,122-125,133
+  s_71ad2034164515::t_d0f0f5fe48cd33 121,126-129
+  s_71ad2034164515::t_37df468bb0671d 29,120,134-135
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_71ad2034164515::t_e7b80aebb2d027 3,13,42,70,82,87,110,210
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_d3c0f6f6f7d41c::t_f14dca63e9bab1 261,275-277,302
+  s_71ad2034164515::t_640a7ab7cf9d08 88-89
+  s_71ad2034164515::t_f9174f3be8664b 29
+  s_71ad2034164515::t_965f2ded83fc4f 81,85-87,90-100,110-111,119-151
+  s_d3c0f6f6f7d41c::t_ccd08d54c488c6 152,258-260,278-281,297,314,321-323,411,416,422
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_71ad2034164515::t_391be95d1c093c 106,116
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_71ad2034164515::t_cb958a33f80bce 65
+docs/generated/sqlite-schema/agent_files.md
+  s_71ad2034164515::t_192c3de99ea7a2 73
+packages/@n8n/db/src/migrations/common/1792152456800-AddAgentPendingChannelSetup.ts
+  s_71ad2034164515::t_b2795a19e0e1ea 1-2,14-15,20-21
+  s_71ad2034164515::t_71c7056cdf4e0d 3
+  s_71ad2034164515::t_740d0aa94f83d2 4-13,16-19
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_71ad2034164515::t_8c6283eef2b766 62
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_71ad2034164515::t_9284323c6048c6 395
+  s_71ad2034164515::t_1baeef02ef5781 383,480-484
+  s_71ad2034164515::t_f5f2b0b46d62eb 64-65,80-91,125,146,150-151,230-231,254-256,258,384-393
+  s_71ad2034164515::t_8b9326c3589640 93-99,129-136,189-191,394,396-402,419-421
+  s_71ad2034164515::t_d9c7dca436ba8c 92
+  s_71ad2034164515::t_9b22647ce23476 137,485-486
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 482-484,488-495,503-506,511-515,527-536,540-550,555-557,561-564,579-581
+  s_71ad2034164515::t_5a0de75fda8b7c 585-586,588-594,790-793
+  s_71ad2034164515::t_7f2aa15edb14d0 572-578,587
+  s_71ad2034164515::t_f563fb29c2a121 35-37,55,485-487,496-502,507-510,516-526,537-538,554,558-560,582,584
+  s_71ad2034164515::t_b1b1eda16c6561 387-390
+  s_71ad2034164515::t_5dcc813b5f689e 565-571,583
+  s_71ad2034164515::t_9cec2bdacf20f8 43-44,125
+  s_71ad2034164515::t_56f87139385644 539,551-553
+  s_71ad2034164515::t_38c0db161f050b 794,797,826,832-833,977,1009
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_71ad2034164515::t_84eae534882500 633,638-640,1074,1763,1778
+  s_71ad2034164515::t_ebfcffecf4a59e 637
+  s_71ad2034164515::t_56f87139385644 582,589
+  s_71ad2034164515::t_93ede362129eb9 1075
+  s_71ad2034164515::t_640a7ab7cf9d08 579-581
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_71ad2034164515::t_33ae6aa2eea0e0 82
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_71ad2034164515::t_c93767295366b0 8,83-84,110,135,173-174,246-249,258-262,267-268
+  s_71ad2034164515::t_af9ce636eae7e0 85-89
+  s_71ad2034164515::t_640a7ab7cf9d08 250-257,263-266
+  s_71ad2034164515::t_22ced68ef5f8e2 269-270
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_71ad2034164515::t_cd6bf735093e62 74
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 245-252,265-271
+  s_71ad2034164515::t_9cec2bdacf20f8 210,219,243-244,253
+  s_71ad2034164515::t_24a3112bf501f7 321
+  s_71ad2034164515::t_f1fc45ddfd0688 33,218,234,254-264,272
+  s_d3c0f6f6f7d41c::t_b731f480d8af11 273
+packages/@n8n/api-types/src/agents/types.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 3-7,168-172
+  s_71ad2034164515::t_82ffa76c303135 8
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackSetupView.vue
+  s_71ad2034164515::t_764b3c3bdbd08a 24
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_71ad2034164515::t_548538d51cad27 65
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_71ad2034164515::t_918d5c532108b3 36,81-82,88-93,206,237,241-242,504,604-607,616-629,645-648,675,694-696,738,784,794
+  s_71ad2034164515::t_ab5361b238f2d3 85-87,744-748
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_71ad2034164515::t_c93767295366b0 16,52,223-224,409
+  s_71ad2034164515::t_42f7489a8aa105 112-113,367-370,388-390,393-401
+  s_71ad2034164515::t_640a7ab7cf9d08 4-8,81-88,371-387,391-392
+packages/cli/src/modules/agents/integrations/channel-status-report.ts
+  s_71ad2034164515::t_00f87df0d1bc3c 41
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_71ad2034164515::t_ce97c92b32a3a1 55
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_71ad2034164515::t_76a29c7de20d90 102
+packages/frontend/editor-ui/src/features/agents/utils/agentValidationIssueMessages.ts
+  s_71ad2034164515::t_68cc482aa6391c 14
+packages/cli/src/modules/agents/utils/agent-channel.ts
+  s_71ad2034164515::t_740d0aa94f83d2 1-2,9-22
+  s_71ad2034164515::t_89dbfeb9a24ad8 23
+docs/generated/sqlite-schema/agents.md
+  s_71ad2034164515::t_6ebdb142a5eb8f 9
+  s_71ad2034164515::t_58c03bde433304 24,93
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_71ad2034164515::t_446c0ea4f65389 77
+packages/cli/src/modules/agents/agent-channel-setup.service.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 8-12,47-63
+  s_71ad2034164515::t_68cc482aa6391c 3
+  s_71ad2034164515::t_29b0010ad702a5 27,31,36,39
+  s_71ad2034164515::t_ca58af41457efe 1-2,4-7,13-26,28-30,32-35,37-38,40-46,64-65
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_71ad2034164515::t_ce17ab07e428a6 75
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_71ad2034164515::t_3b3fbfe2181350 50,150-153,239
+packages/@n8n/api-types/src/agents/slack/dto.ts
+  s_71ad2034164515::t_c349f310fe9d4a 7,13
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_71ad2034164515::t_ca58af41457efe 8,63
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_71ad2034164515::t_01475ec3d1342d 69
+packages/@n8n/cli/src/commands/package/import.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 11-12
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_71ad2034164515::t_3d1a84fa79bdb7 59
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_71ad2034164515::t_b9601e7eb5c35a 95
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_391be95d1c093c 1,43
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_71ad2034164515::t_3b3fbfe2181350 55-56,76,194,223,239,249,260,272,340
+packages/@n8n/cli/docs/commands/package.md
+  s_71ad2034164515::t_521da93d38d018 145-149
+  s_71ad2034164515::t_26594af5b68110 150
+  s_71ad2034164515::t_85cc59724d62ed 47-49,133-144,151-153
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_71ad2034164515::t_a3e703c66a0892 66
+packages/@n8n/api-types/src/agents/dto.ts
+  s_71ad2034164515::t_703e7436c38e84 356,437
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_71ad2034164515::t_c509fa1c07b71d 97
+  s_71ad2034164515::t_640a7ab7cf9d08 111-127,150-152,466-468
+  s_71ad2034164515::t_1fe7fad0d8f357 282
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_71ad2034164515::t_3b3fbfe2181350 30
+docs/generated/sqlite-schema/agents_observations.md
+  s_71ad2034164515::t_d98415f0006447 84
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_71ad2034164515::t_2c1e99d59664ab 1848,1860
+  s_71ad2034164515::t_640a7ab7cf9d08 2255-2291,2294-2295,2302,2304,2314-2315,2321-2324,2330-2331,2337,2340-2342,2348-2349,2354
+  s_71ad2034164515::t_2bed62642d8039 2254,2343
+  s_71ad2034164515::t_bdaba64a5ba715 37,191,193,2251-2253,2293,2308-2311,2320,2344,2347,2351,2358-2360,2362
+  s_71ad2034164515::t_13e447a9f886d6 2305
+packages/frontend/editor-ui/src/features/agents/channels/slack/api.ts
+  s_71ad2034164515::t_918d5c532108b3 37,41,87,93
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_71ad2034164515::t_79680aea3f1ad1 69
+packages/@n8n/api-types/src/agents/agent-channel-setup.schema.ts
+  s_71ad2034164515::t_740d0aa94f83d2 1-14
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_71ad2034164515::t_3a443f7df91671 58
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_71ad2034164515::t_85cc59724d62ed 20
+  s_71ad2034164515::t_ebfcffecf4a59e 19
+  s_71ad2034164515::t_391be95d1c093c 7,92-94
+  s_71ad2034164515::t_f74d9bdbd2c654 29-34,42-47
+  s_71ad2034164515::t_e4bd06e3193af2 53
+packages/cli/src/modules/agents/utils/agent-channel-setup.ts
+  s_71ad2034164515::t_28fabb65bf52c7 108-111
+  s_71ad2034164515::t_abb7d573c65e5d 96,107,113
+  s_71ad2034164515::t_3b3fbfe2181350 5,36-38
+  s_71ad2034164515::t_f9174f3be8664b 69-77,83-86
+  s_71ad2034164515::t_640a7ab7cf9d08 39-50,59-63,78-82,90-94,98-104,135-137,141-142
+  s_71ad2034164515::t_86a0bd675cb029 6,57,66
+  s_71ad2034164515::t_740d0aa94f83d2 1-4,7-35,51-56,58,64-65,67-68,87-89,95,97,105-106,112,114-134,138-140,143-181
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_71ad2034164515::t_89c8064fff7752 84
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_6374a87c43d324 31,412
+  s_71ad2034164515::t_ca58af41457efe 30,153-156,252-258
+  s_71ad2034164515::t_640a7ab7cf9d08 413-415
+docs/generated/postgres-schema/public.agents.md
+  s_71ad2034164515::t_2076894c59e03f 13,91
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_71ad2034164515::t_6bc768b14886f2 91-93,95-109,283,410-411,469
+  s_71ad2034164515::t_1baeef02ef5781 44,94,110-111,318,413-428,430-431,459,479
+  s_71ad2034164515::t_9284323c6048c6 2-3
+  s_71ad2034164515::t_b9de9afcbe2f6a 112,412,464-468
+  s_71ad2034164515::t_cdf659e4776693 7,45,113,270-282,284-289,311-312,470-478,480-481
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_71ad2034164515::t_b793399d5e8c2a 310-320,324,328-329,335-340
+  s_d3c0f6f6f7d41c::t_c0f1e83def802b 148,341-344,1409
+  s_71ad2034164515::t_2c1e99d59664ab 147
+  s_71ad2034164515::t_aaa1d89ad3ec19 298-302,306-309
+  s_71ad2034164515::t_640a7ab7cf9d08 303-305,321-323,325-327,330-334
+  s_d3c0f6f6f7d41c::t_dc2544639461c1 149,1410-1411,1613,1707-1709
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_71ad2034164515::t_ab5361b238f2d3 78-79,155-160,179-189,212-225
+  s_71ad2034164515::t_68cc482aa6391c 73-74,130,149,226-240,295,301,308-314,372,396-407,432
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_71ad2034164515::t_bbb15c4473e191 65
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_71ad2034164515::t_c86517f8fc8ca9 102
+packages/nodes-base/credentials/SlackApi.credentials.ts
+  s_71ad2034164515::t_37df468bb0671d 60-71
+docs/generated/postgres-schema/public.agents_observations.md
+  s_71ad2034164515::t_c81c594db44592 81
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_71ad2034164515::t_d853062cec6b95 77
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_71ad2034164515::t_f18f64e7d35979 69
+docs/generated/sqlite-schema/README.md
+  s_71ad2034164515::t_bc20dd96d0c41d 39
+  s_71ad2034164515::t_7bc98b559bcb09 753
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_71ad2034164515::t_1296e9d3ff9816 38-39,45-48,51
+  s_71ad2034164515::t_81bf5e70a6d570 99
+  s_71ad2034164515::t_391be95d1c093c 10,22
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_71ad2034164515::t_24a3112bf501f7 402,427,439,445
+docs/generated/postgres-schema/public.agent_history.md
+  s_71ad2034164515::t_7206b3aa654d6b 67
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_71ad2034164515::t_b90ff976244bdd 70
+docs/generated/postgres-schema/public.agent_files.md
+  s_71ad2034164515::t_f1df89cbd70878 70
+docs/generated/sqlite-schema/project.md
+  s_71ad2034164515::t_20d19ad94eb8a1 154
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_71ad2034164515::t_d3ea93dc19d6b4 58
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_71ad2034164515::t_c8b86c63322bd1 7
+  s_71ad2034164515::t_640a7ab7cf9d08 158-179
+  s_71ad2034164515::t_4928b6054cf856 134-157
+docs/generated/sqlite-schema/agent_history.md
+  s_71ad2034164515::t_d6ac9d5f306862 74
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_71ad2034164515::t_aea076d904b2f5 285
+  s_71ad2034164515::t_68cc482aa6391c 85,97-99
+  s_71ad2034164515::t_f9174f3be8664b 33,293
+  s_71ad2034164515::t_ebfcffecf4a59e 26,208-209,235,245
+  s_71ad2034164515::t_640a7ab7cf9d08 226-229,249-250,252-258,261-264,267-275,286-289
+  s_71ad2034164515::t_6374a87c43d324 18-19,244,246
+  s_71ad2034164515::t_3d3c51e197733e 10,30-32,34-41,55-57,66,116,160,171,200,210,221,225,230-231,248,251,259-260,265-266,276-284,290-292,294-302,308,318,329,336
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_71ad2034164515::t_68cc482aa6391c 9149,9622,9626
+  s_71ad2034164515::t_f5f2b0b46d62eb 9623,9625
+  s_71ad2034164515::t_42f7489a8aa105 9624
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_71ad2034164515::t_00f87df0d1bc3c 49,339
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_71ad2034164515::t_81bf5e70a6d570 360,367,378,1836,1902
+  s_71ad2034164515::t_640a7ab7cf9d08 1082,1860-1863,1875-1883
+  s_71ad2034164515::t_8948990ed4371d 353,1729,1874
+  s_71ad2034164515::t_43650a6aeb0a24 1872
+  s_71ad2034164515::t_df1dd40cff9998 33,465,1180,1841-1859,1865-1871,1873
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_71ad2034164515::t_6374a87c43d324 13,105-110,135-136
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_71ad2034164515::t_e31753e2206aec 49
+docs/generated/postgres-schema/public.skill.md
+  s_71ad2034164515::t_2188089020e091 65
+docs/generated/sqlite-schema/agent_background_job.md
+  s_71ad2034164515::t_843448b7d913a0 97
+docs/generated/sqlite-schema/skill.md
+  s_71ad2034164515::t_3b4251a8abf961 73
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-setup.types.ts
+  s_71ad2034164515::t_9cec2bdacf20f8 37,65
+  s_71ad2034164515::t_24a3112bf501f7 76,83-84
+  s_71ad2034164515::t_c349f310fe9d4a 36
+  s_71ad2034164515::t_640a7ab7cf9d08 62-64,66-67
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_3b3fbfe2181350 73,199,294
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  s_71ad2034164515::t_a09b7070683ec7 63
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_71ad2034164515::t_85cc59724d62ed 66-68
+packages/cli/test/migration/1792152456800-add-agent-pending-channel-setup.test.ts
+  s_71ad2034164515::t_898499e9e87de4 1-11,13-33,43-48,52-53,60-66,73,77-83
+  s_71ad2034164515::t_640a7ab7cf9d08 34-42,49-51,54-59,67-72,74-76
+  s_71ad2034164515::t_f74d9bdbd2c654 12
+packages/cli/src/modules/agents/agent-slack-integrations.controller.ts
+  s_71ad2034164515::t_c349f310fe9d4a 38,111
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_71ad2034164515::t_86a0bd675cb029 1
+  s_71ad2034164515::t_640a7ab7cf9d08 76-80
+  s_71ad2034164515::t_b1b1eda16c6561 74-75,81-91
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 213-215
+  s_71ad2034164515::t_84eae534882500 153-154,195,212,220,231-232,335,355-356,403-406,452,454-457
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_71ad2034164515::t_640a7ab7cf9d08 59-61,628-638,640-642,645-647
+  s_71ad2034164515::t_b793399d5e8c2a 627,639,643-644,648-649
+  s_71ad2034164515::t_2c1e99d59664ab 17-18
+  s_d3c0f6f6f7d41c::t_38eae99bbe1845 650-652
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_ca58af41457efe 30-33,504,519,528,692
+docs/generated/postgres-schema/README.md
+  s_71ad2034164515::t_1f8fb13edaf1ed 39
+  s_71ad2034164515::t_8e58e461a81c40 767
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_71ad2034164515::t_12a32b0838c275 56
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_71ad2034164515::t_81bf5e70a6d570 170-174,180-185
+  s_d3c0f6f6f7d41c::t_80067347bbd6ae 186-188
+  s_d3c0f6f6f7d41c::t_da2dd45510dfaf 189-191
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
+  s_71ad2034164515::t_24a3112bf501f7 10,30,68,199,255-259,305-307,317-319,343-344
+  s_71ad2034164515::t_68cc482aa6391c 119-121,124-125
+  s_71ad2034164515::t_640a7ab7cf9d08 133-140,166-169,308-316
+  s_71ad2034164515::t_f9174f3be8664b 262-265
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_71ad2034164515::t_02ba167503dc2a 50-51
+  s_71ad2034164515::t_f1b8381ecd16cd 436-438
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_71ad2034164515::t_c05eeb4c9f3440 58
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_71ad2034164515::t_799baae3c03143 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f2a71789501e2f789c81b553a5cbf2262ab7caa",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

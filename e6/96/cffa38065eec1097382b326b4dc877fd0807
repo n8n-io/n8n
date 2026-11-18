@@ -1,0 +1,24 @@
+packages/cli/src/public-api/v1/__tests__/public-api-scope-lookup.test.ts
+  s_bcad48c2962531::t_6dfc370632204a 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e696cffa38065eec1097382b326b4dc877fd0807",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bcad48c2962531": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b7164d4e-821a-434c-97d3-b5dc64c728c1",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

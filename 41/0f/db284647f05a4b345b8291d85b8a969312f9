@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Google/Books/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a7dd8441d1d7cd 1-60
+packages/nodes-base/nodes/Google/CloudNaturalLanguage/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_ae812b4495735a 1-27
+packages/nodes-base/nodes/Google/Docs/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_d32276643ec6a1 1-41
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/collection.listCollectionIds.test.ts
+  s_2e1fa95fc44f8f::t_63406e393816ff 1-27
+packages/nodes-base/nodes/Google/Books/test/requests.workflow.json
+  s_2c07c5453ed851::t_1644b38944d5c7 1-455
+packages/nodes-base/nodes/Google/CloudNaturalLanguage/test/requests.workflow.json
+  s_2c07c5453ed851::t_79a2a20f8a4b31 1-59
+packages/nodes-base/nodes/Google/Docs/test/requests.workflow.json
+  s_2c07c5453ed851::t_3ea37f8ca87ffd 1-168
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/collection-listCollectionIds.workflow.json
+  s_2c07c5453ed851::t_51aa3bbeb69bcf 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "410fdb284647f05a4b345b8291d85b8a969312f9",
+  "prompts": {},
+  "sessions": {
+    "s_2c07c5453ed851": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6d2183ee1ce2e34",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

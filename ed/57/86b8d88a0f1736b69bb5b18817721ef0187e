@@ -1,0 +1,64 @@
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_e5a64625bc5cd1::t_2978551b4dff5f 140,145,154-161
+  s_c5954c3047b5ed::t_070e3be71d010d 162-163
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_e5a64625bc5cd1::t_f7a1d7a8a57293 154-159,164,175,181,186,197-216,222-226,281,283-288
+  s_e5a64625bc5cd1::t_319cc7aeb56533 196,270,277
+  s_e5a64625bc5cd1::t_fff6f01854df1d 217-221
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_e5a64625bc5cd1::t_ae48f981528c0c 318,382-387,457,634
+  s_e5a64625bc5cd1::t_2e54811f831c82 575-587,589,620-623,627-628
+  s_e5a64625bc5cd1::t_746911bc4945c9 8,588,590-610,612,614-619,624-626
+  s_e5a64625bc5cd1::t_44720693cf7df4 611,613
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_e5a64625bc5cd1::t_2e54811f831c82 438-459,463-465,469-470
+  s_e5a64625bc5cd1::t_fff6f01854df1d 460-462,466-468
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_e5a64625bc5cd1::t_2978551b4dff5f 182-195
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e5a64625bc5cd1::t_2978551b4dff5f 300-301,303-305,532-534
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_e5a64625bc5cd1::t_2978551b4dff5f 329
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_e5a64625bc5cd1::t_2978551b4dff5f 264-268,272-279
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_e5a64625bc5cd1::t_2978551b4dff5f 491
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e5a64625bc5cd1::t_ae48f981528c0c 87
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_e5a64625bc5cd1::t_fff6f01854df1d 155-156,160-162
+  s_e5a64625bc5cd1::t_ae48f981528c0c 7
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_e5a64625bc5cd1::t_2978551b4dff5f 301,303
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e5a64625bc5cd1::t_ae48f981528c0c 443
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_e5a64625bc5cd1::t_2e54811f831c82 8,36,153,454-462,502-528
+  s_c5954c3047b5ed::t_61633e7b02c038 529-530
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_e5a64625bc5cd1::t_ae48f981528c0c 145-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ed5786b8d88a0f1736b69bb5b18817721ef0187e",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

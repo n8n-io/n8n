@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8ec8bc6dd50b23::t_71a3d45c04288b 3109-3110,3140
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  s_c245e7ce9d35ec::t_abd5cde270c844 2
+  s_c245e7ce9d35ec::t_4f6b5212f295c3 4
+  s_c245e7ce9d35ec::t_230ef5f43778a1 5
+  s_f9a272637b6b34::t_d818af21dcea6b 73-85
+  s_f9a272637b6b34::t_fe1a6e55d446c4 29,32,34
+  s_f9a272637b6b34::t_d8f59090a7c071 35-36
+  s_f9a272637b6b34::t_52826a4d80bfd7 86-88
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_8ec8bc6dd50b23::t_d2f5e5fb88e916 34,68,107
+  s_8ec8bc6dd50b23::t_4abc9a65c43433 8,67
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f9a272637b6b34::t_c7897d6f1c4aea 8336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c120c2dd2861d590117cd061c81b323e6752a70",
+  "prompts": {},
+  "sessions": {
+    "s_8ec8bc6dd50b23": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f25b-245d-70e1-aed0-bb954d7cda75",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c245e7ce9d35ec": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f25d-291a-70e1-aed0-bb97c50005be",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_f9a272637b6b34": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f266-490e-70e1-aed0-bb98043c6337",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

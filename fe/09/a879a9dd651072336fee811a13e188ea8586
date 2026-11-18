@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/DomainAccessApproval.test.ts
+  s_d740321ee1c7f2::t_7f23abac468d7f 1-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantConfirmation.ts
+  s_d740321ee1c7f2::t_e3d55cdcccc202 1-92
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_d740321ee1c7f2::t_439b425b351d39 1-394
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_d740321ee1c7f2::t_0fa180cc553f83 1-27,29-61,63-98,100-102,104-106,108-175,177-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe09a879a9dd651072336fee811a13e188ea8586",
+  "prompts": {},
+  "sessions": {
+    "s_d740321ee1c7f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd0bc4a5-d678-410d-b6c9-7a9cc5d6c9ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/@n8n/blob-storage/eslint.config.mjs
+  s_4d4515bb8fac55::t_06797f7c69c82d 4-10,12
+packages/@n8n/blob-storage/package.json
+  s_4d4515bb8fac55::t_93a075666bd14b 13-14,54,59-60
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_4d4515bb8fac55::t_55c15b0ab5af5d 50-54
+packages/@n8n/backend-network/package.json
+  s_4d4515bb8fac55::t_93a075666bd14b 12-13,87,94-95
+turbo.json
+  s_4d4515bb8fac55::t_55c15b0ab5af5d 74-76,83-85
+packages/@n8n/backend-network/oxlint.config.mts
+  s_4d4515bb8fac55::t_93a075666bd14b 1-7
+packages/@n8n/blob-storage/oxlint.config.mts
+  s_4d4515bb8fac55::t_93a075666bd14b 1-7
+packages/@n8n/backend-network/eslint.config.mjs
+  s_4d4515bb8fac55::t_93a075666bd14b 3
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_29bf6340d2b007 1765-1767,1786-1791,2009,2011,2024,2026-2029
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "697fe14179f8e2301ae645d2ad83f1d548ebd0c9",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

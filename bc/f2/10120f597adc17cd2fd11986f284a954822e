@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_4b239ab2d9ccd1::t_4486c90656aae8 298-301,304-310
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-thread-metadata.service.test.ts
+  s_4b239ab2d9ccd1::t_9c4d9a68ed264b 84-87,98
+packages/cli/src/modules/agents/system-agents/system-agent-thread-metadata.service.ts
+  s_4b239ab2d9ccd1::t_9c4d9a68ed264b 40
+  s_4b239ab2d9ccd1::t_acce382976f0ab 42
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store.ts
+  s_4b239ab2d9ccd1::t_4486c90656aae8 130
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-thread-credits.service.ts
+  s_4b239ab2d9ccd1::t_acce382976f0ab 44-46,49-53,55
+  s_4b239ab2d9ccd1::t_7bcbe7acaaae57 40-41,48
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.store.test.ts
+  s_4b239ab2d9ccd1::t_73d71ad41b4619 97-106
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/module.descriptor.test.ts
+  s_4b239ab2d9ccd1::t_4486c90656aae8 409-410,413,418
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-thread-credits.service.test.ts
+  ai_agent 47-49
+  s_4b239ab2d9ccd1::t_acce382976f0ab 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bcf210120f597adc17cd2fd11986f284a954822e",
+  "prompts": {},
+  "sessions": {
+    "s_4b239ab2d9ccd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81067f7a-bf99-4a1a-922b-436f0b09a4bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

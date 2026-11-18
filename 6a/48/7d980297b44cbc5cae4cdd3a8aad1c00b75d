@@ -1,0 +1,50 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a3190cc30ba608::t_b67aebf7fe6bcf 8341
+  s_a9bc029334f058::t_900617b4a77453 8343
+  s_a3190cc30ba608::t_e1bd088b9ee457 8339,8342
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a3190cc30ba608::t_cd2e08dd6f1bc3 733-735,765-769
+  s_a3190cc30ba608::t_9d53a44257d8e5 750,752-753
+  s_a3190cc30ba608::t_14a84345cb5107 639,751,2587,2597
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  s_af2d1482cbbf97::t_6dfdce83a911f1 26,114-117
+  s_af2d1482cbbf97::t_613441f4d3c828 22-25,27-28,43-47,79-113,118-127,145,148,155-159,263-266,275-276,381-384,386,390-392,416-421
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/agentSetupTasks.registry.ts
+  s_a3190cc30ba608::t_b7c50a71ac193a 81-84,88,144
+  s_a3190cc30ba608::t_4e7a0a5b01882b 73-78,89-90,121-129,160
+  s_a9bc029334f058::t_5f1d199be85f77 103,106,133-134,137
+  s_a3190cc30ba608::t_add25209fff73b 22-25,79-80,85-87,130
+  s_a3190cc30ba608::t_c046e8359089a9 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a487d980297b44cbc5cae4cdd3a8aad1c00b75d",
+  "prompts": {},
+  "sessions": {
+    "s_a3190cc30ba608": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f251-1012-70e1-aed0-bb93e1c5e892",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a9bc029334f058": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f239-f759-70e1-aed0-bb91917298c8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_af2d1482cbbf97": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f1eb-1f78-74f9-ac8a-6943fd6e20b1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

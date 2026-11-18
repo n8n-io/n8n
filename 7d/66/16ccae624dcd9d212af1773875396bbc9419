@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/integrations/integration-message-context.ts
+  s_e301d8294f60c4::t_32b4916ae43858 110
+packages/cli/src/modules/agents/integrations/platforms/linear-origin.ts
+  s_e301d8294f60c4::t_32b4916ae43858 17
+packages/cli/src/modules/agents/integrations/integration-origin-support.ts
+  s_e301d8294f60c4::t_9b95f423302487 7
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e301d8294f60c4::t_9b95f423302487 916-917,923-931
+packages/cli/src/modules/agents/integrations/agent-chat-message-context.ts
+  s_e301d8294f60c4::t_32b4916ae43858 2,117,126
+packages/@n8n/api-types/src/agents/__tests__/agent-message-origin.schema.test.ts
+  s_e301d8294f60c4::t_9c65267b4a5d36 8
+packages/@n8n/api-types/src/agents/agent-message-origin.schema.ts
+  s_e301d8294f60c4::t_32b4916ae43858 34
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_e301d8294f60c4::t_9c65267b4a5d36 112,124
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_e301d8294f60c4::t_32b4916ae43858 74-75
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-message-context.test.ts
+  s_e301d8294f60c4::t_9c65267b4a5d36 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d6616ccae624dcd9d212af1773875396bbc9419",
+  "prompts": {},
+  "sessions": {
+    "s_e301d8294f60c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "254d4248-4a92-4bc9-a4ba-d776e64b364c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

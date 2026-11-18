@@ -1,0 +1,44 @@
+docs/generated/postgres-schema/public.workflow_review_request.md
+  s_87b7dc096911b8::t_5299c9a1819866 13,53,91-94,96-99
+docs/generated/sqlite-schema/workflow_review_activity.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-8,10-20,23-31,34-39,41-48,51-56,58-83,85-106
+  s_87b7dc096911b8::t_8c70669a0653e1 84
+docs/generated/sqlite-schema/user.md
+  s_87b7dc096911b8::t_5299c9a1819866 79,340-343,345-348
+docs/generated/sqlite-schema/README.md
+  s_87b7dc096911b8::t_5299c9a1819866 309,311,1496-1499,1501-1509,1511-1512
+  s_87b7dc096911b8::t_8c70669a0653e1 1510
+docs/generated/postgres-schema/README.md
+  s_87b7dc096911b8::t_5299c9a1819866 322-323,1507-1510,1512-1520,1522-1523
+  s_87b7dc096911b8::t_8c70669a0653e1 1521
+docs/generated/postgres-schema/public.user.md
+  s_87b7dc096911b8::t_5299c9a1819866 73,334-337,339-342
+docs/generated/postgres-schema/public.workflow_review_activity_comment.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-6,8-9,11-18,20-26,28-33,35-39,41-47,49-52,54-58
+  s_87b7dc096911b8::t_8c70669a0653e1 10,40
+docs/generated/sqlite-schema/workflow_review_request.md
+  s_87b7dc096911b8::t_5299c9a1819866 24,58,96-99,101-104
+docs/generated/postgres-schema/public.workflow_review_activity.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-8,13-20,22-33,35-43,46-51,53-78,80-101
+  s_87b7dc096911b8::t_8c70669a0653e1 79
+docs/generated/sqlite-schema/workflow_review_activity_comment.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-8,10-20,22-28,32-36,38-42,44-50,52-55,57-61
+  s_87b7dc096911b8::t_8c70669a0653e1 21,43
+  s_87b7dc096911b8::t_aff3db6ec1274e 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "933f6965ae07ca6e60b6dc73cbae3f015a453859",
+  "prompts": {},
+  "sessions": {
+    "s_87b7dc096911b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a6260b0-b810-4125-8749-e2239809baa5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

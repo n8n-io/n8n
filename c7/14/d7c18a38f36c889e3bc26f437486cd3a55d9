@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_2414943264e82e 34-40
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b86bd8b73ec329::t_2414943264e82e 988-990
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderDropdown.test.ts
+  s_b86bd8b73ec329::t_d1035c450db7f9 24-31,41-43,46-51,53-60,65-74,82-85,93-95,102-107,118-125,133-135,141-143
+  s_b86bd8b73ec329::t_59a1c7f6b8bb41 36
+  s_b86bd8b73ec329::t_7b20d12be39282 1-23,32-35,37-40,44-45,52,61-64,75-81,86-92,96-101,108-117,126-132,136-140,144-150
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.vue
+  s_b86bd8b73ec329::t_59a1c7f6b8bb41 564
+packages/frontend/editor-ui/src/features/core/folders/folders.store.ts
+  s_b86bd8b73ec329::t_a7bade61584626 1,141,153
+  s_b86bd8b73ec329::t_2414943264e82e 184-185
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderDialog.vue
+  s_b86bd8b73ec329::t_48569da980674f 53-55,60-61,69-73,76-83,251-253,267-269
+  s_b86bd8b73ec329::t_2414943264e82e 20-23,39,50,56-59,62,68,74,93,103,156-166,172-173,234,249-250,254-266,270-285,330,337-339,350-356
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderDialog.test.ts
+  s_b86bd8b73ec329::t_7cd26c83d28e5d 4,28-30,37-43,53-55,59-60,63,85,94-95,130,133,141-144,148,156-161,164-167,174-177,184-187,197,199-202,204,206-208,232
+  s_b86bd8b73ec329::t_d1035c450db7f9 31-36,44-52,79-82,86-93,134-139,145-147,149-155,168-173,178-183,191,194-195
+packages/frontend/editor-ui/src/features/core/folders/folders.store.test.ts
+  s_b86bd8b73ec329::t_d1035c450db7f9 189-194,198-199,209-211
+  s_b86bd8b73ec329::t_7bc5725a1a0370 74,102,140,156
+  s_b86bd8b73ec329::t_7b20d12be39282 184-188,195-197,200-208,212-214
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_b86bd8b73ec329::t_48569da980674f 300
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_b86bd8b73ec329::t_db7c170fe4f1d8 1038-1057
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_b86bd8b73ec329::t_a7e744ed4f7334 2932
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderDropdown.vue
+  s_b86bd8b73ec329::t_a7bade61584626 6,22-24,32-34,39,61-62,65,68,77,107-114,118,141,147-148
+  s_b86bd8b73ec329::t_48569da980674f 69-74,76,78-82,84-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c714d7c18a38f36c889e3bc26f437486cd3a55d9",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

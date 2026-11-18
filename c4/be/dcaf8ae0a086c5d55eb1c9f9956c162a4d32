@@ -1,0 +1,50 @@
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_3bc6925ef478b9::t_acffe715e6973d 348,351
+  s_3bc6925ef478b9::t_4b149171674655 349,352
+  h_c63dce324dfc7b 350
+packages/cli/src/modules/instance-reporting/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  s_3bc6925ef478b9::t_26748938aebbc7 169-205
+packages/cli/src/modules/instance-reporting/instance-reporting.module.ts
+  s_3bc6925ef478b9::t_b569eb1d5b56f8 61-63,65,69-75
+  s_3bc6925ef478b9::t_aed63cabf1d3ae 53
+  s_3bc6925ef478b9::t_53ee29fb5a127d 76
+  h_c63dce324dfc7b 48-50
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.module.test.ts
+  s_3bc6925ef478b9::t_7f7c0b82be354c 64
+  s_3bc6925ef478b9::t_b734c04d444115 40-43
+  s_3bc6925ef478b9::t_3e77c8bf5a7c03 57-63,65-73,76-77,83
+  s_3bc6925ef478b9::t_42450ed12640fb 10
+  s_3bc6925ef478b9::t_e4695d7487bd5d 22,27
+  h_c63dce324dfc7b 47,52
+packages/cli/src/modules/instance-reporting/database/repositories/instance-monitoring-report.repository.ts
+  s_3bc6925ef478b9::t_3de2fc16e5b9b4 88-98
+  s_3bc6925ef478b9::t_2513b86f1c586a 2
+  s_3bc6925ef478b9::t_f2413fdf7d491d 99-100
+packages/cli/src/modules/instance-reporting/README.md
+  s_3bc6925ef478b9::t_0fb8881ea9e498 119-120
+  s_3bc6925ef478b9::t_155562b416f970 118,121
+  s_3bc6925ef478b9::t_efb417a25f942f 122
+  h_c63dce324dfc7b 123
+  h_c63dce324dfc7b 108-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c4bedcaf8ae0a086c5d55eb1c9f9956c162a4d32",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3bc6925ef478b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c050b54b-a262-4b4b-83d6-f48c29408f1f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

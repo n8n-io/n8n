@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_b06c1726206d96::t_43882e3a654463 860
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cca6420e32afdc074dfcb682b5d09412fd3f35b2",
+  "prompts": {},
+  "sessions": {
+    "s_b06c1726206d96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc423501-1752-4109-a79c-263d42ae791f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

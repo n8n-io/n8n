@@ -1,0 +1,19 @@
+packages/testing/playwright/playwright.config.ts
+  s_efb0e6e7ad51ed::t_3ce3a83df8d001 66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "16cc2a784d197a821252080898707a53762e13ad",
+  "prompts": {},
+  "sessions": {
+    "s_efb0e6e7ad51ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a36c30c1-16ae-4c82-9c86-53d0f70b9c98",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

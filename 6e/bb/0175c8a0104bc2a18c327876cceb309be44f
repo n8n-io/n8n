@@ -1,0 +1,301 @@
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/edit-image-version.rule.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 35,45,65,79,93,108,123,177,192,211,245-246
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.recovery.postgres.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 29,41,67-77,529-694
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1986,2851,3034,4804-4873
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 14-21
+packages/cli/src/modules/instance-ai/user-facing-errors.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-154
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 148-203,400-406,408
+packages/@n8n/agents/src/index.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 263
+packages/@n8n/engine/src/execution/__tests__/resume-request.service.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 147-156
+packages/@n8n/agents/src/sdk/message.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1,23-32,34-55
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-workspace-source.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-98
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ThinkingBlock.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 487-537
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 546-547
+packages/@n8n/agents/src/skills/index.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 28
+packages/quality/testing/playwright/tests/e2e/workflows/editor/workflow-actions/error-workflow-tooltip.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-87
+docs/generated/sqlite-schema/README.md
+  ai_agent 142,401,1797-1801
+packages/@n8n/instance-ai/skills/workflow-builder/references/trigger-input-data-shapes.md
+  s_5785bc20fb92a9::t_7a8f68aff42222 26-30
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-runtime.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 17,19-20,56,58-59,81-85
+packages/@n8n/instance-ai/src/tools/shared/trigger-input-descriptions.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-11
+packages/@n8n/db/src/entities/user.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 42-43
+packages/@n8n/config/test/config.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 361
+packages/quality/testing/playwright/services/mcp-api-helper.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 530,544-562,734-741,962-970
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 123,329,335-338,488,495-497
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 91-92,95,97-107
+packages/quality/environments/containers/services/keycloak.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 52-57,82-84,86-88,406-418,457-541
+packages/@n8n/db/src/migrations/common/1793100089202-CreateServiceAccountDetailsTable.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-27
+packages/cli/test/integration/database/repositories/account-repositories.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 9,15,41-45,214-281
+packages/@n8n/instance-ai/src/context-budget/__tests__/orchestrator-context-budget.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-76
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 3,294-334
+packages/quality/testing/playwright/services/public-api-helper.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 121-127
+packages/@n8n/agents/src/runtime/__tests__/skill-updates.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-267
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 11,434-438
+packages/@n8n/agents/src/runtime/__tests__/active-skills.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 39-42,57,71,81-83,90-93,123-125,141,150-152,183-185,304,313-315,320-323,361-363,368,429,552-554
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-hub-skills.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 79-90,125,131,134,335-367
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1083-1098
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 21-24,77-78
+packages/quality/testing/playwright/tests/e2e/inbound-auth/mcp-trigger.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-70
+packages/quality/testing/playwright/workflows/webhook-streaming.json
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-56
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 146-147,238-248
+packages/@n8n/instance-ai/src/tools/approval-copy.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 9-10,12-13
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-364
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 565-585
+packages/@n8n/config/src/configs/database.config.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 186-193,195
+packages/cli/test/integration/export-import-entities.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 2,37-40,64-82
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 591,685,934-935,942,952-977
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 228-236
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 61,202,204-207,209,219
+packages/cli/src/modules/instance-ai/instance-ai-hub-skills.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 45-47,93-95
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,89,479-483
+packages/@n8n/db/src/entities/index.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 83,125,268
+packages/@n8n/api-types/src/index.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 456,642
+packages/@n8n/agents/src/types/runtime/message-list.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 10
+packages/@n8n/instance-ai/package.json
+  s_5785bc20fb92a9::t_7a8f68aff42222 26-27
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 709-771
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 8921-8969
+packages/quality/testing/playwright/tests/e2e/inbound-auth/chat-trigger.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-72
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-event-sink.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-64
+packages/frontend/@n8n/design-system/src/css/mixins/motion.scss
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-4,12-16,35-38,47-52,62-67,77-82,92-96,107-111,130-135,146-151,162-167,177-182,192-196,345-348,358-362,407-410,428-433,456-460,485-489,514-518,541-544,563-567,588-592,613-617,640-644,665-670,680-683,713-718,740-744,756-760,772-776
+packages/@n8n/node-engine-compatibility/src/types.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 64-69,84
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 38,135-137,1010-1067
+packages/cli/test/integration/license-metrics.repository.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 6,113-116
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 96
+packages/quality/testing/playwright/tests/e2e/api/manual-run-partial.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 41-70,98-100,174-201
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-temporary-workflow-markers.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-58
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/removed-nodes.rule.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 2-36
+packages/cli/src/modules/breaking-changes/rules/v3/edit-image-version.rule.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 26,28,30,57-61
+packages/quality/testing/playwright/tests/e2e/api/webhook-streaming.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-60
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 247,1229-1238,1305,1970
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1286-1402
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 12,96,100-101,103-105
+packages/cli/src/modules/instance-ai/__tests__/user-facing-errors.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-2
+packages/@n8n/instance-ai/src/context-budget/__tests__/context-budget.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-123
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 215
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 61-73,80-86,89-93,97,441-598
+packages/quality/testing/playwright/tests/e2e/inbound-auth/webhook-trigger.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-61
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1010-1012
+packages/@n8n/agents/src/sdk/__tests__/message.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 2-11,17-50
+packages/@n8n/instance-ai/src/tools/n8n-docs/schemas.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 56,90
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 88-92,94-100,106-110
+packages/quality/testing/playwright/services/mcp-oauth-api-helper.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 276-300
+packages/cli/src/modules/breaking-changes/rules/v3/removed-nodes-with-replacements.rule.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1,101-102,182-183
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-turn-options.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-56
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_5785bc20fb92a9::t_7a8f68aff42222 8,30-37,67,119-145
+packages/quality/testing/playwright/fixtures/capabilities.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 43-52
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_5785bc20fb92a9::t_7a8f68aff42222 1040-1047
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.reducer.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 553-569
+packages/@n8n/agents/src/skills/tools.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 242-244
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 10,13,24,63-64,100-106,128
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 317-322
+packages/cli/src/modules/breaking-changes/migrations/node-removals/__tests__/node-migrations.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 35
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 449,479,482-490,492,553
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-temporary-workflow-markers.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-40
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 85,842,1120,1215
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 78-81
+packages/cli/src/modules/instance-ai/temporary-workflow-markers.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-11
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 74,83-87,89-90,127-128,133
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-schemas.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 667-668,672,684-709
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.vue
+  s_5785bc20fb92a9::t_7a8f68aff42222 2,62-63,75-83,116,161
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 256,570-571,653,1165,1174-1184,1664,1666,1675,1677,1682,1875,1905-1908,1933
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-options.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-84
+docs/generated/postgres-schema/public.service_account_details.md
+  ai_agent 1-64
+packages/@n8n/instance-ai/src/context-budget/context-budget.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-96
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-454
+packages/@n8n/db/src/repositories/service-account.repository.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 3,6,19-27,37-58
+packages/quality/testing/playwright/tests/e2e/inbound-auth/form-trigger.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-85
+packages/@n8n/instance-ai/src/tools/shared/__tests__/trigger-input-descriptions.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-20
+packages/quality/testing/playwright/tests/e2e/inbound-auth/fixtures.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-539
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 295,304
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-environment.factory.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 244,248,343
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5785bc20fb92a9::t_7a8f68aff42222 8537-8544
+packages/quality/testing/playwright/services/api-helper.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 37,103,134
+docs/generated/postgres-schema/README.md
+  ai_agent 142,419,1811-1815
+packages/quality/testing/playwright/services/webhook-api-helper.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 11-12,36
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-workspace-source.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-101
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 52-61,68-72,194-216,224,280-285,305-338
+packages/@n8n/agents/src/types/runtime/agent-loop.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 122-123
+packages/@n8n/db/src/entities/service-account-details.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-19
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-event-sink.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-56
+packages/quality/testing/playwright/scripts/distribution-images.mjs
+  s_5785bc20fb92a9::t_7a8f68aff42222 14
+docs/generated/sqlite-schema/service_account_details.md
+  ai_agent 1-72
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,93,483-487
+packages/cli/src/modules/breaking-changes/rules/v3/node-replacement-rule.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-72
+packages/@n8n/agents/src/runtime/skills/active-skills.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 3,13,20,39-41,45,49,59,68,70,74-79,83,87-91,94,97-100,115-120,123,129-135,143,182,229-234,239-241,289-345,391,393-394
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.reducer.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 340
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1,10,17,67-70,104,200-223
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 15-18,81-82
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 10,13,101-128,552-562,564-608
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 107-146
+packages/@n8n/agents/src/skills/types.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 193-194,213-219,221-222
+packages/quality/testing/playwright/pages/WorkflowSettingsModal.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 26-35
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.reclassifyMaskedStreamFailure.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-85
+packages/quality/testing/playwright/services/trusted-source-api-helper.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-73
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 230-257
+packages/quality/testing/playwright/tests/e2e/inbound-auth/instance-mcp.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-69
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 156-163,2025
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 79-82,99-118
+packages/cli/src/executions/execution-recovery.service.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 61
+packages/cli/test/migration/1793100089202-create-service-account-details-table.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-142
+packages/cli/src/modules/breaking-changes/rules/v3/removed-nodes.rule.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1,3-8,10-15,17-27,29-34,36-41,43-48,50-107
+packages/@n8n/db/src/entities/service-account.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1,3,11-16
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1953-1970
+packages/quality/testing/playwright/tests/e2e/inbound-auth/public-api.spec.ts
+  s_5785bc20fb92a9::t_7a8f68aff42222 1-65
+packages/@n8n/instance-ai/knowledge-base/reference/trigger-input-data-shapes.md
+  s_5785bc20fb92a9::t_7a8f68aff42222 19-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ebb0175c8a0104bc2a18c327876cceb309be44f",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

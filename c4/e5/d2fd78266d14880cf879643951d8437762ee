@@ -1,0 +1,36 @@
+packages/@n8n/api-types/src/agents/index.ts
+  s_3867156de1fad7::t_6ca67c3ddf13bc 22
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_3867156de1fad7::t_6ca67c3ddf13bc 4,186-206
+  s_3867156de1fad7::t_8f32b23a23a69b 207
+packages/@n8n/api-types/src/agents/__tests__/model-capabilities.test.ts
+  s_3867156de1fad7::t_6ca67c3ddf13bc 1-22
+packages/@n8n/api-types/src/agents/model-id.ts
+  s_3867156de1fad7::t_6ca67c3ddf13bc 1-20
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_3867156de1fad7::t_6ca67c3ddf13bc 5-9
+packages/@n8n/ai-utilities/src/agent-config/index.ts
+  s_3867156de1fad7::t_6ca67c3ddf13bc 7
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_3867156de1fad7::t_6ca67c3ddf13bc 26
+packages/@n8n/api-types/src/agents/__tests__/model-id.test.ts
+  s_3867156de1fad7::t_6ca67c3ddf13bc 1-43
+packages/@n8n/ai-utilities/src/agent-config/model-id.ts
+  s_3867156de1fad7::t_6ca67c3ddf13bc 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4e5d2fd78266d14880cf879643951d8437762ee",
+  "prompts": {},
+  "sessions": {
+    "s_3867156de1fad7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-caf3-7693-9d01-bca408146de3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

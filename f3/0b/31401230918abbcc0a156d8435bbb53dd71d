@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_d427a339f82a38::t_b2190453ce3219 806-807,819
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_d427a339f82a38::t_b2190453ce3219 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f30b31401230918abbcc0a156d8435bbb53dd71d",
+  "prompts": {},
+  "sessions": {
+    "s_d427a339f82a38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e7c13e2-f6b7-4525-ab96-5f78b0f1b6b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

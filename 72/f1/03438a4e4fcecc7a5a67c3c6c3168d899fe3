@@ -1,0 +1,98 @@
+docs/generated/sqlite-schema/README.md
+  ai_agent 122-123,342-343,1527,1532-1533,1539,1542-1543
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_47d1e0264915a8::t_d51957eed4dce4 795-805
+  s_47d1e0264915a8::t_fd09e603ab4737 463-470,472
+  s_47d1e0264915a8::t_2c12bd8dde9ed1 524
+  s_47d1e0264915a8::t_c28691601ec7c9 77
+  s_47d1e0264915a8::t_0277e743db9368 147,151
+  s_47d1e0264915a8::t_328c944fdfb462 437-447
+  s_47d1e0264915a8::t_810df039144b2c 29-30
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 9,21,23,25-27,33,35,44-45,54-55,61,66-67,86-94,99,102-103
+packages/@n8n/api-types/src/dto/promotions/promotion-run.dto.ts
+  s_47d1e0264915a8::t_e20d38f248489e 1-38
+packages/@n8n/api-types/src/dto/index.ts
+  s_47d1e0264915a8::t_d517fdf544e4c7 815
+  s_47d1e0264915a8::t_326614eb396188 801-803,807
+  s_47d1e0264915a8::t_bd251691d59862 784-791
+packages/@n8n/db/src/migrations/common/1791794659012-CreatePromotionReviewTable.ts
+  s_47d1e0264915a8::t_a0b21f1843e1a7 101-103
+  s_47d1e0264915a8::t_83d0ebe566d38d 6,11,14-16,19-25,28,31-36,40-41,44,48,53,55,57-58,60-61,71-100,104-130,135
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-run.repository.ts
+  s_47d1e0264915a8::t_c59f753fafe8b6 7,10,22-25
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_47d1e0264915a8::t_024cd1c99ed5c5 77
+  s_47d1e0264915a8::t_d6a6e509ba60e8 141
+  s_47d1e0264915a8::t_56e819eb58aa95 195
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_47d1e0264915a8::t_ced62341c6a1eb 51,54-56,58
+docs/generated/sqlite-schema/promotion_config.md
+  ai_agent 72,75-76
+docs/generated/sqlite-schema/user.md
+  ai_agent 396,401-402,408,411-412
+packages/cli/src/modules/promotions.ee/database/entities/promotion-run.entity.ts
+  s_47d1e0264915a8::t_a0b21f1843e1a7 64-71
+  s_47d1e0264915a8::t_0b9246d5aedae9 1-2,15,18-20,40-42,44-54,63,72-73
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  s_47d1e0264915a8::t_3a991f18997036 1,10,15,19-21,25-28,39-44,47-48,50-51,53,62,69-71,76,81
+  s_47d1e0264915a8::t_a0b21f1843e1a7 77-80
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_47d1e0264915a8::t_966e452d2989e5 64
+  s_47d1e0264915a8::t_db5f6542590e4b 91,95,98-100,104-105
+  s_47d1e0264915a8::t_af9788fdbfef27 1-5
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_47d1e0264915a8::t_011411a217fc81 108-110,114-122
+  s_47d1e0264915a8::t_9a8565c2dfdbf2 128
+  s_47d1e0264915a8::t_dd9185056ef7ff 139,144,151
+  s_47d1e0264915a8::t_0289a0ac5e5a24 76,80,85
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_47d1e0264915a8::t_f7e6c934f04351 40,42
+  s_47d1e0264915a8::t_55305a03a12d06 22
+  s_47d1e0264915a8::t_abf3d3def878e9 75,77-82,87-93
+  s_47d1e0264915a8::t_9ccd2769d2a08a 139-144,146-147
+  s_47d1e0264915a8::t_c423bc67ab080d 156-157
+  s_47d1e0264915a8::t_cfd23fa9bf618d 206-227,229-259
+  s_47d1e0264915a8::t_520c4918c194f0 56
+  s_47d1e0264915a8::t_8c9f76d8bcd94e 228
+  s_47d1e0264915a8::t_50ceb081ba5ff9 106-107,114-116,118-120,122-123
+docs/generated/sqlite-schema/promotion_connection.md
+  ai_agent 19,50,77-87
+docs/generated/sqlite-schema/promotion_run.md
+  ai_agent 9,21,23-25,32-34,43,53,59,62-63,95,100-101
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_47d1e0264915a8::t_587a9a38b27c15 44
+  s_47d1e0264915a8::t_688405dc5e6d24 54,59
+  s_47d1e0264915a8::t_42b2f81ad42aa0 9-12,14-15,18-19,23-27
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_47d1e0264915a8::t_00835791c6a658 2-3
+  s_47d1e0264915a8::t_6d81568af37cf4 266-268,275-281,283-294,297,305,312-336
+  s_47d1e0264915a8::t_e143bef07740a1 125
+  s_47d1e0264915a8::t_5aa19e290c6bb0 1,4-13
+  s_47d1e0264915a8::t_c8bffc7bc7340c 65
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_47d1e0264915a8::t_482f7f35796026 58-59
+  s_47d1e0264915a8::t_f8095faec6e21c 7-8,13-35
+  s_47d1e0264915a8::t_a0b21f1843e1a7 10
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_47d1e0264915a8::t_1d967fd76b9729 47,51
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-run.dto.test.ts
+  s_47d1e0264915a8::t_0d40a5e0279818 1-3,10,13-15,18-21,23-25,27-33
+  s_47d1e0264915a8::t_88d23818b7409f 4-9,11-12,16-17,22,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "72f103438a4e4fcecc7a5a67c3c6c3168d899fe3",
+  "prompts": {},
+  "sessions": {
+    "s_47d1e0264915a8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "60e62fb0-397a-40d4-9c2f-b454af702013",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

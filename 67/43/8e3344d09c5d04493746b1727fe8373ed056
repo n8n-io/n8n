@@ -1,0 +1,31 @@
+.devcontainer/devcontainer.json
+  s_d95107a6cb304f::t_72928b2da1c55f 10-23
+.devcontainer/.env.example
+  s_d95107a6cb304f::t_5a917277beee3f 1-7,11-12,14-22
+  s_d95107a6cb304f::t_d8edb684604a88 8-10,13
+.devcontainer/Dockerfile
+  s_d95107a6cb304f::t_f7003c2c3739d4 9
+.devcontainer/docker-compose.yml
+  s_d95107a6cb304f::t_5e12b8b143e830 20-22,24
+  s_d95107a6cb304f::t_0e82e293f2c549 3-4
+  s_d95107a6cb304f::t_e4b6b96fb5eefc 25-28
+.devcontainer/README.md
+  s_d95107a6cb304f::t_a402154a28a411 1-52,56,70,81-82
+  s_d95107a6cb304f::t_7863f43cdbd3d3 53-55,57-69,71-80,83-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "67438e3344d09c5d04493746b1727fe8373ed056",
+  "prompts": {},
+  "sessions": {
+    "s_d95107a6cb304f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "454f60f1-db20-4c95-8790-60e3aabebd62",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

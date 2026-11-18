@@ -1,0 +1,33 @@
+packages/cli/test/integration/public-api/users.ee.test.ts
+  s_e2203a10d11968::t_a56c7350c5f3ee 1
+  s_e2203a10d11968::t_f10a5826e34513 283
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_e2203a10d11968::t_677702f6d9c957 1,3
+  s_e2203a10d11968::t_4f005b3e817f17 223
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_e2203a10d11968::t_ad08ba73aaab2e 468
+  s_e2203a10d11968::t_a5e63b9e453222 398,401
+  s_e2203a10d11968::t_7c93ce8dade4de 418
+  s_e2203a10d11968::t_04324482c0c8f3 427
+  s_e2203a10d11968::t_f201dca6c93418 2-3
+  s_e2203a10d11968::t_715ad322c68dfe 450
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_e2203a10d11968::t_51394ab2bb92ec 2,4
+  s_e2203a10d11968::t_09dfb979b9cace 178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b4b41797400cd8f728a1d46a5e5fd15cf23a522c",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_abe416d94b4232::t_b13c0f957139ab 1046-1047
+  s_abe416d94b4232::t_ecb312280d514e 1048-1050
+packages/cli/src/modules/agents/register-user-deletion-handler.ts
+  s_abe416d94b4232::t_9ce0bba3ad3083 4-9,11,14,18-25
+packages/cli/src/services/project.service.ee.ts
+  s_abe416d94b4232::t_b13c0f957139ab 313
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_abe416d94b4232::t_9a4b7e5ced9cae 7,18,21-25,32,36,43,49,60,80-82,106-107,120-121,129-130,142-143,146-149,176-186,188,190,195,204,206-208,215,228,237-239,241-246,252-255,257-260,271-272
+  s_abe416d94b4232::t_ecb312280d514e 75-79,83-85,90-92,101,108-119,122-128,131-141,150-152,154-156,160-171,173-174,191-193,196-198,200-202,209-213,216-227,229-235,248-251,261-270,273-275
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_abe416d94b4232::t_30ee31ea296eb0 274,295,304,330
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_abe416d94b4232::t_c8323908ab45f6 306-353
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_abe416d94b4232::t_9ce0bba3ad3083 174-176,181-193
+  s_abe416d94b4232::t_ecb312280d514e 229-232
+  s_abe416d94b4232::t_fb30a10f21852d 23,76-80,177-180,205-207,228,233-234,259-261
+packages/cli/src/services/ownership-transfer/ownership-transfer.service.ts
+  s_abe416d94b4232::t_9ce0bba3ad3083 120-121
+packages/cli/src/modules/agents/repositories/agent-memory-scope.repository.ts
+  s_abe416d94b4232::t_fb30a10f21852d 1-30,38-43,51-71
+  s_abe416d94b4232::t_25e4474ec5b924 35-37
+  s_abe416d94b4232::t_ecb312280d514e 44-50
+  s_abe416d94b4232::t_9fa18c6253c3d7 31-34
+packages/@n8n/telemetry/src/events/agents.ts
+  s_abe416d94b4232::t_b13c0f957139ab 82-83,87,89,97
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  s_abe416d94b4232::t_b13c0f957139ab 17
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_abe416d94b4232::t_0136e01abafc12 1835
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_abe416d94b4232::t_30ee31ea296eb0 64,118,131,490,542,596
+  s_abe416d94b4232::t_ecb312280d514e 523-526,617-620
+packages/cli/src/modules/agents/repositories/agent-memory-entry-candidate.repository.ts
+  s_abe416d94b4232::t_fb30a10f21852d 8,34-38,52-57,59-70,72-76
+  s_abe416d94b4232::t_9a4b7e5ced9cae 46-47
+  s_abe416d94b4232::t_ecb312280d514e 48-51
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolTelemetry.test.ts
+  s_abe416d94b4232::t_b13c0f957139ab 56-68
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolTelemetry.ts
+  s_abe416d94b4232::t_b13c0f957139ab 20,29
+packages/frontend/editor-ui/src/features/agents/__tests__/agentTelemetry.utils.test.ts
+  s_abe416d94b4232::t_b13c0f957139ab 46,49-52,65
+packages/cli/src/services/user.service.ts
+  s_abe416d94b4232::t_9ce0bba3ad3083 685
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_abe416d94b4232::t_74a046d8b3dd7a 11
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_abe416d94b4232::t_dc890c2376a43c 510-514,516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cfae6e38679e529eddcbdeec50c4ea51dd1641f",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

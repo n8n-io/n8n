@@ -1,0 +1,30 @@
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_925dcfedebf0c9::t_19cedb87d88615 46
+packages/cli/src/public-api/public-api-rate-limit-settings.service.ts
+  s_925dcfedebf0c9::t_19cedb87d88615 10,16,52,68-72,96-97,111-120
+packages/cli/src/public-api/__tests__/public-api-rate-limit-settings.service.test.ts
+  s_925dcfedebf0c9::t_747df03fe53f5e 9-10,38,40,51-52,54-59,62,202-229
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_925dcfedebf0c9::t_19cedb87d88615 53
+packages/cli/test/integration/public-api/rate-limit-settings-change.test.ts
+  s_925dcfedebf0c9::t_c410827fd3c4de 1-30
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_925dcfedebf0c9::t_9b64c8b67652e7 84-85
+  s_925dcfedebf0c9::t_19cedb87d88615 143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e1bb88201e8fb92b02613f4822c0dc198aaa0c1d",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

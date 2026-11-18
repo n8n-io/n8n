@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_934fec7376a80c::t_585aa31a7041ee 819
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "90c043bc0fd3a9164a93ecb1aaf427285007d9d0",
+  "prompts": {},
+  "sessions": {
+    "s_934fec7376a80c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c8b5-7083-7d41-b054-88e2c5315cda",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

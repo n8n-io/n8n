@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Coda/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_d5093e07bfb041 8-9,11-19,24,32,39,47,61
+packages/nodes-base/nodes/Coda/Coda.node.ts
+  s_2e1fa95fc44f8f::t_701239253f80e6 716
+  s_2e1fa95fc44f8f::t_27929c071120e6 267
+  s_2e1fa95fc44f8f::t_81eb164ed1cf5c 462
+  s_2e1fa95fc44f8f::t_bb50a41e51eaf8 10,12,16
+  s_daf1775cf26a88::t_59287194ee8978 90-97,119,144,166,168,189,212,237,273-275,314,337,392,467-469,481-487,506,530,558,593,620,655,683,730,734,736-743,779,849,878,906,943
+packages/nodes-base/nodes/Coda/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6d0509eb4ca748 1-63
+  s_2e1fa95fc44f8f::t_3d52be2b539142 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c41ddc787f8cbc3fa594d5288c4d2863062ef1f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_daf1775cf26a88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0835a59249e3a346",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_482f48320b007f::t_4cada5cdbc3759 50,250
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewButton.vue
+  s_482f48320b007f::t_4cada5cdbc3759 13,34-36,62
+  s_482f48320b007f::t_638a714e0ad51f 42-44
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_482f48320b007f::t_638a714e0ad51f 346-347
+  s_482f48320b007f::t_4cada5cdbc3759 50,620
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_482f48320b007f::t_638a714e0ad51f 545-550
+  s_482f48320b007f::t_af13d734a99cdd 4,140,143,542-544,551-565
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_482f48320b007f::t_4cada5cdbc3759 28,166
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_482f48320b007f::t_638a714e0ad51f 2239-2258,2260-2265,2267-2271
+  s_482f48320b007f::t_a3643180b4303d 9,648,2259,2266,2272
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_482f48320b007f::t_4cada5cdbc3759 40,342
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_638a714e0ad51f 101-133,135-154,156,158-164
+  s_482f48320b007f::t_f81d663fbf942a 134,157
+  s_482f48320b007f::t_1f4243b05bedd7 155
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_482f48320b007f::t_4cada5cdbc3759 67,235,244
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_482f48320b007f::t_4cada5cdbc3759 745
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_482f48320b007f::t_638a714e0ad51f 43-52
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_482f48320b007f::t_638a714e0ad51f 387-389
+  s_482f48320b007f::t_c6aeeba430204b 155,174,383-386,390-398,401
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_4cada5cdbc3759 1138,1143,1147,3459,3694
+  s_482f48320b007f::t_638a714e0ad51f 1144-1146
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_482f48320b007f::t_22de90307e09bb 288-291
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_1116c248695f97 46-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f294f889fa2b02e42487c870c2a8c36b4db7f01b",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

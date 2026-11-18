@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_1ce24d93fc50ba::t_e6656d225c438c 148-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aae7520fa18923966e3c398ab312cc10049f091f",
+  "prompts": {},
+  "sessions": {
+    "s_1ce24d93fc50ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "802f210a-0db9-434c-9304-4c4cb0aa505c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

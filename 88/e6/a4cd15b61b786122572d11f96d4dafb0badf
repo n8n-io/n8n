@@ -1,0 +1,24 @@
+docs/workflow-catalog.md
+  s_5e1597e8ea25b2::t_d99d5199b15402 96,99-104,107,109-110,112-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "88e6a4cd15b61b786122572d11f96d4dafb0badf",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

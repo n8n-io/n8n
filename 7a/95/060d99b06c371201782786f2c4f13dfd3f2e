@@ -1,0 +1,48 @@
+packages/cli/src/modules/token-exchange/database/repositories/trusted-key-source.repository.ts
+  s_9879fcc49ef69e::t_49913dc745e563 1,4-5,7,9,12-16,22-26,30-31,35-88
+  s_4c2936c96bc5ac::t_a69d7e55176f46 3,17-21,27-29,32-34
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  s_4c2936c96bc5ac::t_a69d7e55176f46 362-363
+  s_9879fcc49ef69e::t_49913dc745e563 20,367-375
+  h_32d8cd6a0d6aad 376
+packages/cli/src/modules/token-exchange/token-exchange.schemas.ts
+  s_9879fcc49ef69e::t_49913dc745e563 102-107
+packages/cli/test/integration/token-exchange/trusted-key.service.integration.test.ts
+  s_9879fcc49ef69e::t_63deb47031e27c 3,8,375,384,388-394,396,404,407-408,411,419-423,432-436,440,442-457,459-484
+  s_4c2936c96bc5ac::t_a69d7e55176f46 376,382,437-439,441,458
+  s_4c2936c96bc5ac::t_17dea195909632 374
+  s_9879fcc49ef69e::t_18c6cd9c00c8d1 2,113-114
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key.service.test.ts
+  s_9879fcc49ef69e::t_af5c1b01c4d648 72,81,101,186-187,189-190,198,203,205,233,255,274,293,304,315-317,319-321,323-331,335-338,364,368
+  s_9879fcc49ef69e::t_1274647d63bb3d 210,332-334
+  s_4c2936c96bc5ac::t_a69d7e55176f46 97,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a95060d99b06c371201782786f2c4f13dfd3f2e",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4c2936c96bc5ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8dc3e50-9ebf-4078-8f77-92e1f22a8d7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_9879fcc49ef69e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ec55-914b-7082-af54-85dc259ff4cb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

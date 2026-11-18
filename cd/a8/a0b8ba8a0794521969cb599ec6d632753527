@@ -1,0 +1,23 @@
+packages/nodes-base/utils/microsoft/transport.ts
+  s_9c60c2b98d557d::t_338363eac68640 40-47,49,53-57,62-63,70-77,85
+packages/nodes-base/utils/microsoft/test/transport.test.ts
+  s_9c60c2b98d557d::t_9807921a975e27 573-585
+  s_9c60c2b98d557d::t_561a0cf86ff275 479-491
+  s_9c60c2b98d557d::t_7dcddbfaa2c532 505,507,511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cda8a0b8ba8a0794521969cb599ec6d632753527",
+  "prompts": {},
+  "sessions": {
+    "s_9c60c2b98d557d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f18b5373-de5c-4e42-ab80-c6b7d0235553",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

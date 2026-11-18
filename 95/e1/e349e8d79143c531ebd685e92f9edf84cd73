@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_e3560b551eac11::t_70c6d277173029 2
+  s_e3560b551eac11::t_8a0e61a94aaacb 37,89,273-274,1435,1448,1460-1470,341,1581,1584,1590,1598,1605-1606,1610,1615,1617-1618,1623,1628,1634,1638,1642,1489,1491,1495,1499-1500
+  s_e3560b551eac11::t_18f22b995308cc 268,278-284
+  s_e3560b551eac11::t_20816cb48c3d70 269-272,275
+  s_e3560b551eac11::t_a76e81cb14f793 276-277
+  s_e3560b551eac11::t_b57bfe2897c60f 285-286
+  s_e3560b551eac11::t_0e8d80b587874c 332
+  s_71e25d45a5ee90::t_3c2f196bf4365d 333
+  s_e3560b551eac11::t_e57dccd7337aab 335-336
+  s_e3560b551eac11::t_10835c6533feac 353
+  s_e3560b551eac11::t_5d182132a48107 354
+  s_e3560b551eac11::t_ba0783fdd791b4 367-368,386,396-397,401
+  s_e3560b551eac11::t_6d634dc45f6ff7 478-480,496-497,510,512,520,522
+  s_71e25d45a5ee90::t_d615233b59a7c7 557
+  s_e3560b551eac11::t_b732e9079a571e 600-601
+  s_e3560b551eac11::t_8d845c9c2b79ef 1431-1432,1434,1436-1447,1449-1459,1583,1609,1622,1488
+  ai_agent 1433
+  s_e3560b551eac11::t_2411cd76711618 1471,1473,1644
+  s_e3560b551eac11::t_74b46c3001a67d 1472
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_e3560b551eac11::t_5b7aac3cd66c65 94,96
+  s_e3560b551eac11::t_0877e7bf39c747 193,195,555
+  s_e3560b551eac11::t_e271aebc928041 419-420
+  s_e3560b551eac11::t_f8bf7ec1e8ecdc 421-422,531
+  ai_agent 513
+  s_e3560b551eac11::t_4a9c421e300dc4 514-516
+  s_e3560b551eac11::t_37d04bea73c03b 799
+  s_e3560b551eac11::t_1b42f8cd0fe4aa 893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "95e1e349e8d79143c531ebd685e92f9edf84cd73",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/agent/__tests__/apply-agent-thinking.test.ts
+  s_6959c04b3a72a1::t_77d1a59a869dd3 64-78,80-86,88
+packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts
+  s_6959c04b3a72a1::t_77d1a59a869dd3 16-20,22-27,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a0d928a4359a821acec0dfec6a8251e6fe0f4099",
+  "prompts": {},
+  "sessions": {
+    "s_6959c04b3a72a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8ceb6a8-301c-4118-82ec-40bb047cfc86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/engine/src/status/status-update.types.ts
+  s_eda1948fcdabb8::t_7bde6fbafe197d 8-11
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_eda1948fcdabb8::t_7bde6fbafe197d 74-75
+packages/@n8n/engine/src/status/status-publisher.ts
+  s_eda1948fcdabb8::t_7bde6fbafe197d 3,5
+packages/@n8n/engine/src/index.ts
+  s_eda1948fcdabb8::t_e178a1ca67b375 5-6
+packages/@n8n/engine/src/status/batching-status-publisher.ts
+  s_eda1948fcdabb8::t_7bde6fbafe197d 81
+packages/@n8n/engine/src/common/json.schema.ts
+  s_eda1948fcdabb8::t_7bde6fbafe197d 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88d08dc5a845d028d5d57d091e7c3c6ed5f6b0c0",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

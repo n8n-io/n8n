@@ -1,0 +1,44 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_064da93d6e6ef0::t_f46390b11c9e34 1946-1947
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_064da93d6e6ef0::t_95ebb7bdbcb2e1 4,1974-1975,1977-1983
+  s_064da93d6e6ef0::t_6c50691566c95d 1976
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_064da93d6e6ef0::t_b6389f0d17e465 9-15,108,353-354,359-360,366-372,374
+  s_064da93d6e6ef0::t_686bf1d7fcf85f 109,352,355-358,361-364,373,375-378
+  s_064da93d6e6ef0::t_f5202f7f79a4c2 365
+  s_064da93d6e6ef0::t_3304e8b800d951 379-381
+  s_fe72c42ec27018::t_7484cefcf2b548 666-669,689-701,703,898-899
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_064da93d6e6ef0::t_776eb2619a59ed 1809-1811,1815
+  s_064da93d6e6ef0::t_7ecc0611975e3f 1806-1808
+  s_064da93d6e6ef0::t_0e6b1c315f1495 1812-1814
+  s_064da93d6e6ef0::t_7681fda0144f21 1816-1818
+  s_064da93d6e6ef0::t_725551d358ecc1 22,1013,1803-1805,1819-1848
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.handoff.spec.ts
+  s_fe72c42ec27018::t_7484cefcf2b548 1-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "304b8bc556c80a583f35c356a815a1d4e56c12c1",
+  "prompts": {},
+  "sessions": {
+    "s_064da93d6e6ef0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15f32-8871-70a9-b3fb-ea249b7f3f21",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fe72c42ec27018": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1ea16-1acb-74a0-bc0a-0623655f647d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

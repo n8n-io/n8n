@@ -1,0 +1,25 @@
+packages/@n8n/cli/README.md
+  s_7d92849ff15ae6::t_55d552511f3110 66
+packages/@n8n/cli/docs/commands/package.md
+  s_7d92849ff15ae6::t_71d1a5a622dac8 125-144,150-153,156-158,163-164,166,173-179
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_7d92849ff15ae6::t_bb28e8db86bc06 335-405
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_7d92849ff15ae6::t_d8aee70dc07d0c 10,20,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be61035c7a5cb5fea1a82de4214a14eadeffa801",
+  "prompts": {},
+  "sessions": {
+    "s_7d92849ff15ae6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b926ff1f-b15f-4ce1-85be-a0fb73556029",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

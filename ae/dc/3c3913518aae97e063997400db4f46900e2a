@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_61c084afce2bbf::t_e054295ea54482 20
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfirmationModal.ts
+  s_61c084afce2bbf::t_43e3dd13bb8197 2-3
+packages/frontend/editor-ui/src/features/agents/modals.ts
+  s_61c084afce2bbf::t_e054295ea54482 1-103
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_61c084afce2bbf::t_e054295ea54482 16,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "aedc3c3913518aae97e063997400db4f46900e2a",
+  "prompts": {},
+  "sessions": {
+    "s_61c084afce2bbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046a1647-ab2e-475f-9acc-1298a6d4400a",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

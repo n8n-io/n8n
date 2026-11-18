@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/routing/judge.ts
+  s_fd6e130ca898c8::t_fce4dd1437f3f9 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e88b80a4472c01783df17170b99eef531e7df7b",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  h_7555c3ee6524cf 113,115
+  s_04fffcad4fa449::t_c278f6aab42660 16
+  s_04fffcad4fa449::t_b6d2c3925e7c5d 82-89
+  s_04fffcad4fa449::t_f84a654228a56e 58-61
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedControls.test.ts
+  s_04fffcad4fa449::t_1dc8719974d956 206-221
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_04fffcad4fa449::t_83932613b9ca81 598
+  s_04fffcad4fa449::t_926076ae43b938 559
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  h_7555c3ee6524cf 174-175,181,194-195,230
+packages/frontend/editor-ui/src/features/agents/styles/agent-panel.module.scss
+  h_7555c3ee6524cf 1,3
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_04fffcad4fa449::t_bd9c1947f44a69 5470
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_04fffcad4fa449::t_95073d2625cc9b 4-7
+  s_04fffcad4fa449::t_b004e74a08fbf0 72
+packages/frontend/editor-ui/src/features/agents/components/AgentJsonEditor.vue
+  ai_agent 113
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvBuilderBanner.test.ts
+  s_04fffcad4fa449::t_001f19565e34b3 72-74
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_04fffcad4fa449::t_84eb8c5fa4bec4 619-629
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_04fffcad4fa449::t_1003bcdf303c82 105,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c81dc061b2ecdd716e358015693c42acbc9b3450",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_04fffcad4fa449": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25d4fc9b-6cc9-41b7-974b-09cf8a5f5a93",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

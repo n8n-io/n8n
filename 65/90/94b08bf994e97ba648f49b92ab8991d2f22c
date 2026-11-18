@@ -1,0 +1,51 @@
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_d3da8c762cdb1c::t_e133c4938fcd51 6-7,11-26,29-30,38,46-54,69-70,74
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_d3da8c762cdb1c::t_5dc060a0cc5476 261
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_d3da8c762cdb1c::t_f802f90be07a1d 8,10,18,37-46
+packages/cli/src/modules/agents/builder/resolve-integration.tool.ts
+  s_d3da8c762cdb1c::t_a09da216eb1d51 1-42
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_d3da8c762cdb1c::t_4146425c0e3754 3
+  s_d3da8c762cdb1c::t_7fd87ffd7f630a 74-78,95
+  s_d3da8c762cdb1c::t_5b3e9231c6d400 155-157
+  s_d3da8c762cdb1c::t_712adc441797dc 130-134
+  s_d3da8c762cdb1c::t_5425f35c1f51c8 96-97,135-136,146,158-159
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_d3da8c762cdb1c::t_74e9379f390a90 597-600
+  s_d3da8c762cdb1c::t_cedbf6e91e97df 61
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_d3da8c762cdb1c::t_9cba467853ddd1 25
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_d3da8c762cdb1c::t_f4d45968a90ca9 178-188
+  s_d3da8c762cdb1c::t_264e041d0e28e4 127-132,134-135
+  s_d3da8c762cdb1c::t_fbd87de7af7eee 149-152,157-159,166-168,171-174
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_d3da8c762cdb1c::t_9ac3d5040d8b47 8,10,18,25,31,41,47-48,59-61,89-102,106-108,119-120,122-123
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_d3da8c762cdb1c::t_fc70ee6dad5dfc 19,26,28-29,36,48-50,56-75,77-80,82-85,133,156,158-160
+packages/cli/src/modules/agents/__tests__/agents-tools.service.test.ts
+  s_d3da8c762cdb1c::t_63bd979547fb9b 130-146
+packages/cli/src/modules/agents/builder/__tests__/resolve-integration.tool.test.ts
+  s_d3da8c762cdb1c::t_631f43504d5957 1-72
+  s_d3da8c762cdb1c::t_41539f8eb11cb8 73-74
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_d3da8c762cdb1c::t_91aa16bcc1ed01 245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "659094b08bf994e97ba648f49b92ab8991d2f22c",
+  "prompts": {},
+  "sessions": {
+    "s_d3da8c762cdb1c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e8195f9e-c48f-401b-8eb7-34bb836995d4",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

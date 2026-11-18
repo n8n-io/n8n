@@ -1,0 +1,20 @@
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_e2203a10d11968::t_05b85e37c7add1 8,23,36-47
+  s_e2203a10d11968::t_509487b05bc9f1 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "43767b433b6ca271e44a29dd87578fa7e05c64c4",
+  "prompts": {},
+  "sessions": {
+    "s_e2203a10d11968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed3d6309-066a-42ef-9973-7caa9371790f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

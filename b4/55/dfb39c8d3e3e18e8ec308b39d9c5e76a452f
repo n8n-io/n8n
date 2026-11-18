@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_96b7b5c0c69706::t_eb8fa9f69f355d 264-266
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_96b7b5c0c69706::t_bf19ad607a5197 207,216-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b455dfb39c8d3e3e18e8ec308b39d9c5e76a452f",
+  "prompts": {},
+  "sessions": {
+    "s_96b7b5c0c69706": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11c09f4d-7bbf-47a4-84b5-97401a00ad2f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

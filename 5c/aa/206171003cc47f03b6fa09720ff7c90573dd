@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/css/fonts/geist.scss
+  s_c59e21f9b5250b::t_0d8d8bb25562cf 7-8,17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5caa206171003cc47f03b6fa09720ff7c90573dd",
+  "prompts": {},
+  "sessions": {
+    "s_c59e21f9b5250b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a159d0-203b-73e2-a6c9-a261f76f0c06",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_89a9ad9d50acc9::t_82dc7941e306b9 126-207
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_89a9ad9d50acc9::t_3268d38fdd7e0d 57-61,63-66,70-71,74-76
+  s_89a9ad9d50acc9::t_7e6d97566c62c7 67-69,72-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d93093e0cf6f49600b98010fc2b1b7e886ddda63",
+  "prompts": {},
+  "sessions": {
+    "s_89a9ad9d50acc9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d788-d311-75b1-8c56-c47a3f262e2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

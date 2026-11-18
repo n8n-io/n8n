@@ -1,0 +1,31 @@
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_d51616375ad4ee::t_94e7a4e01bb00c 7,169,173
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_d51616375ad4ee::t_673878f6225010 2
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d51616375ad4ee::t_061376dd44eda7 9546
+packages/cli/src/modules/data-table/data-table.repository.ts
+  s_d51616375ad4ee::t_2159bcf17d1a63 8
+packages/@n8n/cli/docs/commands/promotions.md
+  s_d51616375ad4ee::t_974fc8e1cfb093 306
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  s_d51616375ad4ee::t_974fc8e1cfb093 84
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_d51616375ad4ee::t_14c8f0aaae166f 242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77c04061e02a3afae0be6c2b4aaa214a0e901d69",
+  "prompts": {},
+  "sessions": {
+    "s_d51616375ad4ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a27e4e53-5e32-4961-9672-f9b46ca06994",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

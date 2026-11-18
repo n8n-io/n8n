@@ -1,0 +1,227 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_3e8cffecb25c5f::t_481ef492d431c6 90,92-97
+  s_3e8cffecb25c5f::t_6af72cd222e0ba 11-12,18
+  s_3e8cffecb25c5f::t_f2e3b684dd0489 38,56-62
+  s_3e8cffecb25c5f::t_0c113856e79aaa 91
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_3e8cffecb25c5f::t_043b4f38678371 331-339
+  s_3e8cffecb25c5f::t_8b0ea975cbf01a 111-119,133-134,148-149
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.utils.ts
+  s_3e8cffecb25c5f::t_740a76d4efd3b2 22,31,40,55,62
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_3e8cffecb25c5f::t_f4b8c748f3d188 41-42
+  s_3e8cffecb25c5f::t_e89504a8ca1629 224-225
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.types.ts
+  s_3e8cffecb25c5f::t_b81374b81efc5b 24,33-34
+packages/cli/src/modules/agents/__tests__/agent-runnable-state.service.test.ts
+  s_3e8cffecb25c5f::t_f6da9e9f8c2c64 1-58
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_3e8cffecb25c5f::t_9e2fa017dda75b 4
+  s_3e8cffecb25c5f::t_92f12d53a94ab6 445-462
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_3e8cffecb25c5f::t_a77bcdbd679acf 26
+  s_3e8cffecb25c5f::t_c77ea5a1f755a6 269-277,286-287
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3e8cffecb25c5f::t_9b82705e44b94e 124,140
+  s_3e8cffecb25c5f::t_c2d37251231e32 401,410-411
+  s_3e8cffecb25c5f::t_834d990e0e77c8 537-538
+  s_3e8cffecb25c5f::t_9736ae10f0edd9 909-1094,1097-1098,1119-1120
+  s_3e8cffecb25c5f::t_9099346fc1a035 1095-1096
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_3e8cffecb25c5f::t_9eec338593624b 666-809
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_3e8cffecb25c5f::t_a25714097db50a 44
+  s_3e8cffecb25c5f::t_d9444b9fb2be1b 5
+  s_3e8cffecb25c5f::t_ff9e341660d043 113
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_3e8cffecb25c5f::t_690780ddc78f00 262
+  s_3e8cffecb25c5f::t_4f8940596a8370 263-265,384-387
+packages/cli/src/modules/agents/agent-runnable-state.service.ts
+  s_3e8cffecb25c5f::t_ad4b033f9aa61a 29-34,39
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_3e8cffecb25c5f::t_7c7576ecd13a12 12
+  s_83ef102b6b5cbb::t_47440b59f7bfb4 874-903,905-941,943-950
+  s_97eec1b2f1a902::t_542be96fe591ae 951-1021
+  s_0c55e34f4a8a89::t_b487c1c5a69938 460-470,472-499
+  s_83ef102b6b5cbb::t_e58276f145ba6b 904
+  s_3e8cffecb25c5f::t_d3de061e8a1c4d 384,427,471
+  s_83ef102b6b5cbb::t_56476f3815e52a 942
+  s_3e8cffecb25c5f::t_555b18464f93cb 394-398,440
+  s_3e8cffecb25c5f::t_44800b216c816f 729-760
+  s_3e8cffecb25c5f::t_81975e6fde2db3 3,6,13-14,29-33,39-41,58-66,69-77,80-84
+  s_1b4fd7bf952a64::t_7c4ddcc7b5613d 500-556
+  s_3e8cffecb25c5f::t_7e1f86d50f8fbd 373-383,385-393,399-426,428-439,441-459,557-728,761-873,1022
+  s_3e8cffecb25c5f::t_51b53d5c01a566 1023-1026
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3e8cffecb25c5f::t_8973a3d65cdc57 6951
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_3e8cffecb25c5f::t_b34d848990d538 7-8,13
+  s_3e8cffecb25c5f::t_2b9ff8c23bcdb2 103-104,119-126,138-139,152-153
+  s_3e8cffecb25c5f::t_f15b925a44ed3e 165-236
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_3e8cffecb25c5f::t_e67bd5194ae057 92-95
+packages/@n8n/api-types/src/agents/__tests__/agent-config-validation.schema.test.ts
+  s_3e8cffecb25c5f::t_4a74bf0952b9e1 1-78
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_3e8cffecb25c5f::t_04dc6cd965edb5 1,13,19-21,31,43,45,50-51,65-68,94-95,102-106,220,324-325,439,442-443,510,540,572,577-582,632
+  s_73613785c2b5ac::t_9758f4ded031a3 492
+  s_83ef102b6b5cbb::t_5b7baa2ed701b2 336-337
+  s_83ef102b6b5cbb::t_f86562e8229532 273-297,301-302,308-309
+  s_1b4fd7bf952a64::t_9bf38365c056eb 3-6
+  s_3e8cffecb25c5f::t_4a3256abe756d2 12,30,44,53,133-134,144,170,172,183,218,449,456-457,460-466
+  s_0c55e34f4a8a89::t_3b75e046aedd63 25
+  s_bc1080bfdbbc2a::t_2638ee41b64315 260-261
+  s_83ef102b6b5cbb::t_fa08c8619c97a2 352,365-381
+  s_97eec1b2f1a902::t_b9f148f4910182 347-351,353-355,357-358,360-363
+  s_0c55e34f4a8a89::t_28de448fc523bb 595-597,610-612,614-621
+  s_73613785c2b5ac::t_2d60b9f2b2ea69 181
+  s_3e8cffecb25c5f::t_5f4dc690309a92 23
+  s_83ef102b6b5cbb::t_be7f566dd2580c 391-392,394-402
+  s_73613785c2b5ac::t_62c51b2b05d14e 631
+  s_1b4fd7bf952a64::t_a20592d1f87e8e 592,598-609,613
+  s_bc1080bfdbbc2a::t_8cf823b3e3513a 665
+  s_3e8cffecb25c5f::t_5eea19dbe6ce0f 14-17,28-29,32,34-35,39-42,46-49,52,54-63,69-78,84-88,92-93,107-122,125,128,130,135,137-143,145-167,171,173-180,182,184-203,205-206,210-217,219,221-241,243-254,256-259,262,264,266-272,300,303-307,310-313,315,317-321,327,330-335,339,341-345,384,386-390,393,403-438,440-441,444-448,450-455,458-459,467-491,493-509,511-520,525-534,536-539,541-563,565,567,569,571,573-576,583-591,593-594,622-627,629-630,633-636,638-664,666,674-675,680,689-690,702-703
+  s_3e8cffecb25c5f::t_84cfac769acfcb 242,263,265,338,340,523,535,570,637,672-673,678-679,683,687-688,695,699-700,710
+  s_83ef102b6b5cbb::t_ff56437da214bf 701,711-726
+  s_3e8cffecb25c5f::t_e97282277a9587 64
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3e8cffecb25c5f::t_98a8ce69d87191 534-537
+  s_3e8cffecb25c5f::t_7bf8fed3858384 197-202
+  s_3e8cffecb25c5f::t_2b4d2f2872cb52 1327
+  s_3e8cffecb25c5f::t_db63464b023e6b 791
+  s_3e8cffecb25c5f::t_2e78e6b292196a 51
+  s_3e8cffecb25c5f::t_3fbe9b75e7dc83 609-612
+  s_3e8cffecb25c5f::t_e3e966577c499f 816-820
+  s_3e8cffecb25c5f::t_a1d69bc70ff042 1250-1251
+  s_3e8cffecb25c5f::t_9b71986decf5b5 687-703
+  s_3e8cffecb25c5f::t_1810327826803d 739-741
+  s_3e8cffecb25c5f::t_88f2dd65f0452b 1038,1044
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigValidation.ts
+  s_3e8cffecb25c5f::t_390eb2fb5ba734 1-58
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChipButton.test.ts
+  s_3e8cffecb25c5f::t_bb46b95518637d 1-46
+  s_3e8cffecb25c5f::t_c35a13d41bc84e 47-56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_3e8cffecb25c5f::t_a9de74a4939569 404-419,421-425,427,436-494
+  s_3e8cffecb25c5f::t_2786a41021842b 119-120
+  s_3e8cffecb25c5f::t_9fe7985010d812 81-86
+  s_3e8cffecb25c5f::t_0d9bfbc02c195f 420,426,428-435
+packages/cli/src/modules/agents/__tests__/agents-config.controller.test.ts
+  s_3e8cffecb25c5f::t_84cfac769acfcb 86-87
+  s_3e8cffecb25c5f::t_4e76816f02eb85 1-8,30-37,43-47,49-63,77
+  s_616f686f02fe0a::t_32013021a14f61 38-42,48,64-76,78-85
+  s_616f686f02fe0a::t_656de4dd02d86e 10
+  s_3e8cffecb25c5f::t_2ead19482322e4 25
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_3e8cffecb25c5f::t_4beeee70c6c64f 68-69
+  s_3e8cffecb25c5f::t_90504d56b13ed5 16,19,27,44-45
+  s_3e8cffecb25c5f::t_0692fa14d893a6 130-178
+  s_3e8cffecb25c5f::t_dc92a318451d0f 179-182
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_616f686f02fe0a::t_69c18a0b9389b0 44-47
+  s_3e8cffecb25c5f::t_f0495154437096 1,6,9,11,19-20,31-43,48-57
+  s_3e8cffecb25c5f::t_84cfac769acfcb 58-59
+  s_616f686f02fe0a::t_7e6997817ecda4 10,12,21
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_3e8cffecb25c5f::t_f6cbc8b1553747 126-129,153,169-171
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_3e8cffecb25c5f::t_db411096c069f4 10-32
+  s_3e8cffecb25c5f::t_04393fd804ddbe 3
+  s_3e8cffecb25c5f::t_4d7ae10be3089f 53-60
+  s_3e8cffecb25c5f::t_768ae9bceeb21b 155-157,159-183
+  s_3e8cffecb25c5f::t_44051d2582a534 94-98
+  s_3e8cffecb25c5f::t_75f9d29843b8f2 126-129
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_3e8cffecb25c5f::t_6d56718e67fbb2 508
+  s_3e8cffecb25c5f::t_b7b3e2c9a5107b 42-43
+  s_3e8cffecb25c5f::t_58ab64f9847118 707
+  s_3e8cffecb25c5f::t_05b1f679e1e92e 7
+  s_3e8cffecb25c5f::t_0cd173f30d46f5 164
+  s_3e8cffecb25c5f::t_3746a428e44663 340-344,357
+  s_3e8cffecb25c5f::t_a6573de71ba048 109-111,118
+  s_3e8cffecb25c5f::t_2a408efce8301e 94
+  s_3e8cffecb25c5f::t_332edcaef2cfbd 632
+  s_3e8cffecb25c5f::t_9d3813006b7307 671
+  s_3e8cffecb25c5f::t_2c04972b8c2ad0 56
+  s_3e8cffecb25c5f::t_719142d4f00142 147
+  s_3e8cffecb25c5f::t_da395cf2e89bf7 171-193
+  s_3e8cffecb25c5f::t_1c6b8ed2c95fda 554,578,591
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigValidation.test.ts
+  s_3e8cffecb25c5f::t_c808acba94dde3 1-93
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_3e8cffecb25c5f::t_e36ed7e457abad 1-60
+packages/@n8n/api-types/src/agents/index.ts
+  s_3e8cffecb25c5f::t_b130c2767c63d4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8cc242b7a41fe7e512cafdf67d72ef9ea916472c",
+  "prompts": {},
+  "sessions": {
+    "s_0c55e34f4a8a89": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8da19ab9-14f6-4acf-afd1-950b8cd625c1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_1b4fd7bf952a64": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "91088341-191f-46df-a7da-cc5ea1ad7bc7",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_3e8cffecb25c5f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dd036e9e-8696-404f-b49d-07a286a67434",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_616f686f02fe0a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "727c6bf0-4a53-46fa-9d89-2d2dfe23d8d5",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_73613785c2b5ac": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3bd1b44-d3f5-4103-93b2-842529381572",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_83ef102b6b5cbb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce572733-c668-4142-aedf-974f48773086",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_97eec1b2f1a902": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d78f2552-54c5-4af4-bd55-1d56dfdd9bd4",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_bc1080bfdbbc2a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "32287aa0-d87a-4d48-bebc-b2effeb90613",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    }
+  }
+}

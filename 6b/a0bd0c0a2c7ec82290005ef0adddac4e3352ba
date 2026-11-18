@@ -1,0 +1,31 @@
+packages/@n8n/agents/src/workspace/__tests__/scoped-workspace.test.ts
+  s_9e396809902f19::t_b228fe3216d72c 129
+  s_9e396809902f19::t_520b43498cbfb7 98
+packages/@n8n/agents/src/__tests__/workspace/scoped-workspace.test.ts
+  s_9e396809902f19::t_3e2389e4cb8359 65,68
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_9e396809902f19::t_e9de99ba4c88cb 87-91
+  s_9e396809902f19::t_fff1d95b7c3f68 34-37
+packages/@n8n/agents/src/workspace/tools/write-file.ts
+  s_9e396809902f19::t_92424c081a9526 12-16
+packages/@n8n/agents/src/workspace/tools/read-file.ts
+  s_9e396809902f19::t_df2f527c03c7c2 12-16
+packages/@n8n/agents/src/workspace/tools/str-replace-file.ts
+  s_9e396809902f19::t_6e7ae61e56624c 15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6ba0bd0c0a2c7ec82290005ef0adddac4e3352ba",
+  "prompts": {},
+  "sessions": {
+    "s_9e396809902f19": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0cd4cd58-6f5d-41ea-9856-b6230ad06180",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

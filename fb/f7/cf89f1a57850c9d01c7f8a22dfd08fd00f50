@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/DataTableChangeDetails.vue
+  s_983eea3c47ac98::t_81b7ebfa5d117a 4-5,13-16,19-22,24-27,29-32,34-37,39,41-44
+  s_983eea3c47ac98::t_197eb62ac6b624 113-116
+  s_983eea3c47ac98::t_da5c1ec165a28f 63-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbf7cf89f1a57850c9d01c7f8a22dfd08fd00f50",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_758f8be79b85dc::t_920730553cdf69 1579-1581
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_758f8be79b85dc::t_89f3ecf6063213 35-36,40,46
+  s_758f8be79b85dc::t_81cdedd2c27700 3
+  s_758f8be79b85dc::t_0199e3b5bfbb05 13
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_758f8be79b85dc::t_ee0821661f818d 81-83
+packages/cli/src/modules/agents/agent-interrupted-execution-sweep.task.ts
+  s_758f8be79b85dc::t_ce6cbdccb90dd6 14-15
+  s_758f8be79b85dc::t_d29eb67863484d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "914d67e3635ddc9bee55ad7235f578f5a3c73950",
+  "prompts": {},
+  "sessions": {
+    "s_758f8be79b85dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09e2cc49-db0f-453a-ace1-3696dba9a9c1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_b86bd8b73ec329::t_4d5c878ed815f2 2,4,11-12,26-35,37-42,44-50,52-65,234-237,411,463-465,467,475-476,488-489,24
+  s_b86bd8b73ec329::t_e9de6128b4dd6f 350-353,355,359,529-531,533
+  s_b86bd8b73ec329::t_6791a692df2035 432-433,439-440,471-472,485-486,528,538-540,542,572-573,584-585
+packages/cli/src/controllers/folder.controller.ts
+  s_b86bd8b73ec329::t_80ef1c67f9694e 28-31,34,133,156,216-219,232-233,239,257,279-280
+  s_b86bd8b73ec329::t_36951da172c8d9 35-36,58,99,157
+  s_b86bd8b73ec329::t_d72769ba2be830 89-96,98,158-165,167,189-196,200
+  s_b86bd8b73ec329::t_7f0bbac7a722de 197-199
+packages/cli/src/modules/agents/agents.service.ts
+  s_b86bd8b73ec329::t_db28245fd1a73c 47,49,51-54,50
+  s_b86bd8b73ec329::t_0233eb11307f95 97,112,171,214-215,218-220,232,526-529,531-533,566-569,579-584,591,555
+  s_b86bd8b73ec329::t_d72769ba2be830 537-543,546-549,556-561,565,749-758,217,571,574-575,578,590,592
+  s_b86bd8b73ec329::t_1d2d80c02ed242 646,24,172,216,570,572-573,576-577,587-589
+packages/cli/src/services/folder.service.ts
+  s_b86bd8b73ec329::t_e9de6128b4dd6f 1,64-65,90,108-110,484-496,498-501
+  s_b86bd8b73ec329::t_7fef01adcfe005 2-5,7,14-18,20,29,51-52,55-58,60-63,67-68,70,76,107,119-120,137-144,148-161,163-170
+  s_b86bd8b73ec329::t_ee54f7038b3f04 24,179-181,183-186,188-199
+  s_b86bd8b73ec329::t_76dfd2fac28427 95
+  s_b86bd8b73ec329::t_80ef1c67f9694e 171-173,175-178
+  s_b86bd8b73ec329::t_38e9e94958f3e2 220-224,226,254-260,279-281,283-303,305-319,321-326,328-332,334-339,393-396,398,401-404,406,408,411-414,470,476,478-481,483,504-506,508-509,511-513
+packages/cli/src/services/folder-content.service.ts
+  s_b86bd8b73ec329::t_4d5c878ed815f2 1-9,11-16,18-39
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_b86bd8b73ec329::t_76dfd2fac28427 11,25
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 314-315
+  s_b86bd8b73ec329::t_a020e2c18f382e 41,460-465,467-469,471-474,486-488,495,499-502,114,212,216,321,333
+  s_b86bd8b73ec329::t_5db4c5dd860139 108,124
+  s_b86bd8b73ec329::t_f3fdcb09ce8659 8-10,44-45,65,67,103,106-107,110-113,121,133,170-176,178,190-211,213-215,217-218,220-223,226-227,233-235,316,318-320,332,334,441,479,485,507,514,533
+packages/@n8n/db/src/repositories/folder-access.repository.ts
+  s_b86bd8b73ec329::t_bc527dc2be3796 47-51,53,58-59,85
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_b86bd8b73ec329::t_2f6d8c63848533 218,276,278-279,55,88,219-229,236,285-312,319-329,332-334,341-342,344-349,353-354,356-371,373-374,387-388,390-392,402-403,415,422-431,437-440,450-462
+  s_b86bd8b73ec329::t_b90970d115542b 6-7,21-23,28,40,52-54,64,68,76,87,89-90,118,186,190,235,240-242,246-248
+  s_b86bd8b73ec329::t_db28245fd1a73c 65-67,69,75,82-84,86,113-117,119-120,244-245,313-318,330-331,335-340,350-352,375-386,393-401,404-414,416-419,421,432-436,441-449
+  s_59270bcc1c75b9::t_10bdcafb412427 85,420
+  s_b86bd8b73ec329::t_857a6ee760f008 343,355,372,389
+packages/cli/src/modules/agents/agent-folder.service.ts
+  s_b86bd8b73ec329::t_0233eb11307f95 1-20,22-23,25-39,41-53
+packages/cli/src/modules/agents/agents.module.ts
+  s_b86bd8b73ec329::t_0233eb11307f95 11,14
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_b86bd8b73ec329::t_94256a843ea1cc 43,105,44-46,49,54-56,141,157-158
+  s_b86bd8b73ec329::t_6c864afc02202e 177,179,119,128,132,138,57,67,140,142,159-160,174,178,180-189,193-194
+  s_b86bd8b73ec329::t_60e2f27de23e1c 104,107-114,116,120-121,129-131,133-137,81
+  s_b86bd8b73ec329::t_01f65d2276d650 117-118,145-146,148-152,154,156
+  s_b86bd8b73ec329::t_8272be99d81754 122-127
+  s_b86bd8b73ec329::t_49283fa0691c19 143-144,147,153,155
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_b86bd8b73ec329::t_74a5fa34189cf3 170-172,210-211,215,255,257,261,268
+  s_b86bd8b73ec329::t_94256a843ea1cc 212,218,231
+  s_b86bd8b73ec329::t_60e2f27de23e1c 222-224
+  s_b86bd8b73ec329::t_01f65d2276d650 9,219-220,226-230
+  s_b86bd8b73ec329::t_e329165fdafc22 221,225
+  s_b86bd8b73ec329::t_5e95d557c59ecc 4
+  s_b86bd8b73ec329::t_a779f5c59f5106 10,23,28,48,64-66
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_b86bd8b73ec329::t_414e74f3da53b0 12,75,84-86,89,254,269-273,275-276,319-321,323-324,327-331
+  s_b86bd8b73ec329::t_b85378d5b68899 39-40,42-48
+  s_b86bd8b73ec329::t_f5aea7ce8dcacf 452-455,457-459,600-603,605-629,637-638,640-642,658-659,661-666,668-672
+  s_b86bd8b73ec329::t_bc527dc2be3796 630-633,635-636,639,643-657,660
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6ac946ee53dc9cef7b6a9e203d394e876dfaeee",
+  "prompts": {},
+  "sessions": {
+    "s_59270bcc1c75b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f0208db-1247-4519-b410-1b1bf7dfc1ff",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_f758d2deec94b5::t_283ffdfa52706c 65-70
+  s_f758d2deec94b5::t_86b3c67dae13a5 64
+  s_f758d2deec94b5::t_29497002f445eb 121
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentBuildingIndicator.vue
+  s_f758d2deec94b5::t_283ffdfa52706c 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b0cf6c2ba9ec6467567af829dd2259dd4d968983",
+  "prompts": {},
+  "sessions": {
+    "s_f758d2deec94b5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d359-e687-7fe1-adbb-064aa0e4912e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/@n8n/decorators/src/execution-lifecycle/lifecycle-metadata.ts
+  s_7cc4bd7398e19c::t_cdfbf5f76a41b1 59-63
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_7cc4bd7398e19c::t_235a8d1f9594a6 986
+  s_7cc4bd7398e19c::t_7db5c0cb0e3a3b 56,58-62
+  s_7cc4bd7398e19c::t_8358102eb6f5a7 80
+packages/cli/src/modules/chat-hub/__tests__/chat-hub.service.integration.test.ts
+  s_7cc4bd7398e19c::t_99122410b1a466 1486,1605,1738,1880,2072,2214,2460,2670,2806,2923,3040
+  s_7cc4bd7398e19c::t_835ca16caf3a43 1937,2308
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_7cc4bd7398e19c::t_b48cb49e983d77 9
+  s_7cc4bd7398e19c::t_54c787f90815ef 540-602
+packages/cli/src/modules/chat-hub/chat-hub-execution-watcher.service.ts
+  s_7cc4bd7398e19c::t_e64cc41eddd7e9 120-124
+  s_7cc4bd7398e19c::t_1915f24ad4d65b 152
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-execution-watcher.service.test.ts
+  s_7cc4bd7398e19c::t_53356d1465925d 464-489,493-505
+  s_7cc4bd7398e19c::t_b8e8ce0b5873d2 174-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6c0bc4d20401aaa71a6eefd72eaa40c0c423cbf",
+  "prompts": {},
+  "sessions": {
+    "s_7cc4bd7398e19c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad318d59-a093-481a-90f0-d033414ba673",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

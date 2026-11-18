@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_3aaa503f47ada7::t_f9a62cec01a151 20,224-227,283-285
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_3aaa503f47ada7::t_d39f451db1dfed 935-938
+  s_3aaa503f47ada7::t_f9a62cec01a151 867,891-908,913
+  s_3aaa503f47ada7::t_73553fcd8a8fbc 939
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_3aaa503f47ada7::t_d39f451db1dfed 1102-1104
+  s_3aaa503f47ada7::t_f9a62cec01a151 40
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_3aaa503f47ada7::t_f9a62cec01a151 74-76,97
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_3aaa503f47ada7::t_f9a62cec01a151 199
+  s_3aaa503f47ada7::t_ec6d8058980413 61-71
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_3aaa503f47ada7::t_f9a62cec01a151 105
+  s_3aaa503f47ada7::t_ec6d8058980413 136,144
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_3aaa503f47ada7::t_d39f451db1dfed 33-37,711
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_3aaa503f47ada7::t_f9a62cec01a151 3-4,26-29
+  s_3aaa503f47ada7::t_d39f451db1dfed 25,30-36
+  s_3aaa503f47ada7::t_e1e5ad3235e004 23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1eaee58e3e5a218ac1391e782f2989d0f63761a7",
+  "prompts": {},
+  "sessions": {
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_9b984c21a0c7ee::t_91015d13bcab3c 1749
+  s_9b984c21a0c7ee::t_103bb21f8f0f51 1750-1755
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_9b984c21a0c7ee::t_c41e547a9bda80 38
+  s_9b984c21a0c7ee::t_cd01e2d681cc77 3263,3273-3282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce5368010146367d19ac9c15b97685744b1c6360",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9b984c21a0c7ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "334b14a8-ea76-4f86-b7a9-21d8ef7a2635",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

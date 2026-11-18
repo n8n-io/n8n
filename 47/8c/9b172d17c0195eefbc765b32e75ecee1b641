@@ -1,0 +1,40 @@
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 2-3,84,292-302,452-454
+  s_6358c8cb4cd2a5::t_36c749a33e5743 283-285,288-291,313-315,357-360,364-366,384-395,469,498
+packages/core/src/execution-engine/node-execution-context/__tests__/poll-context.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 68-90
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 4,444
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 3,101,1159-1221
+  s_6358c8cb4cd2a5::t_36c749a33e5743 1004-1158,1574,1608,1635
+packages/workflow/src/interfaces.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 1420-1422,1424-1425
+  s_6358c8cb4cd2a5::t_b29fd100e02b8d 1423
+packages/core/src/execution-engine/node-execution-context/poll-context.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 1,49-53
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_6358c8cb4cd2a5::t_2ade5f392f1f73 2-6,10-11,13,253-326
+  s_6358c8cb4cd2a5::t_109006a1e56d1c 1,327-328
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_6358c8cb4cd2a5::t_36c749a33e5743 193,216,249-300
+  s_6358c8cb4cd2a5::t_a1a5170a8336f1 301
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_6358c8cb4cd2a5::t_36c749a33e5743 50-51,114,121-128,148-150,169-172,218-220,236-251,262-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "478c9b172d17c0195eefbc765b32e75ecee1b641",
+  "prompts": {},
+  "sessions": {
+    "s_6358c8cb4cd2a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1f2839c-15c8-45f2-a3c3-ad2077007168",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

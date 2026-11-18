@@ -1,0 +1,61 @@
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_0da9a0f82cfb04::t_c9d0ac7643c9fc 35
+  s_0da9a0f82cfb04::t_06f3ed056821c7 54-73,80,116,118,121,193
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.task.test.ts
+  s_0da9a0f82cfb04::t_ccc961bfd4f9f8 128
+  s_0da9a0f82cfb04::t_d8434fab665298 6,35
+packages/modules/insights/backend/src/__tests__/insights-pruning.task.test.ts
+  s_0da9a0f82cfb04::t_ccc961bfd4f9f8 3,36
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_0da9a0f82cfb04::t_ccc961bfd4f9f8 4,7,21-22,131,139,151,159,176
+  s_0da9a0f82cfb04::t_5e9dde45aec461 122-127
+  s_0da9a0f82cfb04::t_a52fdf07a420bf 9,13,20
+  s_0da9a0f82cfb04::t_c9d0ac7643c9fc 119-121
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_0da9a0f82cfb04::t_ccc961bfd4f9f8 671-674
+packages/cli/test/integration/scheduling/license-renewal-multi-main.test.ts
+  s_0da9a0f82cfb04::t_d8434fab665298 27-28,30
+  s_0da9a0f82cfb04::t_5e9dde45aec461 215
+  s_0da9a0f82cfb04::t_41609e580f988e 29
+  s_0da9a0f82cfb04::t_8cddf0ea435c0f 214,216
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_0da9a0f82cfb04::t_92729f14753815 5,11,21,36,116-117,156,173-174,187-188,195-197
+  s_0da9a0f82cfb04::t_8cddf0ea435c0f 189-190
+packages/cli/src/telemetry/__tests__/telemetry-pulse.task.test.ts
+  s_0da9a0f82cfb04::t_d8434fab665298 2,29
+packages/cli/src/scheduling/system-tasks/system-task-job-registrar.ts
+  s_0da9a0f82cfb04::t_41609e580f988e 7,11,28-43
+  s_0da9a0f82cfb04::t_92729f14753815 6,23-27,44-45,53,64,100-101,105
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  s_0da9a0f82cfb04::t_ccc961bfd4f9f8 4,9
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-job-registrar.test.ts
+  s_0da9a0f82cfb04::t_41609e580f988e 18,64,215,240,256,260,277
+  s_0da9a0f82cfb04::t_5e9dde45aec461 40-58
+  s_0da9a0f82cfb04::t_a52fdf07a420bf 6,33
+  s_0da9a0f82cfb04::t_51ddd916db5b5d 15-17,19
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-multi-main.integration.test.ts
+  s_0da9a0f82cfb04::t_d8434fab665298 20-21,23
+  s_0da9a0f82cfb04::t_41609e580f988e 22,126
+packages/@n8n/decorators/src/system-task/index.ts
+  s_0da9a0f82cfb04::t_06f3ed056821c7 8
+packages/cli/test/integration/scheduling/system-task-provisioning.test.ts
+  s_0da9a0f82cfb04::t_a52fdf07a420bf 8,41
+  s_0da9a0f82cfb04::t_41609e580f988e 18,50,252
+  s_0da9a0f82cfb04::t_8cddf0ea435c0f 49,51,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9dd6ea14f5bf1e6f26274826acb735bc75718b74",
+  "prompts": {},
+  "sessions": {
+    "s_0da9a0f82cfb04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a04656e9-973e-4dbe-9e41-125badf6ebae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

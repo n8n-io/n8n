@@ -1,0 +1,115 @@
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_71c6da2ee47cd3::t_30e5ced941d487 2
+  s_71c6da2ee47cd3::t_dd9c13b1d1e201 72
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  ai_agent 3-8,380-383
+  s_71c6da2ee47cd3::t_4bbbebc7e3c31d 353-379,384-391
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  ai_agent 208,256-258
+  s_71c6da2ee47cd3::t_aa0424f7ccb426 187-191,197
+  s_71c6da2ee47cd3::t_7708bfcc050e07 1-186,192-196,198-207,209-255,259-274,276-286
+  s_71c6da2ee47cd3::t_27e2cc4602ed78 275
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_71c6da2ee47cd3::t_68dd79d62a934b 2,265
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_71c6da2ee47cd3::t_27e2cc4602ed78 4
+  s_71c6da2ee47cd3::t_553ac165a90880 62,66,95,108-110
+packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
+  s_71c6da2ee47cd3::t_a766967f79ad87 1-5,8-32,34-36,38-44,46-63,66-67,78-81,91
+  s_71c6da2ee47cd3::t_83b9f9a9222c04 6-7,33,37,45,64-65,68-70,72-77,82-90
+  s_71c6da2ee47cd3::t_2dd89fcb4b83be 71
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-response-hooks.test.ts
+  s_71c6da2ee47cd3::t_4849c0a16c58e6 1-72
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_71c6da2ee47cd3::t_9747bcaeea463c 1350-1366
+  ai_agent 429-432,500-502
+  s_71c6da2ee47cd3::t_5b22a6b77c7d1e 1156-1158
+  s_71c6da2ee47cd3::t_081139bf7e108a 1367-1368
+  s_71c6da2ee47cd3::t_82641545dd981d 84-85,1249-1259,1503-1505
+  s_71c6da2ee47cd3::t_84509349e119de 425-428,433-499,503-574
+  s_71c6da2ee47cd3::t_5b53f4418a9bd6 934-935
+  s_71c6da2ee47cd3::t_cad741b1c5caee 30
+  s_71c6da2ee47cd3::t_3380b26a61d5cb 950
+packages/@n8n/engine/src/response-channel/redis-transport.ts
+  s_71c6da2ee47cd3::t_6ec56028aecc4a 1-67
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_71c6da2ee47cd3::t_ef20be6514bbb3 23,34-39,75
+  s_71c6da2ee47cd3::t_4d894fc0da6490 102,113
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_4d894fc0da6490 37-55
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_71c6da2ee47cd3::t_70003a25adde80 2-8,10,39,47,52,63,74,77-81,91
+  s_71c6da2ee47cd3::t_353ad25b430050 165-169,201,205-233
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_71c6da2ee47cd3::t_a27a346158d6cf 60
+packages/@n8n/engine/src/response-channel/in-memory-transport.ts
+  s_71c6da2ee47cd3::t_772ab5ee6b0c00 1-28
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_71c6da2ee47cd3::t_c1cd91a422f8cb 108
+  ai_agent 152-154
+  s_71c6da2ee47cd3::t_2558c73f196a7c 3,106-107
+  s_71c6da2ee47cd3::t_778d9b8da562a2 160,171,177,201,218,230,238,246,270,278,287,298,305,316,331,341,368,383
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  s_71c6da2ee47cd3::t_069fd0d98e2737 297
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_71c6da2ee47cd3::t_bbee396977387a 85,87,90,127-128
+  s_71c6da2ee47cd3::t_7b1a14199ec834 13,86,88-89,106
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_71c6da2ee47cd3::t_56941a85d1ad47 4,46-51
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_71c6da2ee47cd3::t_436bdc4bceb8b9 11,45,139-141
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_71c6da2ee47cd3::t_a27a346158d6cf 29-33
+packages/@n8n/engine/src/response-channel/response-transport.ts
+  s_71c6da2ee47cd3::t_772ab5ee6b0c00 1-23
+packages/@n8n/config/src/configs/engine.config.ts
+  s_71c6da2ee47cd3::t_8a024a3f8b27ae 65-66,69-72,75-82
+  s_71c6da2ee47cd3::t_2f4e192a4e612e 67-68,73-74
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_71c6da2ee47cd3::t_fbe40682714df3 158-159
+packages/workflow/src/interfaces.ts
+  s_71c6da2ee47cd3::t_bbee396977387a 3764-3765
+  s_71c6da2ee47cd3::t_7b1a14199ec834 3766-3771
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_71c6da2ee47cd3::t_5a415e956caf32 44,47
+  s_71c6da2ee47cd3::t_409a6f5b8477d1 5,21-22,39-43,45-46,49-51,67-68
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_71c6da2ee47cd3::t_d2b6c234216084 1-67
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_71c6da2ee47cd3::t_a6058196f0ed40 2068-2081
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  s_71c6da2ee47cd3::t_9d363d6ca55bfe 1-89,91-96,107-130
+  ai_agent 90
+  s_71c6da2ee47cd3::t_5704f219acc8bc 97-106
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_71c6da2ee47cd3::t_772ab5ee6b0c00 1-35
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  ai_agent 81-85
+  s_71c6da2ee47cd3::t_b0b42e898c7f7f 1-80,86-230
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_71c6da2ee47cd3::t_83b9f9a9222c04 20,65-66
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_9d363d6ca55bfe 1-15
+packages/cli/src/modules/engine-v2/create-response-channel.ts
+  s_71c6da2ee47cd3::t_2f4e192a4e612e 1-51
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_63f2e46791d103 1-2,4-14,31-45,47-50,53-58,60-119,126,139-215
+  s_71c6da2ee47cd3::t_da4902f598ee25 3,15-23,27-30,46,51-52,59
+  ai_agent 24-26,120-125,127-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f3f93e298b9263fb72319d8f33edaa6eec9d848",
+  "prompts": {},
+  "sessions": {
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

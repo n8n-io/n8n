@@ -1,0 +1,81 @@
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_3428465b7508cc::t_13e736f9fb4964 118-128
+  s_3428465b7508cc::t_c0929b0f95e008 115-117
+  s_3428465b7508cc::t_d345f127aee7e5 113-114
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_3428465b7508cc::t_e0aa7e72392124 305,309
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_3428465b7508cc::t_c10d1414fe347a 254-255
+  s_3428465b7508cc::t_8cf5c65d820eda 250
+  s_3428465b7508cc::t_55e77ad6f01e6c 251-253
+  s_3428465b7508cc::t_1db7502e3b5d74 3-6,173-182
+packages/cli/src/modules/inbound-auth-core/oauth2-bearer.driver.ts
+  s_3428465b7508cc::t_d5e8cddbb00ac2 203-204
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  s_3428465b7508cc::t_bb579244341745 171,176-197
+  s_3428465b7508cc::t_0f6fbc85b57364 168-170
+  s_3428465b7508cc::t_4f619ac8a3cbb4 172-175
+packages/cli/src/modules/inbound-auth-core/__tests__/oauth2-bearer.driver.test.ts
+  s_3428465b7508cc::t_b2eaae50c494dc 390-401
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_3428465b7508cc::t_6be7c6c18de6a1 160,228-233,283-289
+  s_3428465b7508cc::t_a64a9e1a5f42c4 25,40
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_5fe0c4b8d58e7f 17-20
+  s_3428465b7508cc::t_be038eb5c3c106 147-148
+  s_3428465b7508cc::t_bb579244341745 36,41,49-53,134-146
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_3428465b7508cc::t_1fd0cbe21d0615 343-345,347,355
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_bb579244341745 48,54,70,260-272
+  s_3428465b7508cc::t_b6e117191cdb99 23-26
+packages/cli/src/modules/oauth-server/__tests__/chat-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_cde0dd0798519d 39-42
+packages/cli/src/modules/oauth-server/__tests__/chat-trigger-test-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_a514de031ee6d0 25-28
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_66c4105970b0f7 24-27
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-test-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_ee4d845defb210 24-27
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-test-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_acee3b149f8ff6 18-21
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-test-trigger-resource.resolver.api.test.ts
+  s_3428465b7508cc::t_79e642edcc6c41 23-26
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.ts
+  s_3428465b7508cc::t_348d62811dbac9 12,89
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.ts
+  s_3428465b7508cc::t_40249db554a27f 13,109
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-test-trigger-resource.resolver.ts
+  s_3428465b7508cc::t_d509da678659fc 15,150
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_3428465b7508cc::t_b4c761b6cb4c43 14,174
+packages/nodes-base/nodes/Webhook/description.ts
+  s_3428465b7508cc::t_e26ba69d0ef637 9,149-161
+packages/nodes-base/utils/__tests__/trusted-source.test.ts
+  s_3428465b7508cc::t_468b942f92faeb 4,32-46
+packages/nodes-base/utils/trusted-source.ts
+  s_3428465b7508cc::t_e26fab664119fc 6-14,22-32
+packages/workflow/src/n8n-oauth2-auth.ts
+  s_3428465b7508cc::t_e90985556b59d3 132-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d00dde5ac1c595a9e4c19ae2a2b1a4aacba2652a",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3428465b7508cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "528f7694-5b48-4311-b2ef-0a0f994fff37",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

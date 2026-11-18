@@ -1,0 +1,108 @@
+packages/nodes-base/nodes/Keap/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_647483437a752a 1-22
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f80d2ccad22d59 108,235,311,332-333,371
+  s_2e1fa95fc44f8f::t_b9ea8b665aa290 106-107
+  s_2e1fa95fc44f8f::t_71079f62ac948f 233-234
+  s_2e1fa95fc44f8f::t_b6dfce5ff72710 236-237
+  s_2e1fa95fc44f8f::t_7474688e7ef4f5 308-310
+  s_2e1fa95fc44f8f::t_b327d24199abf3 312
+  s_2e1fa95fc44f8f::t_a038d1048d5df7 329-331
+  s_7b26599724280c::t_4f459fd3124fbb 3-4,25,55,74,79,97-101,119-123,127-129,146-150,164,183-187,194,206-210,221,242,256-260,266,280-284,353-357,386-390,395-419,430-434,439-441
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_0c8ab979236670::t_eb7e6c3daa3634 13-21,35,40-43,84,92,192,343,346,379,384-387,393,397,402-410,444,447
+packages/nodes-base/nodes/Jira/Jira.node.ts
+  s_7b26599724280c::t_aae5cda9b9b7f2 12-18,219,223,226,257,297-301,334,376,390,407,409-414,439-443,479-483,516,653,678,794,822,830,880,961,969,982,989,1026,1033,1155,1197,1232,1279,1322,1355,1388,1426,1464,1557,1592,1629,1639,1674,1758,1805,1836,1876
+packages/nodes-base/nodes/Jira/JiraTrigger.node.ts
+  s_0c8ab979236670::t_688a6b19d2c585 10,20,557,613,681,763,770,799
+packages/nodes-base/nodes/Jira/__test__/Jira.node.test.ts
+  s_e343f172d634e5::t_ceb2b9cbbb4d05 10,98,129,160,191,222,253,283,316,347,381,457,476
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_7b26599724280c::t_1a88eb3d6f245e 8,89,94-96,113,137,158,163,180,204,261,282,306,367,456,540,772,777,794,818
+packages/nodes-base/nodes/Jira/__test__/node.methods.test.ts
+  s_7b26599724280c::t_dbfaabe0bf966d 3-9,21,23-24,26-27,39,52-55
+packages/nodes-base/nodes/Keap/GenericFunctions.ts
+  s_0c8ab979236670::t_2890579ee72baf 10-11,13,18,25,32,52
+packages/nodes-base/nodes/Keap/Keap.node.ts
+  s_7b26599724280c::t_8d3a5b07197bc6 3,135,150,165-169,188,204-208,270,287,293,389,394-398,408-414,446,452,472,477,483,496,502,516-521,535,547,562,571,606,611,617,630,636,651,656-660,666-670,683,689,706,711-715,729,735,777,785,808,814,841
+packages/nodes-base/nodes/Keap/KeapTrigger.node.ts
+  s_7b26599724280c::t_c75597b5d83631 12,74,95,121,137
+packages/nodes-base/nodes/Lemlist/GenericFunctions.ts
+  s_c59331e96b0204::t_175443ea3d4db6 9-10,12,20,24,27,50
+packages/nodes-base/nodes/Lemlist/LemlistTrigger.node.ts
+  s_7b26599724280c::t_2fd2ac3b5a4b11 10,84,98,101-105,124,131-135
+packages/nodes-base/nodes/Lemlist/test/GenericFunctions.test.ts
+  s_c59331e96b0204::t_4c87e5cfcc508d 8,22,26,31,37-49,63
+packages/nodes-base/nodes/Lemlist/v1/LemlistV1.node.ts
+  s_7b26599724280c::t_b444b60068ef49 12,102,144-149,152-158,176-181,186-192,224,236,252,262,277,292-296,305-309,320-325,330-336
+packages/nodes-base/nodes/Lemlist/v2/LemlistV2.node.ts
+  s_7b26599724280c::t_6604df47002876 12,111,153-158,161-167,190-195,198-204,222,256,268,284,294,309,317,332-336,345-349,360-365,370-376,393-397,414,435
+packages/nodes-base/nodes/Line/GenericFunctions.ts
+  s_01cb885e0ad060::t_1e40a1b367339e 9-10,21-22,24,31
+packages/nodes-base/nodes/Line/Line.node.ts
+  s_4de36876c2d7be::t_edf385fab8926e 8,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77ad00c18ea8a862be15c138ff914087fa628b8f",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4de36876c2d7be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acab3e3b4ca422544",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7b26599724280c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9db2cf491b2086aa",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c59331e96b0204": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a406bf384a0b0661a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_e343f172d634e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a366a63f9005a09a7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

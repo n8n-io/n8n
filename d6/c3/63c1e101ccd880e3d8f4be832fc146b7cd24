@@ -1,0 +1,31 @@
+packages/@n8n/backend-services/src/index.ts
+  s_5b85161403cb3c::t_ab5abf2845897f 19-28
+packages/@n8n/backend-services/src/services/__tests__/oauth-discovery-client.test.ts
+  s_5b85161403cb3c::t_480ebe1bb0fcb1 1-83,87-161,163-238,240-257,259-271,273-277,284,287-405
+  s_5b85161403cb3c::t_4ee95656fb7b29 84-86,162,239,258,272
+  s_5b85161403cb3c::t_56161b0e80deeb 278-283,285-286
+packages/@n8n/backend-services/src/services/oauth-discovery-client.ts
+  s_5b85161403cb3c::t_e94ddc849e8ef5 114-116
+  s_5b85161403cb3c::t_a5f2c254b35921 3-5,8-13,44-113,117-135,137-162,174,176-179,182-185,189-256,258-293,295
+  s_5b85161403cb3c::t_ab5abf2845897f 1-2,6-7,14-43,136,163-173,175,180-181,186-188,257,294,296-297
+packages/@n8n/backend-services/package.json
+  s_5b85161403cb3c::t_ab5abf2845897f 28,38-39
+pnpm-lock.yaml
+  s_5b85161403cb3c::t_13ab6b0bbbf403 1810-1812,1843-1845
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6c363c1e101ccd880e3d8f4be832fc146b7cd24",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

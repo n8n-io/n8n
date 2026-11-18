@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/Excel/MicrosoftExcel.node.ts
+  s_51910027fb74a7::t_c30492b20aa79a 10,15
+packages/nodes-base/nodes/Microsoft/Excel/MicrosoftExcel.node.json
+  s_51910027fb74a7::t_3a9648d7484da4 18
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/versionDescription.ts
+  s_51910027fb74a7::t_5c42e0914421b3 10,16,18
+  s_51910027fb74a7::t_f2fdac9501a632 78
+packages/nodes-base/nodes/Microsoft/Excel/v1/MicrosoftExcelV1.node.ts
+  s_51910027fb74a7::t_91df915d58f81c 27,33,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed796a3ac3c39fadb37be81745215a1d31b7eb97",
+  "prompts": {},
+  "sessions": {
+    "s_51910027fb74a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17a67370-e024-44c0-9ddd-cf0b5c600b07",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

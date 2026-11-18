@@ -1,0 +1,31 @@
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_70fb4223a7d1db::t_6209f637ba413b 5
+  s_70fb4223a7d1db::t_6c1be9b040796a 34-38,40,44,51-54,56-59
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_70fb4223a7d1db::t_d101961c1f0a4b 9
+  s_70fb4223a7d1db::t_9bbff6bf5beae0 44-45,50,54
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_70fb4223a7d1db::t_f92543a133101e 183-188,194,198
+  s_70fb4223a7d1db::t_fa36e2372fc4f2 9
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_70fb4223a7d1db::t_76785178fc88f8 722,725
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_70fb4223a7d1db::t_ef52fa1d1a77b4 52-55,57
+  s_70fb4223a7d1db::t_d08112981d9991 20-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "deb8bbdf0a727d97a293329915ca116349cebec8",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

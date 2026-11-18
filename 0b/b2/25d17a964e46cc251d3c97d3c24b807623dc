@@ -1,0 +1,24 @@
+packages/frontend/@n8n/composables/src/useExternalHooks.test.ts
+  s_8805e67aa0af0c::t_e581c0dfb41730 1-74
+packages/frontend/@n8n/composables/src/useExternalHooks.ts
+  s_8805e67aa0af0c::t_a38f794826cc41 1-60
+packages/frontend/editor-ui/src/app/composables/useExternalHooks.ts
+  s_8805e67aa0af0c::t_20a2ac10b0cc6d 9,11-16,38-48
+  s_8805e67aa0af0c::t_1c2605d8284194 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "0bb225d17a964e46cc251d3c97d3c24b807623dc",
+  "prompts": {},
+  "sessions": {
+    "s_8805e67aa0af0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cd2d5fa-e385-46b4-8b1d-f1c1befca5c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

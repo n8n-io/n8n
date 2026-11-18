@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/resolvers/components/RunAsCallout.vue
+  s_af62986d6ef75e::t_530159b08a3fca 95
+  s_af62986d6ef75e::t_58b096f74d6444 1-94,96-103
+packages/frontend/editor-ui/src/features/resolvers/components/RunAsCallout.test.ts
+  s_af62986d6ef75e::t_75baa8a0d9984d 1-242
+  s_af62986d6ef75e::t_01d2164ad9afd4 243-244
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_af62986d6ef75e::t_944415010258e9 3131-3136
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_af62986d6ef75e::t_29d44523d95003 1459-1485
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_af62986d6ef75e::t_3107a5b92da80d 14-20
+  s_af62986d6ef75e::t_6af85c50036cde 736
+  s_af62986d6ef75e::t_a9647d0e640330 49
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_af62986d6ef75e::t_55de81367bc8f9 460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3cf86d3780f94aa47777f0ce5af557128dfdf547",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+single-instance-promotion-prototype/implementation-phase/PLAN_DEV_AND_PROD_ENABLEMENT.md
+  h_c63dce324dfc7b 1-159
+single-instance-promotion-prototype/implementation-phase/PROMPT_DEV_AND_PROD_ENABLEMENT.md
+  h_c63dce324dfc7b 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "788eca4166fe2e84c44587f2902a75692def6824",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

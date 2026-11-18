@@ -1,0 +1,37 @@
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_088272d4812bff::t_dc37aacd6e293b 21-22
+packages/cli/src/modules/insights/database/repositories/__tests__/insights-by-period.repository.integration.test.ts
+  s_088272d4812bff::t_53d847b8ccb7c0 601
+  s_088272d4812bff::t_85c6e48207228f 560
+  s_088272d4812bff::t_849faae7eee824 559,563,568,571,579,582,586,589,594,597
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_088272d4812bff::t_7940ce5c597cd5 282-283,285-286,294,296-298
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_088272d4812bff::t_df8f828cf4f930 584-586,592
+  s_088272d4812bff::t_c241e4ac569317 628-632
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_088272d4812bff::t_6c119ad889c571 421,429-432
+  s_088272d4812bff::t_91003860f3b819 439
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_088272d4812bff::t_7f3c5a09d9bb85 718,725
+  s_088272d4812bff::t_675a5e2ef98330 102-103,609,626,660,673,708,721,731,746
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_088272d4812bff::t_7a7a160ccd0536 91-93
+  s_088272d4812bff::t_257382cabb4393 83-88,90,94-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ca818751ca1cbaf067c3e6e3eeaf3100ea30da7b",
+  "prompts": {},
+  "sessions": {
+    "s_088272d4812bff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a800ddce-ab93-44ed-88ed-2e1a905df5e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

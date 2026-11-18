@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Confluence/actions/attachment/getMany.operation.ts
+  s_2e1fa95fc44f8f::t_032465f6fe208f 64,66,68-70
+packages/nodes-base/nodes/Confluence/test/actions/attachment/getMany.operation.test.ts
+  s_2e1fa95fc44f8f::t_9ef3a8eefc9cac 1,202-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d0f65be02f8c1f07bec975e8a732759ea0e60d4",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

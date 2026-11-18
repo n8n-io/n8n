@@ -1,0 +1,34 @@
+packages/modules/insights/backend/src/insights-collection.service.ts
+  s_f006fdb57a7b92::t_ac3949dce4da70 7
+  s_f006fdb57a7b92::t_d89146d8df188a 2,360-363
+packages/workflow/src/interfaces.ts
+  s_f006fdb57a7b92::t_d89146d8df188a 3531
+packages/@n8n/backend-services/src/executions/time-saved.ts
+  s_f006fdb57a7b92::t_18a42dea5573ad 1-11
+packages/@n8n/backend-services/src/executions/__tests__/time-saved.test.ts
+  s_f006fdb57a7b92::t_2a19e420e20895 1-46
+packages/@n8n/backend-services/src/index.ts
+  s_f006fdb57a7b92::t_d89146d8df188a 3
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_f006fdb57a7b92::t_d89146d8df188a 2775-2776
+packages/cli/src/scaling/job-processor.ts
+  s_f006fdb57a7b92::t_d89146d8df188a 4,576
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_f006fdb57a7b92::t_074e99cdbed3c1 1231-1297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7211e712300e5fce6e6bf45dd2946d1a26931ab4",
+  "prompts": {},
+  "sessions": {
+    "s_f006fdb57a7b92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f78e4053-fc1f-4713-87d8-15a69d94e5dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

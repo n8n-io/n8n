@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/common/token-request.ts
+  s_14ca2fc1f38b1c::t_1f40fb793c1f64 2
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  s_14ca2fc1f38b1c::t_b86e9d9a6c1ffa 232-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a5467d76540b1e265ec9259555e763a7f9be4126",
+  "prompts": {},
+  "sessions": {
+    "s_14ca2fc1f38b1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36c55684-c2ce-4a75-8db7-d955cf8024e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

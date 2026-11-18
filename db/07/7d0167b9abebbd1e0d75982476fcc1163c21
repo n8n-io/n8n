@@ -1,0 +1,167 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_1168effab838f3::t_d543d5edc8f9de 53-55,95-97
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1168effab838f3::t_cacccf12326f48 247
+  s_1168effab838f3::t_08b113bd9cd96e 280-286
+  s_3a5e4634665091::t_6437c054eb8691 234-246,248-279,287-323
+packages/cli/src/modules/agent-evals/__tests__/unified-testing-poc.service.test.ts
+  s_1168effab838f3::t_a98f764756613c 96,152,184,202,209,227-238,240-243,245-246,258-260,262-265,270-281,283-285,287-289,329,331-334,341,349,368
+  s_1168effab838f3::t_b97ffafe7bec7f 247-253,257,261
+  s_1168effab838f3::t_ec1b086a43d0dd 54-55,57-58,61-63,66-67,69-72,75,90,94,100,157,159,162,165-167,177,179,181-182,185-187,190-191,193-196,199,205-206,214,221,226,290-306,308-314,317-321,325,338,343,345,352,371,375,377
+  s_1168effab838f3::t_b607d88273bdd0 102
+  s_1168effab838f3::t_e233678f13dd10 89,103-114,116-132,137-139,141-143,145-146,148,366
+  s_1168effab838f3::t_82bd52153d5932 1-53,56,59-60,64-65,68,73-74,76-88,91-93,95,97-99,101,115,133-136,140,144,147,149-151,153-156,158,160-161,163-164,168-176,178,180,183,188-189,192,197-198,200-201,203-204,207-208,210-213,215-220,222-225,239,244,254-256,266-269,282,286,307,315-316,322-324,326-328,330,335-337,339-340,342,344,346-348,350-351,353-365,367,369-370,372-374,376,378-434
+packages/frontend/editor-ui/src/features/agents/composables/useTestAgentPreviewFlag.test.ts
+  s_1168effab838f3::t_462f1cb9369d13 1,23-24,68-82
+  s_1168effab838f3::t_0958d753a5b94f 83-85
+  s_1168effab838f3::t_6e33e7b0b0ff8a 86
+packages/frontend/editor-ui/src/features/agents/components/UnifiedAgentTests.vue
+  s_1168effab838f3::t_dd2151486fa7b7 113-118,155,290,310
+  s_1168effab838f3::t_49cdcb4e7224a1 28
+  s_3a5e4634665091::t_f59bf57c83019f 1-27,29-112,119-154,156-289,291-309,311-327
+packages/frontend/editor-ui/src/features/agents/unifiedTesting.api.ts
+  s_1168effab838f3::t_1fa642aae781ad 27-32
+  s_1168effab838f3::t_69e42b0ab10568 24-26
+  s_1168effab838f3::t_67804acd649796 33-35
+  s_1168effab838f3::t_cd003cd3c7b57d 1-23,36-78
+packages/frontend/editor-ui/src/features/agents/unifiedTesting.api.test.ts
+  s_1168effab838f3::t_c898f149abe1d8 14,23-27,35
+  s_1168effab838f3::t_6fa409ef085757 1-13,15-22,28-34,36-40
+packages/frontend/editor-ui/src/features/agents/composables/useTestAgentPreviewFlag.ts
+  s_1168effab838f3::t_50fb89094bfe65 8-12
+packages/frontend/editor-ui/src/features/agents/composables/useUnifiedTesting.test.ts
+  s_1168effab838f3::t_d34ac64df06a5b 40
+  s_1168effab838f3::t_6736c5245d46b8 136
+  s_1168effab838f3::t_aa3496ad8f289b 37-39
+  s_1168effab838f3::t_36422242802bf1 41-43,133-135
+  s_1168effab838f3::t_3ba26f3ab725cb 137-139
+  s_1168effab838f3::t_d61dd9a4cd0fee 1-36,44-132,140-210
+packages/cli/src/modules/agent-evals/unified-testing-poc.service.ts
+  s_1168effab838f3::t_8a59688cc2581c 7-29,143-146
+  s_1168effab838f3::t_633e86bb216679 302
+  s_1168effab838f3::t_4307d4ec7cf5e2 266
+  s_1168effab838f3::t_b537bd72de3011 88
+  s_1168effab838f3::t_e6dfd8b37a4fda 1-6,30-87,89-142,147-265,267-301,303-443
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_1168effab838f3::t_a0af5a575eb8dc 158-167
+packages/frontend/editor-ui/vite.config.mts
+  s_1168effab838f3::t_789be62b48d591 242
+packages/frontend/editor-ui/src/features/agents/composables/useUnifiedTesting.ts
+  s_1168effab838f3::t_19f9ee10a5da97 90
+  s_1168effab838f3::t_ac904fd250637f 98
+  s_1168effab838f3::t_cfe5b6063af6d2 87-89
+  s_1168effab838f3::t_7d880d080e6df9 91-93,95-97
+  s_1168effab838f3::t_bcf423182c2c34 99-101
+packages/cli/src/modules/agents/unified-testing-capture.service.ts
+  s_1168effab838f3::t_5aebc9f842cffc 10-127
+  s_1168effab838f3::t_ff706d74938a18 1-9,128-182
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.test.ts
+  s_1168effab838f3::t_f1546abe6642bd 2,35,42-47
+  s_1168effab838f3::t_7dc0d7977ef7a2 48-52
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_1168effab838f3::t_163439fbea0685 102-103
+  s_1168effab838f3::t_43da958faa1194 695-698
+packages/frontend/editor-ui/src/features/agents/__tests__/UnifiedAgentTests.test.ts
+  s_1168effab838f3::t_99cba0332dc5b8 91
+  s_1168effab838f3::t_fb01f658b5e2c1 33,45,59,71
+  s_1168effab838f3::t_a77059585064d3 24,90,92-94
+  s_3a5e4634665091::t_b59b7d2da83160 1-23,25-32,34-44,46-58,60-70,72-89,95-108
+packages/cli/src/modules/agents/saved-test-capabilities.ts
+  s_1168effab838f3::t_513b707c8d8745 3-7,11-12
+  s_1168effab838f3::t_b3ec44eceb706f 8-10
+  s_1168effab838f3::t_9b216aa1e87ced 15-16,18,28,30,43,45
+  s_1168effab838f3::t_2810cc5cbe8c2d 1-2
+  s_1168effab838f3::t_7ae7643acf72ad 13-14
+  s_1168effab838f3::t_2aac89c563555a 17
+  s_1168effab838f3::t_b3c76ecff66530 19-21,25-27
+  s_1168effab838f3::t_a217c997d61729 29
+  s_1168effab838f3::t_05094af00dae01 31-33,40-42
+  s_1168effab838f3::t_80764b568a3f75 44
+  s_1168effab838f3::t_41701a02412861 46-47
+  s_1168effab838f3::t_4aa91f2cc55fe7 22-24,34-39
+packages/cli/src/modules/agent-evals/__tests__/saved-test-lifecycle.service.test.ts
+  s_1168effab838f3::t_9c64ca55bf5f2e 92-100
+  s_1168effab838f3::t_733d2b2f5f27eb 148-160,165-168,170-172,174
+  s_1168effab838f3::t_8d3dfb984c41d7 62,91,113,131,147,175-179,196-197,224,249,259,267,278
+  s_1168effab838f3::t_9214052baf02b5 1-61,63-90,101-112,114-130,132-146,161-164,169,173,180-195,198-223,225-248,250-258,260-266,268-277,279-290
+packages/cli/src/modules/agent-evals/saved-test-sandbox.service.ts
+  s_1168effab838f3::t_b2339cf91ff5e1 18,95
+  s_1168effab838f3::t_050dd81d60866f 21-22,24,35,37,88,91
+  s_1168effab838f3::t_1b03ce03a00667 1-17,19-20,23,25-34,36,38-87,89-90,92-94,96-155
+packages/cli/src/modules/agent-evals/saved-test-lifecycle.service.ts
+  s_1168effab838f3::t_38cec2b506395a 119
+  s_1168effab838f3::t_03cc529eeb8847 128-132,134-136,281
+  s_1168effab838f3::t_90931baa5f05e7 116-118
+  s_1168effab838f3::t_cc92ca9cb87136 120-122,125-127
+  s_1168effab838f3::t_6903ec3b138f0a 133
+  s_1168effab838f3::t_8142e84f5162f6 137-139,278-280
+  s_1168effab838f3::t_606d422f25119e 282-284
+  s_1168effab838f3::t_fd61190d9c1ac8 1-115,123-124,140-277,285-441
+packages/@n8n/api-types/src/unified-agent-testing-poc.ts
+  s_1168effab838f3::t_981427ef8d9f9c 31-32
+  s_1168effab838f3::t_c0da49e3486a81 86-87
+  s_1168effab838f3::t_1a163cfae2916b 110-111
+  s_1168effab838f3::t_b17fb142bfefc5 28-30
+  s_1168effab838f3::t_da9c5270bf4795 33-35,83-85
+  s_1168effab838f3::t_4d4865251fc43b 88-90,107-109
+  s_1168effab838f3::t_e28663dd3dc2e0 112-114
+  s_1168effab838f3::t_273ba6f1ab3cec 1-27,36-82,91-106,115-118
+packages/cli/src/modules/agent-evals/__tests__/unified-testing-poc.controller.test.ts
+  s_1168effab838f3::t_86e04b02916fec 1-24
+packages/cli/src/modules/agent-evals/saved-test-replay.ts
+  s_1168effab838f3::t_aab853c9ce85c8 1-63
+packages/cli/src/modules/agent-evals/unified-testing-poc.controller.ts
+  s_1168effab838f3::t_6d548c6af0a55f 1-219
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_1168effab838f3::t_96298e263f7fc9 31,132,522-526,691-719
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestPreview.test.ts
+  s_3a5e4634665091::t_a86f3a4a4a56af 1-86
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_1168effab838f3::t_ceb12f19acb8bf 252-292
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_3a5e4634665091::t_9acbffec55525f 80-81,975
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_3a5e4634665091::t_b5e8594e59dd5c 102-104,198-199,263,1131-1142,1507,1509,1516-1518,1619-1623
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_3a5e4634665091::t_3c96d89b43f37c 2-8,60,62-64,66-83,100,115-118,121-126,129-130,134,136-137,141,144-149,151-179,190,199-207,209,213-217
+packages/frontend/editor-ui/src/features/agents/components/TestModeBar.vue
+  s_3a5e4634665091::t_ae95bb2afb2feb 1-178
+packages/frontend/editor-ui/src/features/agents/components/TestRunChecks.vue
+  s_3a5e4634665091::t_b4a132c754c9fb 1-241
+packages/frontend/editor-ui/src/features/agents/components/testPreviewInjection.ts
+  s_3a5e4634665091::t_7767ba50453cf0 1-16
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_1168effab838f3::t_1a808e4990ca1a 85,203-208,250,339-346,388,609,1050-1057,1605,1689,1801,1830,1951
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3a5e4634665091::t_86e9c656034f8c 149,1246-1264,1324,3278,3436,3554
+packages/cli/src/modules/agent-evals/__tests__/saved-test-replay.test.ts
+  s_1168effab838f3::t_37408b3cdbcb7d 1-41
+packages/cli/src/modules/agent-evals/__tests__/saved-test-sandbox.service.test.ts
+  s_1168effab838f3::t_47f7879b681e7d 1-136
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_1168effab838f3::t_ad0628c264b2df 4-5,27,226-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db077d0167b9abebbd1e0d75982476fcc1163c21",
+  "prompts": {},
+  "sessions": {
+    "s_1168effab838f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a188e9-d082-73a3-9c7e-096b5ed49408",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_3a5e4634665091": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18a9f-f716-73a3-9c7e-0971f1704084",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

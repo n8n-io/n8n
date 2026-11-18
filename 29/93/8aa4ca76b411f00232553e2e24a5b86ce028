@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_1e70957d1bf574::t_5754a7ff913db9 181-182,192-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "29938aa4ca76b411f00232553e2e24a5b86ce028",
+  "prompts": {},
+  "sessions": {
+    "s_1e70957d1bf574": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb7-709c-7422-b951-1aa57d997a3e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

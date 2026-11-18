@@ -1,0 +1,20 @@
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_77cc25f6a1d1f9::t_355cb99722025a 352
+  s_77cc25f6a1d1f9::t_ae470dfe72ba6e 234-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e8551e19723283def137372dabbb84ebefc71dc",
+  "prompts": {},
+  "sessions": {
+    "s_77cc25f6a1d1f9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c951-523a-77a8-b9dd-175e6e4bac25",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

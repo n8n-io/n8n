@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_126723ec91c664::t_c16ba1d20753bd 5,11,58,83-88,122-129,132,134-135,142,148-167,178-179,516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2cb7b63e905770ef2b16c3222ff53f17b10417b6",
+  "prompts": {},
+  "sessions": {
+    "s_126723ec91c664": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b239328d-0964-4126-a39f-f81655ef6c80",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

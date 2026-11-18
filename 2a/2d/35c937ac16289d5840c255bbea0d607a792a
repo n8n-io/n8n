@@ -1,0 +1,20 @@
+packages/@n8n/agents/docs/prompt-caching.md
+  s_816e8d02944032::t_b906e0059ce440 69,129-131,192-193
+  s_816e8d02944032::t_62883e6e5d46d8 80-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2a2d35c937ac16289d5840c255bbea0d607a792a",
+  "prompts": {},
+  "sessions": {
+    "s_816e8d02944032": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e4a4a35f-e2a9-42e5-be67-c9e9bd76db57",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

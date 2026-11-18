@@ -1,0 +1,50 @@
+packages/workflow/src/expression.ts
+  s_698058f7360add::t_1ea1012d525203 366
+  s_698058f7360add::t_20e93b4f636c29 304-305
+  s_698058f7360add::t_b834e5e16763e7 596-607
+  s_698058f7360add::t_377b214fc023e4 4
+  s_698058f7360add::t_bd1e6313539686 608-611,613-618
+  s_698058f7360add::t_7ee6987890d8f8 595,858
+packages/workflow/test/native-evaluation-metrics.test.ts
+  s_698058f7360add::t_4c01a27030d464 62-71
+  s_698058f7360add::t_4c56d71cb7e22e 7-12
+  s_698058f7360add::t_7c9ef32729cfdd 50-51,86-87,91,93-94
+  s_698058f7360add::t_055c8b1623cccb 1-6,13-49,52-61,72-77
+  s_698058f7360add::t_afb5dc153d559b 78-85,88-90,92,95-107
+packages/workflow/vitest.config.ts
+  s_698058f7360add::t_6a07a227f7fc94 21
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_698058f7360add::t_7c9ef32729cfdd 263,267,433,446,467-470,498,502,514,518,541,549,564,575,583,603,621,631,662,667,683,697,702,719,750,760,768,792,806,810
+  s_698058f7360add::t_5cba7a7f859a0b 466,471-472
+  s_698058f7360add::t_50f49b07bdb15f 431-432,434,475,496-497,499-501,503,539-540,542,629-630,632,766-767,769,790-791,793
+packages/@n8n/expression-runtime/src/observability/metrics.ts
+  s_698058f7360add::t_f867302fa1d962 75-80
+packages/workflow/src/expressions/native-evaluation/index.ts
+  s_698058f7360add::t_6ae846855f09bc 111-112,126-127
+  s_698058f7360add::t_03ef2d3aa7a9c4 2-8
+  s_698058f7360add::t_8e19b2d6b0e0cc 66-68,73,81-83
+  s_698058f7360add::t_7c9ef32729cfdd 105,107-108,115,131,135,168,176
+packages/cli/src/expression-observability/__tests__/expression-observability.provider.test.ts
+  s_698058f7360add::t_46b8eb0fa077f4 97-105,107-110,112-114
+  s_698058f7360add::t_7c9ef32729cfdd 106,111
+packages/workflow/src/expressions/native-evaluation/evaluator.ts
+  s_698058f7360add::t_6ae846855f09bc 256-257,544-545
+  s_698058f7360add::t_7c9ef32729cfdd 55,75-80,110,163,175,213,274,310,313,348,384,421,440,464,469,486,490,496,503,521,528,548,578,589
+  s_698058f7360add::t_157425b85f35d8 68-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f3b348964ab45fadd75865da7e1e626c8e56897",
+  "prompts": {},
+  "sessions": {
+    "s_698058f7360add": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8fb160e-d49a-46f0-834d-c533961cea6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

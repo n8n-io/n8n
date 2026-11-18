@@ -1,0 +1,26 @@
+packages/cli/src/public-api/public-api-authenticator.ts
+  h_c63dce324dfc7b 8,18-20
+packages/frontend/@n8n/public-api-client/package.json
+  s_035352b5423782::t_3f3562b509a613 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2751ddb7270aff8d28fcb384aedbd9bd589ead88",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_035352b5423782": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d61d583d-d5e2-4b28-bb14-4509ab5df26a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

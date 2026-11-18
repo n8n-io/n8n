@@ -1,0 +1,95 @@
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  s_97fae976194563::t_a5676ae8fea8cf 1-12,17-20,22,24-32,47-48,51,54
+packages/frontend/editor-ui/src/features/workflow-reviews/promotionReviews.api.ts
+  s_97fae976194563::t_8838ed3e8ee699 23,28,34,40,46,51
+packages/@n8n/api-types/src/dto/index.ts
+  s_97fae976194563::t_3aab16f96391b9 759,766-767
+packages/cli/src/modules/promotions.ee/promotion-reviews.controller.ts
+  s_97fae976194563::t_6e59b079b5b623 33,39,41,44,50,53,56,62,64
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_97fae976194563::t_e1974a8ecb9fa4 125,131-132,158,377,380,387,393,401-402,474,486,492,496
+  s_97fae976194563::t_a246fe30710b65 34,454
+packages/frontend/editor-ui/src/features/workflow-reviews/components/PromotionReviewDetail.vue
+  s_97fae976194563::t_a246fe30710b65 45,47-51,174-180,206
+packages/cli/src/modules/promotions.ee/CONTEXT.md
+  s_97fae976194563::t_33769665b3ccc7 109-110,113-114
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_97fae976194563::t_bf2bcd3574cad8 44-64
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_97fae976194563::t_ccd670a5496131 118-121,125,135-137,140,145-154,157-158,161-162,164-168,171,189,192-200
+  s_97fae976194563::t_a850f7c3b63b2b 300-308,311-315,318-319,322
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,74-75,360,371
+docs/generated/sqlite-schema/project.md
+  ai_agent 23
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,80-81,366,377
+docs/generated/postgres-schema/public.promotion_connection.md
+  ai_agent 8,45,72,83
+packages/cli/src/modules/promotions.ee/docs/poc-gitlab-promotion-review.md
+  s_75647e031252c6::t_e6c9dae26b8669 120-124
+  s_75647e031252c6::t_137cdb3293c635 331-347
+  s_97fae976194563::t_33769665b3ccc7 45,48-49,51-56,58-60,64-82,147,175,309,311-314,329-330,360,365,368-370,390-394,397,401-405,459
+  s_75647e031252c6::t_57b50715c280fa 348-356
+docs/generated/sqlite-schema/README.md
+  ai_agent 120,333-335,1486,1497
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_97fae976194563::t_3aab16f96391b9 7-9,11-12,21-22,24,26-32,35-36,44,67,112
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_97fae976194563::t_a246fe30710b65 28
+  ai_agent 291
+packages/frontend/editor-ui/src/features/workflow-reviews/promotionReviews.store.ts
+  s_97fae976194563::t_6affbe36f28012 35-39
+  s_97fae976194563::t_8838ed3e8ee699 27-28,89,91-92,97,99,106,122-123,127,135-136,138
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  ai_agent 52,61
+packages/@n8n/db/src/migrations/common/1791212100192-CreatePromotionReviewTable.ts
+  s_97fae976194563::t_c322c51d478db8 3,8-11,13,15,20,24-27,34,38,41,45,51,57,61,63,67
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_97fae976194563::t_208229f37d35f8 30,36
+docs/generated/sqlite-schema/promotion_connection.md
+  ai_agent 19,50,77,88
+docs/generated/postgres-schema/README.md
+  ai_agent 120,351-353,1500,1511
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12
+packages/frontend/editor-ui/src/features/workflow-reviews/components/PromotionReviewStateDot.vue
+  s_97fae976194563::t_fa6aee59c14fe6 2,8
+docs/generated/postgres-schema/public.promotion_review.md
+  ai_agent 1,8,12,17-18,24-34,40-42,49-51,53,64
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 1,9,28,38,40,46-48,55-57,59,70
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_97fae976194563::t_eb2ca3e05abfc8 1,6,8-10,14,16,21,23,26-30,33,38-39,54,58-59
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_97fae976194563::t_743c8dc2e4e72b 7-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0481815c801e4c9b78cb7d27ddec793ee4aea63",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_75647e031252c6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1c4cbb2-ce53-4314-8a9d-c90d7313a40b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_97fae976194563": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "afcd727d-38fa-4638-966d-feb3e6311121",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

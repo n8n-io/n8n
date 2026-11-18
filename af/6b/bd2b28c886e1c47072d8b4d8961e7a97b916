@@ -1,0 +1,30 @@
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_04b58d42ac4580::t_d89ffaa272932d 69-70
+  s_04b58d42ac4580::t_4dbb31a567d4bc 155,188,241
+  s_04b58d42ac4580::t_710b2315d67dd3 14
+  s_04b58d42ac4580::t_6983b7e5409692 215
+  s_04b58d42ac4580::t_6d42ac2411bc27 271
+  s_04b58d42ac4580::t_a9165599324121 21
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  s_04b58d42ac4580::t_4fb205249eb092 63-77
+packages/cli/src/credentials-helper.ts
+  s_04b58d42ac4580::t_d6a9d7ea608cd6 52-61
+packages/cli/src/credentials-overwrites.ts
+  s_04b58d42ac4580::t_1841e6363284ad 215-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "af6bbd2b28c886e1c47072d8b4d8961e7a97b916",
+  "prompts": {},
+  "sessions": {
+    "s_04b58d42ac4580": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75943146-2902-4418-8dc7-eb1449aa59e7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

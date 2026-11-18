@@ -1,0 +1,24 @@
+packages/@n8n/client-oauth2/test/client-oauth2.test.ts
+  s_dc748e23f384d7::t_a21eb56b73c542 523,532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7028945d7635b32b8af73ce0ff262c75876eba7d",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dc748e23f384d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c95f661-ca81-42b2-99ce-6538dabc8779",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

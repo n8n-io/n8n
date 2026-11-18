@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/S3/__tests__/regression/legacy/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_6986adac6b9bea 18
+  s_2e1fa95fc44f8f::t_75347d204c85b8 1-17,19-227
+packages/nodes-base/nodes/S3/__tests__/regression/legacy/S3.ts
+  s_2e1fa95fc44f8f::t_6986adac6b9bea 15-17
+  s_2e1fa95fc44f8f::t_75347d204c85b8 1-14,18-924
+packages/nodes-base/nodes/S3/__tests__/regression/requests.test.ts
+  s_2e1fa95fc44f8f::t_f9942048170583 17-20,23-27,33-37,94-218,227-229,312-358,361-363
+  s_2e1fa95fc44f8f::t_22946dca97369c 1-16,21-22,28-32,38-93,219-226,230-311,359-360,364-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a03c7bcb4a6f88d6f61cafcf0c0c76b9ee6eb9b",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

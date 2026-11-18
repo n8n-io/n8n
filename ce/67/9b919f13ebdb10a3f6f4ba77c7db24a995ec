@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/idempotency-key-cleanup.test.ts
+  s_765ed53cfceeb9::t_68fc989c074353 75-79
+  s_765ed53cfceeb9::t_b68235a6c6d313 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce679b919f13ebdb10a3f6f4ba77c7db24a995ec",
+  "prompts": {},
+  "sessions": {
+    "s_765ed53cfceeb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fdf9eb0a-4a38-431e-946d-4f6680a98a21",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

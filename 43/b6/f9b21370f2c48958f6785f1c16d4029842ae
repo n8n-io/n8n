@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_52865540ba8762::t_0827e77861e5e2 19
+  s_52865540ba8762::t_db5fdf64ad708b 284-298
+  s_52865540ba8762::t_3a39320dc7e171 7
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_52865540ba8762::t_b2545a340c0114 120
+  s_52865540ba8762::t_47fd69d028e7e0 208-210
+  s_52865540ba8762::t_93597c480414f1 119
+  s_52865540ba8762::t_dfb2911ed8c4cd 20,24
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_52865540ba8762::t_22e1a402671869 27-31
+  s_52865540ba8762::t_4d22d0be19c701 288-314
+packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts
+  s_52865540ba8762::t_1b1c49faff9e81 19-21,26-32,34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "43b6f9b21370f2c48958f6785f1c16d4029842ae",
+  "prompts": {},
+  "sessions": {
+    "s_52865540ba8762": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e8b1e8f-7b23-48ea-8c3d-a35ddd92698f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

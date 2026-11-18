@@ -1,0 +1,27 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_0da4b348b3b902::t_e23da1bdb0bf5b 780-831
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_0da4b348b3b902::t_2e0ab702b86de6 3713-3796
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_0da4b348b3b902::t_3bdaa1543a99c2 728-745,853-854
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_0da4b348b3b902::t_794446e1fa7442 423-456
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_0da4b348b3b902::t_5d742a901f741b 1354-1356,1372-1377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61ede3bb3f116c5112b5588d085760776a7caea5",
+  "prompts": {},
+  "sessions": {
+    "s_0da4b348b3b902": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39a28ab-fdbc-4a8e-8e76-7040acec36d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

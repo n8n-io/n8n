@@ -1,0 +1,26 @@
+packages/testing/playwright/tests/dev-server-smoke/user-folder.spec.ts
+  s_81c6ae39c83974::t_3e01ad2c656777 28
+  s_81c6ae39c83974::t_aed69ec0c17e81 7-13
+packages/testing/playwright/playwright.config.ts
+  s_81c6ae39c83974::t_14d32eaad2d355 61-63,66-70
+packages/testing/playwright/tests/dev-server-smoke/dev-server-boots.spec.ts
+  s_81c6ae39c83974::t_acf3a619cd7a36 3
+  s_81c6ae39c83974::t_76bbd23f43b36f 128-141
+  s_81c6ae39c83974::t_143f26e47c533d 142-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "82b629d4ac3db9518e1f7835726b7f9b4a7092b6",
+  "prompts": {},
+  "sessions": {
+    "s_81c6ae39c83974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2a3857c-dcc3-4658-b86e-6436a170b7e9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

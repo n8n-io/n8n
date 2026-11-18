@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.vue
+  s_ffb7ac8df0495d::t_98bb722a8637f1 74-82
+  s_ffb7ac8df0495d::t_815569ac9cae1e 107
+  s_ffb7ac8df0495d::t_e0f3b27b4eb5ab 134
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.test.ts
+  s_ffb7ac8df0495d::t_5e914f97badfe8 130-132
+  s_ffb7ac8df0495d::t_269183e942e815 112-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e10d0a0dae0d8b6becbd5003813ab88850696943",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

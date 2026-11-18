@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_9463b47d17d70b::t_b074172ae89549 128,135,138
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_9463b47d17d70b::t_b074172ae89549 159
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_9463b47d17d70b::t_b074172ae89549 157,167,170
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_9463b47d17d70b::t_e2bb053bc5f064 131-132
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_9463b47d17d70b::t_4be3b72f28712f 12
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_9463b47d17d70b::t_0011b66076da52 603,701,922,1024,1309,1409,6427,6435
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_9463b47d17d70b::t_b074172ae89549 204
+packages/frontend/@n8n/stores/src/composables/useAssistantTopUpEligibility.test.ts
+  s_9463b47d17d70b::t_90fbf253d15f0e 1
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_9463b47d17d70b::t_9f8e09a842c7d9 1110,1112,1207-1208
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.vue
+  ai_agent 86
+  s_9463b47d17d70b::t_781e71f2a9417f 81-85,101
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_9463b47d17d70b::t_2faa1805c4bdde 30
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_9463b47d17d70b::t_09a5a53849158f 99
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditWarningBanner.test.ts
+  s_9463b47d17d70b::t_a839684b95532e 122-129,132-137
+packages/frontend/@n8n/stores/src/composables/useAssistantTopUpEligibility.ts
+  s_9463b47d17d70b::t_1ab581b3e63a01 17
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_9463b47d17d70b::t_9f8e09a842c7d9 173-175,177-180
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_9463b47d17d70b::t_4be3b72f28712f 114
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_9463b47d17d70b::t_4be3b72f28712f 600,921,1039,1049,1063
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f17d1839bab07f47e8f2fa6a43cc8fce36b83f75",
+  "prompts": {},
+  "sessions": {
+    "s_9463b47d17d70b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86b59b95-f42c-44b6-b89f-e577b96af9ab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

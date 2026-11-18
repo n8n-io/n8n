@@ -1,0 +1,20 @@
+packages/@n8n/db/src/repositories/execution.repository.ts
+  h_b49cecddc99496 576-580
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  h_b49cecddc99496 571-588
+packages/cli/src/executions/execution-persistence.ts
+  h_b49cecddc99496 909-913
+packages/cli/test/integration/execution.repository.test.ts
+  h_b49cecddc99496 296-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f9a2f748fe6b0051cb1cb571dfc10a253e8c167c",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

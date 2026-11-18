@@ -1,0 +1,42 @@
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_25663cc1cff559::t_48aa582061d46f 61
+  s_25663cc1cff559::t_ceeeb6b4ebaa9c 257
+  s_25663cc1cff559::t_45c1700673367e 271,277
+  s_25663cc1cff559::t_337dd6f2bdc773 362
+  s_25663cc1cff559::t_35c912a12174ef 430-433
+  s_25663cc1cff559::t_a44cc40203f084 434-438
+  s_25663cc1cff559::t_86c5730a47b24f 59-60,62
+  s_25663cc1cff559::t_f3d23d0ed5237e 363
+  s_25663cc1cff559::t_941cd724e79f0e 258
+  s_25663cc1cff559::t_dbbf4feb970430 272,278,283-284,287-288
+packages/core/src/binary-data/blob.manager.ts
+  s_25663cc1cff559::t_b396f75b0c0a1f 85-87
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_25663cc1cff559::t_0070f7840841ad 281-282
+  s_25663cc1cff559::t_0a2323e52a860f 328-329,371-372,452-453
+packages/core/src/binary-data/__tests__/blob.manager.fs.integration.test.ts
+  s_25663cc1cff559::t_1d42cf0cf8992c 288-290
+packages/core/src/binary-data/__tests__/blob.manager.test.ts
+  s_25663cc1cff559::t_046a0605be897c 129-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e216552bb1eb3cd181706c40322914e0a588d07c",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_25663cc1cff559": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da4dc808-c5ce-4f69-a4fa-4ef4ba615417",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

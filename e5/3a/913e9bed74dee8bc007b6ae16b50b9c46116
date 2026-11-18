@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Bitly/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_56a563a937df6d 85-89
+packages/nodes-base/nodes/Bitly/test/Bitly.node.test.ts
+  s_2e1fa95fc44f8f::t_6e190b3cb48a45 1-42
+packages/nodes-base/nodes/Bitly/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d74261cf5421ba 33-34,39-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e53a913e9bed74dee8bc007b6ae16b50b9c46116",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

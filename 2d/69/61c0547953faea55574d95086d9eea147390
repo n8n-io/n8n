@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_32942547bb62b6::t_4b75c57fbbafe8 4,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d6961c0547953faea55574d95086d9eea147390",
+  "prompts": {},
+  "sessions": {
+    "s_32942547bb62b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51c82916-db6b-416b-87f5-be0a2af7d486",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

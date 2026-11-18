@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_89a2df1d57b37e::t_0068c9fabac78e 824-825
+  s_89a2df1d57b37e::t_f0ad8694758f55 235
+  s_89a2df1d57b37e::t_99288ae4c84657 50
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolTelemetry.ts
+  s_89a2df1d57b37e::t_227d38ba644c5f 91-107
+  s_89a2df1d57b37e::t_c5b682fd7933f8 1
+  s_89a2df1d57b37e::t_808c47ed37b609 35,39-40
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_cab9521e352431::t_f6f768a5edb8ca 4-14,47-50,63,175-218
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_cab9521e352431::t_282012080d4305 36-37,228,378,381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fcd0387fdfc26bb2a887d65871ca3fc170628537",
+  "prompts": {},
+  "sessions": {
+    "s_89a2df1d57b37e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "30bc8031-26bd-445e-afea-85b0c994c8f1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_cab9521e352431": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "61d1e53e-d8c4-46cb-b3ae-19cbd0c7ba47",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

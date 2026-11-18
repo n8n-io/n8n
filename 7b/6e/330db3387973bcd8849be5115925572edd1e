@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_3eab3bd25bb557::t_0ec67c4abafe8d 669-670
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b6e330db3387973bcd8849be5115925572edd1e",
+  "prompts": {},
+  "sessions": {
+    "s_3eab3bd25bb557": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64d85eea-f944-4df3-942d-345f5e1cd860",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_4ab1f7a942a8c3::t_ed688d13733001 439-440,444,448,452,456
+  s_4ab1f7a942a8c3::t_6c6a5401623748 6
+  s_4ab1f7a942a8c3::t_d7c1fe06934b4d 267-269,272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a4609da07acecb20b4adbd6eff8726859b03d28",
+  "prompts": {},
+  "sessions": {
+    "s_4ab1f7a942a8c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fb80efc-2e5d-4c0b-bd76-2078658ef9dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

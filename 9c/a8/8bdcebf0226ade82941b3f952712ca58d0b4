@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_03e31bd3d32fb7::t_bd9153aa299312 290-300
+  s_03e31bd3d32fb7::t_fedb31de9fc8d5 35
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_03e31bd3d32fb7::t_e82d4ab43bd8e7 8-27
+  s_03e31bd3d32fb7::t_95585c9603d553 112-116
+  s_9c61f5ecfdc0df::t_17d86f836eb19d 1-7,28-111,117-137
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_03e31bd3d32fb7::t_cf91b737bb0f45 1038-1136
+  s_03e31bd3d32fb7::t_7b6dcdd94f1cfc 3
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_03e31bd3d32fb7::t_b40affeadb2120 1092-1115
+  s_03e31bd3d32fb7::t_67ede1a8de6af9 1013
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_03e31bd3d32fb7::t_4fb20f7f97c316 34-35
+  s_03e31bd3d32fb7::t_700813b1788302 330-345
+  s_03e31bd3d32fb7::t_ee7f21eed9753e 617
+  s_03e31bd3d32fb7::t_f03664d1ceec81 700-704,706
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_03e31bd3d32fb7::t_10dcc11512e97d 60
+  s_03e31bd3d32fb7::t_e3497c2105b511 12-13
+  s_03e31bd3d32fb7::t_46d9e4bc57435a 159-165
+  s_9c61f5ecfdc0df::t_8d041b675cc210 1-11,14-59,61-158,166-515
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_03e31bd3d32fb7::t_8e59f9137f7241 1-186
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.test.ts
+  s_03e31bd3d32fb7::t_e522af590b422f 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "9ca88bdcebf0226ade82941b3f952712ca58d0b4",
+  "prompts": {},
+  "sessions": {
+    "s_03e31bd3d32fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a23cf9e9-0732-42b0-a3d7-4997316c07d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_9c61f5ecfdc0df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d58cd8b-03cc-4fc9-8e98-787fc74349da",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_d617b0cea1e757::t_24c5b9ecdf4330 1-53,58-133,137-155,159-188,192-199,203-214
+  s_d617b0cea1e757::t_c5bf7220c0761e 54-57,134-136,156-158,189-191,200-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "03c028e21697fe0e1ea945b5e364f8fbf8b309df",
+  "prompts": {},
+  "sessions": {
+    "s_d617b0cea1e757": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b89a3ee-4aba-4b85-a778-80d03cbf21d4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+.github/scripts/codespace-preview.mjs
+  ai_agent 30,145-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe650b5fbda12ac12dfcd4502fe01ca42949796c",
+  "prompts": {}
+}

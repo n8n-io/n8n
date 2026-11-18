@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/constants.ts
+  ai_agent 26-31
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  ai_agent 46,86-87,118,278-282,941,1144,1183,1583
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension.ts
+  ai_agent 1-58
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  ai_agent 3,6-12,15-22,58-107
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  ai_agent 2,4-8,17-18,36,65-88
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  ai_agent 73-79,231,4866-4998
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  ai_agent 20-24,82,245-267,273,276,357,374,415-438
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/interactionExtensions.test.ts
+  ai_agent 1-174
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  ai_agent 16,19,161-164,167-170,188-202,242-243,245-248,328,389,394,415
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  ai_agent 11-15,114-124
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 51-54,111-115,131,195,198-201
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  ai_agent 1,3,12-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89d8a72fd366078e471c6ceac4731919cda18c42",
+  "prompts": {}
+}

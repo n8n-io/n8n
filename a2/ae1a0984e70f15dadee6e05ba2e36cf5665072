@@ -1,0 +1,97 @@
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_782619aac31c26::t_23d10e4e11670d 213,249
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_782619aac31c26::t_f4bef34c7e324c 168-170,271,772-773,776,809,820,847-848,867,869-872
+  s_782619aac31c26::t_f9f25ca624ba99 485-487,1099-1101
+  s_782619aac31c26::t_ef5096a2e53b48 13
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_782619aac31c26::t_1b8575fdbaef90 19,63-65,71,80-83,88,99,116,415-424,449-493
+  s_782619aac31c26::t_1e2565bfc532e3 494
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_782619aac31c26::t_9ae2d667fbbdc6 3,84,113,129,265-294,602,695,1162
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_782619aac31c26::t_3c28a9dae2190d 1-2,13,31-35,39-40,50,57,60-111,113-117,119-121,137-139,149-187,203-213,220,222-224
+  s_782619aac31c26::t_e03c0a053d8105 112,148,221
+  s_782619aac31c26::t_ac1d00d9f32be5 118
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_782619aac31c26::t_633fae5e018a96 170,174-175,197-200
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_782619aac31c26::t_80f93582bb72d3 3
+  s_782619aac31c26::t_f80c6577ab616a 42,75,371,521-536
+  s_782619aac31c26::t_9fa626fcf2aa50 537-538
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_782619aac31c26::t_35d15c0cb21e00 171-172
+  s_782619aac31c26::t_0e02c1523e38b2 182-184,186
+  s_782619aac31c26::t_b8df549b655346 94-98,105
+  s_782619aac31c26::t_a7afb61d8aa3aa 206,215-225
+  s_782619aac31c26::t_1880d8962e73eb 165
+  s_782619aac31c26::t_199e97dd25e66d 10
+  s_782619aac31c26::t_a1c828e9e0c662 226-227
+packages/@n8n/config/test/config.test.ts
+  s_782619aac31c26::t_2007e20f78eb00 727
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_782619aac31c26::t_6e9edbede4bb2a 2-5,15,60,66,68,75,87-95,98,100-119,122-146,148-167,172-191,193-248,252-294,297-341,343-360
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_782619aac31c26::t_633fae5e018a96 5,9-12,17-18,23-28
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_782619aac31c26::t_aa18db2ac79a07 12,289
+  s_782619aac31c26::t_f9f25ca624ba99 691-692,832-833
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_782619aac31c26::t_ab10e7a49b5b58 16-17,180,184,186,193-198,247,257,263,330,332,336,338,340,374,482-604
+  s_782619aac31c26::t_394d09ad471325 605-606
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_782619aac31c26::t_fbcaaa2e9719d8 13,3127-3128,3149,3164,3226-3229,3239-3246
+packages/cli/src/modules/agents/agent-session-lease.service.ts
+  s_782619aac31c26::t_2b37608ebcf0c5 177-179
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_782619aac31c26::t_2c64d85d435a6f 130,162,341-346,475-537,913-932
+  s_782619aac31c26::t_d452d01f6efabe 1054
+  s_782619aac31c26::t_049940df01aa4c 933-938
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_782619aac31c26::t_f5e541cf3b8133 118,120,125,148,160,166,171,177
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_782619aac31c26::t_7eeefd81f10dfb 55-57,343-346,351,356-366,368-376,380-383,391-393,395-402
+  s_782619aac31c26::t_c17be9f56ced1d 367,394
+  s_782619aac31c26::t_e73d8356bab0a6 435
+  s_782619aac31c26::t_b3943480b03872 377,403-415
+packages/@n8n/config/src/configs/agents.config.ts
+  s_782619aac31c26::t_aaf20cd2ebdfe4 82-89
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_782619aac31c26::t_511ede68878559 55-58,241-243,254-274
+  s_782619aac31c26::t_2cf24408801aee 49-51
+  s_782619aac31c26::t_96b6a1043975ad 275-276
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_782619aac31c26::t_b863b54294b68f 6,294
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_782619aac31c26::t_e73d8356bab0a6 249,276,278,349
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_782619aac31c26::t_633fae5e018a96 48-52
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_782619aac31c26::t_f9f25ca624ba99 232
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_782619aac31c26::t_f9f25ca624ba99 1092-1094
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_782619aac31c26::t_279a9f70cd5450 1-2,54,88-91,111,128-131,133-166
+  s_782619aac31c26::t_9824f3a01d0255 132
+  s_782619aac31c26::t_eb96232f17a748 167
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_782619aac31c26::t_b77fc78909fa4e 4,56,168-171,268-269
+packages/cli/src/modules/agents/__tests__/agent-session-lease.service.test.ts
+  s_782619aac31c26::t_b863b54294b68f 148-154,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a2ae1a0984e70f15dadee6e05ba2e36cf5665072",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+packages/nodes-base/nodes/Pipedrive/test/v1/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_24ebf2b762a91f 1-70,72
+  s_2e1fa95fc44f8f::t_f8ea7074ccce3f 71
+  s_2e1fa95fc44f8f::t_0a897433f274f6 73-75
+  s_0b340cbcd99bee::t_cd40ce9917cee7 76-90
+packages/nodes-base/nodes/Plivo/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_e8466d363329fd 1-24
+packages/nodes-base/nodes/PostHog/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_7e5101f45091c8 1-23
+packages/nodes-base/nodes/Postmark/test/PostmarkTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_86e7e126156518 1-58
+packages/nodes-base/nodes/ProfitWell/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_31f230afd9f347 1-25
+packages/nodes-base/nodes/Pipedrive/test/v1/requests.workflow.json
+  s_0b340cbcd99bee::t_9912aa02880877 1-1044
+packages/nodes-base/nodes/Plivo/test/requests.workflow.json
+  s_0b340cbcd99bee::t_1826adcfce88ca 1-125
+packages/nodes-base/nodes/PostHog/test/requests.workflow.json
+  s_0b340cbcd99bee::t_4bc6db7afe2868 1-154
+packages/nodes-base/nodes/ProfitWell/test/requests.workflow.json
+  s_0b340cbcd99bee::t_0c7844cfe1e71b 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb067442c74ab55be6d1cd08a7ed0be7a1fe1eca",
+  "prompts": {},
+  "sessions": {
+    "s_0b340cbcd99bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac6763e23459042a2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

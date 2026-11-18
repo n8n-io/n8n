@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_db74c72b258827::t_64cb4804c7db81 342-343,384,538,588,618,750,1101
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  s_db74c72b258827::t_64cb4804c7db81 252,258
+packages/@n8n/instance-ai/src/stream/agent-chunk-publisher.ts
+  s_db74c72b258827::t_341b85b3a57747 116,128,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31c32401060c2b13d0515124dd98a4345591659f",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

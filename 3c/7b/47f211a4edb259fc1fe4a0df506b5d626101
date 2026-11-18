@@ -1,0 +1,87 @@
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_f1a804119197eb::t_809d31451e24a1 1099,1104-1109,1118,1123-1124,1134,1143,1148-1187,1199,1626,1633,1639-1663,1670,1677
+  s_f1a804119197eb::t_36b148d4977f3d 1664-1666
+  s_f1a804119197eb::t_c7804c736f950c 1667-1669
+  s_f1a804119197eb::t_c879c42b43afcb 1671-1676
+  s_f1a804119197eb::t_72dba6a13c7ffe 1678
+  s_9f952457fa416c::t_86843756c04d63 1072,1081,1090
+packages/cli/src/telemetry/index.ts
+  s_f1a804119197eb::t_ba7c1b4853f2a1 281-290
+  s_f1a804119197eb::t_3addae8c764ce7 558
+  s_f1a804119197eb::t_cfbe58304e1b71 74-78
+  s_f1a804119197eb::t_b6a7ea5fef1826 291-292
+  s_1dbffc9ee35fb8::t_209a8b02b0813f 30,64,80,560-561,566
+packages/cli/test/integration/public-api/public-api-invoked.test.ts
+  s_f1a804119197eb::t_c00bf79f60c24b 1-55
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_f1a804119197eb::t_c39a2bc076d98c 361
+  s_9f952457fa416c::t_a8cb537b33cbe4 27,47
+packages/cli/src/events/maps/relay.event-map.ts
+  s_f1a804119197eb::t_c3e529feebdf77 493
+  s_f1a804119197eb::t_ce166c9a885904 53,494
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f1a804119197eb::t_2730a529aa1ded 875,883
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_f1a804119197eb::t_b90beabb13a906 1880
+  s_9f952457fa416c::t_4f360623d44563 1890
+packages/cli/src/public-api/public-api-client.ts
+  s_f1a804119197eb::t_7bd05d24344e00 1-13
+packages/frontend/@n8n/stores/src/useRootStore.test.ts
+  s_f1a804119197eb::t_9ef2b7c1f27867 1-24
+packages/frontend/@n8n/stores/src/useRootStore.ts
+  s_f1a804119197eb::t_89c8859730e4ec 1,134,137
+packages/@n8n/api-types/src/constants/client.ts
+  s_f1a804119197eb::t_9977a51b8300b9 1-9
+packages/@n8n/api-types/src/index.ts
+  s_f1a804119197eb::t_652b346a375bb2 980
+packages/cli/src/middlewares/cors.ts
+  s_f1a804119197eb::t_e85a5a3d1b19be 11
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_1dbffc9ee35fb8::t_e41d26eef252e3 37,44-74,336-377
+packages/frontend/@n8n/rest-api-client/src/types.ts
+  s_9f952457fa416c::t_090cbcc686c2f1 1-2,10-11
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_1dbffc9ee35fb8::t_ac556e39feaeb0 1-2,7,71-102
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.api.ts
+  s_9f952457fa416c::t_e59555d7122ad5 118-124
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_9f952457fa416c::t_c9fa20e918f328 227
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.api.ts
+  s_1dbffc9ee35fb8::t_6b426f57739f67 64
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.test.ts
+  s_1dbffc9ee35fb8::t_b7a8ce9278d191 1-2,4,34-45
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_1dbffc9ee35fb8::t_0b308e559b29db 41,55,82,93,106,115,143,157,168,181,193,206,219,232,246,260,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c7b47f211a4edb259fc1fe4a0df506b5d626101",
+  "prompts": {},
+  "sessions": {
+    "s_1dbffc9ee35fb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3636b3a6d63ce00c",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_9f952457fa416c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a37160dc25658c9a0",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_f1a804119197eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df616428-5500-4fc2-8350-ef5e605e2487",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

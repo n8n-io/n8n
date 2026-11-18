@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Zammad/test/workflow/Zammad.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a686c6c22b1daa 57
+  s_2e1fa95fc44f8f::t_ede7c54d958b44 1-56,58-59
+  s_2e1fa95fc44f8f::t_bb692e6d9e1000 60-62
+packages/nodes-base/nodes/Zammad/test/workflow/requests.workflow.json
+  s_0f7982f67d1b35::t_209d5e5f917159 1-448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83349c9489688c3f55cad54f37ec295e7e136d9e",
+  "prompts": {},
+  "sessions": {
+    "s_0f7982f67d1b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a65b801439482db1f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

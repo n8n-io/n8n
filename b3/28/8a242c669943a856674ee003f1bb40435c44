@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_7b906002d68666::t_3f1fb67374e2f8 844
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_7b906002d68666::t_3f1fb67374e2f8 53-57,1245
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_7b906002d68666::t_3f1fb67374e2f8 3,21-28
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_7b906002d68666::t_3f1fb67374e2f8 19-23,32-33,201-208,210
+packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
+  s_7b906002d68666::t_e75dce01c41fdc 392-431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3288a242c669943a856674ee003f1bb40435c44",
+  "prompts": {},
+  "sessions": {
+    "s_7b906002d68666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f539de05-fec9-448e-9cf8-4eb7aaa7251f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

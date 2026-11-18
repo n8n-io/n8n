@@ -1,0 +1,21 @@
+packages/cli/src/public-api/__tests__/fake-redis.factory.ts
+  s_925dcfedebf0c9::t_e49c9ae88f0ebf 1-74
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_925dcfedebf0c9::t_e49c9ae88f0ebf 2,28,33-34,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "af8154f05ebb06e32f5f202017c728a13c74af50",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

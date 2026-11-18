@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewNode.vue
+  s_cb1d7126838f5e::t_cb7a6fe3cbc33f 16,18
+  s_cb1d7126838f5e::t_c57bbc2d78bd0b 51
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiPreviewCanvas.test.ts
+  s_cb1d7126838f5e::t_c89b556964ab12 1-2,7-20,23-30,32,37-107,109-130
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/CyclingPreviewCanvas.vue
+  s_cb1d7126838f5e::t_873c3658b6c5b9 48
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewNode.test.ts
+  s_cb1d7126838f5e::t_11bfbb88260cf8 1-27
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/CyclingPreviewCanvas.test.ts
+  ai_agent 20-21
+  s_cb1d7126838f5e::t_df4ae9beda1fa9 22
+  s_cb1d7126838f5e::t_814cf8d176cc04 62-69
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiPreviewCanvas.vue
+  s_cb1d7126838f5e::t_548b5f1acb4f7d 7,9
+  s_cb1d7126838f5e::t_faed60f178fd41 71,77-118
+  s_cb1d7126838f5e::t_2749feb420aafa 323-327
+  s_cb1d7126838f5e::t_a28da32d25924f 224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "10591861c9e935edde6f8449b0abab440a7ae55f",
+  "prompts": {},
+  "sessions": {
+    "s_cb1d7126838f5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5fc65ee-7421-4145-b53b-5cf6107c4fa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

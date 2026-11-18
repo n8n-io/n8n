@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Confluence/test/actions/attachment/upload.operation.test.ts
+  s_dcca7cdf6458b2::t_3a05ef4948af2f 99-131
+  s_dcca7cdf6458b2::t_6904ff131f4289 2
+  s_dcca7cdf6458b2::t_c0d98a439657c8 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6dc7783566aff399128ead190670ee512a220221",
+  "prompts": {},
+  "sessions": {
+    "s_dcca7cdf6458b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b8928ad-9279-476e-95e0-ae903c7b4fc5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/modules/mcp/__tests__/search-workflows.tool.test.ts
+  s_704ffd6be6c2b3::t_772ebf75ad5462 329-332,347-350
+  s_704ffd6be6c2b3::t_662b82836a0b9b 34,364
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  s_704ffd6be6c2b3::t_662b82836a0b9b 196,200,209,219
+packages/cli/src/services/folder-finder.service.ts
+  s_704ffd6be6c2b3::t_c0b15b3e8613fc 33-34,36-51,56-59
+packages/cli/src/modules/mcp/tools/search-workflows.tool.ts
+  s_704ffd6be6c2b3::t_662b82836a0b9b 225-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "38ddce4163e5edcb10920e61765e640c00621b40",
+  "prompts": {},
+  "sessions": {
+    "s_704ffd6be6c2b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e247481-8d54-413e-99be-d5ae439d7a19",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

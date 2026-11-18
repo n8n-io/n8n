@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 70,3498
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 257-259,4672-4673
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 3-7
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 25,148
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 1040-1041
+packages/modules/type-availability-policies/frontend/src/composables/useNodeTypeRestriction.ts
+  s_326dd039c6d306::t_39bd925d46ff6b 1-7,9-25
+  s_326dd039c6d306::t_99040c74c40d12 8
+packages/modules/type-availability-policies/frontend/src/composables/useNodeTypeRestriction.test.ts
+  s_326dd039c6d306::t_4e492b669250e0 1-37
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNode.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 7,70
+packages/modules/type-availability-policies/frontend/README.md
+  s_326dd039c6d306::t_7147f2ad4aefa8 26-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88a86388d05a5d17a98e47f7d5e804a1a4207f2a",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

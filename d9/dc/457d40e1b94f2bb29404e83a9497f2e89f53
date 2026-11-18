@@ -1,0 +1,18 @@
+packages/@n8n/engine/src/response-channel/response-transport.ts
+  h_8fb27e0cdf6d1e 5,7-9,11-12
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  h_8fb27e0cdf6d1e 7,9-10,12-13
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  h_8fb27e0cdf6d1e 6,8-9,11-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9dc457d40e1b94f2bb29404e83a9497f2e89f53",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

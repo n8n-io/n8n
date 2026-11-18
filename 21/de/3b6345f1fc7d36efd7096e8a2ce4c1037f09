@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_2247ae8ef74d15::t_daccb3103d0097 307,329,543-546
+  s_2247ae8ef74d15::t_4036db3efaf096 308-328
+  s_2247ae8ef74d15::t_00331b49e90e7f 547-548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21de3b6345f1fc7d36efd7096e8a2ce4c1037f09",
+  "prompts": {},
+  "sessions": {
+    "s_2247ae8ef74d15": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168a4-7de9-7fd2-af57-2486a83f3dd7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

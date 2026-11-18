@@ -1,0 +1,24 @@
+packages/frontend/@n8n/composables/src/useDebounce.test.ts
+  s_0241aca425ded4::t_a39b6a0ed1d2d9 36
+  s_0241aca425ded4::t_50e2f680ba5bc8 1,3
+  s_0241aca425ded4::t_cefbe89f1a77b8 47
+  s_0241aca425ded4::t_12316dc1d3fab0 62
+packages/frontend/@n8n/composables/src/useDebounce.ts
+  s_0241aca425ded4::t_c0870b62cfc4f8 1,13,29-30,32,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1f3ee95a5aedbdcc08c3c92a838d27093c34e855",
+  "prompts": {},
+  "sessions": {
+    "s_0241aca425ded4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94e2fc6d-04e0-4ab1-b85a-8d7e2dd6f2d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

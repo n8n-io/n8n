@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_7b00f24a2c361f::t_72a9b9980dccd9 19,22-23,374-376,380-420
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_7b00f24a2c361f::t_72a9b9980dccd9 89
+packages/workflow/src/interfaces.ts
+  s_7b00f24a2c361f::t_72a9b9980dccd9 11,878-889,947-952
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  s_7b00f24a2c361f::t_72a9b9980dccd9 151-184
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_7b00f24a2c361f::t_4801bd1552e651 10,12-15,20
+  s_7b00f24a2c361f::t_aca13071e62d71 612,617,626-629,637-658
+  s_7b00f24a2c361f::t_17f45dc1f1a851 1084-1119
+  s_7b00f24a2c361f::t_3538283363a769 774-941
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "3aeb4f6001f48d434775b4f227086e9fa3f31c2f",
+  "prompts": {},
+  "sessions": {
+    "s_7b00f24a2c361f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd528b76-9b06-411f-bab0-e52ce73257e9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

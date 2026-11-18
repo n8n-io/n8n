@@ -1,0 +1,74 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/DefaultDetailBody.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1,3-65
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1-3,5-11,13-17,25-78,88-125,127-191,211-338,394
+packages/frontend/editor-ui/src/features/shared/toolsConnection/toolItemIcon.ts
+  s_9b9696034972ce::t_b960cc009eadc4 1-5
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolCredentialPicker.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1-2,4-65,67,76-80,86-88,90-201
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,12-13,15,17-29,37-47,63-67,77-91,93-96,109-113,114-119,121-163,166-167,170-191,196-230,234-236,240-305,306,308,310,312-313,315,317-335,340,341-381,394-407,409,415,417,419,421-422,424,426,429-435,437,439-447,449-453,458-475,477-479,482-485,487,488,502-505,509-516,517-518,520-547,549-557,559-570,572-578,583-599
+  s_824c588980053c::t_5b858e167d6f5d 481
+  s_9b9696034972ce::t_9bf1c19c25db7e 489
+  s_9b9696034972ce::t_26bc0708ee6008 498
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1,4,6-17,22-85,90-91,100-104,112-119,124-127,129-142,149-151,158,160-195,197,200-202,204-215,217-218,225,227-240,249-267,269-298,300-357,372-395,400-494
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolDetailView.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-5,6-53,55-87,89-95,99-105,107-113,114-152
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolSettingsView.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1,4,5-25,27-29,30-38,42-51,53-73,75-87,89-95,96-97,98-102,104,105-112,114-116,117-121,122-161,162-167,168-169
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_9b9696034972ce::t_b960cc009eadc4 2,4-29,32-42,44-69,72-93,95-100,102-131,134-203
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolCredentialPicker.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-39,46-61,69,77,78-161,163-166,168-170,172-179,182-282,287-290,296-299,313-433
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1,4-10,17-25,28-29,32-47,54-68,72-93,100-108,111-141,143-191,255-329,335-342,344-351,353-356,358-372,374-575,587-596
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,5-52,54-100,102-149,155-378
+packages/frontend/editor-ui/src/features/shared/toolsConnection/fixtures.ts
+  s_9b9696034972ce::t_7396804c44fdea 3-34,40-384
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolIcon.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1,4-47
+packages/frontend/editor-ui/src/features/shared/toolsConnection/DefaultDetailBody.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-17,19,21,23-34,42-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99182c29be23cd2d8cdb1e1e5b46d3d37ceaf716",
+  "prompts": {},
+  "sessions": {
+    "s_1e32c055a21f7b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa84-c35c-738d-a0b9-ae845184cb2c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2157abf0156ebc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cdb5-8c5d-7647-8a5f-e1d02cfb6a39",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_824c588980053c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa70-b572-738d-a0b9-ae83ac9aea56",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_9b9696034972ce": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa43-4d41-738d-a0b9-ae80b1621714",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

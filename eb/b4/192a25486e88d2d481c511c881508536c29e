@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/pages/components/InlineExpressionEditor.ts
+  s_f8bcded4ea5f7a::t_01734b7c8ab480 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ebb4192a25486e88d2d481c511c881508536c29e",
+  "prompts": {},
+  "sessions": {
+    "s_f8bcded4ea5f7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0403bfdbffegQkKvvwvumrkEY",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

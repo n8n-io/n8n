@@ -1,0 +1,31 @@
+packages/cli/src/workflows/triggers/engine-v2-active-triggers.ts
+  s_1fd7832b086571::t_9f53351f965be0 71-73,75-76
+packages/cli/src/workflows/triggers/__tests__/engine-v2-active-triggers.test.ts
+  s_1fd7832b086571::t_70be1170ec3605 19,62,65,73-76,78
+packages/cli/src/services/__tests__/engine-v2-payload-guard.service.test.ts
+  s_1fd7832b086571::t_0f8912b334f069 37-38,42,45,51,61,69,72,80-85
+packages/cli/src/services/engine-v2-payload-guard.service.ts
+  s_1fd7832b086571::t_9142cd647a918c 35-39,41,45-47,57-59
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_1fd7832b086571::t_0551e882d7fb1a 116-117
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_1fd7832b086571::t_0551e882d7fb1a 919
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_1fd7832b086571::t_0551e882d7fb1a 119,122,127,212,375,396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88b8f2f047c3d3d5ca826854fd1f5304e64737c2",
+  "prompts": {},
+  "sessions": {
+    "s_1fd7832b086571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45717fc0-5cff-4654-a171-bd3ebf2f8c5e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

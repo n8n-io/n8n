@@ -1,0 +1,20 @@
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_f938b2e06cfc53::t_917686fa9e83a3 73
+  s_f938b2e06cfc53::t_fe5e50a9674b18 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f29f57e2de49c58fe0d91763d2dc01e4c7de7da3",
+  "prompts": {},
+  "sessions": {
+    "s_f938b2e06cfc53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4de3967a-9679-47bc-9b3a-99c7c8a7bffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

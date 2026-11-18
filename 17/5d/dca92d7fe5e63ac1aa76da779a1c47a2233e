@@ -1,0 +1,83 @@
+packages/@n8n/eslint-config/src/rules/misplaced-n8n-typeorm-import.ts
+  s_2b2954a4956f3a::t_0be160f95010ec 18-23
+packages/@n8n/eslint-config/src/rules/no-misplaced-typeorm-import-disable.ts
+  s_2b2954a4956f3a::t_8bcebef8ca5a18 4
+  s_2b2954a4956f3a::t_cd3e072a07d533 19
+  s_2b2954a4956f3a::t_2340d031cc2976 1-3,5-18,20-27,30-36
+  s_2b2954a4956f3a::t_14fe542a29572a 28-29
+packages/@n8n/db/AGENTS.md
+  s_2b2954a4956f3a::t_b3828cffa0484b 11
+  s_2b2954a4956f3a::t_5c0f9583bd66d4 5-10,12-18
+packages/@n8n/db/src/connection/db-connection.ts
+  s_0a030118333b72::t_e284ba74d80b42 16-17
+  s_0a030118333b72::t_2cc801e51bbc7b 44-46
+packages/cli/eslint.config.mjs
+  s_2b2954a4956f3a::t_8446acbbe23c4d 28-29
+  s_2b2954a4956f3a::t_431371f7028a78 87-88,91-94,102-188
+  s_2b2954a4956f3a::t_dfcd7005a249e7 189-193
+packages/@n8n/db/src/index.ts
+  s_0a030118333b72::t_0a1a801c73c638 47-48
+  s_0a030118333b72::t_1db16e6faf709d 49-50
+  s_0a030118333b72::t_7e921bac5fb9d9 51-53
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_0a030118333b72::t_8ee9e9aaba897d 6
+  s_0a030118333b72::t_1287dbb733b53b 87-97
+  s_0a030118333b72::t_f43de1d36431f9 43
+  s_0a030118333b72::t_acdddd1b60f29c 106,109-113,121-122,124-126,137-140,142-150
+packages/@n8n/db/src/services/__tests__/typeorm-transaction.test.ts
+  s_0a030118333b72::t_efc15f2e6cdd61 26-29
+  s_0a030118333b72::t_8fea7d709924d7 1-25,30-116
+packages/@n8n/db/src/services/transaction.ts
+  s_0a030118333b72::t_3cfe657ddf4823 1-53
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_0a030118333b72::t_b34cc4776f29f8 3-31
+  s_0a030118333b72::t_379892e919cff8 1-2
+packages/cli/src/modules/oauth-server/database/repositories/oauth-refresh-token.repository.ts
+  s_0a030118333b72::t_df9868dd3a8905 1,3,7-13,15,19-45
+packages/cli/AGENTS.md
+  s_2b2954a4956f3a::t_5dbf926620bd56 8-22,24-28,34-35
+  s_2b2954a4956f3a::t_595bd4fb09c5df 1-7,23,29-33
+packages/@n8n/db/src/services/typeorm-transaction.ts
+  s_0a030118333b72::t_3a3f33e64e2e79 40-45
+  s_0a030118333b72::t_0bba8e22409512 1-39,46-47
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_2b2954a4956f3a::t_83b15b38bb038b 37
+  s_2b2954a4956f3a::t_7296f1217068c9 11
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_0a030118333b72::t_e454ad447e2a92 48-53,62
+  s_0a030118333b72::t_b002f5c9358651 6
+  s_0a030118333b72::t_8a4c5c409b0269 124,126-129,131-134
+  s_0a030118333b72::t_c4be5a36a25132 149-150,161-166,179-180,193,208-209
+  s_0a030118333b72::t_9e611c49f8aca8 506
+  s_0a030118333b72::t_8a77e105215186 4
+  s_0a030118333b72::t_06195f9565db57 26
+packages/cli/src/modules/oauth-server/database/repositories/oauth-access-token.repository.ts
+  s_0a030118333b72::t_063ab87b949a90 1,3,7-12,14,18-20
+  s_0a030118333b72::t_652ed46795ab6b 21
+packages/@n8n/db/src/repositories/index.ts
+  s_0a030118333b72::t_a91f1581dd7fa1 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "175ddca92d7fe5e63ac1aa76da779a1c47a2233e",
+  "prompts": {},
+  "sessions": {
+    "s_0a030118333b72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b75b67b-fe9e-4fe4-8d22-4eff97db9a41",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_2b2954a4956f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293ec869-ab9a-4cc9-a9cd-047924821740",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

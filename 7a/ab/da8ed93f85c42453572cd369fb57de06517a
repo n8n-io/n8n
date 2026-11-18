@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_22d0a7cb733359::t_facd79997ff864 342
+  s_22d0a7cb733359::t_5cf7c1e75b39a3 324
+packages/cli/src/modules/agents/agent-knowledge-commands.ts
+  s_22d0a7cb733359::t_5cf7c1e75b39a3 82,134,148,150,412-413
+packages/@n8n/agents/src/__tests__/integration/tool-invalid-input-retry.test.ts
+  s_22d0a7cb733359::t_e2737024c41221 61-65
+  s_22d0a7cb733359::t_b70e1f5cc8aae6 90,103,110
+packages/cli/src/modules/agents/agent-knowledge-retrieval.ts
+  s_22d0a7cb733359::t_5cf7c1e75b39a3 64,67,69
+packages/cli/src/modules/agents/__tests__/agent-knowledge-commands.test.ts
+  s_22d0a7cb733359::t_0ec66b658e1f73 127-132,267-271,291,307-311
+  s_22d0a7cb733359::t_5cf7c1e75b39a3 56-57,143,180,295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7aabda8ed93f85c42453572cd369fb57de06517a",
+  "prompts": {},
+  "sessions": {
+    "s_22d0a7cb733359": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88471906-f377-41dd-9abb-5b578a84cfdb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

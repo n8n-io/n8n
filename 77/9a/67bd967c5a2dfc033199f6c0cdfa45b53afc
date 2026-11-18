@@ -1,0 +1,21 @@
+packages/@n8n/ai-utilities/src/llm-output/extract-json.test.ts
+  s_adcb5a99432974::t_9ec23a45e406a7 43-47
+packages/@n8n/ai-utilities/src/llm-output/extract-json.ts
+  s_adcb5a99432974::t_2e27566955e0d8 68-69,71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "779a67bd967c5a2dfc033199f6c0cdfa45b53afc",
+  "prompts": {},
+  "sessions": {
+    "s_adcb5a99432974": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4977b235-ab9e-4339-a074-dd46d0c5a7c9",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

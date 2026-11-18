@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_8bb2ba65153e82::t_67e44efc8104d8 531-558
+  s_8bb2ba65153e82::t_16becfdbe14dc1 57
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_8bb2ba65153e82::t_a51108e7198281 102
+  s_8bb2ba65153e82::t_2c9ce205e425e5 1596-1600
+  s_8bb2ba65153e82::t_30a9a6b2398baa 92
+  s_f0643ac3c82f45::t_3a2c8cddb7eb27 1997-2002,2004
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_8bb2ba65153e82::t_ece7fa81918b15 31-32
+  s_8bb2ba65153e82::t_2e3a54751c73f8 266
+  s_8bb2ba65153e82::t_b6ebff587aa2fd 18
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_8bb2ba65153e82::t_a600f67da38bc6 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "03cec09c745d88b0ebf2aa3e2b88c46bb5a9f503",
+  "prompts": {},
+  "sessions": {
+    "s_8bb2ba65153e82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fe87e66-665d-44d1-9f13-9cecd7ac895a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f0643ac3c82f45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76811670-404d-4ecc-bd10-251e82e3a4fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

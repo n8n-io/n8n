@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/utils.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 89,97
+packages/nodes-base/nodes/Microsoft/SharePoint/test/item/deleteEncoded.workflow.json
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 29
+packages/nodes-base/nodes/Microsoft/Storage/test/listSearch/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 146,159
+packages/nodes-base/nodes/Microsoft/SharePoint/test/item/deleteEncoded.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 15
+packages/nodes-base/nodes/Microsoft/SharePoint/test/helpers/utils.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 150,167
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 427,432
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 12,27
+packages/nodes-base/nodes/Microsoft/Teams/test/v1/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 19,27
+packages/nodes-base/nodes/Gitlab/__tests__/Gitlab.repository.test.ts
+  s_2e1fa95fc44f8f::t_cf5be09ccecc7e 44,46,57
+packages/nodes-base/nodes/Microsoft/Excel/test/v1/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 16,24
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/get.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 221,231
+packages/nodes-base/nodes/Gitlab/__tests__/repository.get.slashNames.workflow.json
+  s_2e1fa95fc44f8f::t_9178e327aeced4 2
+  s_2e1fa95fc44f8f::t_cf5be09ccecc7e 1,3-81
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_5f063c52d3a531 915,924
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "291058eb3680bb0aa9487085b0d6be4f44473a9e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

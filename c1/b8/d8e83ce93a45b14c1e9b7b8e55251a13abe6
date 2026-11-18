@@ -1,0 +1,19 @@
+packages/frontend/@n8n/composables/src/useDebounce.ts
+  s_0241aca425ded4::t_ec06b6e1079dbc 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "c1b8d8e83ce93a45b14c1e9b7b8e55251a13abe6",
+  "prompts": {},
+  "sessions": {
+    "s_0241aca425ded4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94e2fc6d-04e0-4ab1-b85a-8d7e2dd6f2d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_e144e5251a2cb8::t_19c5dcbca17291 6
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.ts
+  s_e144e5251a2cb8::t_249e5a46793a91 10-12,14,17,22,30-32,51,55
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.test.ts
+  s_e144e5251a2cb8::t_fdf9ea24844b4e 68-75
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_e144e5251a2cb8::t_fdf9ea24844b4e 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "757537624fd484a817086789163edf793c78232d",
+  "prompts": {},
+  "sessions": {
+    "s_e144e5251a2cb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7753e94-3650-4565-9adb-98c5d6f2ddee",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

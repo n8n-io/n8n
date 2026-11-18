@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/execution/logs/components/LogDetailsPanel.vue
+  s_ec600d2173900f::t_8b3391e113767f 111-117
+  s_ec600d2173900f::t_019f8075b257bb 24
+  s_ec600d2173900f::t_3a8d7e433a8944 175
+packages/frontend/editor-ui/src/features/execution/logs/components/LogDetailsPanel.test.ts
+  s_ec600d2173900f::t_8a696f129b7170 137-184
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsViewExecutionSummary.vue
+  s_ec600d2173900f::t_c9dbb0f17a0f1d 47-56
+  s_ec600d2173900f::t_9c05d39fa39c58 10-11,16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ec600d2173900f::t_79697e9e9173a7 3432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ea839eacf0cd0b5853a2d603d0945d6ade80bf6",
+  "prompts": {},
+  "sessions": {
+    "s_ec600d2173900f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09d1ff41-9e69-42c8-b7d0-443a98e154f1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

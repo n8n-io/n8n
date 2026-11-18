@@ -1,0 +1,41 @@
+packages/cli/src/modules/promotions.ee/package-manifest.ts
+  s_b3123eaa9590ea::t_56459c7e41121b 1-51
+packages/cli/src/modules/promotions.ee/__tests__/package-manifest.test.ts
+  s_b3123eaa9590ea::t_e9e7cb3f76706a 1,5-40,42-43,46-55,59,62-69,71,74-75,77-81,83-87,91-92,94,96-97,100-101,103,105-111,115-118,121-123,126-132
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_b3123eaa9590ea::t_d788a2e87ebc06 37,39,275-276,448,453,456,1564
+packages/cli/src/modules/promotions.ee/workflow-requirements.ts
+  s_b3123eaa9590ea::t_d788a2e87ebc06 2-3,6-9,170-191
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_b3123eaa9590ea::t_164e95a12a9b66 211
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_b3123eaa9590ea::t_d193fe926f703c 1213
+  s_b3123eaa9590ea::t_3fde14e7f61ed7 29,116-132
+  s_b3123eaa9590ea::t_164e95a12a9b66 102
+packages/cli/src/modules/promotions.ee/__tests__/branch-manifest.test.ts
+  s_b3123eaa9590ea::t_d193fe926f703c 78-86
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_b3123eaa9590ea::t_164e95a12a9b66 69
+  s_b3123eaa9590ea::t_d788a2e87ebc06 15,353,431-432
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_b3123eaa9590ea::t_164e95a12a9b66 176
+  s_b3123eaa9590ea::t_be05ce05109e8e 633-637,1599-1606
+packages/cli/src/modules/promotions.ee/branch-manifest.ts
+  s_b3123eaa9590ea::t_d193fe926f703c 138,140-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76b6c99c2ce738df72c050c53421dec6b1da7c80",
+  "prompts": {},
+  "sessions": {
+    "s_b3123eaa9590ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca14baa9-48c7-4b9c-8882-614adc7aee20",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

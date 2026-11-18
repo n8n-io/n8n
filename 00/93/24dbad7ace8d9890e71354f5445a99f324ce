@@ -1,0 +1,25 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_0607e661fb7835::t_931e82975fc038 197-221
+  s_0607e661fb7835::t_739dd182b6b9f0 65-66
+  s_0607e661fb7835::t_4402a5659ea5f6 222
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_0607e661fb7835::t_8c991c47f3e020 354-469,471
+  s_0607e661fb7835::t_d0ee88244e31af 470
+  s_0607e661fb7835::t_e23ccf00f6cfe1 472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "009324dbad7ace8d9890e71354f5445a99f324ce",
+  "prompts": {},
+  "sessions": {
+    "s_0607e661fb7835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "830f0844-9f81-4a6a-bb3d-8a1f2786d064",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

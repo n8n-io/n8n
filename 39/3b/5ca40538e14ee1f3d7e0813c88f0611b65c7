@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/discover.test.ts
+  s_b17489db2f48e4::t_656ae80a014637 172-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "393b5ca40538e14ee1f3d7e0813c88f0611b65c7",
+  "prompts": {},
+  "sessions": {
+    "s_b17489db2f48e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "367878f5-6929-4af0-8a6d-ed2c7f572665",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

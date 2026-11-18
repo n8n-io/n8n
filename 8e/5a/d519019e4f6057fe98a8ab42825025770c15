@@ -1,0 +1,36 @@
+packages/core/src/execution-engine/__tests__/standalone-routing.test.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 74
+packages/core/src/execution-engine/routing-node.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 262-265,268
+packages/core/src/execution-engine/standalone-routing.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 21-24,36-37
+packages/core/src/execution-engine/__tests__/declarative-webhook.test.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 445,451,457,638-668,767-790,988,1005-1025
+packages/core/src/execution-engine/declarative-webhook.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 1,183-186,189,246-247,257,340-344,492-493
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 27,2842,2893-2898,3144-3171
+  s_db33480b8c9c64::t_76035d76c56f51 3172-3173
+packages/core/src/execution-engine/__tests__/declarative-poll.test.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 3,99,102,158-206,299,305-328
+packages/core/src/execution-engine/declarative-poll.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 6,11,21-27,30,35-36,52,56,61-74
+packages/workflow/src/interfaces.ts
+  s_db33480b8c9c64::t_27d8229aaa6ba9 3035,3072,3103,3146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e5ad519019e4f6057fe98a8ab42825025770c15",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

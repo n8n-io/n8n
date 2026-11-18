@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/append.operation.ts
+  s_5f8e628d007fa4::t_e8bf8c1b83bc8b 201-214,217-219,223,226,228-229,240,243,247,250-265,267-270,272-276,278-280,283-288,290-300,306,308,311,317-324,328,334,372-403,405
+  s_5f8e628d007fa4::t_a4d47cf207cff4 404,406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a5a1cbf0a118024deee1020c16720d61288769a6",
+  "prompts": {},
+  "sessions": {
+    "s_5f8e628d007fa4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ec3a5a-6e03-4a43-9b73-176a2eae41a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

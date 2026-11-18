@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_484fd5f0b32dff::t_944c0ad3260dba 2-7,18-21,48-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69d14bdce8b8b530d3f782c2c4912921e055d63e",
+  "prompts": {},
+  "sessions": {
+    "s_484fd5f0b32dff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa5af04d-5811-4cf4-beb7-7158f76d1662",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_48f671bf14760e::t_5ca0d60ef59d09 180-183,186-200
+  s_48f671bf14760e::t_d8b5aeed063b47 184-185
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_48f671bf14760e::t_bc2d89736a31cf 1363-1365,1371,1375,1381-1385,1390-1391,1396-1401,1418,1422-1426,1456
+  s_48f671bf14760e::t_5ca0d60ef59d09 1366-1370,1372-1374,1376-1380,1386-1389,1392-1395,1402-1413,1419-1421,1427-1455
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_48f671bf14760e::t_5ca0d60ef59d09 66-71
+  s_48f671bf14760e::t_f2e53c3c7f1904 52-65,72-73
+packages/@n8n/telemetry/credential-descriptions.md
+  s_48f671bf14760e::t_e1aca87a63e861 28-29
+packages/@n8n/instance-ai/evaluations/credentials/__tests__/seeder.test.ts
+  s_48f671bf14760e::t_04c7d7ec2941c8 7,136-138,142-150,154-164
+  s_48f671bf14760e::t_5ca0d60ef59d09 139-141,151-153,165-183
+packages/@n8n/instance-ai/evaluations/clients/__tests__/n8n-client.test.ts
+  s_48f671bf14760e::t_760baede9f3f2f 18-39
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-to-exported.test.ts
+  s_48f671bf14760e::t_505bd0edd1afeb 110-125,127-129
+packages/@n8n/telemetry/src/__tests__/credential-description.test.ts
+  s_48f671bf14760e::t_eff16f448bd95e 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "559fc367674a1478052c0eb6d1b295070b8451c3",
+  "prompts": {},
+  "sessions": {
+    "s_48f671bf14760e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af97-fe52-7d72-861c-6ba2a89001dd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

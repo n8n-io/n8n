@@ -1,0 +1,23 @@
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_223d08db0c60dd::t_8f7fecda031789 20-23
+packages/@n8n/db/src/migrations/common/1789986374991-PreventDeploymentKeyDeletion.ts
+  s_223d08db0c60dd::t_8f7fecda031789 22
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_223d08db0c60dd::t_8f7fecda031789 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69838044d40dcb5490991602e19ae525ff759da4",
+  "prompts": {},
+  "sessions": {
+    "s_223d08db0c60dd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3d77be9dffePL74xPlWxBGKl7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

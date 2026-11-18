@@ -1,0 +1,9 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  ai_agent 28,32,35,38,41,43,47-48,51,67,76,83,87,90,93,96,98,102-103,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "250f2610daf41ce646d847eff8bb43ead6cf0363",
+  "prompts": {}
+}

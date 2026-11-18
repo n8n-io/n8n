@@ -1,0 +1,25 @@
+packages/@n8n/ai-workflow-builder.ee/src/validation/auto-fix/auto-fix-connections.ts
+  s_bc63a262ac8b3b::t_e3ebbc0ef79020 185,187-188,294,296
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.store.test.ts
+  s_bc63a262ac8b3b::t_3996bc892cbfe1 53-93
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/workflow-sanitization.test.ts
+  s_bc63a262ac8b3b::t_ac3dbb8fd60089 2,189-201
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.store.ts
+  s_bc63a262ac8b3b::t_1b835979d10e2c 166-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5ea668e576e270e38fbe7b6dc9e2f6146a87572d",
+  "prompts": {},
+  "sessions": {
+    "s_bc63a262ac8b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "333c9079-31ea-4739-a3e4-941d76e5eacf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

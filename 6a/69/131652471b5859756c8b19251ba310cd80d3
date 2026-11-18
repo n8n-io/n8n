@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/preview.fixtures.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 8-10
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.test.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 294
+  s_983eea3c47ac98::t_e5ef44b089198c 303
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionSelection.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 28-33
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_983eea3c47ac98::t_e5ef44b089198c 70-73
+  s_983eea3c47ac98::t_7e62f85c5972fa 74-76
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 50-51,53
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.test.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 72
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.tree.ts
+  s_983eea3c47ac98::t_7e62f85c5972fa 98-100,119-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a69131652471b5859756c8b19251ba310cd80d3",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

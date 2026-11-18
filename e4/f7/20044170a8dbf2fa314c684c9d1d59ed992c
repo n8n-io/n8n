@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/custom-css.test.ts
+  s_d86b17cceba346::t_48037dadebbf11 1-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e4f720044170a8dbf2fa314c684c9d1d59ed992c",
+  "prompts": {},
+  "sessions": {
+    "s_d86b17cceba346": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "980176ae-407b-4ba7-8214-3b990532ff8f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

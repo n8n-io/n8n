@@ -1,0 +1,19 @@
+packages/cli/src/observability/tracer-gate.ts
+  s_242ad52c6c163c::t_3f6a19216d8940 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f752d509a53dc0bcd538d804e0e68d3f19bb28e9",
+  "prompts": {},
+  "sessions": {
+    "s_242ad52c6c163c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c549ecd9-18c5-46fa-a743-93b587a68315",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

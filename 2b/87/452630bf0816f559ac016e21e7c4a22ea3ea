@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/eval/eval-assistant-turn-overrides.ts
+  s_cf46beb77c9221::t_9c09ea5d143134 1,10-14,17-20,24-25,30-41,56-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b87452630bf0816f559ac016e21e7c4a22ea3ea",
+  "prompts": {},
+  "sessions": {
+    "s_cf46beb77c9221": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16a9a066-a7f5-44a6-839a-0946c98f56ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/@n8n/cli/package.json
+  h_c63dce324dfc7b 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "87ed33d4e8f2ed8724ba2847fd8119f2144787e0",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

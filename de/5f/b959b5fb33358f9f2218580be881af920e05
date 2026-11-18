@@ -1,0 +1,43 @@
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_fb30b1b6ca962d::t_0fcb49a5d9534b 724-792
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_fb30b1b6ca962d::t_94d4bf49cdf64e 7
+  s_fb30b1b6ca962d::t_6dd95287564ece 320-329
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_fb30b1b6ca962d::t_b55565de8201a8 19,1292-1352
+packages/core/src/execution-engine/workflow-execute.ts
+  s_fb30b1b6ca962d::t_7f069b9e00f5c8 1754,2039-2041
+  s_fb30b1b6ca962d::t_a256d451cad588 1748-1749
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  s_fb30b1b6ca962d::t_3e1c947834253f 1053-1089
+packages/cli/src/workflow-execute-additional-data.ts
+  s_fb30b1b6ca962d::t_e071bf4a04ebfb 609-614,765,783,804
+  s_fb30b1b6ca962d::t_002bc44d413278 60
+packages/workflow/test/dynamic-credentials-helpers.test.ts
+  s_fb30b1b6ca962d::t_498da9d4fae568 5,103-139
+packages/workflow/src/dynamic-credentials-helpers.ts
+  s_fb30b1b6ca962d::t_8ad96f6290ca62 38-39,44-47,63-67,72-76,82,88-89,104-108,152-155
+  s_fb30b1b6ca962d::t_897a67197ddb03 68-71
+  s_fb30b1b6ca962d::t_01152bfc92f5e5 32-34
+packages/cli/src/workflow-helpers.ts
+  s_fb30b1b6ca962d::t_50977dcb9d60eb 37,39,450-455,500-509,513-517,521,523,541-545
+packages/workflow/src/interfaces.ts
+  s_fb30b1b6ca962d::t_a256d451cad588 2382-2389,3554-3556
+  s_fb30b1b6ca962d::t_8ad96f6290ca62 2397-2401,3666-3670,4066-4070
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de5fb959b5fb33358f9f2218580be881af920e05",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

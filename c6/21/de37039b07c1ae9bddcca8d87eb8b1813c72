@@ -1,0 +1,24 @@
+packages/cli/scripts/build.mjs
+  s_d70739b299e55d::t_57c317891c737e 96
+  s_d70739b299e55d::t_e7434e9003c907 8
+  s_d70739b299e55d::t_d46e7b94aae3c2 97-99
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  s_d70739b299e55d::t_3aada64dae67d8 78,81,87-90,92,94,96,99-103
+  s_d70739b299e55d::t_f38d2ceb7a6b86 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c621de37039b07c1ae9bddcca8d87eb8b1813c72",
+  "prompts": {},
+  "sessions": {
+    "s_d70739b299e55d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27fcac22-5cea-40b7-a743-91c823ba226d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

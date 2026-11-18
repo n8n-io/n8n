@@ -1,0 +1,19 @@
+packages/nodes-base/credentials/MicrosoftSharePointOAuth2Api.credentials.ts
+  s_e8519a0ce8a335::t_b302ef4158cd19 68-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f455b618c7ecd6927444056f704fa1e8f35eb00e",
+  "prompts": {},
+  "sessions": {
+    "s_e8519a0ce8a335": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d3e3e2-1397-4c61-a5d4-0922e7f3b3ec",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

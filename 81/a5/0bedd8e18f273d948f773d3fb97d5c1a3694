@@ -1,0 +1,27 @@
+packages/cli/test/migration/1785840970000-allow-discord-agent-chat-subscriptions.test.ts
+  s_5cff78ced0afbf::t_42afe8e9fd0b63 6,120-145
+  s_5cff78ced0afbf::t_f8f6144c72eab4 146
+packages/@n8n/db/src/migrations/common/1785840970000-AllowDiscordAgentChatSubscriptions.ts
+  s_5cff78ced0afbf::t_7b5ea2467bccd7 1,5-6,8,11-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "81a50bedd8e18f273d948f773d3fb97d5c1a3694",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5cff78ced0afbf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "371811f4-d448-4155-b88e-2991c0c201de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

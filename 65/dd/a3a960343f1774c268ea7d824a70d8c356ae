@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_550c7bf33f188f::t_4b7a4b23787437 944-974
+  s_550c7bf33f188f::t_a983de69bfa5d9 81-87
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_550c7bf33f188f::t_e3c8662b2f2172 4804-4805,4807
+  s_550c7bf33f188f::t_5bd8e3f277bc18 4785-4786,4789,4791-4802,4806,4808-4816
+  s_550c7bf33f188f::t_262133449f28e2 4787-4788,4790
+  s_550c7bf33f188f::t_e8aef213890638 4803
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_550c7bf33f188f::t_f0877df77fddb5 46,333-334,340,342
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_550c7bf33f188f::t_997c3b83b9057e 32
+  s_550c7bf33f188f::t_98bc33d3fc7fd6 1356
+packages/frontend/editor-ui/src/experiments/inlineAgents/useInlineAgentsExperiment.ts
+  s_550c7bf33f188f::t_30277b2a17388a 3,16-26
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_550c7bf33f188f::t_aed75a3a544a42 47
+  s_550c7bf33f188f::t_33825a2270631f 444-450
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65dda3a960343f1774c268ea7d824a70d8c356ae",
+  "prompts": {},
+  "sessions": {
+    "s_550c7bf33f188f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d3978c2-1e01-4195-bc9f-6de514a8cfd4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

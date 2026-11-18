@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_4773ad3a8db83a::t_d2964d0f65c8f0 657-681
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "241518f575105af00b433f79a0f4acb3dc34d278",
+  "prompts": {},
+  "sessions": {
+    "s_4773ad3a8db83a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177a1-cf01-7990-9b55-9e6cefed2ccd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

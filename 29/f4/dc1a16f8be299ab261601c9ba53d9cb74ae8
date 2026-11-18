@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_782619aac31c26::t_2d2f07c2af51a8 1,3,48-50,53-54,63,65-67,74,77-79,86-92,129-133,136-138
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_782619aac31c26::t_65baf58e7a3fd6 67,322,335,362-363,393,590-594
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_782619aac31c26::t_65baf58e7a3fd6 148,150,246
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_782619aac31c26::t_2551c7656c5d31 291,520
+  s_782619aac31c26::t_78a98dec699aea 1,27,89,98,102,140,145-152,163-179
+  s_782619aac31c26::t_65baf58e7a3fd6 153-162,699
+  s_782619aac31c26::t_f33f71df65f3c2 180-181
+packages/cli/test/integration/agents/agent-session-fence.test.ts
+  s_782619aac31c26::t_1d0349149a6f54 3,12-13,16,20,22,28,76,200-257
+  s_782619aac31c26::t_381448e18ba465 258-261
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_782619aac31c26::t_448b0e5a8bcfc2 4,14
+  s_782619aac31c26::t_2d2f07c2af51a8 135,147-164,168,172-179,191-199,246,248-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "29f4dc1a16f8be299ab261601c9ba53d9cb74ae8",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

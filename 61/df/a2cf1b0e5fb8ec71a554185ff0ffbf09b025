@@ -1,0 +1,48 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow.exporter.test.ts
+  s_2397c9db9d923f::t_ccd0676d1b537e 253,311,323
+packages/cli/src/modules/n8n-packages/entities/credential/credential-requirements.extractor.ts
+  s_2397c9db9d923f::t_ccd0676d1b537e 11-12,30
+  s_2397c9db9d923f::t_1a2277d187e3c5 1,5-7,29,31-43
+  s_dd171702c7a424::t_6b2ba60734ce77 44
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_2397c9db9d923f::t_ccd0676d1b537e 96
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-requirements.extractor.test.ts
+  s_2397c9db9d923f::t_ccd0676d1b537e 38,62,78,110,147,175,183
+packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
+  s_2397c9db9d923f::t_1a2277d187e3c5 4
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_2397c9db9d923f::t_1a2277d187e3c5 5-6,10-11
+  s_2397c9db9d923f::t_ccd0676d1b537e 18
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_2397c9db9d923f::t_f13addad524508 113-115
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_2397c9db9d923f::t_ccd0676d1b537e 333,352
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_2397c9db9d923f::t_1a2277d187e3c5 8-13
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent-requirements.extractor.test.ts
+  s_2397c9db9d923f::t_1a2277d187e3c5 10,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61dfa2cf1b0e5fb8ec71a554185ff0ffbf09b025",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_dd171702c7a424": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a3d-30e8-73a3-9e06-925aae6a1701",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

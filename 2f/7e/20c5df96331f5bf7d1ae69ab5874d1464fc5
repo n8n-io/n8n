@@ -1,0 +1,34 @@
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_66b4f2c79da3af::t_351de4b5adae13 304-309
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  s_66b4f2c79da3af::t_a9bd4a9795dd67 24-25,41,93
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  s_66b4f2c79da3af::t_1ebb9efb461d6e 240-267,269-289
+  s_66b4f2c79da3af::t_9f593d13e57811 268
+  s_66b4f2c79da3af::t_ec64cc9778cfb9 15,18-23,105,122,139,165,189,226,305
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_66b4f2c79da3af::t_25493f8f5e3506 218-220
+  s_66b4f2c79da3af::t_120ce20cbc9d8d 116,147,322-344
+packages/cli/src/events/maps/system-task-metrics.event-map.ts
+  s_66b4f2c79da3af::t_351de4b5adae13 71-76
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_66b4f2c79da3af::t_a7663c19a07aaf 81-86,124,166-167,179-180
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_66b4f2c79da3af::t_e728283c4bcfe1 966-983
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2f7e20c5df96331f5bf7d1ae69ab5874d1464fc5",
+  "prompts": {},
+  "sessions": {
+    "s_66b4f2c79da3af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38f586b1-c48f-41d2-bc4f-6eb2435f5ade",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

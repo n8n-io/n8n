@@ -1,0 +1,19 @@
+packages/cli/src/modules/sso-saml/errors/saml-email-not-verified.error.ts
+  s_2d2f21e7be4f01::t_8a38ed68a570f1 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70063d2ef816691575a3204eea492c859cdfcd6c",
+  "prompts": {},
+  "sessions": {
+    "s_2d2f21e7be4f01": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0f985aefffemN7IpwiixCl5D7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

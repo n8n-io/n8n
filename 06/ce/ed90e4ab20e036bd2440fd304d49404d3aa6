@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_782619aac31c26::t_63959579a2a750 11,13
+packages/cli/src/modules/agents/__tests__/agent-session-lease.service.test.ts
+  s_782619aac31c26::t_a3be8bd7d8e97a 1-148,151,153-156
+  s_782619aac31c26::t_6a6a8628f7cf6c 149-150,152
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_782619aac31c26::t_2e4bc97c06ae86 31-32
+packages/cli/src/modules/agents/agent-session-lease-lost.error.ts
+  s_782619aac31c26::t_b0e0d5208853d0 1-8
+packages/cli/test/integration/database/repositories/agent-session-lease.repository.test.ts
+  s_782619aac31c26::t_3186f4f5bbcfff 1-190
+  s_782619aac31c26::t_4a9f802b4f5821 191
+packages/cli/src/modules/agents/agent-turn-already-running.error.ts
+  s_782619aac31c26::t_4729258fc29eca 1-8
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_782619aac31c26::t_7c2a8824dbec90 12
+packages/cli/src/modules/agents/repositories/agent-session-lease.repository.ts
+  s_782619aac31c26::t_807bc79c7e5b92 103,110,114
+  s_782619aac31c26::t_7fba78d95daeaf 1-102,104-109,111-113,115-121
+packages/cli/src/modules/agents/agent-session-lease.service.ts
+  s_782619aac31c26::t_20285720e5744f 1-169
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_782619aac31c26::t_3110d34d7ab1e3 28,30
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_782619aac31c26::t_4bd85af7ac76ed 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "06ceed90e4ab20e036bd2440fd304d49404d3aa6",
+  "prompts": {},
+  "sessions": {
+    "s_782619aac31c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6889b3f-b5e6-4aa7-a6ff-cca974b94b72",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

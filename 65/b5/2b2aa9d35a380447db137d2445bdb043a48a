@@ -1,0 +1,19 @@
+packages/cli/src/webhooks/test-webhooks.ts
+  s_06fc4a3eebd292::t_468567852c6517 651-652,659,664
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65b52b2aa9d35a380447db137d2445bdb043a48a",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

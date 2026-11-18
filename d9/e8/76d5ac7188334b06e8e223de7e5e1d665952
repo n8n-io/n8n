@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_a662970bb19717::t_6c018b34740a84 246-248
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.test.ts
+  s_a662970bb19717::t_ff4d2c06f6dd5e 352-359
+  s_a662970bb19717::t_6cdf6cd11b848e 320-351,360-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9e876d5ac7188334b06e8e223de7e5e1d665952",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a662970bb19717": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293ac5cb-316a-48b2-86f5-eed6c50c793c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

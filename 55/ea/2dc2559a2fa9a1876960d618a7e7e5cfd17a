@@ -1,0 +1,31 @@
+packages/frontend/@n8n/storybook/package.json
+  s_0c556d094c6550::t_bdd871df37dacf 12
+packages/frontend/@n8n/storybook/scripts/run-visual-tests.ts
+  s_0c556d094c6550::t_69924cacacd2e0 1-10,12-19,22-31,34,36-53,55-88,96-107,110-121,123-135,137-165,167,180-189,192-193,198,200
+  s_0c556d094c6550::t_d530c96f5f3f5a 54
+  s_0c556d094c6550::t_86c01f174cafe0 136,173-179
+  s_0c556d094c6550::t_62304c11bc9568 11,20-21,32-33,35,89-95,108-109,122,190-191,194-197,199
+  s_0c556d094c6550::t_9f87ef4282ae56 166,168-172
+packages/frontend/@n8n/storybook/tsconfig.node.json
+  s_0c556d094c6550::t_bdd871df37dacf 27
+packages/frontend/@n8n/design-system/README.md
+  s_0c556d094c6550::t_3d40c0bda9dd66 175-179,185-187,191-194,196-198,200-215,217,219-228
+packages/frontend/@n8n/storybook/vitest.visual.config.ts
+  s_0c556d094c6550::t_bdd871df37dacf 8-11,30-42,98-101,106-123,146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55ea2dc2559a2fa9a1876960d618a7e7e5cfd17a",
+  "prompts": {},
+  "sessions": {
+    "s_0c556d094c6550": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a73fc0b9-98d9-46c5-bfe5-b13c4f4f2bf0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

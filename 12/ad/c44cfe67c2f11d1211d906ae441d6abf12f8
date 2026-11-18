@@ -1,0 +1,31 @@
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_df8243638347b9::t_0525a9447741c4 576,594-599
+  s_df8243638347b9::t_036a813a5bc161 575,577-593,600-643,751,789,864,967
+packages/cli/src/executions/execution.service.ts
+  s_df8243638347b9::t_0525a9447741c4 678-688
+  s_df8243638347b9::t_ca79195c7e67cc 664-665,689-693
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_df8243638347b9::t_c0848d7c1b88a2 327-334,337,339-340
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_df8243638347b9::t_0eb56a3dafa3a2 245
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_df8243638347b9::t_1d5f9c2e8c997d 494,503,509
+packages/quality/testing/playwright/tests/e2e/agents/background-workflow-stop.spec.ts
+  s_df8243638347b9::t_a01a0c4db6f286 216-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12adc44cfe67c2f11d1211d906ae441d6abf12f8",
+  "prompts": {},
+  "sessions": {
+    "s_df8243638347b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10b2f-3eee-7921-b1a8-80453ec84034",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

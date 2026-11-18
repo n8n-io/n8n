@@ -1,0 +1,35 @@
+packages/cli/src/modules/otel/README.md
+  s_120782f74defff::t_00ae3b97fc1858 45-48
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_120782f74defff::t_6673d74a31b27b 227-256
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_120782f74defff::t_798e4f83854d23 8,30-31,33-34,36-37,45-47,96-97,106-107,127-128,153,268-286,288-295,297-301,304-341
+  s_120782f74defff::t_5c8c4b52e8ec2d 50-57
+  s_120782f74defff::t_83093dea6f50d5 35,41
+  s_120782f74defff::t_127041cde32a45 44,48-49,60,104-105,287,296,302
+  s_120782f74defff::t_d07ef70ca363fc 32
+packages/cli/src/modules/otel/otel.service.ts
+  s_120782f74defff::t_2778e1cb903b0b 30-34,38-46,48-51,57-63,78-81,83-84,86,147-191,194,204,211,335-336,347
+  s_120782f74defff::t_83093dea6f50d5 47
+packages/cli/src/observability/swappable-pipeline.ts
+  s_120782f74defff::t_b7282a00052ef6 38,41
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_120782f74defff::t_213f07d81f503e 2,176-180,485-491,493,495-497,499-512,514-607,633,635,713
+  s_120782f74defff::t_9f6f1ee209dfb7 492,494,498,513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28b49dcdcfe421ae084fa038d04e0e0cebe7fe85",
+  "prompts": {},
+  "sessions": {
+    "s_120782f74defff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74035ca1-f28a-4abc-b27c-9dd2004364b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

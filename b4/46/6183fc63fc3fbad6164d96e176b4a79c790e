@@ -1,0 +1,32 @@
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  h_8fb27e0cdf6d1e 62,73,83,111,132,154,164,180-207,210,219,236,263,290,308,326,356,385,412,442,467,506
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  h_8fb27e0cdf6d1e 120-123
+packages/cli/src/oauth/__tests__/oauth-browser-binding.service.test.ts
+  h_8fb27e0cdf6d1e 1,18,27-28,31-35,46-47,53,74,85,98,111,124,136-148,150,163,168,173,181
+packages/cli/src/oauth/oauth-browser-binding.service.ts
+  h_8fb27e0cdf6d1e 1,17-20,47-49
+packages/cli/src/public-api/v1/controllers/discover.public.controller.ts
+  h_8fb27e0cdf6d1e 2,20-21,44
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  h_8fb27e0cdf6d1e 52-61
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  h_8fb27e0cdf6d1e 37-38,46,68,94,163
+packages/cli/src/server.ts
+  h_8fb27e0cdf6d1e 328,333-337,339,343-347,349,352-354,356,358-368,370-379,406-407,446-450,611-622
+packages/cli/test/integration/server-static-assets-base-path.test.ts
+  h_8fb27e0cdf6d1e 1-150
+packages/cli/test/integration/server-static-assets.test.ts
+  h_8fb27e0cdf6d1e 46-48,146-153,188-190,470-505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4466183fc63fc3fbad6164d96e176b4a79c790e",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

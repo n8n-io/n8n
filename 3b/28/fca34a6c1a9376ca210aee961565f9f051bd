@@ -1,0 +1,19 @@
+packages/cli/src/modules/insights/__tests__/insights-compaction.service.integration.test.ts
+  s_dd506e889aec1a::t_540de8c1910ffd 463,480-482,484-486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b28fca34a6c1a9376ca210aee961565f9f051bd",
+  "prompts": {},
+  "sessions": {
+    "s_dd506e889aec1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1738-b871-7472-ace2-68dbbea22c65",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

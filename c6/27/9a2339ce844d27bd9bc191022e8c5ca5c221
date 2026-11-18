@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/utils/__tests__/inbound-attachments.test.ts
+  s_af512eb7b46141::t_dcb91cc4c95f19 1,3,5-9,41-47,60-68
+  s_af512eb7b46141::t_6b1dc7090f90c1 69-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c6279a2339ce844d27bd9bc191022e8c5ca5c221",
+  "prompts": {},
+  "sessions": {
+    "s_af512eb7b46141": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e88e-bb31-7051-b944-98f8227e2e34",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

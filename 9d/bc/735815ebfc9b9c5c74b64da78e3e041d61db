@@ -1,0 +1,229 @@
+packages/nodes-base/nodes/ActionNetwork/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3979e3695bbe14 10,12,14-19
+packages/nodes-base/nodes/Bitwarden/test/Bitwarden.node.test.ts
+  s_2e1fa95fc44f8f::t_52279393af243f 1,7,15,21-43
+packages/nodes-base/credentials/test/GithubAppApi.credentials.test.ts
+  s_2e1fa95fc44f8f::t_62af8d50f215af 74,80-96,100
+packages/nodes-base/nodes/Bannerbear/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c5fee5a30ed611 1,8,13-17
+packages/nodes-base/nodes/Contentful/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_231fa16698d76b 8,18-32
+packages/nodes-base/nodes/Clearbit/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e2edf3ef736868 24-25,27-37
+packages/nodes-base/nodes/AcuityScheduling/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5b495e2df6c489 15,17,19-23
+packages/nodes-base/nodes/Bubble/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_489e000c366925 7
+  s_2e1fa95fc44f8f::t_f5d37e5cca84a4 41
+  s_2e1fa95fc44f8f::t_aaef9932700d7c 21
+  s_2e1fa95fc44f8f::t_0c76fcd0083812 29,33
+packages/nodes-base/nodes/Airtop/test/node/file/get.test.ts
+  s_2e1fa95fc44f8f::t_502b117418b297 63-75,79
+packages/nodes-base/nodes/Bitly/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_1eca381e0a8e64 16-26
+packages/nodes-base/nodes/Brevo/test/Brevo.node.test.ts
+  s_2e1fa95fc44f8f::t_ce272d2ad2d9a7 48-53,60-65,72-77
+packages/nodes-base/nodes/Brevo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5454392d6107d8 270-280
+packages/nodes-base/nodes/Confluence/test/actions/space/get.operation.test.ts
+  s_2e1fa95fc44f8f::t_8cff86cce3b35a 56-66
+packages/nodes-base/nodes/Asana/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f2b0d249b44ed8 13,15,17-22
+packages/nodes-base/nodes/Cisco/Webex/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_695cf30eb1c2c6 24-25,27-30
+packages/nodes-base/nodes/Cloudflare/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_effd7c77f34f89 8,12-27
+packages/nodes-base/nodes/Beeminder/test/Beeminder.node.functions.test.ts
+  s_2e1fa95fc44f8f::t_f52b62181671be 62-70,72
+packages/nodes-base/nodes/Baserow/__tests__/Baserow.node.test.ts
+  s_2e1fa95fc44f8f::t_01e7bb90acb278 42-47,49,51-58,63
+  s_2e1fa95fc44f8f::t_8b8ddfde121a7c 3,10
+packages/nodes-base/nodes/Affinity/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_79b91b8ebb7b17 14,16,18-22
+packages/nodes-base/nodes/Cockpit/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_84ac67a97cf57f 8,16-25
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_77528c19343806 81,86
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_bd17e18e2649e4 106,110
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_ba1e5a51ff05f5 63,68
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_b0c202c47a0858 136,141
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/transport/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_e6f44986798451 80,85
+packages/nodes-base/nodes/Databricks/test/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_0a96bd789b9466 28-37,48,128,157
+packages/nodes-base/nodes/Discourse/test/Discourse.node.test.ts
+  s_2e1fa95fc44f8f::t_c7464d0d3842fb 22,26,30-32,37-38,41-42,45-46,49-50,53-54,57-58,61-63,67,72-85,138
+packages/nodes-base/nodes/Dropcontact/test/GenericFunction.test.ts
+  s_2e1fa95fc44f8f::t_99ca5fd901d925 1-2,5-6,8-13,15-22
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b9a44ecc0a8d10 2,16-33
+packages/nodes-base/nodes/Eventbrite/__tests__/EventbriteTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_7ff0cecaf64a6b 174-177,250-262
+packages/nodes-base/nodes/FileMaker/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e894fc450698b2 90-98
+packages/nodes-base/nodes/GoToWebinar/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3e50b3052c9ca5 1,3-5,8-20,22-30
+packages/nodes-base/nodes/Google/Analytics/test/v2/loadOptions.test.ts
+  s_2e1fa95fc44f8f::t_1d54d7c449d88d 39-44
+packages/nodes-base/nodes/Google/Books/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_6fbf282663c160 8-31
+packages/nodes-base/nodes/Google/BusinessProfile/test/PathPresend.test.ts
+  s_2e1fa95fc44f8f::t_f922aa21d37236 74-83
+packages/nodes-base/nodes/Google/Contacts/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_8a11c5d2904298 2,8-29
+packages/nodes-base/nodes/Google/Docs/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_be4607bcb413ba 2,8-31
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_72650757bddaeb 7-31,97-126,146-148
+packages/nodes-base/nodes/Google/GSuiteAdmin/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_f1171e5ff31257 2,8-31
+packages/nodes-base/nodes/Google/Gmail/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_c143c7197cb8e5 2,9-35
+packages/nodes-base/nodes/Google/Slides/test/GoogleSlides.node.test.ts
+  s_2e1fa95fc44f8f::t_74f08c472fb109 3,8-32
+packages/nodes-base/nodes/Google/Task/test/GoogleTasks.node.test.ts
+  s_2e1fa95fc44f8f::t_2540bbeab8bce1 3,8-31
+packages/nodes-base/nodes/Gotify/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_cdc6c6923a82ea 1,3-5,8-17,19-25
+packages/nodes-base/nodes/Grafana/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b781c0bc908679 5,19-28,30-37
+packages/nodes-base/nodes/Grist/test/gristApiRequest.test.ts
+  s_2e1fa95fc44f8f::t_18cecbc3de9c51 65-66,68-77
+packages/nodes-base/nodes/HackerNews/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_48cabe7c685907 1-2,5-6,8-13,15-21
+packages/nodes-base/nodes/HomeAssistant/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_1b339aef2bc9f0 1-2,5-6,8-19,21-27
+packages/nodes-base/nodes/Hubspot/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_a9e34dc34be2fb 1-2,5-6,8-31
+packages/nodes-base/nodes/Hunter/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_2184a33861662b 1-2,5-6,8-19
+packages/nodes-base/nodes/Intercom/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6131c15ac5c9bb 1-2,5-6,8-16
+packages/nodes-base/nodes/InvoiceNinja/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f36a81b60dee09 19-22
+packages/nodes-base/nodes/Iterable/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_be3c2e1a681d0f 1-2,5-6,8-24
+packages/nodes-base/nodes/MailerLite/tests/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_11b30db1afb427 132-145
+packages/nodes-base/nodes/MailerLite/tests/v2/MailerLiteTriggerV2.test.ts
+  s_2e1fa95fc44f8f::t_4fcf28870e3c2a 122-133
+packages/nodes-base/nodes/Mailjet/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_1c0ddeb6ee9201 1-2,5-6,8-25
+packages/nodes-base/nodes/Mandrill/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_337d786e4037e1 1-2,9,15-31
+packages/nodes-base/nodes/Marketstack/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b15f15686eff3c 1-2,5-6,8-21
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_9b19f842e8de26 1-2,5-7,9-20
+packages/nodes-base/nodes/Microsoft/Dynamics/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c6d87fabd28f39 21-32
+packages/nodes-base/nodes/Microsoft/Entra/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e08b6f94d3cdb1 329-340
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e04daa53163026 388,394-405
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/app-only-ops.test.ts
+  s_2e1fa95fc44f8f::t_d629f4a055f2a7 92,97,105,107-118
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/copy.test.ts
+  s_2e1fa95fc44f8f::t_fd1d6db83319f6 45,51,58,60-63
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/move.test.ts
+  s_2e1fa95fc44f8f::t_f5965c7cbb6a09 167,171,176,178-179
+packages/nodes-base/nodes/Microsoft/Outlook/test/v1/MessageDelete.test.ts
+  s_2e1fa95fc44f8f::t_c0ccd44e807441 3,8,21,29,31-37
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/message/delete.test.ts
+  s_2e1fa95fc44f8f::t_7466066ad994d2 3,8,11,17,19-25
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_4ee9cd7c66f920 52-65,580,584,588,622
+packages/nodes-base/nodes/Nasa/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b0fc2ac9d2d606 1,3-5,8-22
+packages/nodes-base/nodes/Netlify/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6e6f0ae8b42927 1,3-5,8-22
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b3d8adcaa10c09 232-250,316
+packages/nodes-base/nodes/NocoDB/test/v1/NocoDBV1.node.test.ts
+  s_2e1fa95fc44f8f::t_98a020514fb9be 32,36,40,42-47
+packages/nodes-base/nodes/NocoDB/test/v2/actions/rows/get.test.ts
+  s_2e1fa95fc44f8f::t_aac85446d81060 61,65,71,73-79
+packages/nodes-base/nodes/Odoo/test/v2/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_36ea294b7ee16b 181-193
+packages/nodes-base/nodes/Okta/test/Okta.node.test.ts
+  s_2e1fa95fc44f8f::t_01cafdd4a100c7 68-75
+packages/nodes-base/nodes/Okta/test/UserFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b63af6d7608185 58-66
+packages/nodes-base/nodes/OpenThesaurus/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5be04197ae6fdb 1-2,5-6,8-21
+packages/nodes-base/nodes/Pipedrive/test/v1/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b004c2d66810ce 1,3-5,8-17
+packages/nodes-base/nodes/Pipedrive/test/v2/transport.test.ts
+  s_2e1fa95fc44f8f::t_972011645573bd 47-62
+packages/nodes-base/nodes/Plivo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6849ff24b1bf19 2,8-21
+packages/nodes-base/nodes/Postmark/test/PostmarkTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_b0aa951e262ca2 59-70
+packages/nodes-base/nodes/SurveyMonkey/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_556745238ea098 8,14-23
+packages/nodes-base/nodes/SyncroMSP/test/apiRequest.test.ts
+  s_2e1fa95fc44f8f::t_bf2cc9c5d61098 8,13-22
+packages/nodes-base/nodes/Taiga/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_aeb41bb2cc445b 1,8,18-28
+packages/nodes-base/nodes/Tapfiliate/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_a84d6d7c30a787 8,13-22
+packages/nodes-base/nodes/Telegram/tests/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_2b91ff4bdd8f3c 139,142-145,181-183
+packages/nodes-base/nodes/UnleashedSoftware/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_1e52d7e40e27a7 42,47-56
+packages/nodes-base/nodes/Uplead/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6eecdbc01a59da 8,13-22
+packages/nodes-base/nodes/UptimeRobot/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7dc5821a2751ff 8,13-22
+packages/nodes-base/nodes/UrlScanIo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f0d40eb3ab7c5e 8,12-22
+packages/nodes-base/nodes/Venafi/ProtectCloud/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_01b90eb5e47098 8,14-23
+packages/nodes-base/nodes/Vero/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d9ec2489660c8e 8,13-22
+packages/nodes-base/nodes/Vonage/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_1c16546347a5ec 1,8,13-17
+packages/nodes-base/nodes/Webflow/test/PathEncoding.test.ts
+  s_2e1fa95fc44f8f::t_b2444c3036b715 30-31,35-37,49,51-54,57,59-61,66-67,69-70,76-78
+packages/nodes-base/nodes/Wekan/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_1c3a406ae9c372 1,8,13-19
+packages/nodes-base/nodes/Wise/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d32f7395e19a33 27,32-37
+packages/nodes-base/nodes/WooCommerce/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_fa979bb26a0fcd 1,8,13-19
+packages/nodes-base/nodes/Wordpress/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5952d43b2b099d 55-61,63-72
+packages/nodes-base/nodes/Workable/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_525f4893e03d72 1,8,13-19
+packages/@n8n/nodes-langchain/nodes/vendors/Anthropic/transport/index.test.ts
+  s_05aa02f175b005::t_c4188b50a92d9a 76,80
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/transport/index.test.ts
+  s_05aa02f175b005::t_b6ccbe7453cd65 92,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9dbc735815ebfc9b9c5c74b64da78e3e041d61db",
+  "prompts": {},
+  "sessions": {
+    "s_05aa02f175b005": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad8f1bf8a43d1dd19",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

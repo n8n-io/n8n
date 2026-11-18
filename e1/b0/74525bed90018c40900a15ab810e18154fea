@@ -1,0 +1,50 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_af62986d6ef75e::t_4f172a64a647df 1600-1601
+  s_af62986d6ef75e::t_8fe318c0113963 1389
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.vue
+  s_af62986d6ef75e::t_bb835284118ecb 67-73
+  s_af62986d6ef75e::t_8b7c788aceb2c1 41
+  s_af62986d6ef75e::t_104c3abf603924 161-169
+  s_af62986d6ef75e::t_9785d4cf093214 13
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.test.ts
+  s_af62986d6ef75e::t_95bf189408d685 45-48
+  s_af62986d6ef75e::t_34f72e9c2c3575 233-236,240-246,250-255,260-262
+  s_af62986d6ef75e::t_d27115c91bb2d6 7-9,24-30
+  s_af62986d6ef75e::t_d6ceba2cf0d6e9 237-239,247-249,256-259
+  s_af62986d6ef75e::t_abdb71b58bd516 31,263-270
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.test.ts
+  s_af62986d6ef75e::t_4c8c8684d6236a 140-173
+  s_af62986d6ef75e::t_c06bf2bbc82a8f 7
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_af62986d6ef75e::t_22cea9a57e6488 287-289
+  s_af62986d6ef75e::t_b32d55b56eb21d 57
+  s_af62986d6ef75e::t_a57d62c66bec26 127-133
+  s_af62986d6ef75e::t_5a3b4df882d461 7
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.test.ts
+  s_af62986d6ef75e::t_cf33217a62330c 35-39
+  s_af62986d6ef75e::t_0b84f8f19ff818 188-205
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.ts
+  s_af62986d6ef75e::t_6f035e7c51d6df 187-195
+  s_af62986d6ef75e::t_072bdfb8f20f6c 30
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsList.vue
+  s_af62986d6ef75e::t_32423650d95a31 444
+  s_af62986d6ef75e::t_500eeaba254d30 417
+  s_af62986d6ef75e::t_a545623ed7f758 450
+  s_af62986d6ef75e::t_e21b598ebb1c7b 386
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e1b074525bed90018c40900a15ab810e18154fea",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

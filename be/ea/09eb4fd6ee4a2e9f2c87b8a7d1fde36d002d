@@ -1,0 +1,30 @@
+packages/cli/src/public-api/v1/handlers/discover/discover.handler.ts
+  s_18bfea1aed1a8a::t_e5c8adeeb2d92a 1,28-29,34
+packages/cli/test/integration/public-api/discover.test.ts
+  s_18bfea1aed1a8a::t_bf05ffec283ce9 3-4
+  s_18bfea1aed1a8a::t_551f0fcec932b9 43-61
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.handler.test.ts
+  s_18bfea1aed1a8a::t_76809633a5e613 85
+  s_18bfea1aed1a8a::t_b76e831ae4d3e2 107
+  s_18bfea1aed1a8a::t_f43b3c501af0e0 27-33,35,37-38,51,71,94,116
+  s_18bfea1aed1a8a::t_f082a49f30d241 52
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_18bfea1aed1a8a::t_235be15c3767dd 47
+  s_18bfea1aed1a8a::t_9b98a9f95a20f7 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "beea09eb4fd6ee4a2e9f2c87b8a7d1fde36d002d",
+  "prompts": {},
+  "sessions": {
+    "s_18bfea1aed1a8a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0ffc198-6259-4cde-8e83-0892261bc863",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

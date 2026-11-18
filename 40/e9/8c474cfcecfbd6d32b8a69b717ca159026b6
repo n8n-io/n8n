@@ -1,0 +1,25 @@
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_c64d6d408a247d::t_5f85083e9d4f51 278-282
+  s_c64d6d408a247d::t_c15f4cfd1830a1 260-261
+  s_c64d6d408a247d::t_ecd83e8766cfa5 298,301-302
+  s_c64d6d408a247d::t_7a8cbbd9fa1658 293-297,299-300,303-318
+  s_c64d6d408a247d::t_15acd294910af1 292
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_c64d6d408a247d::t_c109e3c1e2ebe8 316,318-320,329-384
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40e98c474cfcecfbd6d32b8a69b717ca159026b6",
+  "prompts": {},
+  "sessions": {
+    "s_c64d6d408a247d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0b96140-17ec-4f49-8ba1-686de4227b99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

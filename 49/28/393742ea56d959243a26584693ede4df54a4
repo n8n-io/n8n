@@ -1,0 +1,40 @@
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-4,6-36,38-39,41-53,55-63,65-80,82-107,112-125,127-141,151,154
+  s_5ef8864054ee6b::t_d5c6461a2bf9c3 5
+  s_5ef8864054ee6b::t_d4c01001db3e45 37,40
+  s_5ef8864054ee6b::t_f35d452df25dec 54
+  s_5ef8864054ee6b::t_f5c8d9fa7bb4ff 108-111
+  s_5ef8864054ee6b::t_9323822137c5dc 126
+  s_5ef8864054ee6b::t_c171f1d08bb574 142-148,152-153
+  s_5ef8864054ee6b::t_28ad996f573ca5 64
+  s_5ef8864054ee6b::t_1f9876e69746e7 81
+  s_5ef8864054ee6b::t_7ca10fa6462c9a 149-150
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-115,117-123,126-127,130,132-137,140-141,143-145,147-151,155-164,169-170,172
+  s_5ef8864054ee6b::t_7145e4d255db31 152,154
+  s_5ef8864054ee6b::t_672517b472fb68 165-168
+  s_5ef8864054ee6b::t_fc2c9f29d6a5ae 116,128-129,131
+  ai_agent 124,142,153
+  s_5ef8864054ee6b::t_799031529a9bfd 138-139,146
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_5ef8864054ee6b::t_51696790deeca0 1-14,66-67,132-133,209,254-270,273-284,286,292-295,299-300,304,306,323-348,403,460,498-509
+  s_5ef8864054ee6b::t_445732c5438346 272
+  s_5ef8864054ee6b::t_b759ec1737e95a 287-291,296-298,301,303,307-322
+  s_5ef8864054ee6b::t_28fbf478047a0f 302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4928393742ea56d959243a26584693ede4df54a4",
+  "prompts": {},
+  "sessions": {
+    "s_5ef8864054ee6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c63a640e-618d-456a-b511-501d52ce31b1",
+        "model": "auto-smart"
+      },
+      "human_author": null
+    }
+  }
+}

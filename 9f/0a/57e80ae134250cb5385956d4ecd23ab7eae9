@@ -1,0 +1,153 @@
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_89ffeedfd03265::t_55c0a2c04cf9ee 179-200,204-206,209-210,215,217,219-220,231,316,319-320,324-325
+  s_89ffeedfd03265::t_e58d2021971f9e 201-203,207-208,211-214,216
+  s_89ffeedfd03265::t_ae325c16f2da15 221-230
+  s_89ffeedfd03265::t_5ab9e55a8db8a9 218
+packages/cli/src/modules/agents/__tests__/agent-tool-approval.service.test.ts
+  s_89ffeedfd03265::t_b736d5c3575577 1
+  s_89ffeedfd03265::t_5b1c7ae6d9aeec 58
+  s_89ffeedfd03265::t_ae325c16f2da15 36-55
+  s_89ffeedfd03265::t_2babc90baa0ec6 2-35,56-57,59-66
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_89ffeedfd03265::t_ae325c16f2da15 1567-1569,1572-1576,1597-1601
+  s_89ffeedfd03265::t_55c0a2c04cf9ee 1577,1582
+  s_89ffeedfd03265::t_91df0e0d78199d 1566,1570
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_89ffeedfd03265::t_ae325c16f2da15 422-429
+  s_89ffeedfd03265::t_b736d5c3575577 60
+  s_89ffeedfd03265::t_7fcc9ea15e5612 212
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 172
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_89ffeedfd03265::t_b46db272655f8a 7979
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_89ffeedfd03265::t_7b318768178324 13-24,35,46-57,59,99,113
+packages/@n8n/agents/src/sdk/tool.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 15,23,124-125,127,131-132,143,159-163,165
+  s_89ffeedfd03265::t_e58d2021971f9e 128-130,164
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_89ffeedfd03265::t_55c0a2c04cf9ee 12,2537-2540,2604-2605
+  s_89ffeedfd03265::t_bc7f75d5ace99a 2560,2562,2591-2594
+  s_89ffeedfd03265::t_ae325c16f2da15 21-26,2541-2559,2561,2563-2590,2595-2603
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_89ffeedfd03265::t_b46db272655f8a 36-39,198-201,220
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_89ffeedfd03265::t_27eb4cebdc3d86 41,150,299
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 805
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 15,107,125
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_89ffeedfd03265::t_7fcc9ea15e5612 22,153
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_89ffeedfd03265::t_b46db272655f8a 77,85
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_89ffeedfd03265::t_27eb4cebdc3d86 19,113,186
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  s_89ffeedfd03265::t_b46db272655f8a 12,64-66
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 229,353,374
+packages/cli/src/modules/agents/repositories/agent-thread-grant.repository.ts
+  s_89ffeedfd03265::t_ae325c16f2da15 14
+  s_89ffeedfd03265::t_27eb4cebdc3d86 1-13,15-21
+packages/cli/src/modules/agents/entities/agent-thread-grant.entity.ts
+  s_89ffeedfd03265::t_27eb4cebdc3d86 1-21
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 11,228-229
+packages/@n8n/agents/src/index.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 22
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 203,470,526
+packages/@n8n/db/src/migrations/common/1790289364708-CreateAgentThreadGrantTable.ts
+  s_89ffeedfd03265::t_ae325c16f2da15 10-12
+  s_89ffeedfd03265::t_b46db272655f8a 4-9,13-22
+  s_89ffeedfd03265::t_de2607d525d5e6 1-3,23-24
+packages/cli/src/modules/agents/background/sub-agent-background-state.ts
+  s_89ffeedfd03265::t_ae325c16f2da15 1-5
+  s_89ffeedfd03265::t_b46db272655f8a 17,19-21,25
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_89ffeedfd03265::t_b46db272655f8a 139
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_89ffeedfd03265::t_91df0e0d78199d 686-687,694,712-719,739
+  s_89ffeedfd03265::t_7fcc9ea15e5612 25,40,150,155
+packages/cli/src/modules/agents/integrations/__tests__/component-mapper.test.ts
+  s_89ffeedfd03265::t_55c0a2c04cf9ee 325-329,331,341
+packages/cli/src/modules/agents/agent-tool-approval.service.ts
+  s_89ffeedfd03265::t_27eb4cebdc3d86 1-21,26-51
+  s_89ffeedfd03265::t_ae325c16f2da15 22-25
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_89ffeedfd03265::t_55c0a2c04cf9ee 8,18,66-73,76
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_89ffeedfd03265::t_b46db272655f8a 31,33,87-96,163
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_89ffeedfd03265::t_2babc90baa0ec6 1,1615-1618,1622-1630,1646,1665-1673,1677,1679,1693-1694,1696,1698
+  s_89ffeedfd03265::t_e58d2021971f9e 1674-1676,1678,1680,1683-1687,1695
+  s_89ffeedfd03265::t_ae325c16f2da15 1619-1621,1631-1645,1647-1664,1681-1682,1688-1692
+  s_89ffeedfd03265::t_43ce6b3c319751 1697,1699
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_89ffeedfd03265::t_e58d2021971f9e 460,465-471,487,493
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_89ffeedfd03265::t_b46db272655f8a 5,9,27,183-191,193,236,244
+  s_89ffeedfd03265::t_e58d2021971f9e 192
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_89ffeedfd03265::t_b46db272655f8a 330,352
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_89ffeedfd03265::t_7b318768178324 185,253,276,558-559,566-572
+  s_89ffeedfd03265::t_ae325c16f2da15 554-557
+  s_89ffeedfd03265::t_7fcc9ea15e5612 47
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_89ffeedfd03265::t_ae325c16f2da15 1-6
+  s_89ffeedfd03265::t_b46db272655f8a 524-525,528-529,531
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_89ffeedfd03265::t_7fcc9ea15e5612 50,290
+packages/@n8n/agents/src/types/index.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 72
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_89ffeedfd03265::t_0a1da0af9a82d8 6,12-17,51-52,84,115
+packages/cli/test/integration/agents/agent-thread-grant.repository.test.ts
+  s_89ffeedfd03265::t_ae325c16f2da15 34-37,49-58,60-67,69-70,73-74,89-90
+  s_89ffeedfd03265::t_91df0e0d78199d 1,3-33,38-39,41-48,71-72,75-88,91-101,104-106,108-110,114-115
+  s_89ffeedfd03265::t_bbab9ecd1a3272 40,59,68
+  s_89ffeedfd03265::t_2b719a579af57f 2,102-103,112
+  s_89ffeedfd03265::t_7ffc275cf75197 107,111,113
+packages/cli/src/modules/agents/agents.module.ts
+  s_89ffeedfd03265::t_27eb4cebdc3d86 240,283
+packages/@n8n/telemetry/src/events/agents.ts
+  s_89ffeedfd03265::t_27eb4cebdc3d86 163-174
+docs/generated/postgres-schema/README.md
+  s_e5a64625bc5cd1::t_223c77654317b4 30,208,630-635
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_e5a64625bc5cd1::t_103e2bb1994966 12,68,143-148
+docs/generated/postgres-schema/public.agent_thread_grants.md
+  s_e5a64625bc5cd1::t_87d1d4ca79b589 1-67
+docs/generated/sqlite-schema/README.md
+  s_e5a64625bc5cd1::t_4a113806738c41 30,190,616-621
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_e5a64625bc5cd1::t_aff0df65db051c 23,68,143-148
+docs/generated/sqlite-schema/agent_thread_grants.md
+  s_e5a64625bc5cd1::t_3bf5fe011833ea 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9f0a57e80ae134250cb5385956d4ecd23ab7eae9",
+  "prompts": {},
+  "sessions": {
+    "s_89ffeedfd03265": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4e6-37cc-73b3-8f7b-279d3f0c3020",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

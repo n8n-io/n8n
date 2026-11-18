@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Splunk/test/workflow/Splunk.workflow.test.ts
+  s_2e1fa95fc44f8f::t_71398eb0969b25 1-70
+  s_2e1fa95fc44f8f::t_1b88067fb291bc 71-73
+  s_097953de0a96e2::t_2d4b5e1f886a83 74-139
+packages/nodes-base/nodes/Splunk/test/workflow/requests-v1.workflow.json
+  s_097953de0a96e2::t_6fc9c1bf900a9c 1-511
+packages/nodes-base/nodes/Splunk/test/workflow/requests-v2.workflow.json
+  s_097953de0a96e2::t_1579a0012a670e 1-591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df43bdd264c4f31adeda51d7366a11ac19c85653",
+  "prompts": {},
+  "sessions": {
+    "s_097953de0a96e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aac90f73f2622c71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

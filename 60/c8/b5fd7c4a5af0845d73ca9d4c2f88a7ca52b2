@@ -1,0 +1,27 @@
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.test.ts
+  s_dcd43854c72149::t_0ca54a0ade81f7 71-78
+  s_dcd43854c72149::t_12a481a4bb746b 68-70
+  s_dcd43854c72149::t_7b24eddf6d9945 79-81
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/index.d.ts
+  s_dcd43854c72149::t_ab8948bd80af3f 6
+  s_dcd43854c72149::t_fdd2f88de2128e 9
+packages/frontend/@n8n/design-system/src/components/N8nSpinner/Spinner.vue
+  s_dcd43854c72149::t_a7f3a87347ee90 26,33,37-64,70-71,99-105
+  s_dcd43854c72149::t_4ea24fc679ca81 106-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60c8b5fd7c4a5af0845d73ca9d4c2f88a7ca52b2",
+  "prompts": {},
+  "sessions": {
+    "s_dcd43854c72149": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c9d5-6ebf-75a0-9d4c-7468a2a28622",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

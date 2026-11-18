@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_c6b8ff13dd0cfa::t_226c7ab71bd408 1440,1449
+  s_c6b8ff13dd0cfa::t_419f89cf1a5269 1466,1482,1502,1525,1548,1565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b951c84139cfbc5b7cd1fdddccf1a83e8f2961b",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c6b8ff13dd0cfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ab1c79c-386e-4b83-8ca9-63d4e1a0eb30",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

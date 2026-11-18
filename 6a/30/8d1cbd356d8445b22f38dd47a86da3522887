@@ -1,0 +1,56 @@
+packages/cli/src/modules/ldap.ee/__tests__/ldap.service.test.ts
+  s_c96fcfaca170a2::t_7da49c3d8e064e 360-387
+  s_c96fcfaca170a2::t_0eeba59e4ea572 11
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/credential-resolvers.controller.test.ts
+  s_c96fcfaca170a2::t_11ffc2eea287ff 69-95,97-134,147-148
+  s_c96fcfaca170a2::t_5ccf555f60d41b 96
+  s_751639aa1a1a72::t_ca0840331752a5 135-146
+  s_c96fcfaca170a2::t_a8fc4663d9b03c 2,4
+packages/cli/src/modules/ldap.ee/ldap.controller.ee.ts
+  s_c96fcfaca170a2::t_1733eae4d1edf7 25-33
+  s_c96fcfaca170a2::t_80e00058d8c52b 64
+  s_c96fcfaca170a2::t_a0adba66456919 1,4
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-resolver.service.test.ts
+  s_c96fcfaca170a2::t_ae871e28feb73d 10
+  s_c96fcfaca170a2::t_e57e2d0d7cf72e 310-345
+packages/cli/src/modules/ldap.ee/__tests__/ldap.controller.ee.test.ts
+  s_c96fcfaca170a2::t_9603f960bff3f8 1-81
+packages/cli/src/modules/ldap.ee/ldap.service.ee.ts
+  s_c96fcfaca170a2::t_9ae291bdcf82a1 118-124
+  s_c96fcfaca170a2::t_5008e0c4f91a74 13
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts
+  s_c96fcfaca170a2::t_4d5dd6122ff862 12
+  s_c96fcfaca170a2::t_2a34adfe1eed58 158-160
+  s_c96fcfaca170a2::t_2f44ad28968a03 288-320
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers.controller.ts
+  s_c96fcfaca170a2::t_5433f92ed811df 121
+  s_c96fcfaca170a2::t_f7995761cb44cd 168
+  s_c96fcfaca170a2::t_a95524a949b07b 27
+  s_c96fcfaca170a2::t_398c7cd90827d0 42-49,59-71
+  s_c96fcfaca170a2::t_964d71b973b462 189-198
+  s_751639aa1a1a72::t_680ad13010c225 50-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6a308d1cbd356d8445b22f38dd47a86da3522887",
+  "prompts": {},
+  "sessions": {
+    "s_751639aa1a1a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce39149c-23fc-48f5-8332-36b0c3865dd2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c96fcfaca170a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bb1e44e-2ec6-4ca9-83eb-26a3d926e11f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

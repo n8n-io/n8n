@@ -1,0 +1,47 @@
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_acf8c35cebbb29::t_a36014ae01a6cd 8-14,73
+packages/cli/src/scheduling/system-tasks/system-task-handler.ts
+  s_acf8c35cebbb29::t_a36014ae01a6cd 4-10,35
+packages/cli/test/integration/scheduling/scheduler-task-timeout.test.ts
+  s_acf8c35cebbb29::t_a36014ae01a6cd 46-47
+packages/@n8n/scheduler/src/observability/executor-tracing.ts
+  s_acf8c35cebbb29::t_a6e092a88caee9 69,71,79
+packages/@n8n/scheduler/src/core/executor/index.ts
+  s_acf8c35cebbb29::t_a6e092a88caee9 10
+packages/@n8n/scheduler/src/core/executor/task-handler.ts
+  s_acf8c35cebbb29::t_a6e092a88caee9 80,87,93-101
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_acf8c35cebbb29::t_a6e092a88caee9 436-439
+packages/@n8n/scheduler/src/core/index.ts
+  s_acf8c35cebbb29::t_a6e092a88caee9 67
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_acf8c35cebbb29::t_a36014ae01a6cd 169,182,197,219,230,241,250,269,311,321,334,350,369,382,450,472,483,561,590,605,626,656,746,767,780,809,859,874,893,904,918,935,950,966,980,996,1015,1028
+  s_acf8c35cebbb29::t_b6238f55c1faa3 294-296,412-414,521-523,544-546,837-839
+  s_acf8c35cebbb29::t_b0bf7830d58118 12,28-29,736,1006
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  s_acf8c35cebbb29::t_b0bf7830d58118 3,11
+  s_acf8c35cebbb29::t_a36014ae01a6cd 46,60,75,91,112,133,174,187,196,216,250,267,284
+  s_acf8c35cebbb29::t_b6238f55c1faa3 145-147,159-161,233-235
+packages/@n8n/scheduler/src/observability/__tests__/executor-tracing.test.ts
+  s_acf8c35cebbb29::t_edb9559d431f1e 154,156,158-159
+  s_acf8c35cebbb29::t_b6238f55c1faa3 176-179
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_acf8c35cebbb29::t_b6238f55c1faa3 812-827
+  s_acf8c35cebbb29::t_edb9559d431f1e 11,256,1036,1050-1051,1053,1057,1065-1066,1128-1129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5321f95340b54b724e194c4a78828ea53e5fcde4",
+  "prompts": {},
+  "sessions": {
+    "s_acf8c35cebbb29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4a3aa0-5a4c-439a-9d30-d8273d6c85f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

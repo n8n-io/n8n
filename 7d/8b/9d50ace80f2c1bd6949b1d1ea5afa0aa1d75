@@ -1,0 +1,25 @@
+packages/@n8n/db/src/migrations/common/1792668224044-CreateAgentPublishHistory.ts
+  h_7555c3ee6524cf 11
+  s_5785bc20fb92a9::t_053918495b7f7a 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7d8b9d50ace80f2c1bd6949b1d1ea5afa0aa1d75",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

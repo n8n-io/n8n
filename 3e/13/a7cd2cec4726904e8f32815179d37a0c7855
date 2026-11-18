@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_6934764c479138::t_3404d5dce76975 629-682
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_6934764c479138::t_8e2229ff7928ef 34,38-41
+  s_6934764c479138::t_d403cadc2b6e88 134-137
+  s_6934764c479138::t_62f6d9ccd7f760 2
+  s_6934764c479138::t_6625e50ffea482 153-160,174,177,203,206,296
+  s_6934764c479138::t_51c6057b89c4bd 175-176
+  s_6934764c479138::t_7f3192653540c3 204-205
+  s_6934764c479138::t_24a23eb7c0677c 295
+  s_6934764c479138::t_da9435edc022f3 297
+  s_6934764c479138::t_8df3126afeacf6 281-283
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_6934764c479138::t_45f475c27bd29e 719
+  s_6934764c479138::t_62c84497391378 387-391,394
+  s_6934764c479138::t_1d489160ed707f 514-518,521
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_6934764c479138::t_5384fab1bda97f 41
+  s_6934764c479138::t_fd3b066f9f0b55 383-385
+  s_6934764c479138::t_820b786d6c25bc 255-264,270-274,283-286
+  s_6934764c479138::t_3eaa07db0196a8 348-351
+  s_6934764c479138::t_c9ec191ff76051 16,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3e13a7cd2cec4726904e8f32815179d37a0c7855",
+  "prompts": {},
+  "sessions": {
+    "s_6934764c479138": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "662bbea9-ff70-4ac3-88a6-dc6813ad61d6",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

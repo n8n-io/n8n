@@ -1,0 +1,21 @@
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_a047f619210f06 653,660
+  s_77655ca8fe3a59::t_c161c3eaa7c5cb 623-652,654-659,661-677,679,682-685,690,692-693
+  s_77655ca8fe3a59::t_c5158c5bae9ebc 678,680-681,686-689,691
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6c648cd730f7887b58abcf442cbec15594d21461",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_61e9a8042cb6ca::t_d3631b7a5d7114 192-198
+packages/frontend/editor-ui/src/features/settings/context/context.api.ts
+  s_61e9a8042cb6ca::t_d3a9bfb51ab2e5 1-48
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.vue
+  s_61e9a8042cb6ca::t_65e07623c4766b 1-5,13-174,188-193,203-210
+  s_61e9a8042cb6ca::t_a06e4d66ff0b60 6-12,175-187,194-202
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.test.ts
+  s_61e9a8042cb6ca::t_f5936e3d7b7a6b 1-60
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.test.ts
+  s_61e9a8042cb6ca::t_d03445a7925803 1-164
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.vue
+  s_61e9a8042cb6ca::t_5dc278293d9478 1-149
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_61e9a8042cb6ca::t_5c30ce2029f732 99-100
+packages/frontend/editor-ui/src/features/settings/context/context.utils.test.ts
+  s_61e9a8042cb6ca::t_25f7c2d9cda4d6 1-7,13-89
+  s_61e9a8042cb6ca::t_707c7d2a669a30 8-12
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  s_61e9a8042cb6ca::t_d3a9bfb51ab2e5 6-18,43
+  s_61e9a8042cb6ca::t_ef8276e8773b23 1-5,19-42
+packages/frontend/editor-ui/src/features/settings/context/composables/useContextPreferencesFlag.ts
+  s_61e9a8042cb6ca::t_5c30ce2029f732 8,17-21
+  s_61e9a8042cb6ca::t_b9fb8f492d0da2 1-7,9-16
+packages/frontend/editor-ui/src/features/settings/context/context.store.ts
+  s_61e9a8042cb6ca::t_b9fb8f492d0da2 1-76
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.test.ts
+  s_61e9a8042cb6ca::t_7a6aafe97abcfa 1-122
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_61e9a8042cb6ca::t_28cfa2a0806e48 123
+  s_61e9a8042cb6ca::t_707c7d2a669a30 448
+  s_61e9a8042cb6ca::t_cec6232f65138e 46,122,447,449
+packages/frontend/editor-ui/src/features/settings/context/context.types.ts
+  s_61e9a8042cb6ca::t_2faac5938bfa87 1-57
+packages/frontend/editor-ui/src/features/settings/context/context.constants.ts
+  s_61e9a8042cb6ca::t_2faac5938bfa87 1-12
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.vue
+  s_61e9a8042cb6ca::t_14ad93fbc24410 1-260
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.vue
+  s_61e9a8042cb6ca::t_034127841f418d 1-74
+packages/frontend/editor-ui/src/app/stores/defaults/modals.ts
+  s_61e9a8042cb6ca::t_5c30ce2029f732 56,191
+packages/frontend/editor-ui/src/app/router.ts
+  s_61e9a8042cb6ca::t_28cfa2a0806e48 18,1145-1169
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_61e9a8042cb6ca::t_33e2b371b43644 3213-3249
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.test.ts
+  s_61e9a8042cb6ca::t_f1059116147610 1-90
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceScopeBadge.vue
+  s_61e9a8042cb6ca::t_62b4b8fd48268b 1-61
+packages/frontend/editor-ui/src/features/settings/context/context.mock-server.ts
+  s_61e9a8042cb6ca::t_ef8276e8773b23 12,19-21,67-68
+  s_61e9a8042cb6ca::t_128964917ce97b 1-11,13-18,22-66,69-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dcb466665f6f0c70f7961da1ab55f92646e95912",
+  "prompts": {},
+  "sessions": {
+    "s_61e9a8042cb6ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d53bf96-ca9f-4ff2-8ba4-e5920c97ca99",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

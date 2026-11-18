@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.ts
+  s_c8eccffddf7858::t_326be65e769644 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0c47e3aee7c3fe4351b522b94b3b749706f7c94",
+  "prompts": {},
+  "sessions": {
+    "s_c8eccffddf7858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e1d2337-a38c-4dee-8156-231bc1aa8e35",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

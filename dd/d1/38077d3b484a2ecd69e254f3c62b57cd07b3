@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_c62ec47c6846f4::t_6a9d1c34faa323 136,138-141,145,148,150,165,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ddd138077d3b484a2ecd69e254f3c62b57cd07b3",
+  "prompts": {},
+  "sessions": {
+    "s_c62ec47c6846f4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "974dbdb1-21b0-43ca-8c7c-f7de2b5387ae",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

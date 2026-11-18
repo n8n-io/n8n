@@ -1,0 +1,20 @@
+packages/cli/test/integration/public-api/insights.test.ts
+  s_0e30228f74cd7f::t_3d9c103f2a9582 6
+  s_0e30228f74cd7f::t_68004caafb01c6 109-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a55226e8d89c076ce812dc4919ea8fd2056569e8",
+  "prompts": {},
+  "sessions": {
+    "s_0e30228f74cd7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4af3e07f-5d47-47d3-9828-d9953dc16082",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

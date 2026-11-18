@@ -1,0 +1,140 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 397,418,431,443,463,513,661,663,693,711,743,758,773,799,837,864,880,890,926,1036,1267,1283,1330
+  s_0da9a0f82cfb04::t_7378f8fd405e67 925
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 24
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_0da9a0f82cfb04::t_7378f8fd405e67 38-39,81
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/credentials/__tests__/pending-authorization-cleanup.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 28
+packages/cli/src/telemetry/__tests__/telemetry-pulse.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 23
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 14
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 20
+packages/cli/src/modules/instance-registry/__tests__/stale-member-cleanup.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key-refresh.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 13
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 28
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 16
+packages/cli/test/integration/scheduling/system-task-provisioning.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 43,201
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_0da9a0f82cfb04::t_7378f8fd405e67 46
+packages/cli/src/services/pruning/execution-pruning-hard-delete.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 23
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/cli/src/license/license-renewal.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 24
+packages/cli/src/telemetry/telemetry-pulse.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 19
+packages/cli/src/modules/instance-registry/__tests__/instance-registry-reconciliation.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/license/__tests__/license-renewal.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 20
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-optimize.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/cli/src/scheduling/system-tasks/README.md
+  s_0da9a0f82cfb04::t_cd10b853259163 20
+  s_0da9a0f82cfb04::t_50149f0331ec50 52-54
+  s_0da9a0f82cfb04::t_7378f8fd405e67 75
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-job-registrar.test.ts
+  s_0da9a0f82cfb04::t_7378f8fd405e67 102,136-137
+  s_0da9a0f82cfb04::t_cd10b853259163 32,111
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweep.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 16
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 20
+packages/modules/insights/backend/src/insights-pruning.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 23
+packages/cli/src/credentials/pending-authorization-cleanup.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 24
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-refresh.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 20
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 19
+packages/modules/insights/backend/src/__tests__/insights-compaction.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/services/pruning/__tests__/activity-pruning.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 30
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 53
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_0da9a0f82cfb04::t_9c1f84295fee1a 78-87
+  s_0da9a0f82cfb04::t_cd10b853259163 178
+  s_0da9a0f82cfb04::t_7378f8fd405e67 30,44,63,103,111,124,130-131
+  s_0da9a0f82cfb04::t_2c12eeeff65f24 70-72,132
+packages/cli/src/modules/agents/agent-interrupted-execution-sweep.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 19
+packages/cli/src/services/pruning/__tests__/workflow-history-pruning.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 19
+packages/cli/src/services/pruning/workflow-history-pruning.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 17
+packages/modules/insights/backend/src/__tests__/insights-pruning.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 27
+packages/@n8n/decorators/src/system-task/__tests__/types.test.ts
+  s_0da9a0f82cfb04::t_2c12eeeff65f24 15-20
+  s_0da9a0f82cfb04::t_cd10b853259163 43,54,88
+  s_0da9a0f82cfb04::t_7378f8fd405e67 62,71,73
+packages/cli/src/modules/agents/__tests__/agent-checkpoint-pruning.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 23
+packages/cli/src/services/pruning/activity-pruning.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 25
+packages/cli/src/services/pruning/__tests__/execution-pruning-hard-delete.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 17
+packages/cli/src/services/__tests__/workflow-statistics-rollup.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 26
+packages/modules/insights/backend/src/insights-compaction.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/@n8n/decorators/src/system-task/__tests__/targets.test.ts
+  s_0da9a0f82cfb04::t_2c12eeeff65f24 27-30
+  s_0da9a0f82cfb04::t_cd10b853259163 6,12,20
+  s_0da9a0f82cfb04::t_7378f8fd405e67 15
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 13
+packages/cli/src/services/workflow-statistics-rollup.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 21
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 22
+packages/@n8n/decorators/src/system-task/types.ts
+  s_0da9a0f82cfb04::t_7378f8fd405e67 72-73,76
+packages/cli/src/services/pruning/__tests__/execution-pruning-soft-delete.task.test.ts
+  s_0da9a0f82cfb04::t_cd10b853259163 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b2a6d1c87c88ba0231a092ac0a973ce6ddb0a0f",
+  "prompts": {},
+  "sessions": {
+    "s_0da9a0f82cfb04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a04656e9-973e-4dbe-9e41-125badf6ebae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

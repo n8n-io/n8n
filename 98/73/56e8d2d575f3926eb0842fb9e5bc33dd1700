@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_23ac9e46ab1748::t_8f800fba94cd85 4
+packages/testing/playwright/pages/CanvasPage.ts
+  s_23ac9e46ab1748::t_30321039fa9084 335-336
+  s_23ac9e46ab1748::t_4cbd0bb7beb944 1163-1164
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_23ac9e46ab1748::t_a9ad852f6f9c78 1877
+packages/frontend/editor-ui/src/app/constants/actions.ts
+  s_23ac9e46ab1748::t_c76185121eeb40 13-14
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_23ac9e46ab1748::t_a24b4dcd2bc1b3 463-472
+  s_23ac9e46ab1748::t_bd766102f197fa 89
+  s_23ac9e46ab1748::t_8b6b63cd3a50cb 487
+  s_23ac9e46ab1748::t_a343e62a6d0a03 401-402
+  s_23ac9e46ab1748::t_b75a564a3547b5 23
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_23ac9e46ab1748::t_dfc39f1b43ec08 147-154
+  s_23ac9e46ab1748::t_45bca561e10099 209-213
+  s_23ac9e46ab1748::t_63061a38c02369 287-297
+  s_23ac9e46ab1748::t_e7c673ee0f3117 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "987356e8d2d575f3926eb0842fb9e5bc33dd1700",
+  "prompts": {},
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_2aa332997f69a5::t_5953f7b8db7ea6 16,204-242
+  s_2aa332997f69a5::t_f4338cf8e71785 243
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_2aa332997f69a5::t_40873fdb59f683 424-444
+  s_2aa332997f69a5::t_6964c1fd8d8482 479
+packages/cli/src/modules/agents/expression/agent-expression-context.ts
+  s_2aa332997f69a5::t_826a7fed436581 42-45
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_2aa332997f69a5::t_826a7fed436581 133-134
+  s_2aa332997f69a5::t_3f3e242eb82182 537
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_2aa332997f69a5::t_b64537829d0fed 25,55-56,113,146
+  s_2aa332997f69a5::t_040861a2c94d76 133-136
+  s_2aa332997f69a5::t_3f3e242eb82182 145
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_2aa332997f69a5::t_b64537829d0fed 17,85-87
+  s_2aa332997f69a5::t_040861a2c94d76 19-20
+packages/@n8n/agents/src/sdk/agent.ts
+  s_2aa332997f69a5::t_826a7fed436581 1283-1284
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_2aa332997f69a5::t_826a7fed436581 1,15,152-155,158-164,166-167,175-176
+  s_2aa332997f69a5::t_74391f95e054d2 156-157,165
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_2aa332997f69a5::t_89e4bfe51d35f0 263-284
+packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
+  s_2aa332997f69a5::t_3f3e242eb82182 259-261
+  s_2aa332997f69a5::t_f1babe5573d30d 324-334
+  s_2aa332997f69a5::t_7334eeb6de0c30 323,335
+  s_2aa332997f69a5::t_5f57d1ca28933c 7,255-258,262-290,293-296,300-317,319-322
+  s_2aa332997f69a5::t_74391f95e054d2 291-292,297-299,318
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_2aa332997f69a5::t_457c5176b36b66 22,194-220,222
+  s_2aa332997f69a5::t_bff143fc8e2f32 221,223-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "fc8e7edfba7da3984bec11c66599ed613cb0735a",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/core/src/binary-data/object-store/object-store.service.ee.ts
+  s_74402fcac1c7e4::t_45a65f84feee60 21
+packages/@n8n/utils/src/index.ts
+  s_74402fcac1c7e4::t_e90f50b3835f97 1-20
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_74402fcac1c7e4::t_260fcb193b48a8 1
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_74402fcac1c7e4::t_041e4f705452cd 1
+packages/core/src/instance-settings/instance-settings.ts
+  s_74402fcac1c7e4::t_ef0224e40dbac5 7
+packages/core/src/observability/tracing/sentry-tracing.ts
+  s_74402fcac1c7e4::t_549ff02734d980 2
+packages/@n8n/utils/package.json
+  s_74402fcac1c7e4::t_450751276612a4 9-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "658dce220bb2501c0b6c10c2f28c5b22f13edfd4",
+  "prompts": {},
+  "sessions": {
+    "s_74402fcac1c7e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e853d50-a6b5-4c82-b935-d5a8f8ad1608",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

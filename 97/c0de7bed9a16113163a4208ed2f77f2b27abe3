@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-origin.ts
+  s_e301d8294f60c4::t_80f3d0852fa57d 7,20
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-activity.ts
+  s_e301d8294f60c4::t_4710eb558bf1b6 1-8
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_e301d8294f60c4::t_80f3d0852fa57d 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97c0de7bed9a16113163a4208ed2f77f2b27abe3",
+  "prompts": {},
+  "sessions": {
+    "s_e301d8294f60c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "254d4248-4a92-4bc9-a4ba-d776e64b364c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

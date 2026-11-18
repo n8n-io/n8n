@@ -1,0 +1,52 @@
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_b1ae3677d6bc36::t_36741c55704a88 63,65-66,80-81,117-118,141-142
+  s_b1ae3677d6bc36::t_8d978cb60e3537 163-166,183,189-190,205-206
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_b1ae3677d6bc36::t_bb57103e0e8f6d 113
+  s_b1ae3677d6bc36::t_ead898d46fb30e 298-303,311-315,323
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_b1ae3677d6bc36::t_476790f3f6691a 556,569-570
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_1d43633a335922 434
+  s_b1ae3677d6bc36::t_ab8be6f99bc7ed 58
+  s_b1ae3677d6bc36::t_5b27ef55236dd5 426-427,565
+  s_b1ae3677d6bc36::t_82a570060839a6 66
+  s_b1ae3677d6bc36::t_3262ef573c75f7 447-448,605-611
+  s_b1ae3677d6bc36::t_d80d31a56d2b67 436-437
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_b1ae3677d6bc36::t_4f795249bf1991 29
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_b1ae3677d6bc36::t_b14870116ed15a 1184
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_b1ae3677d6bc36::t_6d8245050b505a 213-215
+  s_b1ae3677d6bc36::t_cd397399f2d1df 49,55-60,108,124,136
+  s_b1ae3677d6bc36::t_cfb8b43e510b6e 1,12
+  s_b1ae3677d6bc36::t_f07479af0002f0 224-228
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_b1ae3677d6bc36::t_77fb7d909f3777 252-257
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_b1ae3677d6bc36::t_56514d3460fa45 229,461
+packages/cli/src/workflows/publication/__tests__/workflow-publication-status.service.test.ts
+  s_b1ae3677d6bc36::t_d092ed2e11e3bb 68,83,98
+  s_b1ae3677d6bc36::t_d80d31a56d2b67 66,81,95
+packages/@n8n/db/src/migrations/common/1784564167057-DropPublishedVersionIdFromWorkflowPublicationOutbox.ts
+  s_b1ae3677d6bc36::t_aff4cbd107a08b 6-44
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_b1ae3677d6bc36::t_56514d3460fa45 221,443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "39833338a3d4fd50eacd6c32e100a2c88eecc4cb",
+  "prompts": {},
+  "sessions": {
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

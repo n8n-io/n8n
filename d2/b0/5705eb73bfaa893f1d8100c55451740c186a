@@ -1,0 +1,23 @@
+packages/nodes-base/utils/atlassian.ts
+  s_b8f823bc996164::t_7fe5b63c32388c 216-249
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_b8f823bc996164::t_760a1c59821767 22-33,165-166,171,176-177,186-236,278-282,447,450,458,462-475,477-478,490-503,571-586
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_b8f823bc996164::t_727714aa7db572 13-17,147,160,162-164,181,194,196-198,217-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d2b05705eb73bfaa893f1d8100c55451740c186a",
+  "prompts": {},
+  "sessions": {
+    "s_b8f823bc996164": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3947b1dd-3fa6-4086-8d76-1fdb5a78f989",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

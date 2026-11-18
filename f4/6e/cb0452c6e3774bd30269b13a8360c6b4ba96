@@ -1,0 +1,36 @@
+packages/cli/src/modules/usage-report/__tests__/usage-report-checkpoint.service.test.ts
+  s_a761a9b995aef0::t_cd4a80a51c47aa 41
+  s_a761a9b995aef0::t_bc455f810dc526 92-115
+packages/cli/src/modules/usage-report/usage-report-checkpoint.service.ts
+  s_a761a9b995aef0::t_992411487d6f8d 174
+  s_a761a9b995aef0::t_980ba71d05dd8b 109-138
+  s_a761a9b995aef0::t_f69d83da0c9323 93
+  s_a761a9b995aef0::t_1a3263a57191b8 30-31
+packages/cli/src/modules/usage-report/usage-report.config.ts
+  s_a761a9b995aef0::t_8570bd56b80bb5 19-32
+usage-report-demo-keygen.cjs
+  s_a761a9b995aef0::t_151bd9bcd719a6 1-10
+usage-report-demo-decrypt.cjs
+  s_a761a9b995aef0::t_cd5dce38ab647f 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f46ecb0452c6e3774bd30269b13a8360c6b4ba96",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a761a9b995aef0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "369db475-4f84-4ed3-9fff-76642c768555",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

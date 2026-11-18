@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c4a4e9a494a612::t_b76af3af344b32 47-51,57-60
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_c4a4e9a494a612::t_a1b18701851dfa 411-418
+  s_c4a4e9a494a612::t_78f84285c0000a 393,396-403,408,432-434
+  s_c4a4e9a494a612::t_e701cea56cd875 335,348,350,364-366,383,392,394-395,404-407,421-431,435-446,448-458
+  s_c4a4e9a494a612::t_29e9f08fb6fa21 4,409-410,419-420
+  s_c4a4e9a494a612::t_bdb9439fa97830 306-316,551-553
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_c4a4e9a494a612::t_b56995df7db2d3 136
+  s_c4a4e9a494a612::t_bdb9439fa97830 141-143
+  s_c4a4e9a494a612::t_b76af3af344b32 12,50,63-68,109,121-124,127,138,140,144-152,154,156,166,174-190,364,371-374
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_c4a4e9a494a612::t_0dcf1594ad44d5 367
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c4a4e9a494a612::t_0fbde1efacdb46 159-160,446-454,464
+  s_c4a4e9a494a612::t_0e1701e157fa68 1100,1103-1104,1137
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_c4a4e9a494a612::t_f732a75515b5ac 248
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_c4a4e9a494a612::t_231a2cbb059d78 65,67-68,74,160,252
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_c4a4e9a494a612::t_29e9f08fb6fa21 17-18
+  s_c4a4e9a494a612::t_d46647e9315efc 476,490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "93c79ab7fb43bb53891127b9ae15340a52a7a405",
+  "prompts": {},
+  "sessions": {
+    "s_c4a4e9a494a612": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c931-0a24-7242-93f9-890df461d8e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

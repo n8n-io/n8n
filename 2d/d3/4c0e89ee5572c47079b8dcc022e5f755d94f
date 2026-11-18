@@ -1,0 +1,14 @@
+scripts/lint-request-target.mjs
+  h_44f8d1c0f2f8c4 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dd34c0e89ee5572c47079b8dcc022e5f755d94f",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_602a3b182a34ac::t_b0fcf5bea60142 71-83
+packages/@n8n/config/test/config.test.ts
+  s_602a3b182a34ac::t_4d5b07e0bd4d6e 362
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_602a3b182a34ac::t_46644b7297fe3e 39
+  s_602a3b182a34ac::t_5c03d8296b1b9e 60-64
+  s_602a3b182a34ac::t_46adf3e70f1d08 14
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_602a3b182a34ac::t_7a7864f44e9cc6 60-62
+  s_602a3b182a34ac::t_8cd5895fbbdc22 249-251,253-254
+  s_602a3b182a34ac::t_bc7b3c22fa41df 97,115-141
+  s_602a3b182a34ac::t_a2c5900b907e89 12,16-17
+  s_602a3b182a34ac::t_965b4ee6b0f584 15
+  s_602a3b182a34ac::t_c96c5d3550fa0e 53-59,70-72,77-96,98-114
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_602a3b182a34ac::t_c9ba2b564ecff1 375,381-385
+  s_602a3b182a34ac::t_a844a35f428ded 98-99,102
+  s_602a3b182a34ac::t_f9a7f087ff1aff 626,632-678
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_602a3b182a34ac::t_1b8e9cdbe2ef89 23-26,30-39,47-49
+  s_602a3b182a34ac::t_b106b36f4a9f39 175-207
+  s_602a3b182a34ac::t_7bb623c72952fc 2
+packages/cli/src/services/__tests__/instance-activation.service.test.ts
+  ai_agent 9-10
+  s_602a3b182a34ac::t_85bf947cc94390 1-8,11-92
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_602a3b182a34ac::t_204d987d44b4d2 1315-1324
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_602a3b182a34ac::t_8ea64712b9c9ab 196-207
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_602a3b182a34ac::t_84ab69c4120738 885-891
+  s_602a3b182a34ac::t_e9076d5a5d13df 135
+  s_602a3b182a34ac::t_98273692f98f21 855-861,863-866
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  s_602a3b182a34ac::t_af94b37cf3d61c 7
+  s_602a3b182a34ac::t_12779c5c9d3977 38,45
+  s_602a3b182a34ac::t_1a7cbf6aecc663 130-152
+packages/cli/src/modules/instance-ai/instance-ai-credit-display.ts
+  s_602a3b182a34ac::t_029ac8f67a606e 1-30
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-activation-lock.test.ts
+  s_602a3b182a34ac::t_b2aad7ed0e385b 1-213
+packages/cli/src/services/instance-activation.service.ts
+  s_602a3b182a34ac::t_976e4654e5a88e 1-59
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-credit-display.test.ts
+  s_602a3b182a34ac::t_5a79b3e3aa8831 1-52
+packages/cli/src/modules/instance-ai/repositories/instance-ai-message.repository.ts
+  s_602a3b182a34ac::t_dcf3db2db571f6 11-21
+packages/cli/src/services/workflow-statistics.service.ts
+  s_602a3b182a34ac::t_a0ddb05612ca06 230-269
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-message.repository.integration.test.ts
+  s_602a3b182a34ac::t_9b87393e421a35 1-86
+packages/cli/src/services/ai.service.ts
+  s_602a3b182a34ac::t_e1d86e395b3145 101-142
+  s_602a3b182a34ac::t_81d6f30c35b19b 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac13151e1ba37ebd8e1a22042eb2b259b5edb41e",
+  "prompts": {},
+  "sessions": {
+    "s_602a3b182a34ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97601b8f-6173-4856-9e57-5368d6791be1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

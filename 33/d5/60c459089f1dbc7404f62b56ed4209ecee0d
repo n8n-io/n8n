@@ -1,0 +1,31 @@
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_cebe0f5823d4d7::t_5434ca108b464d 1-10,12-19,23-33,35-83,85-86,89,91-93,95-101,103-143,148,150-219
+  s_cebe0f5823d4d7::t_957bb987213e0f 84,87-88,90
+  s_cebe0f5823d4d7::t_9bd498dd31805e 102
+  s_cebe0f5823d4d7::t_9febc260a9c857 20-22
+  ai_agent 144-147
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_5434ca108b464d 1-8,10-17,21-26,38-49,51,65-73,75-77,80,85-103,105-138,140-144,146-158,160-173,189-190
+  s_cebe0f5823d4d7::t_7e63fd735e3c70 9
+  s_cebe0f5823d4d7::t_69a1d0d859f2a6 27-34,50,52-58,74,145,159,176,183-187
+  s_cebe0f5823d4d7::t_07caf63b6184ab 139
+  s_cebe0f5823d4d7::t_b09d47d01dd757 177
+  ai_agent 18-20,59-64
+  s_cebe0f5823d4d7::t_9febc260a9c857 35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "33d560c459089f1dbc7404f62b56ed4209ecee0d",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

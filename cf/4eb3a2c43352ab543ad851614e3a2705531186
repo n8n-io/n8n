@@ -1,0 +1,67 @@
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_e301d8294f60c4::t_1f62429b769df7 12,119
+  s_e301d8294f60c4::t_42bdbb5b15fa8d 117-118,120-176
+packages/cli/src/modules/agents/repositories/agent-memory-entry-candidate.repository.ts
+  s_e301d8294f60c4::t_1f62429b769df7 75
+  s_e301d8294f60c4::t_23700e69ef1d1f 6,20-21,61-74,76-85
+packages/@n8n/api-types/src/agents/index.ts
+  s_e301d8294f60c4::t_bf5321f8e0dfc8 7
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_e301d8294f60c4::t_915d5808e66e01 1542-1576,1584-1585
+  s_e301d8294f60c4::t_940219ee750f9a 1577-1581
+  s_e301d8294f60c4::t_03fee329d1701f 1582-1583
+packages/cli/src/modules/agents/integrations/integration-origin.ts
+  s_e301d8294f60c4::t_940219ee750f9a 113
+  s_e301d8294f60c4::t_54a99a09779fff 1-14,17-48,50-112,114-166
+  s_e301d8294f60c4::t_34912afe61ee1b 15-16,49
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_e301d8294f60c4::t_940219ee750f9a 65-70
+  s_e301d8294f60c4::t_19ca0426d239e2 2,48-49
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_e301d8294f60c4::t_716196f49fd78b 67
+  s_e301d8294f60c4::t_940219ee750f9a 100-103,115-118,132-136
+  s_e301d8294f60c4::t_6f729093cd43f5 1-66,68-99,104-114,119-131,137-161
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_e301d8294f60c4::t_41181ff2847acd 43,57,114-117
+  s_e301d8294f60c4::t_42022c4ed3e045 118,812-833
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_e301d8294f60c4::t_940219ee750f9a 3556-3559
+  s_e301d8294f60c4::t_5798715b1e7257 3534-3555,3560-3568
+packages/@n8n/api-types/src/agents/agent-message-origin.schema.ts
+  s_e301d8294f60c4::t_9ba663c7cb7022 1-31,34-46,48-59
+  s_e301d8294f60c4::t_8a8301b9fcd7ea 32-33,47
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory-source-message.integration.test.ts
+  s_e301d8294f60c4::t_0fb532b5ac8e44 1-102
+packages/@n8n/api-types/src/agents/__tests__/agent-message-origin.schema.test.ts
+  s_e301d8294f60c4::t_3fa071e4245f20 1-31
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_335d839e4c47ec::t_4740db559f6fb9 163,182
+packages/cli/src/modules/agents/entities/agent-message.entity.ts
+  s_335d839e4c47ec::t_091898c51fdfe3 2,14-15
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_335d839e4c47ec::t_60140ccf4c7951 65,933-936,953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf4eb3a2c43352ab543ad851614e3a2705531186",
+  "prompts": {},
+  "sessions": {
+    "s_335d839e4c47ec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15d24-9392-7fa3-ac49-bf255f932428",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e301d8294f60c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "254d4248-4a92-4bc9-a4ba-d776e64b364c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

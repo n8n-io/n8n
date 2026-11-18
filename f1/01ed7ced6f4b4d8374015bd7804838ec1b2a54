@@ -1,0 +1,35 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_cc52d4d80ec002::t_eeb36af02d3477 789-793,818-822,1325-1329
+packages/@n8n/scheduler/src/observability/__tests__/executor-tracing.test.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 153,155,157-158,175-179
+packages/@n8n/scheduler/src/core/index.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 100
+packages/@n8n/scheduler/src/core/errors.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 62-72
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 3,53-54,234,768-780,783-904
+  s_cc52d4d80ec002::t_a29bf90dd4067b 781-782
+packages/@n8n/scheduler/src/observability/executor-tracing.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 69-71,79
+packages/@n8n/scheduler/src/core/executor/task-handler.ts
+  s_cc52d4d80ec002::t_a29bf90dd4067b 81-83
+  s_cc52d4d80ec002::t_3f3cf24cbec600 78-80,86-90
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 5-7,12,19-24,53-55,71-76,86-87,257,294-297,358-386
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f101ed7ced6f4b4d8374015bd7804838ec1b2a54",
+  "prompts": {},
+  "sessions": {
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

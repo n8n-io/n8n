@@ -1,0 +1,36 @@
+packages/cli/test/integration/scheduling/system-task-runner.test.ts
+  s_2627866874d60e::t_4a4c9498aa0a0b 192,320-323
+  s_30db3f5d25d04b::t_d2232fb6a0fbc4 89-91,103-105
+  s_30db3f5d25d04b::t_49793e0422c9f2 310,313
+  s_30db3f5d25d04b::t_7ab325d511e91d 252,257,261
+  s_30db3f5d25d04b::t_0ea0a2c4e300e6 31
+  s_30db3f5d25d04b::t_d769863b990251 307-308
+  s_30db3f5d25d04b::t_da0b9303c22ab3 5
+  s_30db3f5d25d04b::t_aa917b82e35796 1-4,6-30,32-88,92-102,106-191,193-251,253-256,258-260,262-296,298-300,302-306,309,311-312,314-319,324-331
+  s_30db3f5d25d04b::t_9671aa2487bb5e 297,301
+  s_2627866874d60e::t_3f2e5cad03b36f 332-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d4363ed39847c90dc6c915fafe6ed8462908306",
+  "prompts": {},
+  "sessions": {
+    "s_2627866874d60e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50e7cb4f-62fc-4e82-aff2-d2ffc32113a0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_30db3f5d25d04b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cbd856e-82a7-496d-b468-eb971b694a43",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/@n8n/instance-ai/evaluations/harness/memory-context.ts
+  s_d7dc19b022f345::t_0e80b5fea8d213 55-59,62,65,87,109,141,146,159-173,176,178,191,213
+  s_d7dc19b022f345::t_3b1277a3e43c15 119-123,150-153
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_d7dc19b022f345::t_803de8f64b8e11 242-245,491-493,1009,1029,1070,1091
+packages/@n8n/instance-ai/evaluations/harness/cleanup.ts
+  s_d7dc19b022f345::t_dcef6525633ef2 168-169
+  s_d7dc19b022f345::t_4aa4d37eb32ea0 170-174
+  s_d7dc19b022f345::t_62b87bc33163d3 175,177
+packages/@n8n/instance-ai/evaluations/__tests__/cleanup-build.test.ts
+  s_d7dc19b022f345::t_4aa4d37eb32ea0 126-166,172-178
+  s_d7dc19b022f345::t_f5a448d7e51fec 167-171
+packages/@n8n/instance-ai/evaluations/__tests__/memory-context.test.ts
+  s_d7dc19b022f345::t_3c76d9f579ae35 227-316
+packages/@n8n/instance-ai/evaluations/system-prompts/memory-expectations-verify.ts
+  s_d7dc19b022f345::t_5c8cc1f73cad8c 9,15-17
+packages/@n8n/instance-ai/evaluations/README.md
+  s_d7dc19b022f345::t_20464af2f974cc 339-345
+packages/@n8n/instance-ai/evaluations/__tests__/context-assertions.test.ts
+  s_d7dc19b022f345::t_210c1e7c8db785 212-259
+packages/@n8n/instance-ai/evaluations/harness/context-assertions.ts
+  s_d7dc19b022f345::t_f28946712d4721 22-27,44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fbe46d00d189c7acba16bc369c52b65969aaab2d",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

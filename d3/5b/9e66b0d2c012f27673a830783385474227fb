@@ -1,0 +1,38 @@
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_1b995c2a71c1af::t_0d3acb9585e2d9 81
+  s_1b995c2a71c1af::t_d2ebae7d7e907f 532-558
+  s_1b995c2a71c1af::t_8dfa1ceb7d29d8 559-560
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_1b995c2a71c1af::t_f228e2927da24f 849-858,860-873,875-888,890-909
+  s_1b995c2a71c1af::t_cf11dd388a4628 859,874,889
+  s_1b995c2a71c1af::t_0e15ebb21a0d49 17
+  s_1b995c2a71c1af::t_266506f9739198 910-911
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.ts
+  s_1b995c2a71c1af::t_bc1db991b6fd79 26
+  s_1b995c2a71c1af::t_5ae7d750388b42 156-160,164,172,176,183,186,188-191
+  s_1b995c2a71c1af::t_0a5bb8cdbd1cc4 192,196
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_1b995c2a71c1af::t_dff1943ef6f3d9 62
+  s_1b995c2a71c1af::t_e44e1d8bdeecb3 81
+  s_1b995c2a71c1af::t_20d79a57bf5f67 260,341-366
+  s_1b995c2a71c1af::t_bf92b612d1667e 43
+  s_1b995c2a71c1af::t_bffb0b6d16e060 145-166,261,367
+  s_1b995c2a71c1af::t_4e4909b7d417ae 289
+  s_1b995c2a71c1af::t_6a957cb396e9d7 239-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d35b9e66b0d2c012f27673a830783385474227fb",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

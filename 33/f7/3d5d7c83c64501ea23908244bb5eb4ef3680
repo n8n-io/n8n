@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_8631ec10eb1199::t_4afd382b1965d6 5-16,33,37-53
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_8631ec10eb1199::t_edc46eba0b8da1 5-12
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_8631ec10eb1199::t_58ca243f53aaa8 5-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33f73d5d7c83c64501ea23908244bb5eb4ef3680",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

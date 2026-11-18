@@ -1,0 +1,255 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_c7b991e0487519::t_4e368c4e2c78c4 56-63,688,872
+  s_c7b991e0487519::t_3f2e30b5f048a5 4201
+  s_c7b991e0487519::t_d8320337411f09 4137-4139
+  s_c7b991e0487519::t_8db49eb355a386 4104-4106,4113-4119,4124-4136,4140-4174,4178-4185,4187-4188,4190,4192-4195,4197-4200,4202-4213
+  s_c7b991e0487519::t_5a227e745a5ec7 1073,1079,1086,1099,1108,4107-4108,4111-4112,4122-4123,5907-5908,5942-5943,5961-5962,5988,5999
+  s_c7b991e0487519::t_eed2766c2fbdc6 4175-4177,4196
+  s_c7b991e0487519::t_c5aecffaa83168 794-795
+  s_c7b991e0487519::t_90d824f913e967 4186,4189,4191
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_c7b991e0487519::t_aed8fbe67e9c9f 9,26,90,98,127
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,49,51,58
+  s_c7b991e0487519::t_8d708ff7247479 132,138,173,180,231,286,328,330
+  s_c7b991e0487519::t_d13fe108bce1ec 382,393,424
+  s_c7b991e0487519::t_fbfde47078b965 501,581,628
+  s_c7b991e0487519::t_1be6f65a302313 50
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackManagedSetup.vue
+  s_c7b991e0487519::t_8d708ff7247479 79,91,155,159,166
+  s_c7b991e0487519::t_ee9d45e30ea540 21,33,100,114,192-193
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_c7b991e0487519::t_48d7c966ec6125 715-725
+  s_c7b991e0487519::t_a5dd6b064dcb9b 25,65,219,371,379,387
+  s_c7b991e0487519::t_0af061672ce605 439,463,468,511,522,524
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_c7b991e0487519::t_3f2e30b5f048a5 150-154,156-170
+  s_c7b991e0487519::t_7064b528c1a181 155
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_c7b991e0487519::t_ee9d45e30ea540 17,55,69,119,129
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_c7b991e0487519::t_8db49eb355a386 243,2484-2486
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolRefAdapter.ts
+  s_c7b991e0487519::t_2a9bb54aaea44a 155-160
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/createThreadComponentRenderer.ts
+  s_c7b991e0487519::t_3f2e30b5f048a5 63
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_c7b991e0487519::t_5548f78829ba7b 211
+  s_c7b991e0487519::t_aed8fbe67e9c9f 10,50
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_c7b991e0487519::t_fbfde47078b965 469-470,489-490,510-511,531-532,580-581
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,44,66
+  s_c7b991e0487519::t_91038f1a4a8cdc 347,356,382,408,448
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/AgentModalTestStub.ts
+  s_c7b991e0487519::t_eddd84d91b0bc1 63,72,77,116
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_c7b991e0487519::t_c0ff2c6b3af711 115,139,147,162,172,177-178,205,220-222,224,228-229,257,268,270-272,275-282,317,331,343,345,438,453,460,468,477,487,492,498
+  s_c7b991e0487519::t_2a9bb54aaea44a 11,149-154,173
+  s_c7b991e0487519::t_48d7c966ec6125 10,41
+  s_3867156de1fad7::t_692160d43c0c14 174-175
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_c7b991e0487519::t_7eb1cc62bb71e7 2,55-58,60,63,73,91-95,97-121
+  s_c7b991e0487519::t_962f58a4e8a4c1 59,96,122
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,21
+  s_c7b991e0487519::t_91038f1a4a8cdc 86,91,127
+packages/frontend/editor-ui/src/features/agents/composables/useAgentEditing.ts
+  s_c7b991e0487519::t_36f98982ad3ff6 1-21
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_c7b991e0487519::t_91038f1a4a8cdc 258,304,309,365,379
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,62,64,76
+  s_c7b991e0487519::t_9427fd27e064b8 63
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackRemoveConfirmation.vue
+  s_c7b991e0487519::t_2e36453798ed6e 2,5-6,19,22-25,35,39-40,48-49,51,63-74
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_c7b991e0487519::t_48d7c966ec6125 2,9,24,39,74,78-79
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModal.test.ts
+  s_c7b991e0487519::t_eddd84d91b0bc1 4,9,78,93,103,108,110-132,134-146,148-151
+  s_c7b991e0487519::t_8db49eb355a386 109
+  s_c7b991e0487519::t_eed2766c2fbdc6 133,147
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentDescriptionModal.test.ts
+  s_c7b991e0487519::t_8db49eb355a386 48
+  s_c7b991e0487519::t_eddd84d91b0bc1 4,46,49-53,59,68-78
+packages/frontend/editor-ui/src/features/agents/components/AgentEditingOverlay.vue
+  s_c7b991e0487519::t_36f98982ad3ff6 1-99
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresPanel.vue
+  s_c7b991e0487519::t_0d7bf1fe0991a7 146
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_c7b991e0487519::t_eed2766c2fbdc6 323,327-328,331
+  s_c7b991e0487519::t_ee9d45e30ea540 16,334-335
+  s_c7b991e0487519::t_3f2e30b5f048a5 310-319,321-322,324-326,329-330,332-333,336-337
+  s_c7b991e0487519::t_119d119eb76786 320
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_c7b991e0487519::t_0d7bf1fe0991a7 21,39,215,230,238,317-318,330-331
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_c7b991e0487519::t_63a7e19a252ee3 1057-1059
+  s_c7b991e0487519::t_54b62b89c42c2d 2
+  s_c7b991e0487519::t_34b4f70b6ce095 1045-1056,1060-1080
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c7b991e0487519::t_ac47594aaf701e 8906
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,53,55,62
+  s_c7b991e0487519::t_d13fe108bce1ec 113,119,132
+  s_c7b991e0487519::t_91038f1a4a8cdc 138,236
+  s_c7b991e0487519::t_79587671c8cce2 54
+packages/frontend/editor-ui/src/features/agents/components/AgentItemContextMenu.vue
+  s_c7b991e0487519::t_0e8154f1726783 5,16-21
+  s_c7b991e0487519::t_fbfde47078b965 73-79
+  s_c7b991e0487519::t_87a6c8f39afb6e 22
+packages/frontend/editor-ui/src/features/agents/components/AgentCredentialSelect.vue
+  s_c7b991e0487519::t_8d708ff7247479 8,43-45,61,64-67,72,83
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_c7b991e0487519::t_aed18202867add 208
+packages/frontend/editor-ui/src/features/agents/components/AgentBudgetMonthlyModal.vue
+  s_c7b991e0487519::t_fbfde47078b965 65
+  s_c7b991e0487519::t_8d708ff7247479 53,59
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.ts
+  s_c7b991e0487519::t_a5dd6b064dcb9b 167,169,187,199,201,220,244,256,258,279
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfirmationModal.ts
+  s_c7b991e0487519::t_48d7c966ec6125 26
+  s_c7b991e0487519::t_491d5bec1d2e46 1,14,16
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolInputs.vue
+  s_c7b991e0487519::t_fbfde47078b965 2,36,115,135,148,211
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  s_c7b991e0487519::t_d13fe108bce1ec 48,76
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModalMultiStep.vue
+  s_c7b991e0487519::t_0af061672ce605 99-101
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_c7b991e0487519::t_0d7bf1fe0991a7 225,281,305,319
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_c7b991e0487519::t_7eb1cc62bb71e7 3,11,53,232-237,239-241,243-252
+  s_c7b991e0487519::t_b043531f0686a2 238,242,253-254
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_c7b991e0487519::t_fbfde47078b965 218
+  s_c7b991e0487519::t_0af061672ce605 224,246,372,385,394-397,505-506,523-527
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_c7b991e0487519::t_48d7c966ec6125 18-19,33,79,85,155-156,200-203
+  s_c7b991e0487519::t_5b8790df072d94 157-190,193
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_c7b991e0487519::t_0d7bf1fe0991a7 181
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_c7b991e0487519::t_eab29229ee52de 2,44,161
+  s_c7b991e0487519::t_8d708ff7247479 156,174-177
+packages/quality/testing/playwright/tests/e2e/agents/agent-assistant-editing-lock.spec.ts
+  s_c7b991e0487519::t_388723a804dd5a 1,102-106,108-110
+  s_c7b991e0487519::t_63a7e19a252ee3 32,113-115,191-197
+  s_c7b991e0487519::t_6f5936ed659936 153,187-190
+  s_c7b991e0487519::t_d9bf588ad5d1ad 165,167,214-215,221
+  s_c7b991e0487519::t_e8f706578c58ed 36-38,98,126-127,131-132
+  s_c7b991e0487519::t_491d5bec1d2e46 177
+  s_c7b991e0487519::t_c5c7ad80c7f976 2-19,25-27,29-30,35,39-50,55-60,76-79,84,86-92,94-97,99-101,111-112,116-125,129-130,133-152,155-157,159-164,168-174,176,178-186,198-202,204-213,216-220,222-229,231-237,239-241,243
+  s_c7b991e0487519::t_ab99294c3dcfce 107
+  s_c7b991e0487519::t_63ce12bbc533a0 20-24,28,31,33-34,80-83,85,158,175
+  s_3867156de1fad7::t_523589f1a2a222 51-54,61-75,93,128,154,166,203,230,238,242
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalSelector.vue
+  s_c7b991e0487519::t_aed18202867add 14,46-47,92,129,136,152-153,174-175
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackRemoveConfirmation.test.ts
+  s_c7b991e0487519::t_01e55466d0d469 3,6-7,13,17,19,45-48,50-51,57-63
+  s_c7b991e0487519::t_4933563cb6863f 49
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_c7b991e0487519::t_01e55466d0d469 2,7,252,266,881-887,889-906,908
+  s_c7b991e0487519::t_ba125fc0e08e09 888,907,909-910
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_c7b991e0487519::t_36f98982ad3ff6 35-36,53,73-74,158-159,163-166,416,456
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_c7b991e0487519::t_36f98982ad3ff6 207-212,214
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_c7b991e0487519::t_d13fe108bce1ec 258,283,288,350,557,884
+  s_c7b991e0487519::t_2a9bb54aaea44a 60,176-177,186,270,277,358,367,574,611,619,641,648
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,100,114
+  s_c7b991e0487519::t_63a7e19a252ee3 187-188
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_c7b991e0487519::t_0e8154f1726783 133-135
+packages/frontend/editor-ui/src/features/agents/components/AgentBudgetSessionModal.vue
+  s_c7b991e0487519::t_fbfde47078b965 43
+  s_c7b991e0487519::t_8d708ff7247479 38
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_c7b991e0487519::t_a5dd6b064dcb9b 19,73,80
+packages/frontend/editor-ui/src/features/agents/components/AgentJsonImportModal.vue
+  s_c7b991e0487519::t_91038f1a4a8cdc 66,113
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,14-15,17,20
+  s_c7b991e0487519::t_491d5bec1d2e46 43,54
+  s_c7b991e0487519::t_9980a7b4561e29 16
+packages/frontend/editor-ui/src/features/agents/channels/slack/useSlackChannelRuntime.test.ts
+  s_c7b991e0487519::t_01e55466d0d469 7,59,62,236-241,243-248,250-261
+  s_c7b991e0487519::t_2fcd4190109124 242,249,262-263
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_c7b991e0487519::t_eab29229ee52de 2,98,438,457,469,510
+  s_c7b991e0487519::t_fbfde47078b965 105-108,110
+  s_c7b991e0487519::t_491d5bec1d2e46 464,506
+  s_c7b991e0487519::t_7b3af20f9bbd0a 109
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_c7b991e0487519::t_7eb1cc62bb71e7 106-126
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_c7b991e0487519::t_2a58680768d389 2491,2497-2500,3056,3065-3068,3075,3085-3088,3090
+  s_c7b991e0487519::t_491d5bec1d2e46 651
+  s_c7b991e0487519::t_aed8fbe67e9c9f 2571-2573,2584,2589,2594-2596
+  s_c7b991e0487519::t_eab29229ee52de 853,1044,1094,1123,1690,2496,2506,2512,3046,3055,3061,3074,3080
+  s_c7b991e0487519::t_54b62b89c42c2d 1125-1126,1138-1141
+  s_c7b991e0487519::t_63a7e19a252ee3 1142-1143
+  s_c7b991e0487519::t_d8320337411f09 3258-3263
+  s_c7b991e0487519::t_4eb413017457b3 2-9,11,100,626-650,1955,1995,2007,2034,3335-3336
+  s_c7b991e0487519::t_51bfa8a7145d1f 10
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_c7b991e0487519::t_0d7bf1fe0991a7 75-81
+  s_c7b991e0487519::t_0af061672ce605 246-256
+  s_c7b991e0487519::t_f52fa141207ffa 18-19,67,95-96,114,148,156,163,178-182,211-225,231-235,237,239,241-243,245,257-260,262-263,351-355,358-360,398-407
+  s_c7b991e0487519::t_eddd84d91b0bc1 98-99,165
+  s_c7b991e0487519::t_082d1863bcfa76 97,240,244,408
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_c7b991e0487519::t_36f98982ad3ff6 1771,1779,1782
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_c7b991e0487519::t_aed8fbe67e9c9f 8,22,27,47,56,76,83
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_c7b991e0487519::t_491d5bec1d2e46 138,146,155,173,184
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,23,43
+  s_c7b991e0487519::t_91038f1a4a8cdc 226,243,293
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_c7b991e0487519::t_0af061672ce605 94-99
+packages/frontend/editor-ui/src/features/agents/components/EmbeddingModelSelector.vue
+  s_c7b991e0487519::t_fbfde47078b965 2,44-48,50,183
+  s_c7b991e0487519::t_6bdc6b4e3e61d1 49
+packages/frontend/editor-ui/src/features/agents/components/AgentDescriptionModal.vue
+  s_c7b991e0487519::t_5b3018eecdd0cf 2,11,22
+  s_c7b991e0487519::t_91038f1a4a8cdc 35,66
+packages/frontend/editor-ui/src/features/agents/components/AgentWebSearchSection.vue
+  s_c7b991e0487519::t_aed18202867add 349
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_c7b991e0487519::t_491d5bec1d2e46 60-62
+  s_c7b991e0487519::t_63ce12bbc533a0 55
+  s_c7b991e0487519::t_d709624dfec66b 13,15-33,38-54,56-59,63-72,74,87-96
+  s_c7b991e0487519::t_d9bf588ad5d1ad 34-37,75-86
+  s_c7b991e0487519::t_6b9607fa8d4527 73
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelRemoval.ts
+  s_c7b991e0487519::t_a5dd6b064dcb9b 8,29,41
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  s_c7b991e0487519::t_a5dd6b064dcb9b 13,38
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_c7b991e0487519::t_39f04a82c80715 518,522,536-537
+  s_c7b991e0487519::t_63a7e19a252ee3 409-432
+  s_c7b991e0487519::t_0e8154f1726783 408,433,532,538-540
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8488e9dd51405630b7f40703e286b058a9ca0f39",
+  "prompts": {},
+  "sessions": {
+    "s_3867156de1fad7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-caf3-7693-9d01-bca408146de3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c7b991e0487519": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb1-4bcd-79a0-8234-f9dfda4094b6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

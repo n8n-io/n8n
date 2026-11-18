@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/N8n/ProjectDescription.ts
+  s_fc86840aa19adb::t_d6b82e2fd4714e 1-6,8-20
+packages/nodes-base/nodes/N8n/test/N8n.structure.test.ts
+  s_fc86840aa19adb::t_13c17dda102ac4 16-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "315d20032bcbc828ffc058a9c7b005380810b8fa",
+  "prompts": {},
+  "sessions": {
+    "s_fc86840aa19adb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73ac5fbc-ed42-4381-aa2e-6ffff49fde13",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

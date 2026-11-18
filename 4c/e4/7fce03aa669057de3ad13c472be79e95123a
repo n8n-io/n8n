@@ -1,0 +1,31 @@
+packages/quality/efficiency/scale/benchmark/scenarios/expression-mix/expression-mix.script.js
+  s_ab3961db330c75::t_d734e38ef7fef3 1-45
+packages/quality/efficiency/scale/benchmark/scripts/n8n-setups/postgres-native-evaluation/docker-compose.yml
+  s_ab3961db330c75::t_3aa8e2be8683df 1-42,46-81
+  s_ab3961db330c75::t_c64c06f218af78 43-45
+packages/quality/efficiency/scale/benchmark/README.md
+  s_ab3961db330c75::t_e575f4981f12bc 140
+packages/quality/efficiency/scale/benchmark/scenarios/expression-mix/expression-mix.manifest.json
+  s_ab3961db330c75::t_ca86dfa037a7ef 1-6,8
+  s_ab3961db330c75::t_3758926fb8897f 7
+packages/quality/efficiency/scale/benchmark/scenarios/expression-mix/expression-mix.json
+  s_ab3961db330c75::t_85ccc8f19d6399 1-242
+packages/quality/efficiency/scale/benchmark/scripts/n8n-setups/postgres-native-evaluation/setup.mjs
+  s_ab3961db330c75::t_3aa8e2be8683df 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ce47fce03aa669057de3ad13c472be79e95123a",
+  "prompts": {},
+  "sessions": {
+    "s_ab3961db330c75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c74b9e5f-af0d-4aae-a9a5-ca3d098fbeab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

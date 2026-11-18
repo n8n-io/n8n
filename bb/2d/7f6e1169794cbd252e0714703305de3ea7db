@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_45c9c02db4924e::t_088a0ab5ee6c26 379-393,396-398,405-412
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_45c9c02db4924e::t_31c29d5111fc5f 1490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb2d7f6e1169794cbd252e0714703305de3ea7db",
+  "prompts": {},
+  "sessions": {
+    "s_45c9c02db4924e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13acd-cd08-74b2-b4f6-17aac3637046",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

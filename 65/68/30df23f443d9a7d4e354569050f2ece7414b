@@ -1,0 +1,27 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b86bd8b73ec329::t_b07ac7d6b61fe3 1007-1010
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderDialog.test.ts
+  s_b86bd8b73ec329::t_69ba3fac3edc6c 104,125-143,251,254-255,282-283,304-305,318-323,326-330,337,350-353,358,364-370,387-390,403-404,421-436
+  s_b86bd8b73ec329::t_d3df04f3b364a6 66-76,113-115
+  s_b86bd8b73ec329::t_acf2bc347d73da 57-65,77-79,108-112,116-124,144-145
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_b07ac7d6b61fe3 44-48
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderDialog.vue
+  s_b86bd8b73ec329::t_b07ac7d6b61fe3 3-10,48-49,55,63-66,68-101,112-117,149-150,153,165,191,253,306-308,310,313,316-347,350-383,390,418-423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "656830df23f443d9a7d4e354569050f2ece7414b",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

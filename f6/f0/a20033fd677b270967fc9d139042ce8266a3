@@ -1,0 +1,181 @@
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_4d7f501095fc5f::t_af4ec26fc963d2 19-23,25-26
+  s_4d7f501095fc5f::t_9314670ee972fa 5
+packages/@n8n/instance-ai/evaluations/routing/judge.ts
+  s_4d7f501095fc5f::t_8536efbe2f48ad 106-112
+  s_4d7f501095fc5f::t_b37865057e8f49 118-120
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_4d7f501095fc5f::t_1f722b54412fa9 14
+  s_4d7f501095fc5f::t_ce8f3bc9db98fb 4
+  s_4d7f501095fc5f::t_e8ead7fcc22e99 212
+  s_4d7f501095fc5f::t_d416ec9f5bda46 24,26,58,66,113,117-118,123,130,138,211,215,218,225,382,396,408,410,440,498-499,509,520,524-525,531,551,835-836
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_4d7f501095fc5f::t_30ef0af62baf25 116-118,123,126,132,354,447,703
+  s_4d7f501095fc5f::t_b0a6e6890de698 2,70
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_4d7f501095fc5f::t_28809e4e712b7e 56-57
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_4d7f501095fc5f::t_73926aa9341eee 575
+  s_4d7f501095fc5f::t_f39ad9663adc67 2,577,904,1187
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_4d7f501095fc5f::t_a2c4cd3d8b9654 4
+  s_4d7f501095fc5f::t_e73c873ca5f0cd 227,702
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_4d7f501095fc5f::t_6337bd1ab30790 1,15,77
+packages/@n8n/api-types/src/builder-tool-names.ts
+  s_4d7f501095fc5f::t_891ebe4f295a08 12-13,15-16
+packages/@n8n/api-types/src/schemas/__tests__/llm-step-display.test.ts
+  s_4d7f501095fc5f::t_8c72a699cd7075 136,145,157,170,185,194,205,217,222
+packages/@n8n/instance-ai/evaluations/README.md
+  s_4d7f501095fc5f::t_c67aa3a22984a8 755
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_4d7f501095fc5f::t_1c1d4938f7d764 567,576
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-text.test.ts
+  s_4d7f501095fc5f::t_132f7201f74f64 275
+packages/@n8n/instance-ai/evaluations/__tests__/event-parser.test.ts
+  s_4d7f501095fc5f::t_dcb0701290d9fe 885
+packages/@n8n/instance-ai/evaluations/__tests__/langsmith-seed.test.ts
+  s_4d7f501095fc5f::t_1a624720d772fb 402,407,417,434,481,492,508
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_4d7f501095fc5f::t_b8ac3fad387e1d 103,110,236,241,246,278,448-450
+packages/@n8n/instance-ai/evaluations/__tests__/user-proxy.test.ts
+  s_4d7f501095fc5f::t_451df6ea23ae6f 126,338,611,1338,1354,1362,1389,1420,1453,1489,1521,1545,1577,1604,1634,1668,1685,1704
+packages/@n8n/instance-ai/evaluations/__tests__/workflow-report.test.ts
+  s_4d7f501095fc5f::t_03ca912dd12b11 188,215
+packages/@n8n/instance-ai/evaluations/computer-use/types.ts
+  s_4d7f501095fc5f::t_03c9fd48c02e00 138
+packages/@n8n/instance-ai/evaluations/data/discovery/intent-ambiguous-alert-response-clarifies.json
+  s_4d7f501095fc5f::t_91f3264fe376c6 11
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-credential-ask.json
+  s_4d7f501095fc5f::t_d74ac71ef08c50 17,21,26
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_4d7f501095fc5f::t_44b1467c1267c9 241
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_4d7f501095fc5f::t_14a2578b6e220d 99,206
+packages/@n8n/instance-ai/evaluations/utils/confirmation-payload.ts
+  s_4d7f501095fc5f::t_b158d70c655a34 31
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/index.ts
+  s_4d7f501095fc5f::t_41ff7cd0ad44fe 444
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/prompts.ts
+  s_4d7f501095fc5f::t_3c7c4e3074a68f 28,62
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_4d7f501095fc5f::t_ecff7730ad24b4 67,85,256
+packages/@n8n/instance-ai/knowledge-base/reference/open-ai-output-shape.md
+  s_4d7f501095fc5f::t_8d92bff8617de1 7
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_4d7f501095fc5f::t_777e56f6d560c1 42,46
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  s_4d7f501095fc5f::t_4f1b07c4f8b3bf 12,89
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_4d7f501095fc5f::t_54ac72a818e3bd 13,34,145
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  s_4d7f501095fc5f::t_b80b33a32fdbdb 10-11
+packages/@n8n/instance-ai/skills/planned-task-runtime/SKILL.md
+  s_4d7f501095fc5f::t_a305cac51ebba0 141
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_4d7f501095fc5f::t_220f81d6d9c9a0 16-17,21,80,172
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_4d7f501095fc5f::t_17115ce9cec5c3 12,40,73,109,128
+packages/@n8n/instance-ai/skills/workflow-builder/references/credential-setup-with-computer-use.md
+  s_4d7f501095fc5f::t_859a7a688f5361 9,38,47
+packages/@n8n/instance-ai/skills/workflow-builder/references/model-selection.md
+  s_4d7f501095fc5f::t_b3dde667111c52 9,18,20-22,35,44,53,61,71,90
+packages/@n8n/instance-ai/skills/workflow-builder/references/one-off-operations.md
+  s_4d7f501095fc5f::t_4049ccd7629295 13,17,57,72,83
+packages/@n8n/instance-ai/skills/workflow-builder/references/post-build-flow.md
+  s_4d7f501095fc5f::t_a3d35a17d53358 9,116,452,497,661,679,681,691,699,701,703-704
+packages/@n8n/instance-ai/src/agent/computer-use-prompt.ts
+  s_4d7f501095fc5f::t_0206bb9ee26fd8 235
+packages/@n8n/instance-ai/src/agent/credential-guardrails.prompt.ts
+  s_4d7f501095fc5f::t_dc9ecfc451259b 2,5
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_4d7f501095fc5f::t_36d507ffb1319f 189,191,232,243,247,263
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_4d7f501095fc5f::t_3eb71aa1f5bd96 74,115
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_4d7f501095fc5f::t_d09a319a6a6608 116,142
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_4d7f501095fc5f::t_94426eb6d12235 299,365
+packages/@n8n/instance-ai/src/tools/__tests__/n8n-docs.tool.test.ts
+  s_4d7f501095fc5f::t_9d11e73e65e181 218
+packages/@n8n/instance-ai/src/tools/__tests__/search-models.tool.test.ts
+  s_4d7f501095fc5f::t_4febfdbb26a8dd 10,41
+packages/@n8n/instance-ai/src/tools/activity.tool.ts
+  s_4d7f501095fc5f::t_ff06feb5f27d14 6,93
+packages/@n8n/instance-ai/src/tools/conversation-history.schema.ts
+  s_4d7f501095fc5f::t_334ce2f716c065 38
+packages/@n8n/instance-ai/src/tools/conversation-history.tool.ts
+  s_4d7f501095fc5f::t_02a20a7c5b5fd0 30
+packages/@n8n/instance-ai/src/tools/models/model-catalog.service.ts
+  s_4d7f501095fc5f::t_752b088f542b54 14
+packages/@n8n/instance-ai/src/tools/n8n-docs.tool.ts
+  s_4d7f501095fc5f::t_b8794733df74a5 92
+packages/@n8n/instance-ai/src/tools/search-models.tool.ts
+  s_4d7f501095fc5f::t_9659ba53da469c 17
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_4d7f501095fc5f::t_d4f5b15372d7b9 1549
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_4d7f501095fc5f::t_abfd587d8398d0 168
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_4d7f501095fc5f::t_90ee8b8ccd0374 1316
+packages/@n8n/instance-ai/src/tools/workflows/chat-model-validation.ts
+  s_4d7f501095fc5f::t_1b54352aa8011a 95,99,276
+packages/@n8n/instance-ai/src/tools/workflows/setup-items.ts
+  s_4d7f501095fc5f::t_50562258582e5c 169,195
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_4d7f501095fc5f::t_d15f716f13afe7 1057,1069,1081,1110,1119,1784,1787,1790,2069,2072,2075
+packages/@n8n/instance-ai/src/types.ts
+  s_4d7f501095fc5f::t_00b9e5845fa960 875,1591,1670
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_4d7f501095fc5f::t_4c1dcee92e48aa 216,227
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_4d7f501095fc5f::t_4a77cf5cd0d4ab 103,111
+packages/cli/src/modules/instance-ai/__tests__/conversation-history-content.fixtures.ts
+  s_4d7f501095fc5f::t_8d2db43a5be353 42
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_4d7f501095fc5f::t_dfc3782de2c0a6 6110
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_4d7f501095fc5f::t_1bf6d0a5983612 2104
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_4d7f501095fc5f::t_c0d57a838b90ad 1074
+packages/cli/src/modules/instance-ai/onboarding-opening.ts
+  s_4d7f501095fc5f::t_16ffcf2a1abc0d 14
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_4d7f501095fc5f::t_b2d9a78aedd88c 35,127,222,232,299
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.ts
+  s_4d7f501095fc5f::t_a397f5777ffb00 34,247
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4d7f501095fc5f::t_340f6b3f5c14be 8131-8138,8215-8223,8341,8350
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_4d7f501095fc5f::t_be42fd5f4c9102 49,400
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_4d7f501095fc5f::t_cf37c420030908 422
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_4d7f501095fc5f::t_737bf5aa3024ea 1744
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ThinkingBlock.test.ts
+  s_4d7f501095fc5f::t_315ecd0ebe644d 407
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_4d7f501095fc5f::t_c2f4bc86a6cf4e 1272
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  s_4d7f501095fc5f::t_1c960b91434e44 19,89,111,149,177,244
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelState.test.ts
+  s_4d7f501095fc5f::t_3d65fd002589a5 131
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_4d7f501095fc5f::t_36ff4b67b20a40 154,157,579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6f0a20033fd677b270967fc9d139042ce8266a3",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

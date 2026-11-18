@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_8f492b540165e0::t_abf4d717a4cb74 396,455-479,481-484
+  s_8f492b540165e0::t_815c4d99281665 517,519-526,528-548,579,581-599,621,623-642,665,667-686
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_8f492b540165e0::t_773199c5ebf37a 110,123-124,128,130-132
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_8f492b540165e0::t_a61045a4815e67 83-86,177-179,188-206
+  s_8f492b540165e0::t_bead156cf242a7 174-176
+  s_06304172e968c9::t_4d4537f78b55cc 207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "90efea0e048863e33335ecd67071f484cd6dc14f",
+  "prompts": {},
+  "sessions": {
+    "s_06304172e968c9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1b6a88e-b95e-455e-b19f-6706bdab5489",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_8f492b540165e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3efc188c-86af-4e34-ba58-485780802b74",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

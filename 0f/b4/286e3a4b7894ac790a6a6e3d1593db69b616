@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_28b268595ad947::t_fb6a969a0f3498 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0fb4286e3a4b7894ac790a6a6e3d1593db69b616",
+  "prompts": {},
+  "sessions": {
+    "s_28b268595ad947": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af07-0df0-7750-9184-43b1f0e905b1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

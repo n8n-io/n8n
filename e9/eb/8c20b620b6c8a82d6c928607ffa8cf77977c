@@ -1,0 +1,32 @@
+packages/nodes-base/scripts/credential-scopes.test.mjs
+  s_03475c9885928f::t_720c7cfcfc0393 1-58,60-67,69-75,77-93
+  s_03475c9885928f::t_50335ec8db8bec 59
+  s_03475c9885928f::t_0bbec21b2ec842 68
+  s_03475c9885928f::t_f1abf3e8de09ae 76
+packages/nodes-base/scripts/check-released-scopes.mjs
+  s_03475c9885928f::t_b4a52ddcd6603a 5,7-62,72-73,114,151-165,172-184,204-215
+  s_03475c9885928f::t_9d89d65551cea5 216-217
+.github/workflows/ci-credential-scopes.yml
+  s_03475c9885928f::t_0ec09c8ba16d99 8-12,18-23,29
+packages/nodes-base/scripts/credential-scopes.mjs
+  s_03475c9885928f::t_5582bb7bc63c7d 1-48,53-55,58-71,73-88,90-92
+  s_03475c9885928f::t_6852a80d0b8398 49-52,56-57
+  s_03475c9885928f::t_cf132bb57149e3 72
+  s_03475c9885928f::t_e5856de27d21b4 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e9eb8c20b620b6c8a82d6c928607ffa8cf77977c",
+  "prompts": {},
+  "sessions": {
+    "s_03475c9885928f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c7c0af4-139d-4555-b10a-95481cbb7021",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

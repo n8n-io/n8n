@@ -1,0 +1,22 @@
+packages/cli/src/modules/mcp/tools/data-table/get-data-table-rows.tool.ts
+  s_811d30cc0c9499::t_660ebd09608031 47-49
+packages/cli/src/modules/mcp/__tests__/data-table/get-data-table-rows.integration.test.ts
+  ai_agent 38
+  s_811d30cc0c9499::t_6d36d29831696b 1-37,39-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cf7e78ba9bd323dda4295f6a582f1c5eaf8b90d",
+  "prompts": {},
+  "sessions": {
+    "s_811d30cc0c9499": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06dbc933-a773-4717-bdc7-d1e86c44fa23",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

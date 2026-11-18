@@ -1,0 +1,31 @@
+packages/cli/src/active-workflow-manager.ts
+  s_331f35b0ef50db::t_73a1f9b9ee8544 167
+  s_331f35b0ef50db::t_0e38b8cf98391c 164-166,168-172
+packages/cli/src/webhooks/webhook.service.ts
+  s_331f35b0ef50db::t_7fc5d2db190091 6
+  s_331f35b0ef50db::t_f21f72649bc4d9 253,268-269,358
+  s_331f35b0ef50db::t_72d6730d96da8c 249-252,254-265,357
+packages/cli/src/webhooks/__tests__/webhook.service.test.ts
+  s_331f35b0ef50db::t_d2cabfa006c5a0 514-522,524-531,533-539
+  s_331f35b0ef50db::t_e532b033d9b38a 523,532
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_331f35b0ef50db::t_0e38b8cf98391c 226-234
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_331f35b0ef50db::t_d529fe3762ccb6 46,56-61,80-87,89,330-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "696b64dace9e51918c3d65b699cb64678e0db1fe",
+  "prompts": {},
+  "sessions": {
+    "s_331f35b0ef50db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a0bfa08d-efcf-45e0-a748-0d196fdeafa3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

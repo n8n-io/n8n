@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_75a183a8863eca::t_3099d1827d540b 258-261,264-273
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_75a183a8863eca::t_a7669e48fcb1d9 88-99
+  s_75a183a8863eca::t_ad4ea7551c479f 45
+  s_75a183a8863eca::t_020042b19882fe 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1dcdc99a785e65d735b4d8890e86ca6fd31a89bf",
+  "prompts": {},
+  "sessions": {
+    "s_75a183a8863eca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4b6c372-92ad-4924-953d-ddee96b71633",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

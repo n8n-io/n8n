@@ -1,0 +1,21 @@
+.github/workflows/sec-sync-retarget-prs.yml
+  s_6e4b6449daec96::t_1fa84e1c7e5b4b 12-13,66,68-69,71
+.github/WORKFLOWS.md
+  s_6e4b6449daec96::t_1fa84e1c7e5b4b 1193-1195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "060792e79bf16206468c9f21cdcfb4ce7c919197",
+  "prompts": {},
+  "sessions": {
+    "s_6e4b6449daec96": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e83fe7ff5ffer9iwUcpOTBYIj3",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

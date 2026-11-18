@@ -1,0 +1,33 @@
+packages/@n8n/utils/src/scrub-secrets.property.test.ts
+  s_b370a35485f958::t_695e3d33cab43c 70
+  s_b370a35485f958::t_75a8c7c021e9e0 76
+  s_b370a35485f958::t_3d85de2baba668 1-69,71-75,77-85
+  s_b370a35485f958::t_4ea2fc7e66ada7 86-116
+packages/@n8n/utils/package.json
+  s_b370a35485f958::t_be5c185948f3fe 52
+packages/@n8n/utils/src/redaction/sanitize-error-detail.property.test.ts
+  s_b370a35485f958::t_314aad54851689 1-31
+packages/@n8n/ai-utilities/package.json
+  s_b370a35485f958::t_0da936e551d7c0 137
+packages/@n8n/ai-utilities/src/llm-output/extract-json.property.test.ts
+  s_b370a35485f958::t_fda418279f9fd8 45-51
+  s_b370a35485f958::t_c212ba4ae84d5b 1-44,52-56
+pnpm-lock.yaml
+  s_b370a35485f958::t_f4ec4044ed85f0 1236-1238,4068-4070
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "83b96448d5a553760310c38e8cd05a249a760f5f",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

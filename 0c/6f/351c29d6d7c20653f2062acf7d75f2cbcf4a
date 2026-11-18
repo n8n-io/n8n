@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nPopover/Popover.vue
+  s_d983b630f7acf9::t_28a83c2347532b 264-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0c6f351c29d6d7c20653f2062acf7d75f2cbcf4a",
+  "prompts": {},
+  "sessions": {
+    "s_d983b630f7acf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66779c2c-77a8-4b13-af38-9c2d9c3153c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  ai_agent 187
+  s_060f8d9d66ff96::t_789399142c413c 42-43,171-186,188-209
+  s_060f8d9d66ff96::t_b54f7e507eddb8 30,59,82,261,347
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_060f8d9d66ff96::t_1eaa14ae198b75 7,13-14,31,36-58
+packages/cli/src/executions/execution-id.ts
+  s_060f8d9d66ff96::t_2b7edfd188dc53 1-16
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_060f8d9d66ff96::t_07daa71f728b54 13-14,18,179-205
+packages/cli/src/executions/executions.controller.ts
+  s_060f8d9d66ff96::t_c4d48a87f3f0d3 9,14,91,149-154,169-177
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_060f8d9d66ff96::t_10c4b0cddb8f47 2,5-6,8,15-17,49-58
+packages/cli/src/executions/__tests__/execution-id.test.ts
+  s_060f8d9d66ff96::t_c9020913a8ba83 1-21
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_060f8d9d66ff96::t_b141c532863430 1,5-6,16-17,45-59
+packages/cli/test/integration/executions.controller.test.ts
+  s_060f8d9d66ff96::t_78d35b05c49a80 193-198,201,205-209,212-213
+  s_060f8d9d66ff96::t_44f036f8b80e9d 188-190,202,211
+  s_060f8d9d66ff96::t_7361a45fc137ac 10-11,14,136-187,191-192,199-200,203-204,210,214-232
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_060f8d9d66ff96::t_9a1b96a3090cba 1-11,26-53,58-60,62-80,83-95
+  s_060f8d9d66ff96::t_e0e48bb0b216ca 12-25,81-82
+  s_060f8d9d66ff96::t_706aa864943b67 54-57
+  s_060f8d9d66ff96::t_a4f90434f20023 61
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_060f8d9d66ff96::t_4ae8a04325426e 1-124
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_060f8d9d66ff96::t_fe802a4329fa88 9,17,86-100
+packages/cli/src/executions/execution.service.ts
+  s_060f8d9d66ff96::t_40c95675723a2c 173-182,184-190
+  s_060f8d9d66ff96::t_99c865c2757194 67,69,142
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_060f8d9d66ff96::t_629996dc38ee67 4979,4982
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_060f8d9d66ff96::t_629996dc38ee67 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "472a1ac72f0f04078f351879594189fa3887ab0b",
+  "prompts": {},
+  "sessions": {
+    "s_060f8d9d66ff96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e13189d1-5719-4577-8b8e-4f889185ccbf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

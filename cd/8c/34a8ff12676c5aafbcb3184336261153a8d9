@@ -1,0 +1,68 @@
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_d19c2d0e8e5e12::t_4edd2fb5f1e152 4
+  s_d4538605bb58de::t_574e9c09364a92 11-12,57,64-65,67-68,77-79,81-82,84-96
+  s_d19c2d0e8e5e12::t_cc5b529a82a61d 19-30
+  s_667c164ac76678::t_4e1fa64d70236a 31,36-40
+  ai_agent 32-35
+  s_d19c2d0e8e5e12::t_ce8a19a5bad3b6 46
+  s_667c164ac76678::t_7fa27ef8e365f5 58,69-76,80,83
+  s_dcdc074ef7030d::t_2dbb142e158c04 59-63,66
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_667c164ac76678::t_6ff4926f3ae13e 23-24,28,35-36,38
+  s_dcdc074ef7030d::t_bcce3dd6b9da2c 25-26,30,40-44
+  s_d4538605bb58de::t_574e9c09364a92 27,29,31-34,37,39,45,54-62,64-66
+  s_d19c2d0e8e5e12::t_820b0e8e19a78c 46-53
+  s_667c164ac76678::t_d78443e31c3b0d 63
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_d19c2d0e8e5e12::t_3e1b3ca7b52cee 9
+  s_d4538605bb58de::t_7b9b9a4a3f2889 17,41,44-67,69-72,85-91,93-97,102-104,106,111-118,120-127,129-153,155,157-162,164
+  s_d19c2d0e8e5e12::t_8f80ee11bb0d69 34-36
+  s_d4538605bb58de::t_1b03d0b0f42b51 42-43,119,163
+  s_d19c2d0e8e5e12::t_188a6ebc3cc2cd 68,73-82
+  s_dcdc074ef7030d::t_85da79bbfdc586 92
+  ai_agent 98-101
+  s_dcdc074ef7030d::t_a6de79c42d3d9c 105,107
+  s_dcdc074ef7030d::t_031a7fab957e11 108-110
+  s_dcdc074ef7030d::t_871b06db06db5b 128
+  s_dcdc074ef7030d::t_bf66045e4ec804 154,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cd8c34a8ff12676c5aafbcb3184336261153a8d9",
+  "prompts": {},
+  "sessions": {
+    "s_667c164ac76678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a89ab19d-2c3d-40c2-95b1-da7a385e51d0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_d19c2d0e8e5e12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63270251-26a5-45da-9f21-2772ab485850",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_d4538605bb58de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07d32-9dcb-7211-9690-77633250ea37",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_dcdc074ef7030d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4be822e5-5242-455f-a6ad-873004f48535",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

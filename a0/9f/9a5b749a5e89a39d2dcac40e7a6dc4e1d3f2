@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fbba0b32ee6f59::t_c4da27fc94cd42 36,605,1180-1200,1202,1204-1210
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_fbba0b32ee6f59::t_1d4fd0effa22da 1021-1024
+  s_fbba0b32ee6f59::t_c4da27fc94cd42 143,1007-1020,1025-1033
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a09f9a5b749a5e89a39d2dcac40e7a6dc4e1d3f2",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

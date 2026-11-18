@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_33e4193011b52f::t_0f0b13a291bd82 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f0d795f7a5c73932e56509b50fe5cf10ac0b4e9c",
+  "prompts": {},
+  "sessions": {
+    "s_33e4193011b52f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c61839-4881-488e-a715-3c8d0cb0af9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

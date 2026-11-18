@@ -1,0 +1,48 @@
+packages/nodes-base/nodes/Misp/test/workflow/Misp.workflow.test.ts
+  s_2e1fa95fc44f8f::t_0061deead1046d 16
+  s_2e1fa95fc44f8f::t_ba5c81a8e6701f 1-15,17-62
+packages/nodes-base/nodes/Matrix/test/workflow/Matrix.workflow.test.ts
+  s_2e1fa95fc44f8f::t_ad66c807c21c25 1-46
+  s_2e1fa95fc44f8f::t_a6e8af721de461 47-48
+packages/nodes-base/nodes/MessageBird/test/workflow/MessageBird.workflow.test.ts
+  s_2e1fa95fc44f8f::t_08e366f7d00f30 1-27
+packages/nodes-base/nodes/Mindee/test/workflow/Mindee.workflow.test.ts
+  s_2e1fa95fc44f8f::t_6e97db3bc74307 1-35
+packages/nodes-base/nodes/Medium/test/workflow/Medium.workflow.test.ts
+  s_2e1fa95fc44f8f::t_1546218fc1c44a 1-31
+  s_2e1fa95fc44f8f::t_5888b0a16844c9 32-34
+packages/nodes-base/nodes/Matrix/test/workflow/requests.workflow.json
+  s_01cb885e0ad060::t_3d444c334c3c05 1-329
+packages/nodes-base/nodes/Medium/test/workflow/requests.workflow.json
+  s_01cb885e0ad060::t_d97cfcb43515fa 1-128
+packages/nodes-base/nodes/MessageBird/test/workflow/requests.workflow.json
+  s_01cb885e0ad060::t_cdd7cf447ee4f6 1-90
+packages/nodes-base/nodes/Mindee/test/workflow/requests.workflow.json
+  s_01cb885e0ad060::t_6534ae2dbdb2b3 1-249
+packages/nodes-base/nodes/Misp/test/workflow/requests.workflow.json
+  s_01cb885e0ad060::t_783d4a2345777b 1-888
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50bf18791bf3c280048b1004073995e75f0405ce",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/test/integration/agents/agent-thread-repository-queries.test.ts
+  s_aa4b7fe9018279::t_47fc4c05dfd5c5 6,24,40,52,178-191,193-206
+  s_aa4b7fe9018279::t_8cc85e19625b3d 192
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_aa4b7fe9018279::t_47fc4c05dfd5c5 471-473,482-483,488-491
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a16ac4aaa2eed18e16c5ea34a9a9b6e073744f0",
+  "prompts": {},
+  "sessions": {
+    "s_aa4b7fe9018279": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5239b743-2f2d-45bb-bd36-9393ca537b43",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

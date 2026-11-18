@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-29-agent-reasoning-model-capability-design.md
+  s_b8825764429acd::t_6e773ff50a31aa 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a26ff16046112e161b12038edc65120d0121af6c",
+  "prompts": {},
+  "sessions": {
+    "s_b8825764429acd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fadd1-ce3f-7bf1-9f35-81dce3d90357",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

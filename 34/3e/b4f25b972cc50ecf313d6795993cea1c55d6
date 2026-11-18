@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_b51ca84edd5013::t_de0e9e4cfae541 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "343eb4f25b972cc50ecf313d6795993cea1c55d6",
+  "prompts": {},
+  "sessions": {
+    "s_b51ca84edd5013": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "601cf56e-0c69-4941-82dd-54aaa9ef5fda",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

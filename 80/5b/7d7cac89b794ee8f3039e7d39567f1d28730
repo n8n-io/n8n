@@ -1,0 +1,14 @@
+packages/cli/src/telemetry/index.ts
+  h_5d40c27a8fdfd1 593
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "805b7d7cac89b794ee8f3039e7d39567f1d28730",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

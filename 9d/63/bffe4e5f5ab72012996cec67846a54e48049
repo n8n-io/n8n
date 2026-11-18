@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/workspace/tool-result-storage.ts
+  s_830cd70a2e5d54::t_99c4637bab4e6b 4
+  s_830cd70a2e5d54::t_05cbad82995582 19,63-68
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_830cd70a2e5d54::t_fe5d3a9157f325 8013-8020,8022
+  s_830cd70a2e5d54::t_08bb3253ec0e2b 8012,8021,8023-8024
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9d63bffe4e5f5ab72012996cec67846a54e48049",
+  "prompts": {},
+  "sessions": {
+    "s_830cd70a2e5d54": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "32b105f2-da02-41ec-b45a-7e0c2976360f",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

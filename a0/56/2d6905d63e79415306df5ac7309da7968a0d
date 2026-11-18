@@ -1,0 +1,28 @@
+packages/@n8n/mcp-browser/src/cdp-relay.ts
+  s_2a64d569f7fd95::t_7662b781dec569 235
+  s_2a64d569f7fd95::t_f01a587b1ed43c 72
+  s_2a64d569f7fd95::t_7181b12d6ad351 124,130
+packages/@n8n/mcp-browser/src/__tests__/cdp-relay-attach.test.ts
+  s_2a64d569f7fd95::t_b7094cd3935b57 89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "a0562d6905d63e79415306df5ac7309da7968a0d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a64d569f7fd95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee9bcf49-2aeb-4b3f-b6cb-15acc1d3f9e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

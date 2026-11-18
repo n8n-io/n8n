@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_ea6573290e0abd 1,7,88-114
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/transport/index.ts
+  s_2e1fa95fc44f8f::t_abaded8483b8ce 2,5,29-38
+packages/nodes-base/nodes/Microsoft/Storage/descriptions/BlobDescription.ts
+  s_2e1fa95fc44f8f::t_b69c5ffbaa97eb 22
+packages/nodes-base/nodes/Microsoft/Storage/test/blob/blobPath.test.ts
+  s_2e1fa95fc44f8f::t_db82f937da2d22 22-40
+packages/nodes-base/nodes/Microsoft/Storage/test/blob/blob_delete_numeric_name.workflow.json
+  s_2e1fa95fc44f8f::t_08c29af2a3d256 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c6b9f8b936a28a18205345f185761f45431ad21",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

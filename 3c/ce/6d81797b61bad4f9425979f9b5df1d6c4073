@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/NocoDB/v1/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_71edb56f66533b 56-57
+packages/nodes-base/nodes/NocoDB/test/v1/NocoDBV1.node.test.ts
+  s_2e1fa95fc44f8f::t_b5d8560db91a88 7-30,33-34,37,40,49-64,66-103
+  s_2e1fa95fc44f8f::t_9c9f223965e50f 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cce6d81797b61bad4f9425979f9b5df1d6c4073",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

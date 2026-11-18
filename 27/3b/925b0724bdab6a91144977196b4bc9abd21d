@@ -1,0 +1,81 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_0e72387dae74ad::t_d6f53e86b3faf8 204
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85ea03e4b2297f::t_e1228552e781ff 7829
+  s_85ea03e4b2297f::t_c49999d1c3a906 7830-7832
+packages/frontend/editor-ui/src/features/agents/components/AgentWebSearchSection.vue
+  s_85ea03e4b2297f::t_367761cc18b192 7,223-227,388,394-395
+  s_ea2143639ddb02::t_4aa0f19d1c5e7e 22,391
+  s_85ea03e4b2297f::t_81d2200b15ee1e 380-387
+  s_85ea03e4b2297f::t_c6c3077a4d5d71 69,390
+  s_60057fada62da3::t_b68b2e501bda28 20,74-78,90
+  s_85ea03e4b2297f::t_8d5f63a4925a47 53-68,70
+  s_0e72387dae74ad::t_a61da382c006f1 1-2,13-19,21,23-51,71-73,110-222,228-287,304,306,320-323,326,328,332-357,359-379,389,392-393,396-402,404-409,411-419,422-434,436-457,461-463,466,473-475,477-483
+  s_0761aef169fa4b::t_2164679b5f8a91 80
+  s_0761aef169fa4b::t_b45e693fda8bd9 3-6,8-9,11-12,79,81-89,91-109,300-303,305,307,309,311-313,467-472
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_60057fada62da3::t_6bef623e7f49b5 663-668
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentWebSearchSection.test.ts
+  s_60057fada62da3::t_b9aea4b3247fcc 105,107,177-179
+  s_0d395197acfb63::t_0b161878e9104a 4
+  s_0e72387dae74ad::t_22df0d4df80b98 1-3,5-104,106,108-176,180-499
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_0e72387dae74ad::t_144a0bed7303c3 193-199
+  s_0e72387dae74ad::t_24c0c20e574e5d 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "273b925b0724bdab6a91144977196b4bc9abd21d",
+  "prompts": {},
+  "sessions": {
+    "s_0761aef169fa4b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a078-6d35-75f5-a61b-d6d63d38497e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_0d395197acfb63": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a0bc-4ca5-75f5-a61b-d6dd3c178654",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_0e72387dae74ad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a069-f74a-75f5-a61b-d6d53c19cfa0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_60057fada62da3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a0ad-403e-75f5-a61b-d6d89fab47f8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_85ea03e4b2297f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a0b2-88bc-75f5-a61b-d6da33662cfa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ea2143639ddb02": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a0bf-728c-75f5-a61b-d6e19fba10dc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

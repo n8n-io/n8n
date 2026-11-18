@@ -1,0 +1,44 @@
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_b07b0e51a491fe::t_c3776f42e378a4 711-731
+  s_b07b0e51a491fe::t_7dabaf6c1180cc 732-764,766-769,771-775,777-781,783-791,794-799,833-910,912-919
+  s_b07b0e51a491fe::t_b06d39e9dcaa93 765,770,776,782,792-793
+  s_b07b0e51a491fe::t_60d66f609514bf 81-83
+  s_b07b0e51a491fe::t_ff00613952b732 800-832
+  s_b07b0e51a491fe::t_74cb95fd8bffa2 911
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_b07b0e51a491fe::t_703c3b00092c9d 35-36,41-42,50-54
+  s_b07b0e51a491fe::t_353a5f6cf92965 43-48
+  s_b07b0e51a491fe::t_a302d6cad51e61 457-458,460
+  s_b07b0e51a491fe::t_1fc9f450c1119a 32-34,37-40,55
+  s_b07b0e51a491fe::t_8dd4c25022f4eb 273
+  s_b07b0e51a491fe::t_82bfdc0a69e743 312
+  s_b07b0e51a491fe::t_6c9da88076baf6 415,418,420-427,436-437,439-456,459,461-477
+  s_b07b0e51a491fe::t_2ff1f0644773de 100-105,109,111-112,131-142,147-151,153
+  s_b07b0e51a491fe::t_d0fac17f390103 413-414,416,419,428,431-433,435
+  s_b07b0e51a491fe::t_5c8c20fa776cfa 304-311
+  s_b07b0e51a491fe::t_3a64f441645ff6 417,429-430,434
+  s_b07b0e51a491fe::t_7e3ac88822305f 438
+  s_b07b0e51a491fe::t_5ba6ca2940fafa 285-287
+  s_b07b0e51a491fe::t_4e56b1449d7ede 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e62a0e5c9b0e8a662eb870e9425a19732758e899",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b07b0e51a491fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93714046-ed3b-4e3a-a7b1-c9bd0c4467ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

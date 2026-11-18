@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_7f7a4dee511a6b::t_253b6f5057a79b 61,67,72,140
+  s_7f7a4dee511a6b::t_4dad2c7560630b 58-60,62-66,68-71,73-74,136,139,144,358-360
+  s_7f7a4dee511a6b::t_bd4f4e5a39a0aa 361
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_7f7a4dee511a6b::t_6f38b7e9d2e857 214-215,230-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c81a4570a3dc4ab199b2c4a2472de80178cb5134",
+  "prompts": {},
+  "sessions": {
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

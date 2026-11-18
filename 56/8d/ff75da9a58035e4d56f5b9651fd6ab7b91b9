@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/constants.ts
+  s_f136126026fe39::t_2ad2275a698dde 28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "568dff75da9a58035e4d56f5b9651fd6ab7b91b9",
+  "prompts": {},
+  "sessions": {
+    "s_f136126026fe39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79c78baf-4fa3-47bb-ac61-87eb5457d833",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

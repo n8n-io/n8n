@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-ordering.ts
+  s_3969ea2ea64fa2::t_804615df1622af 5-7,17-22,24-32,34,36-40,42-48,51-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79a53c1e2796231240f050694d3f922269f80d95",
+  "prompts": {},
+  "sessions": {
+    "s_3969ea2ea64fa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4880f48c-229a-4f13-a1b3-a8fc31beb14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

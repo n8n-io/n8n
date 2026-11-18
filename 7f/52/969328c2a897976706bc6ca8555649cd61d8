@@ -1,0 +1,187 @@
+packages/nodes-base/nodes/Aws/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_7f4f4bee0adfc0 1-112
+packages/nodes-base/nodes/Aws/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_726655a36e7727 1-40
+packages/nodes-base/nodes/Aws/SQS/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_4cba5ea6c14a9f 1-60
+packages/nodes-base/nodes/Aws/SES/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_c7cd60f2afd357 1-164
+packages/nodes-base/nodes/Aws/SES/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_c216d8e75447d2 1-46
+packages/nodes-base/nodes/Aws/SQS/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_bb86eca318e7c4 1-27
+packages/nodes-base/nodes/Aws/__tests__/AwsLambda.node.test.ts
+  s_2e1fa95fc44f8f::t_2f75ca8b39a8c6 461-480
+  s_01a6cef1dba9b2::t_0ee717a87b0a5d 3,83,128-131,178-181,198,244,250,289,295,331,337,387,393,525,531,555,561,593,599,623,629
+packages/nodes-base/nodes/Aws/ELB/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_dad3c930e3d16c 70,94
+  s_2e1fa95fc44f8f::t_29d56e03c06391 68-69
+  s_2e1fa95fc44f8f::t_197955b4cf9f88 71-73
+  s_2e1fa95fc44f8f::t_5308012a9269fd 91-93
+  s_2e1fa95fc44f8f::t_1c3d7e30bb5491 95-97
+  s_24dbac2e9c1d82::t_b371c1d756228b 3,46,76-90,98-99,120,135,175,196,239,280,315
+packages/nodes-base/nodes/Aws/AwsLambda.node.ts
+  s_6406784e7959d8::t_87d3a33a320b66 124-129,145-148,190,196
+packages/nodes-base/nodes/Aws/AwsSns.node.ts
+  s_de2c00e6233f17::t_e7d84af98e059e 11,205-208,261,264-265,269-270,277-280,291-294,307-315
+packages/nodes-base/nodes/Aws/ELB/AwsElb.node.ts
+  s_01a6cef1dba9b2::t_5d5f645b00e9b2 11,68,74-76,105,111-113,145,184,228,230-233,235,241-243,253,259,267-269,272,278-280,291,293-296,298,304-306,328,330,332,334,336,339,346,355,357,366-368,377,379,385-387,395,406,415-417,420,426-428,439,441-444,450-452
+packages/nodes-base/nodes/Aws/ELB/GenericFunctions.ts
+  s_de2c00e6233f17::t_d8af9fff4b9d38 11,15,21,33,53,82,127
+packages/nodes-base/nodes/Aws/GenericFunctions.ts
+  s_6406784e7959d8::t_7d6946a1271c80 11-12,48-54,59,62,68,88,91,93,105,108,110
+packages/nodes-base/nodes/Aws/SES/AwsSes.node.ts
+  s_25d84bacfad08a::t_5defbddffb5a46 10,16,18,799-801,852,879,893-896,911-913,922-925,958,1007,1029-1033,1036-1037,1039,1043,1053,1057,1061,1065,1070,1078,1086,1095-1098,1108-1112,1115,1125,1129,1133,1137,1142,1150,1158,1172,1180-1183,1200-1205,1208,1215-1218,1231-1234,1247-1250,1265-1267,1276-1279,1292-1295,1298,1302,1306,1313-1316
+packages/nodes-base/nodes/Aws/SES/GenericFunctions.ts
+  s_01a6cef1dba9b2::t_03f96e5893013f 11,15,21,24,31,51,54,56,68,71,73,101,115-123
+packages/nodes-base/nodes/Aws/SQS/AwsSqs.node.ts
+  s_de2c00e6233f17::t_4bdd95b8da1f8f 13,19-26,257-260,262-268,306-309,311,325,328,339,344,354-356,368-370,378-380,389-392
+  s_2e1fa95fc44f8f::t_7b59454d1d3173 261
+packages/nodes-base/nodes/Aws/__tests__/GenericFunctions.test.ts
+  s_24dbac2e9c1d82::t_17a8ce1209ffe1 3-10,57,93,125,158,185,200,219,236,252,272,287,309,331,362,383,402,421,440,459,486,499,516,539,564,579-584,603,634,649,654-672
+packages/nodes-base/nodes/Aws/test/AwsSnsTrigger.node.test.ts
+  s_c4a5f94a5acd88::t_f5a31a1725cf67 2,82-90
+packages/nodes-base/nodes/Aws/AwsSnsTrigger.node.ts
+  s_01a6cef1dba9b2::t_064c5dd69ee8a0 12,114-117,169-172,213-223,232-236,262-267
+packages/nodes-base/nodes/Aws/S3/test/requests/v1.workflow.test.ts
+  s_2e1fa95fc44f8f::t_622db8baf66659 1-57
+packages/nodes-base/nodes/Aws/S3/test/requests/v2.workflow.test.ts
+  s_2e1fa95fc44f8f::t_de2d69d84bb947 1-64
+packages/nodes-base/nodes/Aws/S3/test/requests/v1.workflow.json
+  s_35387053693dfb::t_c9b4a5da2a393b 1-316
+packages/nodes-base/nodes/Aws/S3/test/requests/v2.workflow.json
+  s_35387053693dfb::t_12c62326464a35 1-348
+packages/nodes-base/nodes/Aws/S3/V1/AwsS3V1.node.ts
+  s_03387b316317ec::t_68cc9f200d7465 11,22,98,147,162,168,189,198,214,244-253,263,276,296,299,305,312-321,345,348-357,366,380,418,437,451-460,470,484,592,594-596,598-607,631,644-653,661,701,711-720,728,744,760-769,779,793,819,825,832,900-909,931,951
+packages/nodes-base/nodes/Aws/S3/test/V1/GenericFunctions.test.ts
+  s_03387b316317ec::t_c29a7e22b900f6 3,31,64,98-101,103,113-116,118,139-142,144,155-158,160,186,209,233,274,300,319,342
+  s_2e1fa95fc44f8f::t_63dbdf79275073 102,117,143,159
+packages/nodes-base/nodes/Aws/S3/V2/AwsS3V2.node.ts
+  s_03387b316317ec::t_967768763af90d 11,21,98,147,162,168,189,198,214,301,304,310,343,371,409,428,576,578-580,608,631,673,693,709,777,783,793,880,882,902,904,912-914,926,928,978,980
+packages/nodes-base/nodes/Aws/S3/test/V2/AwsS3.node.operation.test.ts
+  s_2e1fa95fc44f8f::t_1c38a39d42ba85 3,95-104,110,150-159,165,499,519
+  s_2e1fa95fc44f8f::t_a43e4bf5e996d8 541-550,552-555,557-610
+  s_2e1fa95fc44f8f::t_50ca361fc1d801 2,551,556,611-612
+packages/nodes-base/nodes/Aws/S3/V1/GenericFunctions.ts
+  s_03387b316317ec::t_781527a2dbe38a 10-11,16-17,22,26,33,53,57,82,86,127,131
+packages/nodes-base/nodes/Aws/S3/V2/GenericFunctions.ts
+  s_03387b316317ec::t_fdc4dc796f036c 10-11,17-18,23,27,34,56,60,104,108
+packages/nodes-base/nodes/Aws/S3/test/utils.test.ts
+  s_2e1fa95fc44f8f::t_f1be6520895c51 1-12,14-16,23-39,51-66
+  s_2e1fa95fc44f8f::t_e59ff0c6078c3c 17-22
+  s_2e1fa95fc44f8f::t_d787ae32610539 40-50
+packages/nodes-base/nodes/Aws/S3/utils.ts
+  s_2e1fa95fc44f8f::t_465510b9d2e0fc 1-19,30-31,33,35-37
+  s_2e1fa95fc44f8f::t_c0b3de77a58321 20-29
+  s_2e1fa95fc44f8f::t_c424b5e284e4a7 34
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/V2GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_5b6ad3c697ab38 1-12,14-145
+  s_2e1fa95fc44f8f::t_440c40ab9165a0 13
+packages/nodes-base/nodes/Aws/S3/test/regression/requests.test.ts
+  s_2e1fa95fc44f8f::t_417b2c5ac8d766 16-17
+  s_2e1fa95fc44f8f::t_ae7eaac388b5d9 2-15,18-67,69-70,72-84,238-243,250-251,255-259,263-264,268-345,357-371,379,383,386,389,398,407,488-490
+  s_2e1fa95fc44f8f::t_954523f3828616 85-237,244-249,252-254,260-262,265-267,483
+  s_2e1fa95fc44f8f::t_95e5ef81f52bd5 389
+  s_2e1fa95fc44f8f::t_22a6a132a0f202 409,411
+  s_2e1fa95fc44f8f::t_6ab5c91f7e2b19 1,68,398
+  s_2e1fa95fc44f8f::t_a51264d7209972 349-354,453-462
+  s_2e1fa95fc44f8f::t_1d4c4cc75dc303 372-378,380-397,399-408,410,412-426,464-480,484-487
+  s_2e1fa95fc44f8f::t_4dc218e036c8cb 71,346-348,443-446,481
+  s_2e1fa95fc44f8f::t_dc0350d48273b6 447,451-452,463
+  s_2e1fa95fc44f8f::t_679ba7bb5e5613 482
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/V1GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_5b6ad3c697ab38 1-171
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/AwsS3V1.ts
+  s_2e1fa95fc44f8f::t_050e42a78fd049 1-908
+packages/nodes-base/nodes/Aws/S3/test/regression/legacy/AwsS3V2.ts
+  s_2e1fa95fc44f8f::t_d509d5bf3ab6cd 1-1081
+packages/nodes-base/nodes/S3/__tests__/regression/legacy/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_6986adac6b9bea 18
+  s_2e1fa95fc44f8f::t_75347d204c85b8 1-17,19-227
+packages/nodes-base/nodes/S3/__tests__/regression/legacy/S3.ts
+  s_2e1fa95fc44f8f::t_6986adac6b9bea 15-17
+  s_2e1fa95fc44f8f::t_75347d204c85b8 1-14,18-924
+packages/nodes-base/nodes/S3/__tests__/regression/requests.test.ts
+  s_2e1fa95fc44f8f::t_f9942048170583 17-20,23-27,33-37,94-218,227-229,312-358,361-363
+  s_2e1fa95fc44f8f::t_22946dca97369c 1-16,21-22,28-32,38-93,219-226,230-311,359-360,364-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f52969328c2a897976706bc6ca8555649cd61d8",
+  "prompts": {},
+  "sessions": {
+    "s_01a6cef1dba9b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a04ba7208f8c81e30",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_03387b316317ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3d30e8feff208b5e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_24dbac2e9c1d82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8dcc9e1b96250fc1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_25d84bacfad08a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a95235111de196db4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_35387053693dfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2275bfda519068ec",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6406784e7959d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6aa1765febe5f156",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c4a5f94a5acd88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2831ed4a0db9a61e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_de2c00e6233f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a77576dbb68b5b9b9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotable-resource.dto.test.ts
+  s_9b89f978257e6c::t_665c0693b21a58 11-12,14-17,20-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a32a06c50013efece4607b87cc88536745113e62",
+  "prompts": {},
+  "sessions": {
+    "s_9b89f978257e6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f8aae9f-6c85-4535-99b2-2e1ea69da358",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

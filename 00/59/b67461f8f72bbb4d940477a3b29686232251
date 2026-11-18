@@ -1,0 +1,41 @@
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_7043a7675cfc61 1223-1239
+  s_101038ccbc858a::t_e63434c6fd8e3e 1454-1471
+packages/@n8n/api-types/src/dto/index.ts
+  s_101038ccbc858a::t_a4db565a4bfda0 425,434-435,439-440
+packages/@n8n/api-types/src/dto/data-table/data-table-public.openapi.ts
+  s_101038ccbc858a::t_8423fdd992ff51 163-197
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_101038ccbc858a::t_b7992157678718 523-616,622-626
+  s_101038ccbc858a::t_9b212020772f96 617-621
+  s_101038ccbc858a::t_8aeac125dfbeb8 2,12-13,19-20
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_e712bce16dadd2 3,7,16,19
+  s_101038ccbc858a::t_1ac1798ea7c038 312-313,315-318,321
+  s_101038ccbc858a::t_cef6b9a503be06 185-188,196
+  s_101038ccbc858a::t_d2d06563c57ae6 240-311,314,319-320,322-338
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/clearDataTableRows.generated.yml
+  s_101038ccbc858a::t_ff8a294ae8bbf8 1-24,27-29,31-37
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/deleteDataTableRows.generated.yml
+  s_101038ccbc858a::t_21d8983675746e 1-112
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/updateDataTableRows.generated.yml
+  s_101038ccbc858a::t_0f2b7d56fcd198 1-14,16-119,123-186
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_101038ccbc858a::t_54165f16ef60aa 95-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0059b67461f8f72bbb4d940477a3b29686232251",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

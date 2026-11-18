@@ -1,0 +1,34 @@
+packages/cli/src/evaluation.ee/__tests__/evaluation-dataset.service.test.ts
+  s_51377107c6724f::t_3ee20bcd768603 10
+packages/cli/src/evaluation.ee/evaluation-dataset.service.ts
+  s_51377107c6724f::t_80bbe5a41462b1 28
+packages/cli/src/modules/data-table/data-table.controller.ts
+  s_51377107c6724f::t_86f60881b9dbc0 42-45,105,148,171,213,229,246,268
+packages/cli/src/modules/data-table/data-table-permissions.ts
+  s_51377107c6724f::t_c7f46fed5b9a2b 1,8-19
+  s_51377107c6724f::t_3012d8d931e06e 20
+packages/cli/src/modules/data-table/data-table-proxy.service.ts
+  s_51377107c6724f::t_09e7e86f32dcb0 33,124,134,151,157,163,174,181
+packages/cli/src/modules/data-table/__tests__/data-table.controller.integration.test.ts
+  s_51377107c6724f::t_5ceedf0240d7a2 4665,4757-4764,4767-4775,4780,4782-4783,4786-4803,4806-4816,4818-4825,4827-4828,4831-4835,4837,4839-4846,4848-4849,4852-4858,4866,4868-4869
+  s_51377107c6724f::t_86ee883a2ccb1b 4784
+  s_51377107c6724f::t_1664fdcf03c9f3 4785
+packages/cli/src/modules/data-table/__tests__/data-table-proxy.service.integration.test.ts
+  s_51377107c6724f::t_29402cbcf4f44e 705,713,722,729,738,745,750,752-753,756,758-762,765,767-783,785
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e79706ff8779a2bf953174e98285691a0b5c8380",
+  "prompts": {},
+  "sessions": {
+    "s_51377107c6724f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b6f764b-f4cc-4a2e-84e0-e78a10703b30",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f6732d700fb0d0::t_d0819beb38480c 891-893
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_f6732d700fb0d0::t_9cadd605ea446c 1973,1983-1988
+  s_f6732d700fb0d0::t_e34b97e99e2b22 1995
+packages/quality/policy/code-health/src/index.ts
+  s_f6732d700fb0d0::t_b3465609bb9468 37
+packages/cli/docs/adr/ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.md
+  h_2f80f0e06f710c 37,41-42
+  s_f6732d700fb0d0::t_6b0cbda65bad26 1-36,38-40,43-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f10240ba36ee0128d7ae785f469a6eca3f4c33d4",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f6732d700fb0d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "962e98f0-dcfc-4460-aae8-4e5d1e16fbd7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

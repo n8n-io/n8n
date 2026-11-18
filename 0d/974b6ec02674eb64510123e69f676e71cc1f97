@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_61decbab2384ef::t_a6c34456c61224 28-31,37,277-282
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_61decbab2384ef::t_b22c98425d35c3 8381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0d974b6ec02674eb64510123e69f676e71cc1f97",
+  "prompts": {},
+  "sessions": {
+    "s_61decbab2384ef": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d483-b26b-7192-a049-a07adabee62b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

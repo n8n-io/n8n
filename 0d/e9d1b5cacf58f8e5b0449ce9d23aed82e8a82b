@@ -1,0 +1,23 @@
+packages/cli/src/errors/variable-validation.error.ts
+  s_0e0df8b610d862::t_18cc1a04529a16 1,3
+packages/cli/src/public-api/v1/handlers/variables/variables.handler.ts
+  s_0e0df8b610d862::t_e02b32111cefda 55
+  s_0e0df8b610d862::t_f6092c75b3128f 33
+  s_0e0df8b610d862::t_5773c99c5dcab3 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0de9d1b5cacf58f8e5b0449ce9d23aed82e8a82b",
+  "prompts": {},
+  "sessions": {
+    "s_0e0df8b610d862": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc458a6-54d1-40b1-acd4-c7c83fb42535",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

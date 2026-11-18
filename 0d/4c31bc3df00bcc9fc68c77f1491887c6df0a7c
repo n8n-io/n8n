@@ -1,0 +1,49 @@
+packages/nodes-base/nodes/Telegram/tests/node/telegramHitlWebhook.test.ts
+  s_60ce6e746ce9d3::t_81b03d90201c99 1-22,26-71,85-230,235-280
+  s_60ce6e746ce9d3::t_e7fc24f0599d26 72-84
+  s_60ce6e746ce9d3::t_fe5edd4375c623 23-25,231-234
+packages/nodes-base/nodes/Telegram/hitl/tokens.ts
+  s_60ce6e746ce9d3::t_c1bf58d54a7e7f 1-27
+packages/nodes-base/nodes/Telegram/hitl/webhook.ts
+  s_60ce6e746ce9d3::t_38da9abe40aefd 35-37
+  s_60ce6e746ce9d3::t_e730c33537249d 1-6,8-34,38-146
+  s_60ce6e746ce9d3::t_a06d79ed655196 7
+packages/nodes-base/nodes/Telegram/GenericFunctions.ts
+  s_60ce6e746ce9d3::t_8ed4d0ef2c75ac 271-280,293-295,305-314
+  s_60ce6e746ce9d3::t_5491cf1607ace8 1-2
+packages/nodes-base/nodes/Telegram/tests/node/prepareChatApproval.test.ts
+  s_60ce6e746ce9d3::t_8d914085a35a4c 29
+  s_60ce6e746ce9d3::t_2185f4cd580557 6
+  s_60ce6e746ce9d3::t_9605352a551fb9 40-43,49,59,73,89,104,122,132,143,153,164,185
+  s_60ce6e746ce9d3::t_4c4834049588cf 1-5,7-28,30-39,44-48,50-58,60-65,67-72,74-88,90-102,105-120,123-131,133-142,144-151,154-163,165-168,175-183,186
+  s_60ce6e746ce9d3::t_fe5edd4375c623 66,103,121,152,169-174,184
+packages/nodes-base/nodes/Telegram/hitl/setup.ts
+  s_60ce6e746ce9d3::t_e467412fce0ee0 1-120
+packages/nodes-base/nodes/Telegram/Telegram.node.ts
+  s_60ce6e746ce9d3::t_c02b8cb34a8a13 2069-2070
+  s_60ce6e746ce9d3::t_ff6589c0f199f5 2037,2047
+  s_60ce6e746ce9d3::t_7a8ff32c108b49 26-28
+packages/nodes-base/nodes/Telegram/IEvent.ts
+  s_60ce6e746ce9d3::t_ae7638e50408aa 2-3,23-25,28-30
+  s_60ce6e746ce9d3::t_4626c50c47c6bf 50
+packages/nodes-base/nodes/Telegram/tests/node/sendAndWait.operation.test.ts
+  s_60ce6e746ce9d3::t_0656666a5dbb1c 40,90,118
+packages/nodes-base/nodes/Telegram/hitl/descriptions.ts
+  s_60ce6e746ce9d3::t_063b754dbae7c7 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "0d4c31bc3df00bcc9fc68c77f1491887c6df0a7c",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

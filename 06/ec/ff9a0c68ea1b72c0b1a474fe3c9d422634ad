@@ -1,0 +1,52 @@
+pnpm-lock.yaml
+  ai_agent 323-325,3749-3751,4698-4700,9684-9687,9711-9714,9719-9722,9755-9762,9791-9794,11782-11788,12249-12250,12361-12362,12367-12368,12373-12374,12379-12380,12385-12386,12391-12392,12397-12398,12403-12404,12409-12410,12415-12416,12421-12422,12427-12428,12433-12434,12457-12458,12460,12464-12469,12486-12487,12542-12543,12570-12571,12589-12594,12603-12612,15021-15023,15236-15238,15248-15253,19320-19322,26654-26661,26701-26702,26715-26726,26812-26838,26865-26876,28686,29230-29268,29754,29877,29880-29881,29883-29893,29905,29908-29909,29913,29916-29918,29922-29943,29947,29951,29954-29958,29960,29963-29967,30019,30021,30025,30028,30034,30040,30046,30129,30133-30134,30158,30162,30178-30183,30185,30189-30199,32474-32477,32704-32707,32721-32730,37618-37624,40661,40665-40669,40694,40701-40708
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_2a8ce83efa44b6::t_cf5ea1b4bd0678 241-242,245-246,248
+  s_2a8ce83efa44b6::t_31e68a87348e7e 234-238
+  s_2a8ce83efa44b6::t_67453a01ccdee4 404-409
+  s_2a8ce83efa44b6::t_cb3cab59def5e6 410-411
+  s_2a8ce83efa44b6::t_e93cdc342783fc 1-3,42-44,233,239-240,243-244,383-392,394-400,402-403,413,415-419,427,429-434,436-442,444-448
+packages/@n8n/nodes-langchain/package.json
+  s_2a8ce83efa44b6::t_38ae0ccf9e824a 278
+packages/cli/package.json
+  s_2a8ce83efa44b6::t_bfc51b408702f1 153
+packages/cli/src/observability/tracer-gate.ts
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 37-40
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 7,13-20,33-36,41
+packages/cli/src/observability/otel-sdk.ts
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 105-107
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 2,4,7,9,43-44,48,81-84,97-104,108-113
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_2a8ce83efa44b6::t_d205a9e6b04e4a 643-645,650-654
+  s_2a8ce83efa44b6::t_e2a527c93a61e4 508
+  s_2a8ce83efa44b6::t_b0679d1d4755ce 11-12,21-25,502,622-642,646-649,655-664,672-675
+  s_2a8ce83efa44b6::t_a8ac1f3b924462 526
+packages/cli/src/observability/agent-365-provider.ts
+  s_2a8ce83efa44b6::t_aa8602021f4efc 1-51
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 145,147
+  s_2a8ce83efa44b6::t_7f06d607bca1cf 4
+packages/@n8n/config/src/configs/tracing-sources.config.ts
+  s_2a8ce83efa44b6::t_48b60280e7dcd2 20-27
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_2a8ce83efa44b6::t_e1cfd05ad77e37 1,22,270-341
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 3,31-32,39-44,51,53
+pnpm-workspace.yaml
+  s_2a8ce83efa44b6::t_fffb6babc508f7 302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06ecff9a0c68ea1b72c0b1a474fe3c9d422634ad",
+  "prompts": {},
+  "sessions": {
+    "s_2a8ce83efa44b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "439b3f77-5dbe-4a94-945b-d462bc256d1c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

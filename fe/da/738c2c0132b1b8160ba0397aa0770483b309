@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/system-task-provisioning.test.ts
+  s_b905dc52e064c6::t_0c1c756fd879c5 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "feda738c2c0132b1b8160ba0397aa0770483b309",
+  "prompts": {},
+  "sessions": {
+    "s_b905dc52e064c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc057511-a9ad-46a2-a50d-ea5fa845572d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

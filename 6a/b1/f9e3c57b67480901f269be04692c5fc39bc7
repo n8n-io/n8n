@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Google/Sheet/test/v2/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_5a6c1c7ae5742d 58-85
+  s_2e1fa95fc44f8f::t_45d6138cfade19 2
+packages/nodes-base/nodes/Google/Sheet/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_4878a522f2e8e9 12
+  s_2e1fa95fc44f8f::t_c5d8fb20e17d09 27,35,45-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ab1f9e3c57b67480901f269be04692c5fc39bc7",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

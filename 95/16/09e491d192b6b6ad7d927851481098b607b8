@@ -1,0 +1,134 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_785356c2e2c0fe::t_30c6e4a8bfd419 8,159-177,376-390
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.test.ts
+  s_785356c2e2c0fe::t_134b6b0c37d184 1,39-41,44-48
+  s_785356c2e2c0fe::t_16eec9f48c1e1c 42-43
+  s_785356c2e2c0fe::t_cfbc69795bdbb5 49-50
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_785356c2e2c0fe::t_ab79b3d011aade 189,908
+  s_785356c2e2c0fe::t_85984f7b8568d3 856
+  s_785356c2e2c0fe::t_d03781cb896f4e 568,607,619,624,729,733,912-913,976,1003-1004
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItems.vue
+  s_785356c2e2c0fe::t_fe3b61236e3317 60
+packages/frontend/@n8n/design-system/src/v2/components/Loading/Loading.stories.ts
+  s_785356c2e2c0fe::t_fc90f19c020a04 18-21,55
+  s_785356c2e2c0fe::t_fd7607f8a3802f 56
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_785356c2e2c0fe::t_c4166317558033 2,26,155-160
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.test.ts
+  s_785356c2e2c0fe::t_ff1816e62bc4e5 190
+  s_785356c2e2c0fe::t_134b6b0c37d184 169-173,175-187
+  s_785356c2e2c0fe::t_ab79b3d011aade 174
+  s_785356c2e2c0fe::t_4a7c63d2210ca0 136-168,188-189,191-197
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_785356c2e2c0fe::t_fe3b61236e3317 387,437
+packages/frontend/@n8n/design-system/src/components/N8nLoading/Loading.test.ts
+  s_785356c2e2c0fe::t_cfde0d347214ea 1-33,40
+  s_785356c2e2c0fe::t_4a7c63d2210ca0 34-39
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_785356c2e2c0fe::t_c4166317558033 2,31,173-178
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_785356c2e2c0fe::t_16eec9f48c1e1c 101-116,121-124,126-141,143-145
+  s_785356c2e2c0fe::t_134b6b0c37d184 1-3,117-120,125,142
+  s_785356c2e2c0fe::t_8f3389619352b1 146
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue
+  s_785356c2e2c0fe::t_d03781cb896f4e 2,22,63-64,66,73,80,83
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.test.ts
+  s_785356c2e2c0fe::t_1cefb54ed08bb4 54-73
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_785356c2e2c0fe::t_ab79b3d011aade 1,141,146-153,165-173
+  s_785356c2e2c0fe::t_16eec9f48c1e1c 142-145,154-164,180-187,191-193,198-208,210-220
+  s_785356c2e2c0fe::t_134b6b0c37d184 2-4,174-179,188-190,194-197,209,221-223
+  s_785356c2e2c0fe::t_c08cc677ac0dbb 117-120
+  s_785356c2e2c0fe::t_6e4b401fd200a4 224
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  s_785356c2e2c0fe::t_85984f7b8568d3 113
+  s_785356c2e2c0fe::t_d03781cb896f4e 2,48,107,110,125,127-130,149
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts
+  s_785356c2e2c0fe::t_16eec9f48c1e1c 95-110,115-118,120-135,137-139
+  s_785356c2e2c0fe::t_134b6b0c37d184 1-3,111-114,119,136
+  s_785356c2e2c0fe::t_5a8d26379ce9c1 140
+packages/frontend/@n8n/composables/src/useDelayedLoading.ts
+  s_785356c2e2c0fe::t_620ac831a7f893 1-32
+packages/frontend/@n8n/composables/src/useDelayedLoading.test.ts
+  s_785356c2e2c0fe::t_4a7c63d2210ca0 1-61
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.vue
+  s_785356c2e2c0fe::t_fe3b61236e3317 117
+packages/frontend/@n8n/design-system/src/components/N8nContextMenu/ContextMenuBody.vue
+  s_785356c2e2c0fe::t_fe3b61236e3317 35
+packages/frontend/@n8n/design-system/src/components/N8nLoading/Loading.vue
+  s_785356c2e2c0fe::t_620ac831a7f893 3,22-23,30,33,39-41,43,51-52
+  s_785356c2e2c0fe::t_15ce8214ed31ad 42
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_785356c2e2c0fe::t_d03781cb896f4e 1,30,137
+  s_785356c2e2c0fe::t_7bc5e921c62ff9 152
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.test.ts
+  s_785356c2e2c0fe::t_134b6b0c37d184 1,66-69,72-78
+  s_785356c2e2c0fe::t_16eec9f48c1e1c 70-71
+  s_785356c2e2c0fe::t_632c294c127435 79
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.vue
+  s_785356c2e2c0fe::t_fe3b61236e3317 237
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.test.ts
+  s_785356c2e2c0fe::t_ab79b3d011aade 182-183
+  s_785356c2e2c0fe::t_345f42d1add865 1,46-54
+  s_785356c2e2c0fe::t_694645722e4b23 55-56
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpAccessTokenTab.test.ts
+  s_785356c2e2c0fe::t_345f42d1add865 1-3,44,70-83,108
+packages/frontend/@n8n/design-system/src/v2/components/Loading/Loading.vue
+  s_785356c2e2c0fe::t_620ac831a7f893 4,11,18-19,21-22,44
+  s_785356c2e2c0fe::t_3e7954d45e0535 20
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_785356c2e2c0fe::t_d03781cb896f4e 150,152-159,177,181-182
+  s_785356c2e2c0fe::t_620ac831a7f893 12,149,151,714-716,784,892
+packages/frontend/@n8n/design-system/src/v2/components/Loading/Loading.types.ts
+  s_785356c2e2c0fe::t_620ac831a7f893 29-32
+  s_785356c2e2c0fe::t_b9143279174dec 28
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue
+  s_785356c2e2c0fe::t_d03781cb896f4e 396
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_785356c2e2c0fe::t_16eec9f48c1e1c 150-157,161-163,168-176,178-186
+  s_785356c2e2c0fe::t_134b6b0c37d184 1-2,146-149,158-160,164-167,177,187-188
+  s_785356c2e2c0fe::t_19f80eb01a4aeb 189-190
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_785356c2e2c0fe::t_85984f7b8568d3 9,89
+  s_785356c2e2c0fe::t_d03781cb896f4e 2,72,85,87-88,101,105-108,223
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_785356c2e2c0fe::t_d03781cb896f4e 2,21,63-64,66,73,80,83
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.ts
+  s_785356c2e2c0fe::t_d03781cb896f4e 1,40,89,100
+packages/frontend/@n8n/design-system/src/components/N8nLoading/Loading.stories.ts
+  s_785356c2e2c0fe::t_fc90f19c020a04 2-3,8,14-17,64-76,78-96
+  s_785356c2e2c0fe::t_d22c8917fb41cc 77,97
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_785356c2e2c0fe::t_c4166317558033 2,46,235-240
+packages/frontend/@n8n/design-system/src/v2/components/Loading/component-loading.md
+  s_785356c2e2c0fe::t_fc90f19c020a04 16
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpAccessTokenTab.vue
+  s_785356c2e2c0fe::t_d8d39125270d64 62
+  s_785356c2e2c0fe::t_d03781cb896f4e 6,73
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.vue
+  s_785356c2e2c0fe::t_d8d39125270d64 41,61
+  s_785356c2e2c0fe::t_a3ce896547990e 13
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_785356c2e2c0fe::t_ab79b3d011aade 349,351
+  s_785356c2e2c0fe::t_134b6b0c37d184 1,339-348,350,352,356-363
+  s_785356c2e2c0fe::t_82e5bdb4b084ca 366,385-386
+  s_785356c2e2c0fe::t_16eec9f48c1e1c 353-355
+  s_785356c2e2c0fe::t_e74f22129af7bc 364-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "951609e491d192b6b6ad7d927851481098b607b8",
+  "prompts": {},
+  "sessions": {
+    "s_785356c2e2c0fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fb76-1508-78c2-8e51-ef1665537d54",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

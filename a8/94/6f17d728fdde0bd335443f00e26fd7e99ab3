@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/AGENTS.md
+  s_58620fba057bad::t_f1562b650a015e 10-20
+packages/cli/src/modules/instance-ai/AGENTS.md
+  s_58620fba057bad::t_6b6732c237c0a4 1-12
+packages/quality/policy/code-health/README.md
+  s_58620fba057bad::t_9d44151af89946 14
+packages/quality/policy/code-health/src/index.ts
+  s_58620fba057bad::t_e8d8ffa2a18cc6 5,20,36-40,164
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.test.ts
+  s_58620fba057bad::t_345d97e8644e6a 1-106
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_58620fba057bad::t_21e3cf294474af 1-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8946f17d728fdde0bd335443f00e26fd7e99ab3",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

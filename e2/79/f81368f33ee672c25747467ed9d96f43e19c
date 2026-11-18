@@ -1,0 +1,21 @@
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_60f5e78e101b64::t_1978523cf51def 17-21,274-285,527-542,655-697
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_60f5e78e101b64::t_4c67667f0de6d2 48-52,162-170,302,335,339-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e279f81368f33ee672c25747467ed9d96f43e19c",
+  "prompts": {},
+  "sessions": {
+    "s_60f5e78e101b64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80c07367-fe39-4bc9-a105-24f704fabdd2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

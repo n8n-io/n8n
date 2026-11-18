@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/sso-saml.test.ts
+  s_aaa596f5a4b613::t_995522bf993449 22-23,27-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b5b7b37a0798d440a7e6f9be6351ebc18480025d",
+  "prompts": {},
+  "sessions": {
+    "s_aaa596f5a4b613": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1a15da90-db1a-41b9-8206-a0a9b69b4891",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

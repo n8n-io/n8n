@@ -1,0 +1,43 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_95a0b28926ce15::t_67daec90c5b82d 2083
+packages/cli/test/integration/scheduling/scheduled-job-unpublish-race.test.ts
+  s_95a0b28926ce15::t_6c0caf290ed1e4 1-5,7-70,72-100,102-163,165-210,212-230
+  s_95a0b28926ce15::t_f67615ad6fcea0 71
+  s_95a0b28926ce15::t_3b13f3e1421335 164
+  s_95a0b28926ce15::t_09d76559fb1431 211
+  s_95a0b28926ce15::t_164b7a6cad06eb 101
+  s_95a0b28926ce15::t_ed629e424e0259 6
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_95a0b28926ce15::t_bdf65d199268ba 48
+  s_95a0b28926ce15::t_61cdbb5559ee17 55-58
+  s_95a0b28926ce15::t_a2416a9b10b56e 4
+  s_95a0b28926ce15::t_bb08c996f0399c 61-69
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_95a0b28926ce15::t_9bb5823f329578 32
+  s_95a0b28926ce15::t_5e4b2a657a6288 6
+  s_95a0b28926ce15::t_dd5088c13258a5 49
+  s_95a0b28926ce15::t_fac8fabb07c080 99
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_95a0b28926ce15::t_a2183c4627dd16 771-780
+packages/cli/test/integration/scheduling/scheduler-trigger-handler.test.ts
+  s_95a0b28926ce15::t_60961020fd7f31 221-241
+  s_95a0b28926ce15::t_e8001f4be304a7 8
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_95a0b28926ce15::t_fa8e4d1f139ff6 90-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df01d94554b00c65380d0878e933e3357e8aacb4",
+  "prompts": {},
+  "sessions": {
+    "s_95a0b28926ce15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1236ee0-8e31-43b2-bcbc-4bfa92cf1977",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

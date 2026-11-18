@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  ai_agent 45,311
+packages/cli/src/modules/source-control.ee/__tests__/source-control.controller.ee.test.ts
+  ai_agent 263-279
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  ai_agent 261-262,266
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.test.ts
+  ai_agent 72-98
+packages/cli/src/modules/source-control.ee/types/source-control-preferences.ts
+  ai_agent 1,54-55
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  ai_agent 55-58,259
+packages/@n8n/api-types/src/index.ts
+  ai_agent 237-238
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 4915
+packages/cli/src/modules/source-control.ee/source-control.controller.ee.ts
+  ai_agent 167-172
+packages/@n8n/api-types/src/schemas/source-controlled-file.schema.ts
+  ai_agent 31-35
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  ai_agent 33
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  ai_agent 1548-1578
+packages/cli/src/events/maps/relay.event-map.ts
+  ai_agent 5,764
+packages/cli/test/integration/environments/source-control.api.test.ts
+  ai_agent 83
+packages/cli/src/modules/source-control.ee/__tests__/source-control-preferences.service.ee.test.ts
+  ai_agent 8,476,481,492,502,508,515,521,526
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.types.ts
+  ai_agent 1,12
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.ts
+  ai_agent 1,5,28-32,43-61,66-67,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "72d61f32788951cfe7174e85ccb915d075cdcb5c",
+  "prompts": {}
+}

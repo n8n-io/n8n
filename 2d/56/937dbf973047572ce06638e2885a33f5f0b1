@@ -1,0 +1,19 @@
+.github/workflows/util-publish-api-schema.yml
+  s_1bd5940abe196f::t_d85ec2be42eaea 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2d56937dbf973047572ce06638e2885a33f5f0b1",
+  "prompts": {},
+  "sessions": {
+    "s_1bd5940abe196f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81d66e3d-596c-486b-9562-344ddfeb00e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

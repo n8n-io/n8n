@@ -1,0 +1,30 @@
+packages/@n8n/utils/src/redaction/sensitive-key.ts
+  s_6030f61d1c97a2::t_74e552f93f9ec2 1-3,5
+packages/@n8n/utils/src/redaction/redact-text.test.ts
+  s_b370a35485f958::t_6879e4799080f6 55,61,69
+  s_6030f61d1c97a2::t_6f053518cb3c2b 58-60,62-63,66-68,70-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7fc0d6cbdcb9fc812a6104f9e2f72a0f0d2bae47",
+  "prompts": {},
+  "sessions": {
+    "s_6030f61d1c97a2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83526be8-f93e-4089-9163-b86b4f1b483d",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

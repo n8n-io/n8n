@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/onboarding-opening.ts
+  s_9d374da5e4b63c::t_c230fa6ce592ed 38
+packages/cli/src/modules/instance-ai/__tests__/onboarding.test.ts
+  s_9d374da5e4b63c::t_c230fa6ce592ed 152
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_9d374da5e4b63c::t_8718c16e507f91 225-226,264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c6fb8092a2a61fe4bfee1e7e07d499a725ff49b2",
+  "prompts": {},
+  "sessions": {
+    "s_9d374da5e4b63c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df5e2375-89ec-4f11-8122-ce64b3da72d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

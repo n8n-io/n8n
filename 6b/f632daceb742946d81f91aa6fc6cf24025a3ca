@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.ts
+  s_91867aabfce3e6::t_fa88f00fa84fb7 48-66
+  s_91867aabfce3e6::t_b6a468d6e4c926 14-20
+  s_91867aabfce3e6::t_73f5c25d610e3f 82
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_91867aabfce3e6::t_b8009577f11470 1,5-6
+  s_91867aabfce3e6::t_295ebb1c8d1944 47-72
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_91867aabfce3e6::t_e25d79063c18ab 30-31
+  s_91867aabfce3e6::t_8c67f45c46ca96 1011
+  s_91867aabfce3e6::t_8aef0c110cba42 891-940
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_91867aabfce3e6::t_45a7e1985f3d06 106-151
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_91867aabfce3e6::t_0ac1f5c37f91a8 1498-1502,1508-1615
+  s_91867aabfce3e6::t_a600be8cf7a0c9 1503-1507
+  s_91867aabfce3e6::t_d733930c1ef437 34-39
+packages/frontend/editor-ui/src/app/api/workflows.ts
+  s_91867aabfce3e6::t_48cdb9030d2e30 15
+  s_91867aabfce3e6::t_a600be8cf7a0c9 154
+  s_91867aabfce3e6::t_9858c8c99fd052 149-153,155-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "6bf632daceb742946d81f91aa6fc6cf24025a3ca",
+  "prompts": {},
+  "sessions": {
+    "s_91867aabfce3e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1156cde0-6aaf-4b55-96bc-80e64e08928f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

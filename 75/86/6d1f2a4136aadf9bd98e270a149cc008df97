@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-07-21-direct-agent-creation-design.md
+  s_8477c5008f2125::t_d669cbd3c10b7c 52-54
+  s_8477c5008f2125::t_98b2685ec1529b 1-51,55-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "75866d1f2a4136aadf9bd98e270a149cc008df97",
+  "prompts": {},
+  "sessions": {
+    "s_8477c5008f2125": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84e4-435a-7843-89fd-254a414e99ba",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

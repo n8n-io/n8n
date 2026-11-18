@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Venafi/ProtectCloud/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_6895ae3a9bd4ad 14,56-59,67
+packages/nodes-base/nodes/Venafi/ProtectCloud/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_303dd91899377e 36-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a66a46555be897e076edde9947b860b1a75819fc",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

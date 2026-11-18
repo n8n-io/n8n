@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_199eb4daa2d281::t_ebf2c1041f3c7f 107-113
+  s_199eb4daa2d281::t_6d9fe4f5c5b4ee 64-71,79,100-106,114-167,169-171,180,188,190,205,218-219,227-229,238,253,258,261-262,266-271,283,292,306,311-313,316-318,332,341,346,368-369,389-390,401-402,419-421,442-443,469-471,494-495,509-510
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_199eb4daa2d281::t_ce8f8ce4800b30 671,732,757
+  s_199eb4daa2d281::t_a5ad06a4a6a8d0 647
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  s_199eb4daa2d281::t_ac9d315bd2380e 173-187
+  s_199eb4daa2d281::t_f0cf5e762cfe00 41-42
+  s_199eb4daa2d281::t_88cf5a3611f646 2-5
+  s_199eb4daa2d281::t_aa2a6ddfb098da 220-223
+  s_199eb4daa2d281::t_fa5bd30aa2936f 79-80,82
+  s_199eb4daa2d281::t_734ec18cc9fba6 114,117
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_199eb4daa2d281::t_dad04230d84781 4633-4634
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useReviewVersionName.ts
+  s_199eb4daa2d281::t_f244f5f06fc4da 8-9,14,25,29-30,32,39,43
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_199eb4daa2d281::t_463605b56fdde1 149
+  s_199eb4daa2d281::t_def8b5aa718ced 210-211,223-225,234-236
+  s_199eb4daa2d281::t_cee4b3eab77d5e 277,288-327
+  s_199eb4daa2d281::t_820f73b6124aa7 358
+  s_199eb4daa2d281::t_d33a7ae8df710a 328
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_199eb4daa2d281::t_85cb96cb5b40df 2,9-10,14,22
+  s_199eb4daa2d281::t_f2a3af98219d54 51-52,54,62-70,73
+  s_199eb4daa2d281::t_f9833c8337280d 107,124-129,133-145,147,153
+  s_199eb4daa2d281::t_14432641f69731 178-185,193
+  s_199eb4daa2d281::t_b8f24af84a28ac 231-243,247,249-263,265-276,278-290,292-346,360,362-363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ecab1d6e0b9c29b64e93b76e218ac5cf1d6298d4",
+  "prompts": {},
+  "sessions": {
+    "s_199eb4daa2d281": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c88d0f02-5f73-42f4-adf1-82bd532148c2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Matrix/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_1a2d78e9787808 11-17,69-73,92-93
+  s_2e1fa95fc44f8f::t_1c4f1dcfb71ed1 95,98,105,116,138,191-192,201,250
+packages/nodes-base/nodes/Matrix/Matrix.node.ts
+  s_2e1fa95fc44f8f::t_d4df722954b03f 27-28
+packages/nodes-base/nodes/Matrix/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_0b6d3ba7ac2912 1-2,19-29,31,33-37,39-41
+  s_2e1fa95fc44f8f::t_56a90a361ac2f1 42-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3ec61bc77ca62bcca65404b18b5e964895e16bd",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

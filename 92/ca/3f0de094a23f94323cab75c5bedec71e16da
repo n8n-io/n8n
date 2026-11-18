@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_4d7f501095fc5f::t_a53cf7044a3731 14-17,32-33,416-440,442-443,445-446,453-455,463-464
+packages/@n8n/instance-ai/evaluations/discovery/agent-builder.json
+  s_4d7f501095fc5f::t_a53cf7044a3731 1-1063
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92ca3f0de094a23f94323cab75c5bedec71e16da",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

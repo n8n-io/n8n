@@ -1,0 +1,34 @@
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_c5924177b26556::t_e9a67d4cc6da57 26,34-36
+  s_c5924177b26556::t_55b930243e8749 1,27-30,33,37
+packages/cli/src/services/user-deactivation-hooks.service.ts
+  s_c5924177b26556::t_55b930243e8749 1-20
+packages/cli/src/services/__tests__/user-deactivation-hooks.service.test.ts
+  s_c5924177b26556::t_7d8307f0c6c471 15,22
+  s_c5924177b26556::t_9ceae387e66376 1-14,16-21,23-37
+packages/cli/src/modules/oauth-server/database/repositories/oauth-grant.repository.ts
+  s_c5924177b26556::t_55b930243e8749 3,17-20,22-41
+  s_c5924177b26556::t_4016bd36c2cd38 21
+packages/cli/src/modules/oauth-server/__tests__/oauth-grant.service.integration.test.ts
+  s_c5924177b26556::t_4016bd36c2cd38 2,6,15,17,131-133,302,317-332
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.module.test.ts
+  s_c5924177b26556::t_9ceae387e66376 1-3,6,8-35,38-69
+packages/cli/src/modules/ldap.ee/helpers.ee.ts
+  s_c5924177b26556::t_55b930243e8749 16-17,244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6c55b693681425bd9679e79640914605c1084080",
+  "prompts": {},
+  "sessions": {
+    "s_c5924177b26556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a8b-b624-7770-93c3-9d4ab55dd05d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqliteWriteConnection.ts
+  s_b890640623da9f::t_71ab2157c42c4d 113-115,118
+  s_b890640623da9f::t_2f97f96ede0f0a 156-159,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d447dea02e1de4748af7fd77b4c459ff455fd7ea",
+  "prompts": {},
+  "sessions": {
+    "s_b890640623da9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d913c52-7f2b-41a8-8d05-b45c13d24e79",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

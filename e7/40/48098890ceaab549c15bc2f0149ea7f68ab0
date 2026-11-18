@@ -1,0 +1,27 @@
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_2aa332997f69a5::t_af67f046a3b7cc 408-424,432-439,441-452
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_2aa332997f69a5::t_b46d3f576a2a00 154
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_2aa332997f69a5::t_013749c836906f 77-78
+packages/@n8n/agents/src/sdk/agent.ts
+  s_2aa332997f69a5::t_b46d3f576a2a00 1490-1491
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_2aa332997f69a5::t_b2c24c672d9c14 473-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e74048098890ceaab549c15bc2f0149ea7f68ab0",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

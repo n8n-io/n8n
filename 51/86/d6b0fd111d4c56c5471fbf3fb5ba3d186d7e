@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_6e5e6dade5599e::t_609c254366071e 2233
+  s_6e5e6dade5599e::t_3d5816ee8dd252 2229-2232,2234-2244,2246,2248-2250,2252,2254-2278,2349-2355,2358,2374-2379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5186d6b0fd111d4c56c5471fbf3fb5ba3d186d7e",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

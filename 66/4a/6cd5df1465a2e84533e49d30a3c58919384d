@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/DatabricksVectorStore.test.ts
+  s_d2c0c9c81d3772::t_bcbc447754705e 267-284
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.test.ts
+  s_d2c0c9c81d3772::t_bcbc447754705e 148,157-158,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "664a6cd5df1465a2e84533e49d30a3c58919384d",
+  "prompts": {},
+  "sessions": {
+    "s_d2c0c9c81d3772": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1637ec17-e09e-453c-b3e8-64c9b1f36a4a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

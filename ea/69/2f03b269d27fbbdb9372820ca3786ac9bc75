@@ -1,0 +1,55 @@
+packages/cli/src/scaling/scaling.service.ts
+  s_1d360ad69afd30::t_a20f2b5c53c63f 484-485
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_601386f61562ab::t_c6af195787e899 292
+  s_601386f61562ab::t_cb4a8055a66e15 268-269
+  s_601386f61562ab::t_c978bdb29837e7 190
+  s_601386f61562ab::t_2e76994868efd5 119
+  s_601386f61562ab::t_dce6bdbc997a10 73-76
+  s_601386f61562ab::t_1a5b4f7a4b2d79 207-208,210,212-214,217-218
+  s_601386f61562ab::t_176c8fddabc36b 387-388,401-402
+  s_601386f61562ab::t_114b1202bb11d9 133,137-140,142-144,151,160-164,167,171
+  s_601386f61562ab::t_dc15e9d5da7618 378-380,382-383,393,399-400
+  s_601386f61562ab::t_5f031373b32212 238
+  s_601386f61562ab::t_804f79763f9414 28,34
+  s_601386f61562ab::t_5ce1ed6c35054b 101-103
+  h_32d8cd6a0d6aad 29-33,58,94-96,134,141,182,193,377
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_1d360ad69afd30::t_397a8b5a13ce8b 574,576
+  s_1d360ad69afd30::t_fea7aa068a1a85 18
+  s_1d360ad69afd30::t_bd5b6368734271 551-573,575,577-580
+packages/cli/src/webhooks/webhook-helpers.ts
+  ai_agent 335
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_601386f61562ab::t_b12f5d6fe744bb 151-170
+  s_601386f61562ab::t_f70c816df17435 416,419,433-444
+  s_601386f61562ab::t_3f8ae1e6d37fa3 372-382,387-403,407-409
+  s_601386f61562ab::t_5a3bfeb79b0d04 527-528
+  s_601386f61562ab::t_e51daa7b0e5d70 62-65,67-70
+  s_601386f61562ab::t_961a8b868d211e 109,111
+  s_601386f61562ab::t_4a6acc5085295a 467-473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea692f03b269d27fbbdb9372820ca3786ac9bc75",
+  "prompts": {},
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_601386f61562ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e77ca6f-9f18-4274-b1fe-9d4733d3ed88",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

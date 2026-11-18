@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Google/Chat/GenericFunctions.ts
+  s_6ecc9e88922646::t_a9e7868fbb3340 9-10,12,20,33,40,65-66,68-77,98,117-141
+packages/nodes-base/nodes/Google/Chat/GoogleChat.node.ts
+  s_6ecc9e88922646::t_80230c85e2d47f 17-22,43-44,175-180,272-273,307,309,346-350,364,370-376,390-392,401,409,420,436,489,502-504,514-516,525,572-578,590-597,649-657
+packages/nodes-base/nodes/Google/Chat/test/genericFunctions.test.ts
+  s_6ecc9e88922646::t_e57fbff75360f4 3,6,33-40,54,68-72,85,89,92,103,108-139
+packages/nodes-base/nodes/Google/Chat/test/node/sendAndWait.operation.test.ts
+  s_6ecc9e88922646::t_41a89dfe248729 3-8,42,65-71,79,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eeff92f07e29372de2715a189f5831150c52113a",
+  "prompts": {},
+  "sessions": {
+    "s_6ecc9e88922646": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d7634f5-c8f1-4ff1-99e9-c94fd4271c91",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

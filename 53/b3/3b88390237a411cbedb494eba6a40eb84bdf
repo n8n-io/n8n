@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-tasks.controller.ts
+  s_13d2093edecceb::t_461a6ed9abdc7c 17,33,46,64,81,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "53b33b88390237a411cbedb494eba6a40eb84bdf",
+  "prompts": {},
+  "sessions": {
+    "s_13d2093edecceb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ca37-ecdf-7873-bb4a-4b31a09f7aab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

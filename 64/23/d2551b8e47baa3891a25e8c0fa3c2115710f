@@ -1,0 +1,27 @@
+packages/cli/src/encryption/key-manager.service.ts
+  s_09d2062d69a622::t_155d30c1bc4d35 119-121
+  s_09d2062d69a622::t_ae9adb235747ad 372-376
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_09d2062d69a622::t_ad21e2241e14e9 152-154
+  s_09d2062d69a622::t_df5ff551526a58 683-695
+packages/cli/src/encryption/__tests__/get-key-by-id-type-scope.integration.test.ts
+  s_09d2062d69a622::t_fd5a49b288f623 43-50
+  s_09d2062d69a622::t_488f9821652132 1-26,35-42,51-56
+  s_09d2062d69a622::t_a52ae74d293151 27-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6423d2551b8e47baa3891a25e8c0fa3c2115710f",
+  "prompts": {},
+  "sessions": {
+    "s_09d2062d69a622": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a4d6b2a-7ba8-44f2-b30c-34a5b7217033",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

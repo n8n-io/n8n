@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/__tests__/skills.tool.test.ts
+  s_20d484677b459f::t_b3bbe5ab38f024 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5759aa7d2a900213a02adeac94f7923118d42ac9",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

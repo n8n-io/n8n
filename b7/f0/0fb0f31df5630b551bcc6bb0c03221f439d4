@@ -1,0 +1,21 @@
+packages/testing/playwright/fixtures/engine-parity.ts
+  s_6292f7a6ebb209::t_3130c42ddbcd00 32-33
+packages/testing/playwright/services/workflow-api-helper.ts
+  s_6292f7a6ebb209::t_3130c42ddbcd00 457-458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b7f00fb0f31df5630b551bcc6bb0c03221f439d4",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

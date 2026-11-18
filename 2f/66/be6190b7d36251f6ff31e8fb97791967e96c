@@ -1,0 +1,68 @@
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_4deef21ce1b1c9::t_cd28acb72c6fa4 327-331,351-362
+  s_890911c7490368::t_c8e20071388e3b 77
+  s_4deef21ce1b1c9::t_08cb07d36bdb5a 323-325,332-350
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_4deef21ce1b1c9::t_f4049c73beb65f 291-309
+  s_4deef21ce1b1c9::t_2c588829ea6908 6
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_4deef21ce1b1c9::t_cbc749344ae327 162-164,170-172,176
+  s_4deef21ce1b1c9::t_6fa66694b875d2 173-175
+  s_4deef21ce1b1c9::t_df9274bdcca0eb 5-6
+  s_890911c7490368::t_8daa871bc4ca26 165-169,192
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-test-trigger-resource.resolver.ts
+  s_4deef21ce1b1c9::t_dc88dead009c65 155-156
+  s_4deef21ce1b1c9::t_ebfa692b10f304 147-149,152-154,157
+  s_890911c7490368::t_b3e88cd0a50d67 150-151,164
+  s_4deef21ce1b1c9::t_3640109be4f5bf 4-5
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_890911c7490368::t_a5d660009d1204 251-255,261,269-270,295-304,309,312
+  s_4deef21ce1b1c9::t_4f7025380fbc36 45,52,57
+  s_4deef21ce1b1c9::t_cbbe82b4e3f3c0 271-274,286-294
+  s_4deef21ce1b1c9::t_4970c858d8bc9f 268,275-285
+packages/workflow/test/n8n-browser-oauth2-flow.test.ts
+  s_890911c7490368::t_37a059c2b84eff 80-105
+  s_4deef21ce1b1c9::t_43dcd2901a4b9f 126-157
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_4deef21ce1b1c9::t_cfb81706d5aa75 269-273
+  s_4deef21ce1b1c9::t_d7ff1d53e8ad01 14-20
+  s_4deef21ce1b1c9::t_5b8774aba2d19f 59-60
+packages/workflow/src/n8n-browser-oauth2-flow.ts
+  s_890911c7490368::t_dc6c1adec42183 143-150
+  s_4deef21ce1b1c9::t_f882dd898485ed 66-73,80-81
+  s_890911c7490368::t_c5a0108bf5512c 75-76
+packages/workflow/src/n8n-oauth2-auth.ts
+  s_4deef21ce1b1c9::t_c4e938bd096573 8,12-14,18-40
+  s_4deef21ce1b1c9::t_7974544885f400 41
+packages/nodes-base/nodes/Webhook/description.ts
+  s_890911c7490368::t_9dcc1ad38b4135 408-412
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-test-trigger-resource.resolver.api.test.ts
+  s_890911c7490368::t_dcdf295d3213fc 180-182,188-190,192-193,214-216,221,223-225,227
+  s_4deef21ce1b1c9::t_e7fb95ae7e1995 191,198-206
+  s_4deef21ce1b1c9::t_0b0d843db5a766 194-197,207-213
+  s_4deef21ce1b1c9::t_9781d94b0ff326 48,55,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f66be6190b7d36251f6ff31e8fb97791967e96c",
+  "prompts": {},
+  "sessions": {
+    "s_4deef21ce1b1c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f35746b60ffe6LZKOdr8B1D6wN",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_890911c7490368": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f36aa56b5ffeY4FVESpMwME6FV",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

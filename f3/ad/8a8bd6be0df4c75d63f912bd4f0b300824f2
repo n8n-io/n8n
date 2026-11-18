@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Merge/v2/MergeV2.node.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 11,40
+packages/nodes-base/nodes/Merge/test/annotations.test.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 1-79
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_f05bf619bff29d::t_89bd216dd30a37 1851
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 412-449
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 448,471,489,517
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 261-295
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_f05bf619bff29d::t_89bd216dd30a37 850,1200
+packages/frontend/editor-ui/src/Interface.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 721
+packages/nodes-base/nodes/Merge/v3/actions/versionDescription.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 2-6,16
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 299-329
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_f05bf619bff29d::t_89bd216dd30a37 84,645
+packages/nodes-base/nodes/Merge/v1/MergeV1.node.ts
+  s_f05bf619bff29d::t_89bd216dd30a37 11,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3ad8a8bd6be0df4c75d63f912bd4f0b300824f2",
+  "prompts": {},
+  "sessions": {
+    "s_f05bf619bff29d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e9c2-e4d8-7562-b9c4-fd8dedfbc47b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

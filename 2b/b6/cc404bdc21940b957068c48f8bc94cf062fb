@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_84916a24213a85::t_59ee0bc5f6b8cf 199,220-221,223-230,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2bb6cc404bdc21940b957068c48f8bc94cf062fb",
+  "prompts": {},
+  "sessions": {
+    "s_84916a24213a85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48d8d0bb-d700-4327-9d27-86b1819bd913",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a26381a4168256::t_287ec30097bfde 8086
+packages/frontend/editor-ui/src/features/agents/components/AgentAvatar.vue
+  s_a26381a4168256::t_72e03702370346 16-17,53
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_a26381a4168256::t_a41c5909b66a86 237,271
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentExamplesPanel.test.ts
+  s_a26381a4168256::t_97601e0123ced1 251-252,263-264,269,273-282
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  s_a26381a4168256::t_cf41636edffa0d 1772,1775-1777
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentExamplesPanel.vue
+  s_a26381a4168256::t_5bd65e0be6cb11 256-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c09576b5e464cb9c207a2f3848412b1392f75b51",
+  "prompts": {},
+  "sessions": {
+    "s_a26381a4168256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de9744d5-d4a6-4ca6-9d6e-70d7c82d2184",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

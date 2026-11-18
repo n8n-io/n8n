@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Magento/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_2ae878bb489249 15,19-22
+packages/nodes-base/nodes/Magento/Magento2.node.ts
+  s_2e1fa95fc44f8f::t_353c746a6ff3cc 22,43-44,316,693,706,796
+packages/nodes-base/nodes/Magento/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_48a7658d4c3bc5 1-6,8,15-38,40,42-47,49-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07a620b68b074a67817aa929c804123fb5e7282a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

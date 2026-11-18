@@ -1,0 +1,60 @@
+.devcontainer/codespaces/README.md
+  s_4fd0bb11c3da38::t_bd429a86167a1d 82-85
+.github/scripts/github-helpers.test.mjs
+  s_4fd0bb11c3da38::t_66bef765f5545d 21-28,32-99,111,125,127,145,158,160
+scripts/preview-serve.mjs
+  s_4fd0bb11c3da38::t_da87a3650f940a 18,45-50,55,115-118,123-125,127
+.github/scripts/github-helpers.mjs
+  s_4fd0bb11c3da38::t_2575bb60dfc2d9 524,528,530,542-571,573-574,576-584
+.github/scripts/codespace-preview.test.mjs
+  s_4fd0bb11c3da38::t_30d150210b74fa 7,9,13,17,19-20,33-44,125-137,193-198,237-356
+.github/WORKFLOWS.md
+  s_4fd0bb11c3da38::t_37f832489c370c 265-283,317-318,804,807-810
+  s_4fd0bb11c3da38::t_c4eac71085da2e 319-321
+scripts/preview-phases.test.mjs
+  s_4fd0bb11c3da38::t_98d2bb7f0e2e52 7,11,15,20,31-38,48-51,54,57,62,66-68,70-73,92-136
+  s_4fd0bb11c3da38::t_bda8f438340f59 1-6,8-10,12-14,16-19,21-30,39-47,52-53,55-56,58-61,63-65,69,74-91,137-138
+scripts/preview-phases.mjs
+  s_4fd0bb11c3da38::t_06e6056976f08a 8-10,13-18,20-27,57-58,60,64,70-80,82,96-101,105,107,109-113,115-118,120
+  s_4fd0bb11c3da38::t_5435bad7991d02 47-49
+  s_4fd0bb11c3da38::t_e32f96280a02e6 1-7,11-12,19,28-46,50-56,59,61-63,65-69,81,83-95,132
+scripts/preview.mjs
+  s_4fd0bb11c3da38::t_57b69147a959dc 178-180,184
+  s_4fd0bb11c3da38::t_a0420356435f9e 277,280-284,288
+  s_4fd0bb11c3da38::t_59069a9d70e8ed 222
+  s_4fd0bb11c3da38::t_167b5cf80a4ac1 18
+  s_4fd0bb11c3da38::t_da87a3650f940a 11-12
+  s_4fd0bb11c3da38::t_3692f7a447223d 14
+  s_4fd0bb11c3da38::t_3ebd7df901d644 62-80
+  s_4fd0bb11c3da38::t_21486ef8aa6dda 167-168
+  s_4fd0bb11c3da38::t_d5ccbd73805a3d 159-163,169
+  s_4fd0bb11c3da38::t_4c0630f16138d7 133
+  s_4fd0bb11c3da38::t_2df9c4b8e44ea7 245
+  s_4fd0bb11c3da38::t_bde175f46aed02 260-276,278-279,285-287,289-291
+  s_4fd0bb11c3da38::t_bccb799897da02 304,331-333,344-347,349-350,359-362
+.github/workflows/util-codespace-preview.yml
+  s_4fd0bb11c3da38::t_ce72ccc1c0ff98 18-21
+  s_4fd0bb11c3da38::t_df72e48d18243d 124-137
+.github/scripts/codespace-preview.mjs
+  s_4fd0bb11c3da38::t_cdeaeaf4a5a46d 196-320
+  s_4fd0bb11c3da38::t_fddb8432e02217 15-23,28-33,36-39,54-55
+  s_4fd0bb11c3da38::t_a94c900d34c6e7 476-480,483,493-494,499-521
+  s_4fd0bb11c3da38::t_a21d704f2672ad 27
+  s_4fd0bb11c3da38::t_ba2ea01c6ad9e5 335-337,340-341,343-363,365-448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "580f9e55fd488ccd7de842059adc7cecbe798ad3",
+  "prompts": {},
+  "sessions": {
+    "s_4fd0bb11c3da38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fea955a-f0e3-4e64-b340-cd58a0507ad4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

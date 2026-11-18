@@ -1,0 +1,38 @@
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 130,144,146
+docs/generated/sqlite-schema/agent_execution_message_links.md
+  ai_agent 59,73,75
+packages/@n8n/db/src/migrations/sqlite/1792584485672-AddAgentExecutionUsageAndLinks.ts
+  s_234832aa318d60::t_cce94266cc60b4 1-6
+packages/@n8n/db/src/migrations/common/1792584485672-AddAgentExecutionUsageAndLinks.ts
+  s_234832aa318d60::t_e3bea858c8bdc4 12,14-15,17,30-36,45-47
+  s_234832aa318d60::t_a24540c1f6790a 6-11,18-28,37,41,43
+docs/generated/postgres-schema/README.md
+  ai_agent 223
+docs/generated/postgres-schema/public.agent_execution.md
+  ai_agent 21,23,42-43,72
+docs/generated/sqlite-schema/agent_execution.md
+  ai_agent 9,18,32,34,50-55,83,97,99
+docs/generated/sqlite-schema/README.md
+  ai_agent 206,607,621,623
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 115,129,131
+docs/generated/sqlite-schema/agent_message_queue.md
+  ai_agent 73,87,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3ad276294225a33c2b53e9b7591b36bba8c2e371",
+  "prompts": {},
+  "sessions": {
+    "s_234832aa318d60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be3f1a42-934b-41b5-b566-dced269d16b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

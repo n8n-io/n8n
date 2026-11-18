@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/discovery/seeded-turn.ts
+  s_547679da417fdb::t_ea5b3d6395a3e4 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b72afab9aaf83b83908756e9d909f42513c3a16",
+  "prompts": {},
+  "sessions": {
+    "s_547679da417fdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "585e928f-fde6-4706-8e78-43312ac8d637",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

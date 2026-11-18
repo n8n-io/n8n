@@ -1,0 +1,68 @@
+packages/cli/test/integration/public-api/ldap.test.ts
+  s_5faaac1057ba03::t_950c37dc7da739 108-113,117,120-121,126-129,135-141,144-147,149,155,160-169
+  s_5faaac1057ba03::t_a82229ef55d978 198,200
+  s_5faaac1057ba03::t_7d00fc6e20844f 228,241,253
+  s_5faaac1057ba03::t_1ad7c8f60df068 501
+  s_5faaac1057ba03::t_5366c861f9c656 185
+  s_5faaac1057ba03::t_474d4e8e45d719 424
+  s_5faaac1057ba03::t_00bd75f4b21dec 512,525
+  s_5faaac1057ba03::t_e1e50f6f8755e7 448-460,462-463,471
+  s_5faaac1057ba03::t_49107a2127de0f 360-372,377-380,384,386-389,393,395-398
+  s_5faaac1057ba03::t_a369fe40590fc2 537
+  s_5faaac1057ba03::t_7eb94d5b5461c1 216,218
+  s_5faaac1057ba03::t_7656334c800f8a 273
+  s_5faaac1057ba03::t_01abd6cdd80346 311-338
+  s_5faaac1057ba03::t_d0ce37631cae69 405,415
+  s_5faaac1057ba03::t_2c1525c59f3224 199
+  s_5faaac1057ba03::t_e320d2f75aa3af 487
+  s_5faaac1057ba03::t_5849954384928c 52,61-66,71-74,81,91,100
+  s_5faaac1057ba03::t_d7761c14796673 184,186
+  s_5faaac1057ba03::t_e83597984e46cd 172-181,183
+  s_5faaac1057ba03::t_941ea153f68426 272,274
+  s_5faaac1057ba03::t_0feb2fd7f00366 217
+  s_5faaac1057ba03::t_a8e724dd02b88b 486,488,500,502
+  s_5faaac1057ba03::t_816a4fa3f1138a 170-171
+packages/@n8n/api-types/src/dto/index.ts
+  s_5faaac1057ba03::t_099876467e07a5 122-125
+packages/@n8n/api-types/src/dto/ldap/__tests__/ldap-configuration.dto.test.ts
+  s_5faaac1057ba03::t_9d6e7430f30343 37-46,50
+  s_5faaac1057ba03::t_3a56bc786782ee 57
+  s_5faaac1057ba03::t_cb8ead3e594008 74-75,77,79-80
+  s_5faaac1057ba03::t_ea5dbb4a0d7fea 1-8,12
+  s_5faaac1057ba03::t_f5637b99e19ada 13,18
+  s_5faaac1057ba03::t_800292e9678866 66
+packages/cli/src/public-api/v1/controllers/ldap.public.controller.ts
+  s_5faaac1057ba03::t_0b7b27761af7b3 1-64
+packages/@n8n/api-types/src/dto/ldap/ldap-configuration-public.openapi.ts
+  s_5faaac1057ba03::t_8a94525f9e6b60 1-99
+packages/cli/src/public-api/v1/handlers/ldap/ldap.handler.ts
+  s_5faaac1057ba03::t_d1cfd48fd2cdd8 1,9
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_5faaac1057ba03::t_fe3a41a07ff715 16
+packages/@n8n/api-types/src/dto/ldap/ldap-configuration-public.dto.ts
+  s_5faaac1057ba03::t_652cf855d0a8af 1-88
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLdapConfiguration.generated.yml
+  s_5faaac1057ba03::t_8bd44a2854026d 1-12,16-20
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  s_5faaac1057ba03::t_d68041de3a852e 1-137
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_5faaac1057ba03::t_8f3ec39274755d 141-145
+packages/cli/src/public-api/v1/shared/spec/schemas/ldapConfigurationPublicDto.generated.yml
+  s_5faaac1057ba03::t_31541f06e02aab 21-24,41,64,84,86-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f7548bd1314fa3092568fd4b61ea99c10b222047",
+  "prompts": {},
+  "sessions": {
+    "s_5faaac1057ba03": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "74c7eb69-dea4-4acf-a985-01e950ced5f9",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

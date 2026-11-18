@@ -1,0 +1,27 @@
+packages/cli/src/modules/breaking-changes/rules/v3/slack-signature-secret.rule.ts
+  s_fff1ab381d7581::t_966cade8d7ed8a 46,55-58,61,75-77,81,89
+  s_fff1ab381d7581::t_fc0a86884cc612 1-45,47-54,59-60,62-74,78-80,82-88,90-98
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.rule-discovery.test.ts
+  s_fff1ab381d7581::t_8f50e23bf78459 1,14
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_fff1ab381d7581::t_49eea9d32629a0 40
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/slack-signature-secret.rule.test.ts
+  s_fff1ab381d7581::t_49eea9d32629a0 1-161,178-188
+  s_fff1ab381d7581::t_966cade8d7ed8a 162-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5dc3cb172400deaa1be351daf4c103125f097c4c",
+  "prompts": {},
+  "sessions": {
+    "s_fff1ab381d7581": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "383521c3-611a-4272-9d21-e69e73b36323",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

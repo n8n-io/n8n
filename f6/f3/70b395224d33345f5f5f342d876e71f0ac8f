@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/__tests__/agent-memory.controller.test.ts
+  s_a87ab30323b2bf::t_9881dafb31520a 37
+packages/@n8n/api-types/src/agents/types.ts
+  s_a87ab30323b2bf::t_c404b2b8bedf95 282
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryEntriesPanel.vue
+  s_a87ab30323b2bf::t_a6f4c884ccb886 2-11,14,19,50-62,96,115-116,209-210,214-222,270-285,291,342-352
+  s_a87ab30323b2bf::t_20f5f1fe71be23 353
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a87ab30323b2bf::t_a6f4c884ccb886 9003-9004
+packages/cli/src/modules/agents/agent-memory-query-embedder.ts
+  s_a87ab30323b2bf::t_cb32f00653169a 1-77
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_a87ab30323b2bf::t_cb32f00653169a 847
+packages/@n8n/api-types/src/agents/dto.ts
+  s_a87ab30323b2bf::t_c404b2b8bedf95 129-130,134-135
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryEntriesPanel.test.ts
+  s_a87ab30323b2bf::t_70305fe8299319 15,269-278,280-321
+  s_a87ab30323b2bf::t_3ab4e3fd750e65 279
+  s_a87ab30323b2bf::t_fc3536aec09284 322
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_a87ab30323b2bf::t_c404b2b8bedf95 53-57
+packages/cli/src/modules/agents/agent-memory.controller.ts
+  s_a87ab30323b2bf::t_9881dafb31520a 21
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_a87ab30323b2bf::t_c404b2b8bedf95 1,11-13,22,57-76,89,95,98-99,106,111-138
+  s_a87ab30323b2bf::t_103a22d8359a08 139
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_a87ab30323b2bf::t_a6f4c884ccb886 401,403-406,411
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_a87ab30323b2bf::t_9881dafb31520a 6,12-29,40,46,48,79,106,123,132,142,153-167,171-196
+  s_a87ab30323b2bf::t_4236f5af0021e3 168-170
+  s_a87ab30323b2bf::t_80897a9aeaa3c0 197-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6f370b395224d33345f5f5f342d876e71f0ac8f",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

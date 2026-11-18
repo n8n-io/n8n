@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_f6ecac1d27039d::t_80553c25a2b13b 78-79,88
+  s_f6ecac1d27039d::t_cd7b7b146e6837 14
+packages/cli/src/modules/agents/integrations/__tests__/agent-outbound-files.service.test.ts
+  s_f6ecac1d27039d::t_59d76a476fd724 91-99
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  s_f6ecac1d27039d::t_cd7b7b146e6837 4
+  s_f6ecac1d27039d::t_80553c25a2b13b 164-165
+packages/cli/src/modules/agents/__tests__/agent-chat-relay.service.test.ts
+  s_f6ecac1d27039d::t_b09885c0ef2763 61-62,70
+  s_f6ecac1d27039d::t_a0031efb7fbd91 10-16,54-60,63-69,71-73
+packages/cli/src/modules/agents/agent-chat-relay.service.ts
+  s_f6ecac1d27039d::t_80553c25a2b13b 195
+  s_f6ecac1d27039d::t_cd7b7b146e6837 12
+packages/cli/src/modules/agents/__tests__/agent-file-bridge.service.test.ts
+  s_f6ecac1d27039d::t_59d76a476fd724 299-314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a08b373df84fe9d9852f79f060c65e26ee454e5e",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

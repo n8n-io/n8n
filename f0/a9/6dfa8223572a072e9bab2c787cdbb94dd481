@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_39298e40895e74::t_ad30bd643ad922 2073-2104
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_39298e40895e74::t_8dff0087b7fb78 601-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0a96dfa8223572a072e9bab2c787cdbb94dd481",
+  "prompts": {},
+  "sessions": {
+    "s_39298e40895e74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "608ba138-b14f-43be-b7df-5e45d0c35546",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

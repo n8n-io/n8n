@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c4a4e9a494a612::t_7d01adf950e87a 1187-1188
+  s_c4a4e9a494a612::t_3c6e81855b874e 83-84,120,242,546,920,1070-1075,1170,1177-1186,1239
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 47-57,59-61,75-79,82-84
+  s_c4a4e9a494a612::t_90bd6b3a0f7916 62
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 1064-1068
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 402,406,410,423-426,438-453,469-471
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 120-136
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 65
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 461-462,1123,1126,1159
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 1067-1073,1101-1107,1115,1121,2771,2780-2781,3146-3180
+  s_c4a4e9a494a612::t_87bc60fac0e12c 3181
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 6,109-124
+  s_c4a4e9a494a612::t_b1d2387373b11f 125-126
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 144-162,164-166,169-172,174,379,386-396,398-407
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c4a4e9a494a612::t_3c6e81855b874e 608
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "25db401c9f139f1a076f8ddec8c3144a38368fce",
+  "prompts": {},
+  "sessions": {
+    "s_c4a4e9a494a612": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c931-0a24-7242-93f9-890df461d8e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e96b2a058a8d23::t_f7ca0e08ebf21e 12,602
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e96b2a058a8d23::t_897df94369e642 1199-1201,1255-1257,1452-1458
+  s_e96b2a058a8d23::t_f7ca0e08ebf21e 54,1239-1254,1481
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e96b2a058a8d23::t_f7ca0e08ebf21e 27,388
+packages/cli/src/modules/agents/agent-session-stop-reason.ts
+  s_e96b2a058a8d23::t_f7ca0e08ebf21e 1
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_e96b2a058a8d23::t_c92591c972be8e 8,518
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_e96b2a058a8d23::t_f7ca0e08ebf21e 18,168,210-211
+  s_e96b2a058a8d23::t_897df94369e642 174-177,204-207,293-296
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_e96b2a058a8d23::t_f7ca0e08ebf21e 12,222,226,233-243,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c90ac89d630ab02528a02f95ce018d2f4d30c960",
+  "prompts": {},
+  "sessions": {
+    "s_e96b2a058a8d23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17996-09b4-7210-950e-5df432b2f229",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_a4aeb83632341f::t_fa0b0e39c0c7b7 206-211,214-216
+  s_a4aeb83632341f::t_78406833ebc6e5 178,184-193,205,212-213
+  s_a4aeb83632341f::t_ae32638d30b828 195-199,201
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/stream-delivery.test.ts
+  s_a4aeb83632341f::t_6d2ee79d6fa2e6 16-57,67-68,95,101,122,126
+  s_a4aeb83632341f::t_c556895d7035d7 96,100,182,191-251
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_a4aeb83632341f::t_78406833ebc6e5 2715-2766
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0597ff2ea3e2c8d7f9d7cd2d78b8be036a731d09",
+  "prompts": {},
+  "sessions": {
+    "s_a4aeb83632341f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15368-3c7d-7470-b502-ab57d8e6d1d1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
