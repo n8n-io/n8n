@@ -898,6 +898,8 @@ function indexSignatureType(
 	declaredTypes: string[],
 	hasOptional: boolean,
 ): string {
+	// `unknown` already accepts every declared type
+	if (additionalType === 'unknown') return 'unknown';
 	const members = [additionalType, ...declaredTypes, ...(hasOptional ? ['undefined'] : [])];
 	return [...new Set(members)].join(' | ');
 }
@@ -979,8 +981,11 @@ export function jsonSchemaToTypeScript(schema: JsonSchema, indent = 0): string {
 					declaredTypes.push(propType);
 					return `${nextIndent}${quotedKey}${optional}: ${propType};`;
 				});
-				if (typeof schema.additionalProperties === 'object') {
-					const additionalType = jsonSchemaToTypeScript(schema.additionalProperties, indent + 1);
+				if (schema.additionalProperties) {
+					const additionalType =
+						schema.additionalProperties === true
+							? 'unknown'
+							: jsonSchemaToTypeScript(schema.additionalProperties, indent + 1);
 					const hasOptional = Object.keys(schema.properties).some((key) => !required.has(key));
 					props.push(
 						`${nextIndent}[key: string]: ${indexSignatureType(additionalType, declaredTypes, hasOptional)};`,
