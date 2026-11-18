@@ -1,4 +1,4 @@
-import type { DocCheckResponse, DocPage, DocPageKind } from '@n8n/api-types';
+import type { DocCheckResponse, DocPage, DocPageKind, DocPageSummary } from '@n8n/api-types';
 import { docCheckFindingSchema } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { UrlService } from '@n8n/backend-services';
@@ -80,6 +80,14 @@ export function headingsOf(markdown: string) {
 	);
 }
 
+/** The markdown link that the editor shows as a clickable badge. */
+export function mentionOf(
+	item: Pick<DocPageSummary, 'name' | 'resourceType' | 'resourceId' | 'kind'>,
+) {
+	const title = item.name.replace(/[[\]\\]/g, '\\$&');
+	return `[${title}](doc:${item.resourceType}/${item.resourceId}/${item.kind})`;
+}
+
 @Service()
 export class DocPageAiService {
 	constructor(
@@ -136,6 +144,7 @@ export class DocPageAiService {
 			.map((item) =>
 				[
 					`### ${item.name} (${item.resourceType}, ${item.kind}${item.isPublished ? '' : ', unpublished'})`,
+					`Mention: ${mentionOf(item)}`,
 					item.properties ? `Facts: ${JSON.stringify(item.properties)}` : '',
 					item.text ? item.text.slice(0, PROJECT_ITEM_TEXT_MAX) : '(No page written yet.)',
 				]
@@ -146,7 +155,8 @@ export class DocPageAiService {
 		const agent = await this.createAgent(user, GENERATE_SYSTEM_PROMPT, generateSchema);
 		const prompt = [
 			'Write the home page of this n8n project. It introduces the project to a new team member.',
-			'Link the reader to the workflows and agents by name. Do not repeat their full pages.',
+			'Each time you name a workflow or agent, write its mention link exactly as given, in place of the plain name.',
+			'Do not repeat their full pages.',
 			'The page already shows tables of all workflows and agents with their URLs, schedules and triggers.',
 			'Do not list them again, and do not add a table or list of entry points.',
 			`Template headings: ${PROJECT_TEMPLATE.join('; ')}`,

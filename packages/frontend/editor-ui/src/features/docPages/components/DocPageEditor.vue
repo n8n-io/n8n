@@ -9,6 +9,7 @@ import { useToast } from '@n8n/composables/useToast';
 
 import { createChildPageLink } from './editor/childPageLink';
 import { createDocPageBaseExtensions } from './editor/docPageExtensions';
+import { DocMention } from './editor/docMention';
 import { findSectionRange } from './editor/findSectionRange';
 import { SlashCommands } from './editor/slashCommands';
 import type { SlashItem, SlashMenuState } from './editor/slashCommands';
@@ -104,6 +105,7 @@ const editor = useEditor({
 	extensions: [
 		...createDocPageBaseExtensions(),
 		createChildPageLink(props.projectId),
+		DocMention,
 		SlashCommands.configure({
 			items: slashItems,
 			onChange: (state) => {

@@ -1,12 +1,13 @@
 import { Editor } from '@tiptap/core';
 
 import { createChildPageLink } from './childPageLink';
+import { DocMention } from './docMention';
 import { createDocPageBaseExtensions } from './docPageExtensions';
 import { findSectionRange } from './findSectionRange';
 
 const createEditor = (markdown: string) =>
 	new Editor({
-		extensions: [...createDocPageBaseExtensions(), createChildPageLink('p1')],
+		extensions: [...createDocPageBaseExtensions(), createChildPageLink('p1'), DocMention],
 		content: markdown,
 		contentType: 'markdown',
 	});
@@ -20,6 +21,18 @@ describe('doc page markdown', () => {
 			type: 'callout',
 			attrs: { variant: 'warning' },
 			content: [{ type: 'paragraph' }],
+		});
+		expect(editor.getMarkdown().trim()).toBe(markdown);
+		editor.destroy();
+	});
+
+	it('parses a doc mention inside text and writes it back', () => {
+		const markdown = 'Call [Absence \\[v2\\]](doc:workflow/wf1/api) first.';
+		const editor = createEditor(markdown);
+
+		expect(editor.getJSON().content?.[0].content?.[1]).toMatchObject({
+			type: 'docMention',
+			attrs: { resourceType: 'workflow', resourceId: 'wf1', kind: 'api', title: 'Absence [v2]' },
 		});
 		expect(editor.getMarkdown().trim()).toBe(markdown);
 		editor.destroy();

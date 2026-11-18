@@ -3,7 +3,11 @@ import type { DocPageKind } from '@n8n/api-types';
 import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-defineProps<{ kind: DocPageKind }>();
+defineProps<{
+	kind: DocPageKind;
+	/** Shown instead of the kind name, for example the name of a workflow. */
+	label?: string;
+}>();
 
 const i18n = useI18n();
 
@@ -18,7 +22,7 @@ const KIND_ICON: Record<DocPageKind, IconName> = {
 <template>
 	<span :class="[$style.kind, $style[kind]]" :data-testid="`doc-kind-badge-${kind}`">
 		<N8nIcon :icon="KIND_ICON[kind]" size="small" />
-		{{ i18n.baseText(`docPages.kind.${kind}`) }}
+		{{ label || i18n.baseText(`docPages.kind.${kind}`) }}
 	</span>
 </template>
 

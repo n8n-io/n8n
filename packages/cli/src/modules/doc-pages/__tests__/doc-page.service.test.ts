@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { headingsOf } from '../doc-page-ai.service';
+import { headingsOf, mentionOf } from '../doc-page-ai.service';
 import type { DocPageEntity } from '../doc-page.entity';
 import type { DocPageRepository } from '../doc-page.repository';
 import { DocPageService, isStale, topItems } from '../doc-page.service';
@@ -231,5 +231,13 @@ describe('headingsOf', () => {
 			'Overview',
 			'Endpoint',
 		]);
+	});
+});
+
+describe('mentionOf', () => {
+	it('writes the mention link that the editor shows as a badge', () => {
+		expect(
+			mentionOf({ name: 'Absence [v2]', resourceType: 'workflow', resourceId: 'wf1', kind: 'api' }),
+		).toBe('[Absence \\[v2\\]](doc:workflow/wf1/api)');
 	});
 });
