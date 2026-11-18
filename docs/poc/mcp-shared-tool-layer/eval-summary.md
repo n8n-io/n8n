@@ -1,14 +1,15 @@
 # MCP as the Assistant's tool layer: eval results
 
-**TL;DR:** The concept holds; the regressions are implementation gaps, not
-protocol limits. The Assistant ran the whole suite with discovery, reads,
-lifecycle, building and the sandbox served by the instance MCP server, and
-built workflows of the same quality as native (builder-attributed failures
-11.9% vs 14.7%). It scored **-2.4 pp** overall against the baseline, and every
-structural regression traces to one of three things the PoC left out or did
-half-way: the post-build verification loop, credential binding in the build
-result, and the Assistant's own process guidance (switched off with the native
-skill). None of them needs a protocol feature that MCP lacks.
+**TL;DR:** The concept holds. Against a same-day master control on the full
+suite, the Assistant over MCP scores **-1.4 pp** (87.9% vs 89.3%, confidence
+intervals overlap), and the only systematic regression is one missing piece:
+the post-build **verification loop** (23 judged units at 0/3 where master
+passes, against 3 the other way). Everything else that looked like a
+regression against the July baseline also fails on today's master, or is
+balanced noise. The verification loop is a PoC gap, not a protocol limit:
+nothing in MCP prevents the server's save result from carrying the post-build
+flow, or the verify tool from living on the server. Close it and the PoC is at
+parity.
 
 Spec, capability matrix and per-milestone findings:
 [`.agents/specs/mcp-shared-tool-layer.md`](../../../.agents/specs/mcp-shared-tool-layer.md).
@@ -19,42 +20,82 @@ Spec, capability matrix and per-milestone findings:
   the instance server (in-process, protocol `2026-07-28`). 20 native tools are
   replaced by server tools; approvals go over `input_required` elicitation; the
   sandbox is exposed as workspace tools.
-- Full LangTracer `baseline` suite, 389 cases x 3 iterations (1167 builds,
-  90 min, Sonnet 4.6), compared with the LangSmith baseline
-  `instance-ai-baseline-13/07` on the 349 units both have. PR tier (11 cases
-  x 3) separately.
-- LangSmith experiments: `ci-poc_mcp-shared-tool-layer-90119af-57b1395e`
-  (N=3) and `ci-poc_mcp-shared-tool-layer-7357512-cc478cc8` (N=1).
+- Full LangTracer `baseline` suite, 389 cases, Sonnet 4.6. PoC at `90119af`
+  with 3 iterations (1167 builds, 90 min); master `a80147a` the same day with
+  1 iteration (32 min) as the control; the July LangSmith baseline
+  `instance-ai-baseline-13/07` (10 iterations, 349 shared units) as a second
+  reference. PR tier (11 cases x 3) separately.
+- LangSmith experiments: `ci-poc_mcp-shared-tool-layer-90119af-57b1395e`,
+  `ci-master-a80147a-0c474204`, `ci-poc_mcp-shared-tool-layer-7357512-cc478cc8`
+  (an earlier N=1 PoC run; +0.7 pp between the two PoC runs, so the PoC is
+  stable run to run).
 
 ## Numbers
 
-| shared units (349) | PoC N=3 | baseline N=10 | delta |
+Full suite, PoC N=3 against master N=1, 1867 shared units:
+
+| | PoC | master | delta |
 |---|---|---|---|
-| aggregate pass rate | 86.4% (CI 84.2-88.4) | 88.8% (CI 87.7-89.8) | -2.4 pp |
-| scenario units, executed workflows (117) | 85.8% | 79.2% | +6.5 pp |
-| expectation units, judged behaviour (232) | 86.7% | 93.7% | -6.9 pp |
-| failures observed vs expected under baseline rates | 142 vs 117 | | z = 3.8 (real) |
+| aggregate pass rate | 87.9% (CI 87.0-88.7) | 89.3% (CI 87.8-90.6) | -1.4 pp |
+| scenario units, executed workflows (351) | 79.5% | 81.5% | -1.9 pp |
+| expectation units, judged behaviour (1516) | 89.9% | 91.1% | -1.2 pp |
+| units master passed and the PoC failed 3/3 | 54 | | |
+| units master failed and the PoC passed 3/3 | 44 | | |
 
-Verdicts: 290 stable, 19 watch, 24 hard regressions, 7 soft, 9 improvements.
-PR tier: 37 of 38 units green. Run-to-run stability: a second full run (N=1)
-agrees within +0.7 pp, with no regressions between the two.
+The 54 against 44 is mostly symmetric noise (master has one trial per unit).
+By theme it is not:
 
-Caveat: the baseline is from **July**. Master has moved since; the scenario
-gain and the 9 improvements are units at 0/10 in July that master fixed
-later. The honest control is a same-day master run with the same settings.
+| theme | PoC 0/3, master pass | PoC 3/3, master fail |
+|---|---|---|
+| verification loop | **23** | 3 |
+| other judged behaviour | 14 | 19 |
+| executed scenarios | 8 | 9 |
+| asking and clarifying | 5 | 2 |
+| credentials | 3 | 8 |
+| publishing | 1 | 3 |
 
-## Where the -6.9 pp on judged behaviour comes from
+Against the July baseline (349 shared units) the PoC is -2.4 pp (86.4% vs
+88.8%) with 24 hard regressions. 15 of the 31 regressions also fail on
+today's master (the whole "credentials offered during the build" group, and
+`notification-router`), so they are drift between July and now, not the PoC.
+PR tier: 37 of 38 units green.
 
-19 of the 24 hard regressions are 0/3 against 9-10/10: structural, not noise.
+## The one regression: no verification loop
 
-| theme | units | what happened | nature | fix |
-|---|---|---|---|---|
-| No verification loop | 11 hard | "The agent ran a verification of the built workflow" is 0/3 everywhere. The native build result carries `postBuildFlow` (verify, setup, publish disclosure); the server's save result does not, and the skill that follows it is off | **PoC gap.** Tool results can carry next-step instructions in any client; the verify tool can live on the server | Put verify on the server; let save results carry the post-build flow |
-| Credentials in the build | 5 hard, 2 soft | The native build lists candidate credentials and binds a sole match. Over MCP the agent told the user the Slack credential was missing although one existed | **PoC gap** (server build result) | Return candidates and the binding outcome from `create_workflow_from_code` / `build_workflow` |
-| Guidance drift | 3 hard, 3 soft | Clarify before building (`notification-router` 0/3 vs 10/10), do not re-ask deferred values, inspect an expression before editing it. All rules live in the `workflow-builder` skill, which the PoC gated off | **Design finding, cheap fix.** MCP `instructions` is one flat string for every client; the Assistant's conversational policy does not belong to a tool server. Keep the skill, pointing at server tool names | Re-enable a trimmed skill |
-| Knowledge-base guardrail | 6 (one case) | `voice-agent-crm-backend`: expressions read `arguments`, which the sandbox blocks; the native path used a Code node per a guardrail doc the skill points to | same as above | same |
-| Wrong project | fixed | Server create tools default to the personal project; 26% of builds were rebuilt into the right one. The bridge now injects the thread's `projectId` | **The protocol has no session scope**; the client injects it, like `workspaceKey` | done |
-| Unexplained | 3 scenarios | `flight-status-change-alert`, `product-page-agent-question-tool`, `trading-bot-http-array-normalization` | unknown | read the transcripts |
+"The agent ran a verification of the built workflow" and everything that
+depends on it (mocked verification before credentials, both branches
+verified, re-verify after a swap, verify before publishing, the honest
+"simulated" wording) is 0/3 across 23 units that master passes. The native
+build result carries `postBuildFlow` (verify, setup, publish disclosure); the
+server's save result does not, and the `workflow-builder` skill that follows
+it is gated off while the server builds. `verification_gap` attribution:
+1.5% of PoC runs.
+
+Nature: **PoC gap.** Tool results can carry next-step instructions for any
+client, and verification can be a server tool. Fix: put verify on the server
+and let `create_workflow_from_code` / `build_workflow` return the post-build
+flow; or keep a trimmed client skill that drives it.
+
+Fixing these 23 units alone brings the PoC to about 89.1%, i.e. parity with
+master.
+
+## Smaller findings
+
+- **Guidance drift.** The PoC gated off the `workflow-builder` skill, so its
+  rules (clarify before building when a choice changes topology, do not re-ask
+  deferred values, inspect an expression before editing it) did not reach the
+  model. `notification-router` is 0/9 on the PoC across three runs; master
+  failed it once in one trial, so the signal is weaker than it first looked.
+  MCP `instructions` is one flat string for every client; the Assistant's
+  conversational policy belongs in a client skill that names server tools.
+- **Wrong project (fixed).** Server create tools default to the personal
+  project; 26% of PoC builds were rebuilt into the conversation's project
+  before the bridge started injecting the thread's `projectId`. After the
+  fix: 0 of 1153. It cost a rebuild each, not scores.
+- **Build quality.** Scenario pass 79.5% vs 81.5% and builder-attributed
+  failures 11.9% vs 8.0%: slightly worse, inside the noise of one master
+  trial, but worth re-checking once the verification loop is back (several
+  scenario failures are workflows the agent never ran).
 
 ## What the protocol does not carry (none of it caused a regression)
 
@@ -72,13 +113,10 @@ later. The honest control is a same-day master run with the same settings.
 
 ## Recommendation
 
-The shared tool layer is viable: the hard parts (schema fidelity, typed
-outputs, approvals with session grants, the sandbox over tools) all worked
-under a full eval. The regressions are a to-do list, not a verdict. Before
-deciding:
-
-1. Run master full/N=1 as a fresh control.
-2. Close the three gaps above (verify loop, credential binding, skill back on)
-   and re-run. If the delta goes to about 0, the concept is proven at parity.
-   If the verification and credential items do not close, that is the real
-   cost of the design.
+The shared tool layer is viable: schema fidelity, typed outputs, approvals
+with session grants, and the sandbox over tools all held under a full eval,
+and the gap to master is one feature, not a pattern. Next: bring the
+verification loop onto the server (or keep a trimmed client skill), re-enable
+the skill's process rules, and re-run full/N=3 against a master N=3 control.
+Parity there is the go signal; a remaining gap would be the real cost of the
+design.

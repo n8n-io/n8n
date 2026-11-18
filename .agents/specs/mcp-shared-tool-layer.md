@@ -219,50 +219,43 @@ Cause: the `workflow-builder` skill's "ask before the build only when a choice
 changes intent or topology" rule is gated off with the skill; the server's
 instructions are a build recipe with no clarify step.
 
-Full suite against the LangSmith baseline `instance-ai-baseline-13/07`
-(349 shared units; the other ~1500 units of today's suite have no baseline).
-Two runs: one iteration at `7357512` (34 min), then three iterations at
-`90119af` (90 min) after the bridge started binding `projectId` to the thread's
-project. LangSmith experiments `ci-poc_mcp-shared-tool-layer-7357512-cc478cc8`
-and `ci-poc_mcp-shared-tool-layer-90119af-57b1395e`.
+Full suite, three references: a same-day master control (`a80147a`, N=1,
+1867 shared units), the July LangSmith baseline `instance-ai-baseline-13/07`
+(N=10, 349 shared units), and an earlier N=1 PoC run (`7357512`). PoC at
+`90119af`, N=3, 1167 builds. Experiments
+`ci-poc_mcp-shared-tool-layer-90119af-57b1395e`, `ci-master-a80147a-0c474204`,
+`ci-poc_mcp-shared-tool-layer-7357512-cc478cc8`. The team summary with the
+per-theme tables: `docs/poc/mcp-shared-tool-layer/eval-summary.md`.
 
-| shared units (349) | PoC N=3 | baseline N=10 | delta |
+| | PoC N=3 | master N=1 | delta |
 |---|---|---|---|
-| aggregate pass rate | 86.4% (CI 84.2–88.4) | 88.8% (CI 87.7–89.8) | −2.4 pp |
-| scenario units, executed workflows (117) | 85.8% | 79.2% | +6.5 pp |
-| expectation units, judged behaviour (232) | 86.7% | 93.7% | −6.9 pp |
-| failures observed vs expected under baseline rates | 142 vs 117 | | z = 3.8 |
+| aggregate pass rate (1867 units) | 87.9% (CI 87.0–88.7) | 89.3% (CI 87.8–90.6) | −1.4 pp |
+| scenario units, executed workflows (351) | 79.5% | 81.5% | −1.9 pp |
+| expectation units, judged behaviour (1516) | 89.9% | 91.1% | −1.2 pp |
 
-Verdicts: 290 stable, 19 watch, 24 hard regressions, 7 soft regressions,
-9 improvements. The scenario gain and most improvements are the baseline's
-age (units at 0/10 that master fixed since), not the PoC. The N=3 run against
-the N=1 run: +0.7 pp, no regressions, so the PoC is stable run to run and
-builds are unchanged by the project fix. The regressions, 19 of them at 0/3
-against 9–10/10, so structural rather than noise:
+Units master passed that the PoC failed 3/3: 54; the reverse: 44. The
+asymmetry sits in one theme: **verification loop, 23 against 3**. Every
+other theme (credentials 3 vs 8, asking 5 vs 2, publishing 1 vs 3, other
+judged behaviour 14 vs 19, scenarios 8 vs 9) is balanced noise. Against the
+July baseline the PoC is −2.4 pp with 24 hard regressions, but 15 of those
+31 regressions also fail on today's master (the credential-offering group
+and `notification-router`), so they are July-to-now drift. The two PoC runs
+agree within +0.7 pp.
 
-1. **No verification loop (11 hard).** "The agent ran a verification of the
-   built workflow" and its consequences (mocked verification before
-   credentials, both branches verified, live test after setup) are 0/3. The
-   native build result carries `postBuildFlow`; the server's save result
-   does not, and the skill that follows it is off. `verification_gap` is
-   1.5% of runs vs 0 in the baseline.
-2. **Credentials during the build (5 hard, 2 soft).** The native build tool
-   lists the candidate credentials and binds a sole match. Over MCP the
-   agent tells the user the Slack credential is missing although one exists
-   (`binds-existing-credential-without-reasking` 0/3 vs 8–10/10), and does
-   not apply a chosen one on re-verify.
-3. **Guidance drift (3 hard, 3 soft).** Clarify before building
-   (`notification-router` 0/3 vs 10/10), do not re-ask what the user deferred,
-   inspect an errored expression before editing it. The rules live in the
-   gated `workflow-builder` skill and its references; the server's
-   instructions are a build recipe.
-4. **One build-quality case (`voice-agent-crm-backend`, 2 hard, 2 soft, 2
-   scenarios).** Expressions read a tool-call payload's `arguments` property,
-   which the expression sandbox blocks; the native path used a Code node
-   (knowledge-base guardrail in the gated skill).
-5. Three scenario regressions without a visible cause yet
-   (`flight-status-change-alert`, `product-page-agent-question-tool`,
-   `trading-bot-http-array-normalization`).
+What the one regression is: "the agent ran a verification of the built
+workflow" and its consequences (mocked verification before credentials, both
+branches verified, re-verify after a swap, verify before publish) at 0/3.
+The native build result carries `postBuildFlow`; the server's save result
+does not, and the skill that follows it is off while the server builds. A
+PoC gap, not a protocol limit: save results can carry next steps for any
+client, and verify can be a server tool. Fixing those 23 units alone puts
+the PoC at about 89.1%, parity with master.
+
+Smaller: the gated `workflow-builder` skill also held the clarify-before-build
+and inspect-before-edit rules (`notification-router` 0/9 on the PoC over three
+runs; master failed it once in one trial). Conversational policy stays a
+client skill that names server tools; MCP `instructions` is one string for
+every client.
 
 Wrong project (fixed): without `projectId` the server saves to the caller's
 personal project. In the N=1 run the agent noticed and rebuilt in 98 of 382
