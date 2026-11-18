@@ -1,5 +1,3 @@
-import type { GymAdmin } from './gym-admin';
-import { LinearHydrator } from './hydrator';
 import { LINEAR_INSTRUCTIONS, NOTION_INSTRUCTIONS } from './hydration-prompts';
 import {
 	linearLookups,
@@ -8,11 +6,8 @@ import {
 	withUserEmails,
 } from './linear-lookups';
 import { LINEAR_READ_TOOLS, LINEAR_WRITE_TOOLS } from './linear-tools';
-import type { McpCaller } from './mcp-upstream';
 import { withTitles } from './notion-finalize';
-import { NotionHydrator } from './notion-hydrator';
 import { NOTION_READ_TOOLS, NOTION_WRITE_TOOLS } from './notion-tools';
-import type { Hydrator } from './router';
 
 export interface GuardServiceProfile {
 	name: string;
@@ -44,7 +39,6 @@ export interface GuardServiceProfile {
 	keepParents?: boolean;
 	// Service part of the instructions of the hydration agent and of the plan hydrator.
 	instructions: string;
-	createHydrator(deps: { admin: GymAdmin; tenant: string; upstream: McpCaller }): Hydrator;
 }
 
 export const LINEAR_PROFILE: GuardServiceProfile = {
@@ -81,7 +75,6 @@ export const LINEAR_PROFILE: GuardServiceProfile = {
 			? Object.fromEntries(Object.entries(args).filter(([key]) => key !== 'fields'))
 			: args,
 	instructions: LINEAR_INSTRUCTIONS,
-	createHydrator: (deps) => new LinearHydrator(deps),
 };
 
 export const NOTION_PROFILE: GuardServiceProfile = {
@@ -99,7 +92,6 @@ export const NOTION_PROFILE: GuardServiceProfile = {
 	keepParents: true,
 	finalize: withTitles,
 	instructions: NOTION_INSTRUCTIONS,
-	createHydrator: (deps) => new NotionHydrator(deps),
 };
 
 export const GUARD_PROFILES: readonly GuardServiceProfile[] = [LINEAR_PROFILE, NOTION_PROFILE];

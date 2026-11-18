@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { isGuardedUrl, withMcpGuard } from '../mcp-guard-fetch';
+import { isGuardedUrl, isMcpGuardActive, withMcpGuard } from '../mcp-guard-fetch';
 import { McpGuardService } from '../mcp-guard.service';
 
 vi.mock('../mcp-guard.service', () => ({ McpGuardService: class {} }));
@@ -63,5 +63,22 @@ describe('isGuardedUrl', () => {
 		expect(isGuardedUrl('https://mcp.linear.app./mcp')).toBe(true);
 		expect(isGuardedUrl('https://example.com/mcp')).toBe(false);
 		expect(isGuardedUrl('not a url')).toBe(false);
+	});
+});
+
+describe('isMcpGuardActive', () => {
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('should be off unless MCP_GUARD_ENABLED is true', () => {
+		expect(isMcpGuardActive('test', false)).toBe(false);
+		vi.stubEnv('MCP_GUARD_ENABLED', 'true');
+		expect(isMcpGuardActive('test', false)).toBe(true);
+	});
+
+	it('should stay off outside a test chat and for an instrumented fetch', () => {
+		vi.stubEnv('MCP_GUARD_ENABLED', 'true');
+		expect(isMcpGuardActive('production', false)).toBe(false);
+		expect(isMcpGuardActive(undefined, false)).toBe(false);
+		expect(isMcpGuardActive('test', true)).toBe(false);
 	});
 });

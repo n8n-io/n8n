@@ -50,7 +50,7 @@ export class GuardRouter {
 				// A failed parent read must not block the write. The gym then answers with its own error.
 				await this.deps.hydrator.hydrateWrite?.(name, args).catch(() => undefined);
 				const res = await this.deps.gym.callTool(name, args);
-				if (res.isError) logError(name, 'gym', res);
+				if (res.isError) logError(name, 'gym');
 				else this.deps.hydrator.noteWrite?.(name, res);
 				return res;
 			} catch (e) {
@@ -82,7 +82,7 @@ export class GuardRouter {
 		if (upstreamResult.isError) {
 			// An object that the agent made in the gym has no real copy. The gym may know it.
 			const fromGym =
-				isNotFound(upstreamResult) && gymNames.has(name)
+				failedInTool(upstreamResult) && gymNames.has(name)
 					? await this.tryGym(name, args)
 					: undefined;
 			if (fromGym) return fromGym;
@@ -96,7 +96,7 @@ export class GuardRouter {
 		try {
 			await this.deps.hydrator.hydrate(name, args, upstreamResult);
 			const res = await this.deps.gym.callTool(name, args);
-			if (res.isError) logError(name, 'gym', res);
+			if (res.isError) logError(name, 'gym');
 			log(name, 'upstream+hydrate+gym');
 			return res;
 		} catch (e) {
@@ -149,18 +149,13 @@ export const GYM_LACKS_FEATURE = /not available in the gym/i;
 const textOf = (res: CallToolResult): string =>
 	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join(' ');
 
-// The real service says an object does not exist. Other errors (limits, auth) stay as they are.
-function isNotFound(res: CallToolResult): boolean {
-	return /not found|could not find|does not exist/i.test(textOf(res));
-}
+// The real service answered the call with a tool error (an object it does not know, a bad reference).
+// Transport and HTTP failures (limits, auth, outages) are thrown, not returned, so they stay as they are.
+const failedInTool = (res: CallToolResult): boolean => res.isError === true;
 
-// Log the error text of a failed tool result, never the arguments.
-function logError(tool: string, route: string, res: CallToolResult): void {
-	const text = res.content
-		.flatMap((c) => (c.type === 'text' ? [c.text] : []))
-		.join(' ')
-		.slice(0, 300);
-	Container.get(Logger).warn(`mcp-guard ${tool} -> ${route} failed: ${text}`);
+// Log that a tool call failed. The error text can hold data of the user, so it stays out of the log.
+function logError(tool: string, route: string): void {
+	Container.get(Logger).warn(`mcp-guard ${tool} -> ${route} failed`);
 }
 
 // Log tool name and route only. Never log args or tokens.

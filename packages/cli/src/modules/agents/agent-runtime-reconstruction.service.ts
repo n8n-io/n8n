@@ -15,7 +15,12 @@ import {
 	ModelConfig,
 	type Workspace,
 } from '@n8n/agents';
-import { GUARDED_CALL_TIMEOUT_MS, isGuardedUrl, withMcpGuard } from '../mcp-guard/mcp-guard-fetch';
+import {
+	GUARDED_CALL_TIMEOUT_MS,
+	isGuardedUrl,
+	isMcpGuardActive,
+	withMcpGuard,
+} from '../mcp-guard/mcp-guard-fetch';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel } from 'ai';
 import {
@@ -953,6 +958,7 @@ export class AgentRuntimeReconstructionService {
 	) {
 		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
 			options;
+		const guardActive = isMcpGuardActive(options.runType, instrumentation?.mcpFetch !== undefined);
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
@@ -961,17 +967,15 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				// A guarded call can wait for a hydration. Give it more time than the MCP SDK default.
-				...(options.runType === 'test' &&
-					isGuardedUrl(server.url) && { callTimeoutMs: GUARDED_CALL_TIMEOUT_MS }),
-				// Test chat only: Linear MCP goes through the read-only guard.
-				proxyFetch:
-					options.runType === 'test'
-						? withMcpGuard(aiMcpFetch, memoryOwnerAgentId, {
-								// The hydration agent uses the model of the agent under test.
-								resolve: async () => await resolveModelConfig(options.config, credentialProvider),
-								fetch: createAiProxyFetch(this.outboundHttp),
-							})
-						: aiMcpFetch,
+				...(guardActive && isGuardedUrl(server.url) && { callTimeoutMs: GUARDED_CALL_TIMEOUT_MS }),
+				// Test chat only, when enabled: Linear and Notion MCP go through the read-only guard.
+				proxyFetch: guardActive
+					? withMcpGuard(aiMcpFetch, memoryOwnerAgentId, {
+							// The hydration agent uses the model of the agent under test.
+							resolve: async () => await resolveModelConfig(options.config, credentialProvider),
+							fetch: createAiProxyFetch(this.outboundHttp),
+						})
+					: aiMcpFetch,
 				resolveRegistryConnection: async (nodeTypeName) => {
 					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
 					if (connection?.attribution) {

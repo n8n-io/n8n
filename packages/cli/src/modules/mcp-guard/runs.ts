@@ -1,3 +1,5 @@
+import { OperationalError } from 'n8n-workflow';
+
 import { AgentHydrator } from './agent-hydrator';
 import type { GymAdmin } from './gym-admin';
 import { createHydrationLlm, createPlanLlm, type HydrationModel } from './hydration-llm';
@@ -54,6 +56,9 @@ export class RunRegistry {
 	}
 
 	private async create(runId: string, token: string, model?: HydrationModel): Promise<Run> {
+		// The gym is filled by a model. Without one the gym would answer with nothing.
+		if (!model)
+			throw new OperationalError('mcp-guard needs the model of the agent to fill the gym');
 		await this.deleteIdle();
 		const tenant = `guard-${runId}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 		await this.cfg.admin.createTenant(tenant);
@@ -85,18 +90,16 @@ export class RunRegistry {
 		return run;
 	}
 
-	// MCP_GUARD_HYDRATION picks the hydrator: plan (default), agent or deterministic. The plan and agent
-	// hydrators need the model of the agent under test. Without it the parser hydrators run.
+	// MCP_GUARD_HYDRATION picks the hydrator: plan (default) or agent. Both use the model of the agent under test.
 	private createHydrator(
 		profile: GuardServiceProfile,
 		tenant: string,
 		upstream: McpCaller,
 		gym: McpCaller,
-		model?: HydrationModel,
+		model: HydrationModel,
 	): Hydrator {
 		const { admin } = this.cfg;
-		const mode = process.env.MCP_GUARD_HYDRATION ?? 'plan';
-		if (model && mode === 'agent') {
+		if (process.env.MCP_GUARD_HYDRATION === 'agent') {
 			return new AgentHydrator({
 				admin,
 				tenant,
@@ -107,22 +110,19 @@ export class RunRegistry {
 				llm: createHydrationLlm(model),
 			});
 		}
-		if (model && mode !== 'deterministic') {
-			return new PlanHydrator({
-				admin,
-				tenant,
-				upstream,
-				gym,
-				readTools: profile.readTools,
-				instructions: `${PLAN_INSTRUCTIONS}\n${profile.instructions}`,
-				llm: createPlanLlm(model),
-				lookups: profile.lookups,
-				finalize: profile.finalize,
-				gymFirst: profile.gymFirst,
-				keepParents: profile.keepParents,
-			});
-		}
-		return profile.createHydrator({ admin, tenant, upstream });
+		return new PlanHydrator({
+			admin,
+			tenant,
+			upstream,
+			gym,
+			readTools: profile.readTools,
+			instructions: `${PLAN_INSTRUCTIONS}\n${profile.instructions}`,
+			llm: createPlanLlm(model),
+			lookups: profile.lookups,
+			finalize: profile.finalize,
+			gymFirst: profile.gymFirst,
+			keepParents: profile.keepParents,
+		});
 	}
 
 	// A chat that nobody has used for a while is over. Remove its tenant, so the gym does not fill up.

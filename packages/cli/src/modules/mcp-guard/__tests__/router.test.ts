@@ -94,10 +94,38 @@ describe('GuardRouter read of an object that only the gym has', () => {
 		expect(JSON.stringify(res)).toContain('Could not find project');
 	});
 
-	it('keeps a real error that is not a missing object', async () => {
+	it('answers from the gym for any tool error of the real service', async () => {
 		const { router } = build('The query is too complex', text('gym data'));
+		expect(await router.callTool('list_milestones', {})).toEqual(text('gym data'));
+	});
+
+	it('keeps a failure that the real service throws, such as an auth or limit error', async () => {
+		let gymCalls = 0;
+		const router = new GuardRouter({
+			upstream: {
+				callTool: async () => {
+					throw new Error('401 Unauthorized');
+				},
+				listTools: async () => [],
+			} as McpCaller,
+			gym: {
+				callTool: async () => {
+					gymCalls++;
+					return text('gym data');
+				},
+				listTools: async () => [
+					{ name: 'list_milestones', inputSchema: { type: 'object' as const } },
+				],
+			} as McpCaller,
+			hydrator: { hydrate: async () => undefined },
+			readTools: new Set(['list_milestones']),
+			writeTools: new Set(),
+		});
 		const res = await router.callTool('list_milestones', {});
-		expect(JSON.stringify(res)).toContain('too complex');
+		expect(res.isError).toBe(true);
+		expect(JSON.stringify(res)).toContain('401 Unauthorized');
+		// The gym saw only the first check of a read that the gym may refuse.
+		expect(gymCalls).toBeLessThanOrEqual(1);
 	});
 });
 
