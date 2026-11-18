@@ -167,6 +167,7 @@ describe('Instance AI skills', () => {
 			'suggest-automations',
 			'v3-migration',
 			'workflow-builder',
+			'workflow-tests',
 		]);
 	});
 

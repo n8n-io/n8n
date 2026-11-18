@@ -23,6 +23,7 @@ export const DOMAIN_TOOL_IDS = {
 	RESTORE_WORKFLOW_VERSION: WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
 	UPDATE_WORKFLOW_VERSION: WORKFLOW_BUILDER_TOOL_NAMES.UPDATE_WORKFLOW_VERSION,
 	EVAL_CONFIG: 'eval-config',
+	WORKFLOW_TESTS: 'workflow-tests',
 	LIST_EXECUTIONS: WORKFLOW_BUILDER_TOOL_NAMES.LIST_EXECUTIONS,
 	GET_EXECUTION: WORKFLOW_BUILDER_TOOL_NAMES.GET_EXECUTION,
 	RUN_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.RUN_WORKFLOW,
@@ -102,6 +103,7 @@ export const WORKSPACE_TOOL_IDS = {
 
 export const APPS_TOOL_ID = DOMAIN_TOOL_IDS.APPS;
 export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
+export const WORKFLOW_TESTS_TOOL_ID = DOMAIN_TOOL_IDS.WORKFLOW_TESTS;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
 
@@ -182,6 +184,7 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 	...[...WORKFLOW_TOOL_NAMES, ...Object.values(WORKFLOW_BUILDER_TOOL_NAMES)]
 		.filter((name) => !EXECUTION_TOOL_NAMES.includes(name))
 		.map((name): [string, string] => [name, 'workflows']),
+	[DOMAIN_TOOL_IDS.WORKFLOW_TESTS, 'workflows'],
 	...EXECUTION_TOOL_NAMES.map((name): [string, string] => [name, 'executions']),
 	...DATA_TABLE_TOOL_NAMES.map((name): [string, string] => [name, 'data_tables']),
 	...CREDENTIAL_TOOL_NAMES.map((name): [string, string] => [name, 'credentials']),

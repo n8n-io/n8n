@@ -1734,11 +1734,21 @@ export type InstanceAiMigrationReportHandoffContext = z.infer<
 	typeof instanceAiMigrationReportHandoffContextSchema
 >;
 
+/** Opens the Assistant on the tests of one workflow. The server loads the `workflow-tests` skill. */
+export const instanceAiWorkflowTestsHandoffContextSchema = z.object({
+	source: z.literal('workflow-tests'),
+	workflowId: z.string().min(1).max(64),
+});
+export type InstanceAiWorkflowTestsHandoffContext = z.infer<
+	typeof instanceAiWorkflowTestsHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiSetupPanelExecuteHandoffContextSchema,
 	instanceAiMigrationReportHandoffContextSchema,
+	instanceAiWorkflowTestsHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1826,6 +1836,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `migration_report`: fix one finding of the major-version migration report
+ * - `workflow_tests`: "Generate tests" on the Tests tab of a workflow
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
@@ -1849,6 +1860,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_preview',
 	'self_healing_result',
 	'migration_report',
+	'workflow_tests',
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
@@ -1889,6 +1901,8 @@ export type InstanceAiThreadSourcePersisted =
  *   change request, dropped into the composer
  * - `handoff_migration_report`: fix one migration report finding, from the
  *   finding row or after an automated migration left work behind
+ * - `handoff_workflow_tests`: generate or fix the tests of a workflow, from its
+ *   Tests tab
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1912,6 +1926,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
 	'handoff_migration_report',
+	'handoff_workflow_tests',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

@@ -1,5 +1,6 @@
 import { filterRuntimeSkillSource, type RuntimeSkillContent } from '@n8n/agents';
-import { Service } from '@n8n/di';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { Container, Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from '@n8n/errors';
 
@@ -30,6 +31,7 @@ export const SKILLS = {
 	suggestAutomations: 'suggest-automations',
 	v3Migration: 'v3-migration',
 	appBuilder: 'app-builder',
+	workflowTests: 'workflow-tests',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];
@@ -74,6 +76,11 @@ const SKILL_GATES: ReadonlyArray<{
 	{
 		skills: [SKILLS.appBuilder],
 		isOpen: ({ appBuildingEnabled }) => appBuildingEnabled,
+	},
+	{
+		// The skill drives the `workflow-tests` tool, which exists only when the module is active.
+		skills: [SKILLS.workflowTests],
+		isOpen: () => Container.get(ModuleRegistry).isActive('workflow-tests'),
 	},
 ];
 

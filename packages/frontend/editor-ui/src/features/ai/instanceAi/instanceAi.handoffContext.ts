@@ -18,6 +18,10 @@ export function handoffContextKey(context: InstanceAiHandoffContext): string {
 		return `${context.source}:${context.ruleId}:${context.workflowId}`;
 	}
 
+	if (context.source === 'workflow-tests') {
+		return `${context.source}:${context.workflowId}`;
+	}
+
 	return `${context.source}:${context.credential.credentialType}:${context.credential.id ?? context.credential.displayName}`;
 }
 

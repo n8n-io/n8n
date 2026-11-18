@@ -101,6 +101,7 @@ import type {
 	CredentialTypeSearchResult,
 	CredentialHostInfo,
 	InstanceAiEvaluationConfigService,
+	InstanceAiWorkflowTestService,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
@@ -185,6 +186,7 @@ import {
 } from '@n8n/errors';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
+import { WorkflowTestFileService } from '@/modules/workflow-tests/workflow-test-file.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
@@ -694,6 +696,7 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
+			workflowTestService: this.createWorkflowTestAdapter(user, projectId),
 			mcpService: mcpConnectionsAvailable ? this.createMcpAdapter(user) : undefined,
 			executeNodeService: this.executeNodeService
 				? this.createExecuteNodeAdapter(
@@ -3611,6 +3614,51 @@ export class InstanceAiAdapterService {
 				await assertWorkflowInBoundProject(workflowId);
 				await findWorkflow(workflowId, 'workflow:update');
 				await evaluationConfigService.delete(workflowId, configId);
+			},
+		};
+	}
+
+	private createWorkflowTestAdapter(
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiWorkflowTestService | undefined {
+		if (!Container.get(ModuleRegistry).isActive('workflow-tests')) return undefined;
+		const { workflowFinderService } = this;
+		const { assertWorkflowInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
+		const fileService = () => Container.get(WorkflowTestFileService);
+
+		const assertWorkflowAccess = async (
+			workflowId: string,
+			scope: 'workflow:read' | 'workflow:update' | 'workflow:execute',
+		) => {
+			const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [scope]);
+			if (!workflow) throw new WorkflowNotFoundError(workflowId);
+		};
+
+		return {
+			async get(workflowId) {
+				await assertWorkflowAccess(workflowId, 'workflow:read');
+				return await fileService().get(workflowId);
+			},
+			save: async (workflowId, source) => {
+				this.assertInstanceNotReadOnly('workflow tests');
+				await assertWorkflowInBoundProject(workflowId);
+				await assertWorkflowAccess(workflowId, 'workflow:update');
+				return await fileService().save(workflowId, source);
+			},
+			async run(workflowId) {
+				// The runner runs the test code on the n8n host, so only owners and admins can run it.
+				if (!hasGlobalScope(user, 'workflow:execute')) {
+					throw new UserError(
+						'Only an instance owner or admin can run workflow tests. Save the tests and ask an owner or admin to run them.',
+					);
+				}
+				await assertWorkflowAccess(workflowId, 'workflow:execute');
+				const file = await fileService().get(workflowId);
+				if (!file) {
+					throw new UserError('The workflow has no saved test file. Save the tests first.');
+				}
+				return await fileService().run(user, workflowId, file.id);
 			},
 		};
 	}

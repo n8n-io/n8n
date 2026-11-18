@@ -737,6 +737,7 @@ export type {
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiMigrationReportHandoffContext,
+	InstanceAiWorkflowTestsHandoffContext,
 	InstanceAiAutomatedMigrationOutcome,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
@@ -1058,6 +1059,7 @@ export {
 export type { InstanceAiEventLifecycle } from './schemas/instance-ai-event-lifecycle';
 export * from './inbox';
 export * from './model-priority';
+export type * from './workflow-tests';
 
 export {
 	RsaPublicJwkSchema,

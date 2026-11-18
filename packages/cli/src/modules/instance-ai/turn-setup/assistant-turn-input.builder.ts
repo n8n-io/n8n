@@ -84,6 +84,10 @@ import {
 	resolveMigrationReportFinding,
 } from '../migration-report-handoff';
 import { ONBOARDING_OPENING } from '../onboarding-opening';
+import {
+	buildWorkflowTestsContextBlock,
+	resolveWorkflowTestsHandoff,
+} from '../workflow-tests-handoff';
 import { type OrchestratorResumeReason } from '../tracing';
 
 /**
@@ -347,6 +351,12 @@ export class AssistantTurnInputBuilder {
 				finding,
 				skill.instructions,
 			);
+		} else if (handoffContext?.source === 'workflow-tests') {
+			const [workflow, skill] = await Promise.all([
+				resolveWorkflowTestsHandoff(handoffContext, user),
+				this.skillsService.loadSkill(SKILLS.workflowTests, skillScope),
+			]);
+			handoffContextBlock = buildWorkflowTestsContextBlock(workflow, skill.instructions);
 		} else {
 			handoffContextBlock = buildHandoffContextBlock(handoffContext);
 		}

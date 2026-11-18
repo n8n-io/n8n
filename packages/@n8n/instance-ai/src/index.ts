@@ -756,6 +756,7 @@ export type {
 	DataTableColumnInfo,
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
+	InstanceAiWorkflowTestService,
 	InstanceAiActivityEntry,
 	InstanceAiActivityExpansion,
 	InstanceAiActivityService,

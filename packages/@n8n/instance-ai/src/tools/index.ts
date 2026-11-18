@@ -39,6 +39,9 @@ const loadDataTablesTool = lazyMod(
 const loadEvalConfigTool = lazyMod(
 	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
 );
+const loadWorkflowTestsTool = lazyMod(
+	() => require('./workflow-tests.tool') as typeof import('./workflow-tests.tool'),
+);
 const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
@@ -193,6 +196,14 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.EVAL_CONFIG,
 			() => loadEvalConfigTool().createEvalConfigTool(context),
+		]);
+	}
+
+	// The adapter only wires workflowTestService when the `workflow-tests` module is active.
+	if (context.workflowTestService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.WORKFLOW_TESTS,
+			() => loadWorkflowTestsTool().createWorkflowTestsTool(context),
 		]);
 	}
 

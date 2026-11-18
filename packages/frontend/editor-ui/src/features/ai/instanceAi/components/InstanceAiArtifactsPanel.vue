@@ -164,6 +164,8 @@ function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry | unde
 	if (context.source === 'setup-panel-execute') return undefined;
 	// The workflow attachment already shows the workflow the finding is about.
 	if (context.source === 'migration-report') return undefined;
+	// Same: the workflow attachment shows the workflow under test.
+	if (context.source === 'workflow-tests') return undefined;
 
 	if (context.source === 'agent-preview') {
 		return {

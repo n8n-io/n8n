@@ -45,6 +45,8 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	WorkflowTestFile,
+	WorkflowTestRunResult,
 } from '@n8n/api-types';
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -1416,6 +1418,15 @@ export interface InstanceAiEvaluationConfigService {
 	delete(workflowId: string, configId: string): Promise<void>;
 }
 
+/** Reads, saves and runs the `@n8n/test` Vitest file of a workflow. */
+export interface InstanceAiWorkflowTestService {
+	get(workflowId: string): Promise<WorkflowTestFile | null>;
+	/** Creates the file of the workflow, or replaces its source. */
+	save(workflowId: string, source: string): Promise<WorkflowTestFile>;
+	/** Runs the stored file against the saved draft and resolves with the result. */
+	run(workflowId: string): Promise<WorkflowTestRunResult>;
+}
+
 // ── Web Research ────────────────────────────────────────────────────────────
 
 export interface FetchedPage {
@@ -1767,6 +1778,8 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present when the `workflow-tests` module is active. Presence gates the `workflow-tests` tool. */
+	workflowTestService?: InstanceAiWorkflowTestService;
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
