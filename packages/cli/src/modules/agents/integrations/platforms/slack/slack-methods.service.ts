@@ -116,12 +116,29 @@ export class SlackMethodsService {
 		agentId: string,
 		options: { redirectUrl?: string; managed?: boolean } = {},
 	): SlackAgentAppManifest {
+		return this.manifestFor(agentName, this.webhookUrl(projectId, agentId), {
+			redirectUrl: options.redirectUrl,
+			managedAppUrl: options.managed ? this.managedAppUrl(projectId, agentId) : undefined,
+		});
+	}
+
+	/** The manifest of a system agent. The Slack app sends its events to the instance route. */
+	buildInstanceManifest(agentName: string, webhookUrl: string): SlackAgentAppManifest {
+		return this.manifestFor(agentName, webhookUrl, {});
+	}
+
+	private manifestFor(
+		agentName: string,
+		webhookUrl: string,
+		options: { redirectUrl?: string; managedAppUrl?: string },
+	): SlackAgentAppManifest {
 		const slackAppName = this.sanitiseSlackAppName(agentName);
-		const webhookUrl = this.webhookUrl(projectId, agentId);
+		const { managedAppUrl } = options;
+		const managed = managedAppUrl !== undefined;
 		return {
 			display_information: {
 				name: slackAppName,
-				...(options.managed
+				...(managed
 					? { description: `Work with ${slackAppName}, your n8n AI agent, in Slack.` }
 					: {}),
 			},
@@ -155,11 +172,11 @@ export class SlackMethodsService {
 				org_deploy_enabled: false,
 				socket_mode_enabled: false,
 				token_rotation_enabled: false,
-				...(options.managed
+				...(managedAppUrl !== undefined
 					? {
 							managed_app_settings: {
 								is_install_from_slack_disabled: true,
-								external_app_management_url: this.managedAppUrl(projectId, agentId),
+								external_app_management_url: managedAppUrl,
 							},
 						}
 					: {}),

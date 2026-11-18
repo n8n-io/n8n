@@ -29,6 +29,7 @@ interface AgentChatStreamConsumerOptions {
 		chunk: SuspendedChunk,
 		thread: Thread<unknown, unknown>,
 		actingUserId?: string,
+		agentThreadId?: string,
 	) => Promise<SuspensionHandlingResult>;
 	handleMessage: (
 		chunk: MessageChunk,
@@ -344,7 +345,12 @@ export class AgentChatStreamConsumer {
 					case 'tool-call-suspended': {
 						responseState.suspended = true;
 						await responseLifecycle.startDiscreteResponse();
-						const result = await this.options.handleSuspension(chunk, thread, options.actingUserId);
+						const result = await this.options.handleSuspension(
+							chunk,
+							thread,
+							options.actingUserId,
+							options.agentThreadId,
+						);
 						responseState.hasVisibleResponse ||= result === 'posted';
 						if (result === 'failed') {
 							responseState.fallbackSource = 'suspension';
@@ -656,7 +662,12 @@ export class AgentChatStreamConsumer {
 							await flushBuffer();
 						}
 						await responseLifecycle.startDiscreteResponse();
-						const result = await this.options.handleSuspension(chunk, thread, options.actingUserId);
+						const result = await this.options.handleSuspension(
+							chunk,
+							thread,
+							options.actingUserId,
+							options.agentThreadId,
+						);
 						responseState.hasVisibleResponse ||= result === 'posted';
 						if (result === 'failed') {
 							if (options.throwOnDeliveryError) {

@@ -490,7 +490,26 @@ describe('AgentChatStreamConsumer — suspension routing', () => {
 
 		await consumer.consume(makeStream([SUSPENDED_CHUNK]), thread, { actingUserId: 'user-1' });
 
-		expect(handleSuspension).toHaveBeenCalledWith(SUSPENDED_CHUNK, thread, 'user-1');
+		expect(handleSuspension).toHaveBeenCalledWith(SUSPENDED_CHUNK, thread, 'user-1', undefined);
+	});
+
+	it.each([
+		['streaming', false],
+		['buffered', true],
+	])('passes the agent thread to the suspension handler (%s)', async (_name, disableStreaming) => {
+		const { consumer, handleSuspension } = makeSuspensionConsumer(disableStreaming);
+
+		await consumer.consume(makeStream([SUSPENDED_CHUNK]), thread, {
+			actingUserId: 'user-1',
+			agentThreadId: 'agent-thread-1',
+		});
+
+		expect(handleSuspension).toHaveBeenCalledWith(
+			SUSPENDED_CHUNK,
+			thread,
+			'user-1',
+			'agent-thread-1',
+		);
 	});
 
 	it('leaves the acting user unset on a turn no user drove', async () => {
@@ -498,7 +517,7 @@ describe('AgentChatStreamConsumer — suspension routing', () => {
 
 		await consumer.consume(makeStream([SUSPENDED_CHUNK]), thread);
 
-		expect(handleSuspension).toHaveBeenCalledWith(SUSPENDED_CHUNK, thread, undefined);
+		expect(handleSuspension).toHaveBeenCalledWith(SUSPENDED_CHUNK, thread, undefined, undefined);
 	});
 });
 

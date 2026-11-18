@@ -10,7 +10,7 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { agentChannelKey, agentChannelRef, type AgentChannelRef } from '../utils/agent-channel';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
-import { ChatIntegrationService } from './chat-integration.service';
+import { ChatIntegrationService, type ChannelAgent } from './chat-integration.service';
 import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
@@ -20,7 +20,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 export type ChannelReconcileReason = 'startup' | 'leader-takeover' | 'interval';
 
 /** Channels a pass should see running, keyed by {@link agentChannelKey}. */
-type WantedChannels = Map<string, { agent: ProjectAgent; integration: AgentIntegrationConfig }>;
+type WantedChannels = Map<string, { agent: ChannelAgent; integration: AgentIntegrationConfig }>;
 
 /**
  * How long shutdown waits for a pass to finish before withdrawing anyway. Well
@@ -198,9 +198,11 @@ export class AgentChannelReconciler {
 	private async runPass(reason: ChannelReconcileReason): Promise<void> {
 		try {
 			const agents = await this.agentRepository.findPublished();
+			// An instance agent has no published version. Its channels are wanted as saved.
+			const instanceAgents = await this.agentRepository.findInstanceAgentsWithIntegrations();
 			const ownStatuses = await this.channelStatusRepository.findOwnAll({});
 
-			const wantedHere = this.collectWantedChannels(agents);
+			const wantedHere = this.collectWantedChannels(agents, instanceAgents);
 
 			await this.settleWanted(wantedHere, ownStatuses, reason);
 			await this.releaseGhosts(wantedHere);
@@ -345,10 +347,20 @@ export class AgentChannelReconciler {
 		}
 	}
 
-	private collectWantedChannels(agents: ProjectAgent[]): WantedChannels {
+	private collectWantedChannels(
+		agents: ProjectAgent[],
+		instanceAgents: Array<{ id: string; integrations: AgentIntegrationConfig[] }>,
+	): WantedChannels {
 		const wanted: WantedChannels = new Map();
-		for (const agent of agents) {
-			const integrations = (agent.integrations ?? []).filter(
+		const owners: Array<{ agent: ChannelAgent; integrations: AgentIntegrationConfig[] }> = [
+			...agents.map((agent) => ({ agent, integrations: agent.integrations })),
+			...instanceAgents.map(({ id, integrations }) => ({
+				agent: { id, projectId: null },
+				integrations,
+			})),
+		];
+		for (const { agent, integrations: saved } of owners) {
+			const integrations = (saved ?? []).filter(
 				(integration) =>
 					hasChannelRuntime(integration) &&
 					!isDraftIntegration(integration) &&
@@ -362,7 +374,7 @@ export class AgentChannelReconciler {
 	}
 
 	private async settleChannel(
-		agent: ProjectAgent,
+		agent: ChannelAgent,
 		integration: AgentIntegrationConfig,
 		own: AgentChannelStatus | undefined,
 		reason: ChannelReconcileReason,
@@ -387,7 +399,7 @@ export class AgentChannelReconciler {
 	}
 
 	private async startWantedChannel(
-		agent: ProjectAgent,
+		agent: ChannelAgent,
 		integration: AgentIntegrationConfig,
 		own: AgentChannelStatus | undefined,
 		reason: ChannelReconcileReason,

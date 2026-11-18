@@ -218,6 +218,17 @@ export class ComponentMapper {
 					),
 				);
 				return;
+			case 'link_button':
+				// A link button opens a URL. It never resumes a run, so it has no resume value.
+				if (typeof component.url === 'string' && /^https?:\/\//i.test(component.url)) {
+					buttons.push(
+						ctx.sdk.LinkButton({
+							label: component.label ?? componentTextToString(component.text) ?? 'Open',
+							url: component.url,
+						}),
+					);
+				}
+				return;
 			case 'section':
 				await this.appendSection(ctx);
 				return;

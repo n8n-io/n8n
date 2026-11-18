@@ -40,7 +40,7 @@ import type {
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
 } from '@/modules/agents/system-agents/system-agent.types';
-import { TelemetryProxy } from '@n8n/backend-services';
+import { TelemetryProxy, UrlService } from '@n8n/backend-services';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import {
@@ -73,6 +73,7 @@ import type {
 	AssistantTurnRuntime,
 	AssistantTurnState,
 } from '../turn-setup/assistant-turn-runtime';
+import { toAssistantChannelCard } from './assistant-channel-card';
 import { AssistantEventSink } from './assistant-event-sink';
 import {
 	createSnapshotTemporaryWorkflowMarkers,
@@ -168,6 +169,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: TelemetryProxy,
+		private readonly urlService: UrlService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -176,6 +178,19 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	/** The runtime already requires `project:read` on the working project. */
 	async authorize(user: User): Promise<boolean> {
 		return hasGlobalScope(user, 'instanceAi:message') && this.settingsService.isAgentEnabled();
+	}
+
+	/** A chat shows a plain approval as a card. Every other step links to the editor. */
+	toChannelCard(suspendPayload: unknown, context: { threadId: string }) {
+		return toAssistantChannelCard(suspendPayload, {
+			threadId: context.threadId,
+			editorBaseUrl: this.urlService.getInstanceBaseUrl(),
+		});
+	}
+
+	/** Only an instance admin connects the Assistant to a chat platform. */
+	authorizeChannelSetup(user: User): boolean {
+		return hasGlobalScope(user, 'instanceAi:manage');
 	}
 
 	async chatTurnOptions(

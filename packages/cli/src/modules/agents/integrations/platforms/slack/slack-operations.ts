@@ -50,6 +50,8 @@ interface SlackUser {
 	deleted?: unknown;
 	id?: unknown;
 	is_bot?: unknown;
+	is_email_confirmed?: unknown;
+	team_id?: unknown;
 	name?: unknown;
 	profile?: SlackProfile;
 	real_name?: unknown;
@@ -325,6 +327,29 @@ async function searchSlackChannels(
 		nextCursor: cursor,
 		nextQuery: { query: 'search_channels', input: { ...input, cursor } },
 	};
+}
+
+/**
+ * The email of a Slack user, and whether Slack confirms it. The Chat SDK
+ * `getUser` drops the confirmation flag, so this reads `users.info` itself.
+ * A bot or a deleted user has no usable email. Neither has a user of another
+ * workspace, such as a Slack Connect user: that workspace decides what it confirms.
+ */
+export async function lookupSlackUserEmail(
+	chat: ChatInstance,
+	userId: string,
+	workspaceId: string,
+): Promise<{ email: string; confirmed: boolean } | undefined> {
+	const adapter = getSlackAdapter(chat);
+	const usersApi = adapter?.client?.users;
+	if (!adapter || !usersApi?.info) return undefined;
+	const response = await usersApi.info(await withSlackToken(adapter, { user: userId }));
+	const user = response.user;
+	if (!user || user.is_bot === true || user.deleted === true) return undefined;
+	if (stringValue(user.team_id) !== workspaceId) return undefined;
+	const email = stringValue(user.profile?.email);
+	if (!email) return undefined;
+	return { email, confirmed: user.is_email_confirmed === true };
 }
 
 export async function subscribeSlackThread(thread: {

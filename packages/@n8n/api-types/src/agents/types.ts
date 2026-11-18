@@ -206,6 +206,18 @@ export interface AgentIntegrationConnectResponse {
 	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
 }
 
+/** The instance-level Slack connection of a system agent. */
+export interface SystemAgentSlackConnectionResponse {
+	connected: boolean;
+	/** The URL that Slack sends events and button clicks to. */
+	webhookUrl: string;
+	credentialId?: string;
+	teamId?: string;
+	botUserId?: string;
+	/** Whether this main runs the connection now. */
+	running?: boolean;
+}
+
 /**
  * WhatsApp needs the user to paste this token by hand into the Meta app's
  * webhook config, unlike other platforms' secrets — so it's exposed here for

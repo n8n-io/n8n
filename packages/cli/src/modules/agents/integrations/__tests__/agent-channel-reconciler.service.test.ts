@@ -106,6 +106,7 @@ function build(
 
 	const agentRepository = mock<AgentRepository>();
 	agentRepository.findPublished.mockResolvedValue([]);
+	agentRepository.findInstanceAgentsWithIntegrations.mockResolvedValue([]);
 
 	const channelStatusRepository = mock<AgentChannelStatusRepository>();
 	channelStatusRepository.findOwnAll.mockResolvedValue([]);
@@ -182,6 +183,47 @@ describe('AgentChannelReconciler', () => {
 			await reconciler.reconcile('interval');
 
 			expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(agent, slack);
+		});
+
+		it('starts the channel of an instance agent without a published version', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build();
+			agentRepository.findInstanceAgentsWithIntegrations.mockResolvedValue([
+				{ id: 'assistant', integrations: [slack] },
+			]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(
+				{ id: 'assistant', projectId: null },
+				slack,
+			);
+		});
+
+		it('keeps the live channel of an instance agent connected', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build({
+				live: [refOf(slack, 'assistant')],
+			});
+			agentRepository.findInstanceAgentsWithIntegrations.mockResolvedValue([
+				{ id: 'assistant', integrations: [slack] },
+			]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.releaseChannelLocally).not.toHaveBeenCalled();
+			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+		});
+
+		it('releases the live channel of an instance agent that lost its channel', async () => {
+			const { reconciler, chatIntegrationService } = build({
+				live: [refOf(slack, 'assistant')],
+			});
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.releaseChannelLocally).toHaveBeenCalledWith('assistant', {
+				type: 'slack',
+				credentialId: 'cred-slack',
+			});
 		});
 
 		it('never tries to start a draft entry, which has no credential', async () => {
@@ -610,6 +652,7 @@ describe('AgentChannelReconciler — passes never overlap', () => {
 		registry.register(new FakeIntegration('telegram', true));
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findPublished.mockResolvedValue([makeAgent([telegram])]);
+		agentRepository.findInstanceAgentsWithIntegrations.mockResolvedValue([]);
 		const channelStatusRepository = mock<AgentChannelStatusRepository>();
 		channelStatusRepository.findOwnAll.mockResolvedValue([]);
 		channelStatusRepository.deleteExpired.mockResolvedValue(0);
@@ -694,6 +737,7 @@ describe('AgentChannelReconciler — role changes while a pass is running', () =
 		registry.register(new FakeIntegration('telegram', true));
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findPublished.mockResolvedValue([makeAgent([telegram])]);
+		agentRepository.findInstanceAgentsWithIntegrations.mockResolvedValue([]);
 		const channelStatusRepository = mock<AgentChannelStatusRepository>();
 		channelStatusRepository.findOwnAll.mockResolvedValue([]);
 		channelStatusRepository.deleteExpired.mockResolvedValue(0);

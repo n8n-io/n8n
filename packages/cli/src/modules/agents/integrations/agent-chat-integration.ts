@@ -59,7 +59,8 @@ export interface VerifiedSender {
 
 export interface AgentChannelPreconditionContext {
 	agentId: string;
-	projectId: string;
+	/** `null` for an instance-level connection of a system agent. */
+	projectId: string | null;
 	credentialId: string;
 }
 
@@ -708,6 +709,28 @@ export abstract class AgentChatIntegration {
 	 * individual user as its sender.
 	 */
 	verifiedSender?(raw: unknown): VerifiedSender | undefined;
+
+	/**
+	 * Optional: the workspace or tenant that an inbound event came from, read from
+	 * the raw event. The adapter has verified the request signature, so the id is
+	 * trusted. A system agent compares it with the tenant of its connection.
+	 */
+	tenantIdOf?(raw: unknown): string | undefined;
+
+	/** Optional: whether the message is a reply inside a thread, not the first message of one. */
+	isThreadReply?(message: Message<unknown>): boolean;
+
+	/**
+	 * Optional: the email address of a platform user, and whether the platform
+	 * confirms that the user owns it. Without a confirmed email, nobody can link
+	 * that user to an n8n user by email. A user that belongs to another tenant than
+	 * `tenantId` has no usable email: another tenant controls what it confirms.
+	 */
+	resolveUserEmail?(
+		chat: ChatInstance,
+		externalUserId: string,
+		tenantId: string,
+	): Promise<{ email: string; confirmed: boolean } | undefined>;
 
 	/**
 	 * Optional platform context needed by the bridge before execution. Slack uses

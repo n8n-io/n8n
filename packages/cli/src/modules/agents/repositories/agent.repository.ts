@@ -991,6 +991,59 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return (result.affected ?? 0) > 0;
 	}
 
+	/** The channels of an instance agent, or `null` when the id is not an instance agent. */
+	async findInstanceAgentIntegrations(
+		agentId: string,
+		ctx: OperationContext = {},
+	): Promise<AgentIntegrationConfig[] | null> {
+		const agent = await this.managerFor(ctx).findOne(Agent, {
+			select: ['id', 'integrations'],
+			where: { id: agentId, scope: 'instance' },
+		});
+		return agent ? (agent.integrations ?? []) : null;
+	}
+
+	/** Replace the channels of an instance agent. Returns false when the id is not an instance agent. */
+	async updateInstanceAgentIntegrations(
+		agentId: string,
+		integrations: AgentIntegrationConfig[],
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.getRepository(Agent)
+			.update({ id: agentId, scope: 'instance' }, { integrations });
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** Every instance agent that has a channel. The channel reconciler starts these. */
+	async findInstanceAgentsWithIntegrations(): Promise<Array<Pick<Agent, 'id' | 'integrations'>>> {
+		const agents = await this.find({
+			select: ['id', 'integrations'],
+			where: { scope: 'instance' },
+		});
+		return agents.filter((agent) => (agent.integrations ?? []).length > 0);
+	}
+
+	/**
+	 * Instance agents whose channels use the credential. A project agent must not
+	 * claim a credential that an instance channel already uses.
+	 */
+	async findInstanceAgentsUsingCredential(
+		type: string,
+		credentialId: string,
+		excludeAgentId: string,
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'integrations'>>> {
+		const agents = await this.find({
+			select: ['id', 'name', 'integrations'],
+			where: { scope: 'instance' },
+		});
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
+	}
+
 	async findPublished(): Promise<ProjectAgent[]> {
 		const agents = await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')

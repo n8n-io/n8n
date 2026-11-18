@@ -77,6 +77,18 @@ export function getSlackReplyExpectation(params: {
 	return 'optional';
 }
 
+/**
+ * The workspace of an inbound Slack event or interaction. The adapter adds
+ * `n8nWorkspaceId` from the signed `team_id` of an event. A button click carries
+ * the workspace in `team.id`.
+ */
+export function getSlackTenantId(raw: unknown): string | undefined {
+	if (!isRecord(raw)) return undefined;
+	const fromEvent = stringValue(raw.n8nWorkspaceId) ?? stringValue(raw.team_id);
+	if (fromEvent) return fromEvent;
+	return isRecord(raw.team) ? stringValue(raw.team.id) : undefined;
+}
+
 export function isSlackDirectMessage(raw: unknown): boolean {
 	return (
 		isRecord(raw) &&

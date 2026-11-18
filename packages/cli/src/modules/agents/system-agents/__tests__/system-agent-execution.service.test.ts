@@ -275,6 +275,52 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it('queues the chat delivery of a turn that a chat message started', async () => {
+			const { service, messageQueue } = setup();
+			const channel = {
+				type: 'slack',
+				credentialId: 'cred-1',
+				platformThreadId: 'slack:C1:1.1',
+				actingExternalUserId: 'U1',
+				tenantId: 'T1',
+			};
+
+			await service.sendMessage({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				message: 'hello',
+				messageId: 'message-uuid',
+				channel,
+			});
+
+			expect(messageQueue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({
+					payload: expect.objectContaining({
+						kind: 'system',
+						userId: 'user-1',
+						resourceId: 'system-chat:user-1',
+						messageId: 'message-uuid',
+						channel,
+					}),
+				}),
+			);
+		});
+
+		it('adds no chat delivery to a message of the chat route', async () => {
+			const { service, messageQueue } = setup();
+
+			await service.sendMessage({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				message: 'hello',
+			});
+
+			const [{ payload }] = messageQueue.enqueue.mock.calls[0];
+			expect(payload).not.toHaveProperty('channel');
+		});
+
 		it('refuses a user the provider does not authorize', async () => {
 			const { service, messageQueue, provider } = setup();
 			provider.authorize.mockResolvedValue(false);
@@ -574,6 +620,43 @@ describe('SystemAgentExecutionService', () => {
 				sessionId: 'thread-1',
 				executionId: 'exec-1',
 			});
+		});
+
+		it('sends every chunk to the chunk sink of the caller, and the client output stays the same', async () => {
+			const { service, onChunk } = setup([textChunk]);
+			const send = vi.fn();
+			const sink = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, send, sink);
+
+			expect(sink).toHaveBeenCalledWith(textChunk);
+			expect(onChunk).toHaveBeenCalledWith(textChunk);
+			expect(send).toHaveBeenCalledWith(expect.objectContaining({ type: 'text-delta' }));
+			expect(send).toHaveBeenLastCalledWith({
+				type: 'done',
+				sessionId: 'thread-1',
+				executionId: 'exec-1',
+			});
+		});
+
+		it('gives the chunk sink the formatted text of a turn error', async () => {
+			const failure = new Error('raw provider failure');
+			const { service, handle } = setup(
+				[{ type: 'error', error: failure } as AgentExecutionStreamChunk],
+				{ status: 'errored', error: failure },
+			);
+			handle.formatError = vi.fn(async () => ({
+				message: 'The Gateway credits balance is empty.',
+				code: 'quota_exhausted',
+			}));
+			const sink = vi.fn();
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn(), sink);
+
+			const [chunk] = sink.mock.calls[0];
+			expect(chunk.type).toBe('error');
+			expect(chunk.error).toBeInstanceOf(AgentFormattedTurnError);
+			expect(chunk.error.message).toBe('The Gateway credits balance is empty.');
 		});
 
 		it('settles as suspended after a tool suspends, without a done event', async () => {
@@ -1221,6 +1304,39 @@ describe('SystemAgentExecutionService', () => {
 					],
 				}),
 			);
+		});
+
+		it('sends the chunks of a resumed turn to the chunk sink', async () => {
+			const { service, checkpointStorage } = setup([textChunk]);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			const sink = vi.fn();
+
+			const result = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+				onChunk: sink,
+			});
+			await result.done;
+
+			expect(sink).toHaveBeenCalledWith(textChunk);
+		});
+
+		it('refuses a clicker who does not own the thread, and runs no turn', async () => {
+			const { service, threadRepository, provider, checkpointStorage } = setup([textChunk]);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+			threadRepository.findOwnedById.mockResolvedValue(null);
+
+			await expect(
+				service.resume({
+					agentId: AGENT_ID,
+					user: { id: 'user-2' } as User,
+					threadId: 'thread-1',
+					resumeData: { approved: true },
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(provider.prepareTurn).not.toHaveBeenCalled();
 		});
 
 		it('finds the suspended tool call in the checkpoint and prepares a resume turn', async () => {

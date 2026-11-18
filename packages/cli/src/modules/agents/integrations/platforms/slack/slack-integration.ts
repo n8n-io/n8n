@@ -38,12 +38,17 @@ import {
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
+	getSlackTenantId,
 	isSlackDirectMessage,
 	prepareSlackInboundText,
 	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
-import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+import {
+	executeSlackContextQuery,
+	lookupSlackUserEmail,
+	subscribeSlackThread,
+} from './slack-operations';
 import { buildSlackOriginDraft, fetchSlackOriginNames } from './slack-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
@@ -228,6 +233,20 @@ export class SlackIntegration extends AgentChatIntegration {
 			input: params.input,
 			abortSignal: params.abortSignal,
 		});
+	}
+
+	tenantIdOf(raw: unknown): string | undefined {
+		return getSlackTenantId(raw);
+	}
+
+	isThreadReply(message: BridgeMessageContextParams['message']): boolean {
+		const raw = message.raw;
+		if (!isRecord(raw)) return false;
+		return typeof raw.thread_ts === 'string' && raw.thread_ts !== raw.ts;
+	}
+
+	async resolveUserEmail(chat: ChatInstance, externalUserId: string, tenantId: string) {
+		return await lookupSlackUserEmail(chat, externalUserId, tenantId);
 	}
 
 	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {

@@ -2308,3 +2308,175 @@ describe('ChatIntegrationService.assertStartupPreconditions', () => {
 		});
 	});
 });
+
+describe('ChatIntegrationService — instance-level channels of a system agent', () => {
+	const instanceSlack: AgentIntegrationConfig = {
+		type: 'slack',
+		credentialId: 'cred-instance',
+		settings: { messagingExperience: 'assistant', teamId: 'T1', botUserId: 'UBOT' },
+	};
+
+	function registryWith(integration: AgentChatIntegration) {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+		return registry;
+	}
+
+	it('connects a peer main for an instance agent row without a project', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue({
+			id: 'assistant',
+			scope: 'instance',
+			projectId: null,
+		} as never);
+		const { service } = buildServiceWith({
+			registry: registryWith(new FakeIntegration('slack', false)),
+			agentRepository,
+		});
+		const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+
+		await service.handleIntegrationChanged({
+			agentId: 'assistant',
+			integration: instanceSlack,
+			action: 'connect',
+		});
+
+		expect(connectSpy).toHaveBeenCalledWith('assistant', instanceSlack, null, {
+			skipExternalHooks: true,
+		});
+	});
+
+	it('builds the instance webhook route for a connection without a project', async () => {
+		const integration = new FakeIntegration('slack', false);
+		const seen: AgentChatIntegrationContext[] = [];
+		integration.onBeforeConnect = async (ctx) => {
+			seen.push(ctx);
+			throw new Error('stop after the pre-connect hook');
+		};
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.findStoredCredentialOfType.mockResolvedValue({
+			id: 'cred-instance',
+		} as CredentialsEntity);
+		credentialsService.decryptForUse.mockResolvedValue({ accessToken: 'xoxb-fake' });
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
+		const loadMemoryStateSpy = vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+			createMemoryState: vi.fn(() => mock<StateAdapter>()),
+		} as never);
+
+		try {
+			const { service } = buildServiceWith({
+				registry: registryWith(integration),
+				credentialsService,
+				urlService,
+			});
+
+			await expect(service.connect('assistant', instanceSlack, null)).rejects.toThrow(
+				'stop after the pre-connect hook',
+			);
+
+			expect(credentialsService.findStoredCredentialOfType).toHaveBeenCalledWith('cred-instance', [
+				'slackApi',
+			]);
+			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
+			expect(seen[0].projectId).toBeNull();
+			expect(seen[0].webhookUrlFor('slack')).toBe(
+				'https://n8n.test/rest/agents/system/assistant/channels/slack/webhook',
+			);
+		} finally {
+			loadMemoryStateSpy.mockRestore();
+		}
+	});
+
+	it('refuses a credential of a type that the channel does not accept', async () => {
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.findStoredCredentialOfType.mockResolvedValue(null);
+		const { service } = buildServiceWith({
+			registry: registryWith(new FakeIntegration('slack', false)),
+			credentialsService,
+		});
+
+		await expect(service.connect('assistant', instanceSlack, null)).rejects.toThrow(
+			'type that this channel does not accept',
+		);
+	});
+
+	describe('connectInstanceChannel', () => {
+		it('saves the channel, connects it and tells the other mains', async () => {
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findInstanceAgentIntegrations.mockResolvedValue([]);
+			const publisher = mock<Publisher>();
+			const { service } = buildServiceWith({
+				registry: registryWith(new FakeIntegration('slack', false)),
+				agentRepository,
+				publisher,
+				multiMainEnabled: true,
+			});
+			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+			vi.spyOn(service, 'validateBeforeConnect').mockResolvedValue();
+
+			await service.connectInstanceChannel('assistant', instanceSlack);
+
+			expect(agentRepository.updateInstanceAgentIntegrations).toHaveBeenCalledWith('assistant', [
+				instanceSlack,
+			]);
+			expect(connectSpy).toHaveBeenCalledWith('assistant', instanceSlack, null, {
+				skipExternalHooks: false,
+				settings: instanceSlack.settings,
+			});
+			expect(publisher.publishCommand).toHaveBeenCalledWith(
+				expect.objectContaining({ command: 'agent-chat-integration-changed' }),
+			);
+		});
+
+		it('restores the saved channels when the connect fails', async () => {
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findInstanceAgentIntegrations.mockResolvedValue([]);
+			const { service } = buildServiceWith({
+				registry: registryWith(new FakeIntegration('slack', false)),
+				agentRepository,
+			});
+			vi.spyOn(service, 'connect').mockRejectedValue(new Error('bad token'));
+			vi.spyOn(service, 'validateBeforeConnect').mockResolvedValue();
+
+			await expect(service.connectInstanceChannel('assistant', instanceSlack)).rejects.toThrow(
+				'bad token',
+			);
+
+			expect(agentRepository.updateInstanceAgentIntegrations).toHaveBeenLastCalledWith(
+				'assistant',
+				[],
+			);
+		});
+
+		it('refuses an agent row that is not an instance agent', async () => {
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findInstanceAgentIntegrations.mockResolvedValue(null);
+			const { service } = buildServiceWith({
+				registry: registryWith(new FakeIntegration('slack', false)),
+				agentRepository,
+			});
+
+			await expect(service.connectInstanceChannel('agent-1', instanceSlack)).rejects.toThrow(
+				'is not an instance agent',
+			);
+		});
+	});
+
+	describe('disconnectInstanceChannel', () => {
+		it('removes the saved channel and disconnects it', async () => {
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findInstanceAgentIntegrations.mockResolvedValue([instanceSlack]);
+			const { service } = buildServiceWith({
+				registry: registryWith(new FakeIntegration('slack', false)),
+				agentRepository,
+			});
+			const disconnectSpy = vi.spyOn(service, 'disconnectChannel').mockResolvedValue();
+
+			await service.disconnectInstanceChannel('assistant', 'slack');
+
+			expect(agentRepository.updateInstanceAgentIntegrations).toHaveBeenCalledWith('assistant', []);
+			expect(disconnectSpy).toHaveBeenCalledWith('assistant', instanceSlack);
+		});
+	});
+});

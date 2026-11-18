@@ -18,6 +18,7 @@ const {
 	mockRadioSelect,
 	mockFields,
 	mockField,
+	mockLinkButton,
 } = vi.hoisted(() => ({
 	mockButton: vi.fn((opts: any) => ({ type: 'button', ...opts })) as MockFn,
 	mockCard: vi.fn((opts: any) => ({ type: 'card', ...opts })) as MockFn,
@@ -31,6 +32,7 @@ const {
 	mockRadioSelect: vi.fn((opts: any) => ({ type: 'radio_select', ...opts })) as MockFn,
 	mockFields: vi.fn((children: any) => ({ type: 'fields', children })) as MockFn,
 	mockField: vi.fn((opts: any) => ({ type: 'field', ...opts })) as MockFn,
+	mockLinkButton: vi.fn((opts: any) => ({ type: 'link-button', ...opts })) as MockFn,
 }));
 
 vi.mock('../esm-loader', () => {
@@ -52,6 +54,7 @@ vi.mock('../esm-loader', () => {
 	const RadioSelect = wrap(mockRadioSelect);
 	const Fields = wrap(mockFields);
 	const Field = wrap(mockField);
+	const LinkButton = wrap(mockLinkButton);
 
 	return {
 		loadChatSdk: vi.fn().mockResolvedValue({
@@ -67,6 +70,7 @@ vi.mock('../esm-loader', () => {
 			RadioSelect,
 			Fields,
 			Field,
+			LinkButton,
 		}),
 	};
 });
@@ -87,6 +91,65 @@ describe('ComponentMapper', () => {
 	describe('toCard', () => {
 		const runId = 'run-123';
 		const toolCallId = 'tc-456';
+
+		it('passes a JSON object button value through when there is no resume schema', async () => {
+			const approve = JSON.stringify({ kind: 'approval', approved: true });
+			const deny = JSON.stringify({ kind: 'approval', approved: false });
+
+			await mapper.toCard(
+				{
+					title: 'Approve?',
+					components: [
+						{ type: 'button', label: 'Approve', value: approve },
+						{ type: 'button', label: 'Deny', value: deny },
+					],
+				},
+				runId,
+				toolCallId,
+			);
+
+			expect(mockButton).toHaveBeenCalledWith(
+				expect.objectContaining({ label: 'Approve', value: approve }),
+			);
+			expect(mockButton).toHaveBeenCalledWith(
+				expect.objectContaining({ label: 'Deny', value: deny }),
+			);
+		});
+
+		it('renders a link button that opens a URL and never resumes a run', async () => {
+			await mapper.toCard(
+				{
+					title: 'Open',
+					components: [
+						{ type: 'link_button', label: 'Open in n8n', url: 'https://n8n.test/assistant/t1' },
+					],
+				},
+				runId,
+				toolCallId,
+			);
+
+			expect(mockLinkButton).toHaveBeenCalledWith({
+				label: 'Open in n8n',
+				url: 'https://n8n.test/assistant/t1',
+			});
+			expect(mockButton).not.toHaveBeenCalled();
+			expect(mockActions).toHaveBeenCalledWith([
+				{ type: 'link-button', label: 'Open in n8n', url: 'https://n8n.test/assistant/t1' },
+			]);
+		});
+
+		it.each(['javascript:alert(1)', '/relative/path', undefined])(
+			'drops a link button with the URL %s',
+			async (url) => {
+				await mapper.toCard(
+					{ title: 'Open', components: [{ type: 'link_button', label: 'Open', url }] },
+					runId,
+					toolCallId,
+				);
+
+				expect(mockLinkButton).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should map buttons with correct resume ID encoding', async () => {
 			const payload = {

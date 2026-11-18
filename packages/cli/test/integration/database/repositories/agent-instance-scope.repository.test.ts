@@ -171,4 +171,49 @@ describe('AgentRepository instance scope', () => {
 			await expect(getAgentOrThrow(agentRepo, uuid(), projectId)).rejects.toThrow(NotFoundError);
 		});
 	});
+	describe('instance channels', () => {
+		const slack = { type: 'slack' as const, credentialId: 'cred-1' };
+
+		it('saves and reads the channels of an instance agent', async () => {
+			expect(await agentRepo.findInstanceAgentIntegrations(instanceAgentId)).toEqual([]);
+
+			await expect(
+				agentRepo.updateInstanceAgentIntegrations(instanceAgentId, [slack]),
+			).resolves.toBe(true);
+
+			expect(await agentRepo.findInstanceAgentIntegrations(instanceAgentId)).toEqual([slack]);
+		});
+
+		it('does not read or write the channels of a project agent', async () => {
+			await expect(agentRepo.findInstanceAgentIntegrations(projectAgentId)).resolves.toBeNull();
+			await expect(
+				agentRepo.updateInstanceAgentIntegrations(projectAgentId, [slack]),
+			).resolves.toBe(false);
+
+			expect((await agentRepo.findOneByOrFail({ id: projectAgentId })).integrations).toEqual([]);
+		});
+
+		it('lists only the instance agents that have a channel', async () => {
+			expect(await agentRepo.findInstanceAgentsWithIntegrations()).toEqual([]);
+
+			await agentRepo.updateInstanceAgentIntegrations(instanceAgentId, [slack]);
+
+			expect(await agentRepo.findInstanceAgentsWithIntegrations()).toEqual([
+				expect.objectContaining({ id: instanceAgentId, integrations: [slack] }),
+			]);
+		});
+
+		it('finds the instance agents that use a credential, except one', async () => {
+			await agentRepo.updateInstanceAgentIntegrations(instanceAgentId, [slack]);
+
+			const holders = await agentRepo.findInstanceAgentsUsingCredential('slack', 'cred-1', 'other');
+			expect(holders.map(({ id }) => id)).toEqual([instanceAgentId]);
+			expect(
+				await agentRepo.findInstanceAgentsUsingCredential('slack', 'cred-1', instanceAgentId),
+			).toEqual([]);
+			expect(await agentRepo.findInstanceAgentsUsingCredential('slack', 'cred-2', 'other')).toEqual(
+				[],
+			);
+		});
+	});
 });

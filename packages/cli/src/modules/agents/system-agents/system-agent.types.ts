@@ -306,6 +306,20 @@ export interface SystemAgentProvider<TLease = unknown> {
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
 	/**
+	 * Whether the user can connect this agent to a chat platform, such as Slack,
+	 * for the whole instance. Without this hook, nobody can.
+	 */
+	authorizeChannelSetup?(user: User): boolean | Promise<boolean>;
+	/**
+	 * Turn the suspension payload of a tool into a card for a chat platform.
+	 * Button values are JSON strings that `normalizeResumeData` accepts. Return
+	 * `undefined` to let the runtime build its generic approval card.
+	 */
+	toChannelCard?(
+		suspendPayload: unknown,
+		context: { threadId: string },
+	): SystemAgentChannelCard | undefined;
+	/**
 	 * Called before a user deletes a thread of this agent, while the thread
 	 * state can still be read. Do not change data here: the deletion can still
 	 * fail, for example while a turn runs. Return the cleanup that must run
@@ -338,6 +352,12 @@ export interface SystemAgentProvider<TLease = unknown> {
 		report: SystemAgentDelegatedSideCallUsageReport,
 		scope: { thread: AgentExecutionThread },
 	): void | Promise<void>;
+}
+
+/** A card for a chat platform. The runtime renders it with its own card mapper. */
+export interface SystemAgentChannelCard {
+	title?: string;
+	components: Array<{ type: string; [key: string]: unknown }>;
 }
 
 /** The usage of one execution of a delegated run. */

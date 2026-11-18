@@ -65,6 +65,7 @@ const makeIntegration = (
 			return u;
 		})();
 	const agentRepository = opts.agentRepository ?? mock<AgentRepository>();
+	agentRepository.findInstanceAgentsUsingCredential.mockResolvedValue([]);
 	const instanceSettings = mock<InstanceSettings>({
 		encryptionKey: opts.encryptionKey ?? 'test-encryption-key',
 	});

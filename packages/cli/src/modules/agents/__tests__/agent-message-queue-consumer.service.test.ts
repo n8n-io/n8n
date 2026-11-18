@@ -770,6 +770,135 @@ describe('AgentMessageQueueConsumer', () => {
 			expectRefused(item);
 		});
 
+		describe('a turn that a chat message started', () => {
+			const channel = {
+				type: 'slack',
+				credentialId: 'cred-1',
+				platformThreadId: 'slack:C1:1.1',
+				actingExternalUserId: 'U1',
+				tenantId: 'T1',
+			};
+
+			function chatClaim(threadId: string): ClaimedAgentMessage {
+				const item = systemClaim(threadId);
+				return {
+					...item,
+					payload: { kind: 'system', message: 'input', resourceId: 'system-chat:user', channel },
+					item: mock<AgentMessageQueue>({
+						...item.item,
+						payload: { kind: 'system', channel },
+					}),
+				};
+			}
+
+			/** Runs the claim callback, like the queue does, so that the consumer leases the bridge. */
+			async function consumeChat(item: ClaimedAgentMessage) {
+				repository.findThreadIds.mockResolvedValue([item.thread.id]);
+				queue.claimNext
+					.mockImplementationOnce(async (_threadId, canConsume) => {
+						await canConsume(item.item, item.thread, {});
+						return item;
+					})
+					.mockResolvedValue(null);
+				consumer.start();
+				await vi.waitFor(() =>
+					expect(queue.settle).toHaveBeenCalledWith(item.thread.id, item.admission.executionId),
+				);
+			}
+
+			it('streams the turn through the live bridge of the instance connection', async () => {
+				registerSystemAgent();
+				const item = chatClaim('session');
+				const release = vi.fn();
+				const bridge = mock<AgentChatBridge>();
+				bridge.deliverSystemTurn.mockImplementation(async (_channel, _threadId, run) => {
+					await run(sink);
+				});
+				const sink = vi.fn();
+				repository.findInstanceConnection.mockResolvedValue({
+					type: 'slack',
+					credentialId: 'cred-1',
+				});
+				integrations.acquireQueueBridge.mockReturnValue({ bridge, release });
+
+				await consumeChat(item);
+
+				expect(repository.findInstanceConnection).toHaveBeenCalledWith(
+					'agent',
+					'slack',
+					'cred-1',
+					expect.anything(),
+				);
+				expect(integrations.acquireQueueBridge).toHaveBeenCalledWith('agent', 'slack', 'cred-1');
+				expect(bridge.deliverSystemTurn).toHaveBeenCalledWith(
+					channel,
+					'session',
+					expect.any(Function),
+				);
+				expect(systemAgentExecution.consume).toHaveBeenCalledWith(
+					item,
+					expect.objectContaining({ id: 'user' }),
+					expect.any(AbortSignal),
+					sender.send,
+					sink,
+				);
+				expect(release).toHaveBeenCalledOnce();
+			});
+
+			it('still checks the access floor of the owner before it delivers anything', async () => {
+				registerSystemAgent(false);
+				const item = chatClaim('session');
+				const bridge = mock<AgentChatBridge>();
+				repository.findInstanceConnection.mockResolvedValue({
+					type: 'slack',
+					credentialId: 'cred-1',
+				});
+				integrations.acquireQueueBridge.mockReturnValue({ bridge, release: vi.fn() });
+
+				await consumeChat(item);
+
+				expectRefused(item);
+				expect(bridge.deliverSystemTurn).not.toHaveBeenCalled();
+			});
+
+			it('runs and records the turn without delivery when the connection is gone', async () => {
+				registerSystemAgent();
+				const item = chatClaim('session');
+				repository.findInstanceConnection.mockResolvedValue(undefined);
+
+				await consumeChat(item);
+
+				expect(integrations.acquireQueueBridge).not.toHaveBeenCalled();
+				expect(systemAgentExecution.consume).toHaveBeenCalledWith(
+					item,
+					expect.objectContaining({ id: 'user' }),
+					expect.any(AbortSignal),
+					sender.send,
+				);
+				expect(queue.recordFailure).not.toHaveBeenCalled();
+			});
+
+			it('runs and records the turn without delivery when this main has no live bridge', async () => {
+				registerSystemAgent();
+				const item = chatClaim('session');
+				repository.findInstanceConnection.mockResolvedValue({
+					type: 'slack',
+					credentialId: 'cred-1',
+				});
+				integrations.acquireQueueBridge.mockReturnValue(undefined);
+
+				await consumeChat(item);
+
+				expect(systemAgentExecution.consume).toHaveBeenCalledWith(
+					item,
+					expect.anything(),
+					expect.any(AbortSignal),
+					sender.send,
+				);
+				expect(queue.recordFailure).not.toHaveBeenCalled();
+			});
+		});
+
 		it('keeps the agent:execute check for Preview messages of a system agent id', async () => {
 			registerSystemAgent();
 			const item = claim('session');

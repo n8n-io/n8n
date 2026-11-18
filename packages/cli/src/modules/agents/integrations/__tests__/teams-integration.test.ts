@@ -64,6 +64,7 @@ describe('TeamsIntegration', () => {
 		createTeamsAdapter.mockClear();
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		agentRepository.findInstanceAgentsUsingCredential.mockResolvedValue([]);
 		integration = new TeamsIntegration(mock<Logger>(), agentRepository);
 	});
 

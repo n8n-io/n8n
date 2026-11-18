@@ -1529,6 +1529,19 @@ export class CredentialsService {
 		return saved;
 	}
 
+	/**
+	 * Load a stored credential for a system consumer that has no user, such as an
+	 * instance-level channel. Returns `null` when the credential is missing or its
+	 * type is not in `types`. The caller decrypts it with `decryptForUse`.
+	 */
+	async findStoredCredentialOfType(
+		credentialId: string,
+		types: string[],
+	): Promise<CredentialsEntity | null> {
+		const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
+		return credential && types.includes(credential.type) ? credential : null;
+	}
+
 	async findCredentialOwningProject(credentialId: string) {
 		return await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 	}

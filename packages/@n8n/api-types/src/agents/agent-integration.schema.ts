@@ -86,12 +86,25 @@ export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSetti
 
 export const SLACK_MESSAGING_EXPERIENCES = ['assistant', 'agent'] as const;
 
+export const SLACK_IDENTITY_MODES = ['email'] as const;
+
 export const AgentSlackSettingsSchema = z
 	.object({
 		messagingExperience: z.enum(SLACK_MESSAGING_EXPERIENCES),
 		/** Require a mention in shared conversations. Unset keeps automatic thread replies. */
 		onlyRespondWhenMentioned: z.boolean().optional(),
 		sessionIdleTimeoutMinutes,
+		/**
+		 * The Slack workspace and the bot user of an instance-level connection of a
+		 * system agent. n8n sets both at connect time. Project agents ignore them.
+		 */
+		teamId: z.string().min(1).optional(),
+		botUserId: z.string().min(1).optional(),
+		/**
+		 * How an instance-level connection links a Slack user to an n8n user.
+		 * `email`: the confirmed Slack email must match the n8n email.
+		 */
+		identity: z.enum(SLACK_IDENTITY_MODES).optional(),
 	})
 	.strict();
 

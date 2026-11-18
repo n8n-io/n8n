@@ -13,7 +13,7 @@ import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
-import type { TelemetryProxy } from '@n8n/backend-services';
+import type { TelemetryProxy, UrlService } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
@@ -116,6 +116,7 @@ function setup() {
 		userRepository,
 		turnOverrides,
 		telemetry,
+		mock<UrlService>({ getInstanceBaseUrl: () => 'https://n8n.test' }),
 	);
 	return {
 		userRepository,
@@ -197,6 +198,52 @@ describe('AssistantAgentProvider', () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(false);
 
 			await expect(provider.authorize(user)).resolves.toBe(false);
+		});
+	});
+
+	describe('authorizeChannelSetup', () => {
+		it('allows only a user with the Assistant manage scope', () => {
+			const { provider } = setup();
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			expect(provider.authorizeChannelSetup(user)).toBe(true);
+			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'instanceAi:manage');
+
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+			expect(provider.authorizeChannelSetup(user)).toBe(false);
+		});
+	});
+
+	describe('toChannelCard', () => {
+		it('builds an approval card for a confirmation, and links to the thread for other steps', () => {
+			const { provider } = setup();
+			const approval = {
+				requestId: 'req-1',
+				message: 'Change the channel?',
+				severity: 'warning',
+			};
+
+			const card = provider.toChannelCard(approval, { threadId: 'thread-1' });
+			expect(card?.components.map(({ type }) => type)).toEqual(['button', 'button', 'button']);
+
+			const editorCard = provider.toChannelCard(
+				{ ...approval, inputType: 'questions', questions: [{ id: 'q' }] },
+				{ threadId: 'thread-1' },
+			);
+			expect(editorCard?.components).toContainEqual(
+				expect.objectContaining({
+					type: 'link_button',
+					url: 'https://n8n.test/assistant/thread-1',
+				}),
+			);
+		});
+
+		it('leaves a suspension that is not an Assistant confirmation to the runtime', () => {
+			const { provider } = setup();
+
+			expect(provider.toChannelCard({ type: 'approval', toolName: 'x' }, { threadId: 't' })).toBe(
+				undefined,
+			);
 		});
 	});
 

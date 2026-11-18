@@ -536,6 +536,75 @@ describe('AgentMessageQueueService', () => {
 			);
 		});
 
+		it('keeps the chat delivery of a system turn in the dispatch', async () => {
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+			const channel = {
+				type: 'slack',
+				credentialId: 'cred-1',
+				platformThreadId: 'slack:C1:1.1',
+				actingExternalUserId: 'U1',
+				tenantId: 'T1',
+			};
+
+			await service.enqueue({
+				agentId: 'system-agent',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'existing',
+				source: SYSTEM_CHAT_SOURCE,
+				payload: {
+					kind: 'system',
+					userId: 'user-1',
+					message: 'hello',
+					resourceId: 'system-chat:user-1',
+					messageId: 'message-uuid',
+					channel,
+				},
+			});
+
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'system', channel },
+				expect.anything(),
+			);
+		});
+
+		it('never keeps a chat delivery on a message of another kind', async () => {
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));
+			agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>({ name: 'Agent' }));
+
+			await service.enqueue({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				sessionMode: 'existing',
+				source: 'chat',
+				payload: {
+					kind: 'preview',
+					userId: 'user-1',
+					message: 'hello',
+					resourceId: 'draft-chat:user-1',
+					channel: {
+						type: 'slack',
+						credentialId: 'cred-1',
+						platformThreadId: 'slack:C1:1.1',
+						actingExternalUserId: 'U1',
+						tenantId: 'T1',
+					},
+				},
+			});
+
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'preview' },
+				expect.anything(),
+			);
+		});
+
 		it('stores a visible message without a hidden origin', async () => {
 			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
 			repository.enqueue.mockResolvedValue(mock<AgentMessageQueue>({ threadId: 'thread-1' }));

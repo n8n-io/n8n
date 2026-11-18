@@ -1010,6 +1010,11 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 	deleteExternalResource: z.boolean().optional(),
 }) {}
 
+/** Connect a system agent to a Slack workspace with one stored `slackApi` credential. */
+export class SystemAgentChannelConnectDto extends Z.class({
+	credentialId: z.string().min(1),
+}) {}
+
 const agentVersionMetadataShape = {
 	name: workflowVersionNameSchema.unwrap().trim().nullable().optional(),
 	description: workflowVersionDescriptionSchema.nullable(),

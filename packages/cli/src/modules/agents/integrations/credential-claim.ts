@@ -18,12 +18,27 @@ export async function assertCredentialNotClaimed(
 	type: string,
 	ctx: AgentChannelPreconditionContext,
 ): Promise<void> {
-	const others = await agentRepository.findByIntegrationCredential(
+	// An instance connection has no project, so it checks the project agents of the whole instance.
+	const projectHolders =
+		ctx.projectId === null
+			? await agentRepository.findByIntegrationCredentialAnyProject(
+					type,
+					ctx.credentialId,
+					ctx.agentId,
+				)
+			: await agentRepository.findByIntegrationCredential(
+					type,
+					ctx.credentialId,
+					ctx.projectId,
+					ctx.agentId,
+				);
+	// A project agent must not take the credential of an instance channel either.
+	const instanceHolders = await agentRepository.findInstanceAgentsUsingCredential(
 		type,
 		ctx.credentialId,
-		ctx.projectId,
 		ctx.agentId,
 	);
+	const others = [...projectHolders, ...instanceHolders];
 	if (others.length === 0) return;
 
 	throw new ConflictError(

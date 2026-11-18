@@ -1,6 +1,6 @@
 import { AGENT_CHAT_ERROR_CODES, type AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { UserRepository, type User } from '@n8n/db';
+import { UserRepository, type OperationContext, type User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
@@ -23,6 +23,7 @@ import { AgentMessageQueueRepository } from './repositories/agent-message-queue.
 import { canUseSystemAgent } from './system-agents/system-agent-access';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
+import type { SystemChannelDelivery } from './types/agent-queued-message';
 import { chatSurfaceForKind, type AgentChatSurface } from './utils/agent-thread-access';
 
 @Service()
@@ -107,6 +108,16 @@ export class AgentMessageQueueConsumer {
 
 				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
 					if (this.stopped) return false;
+					if (item.payload.kind === 'system' && item.payload.channel) {
+						// A system turn runs even when its chat connection is gone. The turn
+						// is then recorded without a delivery.
+						lease = await this.acquireSystemChannelBridge(
+							thread.agentId,
+							item.payload.channel,
+							ctx,
+						);
+						return true;
+					}
 					if (item.payload.kind !== 'integration') return true;
 
 					const source = item.message.origin?.source;
@@ -196,7 +207,7 @@ export class AgentMessageQueueConsumer {
 				signal.throwIfAborted();
 
 				if (payload.kind === 'system') {
-					await this.systemAgentExecution.consume(claim, user, signal, sender.send);
+					await this.consumeSystem(claim, user, signal, sender.send, bridge);
 				} else if (payload.kind === 'n8n_chat') {
 					await this.consumeN8nChat(claim, user, signal, sender.send);
 				} else {
@@ -227,6 +238,58 @@ export class AgentMessageQueueConsumer {
 			await sender?.close();
 			await this.queue.settle(thread.id, admission.executionId);
 		}
+	}
+
+	/**
+	 * Lease the live bridge of the instance connection that received a chat
+	 * message. A removed connection, or one that this main does not run, gives
+	 * no lease.
+	 */
+	private async acquireSystemChannelBridge(
+		agentId: string,
+		channel: SystemChannelDelivery,
+		ctx: OperationContext,
+	): Promise<ReturnType<ChatIntegrationService['acquireQueueBridge']>> {
+		const connection = await this.repository.findInstanceConnection(
+			agentId,
+			channel.type,
+			channel.credentialId,
+			ctx,
+		);
+		if (!connection) return undefined;
+		return this.integrations.acquireQueueBridge(agentId, channel.type, channel.credentialId);
+	}
+
+	/** Run a system turn. A turn that a chat message started streams its answer to that chat. */
+	private async consumeSystem(
+		claim: ClaimedAgentMessage,
+		user: User,
+		signal: AbortSignal,
+		send: (event: AgentSseEvent) => void,
+		bridge?: AgentChatBridge,
+	): Promise<void> {
+		const { payload, thread } = claim;
+		if (payload.kind !== 'system') return;
+		const { channel } = payload;
+		if (!channel) {
+			await this.systemAgentExecution.consume(claim, user, signal, send);
+			return;
+		}
+		if (!bridge) {
+			this.logger.warn('A chat turn has no live connection, so its answer is not delivered', {
+				agentId: thread.agentId,
+				threadId: thread.id,
+				channelType: channel.type,
+			});
+			await this.systemAgentExecution.consume(claim, user, signal, send);
+			return;
+		}
+		await bridge.deliverSystemTurn(
+			channel,
+			thread.id,
+			async (onChunk) =>
+				await this.systemAgentExecution.consume(claim, user, signal, send, onChunk),
+		);
 	}
 
 	/**

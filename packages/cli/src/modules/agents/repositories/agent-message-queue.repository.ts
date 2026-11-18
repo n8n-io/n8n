@@ -275,4 +275,26 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 				!isDraftIntegration(connection),
 		);
 	}
+
+	/**
+	 * The channel of an instance agent. An instance agent has no project and no
+	 * published version, so this reads the row by id and checks the scope.
+	 */
+	async findInstanceConnection(
+		agentId: string,
+		source: string,
+		credentialId: string,
+		ctx: OperationContext = {},
+	) {
+		const agent = await this.managerFor(ctx).findOne(Agent, {
+			select: ['integrations'],
+			where: { id: agentId, scope: 'instance' },
+		});
+		return agent?.integrations?.find(
+			(connection) =>
+				connection.type === source &&
+				connection.credentialId === credentialId &&
+				!isDraftIntegration(connection),
+		);
+	}
 }

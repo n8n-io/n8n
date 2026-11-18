@@ -1,5 +1,6 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Author, Thread } from 'chat';
+import { UnexpectedError } from '@n8n/errors';
 import type { Logger } from 'n8n-workflow';
 
 import type {
@@ -30,12 +31,23 @@ type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> &
 };
 
 /** Covers both an expired callback key and a checkpoint that is gone. */
-const STALE_ACTION_NOTICE =
+export const STALE_ACTION_NOTICE =
 	'This action is no longer available. The link may have expired or already been used.';
+
+/**
+ * What a system agent says about a click on one of its cards. `not-system`:
+ * the agent is a project agent, so the normal resume applies. `ignored`: a check
+ * failed, the user already heard why, and nothing resumes. `ready`: run `resume`.
+ */
+export type SystemResumePreparation =
+	| { status: 'not-system' }
+	| { status: 'ignored' }
+	| { status: 'ready'; resume: () => Promise<void> };
 
 interface AgentChatHitlResumeHandlerOptions {
 	agentId: string;
-	projectId: string;
+	/** `null` for a channel of a system agent. */
+	projectId: string | null;
 	integration: AgentIntegrationConfig;
 	agentService: ResumeExecutor;
 	logger: Logger;
@@ -45,6 +57,15 @@ interface AgentChatHitlResumeHandlerOptions {
 	deleteActionMessageBeforeResume: boolean;
 	formatActionDecisionMessage?: ActionDecisionMessageFormatter;
 	settleActionMessage?: SettleActionMessage;
+	/** Checks a click on the card of a system agent. A project agent answers `not-system`. */
+	systemResume?: (request: {
+		thread: Thread<unknown, unknown>;
+		user: Author;
+		raw: unknown;
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+	}) => Promise<SystemResumePreparation>;
 	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
 	toAgentThreadId: (platformThreadId: string) => InternalThread;
 	getPlatformAgentContext: () => PlatformAgentContext;
@@ -91,6 +112,29 @@ export class AgentChatHitlResumeHandler {
 		if (!parsed) return;
 		const backgroundApproval = parseBackgroundApprovalAction(callbackData.actionId);
 
+		if (!backgroundApproval && this.options.systemResume) {
+			const prepared = await this.options.systemResume({
+				thread,
+				user: event.user,
+				raw: event.raw,
+				runId: parsed.runId,
+				toolCallId: parsed.toolCallId,
+				resumeData: parsed.resumeData,
+			});
+			if (prepared.status === 'ignored') return;
+			if (prepared.status === 'ready') {
+				await this.resumeSystemRun(
+					event,
+					thread,
+					parsed.runId,
+					parsed.resumeData,
+					callbackData,
+					prepared,
+				);
+				return;
+			}
+		}
+
 		// Resuming a gone run reports it as an agent misconfiguration, which it is
 		// not. Check before the card is settled, so a stale one is answered rather
 		// than relabelled with a decision that never took effect.
@@ -126,6 +170,38 @@ export class AgentChatHitlResumeHandler {
 		);
 		if (backgroundApproval && resumed)
 			await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
+	}
+
+	private requireProjectId(): string {
+		if (this.options.projectId === null) {
+			throw new UnexpectedError('A system-agent channel has no project');
+		}
+		return this.options.projectId;
+	}
+
+	/**
+	 * Settle the card, then run the resume of a system agent, which streams into
+	 * the thread. The duplicate-click guard is the same as for a project agent.
+	 */
+	private async resumeSystemRun(
+		event: ActionEvent,
+		thread: Thread<unknown, unknown>,
+		runId: string,
+		resumeData: unknown,
+		callbackData: { label?: string },
+		prepared: { resume: () => Promise<void> },
+	): Promise<void> {
+		if (this.activeResumedRuns.has(runId)) {
+			await postToUserOrThread(thread, event.user, 'This action has already been handled');
+			return;
+		}
+		this.activeResumedRuns.add(runId);
+		try {
+			await this.cleanUpBeforeResume(event, resumeData, callbackData);
+			await prepared.resume();
+		} finally {
+			this.activeResumedRuns.delete(runId);
+		}
 	}
 
 	/** Parsed result from an action ID. */
@@ -342,7 +418,7 @@ export class AgentChatHitlResumeHandler {
 				const stream = this.options.agentService.resumeForChat({
 					...context,
 					agentId: this.options.agentId,
-					projectId: this.options.projectId,
+					projectId: this.requireProjectId(),
 					runId,
 					toolCallId,
 					resumeData,

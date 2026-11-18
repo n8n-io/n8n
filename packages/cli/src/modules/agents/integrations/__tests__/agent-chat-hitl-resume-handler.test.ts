@@ -427,3 +427,115 @@ describe('files queued before a suspension', () => {
 		expect(resumeForChat).toHaveBeenCalled();
 	});
 });
+
+describe('a click on the card of a system agent', () => {
+	function click(deleteMessage = vi.fn().mockResolvedValue(undefined)) {
+		return {
+			event: {
+				actionId: 'resume:run-1:tool-1:0',
+				value: JSON.stringify({ kind: 'approval', approved: true }),
+				thread: createThread(true),
+				threadId: THREAD_ID,
+				messageId: 'message-1',
+				user: ALICE,
+				adapter: { deleteMessage },
+				raw: { team: { id: 'T1' } },
+			} as never,
+			deleteMessage,
+		};
+	}
+
+	it('hands the run, the tool call and the button value to the system resume', async () => {
+		const systemResume = vi.fn().mockResolvedValue({ status: 'ignored' });
+		const handler = createHandler({ systemResume, deleteActionMessageBeforeResume: true });
+		const { event } = click();
+
+		await handler.handleAction(event);
+
+		expect(systemResume).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: ALICE,
+				raw: { team: { id: 'T1' } },
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				resumeData: { kind: 'approval', approved: true },
+			}),
+		);
+	});
+
+	it('does nothing more for a click that a check refused, and keeps the card', async () => {
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			agentService: { resumeForChat, isResumable: vi.fn().mockResolvedValue(true) },
+			systemResume: vi.fn().mockResolvedValue({ status: 'ignored' }),
+			deleteActionMessageBeforeResume: true,
+		});
+		const { event, deleteMessage } = click();
+
+		await handler.handleAction(event);
+
+		expect(deleteMessage).not.toHaveBeenCalled();
+		expect(resumeForChat).not.toHaveBeenCalled();
+	});
+
+	it('removes the card and then runs the system resume, never the project resume', async () => {
+		const order: string[] = [];
+		const resume = vi.fn(async () => {
+			order.push('resume');
+		});
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			agentService: { resumeForChat, isResumable: vi.fn().mockResolvedValue(true) },
+			systemResume: vi.fn().mockResolvedValue({ status: 'ready', resume }),
+			deleteActionMessageBeforeResume: true,
+		});
+		const { event, deleteMessage } = click(
+			vi.fn(async () => {
+				order.push('delete');
+			}),
+		);
+
+		await handler.handleAction(event);
+
+		expect(deleteMessage).toHaveBeenCalledOnce();
+		expect(order).toEqual(['delete', 'resume']);
+		expect(resumeForChat).not.toHaveBeenCalled();
+	});
+
+	it('takes the normal resume for a project agent', async () => {
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			agentService: { resumeForChat, isResumable: vi.fn().mockResolvedValue(true) },
+			systemResume: vi.fn().mockResolvedValue({ status: 'not-system' }),
+		});
+		const { event } = click();
+
+		await handler.handleAction(event);
+
+		expect(resumeForChat).toHaveBeenCalledOnce();
+	});
+
+	it('does not run the system resume for a background approval', async () => {
+		const systemResume = vi.fn();
+		const handler = createHandler({
+			agentService: {
+				resumeForChat: vi.fn(() => (async function* () {})()),
+				isResumable: vi.fn().mockResolvedValue(true),
+			},
+			systemResume,
+		});
+
+		await handler.handleAction({
+			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:1',
+			value: '',
+			thread: createThread(true),
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage: vi.fn() },
+			raw: {},
+		} as never);
+
+		expect(systemResume).not.toHaveBeenCalled();
+	});
+});

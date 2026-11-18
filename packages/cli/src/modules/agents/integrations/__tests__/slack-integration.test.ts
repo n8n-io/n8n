@@ -221,6 +221,7 @@ describe('SlackIntegration', () => {
 		agentRepository.findByIntegrationCredential.mockResolvedValue([
 			{ id: 'other-agent', name: 'Other Agent' },
 		] as never);
+		agentRepository.findInstanceAgentsUsingCredential.mockResolvedValue([]);
 		integration = new SlackIntegration(agentRepository);
 
 		await expect(
@@ -234,6 +235,126 @@ describe('SlackIntegration', () => {
 				webhookUrlFor: vi.fn(),
 			}),
 		).rejects.toThrow(ConflictError);
+	});
+
+	it('rejects a project credential that an instance channel already uses', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		agentRepository.findInstanceAgentsUsingCredential.mockResolvedValue([
+			{ id: 'assistant', name: 'n8n Assistant', integrations: [] },
+		]);
+		integration = new SlackIntegration(agentRepository);
+
+		await expect(
+			integration.onBeforeConnect({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				integration: { type: 'slack', credentialId: 'credential-1' },
+				credentialId: 'credential-1',
+				credential: {},
+				ingressEnabled: true,
+				webhookUrlFor: vi.fn(),
+			}),
+		).rejects.toThrow(ConflictError);
+	});
+
+	it('checks the project agents of the whole instance for an instance connection', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([
+			{ id: 'project-agent', name: 'Project Agent', integrations: [] },
+		]);
+		agentRepository.findInstanceAgentsUsingCredential.mockResolvedValue([]);
+		integration = new SlackIntegration(agentRepository);
+
+		await expect(
+			integration.onBeforeConnect({
+				agentId: 'assistant',
+				projectId: null,
+				integration: { type: 'slack', credentialId: 'credential-1' },
+				credentialId: 'credential-1',
+				credential: {},
+				ingressEnabled: true,
+				webhookUrlFor: vi.fn(),
+			}),
+		).rejects.toThrow(ConflictError);
+		expect(agentRepository.findByIntegrationCredential).not.toHaveBeenCalled();
+	});
+
+	describe('tenantIdOf', () => {
+		it('reads the signed workspace that the adapter adds to an event', () => {
+			expect(integration.tenantIdOf({ n8nWorkspaceId: 'T1', team: 'T-user' })).toBe('T1');
+			expect(integration.tenantIdOf({ team_id: 'T2' })).toBe('T2');
+		});
+
+		it('reads the workspace of a button click', () => {
+			expect(integration.tenantIdOf({ type: 'block_actions', team: { id: 'T3' } })).toBe('T3');
+		});
+
+		it('does not trust the team of the user alone', () => {
+			expect(integration.tenantIdOf({ team: 'T-user' })).toBeUndefined();
+			expect(integration.tenantIdOf({ user: { team_id: 'T-user' } })).toBeUndefined();
+			expect(integration.tenantIdOf(undefined)).toBeUndefined();
+		});
+	});
+
+	describe('isThreadReply', () => {
+		it.each([
+			[{ ts: '2', thread_ts: '1' }, true],
+			[{ ts: '1', thread_ts: '1' }, false],
+			[{ ts: '1' }, false],
+			[undefined, false],
+		])('for raw %j is %s', (raw, expected) => {
+			expect(integration.isThreadReply({ raw } as never)).toBe(expected);
+		});
+	});
+
+	it('looks up the email of a Slack user and whether Slack confirms it', async () => {
+		const info = vi.fn().mockResolvedValue({
+			user: {
+				id: 'U1',
+				team_id: 'T1',
+				profile: { email: 'sam@example.com' },
+				is_email_confirmed: true,
+			},
+		});
+		const chat = { getAdapter: vi.fn(() => ({ client: { users: { info } } })) };
+
+		await expect(integration.resolveUserEmail(chat as never, 'U1', 'T1')).resolves.toEqual({
+			email: 'sam@example.com',
+			confirmed: true,
+		});
+	});
+
+	it('reports an unconfirmed Slack email as unconfirmed, and no email for a bot', async () => {
+		const info = vi
+			.fn()
+			.mockResolvedValueOnce({
+				user: { id: 'U1', team_id: 'T1', profile: { email: 'sam@example.com' } },
+			})
+			.mockResolvedValueOnce({
+				user: { id: 'B1', team_id: 'T1', is_bot: true, profile: { email: 'bot@example.com' } },
+			});
+		const chat = { getAdapter: vi.fn(() => ({ client: { users: { info } } })) };
+
+		await expect(integration.resolveUserEmail(chat as never, 'U1', 'T1')).resolves.toEqual({
+			email: 'sam@example.com',
+			confirmed: false,
+		});
+		await expect(integration.resolveUserEmail(chat as never, 'B1', 'T1')).resolves.toBeUndefined();
+	});
+
+	it('gives no email for a user of another workspace, such as a Slack Connect user', async () => {
+		const info = vi.fn().mockResolvedValue({
+			user: {
+				id: 'U9',
+				team_id: 'T-other',
+				profile: { email: 'sam@example.com' },
+				is_email_confirmed: true,
+			},
+		});
+		const chat = { getAdapter: vi.fn(() => ({ client: { users: { info } } })) };
+
+		await expect(integration.resolveUserEmail(chat as never, 'U9', 'T1')).resolves.toBeUndefined();
 	});
 
 	it('extracts the Slack bot user ID for bridge message context', () => {

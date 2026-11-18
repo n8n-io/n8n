@@ -37,7 +37,8 @@ import {
 } from '../repositories/agent-execution-thread.repository';
 import { AgentThreadGrantRepository } from '../repositories/agent-thread-grant.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
-import type { AgentExecutionAdmission } from '../types/agent-queued-message';
+import type { AgentExecutionAdmission, SystemChannelDelivery } from '../types/agent-queued-message';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
 import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
@@ -68,6 +69,8 @@ interface SystemMessageInput {
 	messageId?: string;
 	/** A machine turn: it stays out of the transcript. */
 	hidden?: boolean;
+	/** Where a turn that a chat message started delivers its output. */
+	channel?: SystemChannelDelivery;
 }
 
 interface ResumeParams {
@@ -80,7 +83,12 @@ interface ResumeParams {
 	send?: (event: AgentSseEvent) => void;
 	/** Called when the runtime admits the turn, with the execution id a client needs to stop it. */
 	onExecutionStarted?: ExecutionStartedCallback;
+	/** Called for every chunk of the turn, next to the SSE events. */
+	onChunk?: ChunkSink;
 }
+
+/** A sink for the chunks of a turn. A chat delivery uses it to stream the answer. */
+export type ChunkSink = (chunk: AgentExecutionStreamChunk) => void;
 
 type ExecutionStartedCallback = (
 	executionId: string,
@@ -630,6 +638,7 @@ export class SystemAgentExecutionService {
 		user: User,
 		signal: AbortSignal,
 		send: (event: AgentSseEvent) => void,
+		onChunk?: ChunkSink,
 	): Promise<void> {
 		const { thread, admission, payload } = claim;
 		if (payload.kind !== 'system') return;
@@ -688,6 +697,7 @@ export class SystemAgentExecutionService {
 			workspace,
 			hostEvents,
 			send,
+			onChunk,
 			controller,
 			admission,
 			prepare: async () => ({
@@ -789,6 +799,7 @@ export class SystemAgentExecutionService {
 			workspace,
 			hostEvents,
 			send,
+			onChunk: params.onChunk,
 			controller,
 			onExecutionStarted: params.onExecutionStarted,
 			prepare: async () => ({
@@ -862,6 +873,7 @@ export class SystemAgentExecutionService {
 				...(input.messageId ? { messageId: input.messageId } : {}),
 				...(input.options ? { options: input.options } : {}),
 				...(input.hidden ? { hidden: true } : {}),
+				...(input.channel ? { channel: input.channel } : {}),
 			},
 		};
 	}
@@ -1094,6 +1106,7 @@ export class SystemAgentExecutionService {
 		workspace,
 		hostEvents,
 		send,
+		onChunk,
 		controller,
 		admission,
 		onExecutionStarted,
@@ -1104,6 +1117,8 @@ export class SystemAgentExecutionService {
 		workspace?: TurnWorkspace;
 		hostEvents: SystemAgentHostEventChannel;
 		send: (event: AgentSseEvent) => void;
+		/** Gets every chunk, like `handle.onChunk`. SSE output does not change. */
+		onChunk?: ChunkSink;
 		controller: AbortController;
 		/** Set when the queue admitted the turn. A resume admits its own turn. */
 		admission?: AgentExecutionAdmission;
@@ -1169,6 +1184,12 @@ export class SystemAgentExecutionService {
 					emitChunkEvents(chunk, send);
 				}
 				handle.onChunk?.(chunk);
+				// A chat delivery shows the same text as the live view.
+				onChunk?.(
+					formatted && chunk.type === 'error'
+						? { ...chunk, error: new AgentFormattedTurnError(formatted, chunk.error) }
+						: chunk,
+				);
 			}
 		};
 		try {

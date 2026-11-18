@@ -229,6 +229,8 @@ export class AgentMessageQueueService {
 				kind: dispatch.kind,
 				...(dispatch.stopReportId ? { stopReportId: dispatch.stopReportId } : {}),
 				...(dispatch.options ? { options: dispatch.options } : {}),
+				// Only a system turn delivers to a chat platform.
+				...(dispatch.kind === 'system' && dispatch.channel ? { channel: dispatch.channel } : {}),
 			};
 
 			if (dispatch.hidden) origin.hidden = true;

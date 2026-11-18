@@ -97,6 +97,7 @@ describe('DiscordIntegration', () => {
 	beforeEach(() => {
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		agentRepository.findInstanceAgentsUsingCredential.mockResolvedValue([]);
 		logger = mock<Logger>();
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(createFetchBackedHttpClient());

@@ -19,7 +19,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError } from '@n8n/errors';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UrlService } from '@n8n/backend-services';
@@ -41,7 +41,7 @@ import {
 } from './leader-channel-relay.service';
 import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
 import { recordAdapterCalls } from './recording/recording-adapter';
-import { isProjectAgent, type ProjectAgent } from '../entities/agent.entity';
+import { isProjectAgent, type Agent, type ProjectAgent } from '../entities/agent.entity';
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import {
 	agentChannelKey,
@@ -96,6 +96,20 @@ interface ChatAgentConnection {
 	 * was rotated or deleted in between.
 	 */
 	context: AgentChatIntegrationContext;
+}
+
+/** The agent that a channel runs for. An instance agent has no project. */
+export interface ChannelAgent {
+	id: string;
+	projectId: string | null;
+}
+
+/** The connection project of an agent row. `undefined` when no channel can run for it. */
+function channelAgentOf(
+	agent: Pick<Agent, 'id' | 'projectId' | 'scope'>,
+): ChannelAgent | undefined {
+	if (agent.scope === 'instance') return { id: agent.id, projectId: null };
+	return isProjectAgent(agent) ? { id: agent.id, projectId: agent.projectId } : undefined;
 }
 
 interface ConnectOptions {
@@ -237,7 +251,7 @@ export class ChatIntegrationService {
 	async assertStartupPreconditions(
 		agentId: string,
 		integration: AgentIntegrationConfig,
-		projectId: string,
+		projectId: string | null,
 	): Promise<void> {
 		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
@@ -255,14 +269,14 @@ export class ChatIntegrationService {
 	async validateBeforeConnect(
 		agentId: string,
 		integration: AgentIntegrationConfig,
-		projectId: string,
+		projectId: string | null,
 	): Promise<void> {
 		if (!hasChannelRuntime(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
 		if (!implementation.onBeforeConnect) return;
 
-		const credential = await this.decryptCredentialForProject(integration.credentialId, projectId);
+		const credential = await this.decryptCredential(integration, projectId);
 		await implementation.onBeforeConnect({
 			agentId,
 			projectId,
@@ -290,7 +304,7 @@ export class ChatIntegrationService {
 	async connect(
 		agentId: string,
 		integration: AgentIntegrationConfig,
-		projectId: string,
+		projectId: string | null,
 		options: ConnectOptions = {},
 	): Promise<void> {
 		if (!hasChannelRuntime(integration)) return;
@@ -336,7 +350,7 @@ export class ChatIntegrationService {
 	private async connectLocal(
 		agentId: string,
 		integration: AgentIntegrationConfig,
-		projectId: string,
+		projectId: string | null,
 		options: ConnectOptions = {},
 	): Promise<void> {
 		// The choke point every connect path reaches, so the one place that can
@@ -378,7 +392,7 @@ export class ChatIntegrationService {
 	private async establishConnection(
 		agentId: string,
 		integration: AgentIntegrationConfig,
-		projectId: string,
+		projectId: string | null,
 		options: ConnectOptions = {},
 	): Promise<void> {
 		const key = agentChannelKey(agentChannelRef(agentId, integration));
@@ -650,6 +664,55 @@ export class ChatIntegrationService {
 	}
 
 	/**
+	 * Connect a system agent to a chat platform for the whole instance. It saves
+	 * the channel on the instance agent row, connects it on this main and tells
+	 * the other mains. A failed connect restores the saved channels.
+	 *
+	 * The caller has already checked that the user may set the channel up.
+	 */
+	async connectInstanceChannel(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		if (!hasChannelRuntime(integration)) {
+			throw new UnexpectedError('An instance channel needs a platform runtime');
+		}
+		const previous = await this.agentRepository.findInstanceAgentIntegrations(agentId);
+		if (previous === null) throw new UnexpectedError(`Agent ${agentId} is not an instance agent`);
+
+		await this.validateBeforeConnect(agentId, integration, null);
+
+		const replaced = previous.find((entry) => entry.type === integration.type);
+		const next = [...previous.filter((entry) => entry.type !== integration.type), integration];
+		await this.agentRepository.updateInstanceAgentIntegrations(agentId, next);
+		try {
+			// The old credential of this platform stops receiving events.
+			if (replaced && replaced.credentialId !== integration.credentialId) {
+				await this.disconnectChannel(agentId, replaced, { deleteSubscriptions: false });
+			}
+			await this.connect(agentId, integration, null, this.connectOptionsFor(integration, false));
+		} catch (error) {
+			await this.agentRepository.updateInstanceAgentIntegrations(agentId, previous);
+			throw error;
+		}
+		await this.broadcastIntegrationChange(agentId, integration, 'connect');
+	}
+
+	/** Remove the channel of a platform from an instance agent, everywhere. */
+	async disconnectInstanceChannel(agentId: string, type: string): Promise<void> {
+		const previous = await this.agentRepository.findInstanceAgentIntegrations(agentId);
+		if (previous === null) throw new UnexpectedError(`Agent ${agentId} is not an instance agent`);
+		const removed = previous.find((entry) => entry.type === type);
+		if (!removed) return;
+
+		await this.agentRepository.updateInstanceAgentIntegrations(
+			agentId,
+			previous.filter((entry) => entry.type !== type),
+		);
+		await this.disconnectChannel(agentId, removed);
+	}
+
+	/**
 	 * Return the first live Chat instance for an agent, or undefined if not connected.
 	 */
 	getChatInstance(agentId: string, integration?: IntegrationRef): ChatInstance | undefined {
@@ -838,7 +901,7 @@ export class ChatIntegrationService {
 	 * Which channels to start, and when to retry one that failed, is
 	 * {@link AgentChannelReconciler}'s decision.
 	 */
-	async startChannel(agent: ProjectAgent, integration: AgentIntegrationConfig): Promise<void> {
+	async startChannel(agent: ChannelAgent, integration: AgentIntegrationConfig): Promise<void> {
 		const skipExternalHooks = !this.instanceSettings.isLeader;
 		await this.connect(
 			agent.id,
@@ -886,8 +949,9 @@ export class ChatIntegrationService {
 		const key = agentChannelKey({ agentId, integrationType: type, credentialId });
 		if (this.connections.has(key)) return;
 
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent || !isProjectAgent(agent)) {
+		const agentRow = await this.agentRepository.findOne({ where: { id: agentId } });
+		const agent = agentRow ? channelAgentOf(agentRow) : undefined;
+		if (!agent) {
 			this.logger.warn(
 				`[ChatIntegrationService] Cannot connect ${type} — agent ${agentId} not found`,
 			);
@@ -1145,9 +1209,52 @@ export class ChatIntegrationService {
 		return decrypted;
 	}
 
-	private buildWebhookUrl(agentId: string, projectId: string, platform: string): string {
+	/**
+	 * Load and decrypt the credential of an instance-level channel. An instance
+	 * agent has no project, so only the instance policy and the policy of the
+	 * credential's owning project apply. The credential must be a Slack credential.
+	 */
+	private async decryptCredentialForInstance(
+		credentialId: string,
+		acceptedTypes: string[],
+	): Promise<Record<string, unknown>> {
+		const credential = await this.credentialsService.findStoredCredentialOfType(
+			credentialId,
+			acceptedTypes,
+		);
+		if (!credential) {
+			throw new UserError(
+				`Credential ${credentialId} was not found or has a type that this channel does not accept`,
+			);
+		}
+		return await this.credentialsService.decryptForUse(credential, {
+			kind: 'system',
+			reason: 'integration',
+		});
+	}
+
+	private async decryptCredential(
+		integration: AgentIntegrationConfig,
+		projectId: string | null,
+	): Promise<Record<string, unknown>> {
+		if (projectId !== null) {
+			return await this.decryptCredentialForProject(integration.credentialId, projectId);
+		}
+		const acceptedTypes = this.integrationRegistry
+			.require(integration.type)
+			.acceptedCredentialTypes(integration);
+		return await this.decryptCredentialForInstance(integration.credentialId, acceptedTypes);
+	}
+
+	/** The webhook URL of an instance-level channel of a system agent. */
+	buildInstanceWebhookUrl(agentId: string, platform: string): string {
 		// getWebhookBaseUrl returns the URL with a trailing slash, honours the
 		// WEBHOOK_URL env var used by n8n's other webhook triggers.
+		return `${this.urlService.getWebhookBaseUrl()}rest/agents/system/${agentId}/channels/${platform}/webhook`;
+	}
+
+	private buildWebhookUrl(agentId: string, projectId: string | null, platform: string): string {
+		if (projectId === null) return this.buildInstanceWebhookUrl(agentId, platform);
 		const base = this.urlService.getWebhookBaseUrl();
 		return `${base}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/${platform}`;
 	}
@@ -1163,15 +1270,12 @@ export class ChatIntegrationService {
 
 	private async createConnectionContext(
 		agentId: string,
-		projectId: string,
+		projectId: string | null,
 		integration: AgentIntegrationConfig,
 		ingressEnabled: boolean,
 	): Promise<AgentChatIntegrationContext> {
 		// Decrypt the integration credential to get platform tokens
-		const decryptedData = await this.decryptCredentialForProject(
-			integration.credentialId,
-			projectId,
-		);
+		const decryptedData = await this.decryptCredential(integration, projectId);
 
 		return {
 			agentId,
@@ -1377,8 +1481,9 @@ export class ChatIntegrationService {
 		// excludes settings, so a settings-only save arrives on a live key and
 		// has to rebuild — same as a local connect does. Duplicate requests are
 		// deduped by `runLeaderOperation`, not by inspecting the runtime.
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent || !isProjectAgent(agent)) {
+		const agentRow = await this.agentRepository.findOne({ where: { id: agentId } });
+		const agent = agentRow ? channelAgentOf(agentRow) : undefined;
+		if (!agent) {
 			throw new UnexpectedError(`Agent ${agentId} not found on the leader instance`);
 		}
 

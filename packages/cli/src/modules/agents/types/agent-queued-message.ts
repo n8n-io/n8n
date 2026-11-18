@@ -19,6 +19,24 @@ interface QueuedMessageInput {
 }
 
 /**
+ * Where a system turn delivers its output on a chat platform. It is set only
+ * for a turn that a chat message started. The queue keeps it with the message,
+ * so any main can deliver the answer.
+ */
+export interface SystemChannelDelivery {
+	/** The platform, such as `slack`. */
+	type: string;
+	/** The credential of the instance connection that received the message. */
+	credentialId: string;
+	/** The Chat SDK thread that the answer goes to. */
+	platformThreadId: string;
+	/** The chat user who sent the message. Cards go to this user. */
+	actingExternalUserId: string;
+	/** The workspace or tenant of the message. */
+	tenantId: string;
+}
+
+/**
  * A message from an n8n user. Preview runs the draft agent. n8n Chat runs the
  * published agent. System runs a code-defined system agent.
  */
@@ -35,6 +53,8 @@ export interface QueuedUserChatMessage extends QueuedMessageInput {
 	hidden?: boolean;
 	/** Set only by the Stop service. This turn cannot accept steering. */
 	stopReportId?: string;
+	/** Chat delivery of a system turn. Only the `system` kind can carry it. */
+	channel?: SystemChannelDelivery;
 }
 
 /**
@@ -87,6 +107,7 @@ export type AgentQueueDispatch =
 			kind: QueuedUserChatMessage['kind'];
 			options?: Record<string, unknown>;
 			stopReportId?: string;
+			channel?: SystemChannelDelivery;
 	  }
 	| (Omit<
 			QueuedIntegrationMessage,
