@@ -1277,7 +1277,7 @@ function ticketCard(tk) {
 
 /* "Hier" on the Today page (D86, D87): the tickets of the last day played, then every result
    of that day in every competition, the owner's teams first. Same /bilan data as the Bilan page. */
-function yesterdayBlock(b, now) {
+function yesterdayBlock(b, now, teaser = false) {
   if (!b) return "";
   const res = b.yesterday && b.yesterday.date && b.yesterday.date < now ? b.yesterday : null;
   const days = [...new Set([...(b.tickets || []).map((d) => d.date), ...(res ? [res.date] : [])])].filter((x) => x < now).sort();
@@ -1319,7 +1319,17 @@ function yesterdayBlock(b, now) {
       <ul class="legs-plain results">${byComp[c].map(row).join("")}</ul></details>`).join("");
   if (!tks.length && !games.length) return "";
   const nComp = comps.length;
-  return `<section class="today-block"><h2>${esc(title)}</h2>
+  if (teaser) {
+    // D89: on the Today page, one line that opens the Hier tab.
+    const lost = tks.filter((x) => x.includes("state lost")).length, won = tks.filter((x) => x.includes("state won")).length;
+    const parts = [games.length ? `${games.length} match${games.length > 1 ? "s" : ""}` : "",
+      tks.length ? `vos tickets : ${[won ? `${won} gagné${won > 1 ? "s" : ""}` : "", lost ? `${lost} perdu${lost > 1 ? "s" : ""}` : "",
+        tks.length - won - lost ? `${tks.length - won - lost} pas encore réglé${tks.length - won - lost > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ")}` : ""];
+    return `<section class="today-block"><a class="card teaser" href="#/hier"><span><b>${esc(title)}</b>
+      <span class="muted small">${parts.filter(Boolean).join(" · ")}</span></span><span class="teaser-go">Voir les résultats</span></a></section>`;
+  }
+  // On the Hier page the heading is already "Hier": the section names the day itself.
+  return `<section class="today-block"><h2>${esc(dayLabel(day))}</h2>
     ${games.length ? `<p class="lead">${games.length} match${games.length > 1 ? "s" : ""} joué${games.length > 1 ? "s" : ""} dans ${nComp} compétition${nComp > 1 ? "s" : ""}${tally(games)}.</p>` : ""}
     ${tks.length ? `<div class="card"><h3>Vos tickets</h3><ul class="legs-plain">${tks.join("")}</ul></div>` : ""}
     ${mine.length ? `<div class="card"><h3>Vos équipes${tally(mine)}</h3><ul class="legs-plain results">${mine.map(row).join("")}</ul></div>` : ""}
@@ -1365,7 +1375,16 @@ async function today() {
         <div class="card">${lec.groups.map((g) => `<p><b>${esc(g.competition)}</b></p><p class="muted">${esc(g.text)}</p>`).join("")}</div></section>`
     : "";
   return head + staleNote(d.last_prediction) + `<section class="today-block"><h2>Vos tickets</h2>${tickets}</section>`
-    + yesterdayBlock(b, now) + lecture + notes + matches;
+    + yesterdayBlock(b, now, true) + lecture + notes + matches;
+}
+
+// D89: the Hier tab, with every result of the last day played (D87).
+async function hierPage() {
+  const [d, b] = await Promise.all([get("/home").catch(() => null), get("/bilan").catch(() => null)]);
+  if (d) learnMine(d.matches);
+  const body = yesterdayBlock(b, localToday());
+  return `<div class="page-head"><div><h1>Hier</h1><p>Vos tickets et tous les résultats de la dernière journée jouée, avec ce que le site avait prévu.</p></div></div>`
+    + (body || `<div class="empty"><p class="muted">Pas encore de résultats : ils arrivent avec le calcul de 05:23.</p></div>`);
 }
 
 async function ticketsPage() {
@@ -1406,14 +1425,14 @@ async function bilan() {
 }
 
 /* ---------------- Router ---------------- */
-const PAGES = { "": today, matchs: home, tickets: ticketsPage, bilan, tendances: overview, competitions, teams, match: matchPage, performance, picks, admin,
+const PAGES = { "": today, hier: hierPage, matchs: home, tickets: ticketsPage, bilan, tendances: overview, competitions, teams, match: matchPage, performance, picks, admin,
   ...(window.fiPages || {}) };
 async function route() {
   resetCharts();
   const page = (location.hash.replace(/^#\/?/, "").split("?")[0]) || "";
   const navPage = page === "match" ? "matchs" : page === "tickets" ? "" : page;
   document.querySelectorAll("nav a[data-page]").forEach((a) => a.classList.toggle("active", a.dataset.page === navPage));
-  const CRUMB = { "": "Aujourd'hui", matchs: "Matchs", tickets: "Tous les choix", bilan: "Bilan", match: "Matchs", picks: "Mes pronostics", competitions: "Compétitions", teams: "Équipes",
+  const CRUMB = { "": "Aujourd'hui", hier: "Hier", matchs: "Matchs", tickets: "Tous les choix", bilan: "Bilan", match: "Matchs", picks: "Mes pronostics", competitions: "Compétitions", teams: "Équipes",
     performance: "Fiabilité du modèle", tendances: "Tendances", admin: "Administration", ...(window.fiCrumbs || {}) };
   document.getElementById("crumb").textContent = CRUMB[page] || "Football Intel";
   document.getElementById("sidebar").classList.remove("open");

@@ -416,7 +416,7 @@ td.pos { color: var(--accent); } td.neg { color: var(--muted); }
 .nav-more { margin-top: 18px; }
 .tabbar { display: none; }
 @media (max-width: 900px) {
-  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(4, 1fr);
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(5, 1fr);
     background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
   .tabbar a { border-radius: 0; display: flex; align-items: center; justify-content: center; min-height: 56px; font-size: 13px; font-weight: 500;
     color: var(--muted); text-decoration: none; border-top: 2px solid transparent; }
@@ -536,3 +536,16 @@ h1 { font-size: 26px; letter-spacing: -0.025em; }
 .res-group > summary::after { content: "+"; color: var(--muted); margin-left: 4px; }
 .res-group[open] > summary::after { content: "–"; }
 .res-group > summary > span { margin-left: auto; text-align: right; }
+
+/* Swipe between tabs (D89): the new page slides in from the side of the swipe. */
+@keyframes fi-in-left { from { opacity: .4; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes fi-in-right { from { opacity: .4; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.swipe-in-left { animation: fi-in-left .26s ease-out; }
+.swipe-in-right { animation: fi-in-right .26s ease-out; }
+@media (prefers-reduced-motion: reduce) { .swipe-in-left, .swipe-in-right { animation: none; } }
+@media (max-width: 900px) { .tabbar a { font-size: 12px; letter-spacing: -.01em; } }
+
+/* Today page: one line that opens the Hier tab. */
+a.card.teaser { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-decoration: none; color: inherit; }
+a.card.teaser > span:first-child { display: grid; gap: 2px; }
+.teaser-go { white-space: nowrap; font-size: 13px; color: var(--home); }
