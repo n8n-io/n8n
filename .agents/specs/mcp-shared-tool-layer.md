@@ -216,41 +216,63 @@ Cause: the `workflow-builder` skill's "ask before the build only when a choice
 changes intent or topology" rule is gated off with the skill; the server's
 instructions are a build recipe with no clarify step.
 
-Full suite, one iteration (389 cases, 34 minutes), against the LangSmith
-baseline `instance-ai-baseline-13/07` (349 shared units; 1516 units of the
-current suite have no baseline):
+Full suite against the LangSmith baseline `instance-ai-baseline-13/07`
+(349 shared units; the other ~1500 units of today's suite have no baseline).
+Two runs: one iteration at `7357512` (34 min), then three iterations at
+`90119af` (90 min) after the bridge started binding `projectId` to the thread's
+project. LangSmith experiments `ci-poc_mcp-shared-tool-layer-7357512-cc478cc8`
+and `ci-poc_mcp-shared-tool-layer-90119af-57b1395e`.
 
-| | PoC | baseline | delta |
+| shared units (349) | PoC N=3 | baseline N=10 | delta |
 |---|---|---|---|
-| aggregate pass rate (349 units) | 85.4% (CI 81.3–88.7) | 88.8% (CI 87.7–89.8) | −3.4 pp |
-| scenario units, executed workflows (117) | 86.3% | 79.2% | +7.1 pp |
-| expectation units, judged behaviour (232) | 84.9% | 93.7% | −8.8 pp |
-| failures observed vs expected under baseline rates | 51 vs 39 | | z = 3.1 |
+| aggregate pass rate | 86.4% (CI 84.2–88.4) | 88.8% (CI 87.7–89.8) | −2.4 pp |
+| scenario units, executed workflows (117) | 85.8% | 79.2% | +6.5 pp |
+| expectation units, judged behaviour (232) | 86.7% | 93.7% | −6.9 pp |
+| failures observed vs expected under baseline rates | 142 vs 117 | | z = 3.8 |
 
-Verdicts: 277 stable, 39 watch, 33 soft regressions, no hard regressions.
-The scenario gain is not a PoC effect: the baseline predates master's own
-improvements. What the regressions are:
+Verdicts: 290 stable, 19 watch, 24 hard regressions, 7 soft regressions,
+9 improvements. The scenario gain and most improvements are the baseline's
+age (units at 0/10 that master fixed since), not the PoC. The N=3 run against
+the N=1 run: +0.7 pp, no regressions, so the PoC is stable run to run and
+builds are unchanged by the project fix. The regressions, 19 of them at 0/3
+against 9–10/10, so structural rather than noise:
 
-1. **Wrong project (defect, now fixed in the bridge).** Without `projectId`
-   the server saves to the caller's personal project; the model noticed the
-   mismatch in 98 cases and rebuilt in the conversation's project, leaving a
-   duplicate in 152 cases. The harness judged the stale duplicate in 150 of
-   them: 30 of the 51 shared-unit failures and 23 of the 33 soft regressions
-   are in those cases (`user-self-corrects`, `targeted-edit-preserves-
-   configured-details`, `setup-follow-up-preserves-slack-channel`,
-   `rest-api-data-pipeline` all passed on the workflow the agent finished).
-   Re-run after the fix to get a clean number.
-2. **No verification loop (real).** ~14 expectations of the form "the agent
-   ran a verification of the built workflow" and `verification_gap` 6 vs 0
-   in the baseline. The native build result carries `postBuildFlow`; the
-   server's save result does not, and the skill that follows it is off.
-3. **Credential offering during the build (real, partly eval phrasing).** The
-   native build tool lists candidate credentials and binds a sole match; the
-   server's create path leaves credentials to `list_credentials` and
-   `setNodeCredential` (4 expectations).
-4. **Guidance drift (real).** Clarify-before-build (PR tier) and n8n
-   evaluation wiring (`ai-agent-build-wires-evals-when-asked`, 3
-   expectations, reference material in the gated skill).
+1. **No verification loop (11 hard).** "The agent ran a verification of the
+   built workflow" and its consequences (mocked verification before
+   credentials, both branches verified, live test after setup) are 0/3. The
+   native build result carries `postBuildFlow`; the server's save result
+   does not, and the skill that follows it is off. `verification_gap` is
+   1.5% of runs vs 0 in the baseline.
+2. **Credentials during the build (5 hard, 2 soft).** The native build tool
+   lists the candidate credentials and binds a sole match. Over MCP the
+   agent tells the user the Slack credential is missing although one exists
+   (`binds-existing-credential-without-reasking` 0/3 vs 8–10/10), and does
+   not apply a chosen one on re-verify.
+3. **Guidance drift (3 hard, 3 soft).** Clarify before building
+   (`notification-router` 0/3 vs 10/10), do not re-ask what the user deferred,
+   inspect an errored expression before editing it. The rules live in the
+   gated `workflow-builder` skill and its references; the server's
+   instructions are a build recipe.
+4. **One build-quality case (`voice-agent-crm-backend`, 2 hard, 2 soft, 2
+   scenarios).** Expressions read a tool-call payload's `arguments` property,
+   which the expression sandbox blocks; the native path used a Code node
+   (knowledge-base guardrail in the gated skill).
+5. Three scenario regressions without a visible cause yet
+   (`flight-status-change-alert`, `product-page-agent-question-tool`,
+   `trading-bot-http-array-normalization`).
+
+Wrong project (fixed): without `projectId` the server saves to the caller's
+personal project. In the N=1 run the agent noticed and rebuilt in 98 of 382
+builds (26%), leaving a duplicate; after the fix 0 of 1153. The judged
+workflow matched the verified one in all but 11 N=1 runs, so the duplicates
+cost a rebuild each, not the scores.
+
+Harness notes: `evaluations/run/persist.ts` writes `eval-results.json` one
+test case at a time, because a full-suite N=3 report (~1.2 GB pretty-printed)
+exceeded V8's string length and the run lost its results file once. CI
+experiments live in the EU LangSmith workspace "Staging"; an experiment's
+per-unit buckets can be fetched with `fetchBaselineBucket` and compared with
+`compareBuckets` offline.
 
 ## Structure
 
