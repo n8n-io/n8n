@@ -25,11 +25,11 @@ describe('components', () => {
 
 		test('renders a solid circle in place of the pattern when a color is given', () => {
 			const { container, getByTestId, getByText } = render(N8nAvatar, {
-				props: { firstName: 'Ada', lastName: 'Lovelace', color: 'rebeccapurple', size: 'small' },
+				props: { firstName: 'Ada', lastName: 'Lovelace', color: 'rgb(102, 51, 153)', size: 'small' },
 			});
 
 			expect(container.querySelector('svg')).not.toBeInTheDocument();
-			expect(getByTestId('avatar-solid')).toHaveStyle({ backgroundColor: 'rebeccapurple' });
+			expect(getByTestId('avatar-solid')).toHaveStyle({ backgroundColor: 'rgb(102, 51, 153)' });
 			expect(getByText('AL')).toBeVisible();
 		});
 	});
