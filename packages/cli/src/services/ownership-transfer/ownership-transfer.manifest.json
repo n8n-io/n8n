@@ -20,6 +20,11 @@
 	],
 	"notTransferred": [
 		{
+			"name": "DeterminismSourceEntity",
+			"path": "packages/cli/src/modules/agent-determinism/database/determinism-source.entity.ts",
+			"reason": "Run counts and scores of a source in the deleted project; a new analysis starts after the source runs again."
+		},
+		{
 			"name": "ActivityEvent",
 			"path": "packages/@n8n/db/src/entities/activity-event.ts",
 			"reason": "Append-only record of what happened in the deleted project; re-homing entries would misstate where the events occurred. Dropped via FK cascade."
