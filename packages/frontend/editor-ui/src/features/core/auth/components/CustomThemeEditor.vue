@@ -12,8 +12,8 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
-	N8nText,
 } from '@n8n/design-system';
+import ColorHexInput from '@/app/components/ColorHexInput.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { applyThemeInstantly } from '@/app/stores/ui.utils';
 import {
@@ -56,12 +56,6 @@ const isPreviewing = ref(false);
 
 const presetItems = computed((): Array<SelectOptionBase<string>> =>
 	Object.entries(CUSTOM_THEME_PRESETS).map(([value, { label }]) => ({ value, label })),
-);
-
-const modeLabel = computed(() =>
-	i18n.baseText(
-		draft.mode === 'dark' ? 'settings.personal.theme.dark' : 'settings.personal.theme.light',
-	),
 );
 
 function snapshot(): CustomTheme {
@@ -154,31 +148,24 @@ onBeforeUnmount(restore);
 					</template>
 				</N8nSettingsRow>
 				<N8nSettingsRow
-					v-for="seed in SEED_KEYS"
+					v-for="(seed, index) in SEED_KEYS"
 					:key="seed.key"
 					:title="i18n.baseText(seed.label)"
+					:show-divider="index === SEED_KEYS.length - 1"
+					:class="[
+						$style.seedRow,
+						{
+							[$style.seedRowFirst]: index === 0,
+							[$style.seedRowLast]: index === SEED_KEYS.length - 1,
+						},
+					]"
 				>
 					<template #action>
-						<label :class="$style.color">
-							<N8nText size="small" color="text-light" :class="$style.hex">
-								{{ draft.seeds[seed.key] }}
-							</N8nText>
-							<input
-								v-model="draft.seeds[seed.key]"
-								type="color"
-								:class="$style.swatch"
-								:aria-label="i18n.baseText(seed.label)"
-								:data-test-id="`custom-theme-seed-${seed.key}`"
-							/>
-						</label>
-					</template>
-				</N8nSettingsRow>
-				<N8nSettingsRow
-					:title="i18n.baseText('settings.personal.customTheme.mode')"
-					:description="i18n.baseText('settings.personal.customTheme.mode.description')"
-				>
-					<template #action>
-						<N8nText color="text-base">{{ modeLabel }}</N8nText>
+						<ColorHexInput
+							v-model="draft.seeds[seed.key]"
+							:label="i18n.baseText(seed.label)"
+							:test-id="`custom-theme-seed-${seed.key}`"
+						/>
 					</template>
 				</N8nSettingsRow>
 				<N8nSettingsRow>
@@ -207,26 +194,22 @@ onBeforeUnmount(restore);
 </template>
 
 <style lang="scss" module>
-.color {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	cursor: pointer;
+/* The row and its header force a tall min-height. The colour rows stack tightly instead. */
+.seedRow.seedRow {
+	min-height: 0;
+	padding-block: var(--spacing--4xs);
+
+	> * {
+		min-height: 0;
+	}
 }
 
-.hex {
-	font-family: var(--font-family--monospace);
-	text-transform: uppercase;
+.seedRow.seedRowFirst {
+	padding-top: var(--spacing--xs);
 }
 
-.swatch {
-	width: var(--spacing--xl);
-	height: var(--spacing--lg);
-	padding: 0;
-	border: var(--border);
-	border-radius: var(--radius);
-	background: none;
-	cursor: pointer;
+.seedRow.seedRowLast {
+	padding-bottom: var(--spacing--xs);
 }
 
 .actions {
