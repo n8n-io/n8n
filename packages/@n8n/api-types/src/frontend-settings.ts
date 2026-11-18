@@ -81,8 +81,10 @@ export interface IEnterpriseSettings {
 }
 
 export interface BrandingSettings {
-	/** The instance accent color as `#rrggbb`. `null` keeps the n8n default. */
+	/** The instance accent color for light mode as `#rrggbb`. `null` keeps the n8n default. */
 	accentColor: string | null;
+	/** The accent color for dark mode as `#rrggbb`. `null` derives it from `accentColor`. */
+	accentColorDark?: string | null;
 }
 
 export interface FrontendSettings {

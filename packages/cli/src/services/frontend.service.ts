@@ -681,7 +681,7 @@ export class FrontendService {
 			: { enabled: false, availableTypes: [], failedTypes: [] };
 		this.settings.branding = this.moduleRegistry.isActive('branding')
 			? await this.brandingService.getSettings()
-			: { accentColor: null };
+			: { accentColor: null, accentColorDark: null };
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 

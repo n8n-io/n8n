@@ -127,7 +127,11 @@ watch(
 );
 
 // The embedded settings carry the instance accent color, so it applies before the first paint.
-watch(() => settingsStore.settings.branding?.accentColor, applyAccentColor, { immediate: true });
+watch(
+	() => [settingsStore.settings.branding?.accentColor, settingsStore.settings.branding?.accentColorDark],
+	([light, dark]) => applyAccentColor(light, dark),
+	{ immediate: true },
+);
 
 const layoutRef = ref<Element | null>(null);
 

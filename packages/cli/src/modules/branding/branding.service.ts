@@ -4,6 +4,7 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 const ACCENT_COLOR_KEY = 'branding.accentColor';
+const ACCENT_COLOR_DARK_KEY = 'branding.accentColorDark';
 
 @Service()
 export class BrandingService {
@@ -13,21 +14,35 @@ export class BrandingService {
 	) {}
 
 	async getSettings(): Promise<BrandingSettings> {
-		// The cache holds an empty string for "no accent color", so a miss is `undefined`.
-		const cached = await this.cacheService.get<string>(ACCENT_COLOR_KEY);
-		if (cached !== undefined) return { accentColor: cached || null };
-
-		const row = await this.settingsRepository.findByKey(ACCENT_COLOR_KEY);
-		const accentColor = row?.value || null;
-		await this.cacheService.set(ACCENT_COLOR_KEY, accentColor ?? '');
-
-		return { accentColor };
+		const [accentColor, accentColorDark] = await Promise.all([
+			this.read(ACCENT_COLOR_KEY),
+			this.read(ACCENT_COLOR_DARK_KEY),
+		]);
+		return { accentColor, accentColorDark };
 	}
 
-	async setAccentColor(accentColor: string | null): Promise<BrandingSettings> {
-		await this.settingsRepository.upsertByKey(ACCENT_COLOR_KEY, accentColor ?? '', true, {});
-		await this.cacheService.set(ACCENT_COLOR_KEY, accentColor ?? '');
+	async setBranding(branding: BrandingSettings): Promise<BrandingSettings> {
+		const accentColorDark = branding.accentColorDark ?? null;
+		await Promise.all([
+			this.write(ACCENT_COLOR_KEY, branding.accentColor),
+			this.write(ACCENT_COLOR_DARK_KEY, accentColorDark),
+		]);
+		return { accentColor: branding.accentColor, accentColorDark };
+	}
 
-		return { accentColor };
+	private async read(key: string): Promise<string | null> {
+		// The cache holds an empty string for "no color", so a miss is `undefined`.
+		const cached = await this.cacheService.get<string>(key);
+		if (cached !== undefined) return cached || null;
+
+		const row = await this.settingsRepository.findByKey(key);
+		const value = row?.value || null;
+		await this.cacheService.set(key, value ?? '');
+		return value;
+	}
+
+	private async write(key: string, value: string | null): Promise<void> {
+		await this.settingsRepository.upsertByKey(key, value ?? '', true, {});
+		await this.cacheService.set(key, value ?? '');
 	}
 }

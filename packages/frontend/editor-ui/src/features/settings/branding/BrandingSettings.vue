@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
 	N8nButton,
-	N8nColorPicker,
+	N8nIcon,
+	N8nLink,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -17,7 +18,16 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import * as brandingApi from '@n8n/rest-api-client/api/branding';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { applyAccentColor, resolveAccent } from '@/app/utils/accentColor';
+import ColorHexInput from '@/app/components/ColorHexInput.vue';
+import {
+	accentContrast,
+	applyAccentColor,
+	autoDarkAccent,
+	brandTokens,
+	readDefaultAccent,
+	suggestAccent,
+	type AccentMode,
+} from '@/app/utils/accentColor';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -25,42 +35,106 @@ const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 
-const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const savedLight = computed(() => settingsStore.settings.branding?.accentColor ?? null);
+const savedDark = computed(() => settingsStore.settings.branding?.accentColorDark ?? null);
 
-const savedColor = computed(() => settingsStore.settings.branding?.accentColor ?? null);
-const draft = ref<string | null>(savedColor.value);
+// `null` light means the theme default. `null` dark means "follow the light value".
+const draftLight = ref<string | null>(savedLight.value);
+const draftDark = ref<string | null>(savedDark.value);
 const saving = ref(false);
 
-const normalizedDraft = computed(() => draft.value?.toLowerCase() ?? null);
-const isValid = computed(() => draft.value === null || HEX_COLOR.test(draft.value));
-const isDirty = computed(() => normalizedDraft.value !== savedColor.value);
+const isDirty = computed(
+	() => draftLight.value !== savedLight.value || draftDark.value !== savedDark.value,
+);
 
-// n8n moves a color that is too light or too dark for one mode, so buttons stay visible.
-const isAdjusted = computed(() => {
-	if (!isValid.value || normalizedDraft.value === null) return false;
-	const { light, dark } = resolveAccent(normalizedDraft.value);
-	return (
-		light.toLowerCase() !== normalizedDraft.value || dark.toLowerCase() !== normalizedDraft.value
-	);
+const defaults = {
+	light: readDefaultAccent('light') ?? '#000000',
+	dark: readDefaultAccent('dark') ?? '#ffffff',
+};
+
+const effective = computed<Record<AccentMode, string>>(() => ({
+	light: draftLight.value ?? defaults.light,
+	dark:
+		draftDark.value ?? (draftLight.value ? autoDarkAccent(draftLight.value) : defaults.dark),
+}));
+
+const lightModel = computed({
+	get: () => effective.value.light,
+	set: (color: string) => {
+		draftLight.value = color;
+	},
+});
+const darkModel = computed({
+	get: () => effective.value.dark,
+	set: (color: string) => {
+		draftDark.value = color;
+	},
 });
 
-// The page previews the draft on the whole app. Leaving the page shows the saved color again.
-watch(normalizedDraft, (color) => {
-	if (isValid.value) applyAccentColor(color);
-});
-onBeforeUnmount(() => applyAccentColor(savedColor.value));
+// The n8n default colors are not checked: only colors that an admin set.
+function contrastWarning(mode: AccentMode) {
+	const custom = mode === 'light' ? draftLight.value : (draftDark.value ?? draftLight.value);
+	if (!custom) return null;
+	const color = effective.value[mode];
+	const contrast = accentContrast(color, mode);
+	if (contrast.passes) return null;
+	const textFails = contrast.text < 4.5;
+	const ratio = (textFails ? contrast.text : contrast.surface).toFixed(1);
+	return {
+		message: i18n.baseText(
+			textFails ? 'settings.branding.contrast.text' : 'settings.branding.contrast.surface',
+			{ interpolate: { ratio } },
+		),
+		suggestion: suggestAccent(color, mode),
+	};
+}
+
+const rows = computed(() =>
+	(['light', 'dark'] as const).map((mode) => ({
+		mode,
+		title: i18n.baseText(
+			mode === 'light' ? 'settings.branding.accentColor.light' : 'settings.branding.accentColor.dark',
+		),
+		description: i18n.baseText(
+			mode === 'light'
+				? 'settings.branding.accentColor.description'
+				: 'settings.branding.accentColor.dark.description',
+		),
+		linked: mode === 'dark' && draftDark.value === null,
+		resetLabel: i18n.baseText(
+			mode === 'light' ? 'settings.branding.reset' : 'settings.branding.accentColor.useAutomatic',
+		),
+		resetDisabled: mode === 'light' ? draftLight.value === null : draftDark.value === null,
+		warning: contrastWarning(mode),
+	})),
+);
+
+function onReset(mode: AccentMode) {
+	if (mode === 'light') draftLight.value = null;
+	else draftDark.value = null;
+}
+
+function onUseSuggested(mode: AccentMode, color: string) {
+	if (mode === 'light') draftLight.value = color;
+	else draftDark.value = color;
+}
+
+// The page previews the draft on the whole app. Leaving the page shows the saved colors again.
+watch([draftLight, draftDark], ([light, dark]) => applyAccentColor(light, dark));
+onBeforeUnmount(() => applyAccentColor(savedLight.value, savedDark.value));
 
 onMounted(() => documentTitle.set(i18n.baseText('settings.branding')));
 
 async function onSave() {
-	if (!isValid.value) return;
 	saving.value = true;
 	try {
 		const branding = await brandingApi.updateBranding(rootStore.restApiContext, {
-			accentColor: normalizedDraft.value,
+			accentColor: draftLight.value,
+			accentColorDark: draftDark.value,
 		});
 		settingsStore.setSettings({ ...settingsStore.settings, branding });
-		draft.value = branding.accentColor;
+		draftLight.value = branding.accentColor;
+		draftDark.value = branding.accentColorDark ?? null;
 		toast.showMessage({ type: 'success', title: i18n.baseText('settings.branding.saved') });
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.branding.saveError'));
@@ -70,7 +144,8 @@ async function onSave() {
 }
 
 function onDiscard() {
-	draft.value = savedColor.value;
+	draftLight.value = savedLight.value;
+	draftDark.value = savedDark.value;
 }
 </script>
 
@@ -79,24 +154,59 @@ function onDiscard() {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.branding')"
 			:description="i18n.baseText('settings.branding.description')"
+			:show-docs-link="false"
 		/>
 
 		<N8nSettingsSection :title="i18n.baseText('settings.branding.colors')">
 			<N8nSettingsRowGroup>
-				<N8nSettingsRow
-					:title="i18n.baseText('settings.branding.accentColor')"
-					:description="i18n.baseText('settings.branding.accentColor.description')"
-				>
+				<N8nSettingsRow v-for="row in rows" :key="row.mode">
+					<template #info>
+						<N8nText bold size="medium" color="text-dark">{{ row.title }}</N8nText>
+						<N8nText size="small" color="text-light">{{ row.description }}</N8nText>
+						<span
+							v-if="row.warning"
+							:class="$style.warning"
+							:data-test-id="`branding-contrast-${row.mode}`"
+						>
+							<N8nIcon icon="triangle-alert" size="small" />
+							<N8nText size="small" color="warning">{{ row.warning.message }}</N8nText>
+							<N8nLink
+								v-if="row.warning.suggestion"
+								size="small"
+								:data-test-id="`branding-contrast-${row.mode}-suggest`"
+								@click="onUseSuggested(row.mode, row.warning.suggestion)"
+							>
+								{{ i18n.baseText('settings.branding.contrast.useSuggested') }}
+							</N8nLink>
+						</span>
+					</template>
 					<template #action>
 						<div :class="$style.accentActions">
+							<N8nText v-if="row.linked" size="small" color="text-light">
+								{{ i18n.baseText('settings.branding.accentColor.automatic') }}
+							</N8nText>
 							<N8nButton
 								variant="ghost"
-								:label="i18n.baseText('settings.branding.reset')"
-								:disabled="draft === null"
-								data-test-id="branding-accent-color-reset"
-								@click="draft = null"
+								icon="undo-2"
+								icon-only
+								:aria-label="row.resetLabel"
+								:title="row.resetLabel"
+								:disabled="row.resetDisabled"
+								:data-test-id="`branding-accent-color-${row.mode}-reset`"
+								@click="onReset(row.mode)"
 							/>
-							<N8nColorPicker v-model="draft" data-test-id="branding-accent-color" />
+							<ColorHexInput
+								v-if="row.mode === 'light'"
+								v-model="lightModel"
+								:label="row.title"
+								test-id="branding-accent-color-light"
+							/>
+							<ColorHexInput
+								v-else
+								v-model="darkModel"
+								:label="row.title"
+								test-id="branding-accent-color-dark"
+							/>
 						</div>
 					</template>
 				</N8nSettingsRow>
@@ -105,27 +215,38 @@ function onDiscard() {
 					:description="i18n.baseText('settings.branding.preview.description')"
 				>
 					<template #action>
-						<N8nButton
-							variant="brand"
-							:label="i18n.baseText('settings.branding.preview.button')"
-							data-test-id="branding-preview-button"
-						/>
+						<div :class="$style.previews">
+							<div
+								v-for="mode in ['light', 'dark'] as const"
+								:key="mode"
+								:data-theme="mode"
+								:class="$style.preview"
+								:style="brandTokens(effective[mode], mode)"
+								:data-test-id="`branding-preview-${mode}`"
+							>
+								<N8nButton
+									variant="brand"
+									:label="i18n.baseText('settings.branding.preview.button')"
+								/>
+								<N8nText size="xsmall" color="text-light">
+									{{ i18n.baseText(`settings.branding.preview.${mode}`) }}
+								</N8nText>
+							</div>
+						</div>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
-			<N8nText v-if="isAdjusted" size="small" color="text-light" data-test-id="branding-adjusted">
-				{{ i18n.baseText('settings.branding.adjusted') }}
-			</N8nText>
 		</N8nSettingsSection>
 
 		<N8nSettingsSaveBar
 			floating
 			:visible="isDirty"
 			:saving="saving"
-			:save-disabled="!isValid"
 			@save="onSave"
 			@discard="onDiscard"
-		/>
+		>
+			<span />
+		</N8nSettingsSaveBar>
 	</N8nSettingsLayout>
 </template>
 
@@ -134,5 +255,30 @@ function onDiscard() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.warning {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--4xs);
+	color: var(--color--warning);
+}
+
+.previews {
+	display: flex;
+	gap: var(--spacing--2xs);
+}
+
+.preview {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
 }
 </style>

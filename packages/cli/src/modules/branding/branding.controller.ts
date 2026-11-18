@@ -14,6 +14,6 @@ export class BrandingController {
 	// `branding:manage` scope replaces it before this ships.
 	@GlobalScope('securitySettings:manage')
 	async updateBranding(_req: AuthenticatedRequest, _res: Response, @Body dto: UpdateBrandingDto) {
-		return await this.brandingService.setAccentColor(dto.accentColor);
+		return await this.brandingService.setBranding(dto);
 	}
 }
