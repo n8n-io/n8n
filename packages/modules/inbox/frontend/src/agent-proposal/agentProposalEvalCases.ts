@@ -5,6 +5,8 @@ import {
 	type AgentProposalCaseResult,
 } from '@n8n/api-types';
 
+import { splitExpectedTools } from './agentProposalChangeFields';
+
 /**
  * `error`: the run or its check did not finish. It is not a failed check.
  * `skipped`: the case has no check to grade.
@@ -65,4 +67,58 @@ export function summarizeCaseResults(cases: AgentProposalCaseResult[]): AgentPro
 export function formatToolData(value: unknown): string {
 	if (typeof value === 'string') return value;
 	return JSON.stringify(value, null, 2) ?? String(value);
+}
+
+/**
+ * One line of the checklist of a version.
+ * `tool`: the version called a required tool, or did not call a forbidden tool, when `pass` is true.
+ * `rule`: `notChecked` means that the judge did not run because a tool check failed.
+ */
+export type AgentProposalArmCheck =
+	| { kind: 'tool'; tool: string; expectation: 'required' | 'forbidden'; pass: boolean }
+	| { kind: 'rule'; state: 'pass' | 'fail' | 'notChecked' | 'error'; reasoning: string | null };
+
+export function armChecks(
+	result: AgentProposalCaseResult,
+	arm: AgentProposalCaseArm,
+): AgentProposalArmCheck[] {
+	if (arm.status !== 'success') return [];
+	const { verdict } = arm;
+	const checks: AgentProposalArmCheck[] = [];
+
+	if (verdict.toolCheck) {
+		const { missing, forbidden } = verdict.toolCheck;
+		const expected = splitExpectedTools(result.expectedTools);
+		for (const tool of expected.required) {
+			checks.push({ kind: 'tool', tool, expectation: 'required', pass: !missing.includes(tool) });
+		}
+		for (const tool of expected.forbidden) {
+			checks.push({
+				kind: 'tool',
+				tool,
+				expectation: 'forbidden',
+				pass: !forbidden.includes(tool),
+			});
+		}
+	}
+
+	if (!result.criteria && !result.expectedOutput) return checks;
+	if (verdict.toolCheck && !verdict.toolCheck.pass) {
+		// The judge does not run after a failed tool check, so the reasoning only repeats the tool check.
+		checks.push({ kind: 'rule', state: 'notChecked', reasoning: null });
+	} else if (verdict.status === 'error') {
+		checks.push({ kind: 'rule', state: 'error', reasoning: null });
+	} else if (verdict.status === 'completed') {
+		checks.push({
+			kind: 'rule',
+			state: verdict.outcome === 'pass' ? 'pass' : 'fail',
+			reasoning: verdict.reasoning,
+		});
+	}
+	return checks;
+}
+
+/** The tools that a version called but must not call. */
+export function forbiddenCalls(arm: AgentProposalCaseArm): Set<string> {
+	return new Set(arm.verdict.toolCheck?.forbidden ?? []);
 }

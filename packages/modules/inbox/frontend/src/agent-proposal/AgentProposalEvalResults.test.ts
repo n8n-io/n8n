@@ -150,22 +150,21 @@ describe('AgentProposalEvalResults', () => {
 		expect(getByTestId('agent-proposal-eval-expected-answer')).toHaveTextContent(
 			'Order 42 is shipped.',
 		);
-		expect(getByTestId('agent-proposal-eval-must-call')).toHaveTextContent('lookup_order');
-		expect(getByTestId('agent-proposal-eval-must-not-call')).toHaveTextContent('search_web');
 
 		const published = within(getByTestId('agent-proposal-eval-version-published'));
 		expect(published.getByTestId('agent-proposal-eval-answer')).toHaveTextContent(
 			'The fail answer',
 		);
-		expect(published.getByTestId('agent-proposal-eval-verdict')).toHaveTextContent(
-			'The agent used the wrong tool.',
+		const missing = published.getByTestId('agent-proposal-eval-check-required-lookup_order');
+		expect(missing).toHaveTextContent('Did not call lookup_order, which it must call');
+		expect(missing).toHaveAttribute('data-tone', 'fail');
+		const forbidden = published.getByTestId('agent-proposal-eval-check-forbidden-search_web');
+		expect(forbidden).toHaveTextContent('Called search_web, which it must not call');
+		expect(forbidden).toHaveAttribute('data-tone', 'fail');
+		expect(published.getByTestId('agent-proposal-eval-check-rule')).toHaveTextContent(
+			'Rule not checked, because a tool check failed',
 		);
-		expect(published.getByTestId('agent-proposal-eval-tool-check-missing')).toHaveTextContent(
-			'Did not call: lookup_order',
-		);
-		expect(published.getByTestId('agent-proposal-eval-tool-check-forbidden')).toHaveTextContent(
-			'Called a forbidden tool: search_web',
-		);
+		expect(published.getAllByTestId('agent-proposal-eval-tool-call-forbidden')).toHaveLength(1);
 		expect(published.getAllByTestId('agent-proposal-eval-tool-call')).toHaveLength(2);
 		expect(published.getByTestId('agent-proposal-eval-usage-inputTokens')).toHaveTextContent(
 			'1,200',
@@ -176,18 +175,35 @@ describe('AgentProposalEvalResults', () => {
 
 		const proposed = within(getByTestId('agent-proposal-eval-version-proposed'));
 		expect(proposed.getByTestId('agent-proposal-eval-answer')).toHaveTextContent('The pass answer');
-		expect(proposed.getByTestId('agent-proposal-eval-tool-check-pass')).toBeInTheDocument();
-		expect(proposed.getByTestId('agent-proposal-eval-tool-calls')).toHaveTextContent(
-			'lookup_order',
+		expect(proposed.getByTestId('agent-proposal-eval-check-required-lookup_order')).toHaveAttribute(
+			'data-tone',
+			'pass',
 		);
+		expect(proposed.getByTestId('agent-proposal-eval-check-rule')).toHaveTextContent(
+			'Follows the rule',
+		);
+		expect(proposed.getByTestId('agent-proposal-eval-check-rule')).toHaveTextContent(
+			'The agent found the order.',
+		);
+		expect(
+			proposed.queryByTestId('agent-proposal-eval-tool-call-forbidden'),
+		).not.toBeInTheDocument();
+		// A correct tool call shows only in the checklist.
+		expect(proposed.queryByTestId('agent-proposal-eval-tool-calls')).not.toBeInTheDocument();
 		expect(proposed.queryByTestId('agent-proposal-eval-usage-cost')).not.toBeInTheDocument();
 	});
 
-	it('should show the input and the output of a tool call when the tool call opens', async () => {
+	it('should show the input and the output of a wrong tool call when the tool call opens', async () => {
 		const { getByTestId, getByRole, findByText } = render([
 			result(
 				'tools',
-				arm('pass', {
+				arm('fail', {
+					verdict: {
+						status: 'completed',
+						outcome: 'fail',
+						reasoning: null,
+						toolCheck: { pass: false, missing: [], forbidden: ['lookup_order'] },
+					},
 					toolCalls: [
 						{
 							tool: 'lookup_order',

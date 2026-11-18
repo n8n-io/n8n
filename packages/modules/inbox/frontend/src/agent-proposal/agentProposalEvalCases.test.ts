@@ -1,6 +1,7 @@
 import type { AgentProposalCaseArm, AgentProposalCaseResult } from '@n8n/api-types';
 
 import {
+	armChecks,
 	armStatus,
 	formatToolData,
 	orderCaseResults,
@@ -133,5 +134,59 @@ describe('formatToolData', () => {
 
 	it('should format an object as indented JSON', () => {
 		expect(formatToolData({ orderId: 42 })).toBe('{\n  "orderId": 42\n}');
+	});
+});
+
+describe('armChecks', () => {
+	const toolCase = (published: AgentProposalCaseArm): AgentProposalCaseResult => ({
+		...result('tools', published, null),
+		criteria: 'Gives the order status.',
+		expectedTools: ['oms-lookup', '!crm-lookup'],
+	});
+
+	it('should mark each tool and skip the rule after a failed tool check', () => {
+		const failed = arm('fail', {
+			verdict: {
+				status: 'completed',
+				outcome: 'fail',
+				reasoning: 'The agent called these tools that it must not call: crm-lookup.',
+				toolCheck: { pass: false, missing: [], forbidden: ['crm-lookup'] },
+			},
+		});
+
+		expect(armChecks(toolCase(failed), failed)).toEqual([
+			{ kind: 'tool', tool: 'oms-lookup', expectation: 'required', pass: true },
+			{ kind: 'tool', tool: 'crm-lookup', expectation: 'forbidden', pass: false },
+			{ kind: 'rule', state: 'notChecked', reasoning: null },
+		]);
+	});
+
+	it('should give the judge reasoning after a passed tool check', () => {
+		const passed = arm('pass', {
+			verdict: {
+				status: 'completed',
+				outcome: 'pass',
+				reasoning: 'It gives the status.',
+				toolCheck: { pass: true, missing: [], forbidden: [] },
+			},
+		});
+
+		expect(armChecks(toolCase(passed), passed)).toContainEqual({
+			kind: 'rule',
+			state: 'pass',
+			reasoning: 'It gives the status.',
+		});
+	});
+
+	it('should return no checks for a run that did not finish', () => {
+		const errored = arm('fail', { status: 'error' });
+
+		expect(armChecks(toolCase(errored), errored)).toEqual([]);
+	});
+
+	it('should return no rule check when the case has no rule', () => {
+		const passed = arm('pass');
+
+		expect(armChecks(result('plain', passed, null), passed)).toEqual([]);
 	});
 });
