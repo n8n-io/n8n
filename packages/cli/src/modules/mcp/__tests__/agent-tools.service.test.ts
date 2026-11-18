@@ -299,7 +299,11 @@ describe('McpAgentToolsService', () => {
 				agentRepository,
 				agentTaskRepository,
 				agentSkillRefs,
-				new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
+				new AgentPolicyService(
+					new PolicyEnforcementService(),
+					mock<AgentToolCallHistoryService>(),
+					mock<AgentRepository>(),
+				),
 				mock<CredentialsFinderService>({
 					findCredentialForUser: async (id: string) => ({ id }) as never,
 				}),

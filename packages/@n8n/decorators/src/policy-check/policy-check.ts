@@ -207,6 +207,8 @@ export type PreToolExecutionContext = {
 	/** The input that the tool handler receives, after schema validation. */
 	readonly input: unknown;
 	readonly resumed: boolean;
+	/** Another agent delegated this run. Only then `sessionHistory` holds parent sessions. */
+	readonly delegated: boolean;
 	/**
 	 * The tool policy of the agent, from the config that its runtime was built with. So a
 	 * draft run has the draft policy and a published run has the published one. `null` when
@@ -214,14 +216,20 @@ export type PreToolExecutionContext = {
 	 */
 	readonly toolPolicy: ToolPolicy | null;
 	/**
+	 * The tool policy of another agent in the same project, for the agents that delegated to
+	 * this one. It is the draft policy in a draft run and the published policy in a published
+	 * run. `null` when that agent has no policy or is not found.
+	 */
+	readonly loadAgentToolPolicy: (agentId: string) => Promise<ToolPolicy | null>;
+	/**
 	 * The tool calls that the run holds in memory, oldest first, with this call last or among
 	 * the last as `pending`. It costs no query, but it can miss older turns of the session.
 	 */
 	readonly runToolCalls: () => readonly PolicedToolCallRecord[];
 	/**
 	 * The full history: this session first, then each session that delegated to it, up to the
-	 * root. It reads the stored turns on each call and runs inside the deadline of the check,
-	 * so call it only when the decision needs it. The stored copy of a turn that still runs
+	 * root. It reads the stored turns one time for each tool call and runs inside the deadline
+	 * of the check, so call it only when the decision needs it. The stored copy of a turn that still runs
 	 * can lag, so the last calls of a parent session can be absent.
 	 */
 	readonly sessionHistory: () => Promise<readonly PolicedSession[]>;

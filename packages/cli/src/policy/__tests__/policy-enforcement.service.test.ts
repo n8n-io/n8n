@@ -382,7 +382,9 @@ describe('PolicyEnforcementService', () => {
 				tool: { name: 'send_message' },
 				input: {},
 				resumed: false,
+				delegated: false,
 				toolPolicy: null,
+				loadAgentToolPolicy: async () => await Promise.resolve(null),
 				runToolCalls: () => [],
 				sessionHistory: async () => await Promise.resolve([]),
 			};

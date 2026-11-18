@@ -130,7 +130,7 @@ Each point hands its check a different context. The types are in
 | `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
 | `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
-| `preToolExecution`  | `PreToolExecutionContext`  | `agentId`, `projectId`, `threadId`, `agentExecutionId`, `runId`, `toolCallId`, `tool`, `input`, `resumed`, `toolPolicy`, `runToolCalls()`, `sessionHistory()` |
+| `preToolExecution`  | `PreToolExecutionContext`  | `agentId`, `projectId`, `threadId`, `agentExecutionId`, `runId`, `toolCallId`, `tool`, `input`, `resumed`, `delegated`, `toolPolicy`, `loadAgentToolPolicy()`, `runToolCalls()`, `sessionHistory()` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
 `nodes`. Nothing else, so a check cannot start to depend on unrelated fields.
@@ -191,16 +191,21 @@ This includes a call that suspended and resumes, for example after an approval.
   call id, not the input.
 - **`toolPolicy` is the policy of the agent that runs.** It comes from the config
   that the runtime was built with, so a draft run has the draft policy and a
-  published run has the published one. It is `null` when the agent has none. A
-  sub-agent has the policy of its own config, not the policy of its parent.
+  published run has the published one. It is `null` when the agent has none.
+- **`delegated` says that another agent delegated the run.** Only then does
+  `sessionHistory()` hold parent sessions.
+- **`loadAgentToolPolicy(agentId)` reads the policy of a parent agent.** It reads
+  the draft policy in a draft run and the published policy in a published run,
+  from the project of the run only. The tool policy check uses it to apply the
+  policy of each agent that delegated, next to the policy of the agent itself.
 - **`runToolCalls()` is the history that costs nothing.** It returns the tool
   calls that the run holds in memory, with their results. It can miss older
   turns, because the run does not always load the whole session.
 - **`sessionHistory()` is the full history.** It returns this session first, then
   each session that delegated to it, up to the root. For this session it joins
-  the stored turns with `runToolCalls()`. It reads the database on each call and
-  runs inside the deadline of the check, so call it only when the decision
-  needs it.
+  the stored turns with `runToolCalls()`. It reads the database one time for each
+  tool call and runs inside the deadline of the check, so call it only when the
+  decision needs it.
 - **Stored calls differ from calls in memory.** A stored call has its sensitive
   keys redacted. Large results are cut in both.
 - **The stored copy of a running turn can lag.** So the last calls of a parent

@@ -42,12 +42,16 @@ describe('ToolPolicyCheck', () => {
 		toolPolicy: ToolPolicy | null,
 		tool: PolicedTool = sendEmail,
 		history: PolicedToolCallRecord[] = [],
+		parent?: { agentId: string; toolPolicy: ToolPolicy | null },
 	) {
 		const logger = mockLogger();
 		const sessionHistory = vi.fn<PreToolExecutionContext['sessionHistory']>();
 		sessionHistory.mockResolvedValue([
 			{ threadId: 'thread-1', agentId: 'agent-1', toolCalls: history },
+			...(parent ? [{ threadId: 'thread-0', agentId: parent.agentId, toolCalls: [] }] : []),
 		]);
+		const loadAgentToolPolicy = vi.fn<PreToolExecutionContext['loadAgentToolPolicy']>();
+		loadAgentToolPolicy.mockResolvedValue(parent?.toolPolicy ?? null);
 		const context: PreToolExecutionContext = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
@@ -58,7 +62,9 @@ describe('ToolPolicyCheck', () => {
 			tool,
 			input: { to: 'someone@example.com', body: 'A customer record' },
 			resumed: false,
+			delegated: parent !== undefined,
 			toolPolicy,
+			loadAgentToolPolicy,
 			runToolCalls: () => history,
 			sessionHistory,
 		};
@@ -68,6 +74,7 @@ describe('ToolPolicyCheck', () => {
 			check: new ToolPolicyCheck(logger),
 			context,
 			sessionHistory,
+			loadAgentToolPolicy,
 		};
 	}
 
@@ -107,6 +114,55 @@ describe('ToolPolicyCheck', () => {
 		});
 	});
 
+	describe('for a run that another agent delegated', () => {
+		const noOutbound: ToolPolicyRule = {
+			id: 'no-outbound',
+			action: 'deny',
+			tools: [{ kind: 'category', value: 'sendsDataOut' }],
+		};
+
+		it('denies a call that the policy of the parent denies', async () => {
+			const { check, context, loadAgentToolPolicy } = setUp(policy([]), sendEmail, [], {
+				agentId: 'parent-agent',
+				toolPolicy: policy([noOutbound]),
+			});
+
+			const { violations } = await check.onPreToolExecution(context);
+
+			expect(loadAgentToolPolicy).toHaveBeenCalledExactlyOnceWith('parent-agent');
+			expect(violations).toEqual([
+				expect.objectContaining({ matchedRuleId: 'no-outbound', scope: 'agent:parent-agent' }),
+			]);
+		});
+
+		it('applies the policy of the parent to an agent without a policy of its own', async () => {
+			const { check, context } = setUp(null, sendEmail, [], {
+				agentId: 'parent-agent',
+				toolPolicy: policy([noOutbound]),
+			});
+
+			expect((await check.onPreToolExecution(context)).violations).toHaveLength(1);
+		});
+
+		it('allows the call when the parent has no policy either', async () => {
+			const { check, context } = setUp(null, sendEmail, [], {
+				agentId: 'parent-agent',
+				toolPolicy: null,
+			});
+
+			expect(await check.onPreToolExecution(context)).toEqual({ violations: [] });
+		});
+	});
+
+	it('does not look for parents in a run that no agent delegated', async () => {
+		const { check, context, sessionHistory, loadAgentToolPolicy } = setUp(policy([]));
+
+		await check.onPreToolExecution(context);
+
+		expect(sessionHistory).not.toHaveBeenCalled();
+		expect(loadAgentToolPolicy).not.toHaveBeenCalled();
+	});
+
 	it('denies a call that only the default action covers', async () => {
 		const { check, context } = setUp(policy([], 'deny'));
 
@@ -128,6 +184,7 @@ describe('ToolPolicyCheck', () => {
 			expect(debug).toHaveBeenCalledExactlyOnceWith('Agent tool policy: deny Send_Email', {
 				agentId: 'agent-1',
 				toolCallId: 'call-1',
+				policyAgentIds: ['agent-1'],
 				ruleIds: ['no-email-after-db'],
 			});
 		});

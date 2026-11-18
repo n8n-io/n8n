@@ -8,7 +8,7 @@ const policy = (id: string): ToolPolicy => ({
 	rules: [{ id, action: 'deny', tools: [{ kind: 'category', value: 'sendsDataOut' }] }],
 });
 
-function context(threadId: string | null, sessions: PolicedSession[]) {
+function context(threadId: string | null, sessions: PolicedSession[], delegated = true) {
 	const sessionHistory = vi.fn<PreToolExecutionContext['sessionHistory']>(async () => sessions);
 	const ctx: PreToolExecutionContext = {
 		agentId: 'child',
@@ -20,6 +20,9 @@ function context(threadId: string | null, sessions: PolicedSession[]) {
 		tool: { name: 'Send_Email' },
 		input: {},
 		resumed: false,
+		delegated,
+		toolPolicy: null,
+		loadAgentToolPolicy: async () => await Promise.resolve(null),
 		runToolCalls: () => [],
 		sessionHistory,
 	};
@@ -74,8 +77,8 @@ describe('collectToolPolicies', () => {
 		expect(load.mock.calls.map(([agentId]) => agentId)).toEqual(['no-policy', 'parent']);
 	});
 
-	it('reads no history for a run without a session', async () => {
-		const { ctx, sessionHistory } = context(null, []);
+	it('reads no history for a run that no agent delegated', async () => {
+		const { ctx, sessionHistory } = context('t-top', [], false);
 
 		const chain = await collectToolPolicies(ctx, policy('own-rule'), load);
 

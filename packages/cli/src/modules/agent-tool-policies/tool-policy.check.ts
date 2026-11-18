@@ -6,12 +6,13 @@ import type {
 } from '@n8n/decorators';
 import { PolicyCheck } from '@n8n/decorators';
 
+import { collectToolPolicies } from './tool-policy-chain';
 import { evaluateToolCall } from './tool-policy-engine';
 
 /**
- * Applies the tool policy of an agent to each tool call that the agent is about to run. The
- * policy is the one in the config of the agent that runs. A parent's policy does not apply
- * to a sub-agent with a config of its own.
+ * Applies tool policies to each tool call that an agent is about to run: the policy of the
+ * agent itself and the policy of each agent that delegated to it. The call runs only if each
+ * of them allows it.
  */
 @PolicyCheck()
 export class ToolPolicyCheck implements RegisteredPolicyCheck {
@@ -22,17 +23,25 @@ export class ToolPolicyCheck implements RegisteredPolicyCheck {
 	}
 
 	async onPreToolExecution(context: PreToolExecutionContext): Promise<PolicyCheckResult> {
-		const { agentId, toolCallId, tool, toolPolicy } = context;
+		const { agentId, toolCallId, tool } = context;
+		const policies = await collectToolPolicies(
+			context,
+			context.toolPolicy ?? undefined,
+			async (parentAgentId) => (await context.loadAgentToolPolicy(parentAgentId)) ?? undefined,
+		);
 		// The lines name the call only. The input of a tool call is not redacted.
-		if (toolPolicy === null) {
+		if (policies.length === 0) {
 			this.logger.debug(`Agent tool policy: none for ${tool.name}`, { agentId, toolCallId });
 			return { violations: [] };
 		}
 
-		const decision = await evaluateToolCall({ policy: toolPolicy, context, checkId: this.id });
+		const decision = await evaluateToolCall({ policies, context, checkId: this.id });
 		this.logger.debug(`Agent tool policy: ${decision.action} ${tool.name}`, {
 			agentId,
 			toolCallId,
+			policyAgentIds: policies.flatMap(({ source }) =>
+				source.kind === 'agent' ? [source.agentId] : [],
+			),
 			ruleIds: decision.ruleIds,
 		});
 

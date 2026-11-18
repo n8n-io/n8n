@@ -13,6 +13,8 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import { AgentPolicyService } from '../agent-policy.service';
 import type { AgentToolCallHistoryService } from '../agent-tool-call-history.service';
+import type { ProjectAgent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 vi.mock('@/node-execution/resolve-tool-node-type', () => ({
 	resolveToolNodeType: (nodeType: string) => nodeType,
@@ -54,12 +56,26 @@ function setUp() {
 	const enforcement = new PolicyEnforcementService();
 	enforcement.setImplementation(backend);
 	const toolCallHistory = mock<AgentToolCallHistoryService>();
+	const agentRepository = mock<AgentRepository>();
 	return {
 		backend,
 		toolCallHistory,
-		service: new AgentPolicyService(enforcement, toolCallHistory),
+		agentRepository,
+		service: new AgentPolicyService(enforcement, toolCallHistory, agentRepository),
 	};
 }
+
+const hook = (
+	service: AgentPolicyService,
+	overrides: Partial<Parameters<AgentPolicyService['preToolExecutionHook']>[0]> = {},
+) =>
+	service.preToolExecutionHook({
+		projectId: 'project-1',
+		agentId: 'agent-1',
+		toolPolicy: null,
+		usePublishedVersion: false,
+		...overrides,
+	});
 
 describe('AgentPolicyService', () => {
 	it('saves through workflowSave, as an agent whose nodes are its node tools', async () => {
@@ -193,7 +209,7 @@ describe('AgentPolicyService', () => {
 		it('asks the policy about the tool call and allows a cleared call', async () => {
 			const { backend, service } = setUp();
 
-			const decision = await service.preToolExecutionHook('project-1', 'agent-1', null)(call);
+			const decision = await hook(service)(call);
 
 			expect(decision).toEqual({ allow: true });
 			expect(backend.enforce).toHaveBeenCalledExactlyOnceWith(
@@ -223,7 +239,7 @@ describe('AgentPolicyService', () => {
 				],
 			};
 
-			await service.preToolExecutionHook('project-1', 'agent-1', toolPolicy)(call);
+			await hook(service, { toolPolicy })(call);
 
 			expect(backend.enforce).toHaveBeenCalledExactlyOnceWith(
 				'preToolExecution',
@@ -274,11 +290,7 @@ describe('AgentPolicyService', () => {
 			];
 
 			async function policedContext(setup: ReturnType<typeof setUp>) {
-				await setup.service.preToolExecutionHook(
-					'project-1',
-					'agent-1',
-					null,
-				)({ ...call, runToolCalls });
+				await hook(setup.service)({ ...call, runToolCalls });
 				return setup.backend.enforce.mock.calls[0][1] as PolicedToolCall;
 			}
 
@@ -305,16 +317,82 @@ describe('AgentPolicyService', () => {
 					policedRunToolCalls,
 				);
 			});
+
+			it('reads the stored history one time for a tool call', async () => {
+				const setup = setUp();
+				setup.toolCallHistory.sessionHistory.mockResolvedValue([]);
+				const context = await policedContext(setup);
+
+				const first = await context.sessionHistory();
+				const second = await context.sessionHistory();
+
+				expect(second).toBe(first);
+				expect(setup.toolCallHistory.sessionHistory).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		it.each([
+			['a run that another agent delegated', { delegated: true as const }, true],
+			['a top-level run', {}, false],
+		])('marks %s', async (_name, persistence, delegated) => {
+			const { backend, service } = setUp();
+
+			await hook(service)({ ...call, persistence: { ...call.persistence!, ...persistence } });
+
+			expect(backend.enforce).toHaveBeenCalledExactlyOnceWith(
+				'preToolExecution',
+				expect.objectContaining({ delegated }),
+				expect.anything(),
+			);
+		});
+
+		describe('policy of another agent', () => {
+			const draftPolicy: ToolPolicy = { defaultAction: 'allow', rules: [] };
+			const publishedPolicy: ToolPolicy = { defaultAction: 'deny', rules: [] };
+			const parent = {
+				schema: { config: { guardrails: { toolPolicy: draftPolicy } } },
+				activeVersion: { schema: { config: { guardrails: { toolPolicy: publishedPolicy } } } },
+			} as unknown as ProjectAgent;
+
+			async function loadParentPolicy(
+				setup: ReturnType<typeof setUp>,
+				usePublishedVersion: boolean,
+			) {
+				await hook(setup.service, { usePublishedVersion })(call);
+				const context = setup.backend.enforce.mock.calls[0][1] as PolicedToolCall;
+				return await context.loadAgentToolPolicy('parent-agent');
+			}
+
+			it.each([
+				['the draft policy in a draft run', false, draftPolicy],
+				['the published policy in a published run', true, publishedPolicy],
+			])('loads %s, from the project of the run', async (_name, usePublishedVersion, expected) => {
+				const setup = setUp();
+				setup.agentRepository.findByIdAndProjectId.mockResolvedValue(parent);
+
+				expect(await loadParentPolicy(setup, usePublishedVersion)).toBe(expected);
+				expect(setup.agentRepository.findByIdAndProjectId).toHaveBeenCalledExactlyOnceWith(
+					'parent-agent',
+					'project-1',
+				);
+			});
+
+			it.each([
+				['is not in the project', null],
+				['has no policy', { schema: { config: {} } } as unknown as ProjectAgent],
+				['is not published, in a published run', { schema: parent.schema } as ProjectAgent],
+			])('has no policy for an agent that %s', async (_name, agent) => {
+				const setup = setUp();
+				setup.agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				expect(await loadParentPolicy(setup, true)).toBeNull();
+			});
 		});
 
 		it('has no session or execution for a run without persistence', async () => {
 			const { backend, service } = setUp();
 
-			await service.preToolExecutionHook(
-				'project-1',
-				'agent-1',
-				null,
-			)({
+			await hook(service)({
 				...call,
 				persistence: undefined,
 			});
@@ -330,7 +408,7 @@ describe('AgentPolicyService', () => {
 			const { backend, service } = setUp();
 			backend.enforce.mockResolvedValue({ violations: [denied] });
 
-			const decision = await service.preToolExecutionHook('project-1', 'agent-1', null)(call);
+			const decision = await hook(service)(call);
 
 			expect(decision).toEqual({
 				allow: false,
@@ -347,9 +425,7 @@ describe('AgentPolicyService', () => {
 			const failure = new Error('Could not verify policy');
 			backend.enforce.mockRejectedValue(failure);
 
-			await expect(service.preToolExecutionHook('project-1', 'agent-1', null)(call)).rejects.toBe(
-				failure,
-			);
+			await expect(hook(service)(call)).rejects.toBe(failure);
 		});
 	});
 });

@@ -305,7 +305,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentRepository,
 				agentTaskRepository,
 				skillRefs,
-				new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
+				new AgentPolicyService(
+					new PolicyEnforcementService(),
+					mock<AgentToolCallHistoryService>(),
+					mock<AgentRepository>(),
+				),
 				mock<CredentialsFinderService>({
 					findCredentialForUser: async (id: string) => ({ id }) as never,
 				}),
@@ -368,7 +372,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AiGatewayService>(),
 			skillRefs,
 			// No enforcement implementation is registered, so every evaluation comes back clear.
-			new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
+			new AgentPolicyService(
+				new PolicyEnforcementService(),
+				mock<AgentToolCallHistoryService>(),
+				mock<AgentRepository>(),
+			),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
@@ -384,7 +392,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			transactionRunner,
 			saveCompletion,
 			definitionService,
-			new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
+			new AgentPolicyService(
+				new PolicyEnforcementService(),
+				mock<AgentToolCallHistoryService>(),
+				mock<AgentRepository>(),
+			),
 			skillRefs,
 			mock<KnowledgeFileRepository>({
 				getKnowledgeTotals: async () => ({ fileCount: 0, totalBytes: 0 }),
@@ -409,7 +421,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<ProjectScopeService>(),
 			mock<AgentsSettingsService>(),
-			new AgentPolicyService(new PolicyEnforcementService(), mock<AgentToolCallHistoryService>()),
+			new AgentPolicyService(
+				new PolicyEnforcementService(),
+				mock<AgentToolCallHistoryService>(),
+				mock<AgentRepository>(),
+			),
 			skillRefs,
 			transactionRunner,
 			mock<AgentConfigPreparationService>(),

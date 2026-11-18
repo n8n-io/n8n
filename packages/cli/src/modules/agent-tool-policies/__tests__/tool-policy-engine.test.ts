@@ -102,7 +102,9 @@ function context(
 		tool,
 		input: {},
 		resumed: false,
+		delegated: false,
 		toolPolicy: null,
+		loadAgentToolPolicy: async () => await Promise.resolve(null),
 		runToolCalls: () => [...history, current],
 		sessionHistory,
 	};

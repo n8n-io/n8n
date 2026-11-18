@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import type { AgentToolCallHistoryService } from '@/modules/agents/agent-tool-call-history.service';
+import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 
@@ -64,11 +65,16 @@ describe('tool policy enforcement for an agent tool call', () => {
 		history.sessionHistory.mockResolvedValue([
 			{ threadId: 'thread-1', agentId: 'agent-1', toolCalls: earlierCalls },
 		]);
-		return new AgentPolicyService(enforcement, history).preToolExecutionHook(
-			'project-1',
-			'agent-1',
-			policy,
-		);
+		return new AgentPolicyService(
+			enforcement,
+			history,
+			mock<AgentRepository>(),
+		).preToolExecutionHook({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			toolPolicy: policy,
+			usePublishedVersion: false,
+		});
 	}
 
 	afterEach(() => {

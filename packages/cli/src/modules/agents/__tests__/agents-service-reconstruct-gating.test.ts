@@ -359,12 +359,28 @@ describe('AgentRuntimeReconstructionService — tool call policy', () => {
 			'production',
 		);
 
-		expect(agentPolicyService.preToolExecutionHook).toHaveBeenCalledExactlyOnceWith(
-			'project-1',
-			'agent-1',
-			expected,
-		);
+		expect(agentPolicyService.preToolExecutionHook).toHaveBeenCalledExactlyOnceWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			toolPolicy: expected,
+			usePublishedVersion: true,
+		});
 		expect(builtAgent.preToolExecution).toHaveBeenCalledExactlyOnceWith(hook);
+	});
+
+	it('tells the hook that a test run uses draft versions', async () => {
+		const agentPolicyService = mock<AgentPolicyService>();
+		const service = makeReconstructionService({ agentPolicyService });
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			mock<CredentialProvider>(),
+			'test',
+		);
+
+		expect(agentPolicyService.preToolExecutionHook).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ usePublishedVersion: false }),
+		);
 	});
 });
 

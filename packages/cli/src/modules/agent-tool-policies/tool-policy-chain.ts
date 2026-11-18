@@ -14,8 +14,7 @@ export type LoadAgentToolPolicy = (agentId: string) => Promise<ToolPolicy | unde
  * The policies are not merged into one. One policy cannot hold several default actions, and
  * a tool ref names a tool of one agent only, so a merge would lose what each policy says.
  *
- * The parents come from `sessionHistory`, so this reads the history once when a parent
- * exists. An agent that delegates to itself, directly or further up, counts once.
+ * The parents come from `sessionHistory`, so this reads the history for a delegated run. An agent that delegates to itself, directly or further up, counts once.
  */
 export async function collectToolPolicies(
 	context: PreToolExecutionContext,
@@ -27,8 +26,8 @@ export async function collectToolPolicies(
 		policies.push({ source: { kind: 'agent', agentId: context.agentId }, policy: ownPolicy });
 	}
 
-	// A run without a session has no parents: the history then holds only this run.
-	if (context.threadId === null) return policies;
+	// Only a run that another agent delegated has parents. Every other run skips the history.
+	if (!context.delegated) return policies;
 
 	const sessions = await context.sessionHistory();
 	const seen = new Set<string>([context.agentId]);
