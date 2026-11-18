@@ -15,10 +15,18 @@ export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
 /** File source of the files of `outputs/` that the sandbox files feature stores. */
 export const SANDBOX_FILE_SOURCE = 'sandbox' as const;
 /** File sources of a system chat: the uploads of the user, and the files from the sandbox. */
-export const SYSTEM_CHAT_FILE_SOURCES: readonly string[] = [
-	SYSTEM_CHAT_SOURCE,
-	SANDBOX_FILE_SOURCE,
-];
+const SYSTEM_CHAT_FILE_SOURCES: readonly string[] = [SYSTEM_CHAT_SOURCE, SANDBOX_FILE_SOURCE];
+
+/**
+ * The files of one user's system chat with one agent. Reads, downloads and
+ * lists use this scope, so a listed file can always be read and downloaded.
+ */
+export function systemChatFileScope(
+	agentId: string,
+	resourceId: string,
+): { agentId: string; resourceId: string; sources: readonly string[] } {
+	return { agentId, resourceId, sources: SYSTEM_CHAT_FILE_SOURCES };
+}
 
 /**
  * The n8n UI chat that a person watches the turn in. Integrations and tasks have none.

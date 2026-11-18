@@ -45,8 +45,8 @@ import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
 import {
 	SANDBOX_FILE_SOURCE,
-	SYSTEM_CHAT_FILE_SOURCES,
 	SYSTEM_CHAT_SOURCE,
+	systemChatFileScope,
 } from '../utils/agent-thread-access';
 import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
@@ -1035,11 +1035,10 @@ export class SystemAgentExecutionService {
 		resourceId: string,
 		fileId: string,
 	): Promise<AgentChatAttachment | null> {
-		const attachment = await this.attachmentService.getForSystemAgent(fileId, {
-			agentId: thread.agentId,
-			resourceId,
-			sources: SYSTEM_CHAT_FILE_SOURCES,
-		});
+		const attachment = await this.attachmentService.getForSystemAgent(
+			fileId,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
 		return attachment?.threadId === thread.id ? attachment : null;
 	}
 
@@ -1059,11 +1058,10 @@ export class SystemAgentExecutionService {
 		thread: AgentExecutionThread,
 		resourceId: string,
 	): Promise<SystemAgentListedFile[]> {
-		const files = await this.attachmentService.listForSystemAgentThread(thread.id, {
-			agentId: thread.agentId,
-			resourceId,
-			sources: SYSTEM_CHAT_FILE_SOURCES,
-		});
+		const files = await this.attachmentService.listForSystemAgentThread(
+			thread.id,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
 		return files.map((file) => ({
 			fileId: file.fileId,
 			fileName: file.fileName,

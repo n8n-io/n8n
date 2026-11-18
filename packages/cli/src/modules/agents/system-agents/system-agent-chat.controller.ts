@@ -33,7 +33,7 @@ import type { AgentExecutionThread } from '../entities/agent-execution-thread.en
 import type { AgentExecutionThreadKeyset } from '../repositories/agent-execution-thread.repository';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import { SYSTEM_CHAT_FILE_SOURCES, SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import { SYSTEM_CHAT_SOURCE, systemChatFileScope } from '../utils/agent-thread-access';
 import { isOlderChatHistoryPage, parseChatHistoryPage } from '../utils/chat-history-page';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
@@ -274,11 +274,10 @@ export class SystemAgentChatController {
 	) {
 		const { agentId, attachmentId } = req.params;
 		this.systemAgents.assertRegistered(agentId);
-		const attachment = await this.attachments.getForSystemAgent(attachmentId, {
-			agentId,
-			resourceId: this.systemAgents.resourceIdFor(req.user),
-			sources: SYSTEM_CHAT_FILE_SOURCES,
-		});
+		const attachment = await this.attachments.getForSystemAgent(
+			attachmentId,
+			systemChatFileScope(agentId, this.systemAgents.resourceIdFor(req.user)),
+		);
 		if (!attachment) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
@@ -299,11 +298,10 @@ export class SystemAgentChatController {
 		const { agentId, threadId } = req.params;
 		const thread = await this.systemAgents.findUsableThread(agentId, req.user, threadId);
 		if (!thread) return { files: [] };
-		const files = await this.attachments.listForSystemAgentThread(thread.id, {
-			agentId,
-			resourceId: this.systemAgents.resourceIdFor(req.user),
-			sources: SYSTEM_CHAT_FILE_SOURCES,
-		});
+		const files = await this.attachments.listForSystemAgentThread(
+			thread.id,
+			systemChatFileScope(agentId, this.systemAgents.resourceIdFor(req.user)),
+		);
 		return { files };
 	}
 
