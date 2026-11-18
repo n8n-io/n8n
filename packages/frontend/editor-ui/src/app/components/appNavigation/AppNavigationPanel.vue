@@ -53,11 +53,8 @@ const toMenuItem = (link: AppNavLink): IMenuItem => ({
 					:class="$style.logo"
 					data-test-id="app-nav-panel-logo"
 				>
-					<N8nLogo
-						size="small"
-						:collapsed="false"
-						:release-channel="settingsStore.settings.releaseChannel"
-					/>
+					<!-- No release channel, so the symbol stays brand pink on dev builds too. -->
+					<N8nLogo size="small" :collapsed="false" />
 					<!-- The logo replaces the title on screen; screen readers still read the title. -->
 					<span :class="$style.visuallyHidden">{{ title }}</span>
 				</RouterLink>
