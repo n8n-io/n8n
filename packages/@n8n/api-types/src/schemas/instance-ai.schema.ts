@@ -1826,6 +1826,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `workflow_error_nudge` — nudge on a workflow error toast that opens the Assistant to fix the run
  * - `workflow_pages_button`: "Document with AI" in the pages popover of the workflow editor
  * - `page_update_button`: "Update with AI" in the header of a page
+ * - `page_overview_button`: "Sort it out!" in the documentation overview of a project
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
@@ -1851,6 +1852,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'workflow_error_nudge',
 	'workflow_pages_button',
 	'page_update_button',
+	'page_overview_button',
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
@@ -1900,6 +1902,8 @@ export type InstanceAiThreadSourcePersisted =
  *   finding row or after an automated migration left work behind
  * - `handoff_document_workflow`: write a page that documents a workflow, from
  *   the pages popover of the workflow editor
+ * - `handoff_document_project`: write pages for the most important workflows of a project that
+ *   have none, from the documentation overview
  * - `handoff_update_page`: correct a page so that it matches the resources that it links, from
  *   the header of the page
  * - `template_adjustment` — "start from this template and help me adapt it",
@@ -1927,6 +1931,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_migration_report',
 	'handoff_document_workflow',
 	'handoff_update_page',
+	'handoff_document_project',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

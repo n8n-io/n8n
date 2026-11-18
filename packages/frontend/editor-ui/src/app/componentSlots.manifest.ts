@@ -64,6 +64,13 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
+		'page-overview-actions',
+		defineAsyncComponent(
+			async () => await import('@/features/pages/components/SortItOutButton.vue'),
+		),
+	);
+
+	componentRegistry.register(
 		'node-icon',
 		defineAsyncComponent(
 			async () => await import('@/features/pages/components/NodeTypeIconSlot.vue'),
