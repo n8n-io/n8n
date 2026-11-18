@@ -86,7 +86,7 @@ function onDialogOpenUpdate(open: boolean) {
 	<N8nDialog
 		:open="modalOpen"
 		size="2xlarge"
-		:container-class="[$style.pullResultModal, $style.fixedHeight].join(' ')"
+		:container-class="$style.fixedHeight"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogHeader>
@@ -165,30 +165,17 @@ function onDialogOpenUpdate(open: boolean) {
 			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<div :class="$style.footer">
-				<N8nButton @click="close">
-					{{ i18n.baseText('settings.sourceControl.modals.pullResult.buttons.close') }}
-				</N8nButton>
-			</div>
+			<N8nButton @click="close">
+				{{ i18n.baseText('settings.sourceControl.modals.pullResult.buttons.close') }}
+			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.pullResultModal.pullResultModal {
-	/* Previous shell width. No spacing token for 812px. */
-	--dialog--max-width: min(812px, calc(100dvw - var(--spacing--lg)));
-
-	header {
-		padding-bottom: var(--spacing--xs);
-	}
-}
-
 .fixedHeight {
 	/* Previous dialog height. No spacing token for 850px. */
 	height: min(80vh, 850px);
-	display: flex;
-	flex-direction: column;
 	overflow: hidden;
 }
 
@@ -239,13 +226,6 @@ function onDialogOpenUpdate(open: boolean) {
 			text-decoration: underline;
 		}
 	}
-}
-
-.footer {
-	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
-	width: 100%;
 }
 
 .table {
