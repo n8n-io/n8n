@@ -1,0 +1,26 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"strict": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"noEmit": true,
+		"types": ["vite/client", "node"]
+	},
+	"include": [
+		"*.ts",
+		"*.vue",
+		"../ConstellationView.vue",
+		"../ConstellationArtwork.vue",
+		"../graph.ts",
+		"../graph.test.ts",
+		"../download.ts",
+		"../CanvasConstellation.vue",
+		"../zoom.ts",
+		"../zoom.test.ts"
+	]
+}

@@ -1,0 +1,588 @@
+{
+	"name": "Northstar \u2014 order orchestration",
+	"nodes": [
+		{
+			"id": "4d80209b-55ae-495d-906d-63feffcbabc1",
+			"name": "Receive order",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 420],
+			"parameters": {}
+		},
+		{
+			"id": "fb22466f-fbd3-447d-a6b9-34be6d9becb7",
+			"name": "Normalize request",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 420],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "11518fc6-318b-4edc-811c-3be28655b126",
+							"name": "stage",
+							"value": "Normalize request",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "f7eb970e-d9e8-4c22-9a19-053ddf91ad51",
+			"name": "Validate order",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [440, 420],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "3da450bf-7a84-464c-81e5-9a628e07234d",
+							"leftValue": "={{ $json.approved ?? true }}",
+							"rightValue": true,
+							"operator": { "type": "boolean", "operation": "true", "singleValue": true }
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "6c92bd64-9099-41b7-ad43-b828e06ea4ba",
+			"name": "Load customer",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [660, 120],
+			"parameters": { "url": "https://example.com", "options": {} }
+		},
+		{
+			"id": "816ec2fe-4142-4fe6-801a-5f32e378b5cc",
+			"name": "Enrich profile",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [880, 40],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "47f4bfdf-f8ad-4e59-ba60-93d9054c446f",
+							"name": "stage",
+							"value": "Enrich profile",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "c95bcd50-eb01-450e-9131-cc025ada2919",
+			"name": "Calculate risk",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1100, 40],
+			"parameters": { "jsCode": "return $input.all();" }
+		},
+		{
+			"id": "aaf7bae0-1c5c-410b-9a4e-c0302066a0b3",
+			"name": "Review required?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [1320, 40],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "a2462045-d270-4202-a5dd-e5ac4e619954",
+							"leftValue": "={{ $json.approved ?? true }}",
+							"rightValue": true,
+							"operator": { "type": "boolean", "operation": "true", "singleValue": true }
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "b2befacd-fab1-4e2c-837a-35821d95a941",
+			"name": "Queue review",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1540, -120],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e8c4343f-2d66-4c19-96d3-b18dbe962da9",
+							"name": "stage",
+							"value": "Queue review",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "8a0683a3-d1cf-4977-81a3-4a808f63e056",
+			"name": "Approve customer",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1540, 180],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "80e19720-55e2-43fd-aa5b-59dea04f82c7",
+							"name": "stage",
+							"value": "Approve customer",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "af4a00b6-23e8-425c-a2be-12bef218e8c4",
+			"name": "Customer ready",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [1760, 40],
+			"parameters": { "mode": "append", "numberInputs": 2 }
+		},
+		{
+			"id": "9ebcc6f6-de8a-48f9-9a46-9e34269341c9",
+			"name": "Check inventory",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [660, 420],
+			"parameters": { "url": "https://example.com", "options": {} }
+		},
+		{
+			"id": "6407d791-c010-4fb4-96c3-01133728f06c",
+			"name": "Stock available?",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [880, 380],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "d79db82e-0901-496d-90f8-f307eb50b09f",
+							"leftValue": "={{ $json.approved ?? true }}",
+							"rightValue": true,
+							"operator": { "type": "boolean", "operation": "true", "singleValue": true }
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "b1e98fe7-9df4-4d60-b56d-ed48521dd89d",
+			"name": "Pick warehouse",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1100, 300],
+			"parameters": { "jsCode": "return $input.all();" }
+		},
+		{
+			"id": "e3224a5b-0f8f-45db-be6d-76cdd5c4c217",
+			"name": "Reserve stock",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1320, 300],
+			"parameters": { "url": "https://example.com", "options": {} }
+		},
+		{
+			"id": "d8bc6fb0-8b19-4687-98f7-a53ee980b2de",
+			"name": "Plan shipment",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1540, 400],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1685c528-a57d-4e59-a0c5-1363986a01be",
+							"name": "stage",
+							"value": "Plan shipment",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "c600801b-3303-48eb-b569-062f95d6a945",
+			"name": "Queue restock",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1100, 520],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "23043625-7442-406f-ab46-4032938682d4",
+							"name": "stage",
+							"value": "Queue restock",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "6cafdbcd-f7ea-43d6-ba59-7c43bcfdef60",
+			"name": "Set delivery date",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1320, 540],
+			"parameters": { "jsCode": "return $input.all();" }
+		},
+		{
+			"id": "411bc228-2336-4b6a-a880-8327cc2d4307",
+			"name": "Inventory ready",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [1760, 460],
+			"parameters": { "mode": "append", "numberInputs": 2 }
+		},
+		{
+			"id": "6650b880-76f4-469a-9644-f4167b43bf09",
+			"name": "Load price list",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [660, 740],
+			"parameters": { "url": "https://example.com", "options": {} }
+		},
+		{
+			"id": "28ca18cc-8f92-4c19-8c8c-551c60a52e80",
+			"name": "Apply discounts",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [880, 820],
+			"parameters": { "jsCode": "return $input.all();" }
+		},
+		{
+			"id": "1b57b54e-91d3-4ed1-a35f-a402295f8f6d",
+			"name": "Calculate tax",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1100, 740],
+			"parameters": { "jsCode": "return $input.all();" }
+		},
+		{
+			"id": "195f114f-a7b2-443e-aa28-86b49b042225",
+			"name": "Prepare invoice",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1320, 780],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1eeadf36-950a-449d-8f87-4b8665a5f382",
+							"name": "stage",
+							"value": "Prepare invoice",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "160faca6-92a8-4aba-93ca-336a05e6885c",
+			"name": "Record payment",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1540, 740],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "2f016ddd-af26-48d2-b630-513790f43238",
+							"name": "stage",
+							"value": "Record payment",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "a1d2e24a-b292-4bd8-97b3-0ca3f54b2c04",
+			"name": "Join order details",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [1980, 360],
+			"parameters": { "mode": "append", "numberInputs": 3 }
+		},
+		{
+			"id": "4f5fc8d8-8dba-475f-9985-9dec2472f2a3",
+			"name": "Build confirmation",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [2200, 220],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "8d379d80-a22d-48ce-bef8-b5fe6627e4fa",
+							"name": "stage",
+							"value": "Build confirmation",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "e9acb0a0-a562-415a-8538-1b5acd9b1793",
+			"name": "Format receipt",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [2420, 100],
+			"parameters": { "jsCode": "return $input.all();" }
+		},
+		{
+			"id": "03f22fc6-2032-4055-b2e9-3cd87fc9118d",
+			"name": "Notify customer",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [2640, 100],
+			"parameters": { "url": "https://example.com", "options": {} }
+		},
+		{
+			"id": "22309322-febb-48bd-8a0e-4882df68b5d5",
+			"name": "Update analytics",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [2420, 400],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "933e853f-d338-49fa-b0ca-b9d9f3c22ade",
+							"name": "stage",
+							"value": "Update analytics",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "31699796-bfe5-4b08-b1b1-e6e85e51ce79",
+			"name": "Archive order",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [2640, 460],
+			"parameters": {}
+		},
+		{
+			"id": "023c867e-90ee-460f-a7b4-d3cc66f6430e",
+			"name": "Explain missing fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [660, 1060],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "51fdd35e-963b-4d08-89b6-cfe272e2808a",
+							"name": "stage",
+							"value": "Explain missing fields",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "a4401a00-9e69-47cd-9b9e-d24560b641fe",
+			"name": "Classify issue",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [880, 1140],
+			"parameters": { "jsCode": "return $input.all();" }
+		},
+		{
+			"id": "52f814fe-2642-469b-aeda-d7a024c97095",
+			"name": "Queue follow-up",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1100, 1060],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "59a274d8-356f-47da-86bc-ff1c3417e9e5",
+							"name": "stage",
+							"value": "Queue follow-up",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "e8f5aa99-6041-4078-8ea3-b87d6086436a",
+			"name": "Acknowledge request",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1320, 1140],
+			"parameters": {}
+		},
+		{
+			"id": "10956cd1-9887-4d17-b821-9276728dc59b",
+			"name": "Customer lane",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [600, -240],
+			"parameters": {
+				"content": "## Customer intelligence\nEnrich the profile and route reviews.",
+				"width": 1290,
+				"height": 540,
+				"color": 5
+			}
+		},
+		{
+			"id": "3d7bf628-46c3-4c09-a449-57bacc27ae1c",
+			"name": "Fulfillment lane",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [600, 280],
+			"parameters": {
+				"content": "## Inventory & fulfillment\nCheck availability and plan delivery.",
+				"width": 1290,
+				"height": 400,
+				"color": 4
+			}
+		},
+		{
+			"id": "0e8c7f32-6f3e-445e-ae8e-ee795ff7e262",
+			"name": "Billing lane",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [600, 680],
+			"parameters": {
+				"content": "## Pricing & payment\nPrepare the commercial details.",
+				"width": 1100,
+				"height": 320,
+				"color": 6
+			}
+		},
+		{
+			"id": "c4122290-b12a-45e1-b6e0-e15cceda6a28",
+			"name": "Exception lane",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [600, 1000],
+			"parameters": {
+				"content": "## Follow-up\nKeep incomplete requests moving.",
+				"width": 900,
+				"height": 340,
+				"color": 3
+			}
+		}
+	],
+	"connections": {
+		"Receive order": { "main": [[{ "node": "Normalize request", "type": "main", "index": 0 }]] },
+		"Normalize request": { "main": [[{ "node": "Validate order", "type": "main", "index": 0 }]] },
+		"Load customer": { "main": [[{ "node": "Enrich profile", "type": "main", "index": 0 }]] },
+		"Enrich profile": { "main": [[{ "node": "Calculate risk", "type": "main", "index": 0 }]] },
+		"Calculate risk": { "main": [[{ "node": "Review required?", "type": "main", "index": 0 }]] },
+		"Check inventory": { "main": [[{ "node": "Stock available?", "type": "main", "index": 0 }]] },
+		"Pick warehouse": { "main": [[{ "node": "Reserve stock", "type": "main", "index": 0 }]] },
+		"Reserve stock": { "main": [[{ "node": "Plan shipment", "type": "main", "index": 0 }]] },
+		"Queue restock": { "main": [[{ "node": "Set delivery date", "type": "main", "index": 0 }]] },
+		"Load price list": { "main": [[{ "node": "Apply discounts", "type": "main", "index": 0 }]] },
+		"Apply discounts": { "main": [[{ "node": "Calculate tax", "type": "main", "index": 0 }]] },
+		"Calculate tax": { "main": [[{ "node": "Prepare invoice", "type": "main", "index": 0 }]] },
+		"Prepare invoice": { "main": [[{ "node": "Record payment", "type": "main", "index": 0 }]] },
+		"Join order details": {
+			"main": [[{ "node": "Build confirmation", "type": "main", "index": 0 }]]
+		},
+		"Build confirmation": {
+			"main": [
+				[
+					{ "node": "Format receipt", "type": "main", "index": 0 },
+					{ "node": "Update analytics", "type": "main", "index": 0 }
+				]
+			]
+		},
+		"Format receipt": { "main": [[{ "node": "Notify customer", "type": "main", "index": 0 }]] },
+		"Update analytics": { "main": [[{ "node": "Archive order", "type": "main", "index": 0 }]] },
+		"Explain missing fields": {
+			"main": [[{ "node": "Classify issue", "type": "main", "index": 0 }]]
+		},
+		"Classify issue": { "main": [[{ "node": "Queue follow-up", "type": "main", "index": 0 }]] },
+		"Queue follow-up": {
+			"main": [[{ "node": "Acknowledge request", "type": "main", "index": 0 }]]
+		},
+		"Validate order": {
+			"main": [
+				[
+					{ "node": "Load customer", "type": "main", "index": 0 },
+					{ "node": "Check inventory", "type": "main", "index": 0 },
+					{ "node": "Load price list", "type": "main", "index": 0 }
+				],
+				[{ "node": "Explain missing fields", "type": "main", "index": 0 }]
+			]
+		},
+		"Review required?": {
+			"main": [
+				[{ "node": "Queue review", "type": "main", "index": 0 }],
+				[{ "node": "Approve customer", "type": "main", "index": 0 }]
+			]
+		},
+		"Queue review": { "main": [[{ "node": "Customer ready", "type": "main", "index": 0 }]] },
+		"Approve customer": { "main": [[{ "node": "Customer ready", "type": "main", "index": 1 }]] },
+		"Stock available?": {
+			"main": [
+				[{ "node": "Pick warehouse", "type": "main", "index": 0 }],
+				[{ "node": "Queue restock", "type": "main", "index": 0 }]
+			]
+		},
+		"Plan shipment": { "main": [[{ "node": "Inventory ready", "type": "main", "index": 0 }]] },
+		"Set delivery date": { "main": [[{ "node": "Inventory ready", "type": "main", "index": 1 }]] },
+		"Customer ready": { "main": [[{ "node": "Join order details", "type": "main", "index": 0 }]] },
+		"Inventory ready": { "main": [[{ "node": "Join order details", "type": "main", "index": 1 }]] },
+		"Record payment": { "main": [[{ "node": "Join order details", "type": "main", "index": 2 }]] }
+	},
+	"settings": { "executionOrder": "v1" },
+	"active": false
+}

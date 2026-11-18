@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import ContextMenu from '@/features/shared/contextMenu/components/ContextMenu.vue';
+import CanvasConstellation from './constellation/CanvasConstellation.vue';
+import { getConstellationProgress } from './constellation/zoom';
 import type { ContextMenuTarget } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { CanvasLayoutEvent, CanvasLayoutResult } from '../composables/useCanvasLayout';
@@ -211,6 +213,7 @@ const props = withDefaults(
 		stripedBackground?: boolean;
 		showNodeGroups?: boolean;
 		initialViewport?: ViewportTransform | null;
+		constellationEnabled?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -323,6 +326,8 @@ const classes = computed(() => ({
 	[$style.ready]: !props.loading && isPaneReady.value,
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 	spotlightActive: setupPanelStore.isHighlightActive,
+	[$style.constellationActive]:
+		props.constellationEnabled && getConstellationProgress(viewport.value.zoom) === 1,
 }));
 
 /**
@@ -2179,6 +2184,13 @@ defineExpose({
 		</template>
 
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
+		<CanvasConstellation
+			v-if="constellationEnabled"
+			:nodes="graphNodes"
+			:edges="connections"
+			:viewport="viewport"
+			:dimensions="dimensions"
+		/>
 
 		<slot name="canvas-background" v-bind="{ viewport }">
 			<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
@@ -2236,6 +2248,15 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+.constellationActive {
+	:global(.vue-flow__node),
+	:global(.vue-flow__node *),
+	:global(.vue-flow__edge),
+	:global(.vue-flow__edge *) {
+		// Vue Flow sets pointer events on nodes and handles with inline styles.
+		pointer-events: none !important;
+	}
+}
 .canvas {
 	width: 100%;
 	height: 100%;
