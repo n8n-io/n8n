@@ -54,6 +54,67 @@ describe('toAssistantChannelCard', () => {
 			expect(resumeDataOf(deny.value)).toEqual({ approved: false });
 		});
 
+		describe('a workflow edit', () => {
+			const edit = (overrides: Record<string, unknown> = {}) =>
+				approvalPayload({
+					message: 'Change the Slack channel from #general to #alerts',
+					resourceName: 'Post stats',
+					workflowId: 'wf 1',
+					approvalDetails: {
+						action: 'edit-workflow',
+						summary: 'Change the Slack channel\nfrom #general to #alerts',
+					},
+					...overrides,
+				});
+
+			it('shows a short title and the summary of the change in its own section', () => {
+				const card = toAssistantChannelCard(edit(), context);
+
+				expect(card?.title).toBe('Save changes to Post stats?');
+				expect(card?.components[0]).toEqual({
+					type: 'section',
+					text: 'Change the Slack channel\nfrom #general to #alerts',
+				});
+			});
+
+			it('links to the workflow with the instance URL', () => {
+				const card = toAssistantChannelCard(edit(), context);
+
+				expect(card?.components).toContainEqual({
+					type: 'link_button',
+					label: 'Open workflow',
+					url: 'https://n8n.test/workflow/wf%201',
+				});
+			});
+
+			it('keeps the three approval buttons', () => {
+				expect(buttons(toAssistantChannelCard(edit(), context)).map((b) => b.label)).toEqual([
+					'Approve',
+					'Always allow in this thread',
+					'Deny',
+				]);
+			});
+
+			it('cuts a very long summary to fit a Slack section', () => {
+				const card = toAssistantChannelCard(
+					edit({ approvalDetails: { action: 'edit-workflow', summary: 'x'.repeat(5000) } }),
+					context,
+				);
+
+				expect(String(card?.components[0]?.text).length).toBeLessThanOrEqual(2500);
+			});
+
+			it('uses the plain layout when the edit has no summary', () => {
+				const card = toAssistantChannelCard(
+					edit({ approvalDetails: { action: 'edit-workflow' } }),
+					context,
+				);
+
+				expect(card?.title).toBe('Change the Slack channel from #general to #alerts');
+				expect(card?.components[0]).toEqual({ type: 'section', text: '*Post stats*' });
+			});
+		});
+
 		it('shows the name of the resource that the action applies to', () => {
 			const card = toAssistantChannelCard(approvalPayload({ resourceName: 'Post stats' }), context);
 
