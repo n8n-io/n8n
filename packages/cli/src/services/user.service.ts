@@ -74,14 +74,17 @@ export const INVITE_ROLE_MANAGED_MESSAGE =
 	'Instance roles are managed by single sign-on. Invite users with the member role.';
 
 /** The system as the actor of a user deletion that no user asked for. */
+export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
+
 /**
+ * Removes what acts as a service account, such as an agent, when the account goes.
+ * `cleanUp` runs after the work of the account moved. `deleteInTransaction` runs in
+ * the transaction that deletes the account, before the account row goes.
  */
 export type ServiceAccountOwnerRemoval = {
 	cleanUp: () => Promise<void>;
 	deleteInTransaction: (ctx: OperationContext) => Promise<void>;
 };
-
-export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
 
 @Service()
 export class UserService {

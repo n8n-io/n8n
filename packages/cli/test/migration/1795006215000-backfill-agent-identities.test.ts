@@ -198,4 +198,23 @@ describe('BackfillAgentIdentities migration', () => {
 		expect(await countServiceAccounts()).toBe(5);
 		expect(await getAgents()).toEqual(before);
 	});
+
+	it('gives every agent an account when there are more agents than one batch', async () => {
+		await undoLastSingleMigration();
+		// The migration selects 500 agents in each batch.
+		const count = 501;
+		for (let i = 0; i < count; i++) {
+			await query(
+				'INSERT INTO {agents} ("id", "name", "projectId", "integrations", "tools", "skills") VALUES (:id, \'Batch agent\', :projectId, \'[]\', \'{}\', \'{}\')',
+				{ id: randomUUID(), projectId },
+			);
+		}
+
+		await runSingleMigration(MIGRATION_NAME);
+
+		const identityIds = (await getAgents()).map((agent) => agent.identityId);
+		expect(identityIds).not.toContain(null);
+		expect(new Set(identityIds).size).toBe(identityIds.length);
+		expect(await countServiceAccounts()).toBe(5 + count);
+	});
 });
