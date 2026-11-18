@@ -1,0 +1,13 @@
+{
+	"description": "Crypto hash of a UTF-8 text and of the empty string",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"v": "héllo",
+					"w": ""
+				}
+			]
+		}
+	}
+}

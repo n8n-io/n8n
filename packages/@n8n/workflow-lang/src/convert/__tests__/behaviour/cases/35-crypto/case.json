@@ -1,0 +1,17 @@
+{
+	"description": "Crypto hash across MD5, SHA256, SHA384, SHA512, SHA1, hex and base64",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"a": "hello",
+					"b": "world"
+				},
+				{
+					"a": "n8n",
+					"b": "workflow"
+				}
+			]
+		}
+	}
+}

@@ -7,6 +7,7 @@ import type { Lowerer, NodeContext } from './context.ts';
 import { isNativeDateTime, lowerDateTime } from './date-time.ts';
 import { libraryNodeTypes, lowerHttpRequest, lowerLibrary, NATIVE_ROOTS } from './library.ts';
 import { lowerSplitInBatches } from './loops.ts';
+import { lowerCrypto } from './crypto.ts';
 import { lowerRenameKeys } from './transform-nodes.ts';
 import {
 	isNativeExecutionData,
@@ -62,12 +63,13 @@ export const NATIVE: Record<string, Lowerer> = {
 	[`${BASE}httpRequest`]: lowerHttpRequest,
 	[`${BASE}splitInBatches`]: lowerSplitInBatches,
 	[`${BASE}renameKeys`]: lowerRenameKeys,
+	[`${BASE}crypto`]: lowerCrypto,
 	[`${BASE}executeWorkflow`]: lowerExecuteWorkflow,
 };
 
 /** Native nodes with one output that the fallback host can run when their expressions do not translate. */
 export const HOST_CAPABLE = new Set(
-	['set', 'filter', 'limit', 'sort', 'splitOut', 'aggregate', 'removeDuplicates', 'noOp', 'renameKeys'].map(
+	['set', 'filter', 'limit', 'sort', 'splitOut', 'aggregate', 'removeDuplicates', 'noOp', 'renameKeys', 'crypto'].map(
 		(t) => `${BASE}${t}`,
 	),
 );
@@ -92,7 +94,7 @@ export const ONE_TO_ONE = new Set(
  * one after the other.
  */
 export const ITEM_WISE = new Set(
-	['set', 'noOp', 'if', 'filter', 'switch', 'splitOut', 'renameKeys'].map(
+	['set', 'noOp', 'if', 'filter', 'switch', 'splitOut', 'renameKeys', 'crypto'].map(
 		(t) => `${BASE}${t}`,
 	),
 );
@@ -114,6 +116,7 @@ export const PURE = new Set(
 		'splitInBatches',
 		'stickyNote',
 		'renameKeys',
+		'crypto',
 	]
 		.map((t) => `${BASE}${t}`)
 		.concat(['n8n-nodes-testing.testData']),
