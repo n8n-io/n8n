@@ -1,7 +1,8 @@
 import { Tool, hasMcpMediaContent, mcpContentToModelParts } from '@n8n/agents';
-import type { McpToolCallResult } from '@n8n/api-types';
+import type { InstanceAiPermissions, McpToolCallResult } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { recordSessionOwnedWorkflow } from './workflows/workflow-build-context';
 import type { McpToolNameValidationError } from '../agent/mcp-tool-name-validation';
 import { addSafeMcpTools, createClaimedToolNames } from '../agent/mcp-tool-name-validation';
 import type { McpSchemaSanitizationError } from '../agent/sanitize-mcp-schemas';
@@ -63,6 +64,45 @@ function unsupportedInputRequest(result: InstanceMcpInputRequiredResult): McpToo
 		],
 		isError: true,
 	};
+}
+
+/**
+ * Admin rules the native tools checked before a write that asks no confirmation.
+ * The server does not ask for a create, so the client applies the rule itself.
+ */
+const BLOCKING_PERMISSION_BY_TOOL: Readonly<Record<string, keyof InstanceAiPermissions>> = {
+	create_workflow_from_code: 'createWorkflow',
+};
+
+/** Server tools whose success creates or changes a workflow the chat should show. */
+const WORKFLOW_WRITE_TOOLS: ReadonlySet<string> = new Set([
+	'create_workflow_from_code',
+	'update_workflow',
+]);
+
+/**
+ * What the native build tool did after a save and the protocol cannot carry:
+ * the workflow tab in the chat, and the thread's ownership of a workflow it
+ * created (which lets later edits of it skip the approval card).
+ */
+async function afterWorkflowWrite(
+	context: InstanceAiContext,
+	toolName: string,
+	result: InstanceMcpCallToolResult,
+): Promise<void> {
+	if (!WORKFLOW_WRITE_TOOLS.has(toolName) || !isMcpToolCallResult(result) || result.isError) return;
+	const output = result.structuredContent;
+	const workflowId =
+		output && typeof output.workflowId === 'string' ? output.workflowId : undefined;
+	if (!workflowId) return;
+	const name = output && typeof output.name === 'string' ? output.name : undefined;
+	if (toolName === 'create_workflow_from_code')
+		await recordSessionOwnedWorkflow(context, workflowId);
+	await context.onArtifactChanged?.({
+		type: 'workflow',
+		id: workflowId,
+		...(name ? { name } : {}),
+	});
 }
 
 interface BridgeToolContext {
@@ -144,7 +184,9 @@ export function createToolsFromInstanceMcpServer({
 								},
 								requestState: result.requestState,
 							});
-							return isInputRequired(retried) ? unsupportedInputRequest(retried) : retried;
+							if (isInputRequired(retried)) return unsupportedInputRequest(retried);
+							await afterWorkflowWrite(context, toolName, retried);
+							return retried;
 						}
 						return await ctx.suspend(approvalSuspendPayload(elicitation), {
 							continuation: formContinuation(
@@ -194,11 +236,20 @@ export function createToolsFromInstanceMcpServer({
 							: {}),
 					});
 					// The server may ask another round; a card shows again for it.
-					return isInputRequired(result) ? await answerInputRequired(result) : result;
+					if (isInputRequired(result)) return await answerInputRequired(result);
+					await afterWorkflowWrite(context, toolName, result);
+					return result;
+				}
+
+				const blockingPermission = BLOCKING_PERMISSION_BY_TOOL[toolName];
+				if (blockingPermission && context.permissions?.[blockingPermission] === 'blocked') {
+					return { success: false, denied: true, reason: 'Action blocked by admin' };
 				}
 
 				const result = await call();
-				return isInputRequired(result) ? await answerInputRequired(result) : result;
+				if (isInputRequired(result)) return await answerInputRequired(result);
+				await afterWorkflowWrite(context, toolName, result);
+				return result;
 			})
 			// A plain value lands in the message as JSON; only media needs the content shape.
 			.toModelOutput((result: unknown) => {

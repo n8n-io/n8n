@@ -37,9 +37,16 @@ interface SystemPromptOptions {
 	 * native domain tools. Rendered as the guidance for those tools.
 	 */
 	instanceMcpInstructions?: string;
+	/** PoC: the server's `create_workflow_from_code` and `update_workflow` are the build path. */
+	instanceMcpBuildPath?: boolean;
 }
 
-function getInstanceMcpSection(instructions: string): string {
+function getInstanceMcpSection(instructions: string, buildPath: boolean): string {
+	const buildNote = buildPath
+		? `
+
+Workflows are built through these tools: write the workflow SDK code and pass it to \`create_workflow_from_code\`; change an existing workflow with \`update_workflow\` operations. Do not write workflow files to the workspace for this. After a workflow is created or changed, call \`setup_workflow\` with \`includeAllNodes: true\` so the user can connect credentials, then test it with \`workflow_builder_executions\` only when the user asks.`
+		: '';
 	return `## Instance MCP tools
 
 Some n8n tools in the tool catalog come from the instance MCP server, the same server external MCP clients use. The server describes how to use them:
@@ -48,7 +55,7 @@ Some n8n tools in the tool catalog come from the instance MCP server, the same s
 ${instructions.trim()}
 </instance-mcp-instructions>
 
-Where these instructions name a tool that is also in the catalog, follow them. Where they conflict with a loaded skill, the skill wins for the Assistant's own tools (approval cards, setup panel, workspace files, verification).`;
+Where these instructions name a tool that is also in the catalog, follow them. Where they conflict with a loaded skill, the skill wins for the Assistant's own tools (approval cards, setup panel, workspace files, verification).${buildNote}`;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -328,6 +335,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			cloudBrowserEnabled,
 			setupPanelEnabled,
 			instanceMcpInstructions,
+			instanceMcpBuildPath,
 		} = options;
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load the skills that match it. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
@@ -341,7 +349,7 @@ ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
-${instanceMcpInstructions ? getInstanceMcpSection(instanceMcpInstructions) : ''}
+${instanceMcpInstructions ? getInstanceMcpSection(instanceMcpInstructions, instanceMcpBuildPath === true) : ''}
 ${communicationStyleSection}
 
 ## Capability Honesty

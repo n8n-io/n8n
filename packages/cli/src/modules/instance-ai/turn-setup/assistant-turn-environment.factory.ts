@@ -538,6 +538,7 @@ export class AssistantTurnEnvironmentFactory {
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 			appBuildingEnabled: context.appService !== undefined,
+			nativeWorkflowBuildingEnabled: !instanceMcpBuildsWorkflows(context),
 		};
 		const skills = await this.skillsService.loadSkills(skillScope, {
 			user,
@@ -705,4 +706,11 @@ export class AssistantTurnEnvironmentFactory {
 				await workflowTasks.getWorkflowLoopState(workItemId),
 		};
 	}
+}
+
+/** PoC: whether the instance MCP server, reached as a client, takes over the build path. */
+function instanceMcpBuildsWorkflows(context: InstanceAiContext): boolean {
+	const server = context.instanceMcpServer;
+	const tools = typeof server?.getTools === 'function' ? server.getTools() : undefined;
+	return Array.isArray(tools) && tools.some((tool) => tool.name === 'create_workflow_from_code');
 }

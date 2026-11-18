@@ -439,6 +439,8 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.workspace.move-workflow-to-folder.imperative',
 			'instanceAi.tools.workflow_builder_build_workflow.imperative',
 			'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource',
+			'instanceAi.tools.update_workflow.imperative',
+			'instanceAi.tools.update_workflow.imperativeWithResource',
 			'instanceAi.tools.build-workflow-with-agent.imperative',
 		] satisfies BaseTextKey[]
 	).map((key) => [key, key]),

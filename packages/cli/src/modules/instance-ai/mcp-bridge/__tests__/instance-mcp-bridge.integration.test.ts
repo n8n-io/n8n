@@ -170,6 +170,69 @@ describe('Assistant over the instance MCP server', () => {
 		expect(JSON.stringify(result)).toContain('declined');
 	});
 
+	// M3: an edit through `update_workflow` asks first, and a thread grant answers for it.
+	it('applies an update after the user allowed edits of the workflow for the session', async () => {
+		const workflow = await createWorkflow({ name: 'Before rename' }, owner);
+		const grants = new Set<string>();
+		const artifacts: unknown[] = [];
+		// A plain object: a deep mock would proxy the Set and break `has`.
+		const granting = {
+			permissions: undefined,
+			sessionApprovedToolKeys: grants,
+			grantSessionToolApproval: async (key: string) => {
+				grants.add(key);
+			},
+			onArtifactChanged: async (artifact: unknown) => {
+				artifacts.push(artifact);
+			},
+		} as unknown as InstanceAiContext;
+		const { tools: grantingTools } = createToolsFromInstanceMcpServer({
+			server,
+			logger: noopLogger,
+			context: granting,
+		});
+		const update = grantingTools.get('update_workflow');
+		if (!update?.handler) throw new Error('update_workflow was not bridged');
+		const args = {
+			workflowId: workflow.id,
+			operations: [{ type: 'setWorkflowMetadata', name: 'After rename' }],
+		};
+		let continuation: JSONValue | undefined;
+		const probe = {
+			toolCallId: 'call-4',
+			toolName: 'update_workflow',
+			runId: 'run-1',
+			resumeData: undefined,
+			suspend: async (_payload: unknown, options?: { continuation?: JSONValue }) => {
+				continuation = options?.continuation;
+				throw new Error('suspended');
+			},
+		};
+
+		// First edit: the card shows; "Always allow" stores the thread grant.
+		await expect(update.handler(args, probe)).rejects.toThrow('suspended');
+		const first = await update.handler(args, {
+			...probe,
+			resumeData: { approved: true, scope: 'session' },
+			continuation,
+		});
+		expect(isRecord(first) ? first.structuredContent : undefined).toMatchObject({
+			workflowId: workflow.id,
+			name: 'After rename',
+		});
+		expect(grants.has(`workflows:update:${workflow.id}`)).toBe(true);
+		expect(artifacts).toEqual([{ type: 'workflow', id: workflow.id, name: 'After rename' }]);
+
+		// Second edit: the grant answers the server's question; no card.
+		const second = await update.handler(
+			{ ...args, operations: [{ type: 'setWorkflowMetadata', name: 'Renamed again' }] },
+			probe,
+		);
+		expect(isRecord(second) ? second.structuredContent : undefined).toMatchObject({
+			name: 'Renamed again',
+		});
+	});
+
 	// The test server loads no node packages, so the search answers empty; the point
 	// is that the call reaches the real catalog-backed handler without an error.
 	it('runs a node search through a bridged tool', { timeout: 120_000 }, async () => {

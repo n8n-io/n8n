@@ -7,6 +7,7 @@ import {
 	type SharedWorkflowRepository,
 	WorkflowEntity,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import {
@@ -76,8 +77,13 @@ import {
 	type PartialUpdateOperation,
 	type SkippedOperation,
 } from './workflow-operations';
+import { McpConfirmationService } from '../../mcp-confirmation.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type {
+	ToolDefinition,
+	ToolHandlerResult,
+	UserCalledMCPToolEventPayload,
+} from '../../mcp.types';
 import {
 	workflowMigrationFindingsSchema,
 	type ReadWorkflowMigrationFindings,
@@ -1119,6 +1125,13 @@ async function resolveTagIds(
  * end-state safety net matches the create-from-code path; only the
  * TS-code → JSON parse step is skipped.
  */
+/** `3 changes (addNode, updateNodeParameters)`, for the confirmation. */
+function describeOperations(operations: ReadonlyArray<{ type: string }>): string {
+	const types = [...new Set(operations.map((op) => op.type))];
+	const count = operations.length;
+	return `${count} ${count === 1 ? 'change' : 'changes'} (${types.join(', ')})`;
+}
+
 export const createUpdateWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
@@ -1152,7 +1165,7 @@ export const createUpdateWorkflowTool = (
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
 	ctx: OperationContext = {},
-): ToolDefinition<typeof inputSchema> => {
+): ToolDefinition<typeof inputSchema, ToolHandlerResult> => {
 	// Bound once: these never vary per call, so the call sites below show only
 	// what is being validated.
 	const settingsGuardDependencies: WorkflowSettingsGuardDependencies = {
@@ -1176,19 +1189,22 @@ export const createUpdateWorkflowTool = (
 				openWorldHint: false,
 			},
 		},
-		handler: async ({
-			workflowId,
-			skillsUsed,
-			operations,
-			versionName,
-			versionDescription,
-		}: {
-			workflowId: string;
-			skillsUsed?: string[];
-			operations: OperationInput[];
-			versionName?: string;
-			versionDescription?: string;
-		}) => {
+		handler: async (
+			{
+				workflowId,
+				skillsUsed,
+				operations,
+				versionName,
+				versionDescription,
+			}: {
+				workflowId: string;
+				skillsUsed?: string[];
+				operations: OperationInput[];
+				versionName?: string;
+				versionDescription?: string;
+			},
+			extra?: unknown,
+		) => {
 			// Held outside the `try` so the catch below can report on it.
 			const telemetryPayload = buildUpdateTelemetryPayload({
 				userId: user.id,
@@ -1396,6 +1412,30 @@ export const createUpdateWorkflowTool = (
 							)
 						: undefined;
 				expectedTagNames = result.tagNames;
+
+				// Every check passed: ask before the change lands, as the Assistant asks for an edit.
+				const confirmed = await Container.get(McpConfirmationService).confirm(extra, user, {
+					tool: MCP_UPDATE_WORKFLOW_TOOL.toolName,
+					args: { workflowId, skillsUsed, operations, versionName, versionDescription },
+					message: `Apply ${describeOperations(strictOperations)} to ${existingWorkflow.name}`,
+					approval: {
+						approvalDetails: {
+							action: 'edit-workflow',
+							summary: versionDescription ?? versionName ?? describeOperations(strictOperations),
+						},
+						resourceName: existingWorkflow.name,
+						severity: 'warning',
+					},
+				});
+				if (confirmed.kind === 'ask') return confirmed.result;
+				if (confirmed.kind !== 'proceed') {
+					throw new Error(
+						confirmed.kind === 'declined'
+							? 'The user declined the change. Do not apply it again unless they ask.'
+							: 'The confirmation does not match this request. Ask again.',
+					);
+				}
+
 				updateAttempted = true;
 				const updatedWorkflow = await workflowService.update(
 					user,

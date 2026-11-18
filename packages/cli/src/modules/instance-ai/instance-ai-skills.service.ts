@@ -30,6 +30,7 @@ export const SKILLS = {
 	suggestAutomations: 'suggest-automations',
 	v3Migration: 'v3-migration',
 	appBuilder: 'app-builder',
+	workflowBuilder: 'workflow-builder',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];
@@ -44,6 +45,13 @@ export interface InstanceAiSkillScope {
 	 */
 	agentBuildingEnabled: boolean;
 	appBuildingEnabled: boolean;
+	/**
+	 * PoC: false when the instance MCP server's build tools stand in for the
+	 * native build path. The `workflow-builder` skill describes the native path
+	 * (workspace files, `workflow_builder_build_workflow`), so it goes with it;
+	 * the server's own instructions guide the build instead.
+	 */
+	nativeWorkflowBuildingEnabled: boolean;
 }
 
 export interface InstanceAiRunSkills extends HubRunSkills {
@@ -74,6 +82,10 @@ const SKILL_GATES: ReadonlyArray<{
 	{
 		skills: [SKILLS.appBuilder],
 		isOpen: ({ appBuildingEnabled }) => appBuildingEnabled,
+	},
+	{
+		skills: [SKILLS.workflowBuilder],
+		isOpen: ({ nativeWorkflowBuildingEnabled }) => nativeWorkflowBuildingEnabled,
 	},
 ];
 

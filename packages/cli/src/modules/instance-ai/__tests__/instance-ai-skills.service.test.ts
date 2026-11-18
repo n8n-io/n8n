@@ -18,6 +18,7 @@ const openScope: InstanceAiSkillScope = {
 	flags: { configEvalsEnabled: true, instanceContextEnabled: true },
 	agentBuildingEnabled: true,
 	appBuildingEnabled: true,
+	nativeWorkflowBuildingEnabled: true,
 };
 
 const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [

@@ -73,8 +73,16 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 		`${warning.code}|${warning.nodeName ?? ''}|${warning.parameterPath ?? ''}`,
 }));
 
-const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
-	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
+// The tool can also answer with a confirmation form; these tests send no form-capable client.
+const parseResult = (
+	result: { content: Array<{ type: string; text?: string }> } | { resultType: 'input_required' },
+) => {
+	if ('resultType' in result) throw new Error('unexpected input_required result');
+	return JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<
+		string,
+		unknown
+	>;
+};
 
 const makeNode = (overrides: Partial<INode> = {}): INode => ({
 	id: 'node-id',

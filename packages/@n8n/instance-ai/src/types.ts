@@ -1865,7 +1865,7 @@ export interface InstanceAiContext {
 	localMcpServer?: LocalMcpServer;
 	/**
 	 * The instance MCP server, reached as a real MCP client (PoC). When set, its tools
-	 * replace the native domain tools listed in `NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP`.
+	 * replace the native domain tools listed in `NATIVE_TOOL_REPLACEMENTS`.
 	 */
 	instanceMcpServer?: InstanceMcpServer;
 	/** Browser Use state — drives system prompt guidance. */

@@ -31,3 +31,8 @@ export async function runWithMcpCallerPolicy<T>(
 export function isMcpAvailabilityGateBypassed(): boolean {
 	return storage.getStore()?.bypassAvailabilityGate === true;
 }
+
+/** Whether the current call comes from a first-party client of this instance. */
+export function isFirstPartyMcpCaller(): boolean {
+	return storage.getStore()?.bypassAvailabilityGate === true;
+}

@@ -14,7 +14,7 @@ import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } 
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import {
 	DOMAIN_TOOL_IDS,
-	NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP,
+	getNativeToolsReplacedByInstanceMcp,
 	ORCHESTRATION_TOOL_IDS,
 } from './tool-ids';
 import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
@@ -278,9 +278,14 @@ function getOrchestratorDomainToolFactories(
 			: () => loadParseFileTool().createParseFileTool(context),
 	]);
 
-	// PoC: the instance MCP server's tools stand in for these native ones.
-	if (context.instanceMcpServer) {
-		return tools.filter(([name]) => !NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP.has(name));
+	// PoC: the instance MCP server's tools stand in for the native ones they replace.
+	const server = context.instanceMcpServer;
+	const listedTools = typeof server?.getTools === 'function' ? server.getTools() : undefined;
+	if (Array.isArray(listedTools)) {
+		const replaced = getNativeToolsReplacedByInstanceMcp(
+			new Set(listedTools.map((tool) => tool.name)),
+		);
+		return tools.filter(([name]) => !replaced.has(name));
 	}
 
 	return tools;

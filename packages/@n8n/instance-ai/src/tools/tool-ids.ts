@@ -155,33 +155,47 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 ]);
 
 /**
- * Native tools that the instance MCP server's tools stand in for when the host
- * wires `instanceMcpServer` (PoC: MCP as the shared tool layer). The list grows
- * group by group as the PoC swaps them.
+ * Native tools that the instance MCP server's tools stand in for (PoC: MCP as
+ * the shared tool layer), each with the server tool that must be listed for
+ * the native one to be dropped. The list grows group by group as the PoC
+ * swaps them.
  */
-export const NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP: ReadonlySet<string> = new Set<string>([
-	// nodes → search_nodes, get_node_types, explore_node_resources, validate_node_config
-	DOMAIN_TOOL_IDS.SEARCH_NODES,
-	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
-	DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
-	// workflow reads → search_workflows, get_workflow_details, get_workflow_history,
-	// get_workflow_version, get_workflow_versions_diff, get_node_usage
-	DOMAIN_TOOL_IDS.LIST_WORKFLOWS,
-	DOMAIN_TOOL_IDS.GET_WORKFLOW,
-	DOMAIN_TOOL_IDS.LIST_WORKFLOW_VERSIONS,
-	DOMAIN_TOOL_IDS.GET_WORKFLOW_NODE_USAGE,
+export const NATIVE_TOOL_REPLACEMENTS: ReadonlyMap<string, string> = new Map<string, string>([
+	// nodes
+	[DOMAIN_TOOL_IDS.SEARCH_NODES, 'search_nodes'],
+	[DOMAIN_TOOL_IDS.GET_NODE_TYPES, 'get_node_types'],
+	[DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS, 'explore_node_resources'],
+	// workflow reads
+	[DOMAIN_TOOL_IDS.LIST_WORKFLOWS, 'search_workflows'],
+	[DOMAIN_TOOL_IDS.GET_WORKFLOW, 'get_workflow_details'],
+	[DOMAIN_TOOL_IDS.LIST_WORKFLOW_VERSIONS, 'get_workflow_history'],
+	[DOMAIN_TOOL_IDS.GET_WORKFLOW_NODE_USAGE, 'get_node_usage'],
 	// workflow lifecycle → the same names on the server, confirmed through elicitation
-	DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW,
-	DOMAIN_TOOL_IDS.UNPUBLISH_WORKFLOW,
-	DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW,
-	DOMAIN_TOOL_IDS.RESTORE_WORKFLOW_VERSION,
+	[DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW, 'publish_workflow'],
+	[DOMAIN_TOOL_IDS.UNPUBLISH_WORKFLOW, 'unpublish_workflow'],
+	[DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW, 'archive_workflow'],
+	[DOMAIN_TOOL_IDS.RESTORE_WORKFLOW_VERSION, 'restore_workflow_version'],
+	// the build path: code in, workflow out; edits as operations
+	[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, 'create_workflow_from_code'],
+	[DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE, 'update_workflow'],
 ]);
+
+/** The native tools to drop, given the tools the instance MCP server lists. */
+export function getNativeToolsReplacedByInstanceMcp(
+	listedToolNames: ReadonlySet<string>,
+): Set<string> {
+	const replaced = new Set<string>();
+	for (const [nativeName, serverName] of NATIVE_TOOL_REPLACEMENTS) {
+		if (listedToolNames.has(serverName)) replaced.add(nativeName);
+	}
+	return replaced;
+}
 
 /**
  * The instance MCP tools the Assistant takes from the server's list. The server
- * lists many more (writes, executions, data tables, agents); those stay out
- * until their milestone gives them an approval path, so no unreviewed write
- * can reach the model through the bridge.
+ * lists many more (executions, data tables, agents); those stay out until their
+ * milestone gives them an approval path, so no unreviewed write can reach the
+ * model through the bridge.
  */
 export const INSTANCE_MCP_TOOLS_IN_USE: ReadonlySet<string> = new Set<string>([
 	// nodes
@@ -203,6 +217,9 @@ export const INSTANCE_MCP_TOOLS_IN_USE: ReadonlySet<string> = new Set<string>([
 	'unpublish_workflow',
 	'archive_workflow',
 	'restore_workflow_version',
+	// the build path (edits confirmed through elicitation)
+	'create_workflow_from_code',
+	'update_workflow',
 ]);
 
 const NODE_TOOL_NAMES: readonly string[] = [

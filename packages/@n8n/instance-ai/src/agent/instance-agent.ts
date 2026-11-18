@@ -159,9 +159,9 @@ export async function createInstanceAgent(
 		: createToolRegistry();
 
 	// PoC: the instance MCP server's tools stand in for the native domain tools they
-	// replace (see NATIVE_TOOLS_REPLACED_BY_INSTANCE_MCP). A native tool that is not
-	// swapped keeps its name: an instance tool of the same name (e.g. the server's
-	// `validate_workflow`, which takes code) is left out until its group is swapped.
+	// replace (see NATIVE_TOOL_REPLACEMENTS). A native tool that is not swapped keeps
+	// its name: an instance tool of the same name (e.g. the server's `validate_workflow`,
+	// which takes code) is left out until its group is swapped.
 	const activeDomainToolNames = getActiveOrchestratorDomainToolNames(domainContext);
 	const instanceMcp = context.instanceMcpServer
 		? createToolsFromInstanceMcpServer({
@@ -258,6 +258,7 @@ export async function createInstanceAgent(
 					: undefined,
 			instanceMcpInstructions:
 				instanceMcpTools.size > 0 ? context.instanceMcpServer?.instructions : undefined,
+			instanceMcpBuildPath: instanceMcpTools.has('create_workflow_from_code'),
 		},
 	);
 

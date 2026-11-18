@@ -100,8 +100,8 @@ milestone proves it.
 | Session grants, admin rules, auto-approval judge | client-side | bridge answers the form from grants, policy, judge | **yes.** M2: the bridge maps `approvalDetails.action` to the admin permission and the `workflows:<action>:<id>` grant key the native tools use; `blocked` refuses without calling, `always_allow` and a grant answer the form at once, otherwise the card shows. Auto mode's probe wrapper works unchanged because the bridged tool suspends like a native one |
 | Tool groups for deferral | extension | tool `_meta['n8n/group']` | **yes, with `_meta`.** M1: the registrar stamps every tool (`mcp-tool-groups.ts`); the bridge reads it and the catalog groups by it. Generic clients ignore the key |
 | Guidance | native | `server/discover.instructions`, resources | **partial.** M1: `instructions` render as a prompt section when instance tools are active. The `workflow-builder` skill still names the native tools; the model has to map them through `find_tools`. Measured in M3 |
-| Workflow artifact tab | extension | `structuredContent.workflowId` → `onArtifactChanged` | ? |
-| Thread state (file bindings, setup state, loop verdicts) | client-side | stays in Assistant orchestration tools | ? |
+| Workflow artifact tab | extension | `structuredContent.workflowId` → `onArtifactChanged` | **yes, by convention.** M3: the bridge reads `workflowId`/`name` from the `structuredContent` of `create_workflow_from_code` and `update_workflow` and announces the artifact; no `_meta` needed because the output schema already names the workflow |
+| Thread state (file bindings, setup state, loop verdicts) | client-side | stays in Assistant orchestration tools | **partial.** M3: thread ownership of a created workflow and the admin `createWorkflow: blocked` rule are client-side decorators in the bridge. File bindings and the build→verify→debug loop have no equivalent: the MCP build is one call with the code inline, and verification is not run after it |
 | Workspace and sandbox build loop | not native | identity-keyed workspace tools (M4) | ? |
 | Legacy tool names in persisted threads | client-side | alias map; out of scope | - |
 | Auth, scopes, rate limits | native over HTTP; bypassed in-process | scopes passed to `getServer` | **partial.** M1: scopes work as for OAuth clients. Per-resource exposure (`availableInMCP`) is a third-party policy the protocol has no word for; the server needs a trusted first-party marker on the auth context (`firstParty`), set by the host |
@@ -217,7 +217,11 @@ packages/cli/src/modules/mcp/
   mcp.service.ts                    # M1: registrar stamps the group and the caller policy
   tools/publish-workflow.tool.ts, unpublish-workflow.tool.ts,
   tools/workflow-builder/delete-workflow.tool.ts, restore-workflow-version.tool.ts   # M2
-  tools/workflow-builder/*          # M3-M4 additive changes
+  tools/workflow-builder/update-workflow.tool.ts          # M3: edit confirmation
+  tools/workflow-builder/create-workflow-from-code.tool.ts # M3: first-party availability
+packages/cli/src/modules/instance-ai/
+  instance-ai-skills.service.ts     # M3: workflow-builder skill gated off when the server builds
+packages/frontend/@n8n/i18n, editor-ui approvalDetails.ts   # M3: labels for the server tool names
 packages/cli/src/modules/instance-ai/turn-setup/
   assistant-turn-environment.factory.ts   # M1: connects the client per turn
 ```
@@ -229,8 +233,8 @@ packages/cli/src/modules/instance-ai/turn-setup/
 - [x] M1: `workflows` read tools swapped, instructions in the prompt
 - [x] M2: server elicitation on destructive tools, signed `requestState`
 - [x] M2: bridge suspend/resume, grants and judge, `questions` card mapping
-- [ ] M3: build through `create_workflow_from_code`; eval delta
-- [ ] M3: `build_workflow({ files })` compile service; eval delta
+- [x] M3: build through `create_workflow_from_code`; eval delta (manual, see findings)
+- [ ] M3: `build_workflow({ files })` compile service → folded into M4 (same identity-keyed sandbox)
 - [ ] M4: identity-keyed sandbox, workspace tools over MCP, Assistant on MCP only
 - [ ] M5: HTTP loopback (optional)
 - [ ] Fill in the capability matrix and the gap list
@@ -289,6 +293,32 @@ packages/cli/src/modules/instance-ai/turn-setup/
   unpublish and restore. Clients without form elicitation keep the old
   unconfirmed behaviour.
 
+## Findings (M3)
+
+- The build path swaps cleanly at the tool level: `create_workflow_from_code`
+  (code inline, host AST interpreter) and `update_workflow` (operations,
+  confirmed through elicitation with `edit-workflow` details) replace
+  `workflow_builder_build_workflow` and `get_workflow_as_code`. A native
+  tool is dropped only when the server lists its replacement
+  (`NATIVE_TOOL_REPLACEMENTS`), so `N8N_MCP_BUILDER_ENABLED=false` keeps the
+  native path.
+- Guidance is the real gap. The `workflow-builder` skill describes the native
+  path, so it is gated off when the server builds; the model gets the server's
+  `instructions` plus a prompt note on what the Assistant still owns
+  (`setup_workflow` with `includeAllNodes`, testing on request). The skill's
+  reference material (credential choices, model selection, trigger input
+  shapes, publishing, error workflows) does not reach the model through the
+  protocol; `get_workflow_best_practices` covers part of it.
+- The server's `validate_workflow` (code) collides with the Assistant's
+  `validate_workflow` (saved workflow issues). The native one stays; the
+  server's `create_workflow_from_code` validates anyway.
+- A first-party create does not set `availableInMCP`; a third-party create
+  still does. `builderVariant: 'mcp'` and `source: 'n8n-mcp'` stay as the
+  server writes them (metrics on this instance count Assistant builds as MCP
+  builds).
+- The compile service (`build_workflow({ files })` in a sandbox) needs the same
+  identity-keyed sandbox as M4, so it moves there.
+
 ## Native tools swapped so far
 
 | Native tool | Instance MCP tool(s) |
@@ -296,10 +326,12 @@ packages/cli/src/modules/instance-ai/turn-setup/
 | `search_nodes`, `get_node_types`, `get_node_parameter_options` | `search_nodes`, `get_node_types`, `explore_node_resources`, `validate_node_config` |
 | `list_workflows`, `get_workflow`, `list_workflow_versions`, `get_workflow_node_usage` | `search_workflows`, `get_workflow_details`, `get_workflow_history`, `get_workflow_version`, `get_workflow_versions_diff`, `get_node_usage` |
 | `publish_workflow`, `unpublish_workflow`, `archive_workflow`, `restore_workflow_version` | the same names, confirmed through multi-round-trip elicitation |
+| `workflow_builder_build_workflow`, `get_workflow_as_code` | `create_workflow_from_code`, `update_workflow` (edits confirmed through elicitation) |
 
-Kept native for now: `get_workflow_as_code`, `validate_workflow`, `setup_workflow`,
-`unarchive_workflow`, `update_workflow_version`, `execute_node`, `search_models`,
-and the build path (M3).
+Kept native: `validate_workflow`, `setup_workflow`, `unarchive_workflow`,
+`update_workflow_version`, `execute_node`, `search_models`, executions,
+credentials, data tables, and the orchestration tools (verification has no
+build outcome to work from).
 
 The bridge takes only the tools in `INSTANCE_MCP_TOOLS_IN_USE`
 (`tools/tool-ids.ts`). The server lists many more; a write without an
