@@ -102,7 +102,10 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
-import { loadDeterminismCallout } from '@n8n/frontend-module-agent-determinism';
+import {
+	loadDeterminismCallout,
+	loadGeneratedDraftBanner,
+} from '@n8n/frontend-module-agent-determinism';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -169,6 +172,7 @@ defineOptions({
 });
 
 const LazyDeterminismCallout = defineAsyncComponent(loadDeterminismCallout);
+const LazyGeneratedDraftBanner = defineAsyncComponent(loadGeneratedDraftBanner);
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
@@ -1875,6 +1879,12 @@ const workflowProjectId = computed(
 
 useTypeAvailability(workflowProjectId);
 
+const generatedFrom = computed(() =>
+	settingsStore.isModuleActive('agent-determinism')
+		? (workflowDocumentStore?.value?.meta?.generatedFrom ?? null)
+		: null,
+);
+
 const determinismSource = computed(() => {
 	const doc = workflowDocumentStore?.value;
 	const projectId = workflowProjectId.value;
@@ -2287,6 +2297,13 @@ onBeforeUnmount(() => {
 			>
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
+
+			<LazyGeneratedDraftBanner
+				v-if="generatedFrom && workflowProjectId"
+				:generated-from="generatedFrom"
+				:project-id="workflowProjectId"
+				:class="$style.determinismCallout"
+			/>
 
 			<LazyDeterminismCallout
 				v-if="determinismSource"

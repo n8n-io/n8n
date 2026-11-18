@@ -4,3 +4,6 @@ export { AgentDeterminismModule } from './agent-determinism.module';
 
 export const loadDeterminismCallout = async () =>
 	await import('./components/DeterminismCallout.vue');
+
+export const loadGeneratedDraftBanner = async () =>
+	await import('./components/GeneratedDraftBanner.vue');
