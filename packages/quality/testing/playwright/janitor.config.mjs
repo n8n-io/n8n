@@ -69,6 +69,8 @@ export default defineConfig({
 				// Setup and opt-in dialogs render outside the Assistant container.
 				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('dialog', \{ name: 'Set up n8n Assistant' \}\)$/,
 				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('dialog'\)\.filter\(\{ hasText: 'Try new n8n Assistant' \}\)$/,
+				// The Assistant entry button is in the global sidebar, outside the chat.
+				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\s*\.getByTestId\('project-instance-ai-menu-item'\)\s*\.getByRole\('menuitem', \{ name: 'Assistant', exact: true \}\)$/,
 				// Chat history and composer menus render in portals.
 				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByTestId\('instance-ai-thread-list'\)$/,
 				/^pages\/InstanceAiPage\.ts:InstanceAiPage: this\.page\.getByRole\('menuitem', \{ name: 'Connect services', exact: true \}\)\.click\(\)$/,
