@@ -91,6 +91,11 @@ if (import.meta.env.VUE_SCAN) {
 
 app.mount('#app');
 
+if (import.meta.env.DEV && import.meta.env.VUE_APP_CANVAS_DELIGHT === 'true') {
+	const { printCanvasDelightGreeting } = await import('@/app/init/consoleGreeting');
+	printCanvasDelightGreeting();
+}
+
 if (import.meta.env.DEV) {
 	void import('@/app/dev/dev-panel').then((m) => m.mountDevPanel());
 }

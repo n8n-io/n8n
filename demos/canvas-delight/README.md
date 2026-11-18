@@ -29,6 +29,12 @@ Use `canvas-delight.localhost` for this instance. Cookies are shared across port
 
 Each idea has its own worktree. You can also stop one instance before starting another. The independent branches are `codex-hackmation-canvas-delight`, `codex-hackmation-constellation`, and `codex-hackmation-prints`.
 
+## Console greeting
+
+Open the browser DevTools console and reload the full app. A text rendering of the official n8n symbol and wordmark appears in Accent Pink (`#FF91AC`). Enable Info-level messages if the console is filtered. The greeting prints once per page load. It uses the same local `VUE_APP_CANVAS_DELIGHT=true` setting as the canvas effects.
+
+Brand references: [Logo](https://guidelines.n8n.design/logo) and [Colors](https://guidelines.n8n.design/colors).
+
 ## Standalone animation harness
 
 Open http://127.0.0.1:5183/.
