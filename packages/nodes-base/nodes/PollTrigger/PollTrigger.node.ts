@@ -28,6 +28,7 @@ import {
 	parseId,
 	usesDate,
 	usesId,
+	usesVariable,
 	type ApiStyle,
 	type PaginationMode,
 } from './utils';
@@ -391,7 +392,7 @@ function checkTool(this: IPollFunctions, tool: ConnectedTool, settings: Settings
 	if (keys === undefined && toolParameters.length === 0) return;
 	const source = JSON.stringify(toolParameters);
 	const uses = (variable: string, argument: string) =>
-		source.includes(variable) || (keys?.includes(argument) ?? false);
+		usesVariable(source, variable) || (keys?.includes(argument) ?? false);
 	const problems: string[] = [];
 	if (settings.pagination !== 'none') {
 		const variable = TOOL_VARIABLE[settings.pagination];

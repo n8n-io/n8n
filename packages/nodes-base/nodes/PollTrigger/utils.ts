@@ -76,6 +76,14 @@ const PAGINATION_LABEL: Record<keyof typeof REQUIRED_VARIABLE, string> = {
 	cursor: 'Cursor',
 };
 
+/** Whether the source uses the variable itself, not a longer name that starts with it. */
+export function usesVariable(source: string, variable: string): boolean {
+	for (let i = source.indexOf(variable); i >= 0; i = source.indexOf(variable, i + 1)) {
+		if (!/[\w$]/.test(source.charAt(i + variable.length))) return true;
+	}
+	return false;
+}
+
 /** Lists the variables the chosen types need that the raw request source does not use. */
 export function missingRequestVariables(
 	source: string,
@@ -85,13 +93,13 @@ export function missingRequestVariables(
 	const problems: string[] = [];
 	if (pagination === 'offset' || pagination === 'pageNumber' || pagination === 'cursor') {
 		const variable = REQUIRED_VARIABLE[pagination];
-		if (!source.includes(variable)) {
+		if (!usesVariable(source, variable)) {
 			problems.push(
 				`Pagination is ${PAGINATION_LABEL[pagination]}, but the request does not use {{ ${variable} }}`,
 			);
 		}
 	}
-	if (style === 'oldestFirstSince' && !source.includes('$cursor.since')) {
+	if (style === 'oldestFirstSince' && !usesVariable(source, '$cursor.since')) {
 		problems.push(
 			'API style is Oldest First, Filtered by Date, but the request does not use {{ $cursor.since }}',
 		);
