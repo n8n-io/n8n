@@ -310,6 +310,8 @@ catalog:
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
   '@microsoft/opentelemetry': 1.5.0
+  pg-copy-streams: 7.0.0
+  '@types/pg-copy-streams': 1.2.5
 
 catalogMode: strict
 
