@@ -8,7 +8,7 @@ const renderComponent = createComponentRenderer(SettingsLayout, {
 	global: {
 		stubs: {
 			AppNavigation: { template: '<nav data-test-id="app-navigation" />' },
-			RouterView: { template: '<div>Settings Content</div>' },
+			LayoutRouterView: { template: '<div>Settings Content</div>' },
 		},
 	},
 });

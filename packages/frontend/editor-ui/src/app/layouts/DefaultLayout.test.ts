@@ -8,7 +8,7 @@ const renderComponent = createComponentRenderer(DefaultLayout, {
 			AppSidebar: {
 				template: '<div data-test-id="app-sidebar">App Sidebar</div>',
 			},
-			RouterView: {
+			LayoutRouterView: {
 				template: '<div><slot /></div>',
 			},
 			Suspense: {
@@ -42,7 +42,7 @@ describe('DefaultLayout', () => {
 					AppSidebar: {
 						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
 					},
-					RouterView: {
+					LayoutRouterView: {
 						template: '<div>Default Layout Content</div>',
 					},
 					Suspense: {
@@ -92,7 +92,7 @@ describe('DefaultLayout', () => {
 					AppSidebar: {
 						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
 					},
-					RouterView: {
+					LayoutRouterView: {
 						template: '<div>Main Content Area</div>',
 					},
 					Suspense: {

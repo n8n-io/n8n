@@ -8,6 +8,7 @@ let isLogsPanelOpenInArtifact = false;
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
+import LayoutRouterView from '@/app/components/app/LayoutRouterView.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -48,6 +49,6 @@ onBeforeUnmount(() => {
 		<template v-if="showSidebar" #sidebar>
 			<AppSidebar />
 		</template>
-		<RouterView />
+		<LayoutRouterView />
 	</BaseLayout>
 </template>

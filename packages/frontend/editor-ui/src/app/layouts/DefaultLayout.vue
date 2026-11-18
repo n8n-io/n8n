@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import BaseLayout from './BaseLayout.vue';
+import LayoutRouterView from '@/app/components/app/LayoutRouterView.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 </script>
 
@@ -8,6 +9,6 @@ import AppSidebar from '@/app/components/app/AppSidebar.vue';
 		<template #sidebar>
 			<AppSidebar />
 		</template>
-		<RouterView />
+		<LayoutRouterView />
 	</BaseLayout>
 </template>

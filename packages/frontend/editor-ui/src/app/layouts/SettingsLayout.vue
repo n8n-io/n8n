@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import BaseLayout from './BaseLayout.vue';
+import LayoutRouterView from '@/app/components/app/LayoutRouterView.vue';
 import AppNavigation from '@/app/components/appNavigation/AppNavigation.vue';
 </script>
 
@@ -12,7 +13,7 @@ import AppNavigation from '@/app/components/appNavigation/AppNavigation.vue';
 
 		<div :class="$style.contentContainer">
 			<div :class="$style.content">
-				<RouterView />
+				<LayoutRouterView />
 			</div>
 		</div>
 	</BaseLayout>

@@ -30,7 +30,7 @@ const renderComponent = createComponentRenderer(InstanceAiLayout, {
 			AppSidebar: {
 				template: '<div data-test-id="app-sidebar">App Sidebar</div>',
 			},
-			RouterView: {
+			LayoutRouterView: {
 				template: '<div>Assistant Content</div>',
 			},
 			Suspense: {

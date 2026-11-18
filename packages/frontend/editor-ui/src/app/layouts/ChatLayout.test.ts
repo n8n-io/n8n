@@ -8,7 +8,7 @@ const renderComponent = createComponentRenderer(ChatLayout, {
 			ChatSidebar: {
 				template: '<div data-test-id="chat-sidebar">Chat Sidebar</div>',
 			},
-			RouterView: {
+			LayoutRouterView: {
 				template: '<div><slot /></div>',
 			},
 			Suspense: {
@@ -42,7 +42,7 @@ describe('ChatLayout', () => {
 					ChatSidebar: {
 						template: '<div data-test-id="chat-sidebar">Chat Sidebar</div>',
 					},
-					RouterView: {
+					LayoutRouterView: {
 						template: '<div>Chat Layout Content</div>',
 					},
 					Suspense: {
@@ -92,7 +92,7 @@ describe('ChatLayout', () => {
 					ChatSidebar: {
 						template: '<div data-test-id="chat-sidebar">Chat Sidebar</div>',
 					},
-					RouterView: {
+					LayoutRouterView: {
 						template: '<div>Main Content Area</div>',
 					},
 					Suspense: {
