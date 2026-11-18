@@ -233,6 +233,18 @@ export const ReadOnlyWithoutPagination: Story = {
 	}),
 };
 
+export const StickyHeader: Story = {
+	render: () => ({
+		components: { N8nDataGrid },
+		setup: () => ({ rows: createProducts(40), columns }),
+		template: `
+			<div style="height: 300px; overflow-y: auto" data-test-id="sticky-header-scroll">
+				<N8nDataGrid :rows="rows" :columns="columns" row-key="id" pagination-mode="none" sticky-header />
+			</div>
+		`,
+	}),
+};
+
 export const Empty: Story = {
 	render: () => ({
 		components: { N8nDataGrid },

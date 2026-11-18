@@ -6,18 +6,20 @@ const {
 	unfilteredDataCount,
 	subExecutionsCount = 0,
 	search,
+	filtered = false,
 } = defineProps<{
 	dataCount: number;
 	unfilteredDataCount: number;
 	subExecutionsCount?: number;
 	search: string;
+	filtered?: boolean;
 }>();
 
 const i18n = useI18n();
 </script>
 
 <template>
-	<N8nText v-if="search" :class="$style.itemsText" data-test-id="run-data-item-count">
+	<N8nText v-if="search || filtered" :class="$style.itemsText" data-test-id="run-data-item-count">
 		{{
 			i18n.baseText('ndv.search.items', {
 				adjustToNumber: unfilteredDataCount,

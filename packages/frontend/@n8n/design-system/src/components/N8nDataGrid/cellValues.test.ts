@@ -1,5 +1,6 @@
 import {
 	areCellValuesEqual,
+	compareDataGridValues,
 	formatCellValue,
 	parseLooseDate,
 	parsePastedValue,
@@ -112,5 +113,34 @@ describe('parseLooseDate', () => {
 		expect(parseLooseDate('2023-02-30')).toBeNull();
 		expect(parseLooseDate('2023-07-09 25:00')).toBeNull();
 		expect(parseLooseDate('09/07/2023')).toBeNull();
+	});
+});
+
+describe('compareDataGridValues', () => {
+	const sortValues = (values: unknown[], type: Parameters<typeof compareDataGridValues>[2]) =>
+		[...values].sort((a, b) => compareDataGridValues(a, b, type));
+
+	it('should sort numbers, booleans and strings in ascending order', () => {
+		expect(sortValues([10, 2, 33], 'number')).toEqual([2, 10, 33]);
+		expect(sortValues([true, false], 'boolean')).toEqual([false, true]);
+		expect(sortValues(['b', 'a', 'c'], 'string')).toEqual(['a', 'b', 'c']);
+	});
+
+	it('should sort dates by time', () => {
+		expect(sortValues(['2026-02-01T00:00:00Z', '2026-01-01T00:00:00Z'], 'date')).toEqual([
+			'2026-01-01T00:00:00Z',
+			'2026-02-01T00:00:00Z',
+		]);
+	});
+
+	it('should put missing values first', () => {
+		const items = [{ value: 3 }, { value: null }, { value: 1 }, { value: undefined }];
+		const sorted = [...items].sort((a, b) => compareDataGridValues(a.value, b.value, 'number'));
+
+		expect(sorted.map((item) => item.value)).toEqual([null, undefined, 1, 3]);
+	});
+
+	it('should keep json values in their order', () => {
+		expect(compareDataGridValues({ a: 1 }, { b: 2 }, 'json')).toBe(0);
 	});
 });

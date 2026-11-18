@@ -8,7 +8,10 @@ import type {
 	ColDef,
 	ColumnMovedEvent,
 	FilterChangedEvent,
+	CellMouseOutEvent,
+	CellMouseOverEvent,
 	GetRowIdParams,
+	RowClassParams,
 	GridApi,
 	GridReadyEvent,
 	ICellRendererParams,
@@ -66,6 +69,7 @@ const props = withDefaults(defineProps<DataGridProps<TRow>>(), {
 	columnsEditable: false,
 	selectable: false,
 	selectionDisabled: false,
+	stickyHeader: false,
 	sortMode: 'client',
 	filterMode: 'client',
 	paginationMode: 'client',
@@ -99,6 +103,26 @@ const gridApi = shallowRef<GridApi<TRow> | null>(null);
 
 const getRowKey = (row: TRow) =>
 	typeof props.rowKey === 'function' ? props.rowKey(row) : String(row[props.rowKey]);
+
+const agRowClassRules = computed(() => {
+	const rules = props.rowClassRules;
+	if (!rules) return undefined;
+	const classesByKey = new Map(
+		props.rows.map((row) => [
+			getRowKey(row),
+			new Set(Object.keys(rules).filter((className) => rules[className](row))),
+		]),
+	);
+	return Object.fromEntries(
+		Object.keys(rules).map((className) => [
+			className,
+			(params: RowClassParams<TRow>) =>
+				!!params.data &&
+				!params.node.rowPinned &&
+				!!classesByKey.get(getRowKey(params.data))?.has(className),
+		]),
+	);
+});
 
 const getRowId = (params: GetRowIdParams<TRow>) =>
 	params.rowPinned === 'bottom' ? FOOTER_ROW_ID : getRowKey(params.data);
@@ -230,6 +254,7 @@ const toColDef = (column: DataGridColumn<TRow>): ColDef<TRow> => {
 		onRename: (columnId, label) => emit('columnRename', { columnId, label }),
 		onAction: (columnId, actionId) => emit('columnAction', { columnId, actionId }),
 		onSort: requestSort,
+		renderLabel: column.headerSlot && slots.header ? () => slots.header?.({ column }) : undefined,
 	};
 
 	return {
@@ -246,6 +271,8 @@ const toColDef = (column: DataGridColumn<TRow>): ColDef<TRow> => {
 		resizable: column.resizable ?? true,
 		lockPinned: true,
 		lockPosition: column.lock,
+		autoHeight: column.autoHeight,
+		wrapText: column.autoHeight,
 		suppressMovable: column.lock !== undefined,
 		sortable: column.sortable ?? column.type !== 'json',
 		comparator: props.sortMode === 'server' ? () => 0 : undefined,
@@ -294,6 +321,8 @@ const appendColumnDef = (): ColDef<TRow> => ({
 	valueGetter: () => null,
 	cellRenderer: () => '',
 });
+
+const hasAutoHeightColumns = computed(() => props.columns.some((column) => column.autoHeight));
 
 const columnDefs = computed(() => [
 	...props.columns.map(toColDef),
@@ -483,6 +512,17 @@ const onCellEditRequest = (event: CellEditRequestEvent<TRow>) => {
 
 const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 
+const onCellMouseOver = (event: CellMouseOverEvent<TRow>) => {
+	if (event.node.rowPinned || !event.data) return;
+	const columnId = event.column.getColId();
+	emit('cellHover', {
+		rowKey: getRowKey(event.data),
+		columnId: columnsById.value.has(columnId) ? columnId : null,
+	});
+};
+
+const onCellMouseOut = (_event: CellMouseOutEvent<TRow>) => emit('cellHover', null);
+
 const onCellClicked = (event: CellClickedEvent<TRow>) => {
 	const rowIndex = event.rowIndex;
 	if (event.node.rowPinned || rowIndex === null) return;
@@ -645,7 +685,7 @@ defineExpose({ focusCell });
 </script>
 
 <template>
-	<div class="data-grid">
+	<div :class="['data-grid', { 'data-grid--sticky-header': stickyHeader }]">
 		<div
 			ref="container"
 			:class="['data-grid-container', { 'data-grid-container--has-rows': rows.length > 0 }]"
@@ -659,8 +699,11 @@ defineExpose({ focusCell });
 				:row-height="DATA_GRID_ROW_HEIGHT"
 				:header-height="DATA_GRID_HEADER_HEIGHT"
 				:animate-rows="false"
+				:ensure-dom-order="true"
+				:suppress-column-virtualisation="hasAutoHeightColumns"
 				:read-only-edit="true"
 				:get-row-id="getRowId"
+				:row-class-rules="agRowClassRules"
 				:pinned-bottom-row-data="pinnedBottomRows"
 				:row-selection="rowSelection"
 				:loading="loading"
@@ -679,6 +722,8 @@ defineExpose({ focusCell });
 				@cell-edit-request="onCellEditRequest"
 				@cell-clicked="onCellClicked"
 				@cell-key-down="onCellKeyDown"
+				@cell-mouse-over="onCellMouseOver"
+				@cell-mouse-out="onCellMouseOut"
 				@column-header-clicked="lastFocusedCell = null"
 				@column-moved="onColumnMoved"
 				@sort-changed="onSortChanged"
@@ -901,6 +946,17 @@ defineExpose({ focusCell });
 	min-width: 0;
 }
 
+.data-grid :deep(.n8n-data-grid-header-custom) {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+
+	> * {
+		flex: 1;
+		min-width: 0;
+	}
+}
+
 .data-grid :deep(.n8n-data-grid-header-icon),
 .data-grid :deep(.n8n-data-grid-header-sort) {
 	flex-shrink: 0;
@@ -931,6 +987,20 @@ defineExpose({ focusCell });
 .data-grid :deep(.n8n-data-grid-special-value) {
 	font-style: italic;
 	color: var(--color--text);
+}
+
+.data-grid--sticky-header {
+	:deep(.ag-root-wrapper),
+	:deep(.ag-root-wrapper-body),
+	:deep(.ag-root) {
+		overflow: clip;
+	}
+
+	:deep(.ag-header) {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+	}
 }
 
 .data-grid-container {

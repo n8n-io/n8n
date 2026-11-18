@@ -72,6 +72,8 @@ type DataGridColumn<TRow> = {
 	renameable?: boolean; // default: false
 	actions?: DataGridColumnAction[];
 	cellSlot?: boolean | ((row: TRow) => boolean); // default: false, renders the `cell` slot for this column, or for the rows where the function returns `true`
+	headerSlot?: boolean; // default: false, renders the `header` slot as the label. The icon, the sort arrow and the filter button stay.
+	autoHeight?: boolean; // default: false, the row grows to fit the cell content and text wraps
 	format?: (value: unknown) => string;
 	cellClass?: string | ((row: TRow) => string | undefined);
 	headerClass?: string;
@@ -146,6 +148,8 @@ Each column has one filter condition. Filters on different columns combine with 
 - `columnsEditable?: boolean` - Turns on edit mode for columns. Users can move columns, rename columns and use column actions. Default: `false`
 - `selectable?: boolean` - Shows a checkbox column for row selection. Default: `false`
 - `selectionDisabled?: boolean` - Keeps the checkbox column visible but stops users from selecting rows, so the columns do not move when selection turns off for a short time. Default: `false`
+- `stickyHeader?: boolean` - Keeps the header visible at the top of the scroll container that the grid is in. Use it when the grid grows with its rows inside a scrolling area. Default: `false`
+- `rowClassRules?: Record<string, (row: TRow) => boolean>` - CSS classes for rows. A row has a class while its rule returns `true`. The grid updates the classes when the reactive state that the rules read changes, without rendering the cells again.
 - `selectedKeys?: string[]` - The keys of the selected rows. The grid keeps its own selection if this is not set.
 - `onUpdate:selectedKeys?: (keys: string[]) => void`
 
@@ -186,12 +190,14 @@ In client mode, a change of sort or filters sets the page to 1. If `rows` gets s
 - `@delete-selected` - The user presses Delete or Backspace while rows are selected and `editable` is `true`. Payload: `(keys: string[]) => void`
 - `@grid-ready` - The grid is set up and shows its columns. Payload: `() => void`
 - `@first-data-rendered` - The grid shows rows for the first time. It does not fire while there are no rows. Payload: `() => void`
+- `@cell-hover` - The pointer moves onto a cell of a data row, or leaves the cells. `columnId` is `null` for columns that the grid adds, such as the checkbox column. Payload: `(hover: { rowKey: string; columnId: string | null } | null) => void`
 
 `update:sort`, `update:filters`, `update:page`, `update:itemsPerPage` and `update:selectedKeys` are props. See [Controlled state](#controlled-state).
 
 ### Slots
 
 - `cell`: `{ row: TRow; column: DataGridColumn<TRow>; value: unknown; formattedValue: string }` - Custom cell content. The grid uses it only for the cells that `cellSlot` selects.
+- `header`: `{ column: DataGridColumn<TRow> }` - Custom header label, for columns with `headerSlot`.
 - `header-append` - Content in a fixed last column header, for example an "add column" button. The grid adds this column only when the slot is set.
 - `footer-row` - Content in a pinned row below the data rows, for example an "add row" button. It renders in the cell of the first column. When there are no rows, the empty state shows in the same row.
 - `empty` - Content when `rows` is empty and `loading` is `false`. Default: "No rows".
@@ -221,6 +227,15 @@ In client mode, a change of sort or filters sets the page to 1. If `rows` gets s
 - `date`: shows as ISO 8601 in the local time zone, and edits with a date-time picker.
 - `json`: shows `JSON.stringify(value)`. It cannot be edited, sorted or filtered.
 
+### Helpers for server mode
+
+A consumer that sorts or filters rows itself can use the same rules as client mode:
+
+- `matchesDataGridFilter(value, filter, type): boolean` - Checks a cell value against one filter.
+- `compareDataGridValues(a, b, type): number` - Compares two cell values in ascending order. Missing values come first.
+
+The node output table uses them to sort and filter all items of a run before it splits them into pages.
+
 ## Not part of the grid
 
 The consumer handles these:
@@ -233,11 +248,7 @@ The consumer handles these:
 
 ## Later (not in the first version)
 
-These are for the node output table (`RunDataTable.vue`). The API above leaves room for them without breaking changes.
-
 - `layout?: 'auto' | 'fill'` - `'fill'` uses the height of the parent and scrolls rows inside the grid.
-- A `header` slot for custom header content.
-- Drag of headers and cells, for mapping values into parameters.
 
 ## Template usage examples
 

@@ -4,6 +4,7 @@ import type { DataGridColumn, DataGridColumnType, DataGridFilterOperator } from 
 import {
 	FILTER_OPERATORS,
 	getAgFilterOptions,
+	matchesDataGridFilter,
 	toAgFilterModel,
 	toDataGridFilters,
 } from './filters';
@@ -158,5 +159,45 @@ describe('filter model conversion', () => {
 		expect(toAgFilterModel([{ field: 'unknown', operator: 'equals', value: 1 }], columns)).toEqual(
 			{},
 		);
+	});
+});
+
+describe('matchesDataGridFilter', () => {
+	it('should apply the operator of the filter to a value', () => {
+		expect(
+			matchesDataGridFilter(5, { field: 'age', operator: 'greaterThan', value: 3 }, 'number'),
+		).toBe(true);
+		expect(
+			matchesDataGridFilter(
+				2,
+				{ field: 'age', operator: 'between', value: 3, valueTo: 9 },
+				'number',
+			),
+		).toBe(false);
+		expect(
+			matchesDataGridFilter(
+				'Alice',
+				{ field: 'name', operator: 'contains', value: 'lic' },
+				'string',
+			),
+		).toBe(true);
+		expect(matchesDataGridFilter(null, { field: 'name', operator: 'null' }, 'string')).toBe(true);
+	});
+
+	it('should compare dates given as strings and as Date objects', () => {
+		const filter = {
+			field: 'at',
+			operator: 'lessThan' as const,
+			value: new Date('2026-06-01T00:00:00Z'),
+		};
+
+		expect(matchesDataGridFilter('2026-01-01T00:00:00Z', filter, 'date')).toBe(true);
+		expect(matchesDataGridFilter('2026-12-01T00:00:00Z', filter, 'date')).toBe(false);
+	});
+
+	it('should not match operators that the column type does not have', () => {
+		expect(
+			matchesDataGridFilter('a', { field: 'name', operator: 'greaterThan', value: 1 }, 'string'),
+		).toBe(false);
 	});
 });

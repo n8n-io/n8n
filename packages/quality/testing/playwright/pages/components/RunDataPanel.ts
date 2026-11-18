@@ -72,23 +72,25 @@ export class RunDataPanel {
 	}
 
 	getTable() {
-		return this.root.locator('table');
+		return this.root.getByTestId('data-grid');
 	}
 
 	getTableHeaders() {
-		return this.root.locator('table th');
+		return this.getTable().locator('.ag-header-viewport .ag-header-cell');
 	}
 
 	getTableHeader(index: number) {
-		return this.root.locator('table th').nth(index);
+		return this.getTableHeaders().nth(index);
 	}
 
 	getTableRows() {
-		return this.root.locator('tr');
+		return this.getTable().locator(
+			'.ag-header-viewport .ag-header-row-column, .ag-center-cols-container .ag-row',
+		);
 	}
 
 	getTableRow(index: number) {
-		return this.root.locator('tr').nth(index);
+		return this.getTableRows().nth(index);
 	}
 
 	getTableRowHighlights(index: number) {
@@ -100,7 +102,11 @@ export class RunDataPanel {
 	}
 
 	getTbodyCell(row: number, col: number) {
-		return this.root.locator('table tbody tr').nth(row).locator('td').nth(col);
+		return this.getTable()
+			.locator('.ag-center-cols-container .ag-row')
+			.nth(row)
+			.locator('.ag-cell')
+			.nth(col);
 	}
 
 	getTbodyCellLink(row: number, col: number) {
@@ -164,7 +170,7 @@ export class RunDataPanel {
 	}
 
 	getHoveringItems() {
-		return this.root.getByTestId('hovering-item');
+		return this.getTable().locator('.ag-center-cols-container .ag-row.hovering-item');
 	}
 
 	getNodeErrorMessageHeader(): Locator {

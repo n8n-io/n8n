@@ -133,6 +133,15 @@ const createPredicate = (operator: DataGridFilterOperator, type: DataGridColumnT
 
 const passAll: Predicate = () => true;
 
+/** Checks a cell value against a filter, with the same rules as client filter mode. */
+export const matchesDataGridFilter = (
+	value: unknown,
+	filter: DataGridFilter,
+	type: DataGridColumnType,
+): boolean =>
+	isFilterOperator(type, filter.operator) &&
+	createPredicate(filter.operator, type)([filter.value, filter.valueTo], value);
+
 export const getAgFilter = (type: DataGridColumnType) => AG_FILTER_BY_TYPE[type];
 
 const AG_PLACEHOLDER_OPTION = 'empty';

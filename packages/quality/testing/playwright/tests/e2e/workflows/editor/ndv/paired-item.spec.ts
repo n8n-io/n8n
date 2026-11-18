@@ -25,57 +25,33 @@ test.describe(
 			// input to output
 			const inputTableRow1 = n8n.ndv.inputPanel.getTableRow(1);
 			await expect(inputTableRow1).toBeVisible();
-			await expect(inputTableRow1).toHaveAttribute('data-test-id', 'hovering-item');
+			await expect(inputTableRow1).toHaveClass(/\bhovering-item\b/);
 
 			// Move the cursor to simulate hover behavior
 			await inputTableRow1.hover();
-			await expect(n8n.ndv.outputPanel.getTableRow(4)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.outputPanel.getTableRow(4)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.inputPanel.getTableRow(2).hover();
-			await expect(n8n.ndv.outputPanel.getTableRow(2)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.outputPanel.getTableRow(2)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.inputPanel.getTableRow(3).hover();
-			await expect(n8n.ndv.outputPanel.getTableRow(6)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.outputPanel.getTableRow(6)).toHaveClass(/\bhovering-item\b/);
 
 			// output to input
 			await n8n.ndv.outputPanel.getTableRow(1).hover();
-			await expect(n8n.ndv.inputPanel.getTableRow(4)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(4)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.outputPanel.getTableRow(4).hover();
-			await expect(n8n.ndv.inputPanel.getTableRow(1)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(1)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.outputPanel.getTableRow(2).hover();
-			await expect(n8n.ndv.inputPanel.getTableRow(2)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(2)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.outputPanel.getTableRow(6).hover();
-			await expect(n8n.ndv.inputPanel.getTableRow(3)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(3)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.outputPanel.getTableRow(1).hover();
-			await expect(n8n.ndv.inputPanel.getTableRow(4)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(4)).toHaveClass(/\bhovering-item\b/);
 		});
 
 		test('maps paired input and output items based on selected input node', async ({ n8n }) => {
@@ -139,10 +115,7 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.getRunSelectorInput()).toHaveValue('1 of 2 (6 items)');
 
 			await expect(n8n.ndv.inputPanel.getTableRow(1)).toContainText('1111');
-			await expect(n8n.ndv.inputPanel.getTableRow(1)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(1)).toHaveClass(/\bhovering-item\b/);
 
 			await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText('1111');
 			await n8n.ndv.outputPanel.getTableRow(1).hover();
@@ -151,10 +124,7 @@ test.describe(
 			await n8n.ndv.outputPanel.getTableRow(3).hover();
 
 			await expect(n8n.ndv.inputPanel.getTableRow(3)).toContainText('4444');
-			await expect(n8n.ndv.inputPanel.getTableRow(3)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(3)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.changeOutputRunSelector('2 of 2 (6 items)');
 
@@ -162,19 +132,13 @@ test.describe(
 			await n8n.ndv.inputPanel.getTableRow(1).hover();
 
 			await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText('1000');
-			await expect(n8n.ndv.outputPanel.getTableRow(1)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.outputPanel.getTableRow(1)).toHaveClass(/\bhovering-item\b/);
 
 			await expect(n8n.ndv.outputPanel.getTableRow(3)).toContainText('2000');
 			await n8n.ndv.outputPanel.getTableRow(3).hover();
 
 			await expect(n8n.ndv.inputPanel.getTableRow(3)).toContainText('2000');
-			await expect(n8n.ndv.inputPanel.getTableRow(3)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(3)).toHaveClass(/\bhovering-item\b/);
 		});
 
 		test('can pair items between input and output across branches and runs', async ({ n8n }) => {
@@ -194,19 +158,13 @@ test.describe(
 			await n8n.ndv.outputPanel.getTableRow(1).hover();
 
 			await expect(n8n.ndv.inputPanel.getTableRow(5)).toContainText('8888');
-			await expect(n8n.ndv.inputPanel.getTableRow(5)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(5)).toHaveClass(/\bhovering-item\b/);
 
 			await expect(n8n.ndv.outputPanel.getTableRow(2)).toContainText('9999');
 			await n8n.ndv.outputPanel.getTableRow(2).hover();
 
 			await expect(n8n.ndv.inputPanel.getTableRow(6)).toContainText('9999');
-			await expect(n8n.ndv.inputPanel.getTableRow(6)).toHaveAttribute(
-				'data-test-id',
-				'hovering-item',
-			);
+			await expect(n8n.ndv.inputPanel.getTableRow(6)).toHaveClass(/\bhovering-item\b/);
 
 			await n8n.ndv.close();
 

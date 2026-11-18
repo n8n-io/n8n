@@ -30,6 +30,7 @@ const hasActiveFilter = ref(false);
 const currentSort = ref<SortDirection>(null);
 
 const column = computed(() => props.params.dataGridColumn);
+const HeaderLabel = () => props.params.renderLabel?.();
 const columnId = computed(() => props.params.column.getColId());
 const isColumnsEditable = computed(() => props.params.isColumnsEditable());
 const isSortable = computed(() => props.params.column.getColDef().sortable === true);
@@ -133,8 +134,11 @@ onUnmounted(() => {
 	>
 		<div class="n8n-data-grid-header-label">
 			<N8nIcon v-if="column.icon" :icon="column.icon" class="n8n-data-grid-header-icon" />
+			<div v-if="params.renderLabel" class="n8n-data-grid-header-custom">
+				<HeaderLabel />
+			</div>
 			<N8nInlineTextEdit
-				v-if="isRenameable"
+				v-else-if="isRenameable"
 				ref="renameInput"
 				:model-value="params.displayName"
 				:max-width="labelWidth"

@@ -49,6 +49,10 @@ export type DataGridColumn<TRow extends DataGridRow = DataGridRow> = {
 	actions?: DataGridColumnAction[];
 	/** Renders the `cell` slot for all cells of this column, or for the rows where it returns `true`. Default: `false` */
 	cellSlot?: boolean | ((row: TRow) => boolean);
+	/** Renders the `header` slot as the label of this column. The grid keeps the icon, the sort arrow and the filter button. Default: `false` */
+	headerSlot?: boolean;
+	/** Grows the row to fit the cell content and wraps text. Default: `false` */
+	autoHeight?: boolean;
 	/** Converts a value to the text in the cell. It replaces the default format of the column type. */
 	format?: (value: unknown) => string;
 	/** CSS classes for the cells of this column. */
@@ -193,9 +197,13 @@ export type DataGridBaseProps<TRow extends DataGridRow> = {
 	selectable?: boolean;
 	/** Keeps the checkbox column visible but stops users from selecting rows. Default: `false` */
 	selectionDisabled?: boolean;
+	/** Keeps the header visible at the top of the scroll container that the grid is in. Default: `false` */
+	stickyHeader?: boolean;
 	/** The keys of the selected rows. The grid keeps its own selection if this is not set. */
 	selectedKeys?: string[];
 	'onUpdate:selectedKeys'?: Handler<string[]>;
+	/** CSS classes for rows. A row has a class while its rule returns `true`. The grid updates the classes when the reactive state the rules read changes. */
+	rowClassRules?: Record<string, (row: TRow) => boolean>;
 	/** Options for the page size selector. Default: `[10, 20, 50]` */
 	pageSizes?: number[];
 };
@@ -219,7 +227,12 @@ export type DataGridEmits = {
 	gridReady: [];
 	/** The grid shows rows for the first time. It does not fire while there are no rows. */
 	firstDataRendered: [];
+	/** The pointer moves onto a cell of a data row, or `null` when it leaves the cells. */
+	cellHover: [hover: DataGridCellHover | null];
 };
+
+/** The cell under the pointer. `columnId` is `null` for columns that the grid adds, such as the checkbox column. */
+export type DataGridCellHover = { rowKey: string; columnId: string | null };
 
 export type DataGridColumnHeaderOptions = {
 	dataGridColumn: Pick<DataGridColumn, 'icon' | 'renameable' | 'actions'>;
@@ -227,6 +240,11 @@ export type DataGridColumnHeaderOptions = {
 	onRename: (columnId: string, label: string) => void;
 	onAction: (columnId: string, actionId: string) => void;
 	onSort: (columnId: string, direction: DataGridSortDirection | null) => void;
+	renderLabel?: () => VNode[] | undefined;
+};
+
+export type DataGridHeaderSlotProps<TRow extends DataGridRow = DataGridRow> = {
+	column: DataGridColumn<TRow>;
 };
 
 export type DataGridCellSlotProps<TRow extends DataGridRow = DataGridRow> = {
@@ -239,6 +257,8 @@ export type DataGridCellSlotProps<TRow extends DataGridRow = DataGridRow> = {
 export type DataGridSlots<TRow extends DataGridRow = DataGridRow> = {
 	/** Custom cell content, for columns with `cellSlot`. */
 	cell?: (props: DataGridCellSlotProps<TRow>) => VNode[];
+	/** Custom header label, for columns with `headerSlot`. */
+	header?: (props: DataGridHeaderSlotProps<TRow>) => VNode[];
 	/** Content of a fixed last column header, for example an "add column" button. */
 	'header-append'?: () => VNode[];
 	/** A row below the data rows, for example an "add row" button. */

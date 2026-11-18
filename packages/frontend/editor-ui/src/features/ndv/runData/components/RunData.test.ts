@@ -19,8 +19,9 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
+import { getGridApi, type GridApi } from 'ag-grid-community';
 import {
 	createRunExecutionData,
 	jsonParse,
@@ -1944,6 +1945,133 @@ describe('RunData', () => {
 			parameters: {},
 		},
 	] as INodeUi[];
+
+	describe('table sort and filters', () => {
+		const ageItems = (count: number) =>
+			Array.from({ length: count }, (_, index) => ({ json: { id: index, age: index } }));
+
+		const getFirstRowCell = (container: Element, columnId: string) =>
+			[...container.querySelectorAll('.ag-center-cols-container [row-index="0"] .ag-cell')].find(
+				(cell) => cell.getAttribute('col-id') === columnId,
+			)?.textContent;
+
+		const getGrid = async (container: Element): Promise<GridApi> => {
+			let api: GridApi | undefined;
+			await waitFor(() => {
+				const gridElement = container.querySelector('[grid-id]')?.parentElement;
+				api = gridElement ? getGridApi(gridElement) : undefined;
+				expect(getFirstRowCell(container, 'age')).toBe('0');
+			});
+			if (!api) throw new Error('Grid API not found');
+			return api;
+		};
+
+		it('should sort all items before splitting them into pages', async () => {
+			const { container, findAllByTestId, getByTestId } = render({
+				defaultRunItems: ageItems(30),
+				displayMode: 'table',
+			});
+			await getGrid(container);
+			const findAgeHeader = async () => {
+				const headers = await findAllByTestId('data-grid-column-header');
+				const header = headers.find((element) => element.textContent?.includes('age'));
+				if (!header) throw new Error('Age header not found');
+				return header;
+			};
+
+			await fireEvent.click(await findAgeHeader());
+			await waitFor(async () =>
+				expect(
+					within(await findAgeHeader()).getByTestId('data-grid-column-header-sort'),
+				).toBeInTheDocument(),
+			);
+			await fireEvent.click(await findAgeHeader());
+
+			await waitFor(() => expect(getFirstRowCell(container, 'age')).toBe('29'));
+			expect(getByTestId('ndv-items-count')).toHaveTextContent('30 items');
+		});
+
+		it('should filter all items and show the filtered count', async () => {
+			const { container, getByTestId, queryByTestId } = render({
+				defaultRunItems: ageItems(30),
+				displayMode: 'table',
+			});
+			const api = await getGrid(container);
+			expect(getByTestId('ndv-data-pagination')).toBeInTheDocument();
+
+			await api.setColumnFilterModel('age', {
+				filterType: 'number',
+				type: 'greaterThan',
+				filter: 26,
+			});
+			api.onFilterChanged('columnFilter');
+
+			await waitFor(() =>
+				expect(getByTestId('ndv-items-count')).toHaveTextContent('3 of 30 items'),
+			);
+			await waitFor(() => expect(getFirstRowCell(container, 'age')).toBe('27'));
+			expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+		});
+
+		it('should show matching items of a new run after a run that matched no item', async () => {
+			const runWithAges = (firstAge: number) =>
+				createTestWorkflowExecutionResponse({
+					mode: 'trigger',
+					status: 'success',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								'Test Node': [
+									{
+										startTime: Date.now(),
+										executionIndex: 0,
+										executionTime: 1,
+										data: {
+											main: [
+												Array.from({ length: 30 }, (_, index) => ({
+													json: { id: index, age: firstAge + index },
+												})),
+											],
+										},
+										source: [null],
+									},
+								],
+							},
+						},
+					}),
+				});
+			const { container, getByTestId } = render({
+				defaultRunItems: ageItems(30),
+				displayMode: 'table',
+			});
+			const api = await getGrid(container);
+			const executionState = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+
+			await api.setColumnFilterModel('age', {
+				filterType: 'number',
+				type: 'greaterThan',
+				filter: 100,
+			});
+			api.onFilterChanged('columnFilter');
+			await waitFor(() =>
+				expect(getByTestId('ndv-items-count')).toHaveTextContent('0 of 30 items'),
+			);
+
+			executionState.setWorkflowExecutionData(runWithAges(50));
+			await waitFor(() =>
+				expect(getByTestId('ndv-items-count')).toHaveTextContent('0 of 30 items'),
+			);
+
+			executionState.setWorkflowExecutionData(runWithAges(90));
+
+			await waitFor(() =>
+				expect(getByTestId('ndv-items-count')).toHaveTextContent('19 of 30 items'),
+			);
+			await waitFor(() => expect(getFirstRowCell(container, 'age')).toBe('101'));
+		});
+	});
 
 	const render = ({
 		defaultRunItems,

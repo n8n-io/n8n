@@ -102,8 +102,11 @@ import {
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
+	type DataGridFilter,
+	type DataGridSort,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { inferColumnTypes, sortAndFilterTableItems } from '../tableItems';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
@@ -566,10 +569,24 @@ const rawInputData = computed(() =>
 
 const unfilteredInputData = computed(() => getPinDataOrLiveData(rawInputData.value));
 const inputData = computed(() => getFilteredData(unfilteredInputData.value));
-const inputDataPage = computed(() => {
-	const offset = pageSize.value * (currentPage.value - 1);
-	return inputData.value.slice(offset, offset + pageSize.value);
+const tableSort = ref<DataGridSort>(null);
+const tableFilters = ref<DataGridFilter[]>([]);
+const isTableView = computed(() => props.displayMode === 'table');
+const hasTableFilters = computed(() => isTableView.value && tableFilters.value.length > 0);
+const tableColumnTypes = computed(() => inferColumnTypes(inputData.value));
+const displayedItems = computed(() => {
+	const items = inputData.value.map((item, index) => ({ item, index }));
+	return isTableView.value
+		? sortAndFilterTableItems(items, tableSort.value, tableFilters.value, tableColumnTypes.value)
+		: items;
 });
+const displayedDataCount = computed(() =>
+	hasTableFilters.value ? displayedItems.value.length : dataCount.value,
+);
+const pageItems = computed(() =>
+	displayedItems.value.slice(currentPageOffset.value, currentPageOffset.value + pageSize.value),
+);
+const inputDataPage = computed(() => pageItems.value.map(({ item }) => item));
 const jsonData = computed(() => executionDataToJson(inputData.value));
 const binaryData = computed(() => {
 	const runDataOfNode = currentNodeRunData.value?.[props.runIndex]?.data;
@@ -756,7 +773,8 @@ const hasPreviewSchema = asyncComputed(async () => {
 
 const itemsCountProps = computed<InstanceType<typeof RunDataItemCount>['$props']>(() => ({
 	search: search.value,
-	dataCount: dataCount.value,
+	filtered: hasTableFilters.value,
+	dataCount: displayedDataCount.value,
 	unfilteredDataCount: unfilteredDataCount.value,
 	subExecutionsCount: activeTaskMetadata.value?.subExecutionsCount,
 }));
@@ -821,6 +839,11 @@ watch(binaryData, (newData, prevData) => {
 	} else if (!newData.length && props.displayMode === 'binary') {
 		onDisplayModeChange('table');
 	}
+});
+
+watch([() => node.value?.id, () => props.runIndex, currentOutputIndex], () => {
+	tableSort.value = null;
+	tableFilters.value = [];
 });
 
 watch(currentOutputIndex, (branchIndex: number) => {
@@ -1243,12 +1266,12 @@ function onCurrentPageChange(value: number) {
 		pane: props.paneType,
 		page_selected: currentPage.value,
 		page_size: pageSize.value,
-		items_total: dataCount.value,
+		items_total: displayedDataCount.value,
 	});
 }
 
 function resetCurrentPageIfTooFar() {
-	const maxPage = Math.ceil(dataCount.value / pageSize.value);
+	const maxPage = Math.max(1, Math.ceil(displayedDataCount.value / pageSize.value));
 	if (maxPage < currentPage.value) {
 		currentPage.value = maxPage;
 	}
@@ -1266,8 +1289,18 @@ function onPageSizeChange(newPageSize: number) {
 		pane: props.paneType,
 		page_selected: currentPage.value,
 		page_size: pageSize.value,
-		items_total: dataCount.value,
+		items_total: displayedDataCount.value,
 	});
+}
+
+function onTableSortChange(sort: DataGridSort) {
+	tableSort.value = sort;
+	currentPage.value = 1;
+}
+
+function onTableFiltersChange(filters: DataGridFilter[]) {
+	tableFilters.value = filters;
+	currentPage.value = 1;
 }
 
 function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {
@@ -2207,11 +2240,13 @@ defineExpose({ enterEditMode });
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
 				<LazyRunDataTable
 					:node="node"
-					:input-data="inputDataPage"
+					:items="pageItems"
+					:column-types="tableColumnTypes"
+					:sort="tableSort"
+					:filters="tableFilters"
 					:mapping-enabled="mappingEnabled"
 					:distance-from-active="distanceFromActive"
 					:run-index="runIndex"
-					:page-offset="currentPageOffset"
 					:total-runs="maxRunIndex"
 					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
@@ -2223,6 +2258,8 @@ defineExpose({ enterEditMode });
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
 					@collapsing-column-changed="emit('collapsingTableColumnChanged', $event)"
+					@update:sort="onTableSortChange"
+					@update:filters="onTableFiltersChange"
 				/>
 			</Suspense>
 
@@ -2295,14 +2332,14 @@ defineExpose({ enterEditMode });
 				!hasRunError &&
 				displayMode !== 'binary' &&
 				displayMode !== 'html' &&
-				dataCount > pageSize &&
+				displayedDataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
 			:current-page="currentPage"
 			:page-size="pageSize"
-			:total="dataCount"
+			:total="displayedDataCount"
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>

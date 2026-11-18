@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { getPairedItemId } from '@/app/utils/pairedItemUtils';
 import { shorten } from '@/app/utils/typesUtils';
-import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { useTemplateRef, computed, onMounted, ref, watch } from 'vue';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import isEqual from 'lodash/isEqual';
 import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
@@ -18,17 +19,39 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import type { TableItem } from '../tableItems';
 
-import { N8nIcon, N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-system';
+import {
+	N8nDataGrid,
+	N8nIcon,
+	N8nIconButton,
+	N8nInfoTip,
+	N8nTooltip,
+	N8nTree,
+	type DataGridCellHover,
+	type DataGridColumn,
+	type DataGridColumnType,
+	type DataGridFilter,
+	type DataGridRow,
+	type DataGridSort,
+} from '@n8n/design-system';
+
 const MAX_COLUMNS_LIMIT = 40;
-
-type DraggableRef = InstanceType<typeof Draggable>;
+const EXECUTION_LINK_COLUMN = '__n8n_execution_link__';
+const EMPTY_ITEM_COLUMN = '__n8n_empty_item__';
+const HOVERING_ROW_CLASS = 'hovering-item';
+const COLLAPSED_CELL_CLASS = 'n8n-run-data-collapsed-cell';
+const JSON_COLUMN_WIDTH = 300;
+const VALUE_COLUMN_WIDTH = 200;
+const EXECUTION_LINK_COLUMN_WIDTH = 48;
 
 type Props = {
 	node: INodeUi;
-	inputData: INodeExecutionData[];
+	items: TableItem[];
+	columnTypes: Record<string, DataGridColumnType>;
+	sort: DataGridSort;
+	filters: DataGridFilter[];
 	distanceFromActive: number;
-	pageOffset: number;
 	runIndex?: number;
 	outputIndex?: number;
 	totalRuns?: number;
@@ -41,6 +64,8 @@ type Props = {
 	collapsingColumnName: string | null;
 };
 
+type RowInfo = { index: number; metadata: INodeExecutionData['metadata'] | undefined };
+
 const props = withDefaults(defineProps<Props>(), {
 	runIndex: 0,
 	outputIndex: 0,
@@ -52,28 +77,24 @@ const props = withDefaults(defineProps<Props>(), {
 	disableHoverHighlight: false,
 	compact: false,
 });
+
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];
 	displayModeChange: [mode: IRunDataDisplayMode];
 	mounted: [data: { avgRowHeight: number }];
 	collapsingColumnChanged: [columnName: string | null];
+	'update:sort': [sort: DataGridSort];
+	'update:filters': [filters: DataGridFilter[]];
 }>();
 
 const externalHooks = useExternalHooks();
+const wrapperRef = useTemplateRef<HTMLElement>('wrapper');
 
-const tableRef = useTemplateRef('tableRef');
-
-const activeColumn = ref(-1);
 const forceShowGrip = ref(false);
-const draggedColumn = ref(false);
 const draggingPath = ref<string | null>(null);
 const hoveringPath = ref<string | null>(null);
-const hoveringColumnIndex = ref<number>(-1);
-const activeRow = ref<number | null>(null);
-const columnLimit = ref(MAX_COLUMNS_LIMIT);
-const columnLimitExceeded = ref(false);
-const draggableRef = ref<DraggableRef>();
-const fixedColumnWidths = ref<number[] | undefined>();
+const hoveredColumnId = ref<string | null>(null);
+const activeRowKey = ref<string | null>(null);
 
 const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
@@ -87,42 +108,128 @@ const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutio
 const hoveringItem = computed(() => ndvStore.value.hoveringItem);
 const focusedMappableInput = computed(() => ndvStore.value.focusedMappableInput);
 const highlight = computed(() => ndvStore.value.highlightDraggables);
-
 const canDraggableDrop = computed(() => ndvStore.value.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.value.draggableStickyPos);
 const pairedItemMappings = computed(
 	() => workflowExecutionStateStore.value.activeExecutionPairedItemMappings,
 );
-const tableData = computed(() => convertToTable(props.inputData));
-const collapsingColumnIndex = computed(() => {
-	if (!props.collapsingColumnName) {
-		return -1;
-	}
 
-	return tableData.value.columns.indexOf(props.collapsingColumnName);
-});
+const rowInfo = new WeakMap<DataGridRow, RowInfo>();
 
-onMounted(() => {
-	if (tableData.value?.columns && draggableRef.value) {
-		const tbody = draggableRef.value.$refs.wrapper as HTMLElement;
-		if (tbody) {
-			emit('mounted', {
-				avgRowHeight: tbody.offsetHeight / tableData.value.data.length,
-			});
+const isNonEmptyObject = (value: unknown) =>
+	typeof value === 'object' && value !== null && Object.keys(value).length > 0;
+
+const tableData = computed(() => {
+	const columns: string[] = [];
+	const hasJson: Record<string, boolean> = {};
+	let isColumnLimitExceeded = false;
+
+	const rows = props.items.map(({ item, index }) => {
+		const json = item.json ?? {};
+		const keys = Object.keys(json);
+		isColumnLimitExceeded ||= keys.length > MAX_COLUMNS_LIMIT;
+		for (const key of keys.slice(0, MAX_COLUMNS_LIMIT)) {
+			if (!columns.includes(key)) columns.push(key);
+			hasJson[key] ||= isNonEmptyObject(json[key]);
 		}
-	}
+		const row: DataGridRow = { ...json };
+		rowInfo.set(row, {
+			index,
+			metadata: item.metadata?.subExecution ? item.metadata : undefined,
+		});
+		return row;
+	});
+
+	return {
+		rows,
+		columns,
+		hasJson,
+		isColumnLimitExceeded,
+		hasExecutionIds: rows.some((row) => rowInfo.get(row)?.metadata !== undefined),
+	};
 });
 
-function isHoveringRow(row: number): boolean {
-	if (props.disableHoverHighlight) {
-		return false;
-	}
+const getRowKey = (row: DataGridRow) => String(rowInfo.get(row)?.index ?? -1);
+const getItemIndex = (row: DataGridRow) => rowInfo.get(row)?.index ?? -1;
+const getMetadata = (row: DataGridRow) => rowInfo.get(row)?.metadata;
 
-	if (row === activeRow.value) {
-		return true;
-	}
+function getSubExecutionUrl(row: DataGridRow) {
+	const metadata = getMetadata(row);
+	return metadata ? resolveRelatedExecutionUrl(metadata) : undefined;
+}
 
-	const itemIndex = props.pageOffset + row;
+function openSubExecution(row: DataGridRow) {
+	const metadata = getMetadata(row);
+	if (metadata) trackOpeningRelatedExecution(metadata, 'table');
+}
+
+const isTreeValue = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null;
+
+const getTreeValue = (row: DataGridRow, field: string) =>
+	isTreeValue(row[field]) ? row[field] : undefined;
+
+const toDataColumn = (name: string): DataGridColumn => {
+	const isCollapsed = props.collapsingColumnName !== null && props.collapsingColumnName !== name;
+	return {
+		id: name,
+		field: name,
+		label: name,
+		type: props.columnTypes[name] ?? 'string',
+		width: tableData.value.hasJson[name] ? JSON_COLUMN_WIDTH : VALUE_COLUMN_WIDTH,
+		headerSlot: true,
+		cellSlot: true,
+		autoHeight: !isCollapsed,
+		cellClass: isCollapsed ? COLLAPSED_CELL_CLASS : undefined,
+	};
+};
+
+const slotOnlyColumn = (id: string, width?: number): DataGridColumn => ({
+	id,
+	field: id,
+	label: '',
+	type: 'string',
+	width,
+	flex: width ? undefined : 1,
+	resizable: false,
+	sortable: false,
+	filterable: false,
+	cellSlot: true,
+	autoHeight: true,
+});
+
+const columnNames = computed(() => {
+	const { rows, columns: pageColumns } = tableData.value;
+	const runColumns = rows.length === 0 ? Object.keys(props.columnTypes) : [];
+	const stateColumns = props.filters.map(({ field }) => field);
+	if (props.sort) stateColumns.push(props.sort.field);
+	return [...new Set([...pageColumns, ...runColumns, ...stateColumns])].slice(0, MAX_COLUMNS_LIMIT);
+});
+
+const columns = computed<DataGridColumn[]>((previous) => {
+	const hasItemsWithoutFields = tableData.value.rows.length > 0 && columnNames.value.length === 0;
+	const next = [
+		...(tableData.value.hasExecutionIds
+			? [slotOnlyColumn(EXECUTION_LINK_COLUMN, EXECUTION_LINK_COLUMN_WIDTH)]
+			: []),
+		...(hasItemsWithoutFields
+			? [slotOnlyColumn(EMPTY_ITEM_COLUMN)]
+			: columnNames.value.map(toDataColumn)),
+	];
+	return previous && isEqual(previous, next) ? previous : next;
+});
+
+const firstRowKey = computed(() => {
+	const [firstRow] = tableData.value.rows;
+	return firstRow ? getRowKey(firstRow) : null;
+});
+
+function isHoveringRow(row: DataGridRow): boolean {
+	if (props.disableHoverHighlight) return false;
+	const rowKey = getRowKey(row);
+	if (rowKey === activeRowKey.value) return true;
+
+	const itemIndex = getItemIndex(row);
 	if (
 		itemIndex === 0 &&
 		!hoveringItem.value &&
@@ -137,9 +244,7 @@ function isHoveringRow(row: number): boolean {
 		props.outputIndex || 0,
 		itemIndex,
 	);
-	if (!hoveringItem.value || !pairedItemMappings.value[itemNodeId]) {
-		return false;
-	}
+	if (!hoveringItem.value || !pairedItemMappings.value[itemNodeId]) return false;
 
 	const hoveringItemId = getPairedItemId(
 		hoveringItem.value.nodeName,
@@ -150,66 +255,37 @@ function isHoveringRow(row: number): boolean {
 	return pairedItemMappings.value[itemNodeId].has(hoveringItemId);
 }
 
-function showExecutionLink(index: number) {
-	if (index === activeRow.value) {
-		return true;
-	}
+const rowClassRules = { [HOVERING_ROW_CLASS]: isHoveringRow };
 
-	if (activeRow.value === null) {
-		return index === 0;
-	}
-
-	return false;
+function showExecutionLink(row: DataGridRow) {
+	const rowKey = getRowKey(row);
+	return activeRowKey.value === null ? rowKey === firstRowKey.value : rowKey === activeRowKey.value;
 }
 
-function onMouseEnterCell(e: MouseEvent) {
-	const target = e.target;
-	const col = (target as HTMLElement).dataset.col;
-	const parsedCol = col ? parseInt(col, 10) : Number.NaN;
-
-	if (!isNaN(parsedCol)) {
-		hoveringColumnIndex.value = parsedCol;
-
-		if (target && props.mappingEnabled) {
-			activeColumn.value = parsedCol;
-		}
-	}
-
-	if (target) {
-		const row = (target as HTMLElement).dataset.row;
-		if (row && !isNaN(parseInt(row, 10))) {
-			activeRow.value = parseInt(row, 10);
-			emit('activeRowChanged', props.pageOffset + activeRow.value);
-		}
-	}
+function onCellHover(hover: DataGridCellHover | null) {
+	hoveredColumnId.value = hover?.columnId ?? null;
+	activeRowKey.value = hover?.rowKey ?? null;
+	emit('activeRowChanged', hover ? Number(hover.rowKey) : null);
 }
 
-function onMouseLeaveCell() {
-	activeColumn.value = -1;
-	activeRow.value = null;
-	emit('activeRowChanged', null);
-	hoveringColumnIndex.value = -1;
+function isActiveHeader(columnName: string) {
+	return props.mappingEnabled && (hoveredColumnId.value === columnName || forceShowGrip.value);
 }
 
-function onMouseEnterKey(path: Array<string | number>, colIndex: number) {
-	hoveringPath.value = getCellExpression(path, colIndex);
+function onMouseEnterKey(path: Array<string | number>, columnName: string) {
+	hoveringPath.value = getCellExpression(path, columnName);
 }
 
 function onMouseLeaveKey() {
 	hoveringPath.value = null;
 }
 
-function isHovering(path: Array<string | number>, colIndex: number) {
-	const expr = getCellExpression(path, colIndex);
-
-	return hoveringPath.value === expr;
+function isHovering(path: Array<string | number>, columnName: string) {
+	return hoveringPath.value === getCellExpression(path, columnName);
 }
 
 function getExpression(column: string) {
-	if (!props.node) {
-		return '';
-	}
-
+	if (!props.node) return '';
 	return getMappedExpression({
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
@@ -219,34 +295,22 @@ function getExpression(column: string) {
 }
 
 function getPathNameFromTarget(el?: HTMLElement) {
-	if (!el) {
-		return '';
-	}
-	return el.dataset.name;
+	return el ? el.dataset.name : '';
 }
 
-function getCellPathName(path: Array<string | number>, colIndex: number) {
+function getCellPathName(path: Array<string | number>, columnName: string) {
 	const lastKey = path[path.length - 1];
-	if (typeof lastKey === 'string') {
-		return lastKey;
-	}
-	if (path.length > 1) {
-		const prevKey = path[path.length - 2];
-		return `${prevKey}[${lastKey}]`;
-	}
-	const column = tableData.value.columns[colIndex];
-	return `${column}[${lastKey}]`;
+	if (typeof lastKey === 'string') return lastKey;
+	if (path.length > 1) return `${path[path.length - 2]}[${lastKey}]`;
+	return `${columnName}[${lastKey}]`;
 }
 
-function getCellExpression(path: Array<string | number>, colIndex: number) {
-	if (!props.node) {
-		return '';
-	}
-	const column = tableData.value.columns[colIndex];
+function getCellExpression(path: Array<string | number>, columnName: string) {
+	if (!props.node) return '';
 	return getMappedExpression({
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
-		path: [column, ...path],
+		path: [columnName, ...path],
 		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 }
@@ -262,29 +326,18 @@ function isEmpty(value: unknown): boolean {
 }
 
 function getValueToRender(value: unknown): string {
-	if (value === '') {
-		return i18n.baseText('runData.emptyString');
-	}
-	if (typeof value === 'string') {
-		return value;
-	}
-	if (Array.isArray(value) && value.length === 0) {
-		return i18n.baseText('runData.emptyArray');
-	}
+	if (value === '') return i18n.baseText('runData.emptyString');
+	if (typeof value === 'string') return value;
+	if (Array.isArray(value) && value.length === 0) return i18n.baseText('runData.emptyArray');
 	if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
 		return i18n.baseText('runData.emptyObject');
 	}
-	if (value === null || value === undefined) {
-		return `${value}`;
-	}
-	if (value === true || value === false || typeof value === 'number') {
-		return value.toString();
-	}
+	if (value === null || value === undefined) return `${value}`;
+	if (value === true || value === false || typeof value === 'number') return value.toString();
 	return JSON.stringify(value);
 }
 
 function onDragStart(el: HTMLElement, data?: string) {
-	draggedColumn.value = true;
 	ndvStore.value.draggableStartDragging({
 		type: 'mapping',
 		data: data ?? '',
@@ -297,22 +350,16 @@ function onCellDragStart(el: HTMLElement, data?: string) {
 	if (el?.dataset.value) {
 		draggingPath.value = el.dataset.value;
 	}
-
 	onDragStart(el, data);
 }
 
 function onCellDragEnd(el: HTMLElement) {
 	draggingPath.value = null;
-
 	onDragEnd(el.dataset.name ?? '', 'tree', el.dataset.depth ?? '0');
 }
 
-function isDraggingKey(path: Array<string | number>, colIndex: number) {
-	if (!draggingPath.value) {
-		return;
-	}
-
-	return draggingPath.value === getCellExpression(path, colIndex);
+function isDraggingKey(path: Array<string | number>, columnName: string) {
+	return !!draggingPath.value && draggingPath.value === getCellExpression(path, columnName);
 }
 
 function onDragEnd(column: string, src: string, depth = '0') {
@@ -339,120 +386,28 @@ function onDragEnd(column: string, src: string, depth = '0') {
 	}, 1000); // ensure dest data gets set if drop
 }
 
-function isSimple(data: GenericValue): data is string | number | boolean | null | undefined {
+function isSimple(data: unknown): data is string | number | boolean | null | undefined {
 	return (
 		typeof data !== 'object' ||
 		data === null ||
 		(Array.isArray(data) && data.length === 0) ||
-		(typeof data === 'object' && Object.keys(data).length === 0)
+		Object.keys(data).length === 0
 	);
-}
-
-function isObject(data: GenericValue): data is Record<string, unknown> {
-	return !isSimple(data);
-}
-
-function hasJsonInColumn(colIndex: number): boolean {
-	return tableData.value.hasJson[tableData.value.columns[colIndex]];
-}
-
-function convertToTable(inputData: INodeExecutionData[]): ITableData {
-	const resultTableData: GenericValue[][] = [];
-	const tableColumns: string[] = [];
-	let leftEntryColumns: string[], entryRows: GenericValue[];
-	// Go over all entries
-	let entry: IDataObject;
-
-	const metadata: ITableData['metadata'] = {
-		hasExecutionIds: false,
-		data: [],
-	};
-	const hasJson: { [key: string]: boolean } = {};
-	inputData.forEach((data) => {
-		if (!data.hasOwnProperty('json')) {
-			return;
-		}
-		entry = data.json;
-
-		// Go over all keys of entry
-		entryRows = [];
-		const entryColumns = Object.keys(entry || {});
-
-		if (entryColumns.length > MAX_COLUMNS_LIMIT) {
-			columnLimitExceeded.value = true;
-			leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
-		} else {
-			leftEntryColumns = entryColumns;
-		}
-
-		if (data.metadata?.subExecution) {
-			metadata.data.push(data.metadata);
-			metadata.hasExecutionIds = true;
-		} else {
-			metadata.data.push(undefined);
-		}
-
-		// Go over all the already existing column-keys
-		tableColumns.forEach((key) => {
-			if (entry.hasOwnProperty(key)) {
-				// Entry does have key so add its value
-				entryRows.push(entry[key]);
-				// Remove key so that we know that it got added
-				leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
-
-				hasJson[key] =
-					hasJson[key] ||
-					(typeof entry[key] === 'object' && Object.keys(entry[key] ?? {}).length > 0) ||
-					false;
-			} else {
-				// Entry does not have key so add undefined
-				entryRows.push(undefined);
-			}
-		});
-
-		// Go over all the columns the entry has but did not exist yet
-		leftEntryColumns.forEach((key) => {
-			// Add the key for all runs in the future
-			tableColumns.push(key);
-			// Add the value
-			entryRows.push(entry[key]);
-			hasJson[key] =
-				hasJson[key] ||
-				(typeof entry[key] === 'object' && Object.keys(entry[key] ?? {}).length > 0) ||
-				false;
-		});
-
-		// Add the data of the entry
-		resultTableData.push(entryRows);
-	});
-
-	// Make sure that all entry-rows have the same length
-	resultTableData.forEach((rows) => {
-		if (tableColumns.length > rows.length) {
-			// Has fewer entries so add the missing ones
-			rows.push(...new Array(tableColumns.length - rows.length));
-		}
-	});
-
-	return {
-		hasJson,
-		columns: tableColumns,
-		data: resultTableData,
-		metadata,
-	};
 }
 
 function switchToJsonView() {
 	emit('displayModeChange', 'json');
 }
 
-function handleSetCollapsingColumn(columnIndex: number) {
-	emit(
-		'collapsingColumnChanged',
-		collapsingColumnIndex.value === columnIndex
-			? null
-			: (tableData.value.columns[columnIndex] ?? null),
-	);
+function toggleCollapsingColumn(columnName: string) {
+	emit('collapsingColumnChanged', props.collapsingColumnName === columnName ? null : columnName);
+}
+
+function onFirstDataRendered() {
+	const body = wrapperRef.value?.querySelector<HTMLElement>('.ag-center-cols-container');
+	if (body && tableData.value.rows.length > 0) {
+		emit('mounted', { avgRowHeight: body.offsetHeight / tableData.value.rows.length });
+	}
 }
 
 watch(focusedMappableInput, (curr) => {
@@ -463,308 +418,197 @@ watch(focusedMappableInput, (curr) => {
 		curr ? 300 : 150,
 	);
 });
-
-watch(
-	[collapsingColumnIndex, tableRef],
-	([index, table]) => {
-		if (index === -1) {
-			fixedColumnWidths.value = undefined;
-			return;
-		}
-
-		if (table === null) {
-			return;
-		}
-
-		fixedColumnWidths.value = [...table.querySelectorAll('thead tr th')].map((el) =>
-			el instanceof HTMLElement
-				? el.getBoundingClientRect().width // using getBoundingClientRect for decimal accuracy
-				: 0,
-		);
-	},
-	{ immediate: true, flush: 'post' },
-);
 </script>
 
 <template>
 	<div
+		ref="wrapper"
 		:class="[
 			$style.dataDisplay,
 			{
 				[$style.highlight]: highlight,
 				[$style.lightHeader]: headerBgColor === 'light',
 				[$style.compact]: props.compact,
-				[$style.hasCollapsingColumn]: fixedColumnWidths !== undefined,
 			},
 		]"
 	>
-		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
-			<thead>
-				<tr>
-					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
-						<!-- column for execution link -->
-					</th>
-					<th :class="$style.emptyCell"></th>
-					<th :class="$style.tableRightMargin"></th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr
-					v-for="(_, index1) in tableData.data"
-					:key="index1"
-					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-				>
-					<td
-						v-if="tableData.metadata.hasExecutionIds"
-						:data-row="index1"
-						:class="$style.executionLinkCell"
-						@mouseenter="onMouseEnterCell"
-						@mouseleave="onMouseLeaveCell"
-					>
-						<N8nTooltip
-							v-if="tableData.metadata.data[index1]"
-							:content="
-								i18n.baseText('runData.table.viewSubExecution', {
-									interpolate: {
-										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
-									},
-								})
-							"
-							placement="left"
-							:hide-after="0"
-						>
-							<N8nIconButton
-								variant="outline"
-								v-show="showExecutionLink(index1)"
-								icon="external-link"
-								data-test-id="debug-sub-execution"
-								size="xsmall"
-								target="_blank"
-								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
-								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
-							/>
-						</N8nTooltip>
-					</td>
-					<td
-						:data-row="index1"
-						:data-col="0"
-						@mouseenter="onMouseEnterCell"
-						@mouseleave="onMouseLeaveCell"
-					>
-						<N8nInfoTip>{{ i18n.baseText('runData.emptyItemHint') }}</N8nInfoTip>
-					</td>
-					<td :class="$style.tableRightMargin"></td>
-				</tr>
-			</tbody>
-		</table>
-		<table v-else ref="tableRef" :class="$style.table">
-			<colgroup v-if="fixedColumnWidths">
-				<col v-for="(width, i) in fixedColumnWidths" :key="i" :width="width" />
-			</colgroup>
-			<thead>
-				<tr>
-					<th v-if="tableData.metadata.hasExecutionIds" :class="$style.executionLinkRowHeader">
-						<!-- column for execution link -->
-					</th>
-					<th
-						v-for="(column, i) in tableData.columns || []"
-						:key="column"
-						:class="{
-							[$style.isCollapsingColumn]: collapsingColumnIndex === i,
-							[$style.isHoveredColumn]: hoveringColumnIndex === i,
-						}"
-					>
-						<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
-							<template #content>
-								<div>
-									<img src="/static/data-mapping-gif.gif" />
-									{{ i18n.baseText('dataMapping.dragColumnToFieldHint') }}
-								</div>
-							</template>
-							<Draggable
-								type="mapping"
-								:data="getExpression(column)"
-								:disabled="!mappingEnabled"
-								:can-drop="canDraggableDrop"
-								:sticky-position="draggableStickyPosition"
-								@dragstart="onDragStart"
-								@dragend="(column) => onDragEnd(column?.textContent ?? '', 'column')"
-							>
-								<template #preview="{ canDrop }">
-									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
-								</template>
-								<template #default="{ isDragging }">
-									<div
-										:class="{
-											[$style.header]: true,
-											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]:
-												(i === activeColumn || forceShowGrip) && mappingEnabled,
-											[$style.draggingHeader]: isDragging,
-										}"
-									>
-										<TextWithHighlights
-											:content="getValueToRender(column || '')"
-											:search="search"
-										/>
-										<N8nTooltip
-											:content="i18n.baseText('dataMapping.tableView.columnCollapsing.tooltip')"
-											:disabled="mappingEnabled || collapsingColumnIndex === i"
-										>
-											<N8nIconButton
-												variant="ghost"
-												:class="$style.collapseColumnButton"
-												size="xsmall"
-												:icon="
-													collapsingColumnIndex === i ? 'chevrons-up-down' : 'chevrons-down-up'
-												"
-												:aria-label="i18n.baseText('dataMapping.tableView.columnCollapsing')"
-												@click="handleSetCollapsingColumn(i)"
-											/>
-										</N8nTooltip>
-										<div v-if="mappingEnabled" :class="$style.dragButton">
-											<N8nIcon icon="grip-vertical" />
-										</div>
-									</div>
-								</template>
-							</Draggable>
-						</N8nTooltip>
-					</th>
-					<th v-if="columnLimitExceeded" :class="$style.header">
-						<N8nTooltip placement="bottom-end">
-							<template #content>
-								<div>
-									<I18nT
-										tag="span"
-										keypath="dataMapping.tableView.tableColumnsExceeded.tooltip"
-										scope="global"
-									>
-										<template #columnLimit>{{ columnLimit }}</template>
-										<template #link>
-											<a @click="switchToJsonView">{{
-												i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
-											}}</a>
-										</template>
-									</I18nT>
-								</div>
-							</template>
-							<span>
-								<N8nIcon :class="$style['warningTooltip']" icon="triangle-alert" />
-								{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
-							</span>
-						</N8nTooltip>
-					</th>
-					<th :class="$style.tableRightMargin"></th>
-				</tr>
-			</thead>
-			<Draggable
-				ref="draggableRef"
-				tag="tbody"
-				type="mapping"
-				target-data-key="mappable"
-				:disabled="!mappingEnabled"
-				@dragstart="onCellDragStart"
-				@dragend="onCellDragEnd"
+		<Draggable
+			type="mapping"
+			target-data-key="mappable"
+			:disabled="!mappingEnabled"
+			@dragstart="onCellDragStart"
+			@dragend="onCellDragEnd"
+		>
+			<template #preview="{ canDrop, el }">
+				<MappingPill :html="shorten(getPathNameFromTarget(el) || '', 16, 2)" :can-drop="canDrop" />
+			</template>
+			<N8nDataGrid
+				:rows="tableData.rows"
+				:columns="columns"
+				:row-key="getRowKey"
+				:row-class-rules="rowClassRules"
+				pagination-mode="none"
+				sticky-header
+				sort-mode="server"
+				:sort="sort"
+				filter-mode="server"
+				:filters="filters"
+				@update:sort="emit('update:sort', $event)"
+				@update:filters="emit('update:filters', $event)"
+				@cell-hover="onCellHover"
+				@first-data-rendered="onFirstDataRendered"
 			>
-				<template #preview="{ canDrop, el }">
-					<MappingPill
-						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
-						:can-drop="canDrop"
-					/>
+				<template #header="{ column }">
+					<N8nTooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
+						<template #content>
+							<div>
+								<img src="/static/data-mapping-gif.gif" />
+								{{ i18n.baseText('dataMapping.dragColumnToFieldHint') }}
+							</div>
+						</template>
+						<Draggable
+							type="mapping"
+							:data="getExpression(column.field)"
+							:disabled="!mappingEnabled"
+							:can-drop="canDraggableDrop"
+							:sticky-position="draggableStickyPosition"
+							@dragstart="onDragStart"
+							@dragend="(el) => onDragEnd(el?.textContent ?? '', 'column')"
+						>
+							<template #preview="{ canDrop }">
+								<MappingPill :html="shorten(column.field, 16, 2)" :can-drop="canDrop" />
+							</template>
+							<template #default="{ isDragging }">
+								<div
+									:class="{
+										[$style.header]: true,
+										[$style.draggableHeader]: mappingEnabled,
+										[$style.activeHeader]: isActiveHeader(column.field),
+										[$style.draggingHeader]: isDragging,
+										[$style.isCollapsingColumn]: collapsingColumnName === column.field,
+									}"
+									data-test-id="run-data-table-header"
+								>
+									<TextWithHighlights :content="getValueToRender(column.field)" :search="search" />
+									<N8nTooltip
+										:content="i18n.baseText('dataMapping.tableView.columnCollapsing.tooltip')"
+										:disabled="mappingEnabled || collapsingColumnName === column.field"
+									>
+										<N8nIconButton
+											variant="ghost"
+											:class="$style.collapseColumnButton"
+											size="xsmall"
+											:icon="
+												collapsingColumnName === column.field
+													? 'chevrons-up-down'
+													: 'chevrons-down-up'
+											"
+											:aria-label="i18n.baseText('dataMapping.tableView.columnCollapsing')"
+											@click.stop="toggleCollapsingColumn(column.field)"
+										/>
+									</N8nTooltip>
+									<div v-if="mappingEnabled" :class="$style.dragButton">
+										<N8nIcon icon="grip-vertical" />
+									</div>
+								</div>
+							</template>
+						</Draggable>
+					</N8nTooltip>
 				</template>
-				<tr
-					v-for="(row, index1) in tableData.data"
-					:key="index1"
-					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
-				>
-					<td
-						v-if="tableData.metadata.hasExecutionIds"
-						:data-row="index1"
-						:class="$style.executionLinkCell"
-						@mouseenter="onMouseEnterCell"
-						@mouseleave="onMouseLeaveCell"
-					>
+
+				<template #cell="{ row, column }">
+					<template v-if="column.id === EXECUTION_LINK_COLUMN">
 						<N8nTooltip
-							v-if="tableData.metadata.data[index1]"
+							v-if="getMetadata(row)"
 							:content="
 								i18n.baseText('runData.table.viewSubExecution', {
-									interpolate: {
-										id: `${tableData.metadata.data[index1]?.subExecution.executionId}`,
-									},
+									interpolate: { id: `${getMetadata(row)?.subExecution?.executionId}` },
 								})
 							"
 							placement="left"
 							:hide-after="0"
 						>
 							<N8nIconButton
+								v-show="showExecutionLink(row)"
 								variant="outline"
-								v-show="showExecutionLink(index1)"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
 								size="xsmall"
 								target="_blank"
-								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
-								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
+								:href="getSubExecutionUrl(row)"
+								@click="openSubExecution(row)"
 							/>
 						</N8nTooltip>
-					</td>
-					<td
-						v-for="(data, index2) in row"
-						:key="index2"
-						:data-row="index1"
-						:data-col="index2"
-						:class="[
-							hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth,
-							collapsingColumnIndex === index2 ? $style.isCollapsingColumn : '',
-						]"
-						@mouseenter="onMouseEnterCell"
-						@mouseleave="onMouseLeaveCell"
-					>
-						<TextWithHighlights
-							v-if="isSimple(data)"
-							:content="getValueToRender(data)"
-							:search="search"
-							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-						/>
-						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
-							<template #label="{ label, path }">
-								<TextWithHighlights
-									data-target="mappable"
-									:class="{
-										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
-										[$style.draggingKey]: isDraggingKey(path, index2),
-										[$style.dataKey]: true,
-										[$style.mappable]: mappingEnabled,
-									}"
-									:content="label || i18n.baseText('runData.unnamedField')"
-									:search="search"
-									:data-name="getCellPathName(path, index2)"
-									:data-value="getCellExpression(path, index2)"
-									:data-depth="path.length"
-									@mouseenter="() => onMouseEnterKey(path, index2)"
-									@mouseleave="onMouseLeaveKey"
-								/>
-							</template>
+					</template>
+					<N8nInfoTip v-else-if="column.id === EMPTY_ITEM_COLUMN">
+						{{ i18n.baseText('runData.emptyItemHint') }}
+					</N8nInfoTip>
+					<TextWithHighlights
+						v-else-if="isSimple(row[column.field])"
+						:content="getValueToRender(row[column.field])"
+						:search="search"
+						:class="{ [$style.value]: true, [$style.empty]: isEmpty(row[column.field]) }"
+					/>
+					<N8nTree v-else :node-class="$style.nodeClass" :value="getTreeValue(row, column.field)">
+						<template #label="{ label, path }">
+							<TextWithHighlights
+								data-target="mappable"
+								:class="{
+									[$style.hoveringKey]: mappingEnabled && isHovering(path, column.field),
+									[$style.draggingKey]: isDraggingKey(path, column.field),
+									[$style.dataKey]: true,
+									[$style.mappable]: mappingEnabled,
+								}"
+								:content="label || i18n.baseText('runData.unnamedField')"
+								:search="search"
+								:data-name="getCellPathName(path, column.field)"
+								:data-value="getCellExpression(path, column.field)"
+								:data-depth="path.length"
+								@mouseenter="() => onMouseEnterKey(path, column.field)"
+								@mouseleave="onMouseLeaveKey"
+							/>
+						</template>
 
-							<template #binary="{ value }">
-								<BinaryEntryDataTable :value="value" />
-							</template>
+						<template #binary="{ value }">
+							<BinaryEntryDataTable :value="value" />
+						</template>
 
-							<template #value="{ value }">
-								<TextWithHighlights
-									:content="getValueToRender(value)"
-									:search="search"
-									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-								/>
-							</template>
-						</N8nTree>
-					</td>
-					<td v-if="columnLimitExceeded"></td>
-					<td :class="$style.tableRightMargin"></td>
-				</tr>
-			</Draggable>
-		</table>
+						<template #value="{ value }">
+							<TextWithHighlights
+								:content="getValueToRender(value)"
+								:search="search"
+								:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+							/>
+						</template>
+					</N8nTree>
+				</template>
+
+				<template #header-append>
+					<N8nTooltip v-if="tableData.isColumnLimitExceeded" placement="bottom-end">
+						<template #content>
+							<div>
+								<I18nT
+									tag="span"
+									keypath="dataMapping.tableView.tableColumnsExceeded.tooltip"
+									scope="global"
+								>
+									<template #columnLimit>{{ MAX_COLUMNS_LIMIT }}</template>
+									<template #link>
+										<a @click="switchToJsonView">{{
+											i18n.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+										}}</a>
+									</template>
+								</I18nT>
+							</div>
+						</template>
+						<span>
+							<N8nIcon :class="$style.warningTooltip" icon="triangle-alert" />
+							{{ i18n.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+						</span>
+					</N8nTooltip>
+				</template>
+			</N8nDataGrid>
+		</Draggable>
 	</div>
 </template>
 
@@ -773,131 +617,55 @@ watch(
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing--xs);
 	right: 0;
+	height: 100%;
+	padding-left: var(--spacing--xs);
+	padding-right: var(--ndv--spacing);
+	padding-bottom: var(--spacing--3xl);
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
-	height: 100%;
-	padding-bottom: var(--spacing--3xl);
 
 	&.compact {
 		padding-left: var(--spacing--2xs);
-	}
-}
-
-.table {
-	border-collapse: separate;
-	text-align: left;
-	width: calc(100%);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-
-	th {
-		background-color: var(--color--background);
-		border-top: var(--border);
-		border-bottom: var(--border);
-		border-left: var(--border);
-		position: sticky;
-		top: 0;
-		color: var(--color--text--shade-1);
-		z-index: 1;
-
-		.lightHeader & {
-			background-color: var(--color--background--light-2);
-		}
-
-		&.tableRightMargin {
-			background-color: transparent;
-		}
+		padding-right: var(--spacing--2xs);
 	}
 
-	td {
-		vertical-align: top;
-		padding: var(--spacing--4xs) var(--spacing--3xs);
-		border-bottom: var(--border);
-		border-left: var(--border);
-		overflow-wrap: break-word;
+	&.lightHeader {
+		--ag-header-background-color: var(--color--background--light-2);
+	}
+
+	:global(.ag-row.hovering-item) {
+		background-color: var(--ag-row-hover-color);
+	}
+
+	:global(.ag-cell) {
+		align-items: flex-start;
 		white-space: pre-wrap;
-		vertical-align: top;
+		overflow-wrap: break-word;
 	}
 
-	td:first-child,
-	td:nth-last-child(2) {
-		position: relative;
-		z-index: 0;
+	:global(.n8n-run-data-collapsed-cell) {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 
-		&:after {
-			// add border without shifting content
-			content: '';
-			position: absolute;
-			height: 100%;
-			width: 2px;
-			top: 0;
-		}
-	}
-
-	td:nth-last-child(2):after {
-		right: -1px;
-	}
-
-	td:first-child:after {
-		left: -1px;
-	}
-
-	th:last-child,
-	td:last-child {
-		border-right: var(--border);
-	}
-
-	.hasCollapsingColumn & {
-		table-layout: fixed;
-
-		td:not(.isCollapsingColumn) {
+		:global(.n8n-tree) {
+			height: 1.5em;
 			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-
-			& :global(.n8n-tree) {
-				height: 1.5em;
-				overflow: hidden;
-			}
 		}
 	}
-}
-
-th.isCollapsingColumn {
-	border-top-color: var(--color--foreground--shade-2);
-	border-left-color: var(--color--foreground--shade-2);
-	border-right-color: var(--color--foreground--shade-2);
-}
-
-td.isCollapsingColumn {
-	border-left-color: var(--color--foreground--shade-2);
-	border-right-color: var(--color--foreground--shade-2);
-
-	tr:last-child & {
-		border-bottom-color: var(--color--foreground--shade-2);
-	}
-}
-
-td.isCollapsingColumn + td,
-th.isCollapsingColumn + th {
-	border-left-color: var(--color--foreground--shade-2);
 }
 
 .nodeClass {
 	margin-bottom: var(--spacing--5xs);
 }
 
-.emptyCell {
-	height: 32px;
-}
-
 .header {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
+	width: 100%;
+	min-width: 0;
 
 	> :first-child {
 		white-space: nowrap;
@@ -910,7 +678,6 @@ th.isCollapsingColumn + th {
 .draggableHeader {
 	&:hover {
 		cursor: grab;
-		background-color: var(--color--foreground);
 
 		.dragButton {
 			opacity: 1;
@@ -968,14 +735,6 @@ th.isCollapsingColumn + th {
 	font-style: italic;
 }
 
-.limitColWidth {
-	max-width: 300px;
-}
-
-.minColWidth {
-	min-width: 240px;
-}
-
 .hoveringKey {
 	background-color: var(--color--foreground);
 }
@@ -984,49 +743,19 @@ th.isCollapsingColumn + th {
 	background-color: var(--color--primary--tint-2);
 }
 
-.tableRightMargin {
-	// becomes necessary with large tables
-	width: var(--ndv--spacing);
-	border-right: none !important;
-	border-top: none !important;
-	border-bottom: none !important;
-
-	.compact & {
-		padding: 0;
-		min-width: var(--spacing--2xs);
-		max-width: var(--spacing--2xs);
-	}
-}
-
-.hoveringRow {
-	td:first-child:after,
-	td:nth-last-child(2):after {
-		background-color: var(--color--secondary);
-	}
-}
-
 .warningTooltip {
 	color: var(--color--warning);
 }
 
-.executionLinkCell {
-	padding: var(--spacing--3xs) !important;
-}
-
-.executionLinkRowHeader {
-	width: var(--spacing--md);
-}
-
 .collapseColumnButton {
+	opacity: 0;
+
 	span {
 		flex-shrink: 0;
 	}
 
-	opacity: 0;
-
 	.isCollapsingColumn &,
-	th.isHoveredColumn &,
-	th:hover & {
+	.header:hover & {
 		opacity: 1;
 	}
 }

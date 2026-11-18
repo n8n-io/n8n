@@ -1,6 +1,7 @@
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { getGridApi, type GridApi } from 'ag-grid-community';
 import type { MockInstance } from 'vitest';
+import { ref } from 'vue';
 
 import { createComponentRenderer } from '../../__tests__/render';
 import N8nDataGrid from './DataGrid.vue';
@@ -399,6 +400,85 @@ describe('N8nDataGrid', () => {
 			expect(footer).toHaveTextContent('Add row');
 			expect(footer.closest('.ag-floating-bottom')).not.toBeNull();
 			expect(footer.closest('[col-id]')?.getAttribute('col-id')).toBe('name-id');
+		});
+	});
+
+	describe('header slot', () => {
+		it('should render the header slot as the label of the columns that ask for it', async () => {
+			const { container, findByText, getByText } = renderComponent({
+				props: {
+					rows: createRows(1),
+					columns: [{ ...columns[0], headerSlot: true }, columns[1]],
+					rowKey: 'id',
+				},
+				slots: { header: '<template #header="{ column }">Custom {{ column.label }}</template>' },
+			});
+			await getApi(container);
+
+			expect(await findByText('Custom Name')).toBeInTheDocument();
+			expect(getByText('Age')).toBeInTheDocument();
+		});
+	});
+
+	describe('rows', () => {
+		it('should let a column grow the row to fit its content', async () => {
+			const { container } = render({ columns: [{ ...columns[0], autoHeight: true }, columns[1]] });
+			const api = await getApi(container);
+
+			expect(api.getColumn('name-id')?.getColDef()).toMatchObject({
+				autoHeight: true,
+				wrapText: true,
+			});
+			expect(api.getColumn('age-id')?.getColDef().autoHeight).toBeFalsy();
+		});
+
+		it('should apply row classes and update them when their state changes', async () => {
+			const highlighted = ref('1');
+			const { container } = render({
+				rowClassRules: { 'is-highlighted': (row: Row) => row.id === highlighted.value },
+			});
+			await getApi(container);
+			const rowElement = (rowIndex: number) =>
+				container.querySelector(`.ag-center-cols-container [row-index="${rowIndex}"]`);
+
+			await waitFor(() => expect(rowElement(0)).toHaveClass('is-highlighted'));
+			expect(rowElement(1)).not.toHaveClass('is-highlighted');
+
+			highlighted.value = '2';
+
+			await waitFor(() => expect(rowElement(1)).toHaveClass('is-highlighted'));
+			expect(rowElement(0)).not.toHaveClass('is-highlighted');
+		});
+
+		it('should report the hovered cell and when the pointer leaves it', async () => {
+			const { container, emitted } = render();
+			await getApi(container);
+			const cell = container.querySelector('[row-index="1"] [col-id="age-id"]');
+			if (!cell) throw new Error('Cell not found');
+
+			await fireEvent.mouseOver(cell);
+			await waitFor(() =>
+				expect(emitted('cellHover')?.at(-1)).toEqual([{ rowKey: '2', columnId: 'age-id' }]),
+			);
+
+			await fireEvent.mouseOut(cell);
+			await waitFor(() => expect(emitted('cellHover')?.at(-1)).toEqual([null]));
+		});
+
+		it('should report the row when the pointer is on a column that the grid adds', async () => {
+			const { container, emitted } = renderComponent({
+				props: { rows: createRows(2), columns, rowKey: 'id' },
+				slots: { 'header-append': '+' },
+			});
+			await getApi(container);
+			const cell = container.querySelector('[row-index="0"] [col-id="__n8n_data_grid_append__"]');
+			if (!cell) throw new Error('Cell not found');
+
+			await fireEvent.mouseOver(cell);
+
+			await waitFor(() =>
+				expect(emitted('cellHover')?.at(-1)).toEqual([{ rowKey: '1', columnId: null }]),
+			);
 		});
 	});
 });

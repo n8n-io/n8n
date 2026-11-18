@@ -27,6 +27,22 @@ export const areCellValuesEqual = (a: unknown, b: unknown, type: DataGridColumnT
 	return left === right;
 };
 
+const compareDefined = (a: unknown, b: unknown, type: DataGridColumnType): number => {
+	if (type === 'number') return Number(a) - Number(b);
+	if (type === 'boolean') return Number(a === true) - Number(b === true);
+	if (type === 'date') return (toTime(a) ?? 0) - (toTime(b) ?? 0);
+	if (type === 'json') return 0;
+	return toText(a).localeCompare(toText(b));
+};
+
+/** Compares two cell values in ascending order. Missing values come first. */
+export const compareDataGridValues = (a: unknown, b: unknown, type: DataGridColumnType): number => {
+	const isAMissing = a === null || a === undefined;
+	const isBMissing = b === null || b === undefined;
+	if (isAMissing || isBMissing) return Number(!isAMissing) - Number(!isBMissing);
+	return compareDefined(a, b, type);
+};
+
 export const toDate = (value: unknown): Date | null => {
 	const time = toTime(value);
 	return time === undefined || Number.isNaN(time) ? null : new Date(time);
