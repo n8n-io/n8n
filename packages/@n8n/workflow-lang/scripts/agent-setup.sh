@@ -21,9 +21,15 @@ link() {
 	[ -e "$1" ] || [ -L "$1" ] || { mkdir -p "$(dirname "$1")"; ln -s "$MAIN/$1" "$1"; }
 }
 link node_modules
+# The node types and the credential types come from the built node packages. These are the two
+# packages of `DEFAULT_NODE_PACKAGES`; without the second one every AI test fails.
 for p in packages/@n8n/workflow-lang packages/@n8n/workflow-fallback-host packages/@n8n/node-engine-compatibility \
-	packages/nodes-base packages/core packages/workflow packages/cli packages/@n8n/task-runner; do
+	packages/nodes-base packages/@n8n/nodes-langchain packages/core packages/workflow packages/cli \
+	packages/@n8n/task-runner; do
 	link "$p/node_modules"
 	[ "$p" = packages/@n8n/workflow-lang ] || link "$p/dist"
+done
+for f in packages/nodes-base/dist/known/credentials.json packages/@n8n/nodes-langchain/dist/known/credentials.json; do
+	[ -e "$f" ] || echo "agent-setup: $f is missing. Build that package in $MAIN, or the node and AI tests fail." >&2
 done
 echo "agent-setup: $(git log --oneline -1 | cut -c1-70)"
