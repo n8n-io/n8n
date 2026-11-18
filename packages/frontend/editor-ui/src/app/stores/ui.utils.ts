@@ -13,6 +13,7 @@ import type {
 	ThemePreferences,
 	ThemeSelection,
 } from '@/Interface';
+import { customTheme } from '@/app/utils/customTheme';
 
 export const DEFAULT_THEME_SELECTION: ThemeSelection = { mode: 'system', family: 'default' };
 export const DEFAULT_THEME_PREFERENCES: ThemePreferences = {
@@ -38,6 +39,15 @@ export const THEME_FAMILIES: Record<
 	cyberdream: { dark: 'cyberdream' },
 	moonfly: { dark: 'moonfly' },
 	nightfly: { dark: 'nightfly' },
+	// The user's own theme has only the variant of its mode. Its CSS is generated at runtime.
+	custom: {
+		get light() {
+			return customTheme.value?.mode === 'light' ? 'custom' : undefined;
+		},
+		get dark() {
+			return customTheme.value?.mode === 'dark' ? 'custom' : undefined;
+		},
+	},
 };
 
 // The values of the old `N8N_THEME` key. They map to a mode and a family.

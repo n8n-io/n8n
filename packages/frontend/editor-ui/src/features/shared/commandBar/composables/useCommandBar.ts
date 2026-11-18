@@ -506,6 +506,7 @@ export function useCommandBar() {
 		sections,
 		placeholder,
 		breadcrumb,
+		scopeId: computed(() => scope.value?.id),
 		isLoading,
 		hasMore,
 		select,

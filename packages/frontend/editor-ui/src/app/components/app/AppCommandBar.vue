@@ -20,6 +20,7 @@ const {
 	sections,
 	placeholder,
 	breadcrumb,
+	scopeId,
 	isLoading,
 	hasMore,
 	select,
@@ -28,6 +29,10 @@ const {
 } = useCommandBar();
 
 const { highlight } = useThemePreview();
+
+// The theme lists preview the page live, so the backdrop must not hide it. These are the ids in useGenericCommands.
+const THEME_SCOPE_IDS = new Set(['theme', 'theme-mode']);
+const plainBackdrop = computed(() => !!scopeId.value && THEME_SCOPE_IDS.has(scopeId.value));
 
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 
@@ -58,6 +63,7 @@ watch(isOpen, (open) => {
 		:sections="sections"
 		:placeholder="placeholder"
 		:breadcrumb="breadcrumb"
+		:plain-backdrop="plainBackdrop"
 		:is-loading="isLoading"
 		:has-more="hasMore"
 		@select="select"

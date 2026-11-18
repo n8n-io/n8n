@@ -982,7 +982,8 @@ export type ThemePalette =
 	| 'oxocarbon'
 	| 'cyberdream'
 	| 'moonfly'
-	| 'nightfly';
+	| 'nightfly'
+	| 'custom';
 /** A group of palettes. A family has a light and a dark variant, or only one of them. */
 export type ThemeFamily =
 	| 'default'
@@ -993,7 +994,8 @@ export type ThemeFamily =
 	| 'oxocarbon'
 	| 'cyberdream'
 	| 'moonfly'
-	| 'nightfly';
+	| 'nightfly'
+	| 'custom';
 export interface ThemeSelection {
 	mode: ThemeMode;
 	family: ThemeFamily;

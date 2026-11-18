@@ -88,6 +88,10 @@ export interface DialogProps {
 	 * Custom class for the dialog container
 	 */
 	containerClass?: string;
+	/**
+	 * Show the page behind without blur and with a very light dim
+	 */
+	plainOverlay?: boolean;
 }
 
 export interface DialogEmits {
@@ -125,7 +129,7 @@ const handleOpenChange = (value: boolean) => {
 		@update:open="handleOpenChange"
 	>
 		<DialogPortal>
-			<N8nDialogOverlay :stacked="stacked" />
+			<N8nDialogOverlay :stacked="stacked" :plain="plainOverlay" />
 			<N8nDialogContent
 				v-bind="$attrs"
 				:size="size"

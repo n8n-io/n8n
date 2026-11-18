@@ -24,6 +24,8 @@ interface CommandBarProps {
 	breadcrumb?: string;
 	isLoading?: boolean;
 	hasMore?: boolean;
+	/** Show the page behind without blur, for example to preview a change live. */
+	plainBackdrop?: boolean;
 }
 
 type CommandBarRow =
@@ -41,6 +43,7 @@ const props = withDefaults(defineProps<CommandBarProps>(), {
 	breadcrumb: undefined,
 	isLoading: false,
 	hasMore: false,
+	plainBackdrop: false,
 });
 
 const emit = defineEmits<{
@@ -376,6 +379,7 @@ onBeforeUnmount(() => {
 		:show-close-button="false"
 		:aria-label="t('commandBar.ariaLabel')"
 		:container-class="$style.dialog"
+		:plain-overlay="plainBackdrop"
 		@escape-key-down="onEscapeKeyDown"
 		@open-auto-focus="onOpenAutoFocus"
 	>

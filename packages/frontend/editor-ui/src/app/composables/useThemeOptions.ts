@@ -5,6 +5,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { AppliedThemeOption, ThemeFamily, ThemeMode } from '@/Interface';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasThemeVariant } from '@/app/stores/ui.utils';
+import { customTheme } from '@/app/utils/customTheme';
 
 // The record types make a new mode or family fail to compile until it has a label (and an icon).
 const THEME_MODE_DISPLAY: Record<ThemeMode, { label: BaseTextKey; icon: IconName }> = {
@@ -25,6 +26,7 @@ const THEME_FAMILY_LABELS: Record<ThemeFamily, BaseTextKey> = {
 	cyberdream: 'settings.personal.theme.cyberdream',
 	moonfly: 'settings.personal.theme.moonfly',
 	nightfly: 'settings.personal.theme.nightfly',
+	custom: 'settings.personal.theme.custom',
 };
 
 const THEME_FAMILY_ORDER: ThemeFamily[] = [
@@ -37,6 +39,7 @@ const THEME_FAMILY_ORDER: ThemeFamily[] = [
 	'cyberdream',
 	'moonfly',
 	'nightfly',
+	'custom',
 ];
 
 const THEME_MODE_SUFFIXED_LABELS: Record<AppliedThemeOption, BaseTextKey> = {
@@ -49,6 +52,7 @@ function useThemeFamilyLabel() {
 	const i18n = useI18n();
 
 	return (family: ThemeFamily, mode: AppliedThemeOption) => {
+		if (family === 'custom' && customTheme.value?.name.trim()) return customTheme.value.name.trim();
 		const name = i18n.baseText(THEME_FAMILY_LABELS[family]);
 		const hasBothVariants = hasThemeVariant(family, 'light') && hasThemeVariant(family, 'dark');
 		return hasBothVariants

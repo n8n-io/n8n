@@ -23,6 +23,7 @@ const ITEM_ID = {
 	SETTINGS: 'settings',
 	THEME: 'theme',
 	THEME_MODE: 'theme-mode',
+	CUSTOM_THEME: 'custom-theme',
 	SIGN_OUT: 'sign-out',
 	TEMPLATES: 'templates',
 	VARIABLES: 'variables',
@@ -335,6 +336,21 @@ export function useGenericCommands(): CommandGroup {
 				'colors',
 				'appearance',
 			],
+		},
+		{
+			id: ITEM_ID.CUSTOM_THEME,
+			title: i18n.baseText('commandBar.theme.createCustom'),
+			section: i18n.baseText('commandBar.sections.general'),
+			handler: () => {
+				void router.push({ name: VIEWS.PERSONAL_SETTINGS, hash: '#custom-theme' });
+			},
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'pencil',
+				},
+			},
+			keywords: ['theme', 'custom', 'create', 'colors', 'palette', 'appearance'],
 		},
 		{
 			id: ITEM_ID.SETTINGS,

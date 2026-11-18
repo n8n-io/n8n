@@ -10,13 +10,20 @@ export interface DialogOverlayProps {
 	 * Render above another open dialog
 	 */
 	stacked?: boolean;
+	/**
+	 * Show the page behind without blur and with a very light dim
+	 */
+	plain?: boolean;
 }
 
 defineProps<DialogOverlayProps>();
 </script>
 
 <template>
-	<DialogOverlay data-dialog-overlay :class="[$style.overlay, stacked && $style.stacked]" />
+	<DialogOverlay
+		data-dialog-overlay
+		:class="[$style.overlay, stacked && $style.stacked, plain && $style.plain]"
+	/>
 </template>
 
 <style module lang="scss">
@@ -46,6 +53,16 @@ defineProps<DialogOverlayProps>();
 	background-color: light-dark(var(--color--black-alpha-300), var(--color--black-alpha-600));
 	backdrop-filter: blur(8px);
 	z-index: 1949; // See APP_Z_INDEXES in useStyles.ts
+	transition:
+		backdrop-filter var(--animation--duration--snappy) ease,
+		background-color var(--animation--duration--snappy) ease;
+
+	@include motion.reduced-motion;
+}
+
+.plain {
+	background-color: light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+	backdrop-filter: blur(0);
 }
 
 .stacked {
