@@ -28,6 +28,6 @@ They are made to be read, not run.
 
 ## What to try
 
-1. Open the page "Orders runbook". Hover a chip, then look at "Linked from" under the title.
+1. Open the page "Orders runbook". Hover a chip, then look at "Links" under the title.
 2. Open the workflow "Sync orders to CRM". Its sticky note shows the page, and three nodes have a pages badge.
 3. Open "AI inbox assistant", select the pages button, then "Document with AI". This needs the n8n Assistant.

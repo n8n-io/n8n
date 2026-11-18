@@ -1,25 +1,32 @@
 <script setup lang="ts">
 import {
+	extractResourceReferences,
 	toResourcePath,
 	type PageBacklinks,
+	type PageResourceReference,
 	type PageSummary,
 	type PageWorkflowPlacement,
 } from '@n8n/api-types';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nLink } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import ResourceChip from '../resources/ResourceChip.vue';
 
 /**
- * Lists what links to a page: the workflows that show it on their canvas, and the pages that
- * mention it. Renders nothing when nothing links to the page.
+ * Lists the links of a page: the resources that its content mentions, the workflows that show it
+ * on their canvas, and the pages that mention it. Renders nothing when the page has no link.
  */
 const props = defineProps<{
 	backlinks: PageBacklinks;
+	/** The markdown content of the page. Without it the page shows no mention. */
+	content?: string;
 }>();
 
-type BacklinkChip = { key: string; href: string; label: string };
+type BacklinkChip = { key: string; href: string; label?: string };
+
+/** The number of mentions that show before the user asks for all of them. */
+const VISIBLE_MENTION_LIMIT = 6;
 
 const i18n = useI18n();
 
@@ -46,9 +53,27 @@ function toPageChip({ id, title }: PageSummary): BacklinkChip {
 	};
 }
 
+function toMentionChip(reference: PageResourceReference): BacklinkChip {
+	const href = toResourcePath(reference);
+	return { key: href, href };
+}
+
+const mentionChips = computed(() =>
+	extractResourceReferences(props.content ?? '').map(toMentionChip),
+);
+const showsAllMentions = ref(false);
+const visibleMentionChips = computed(() =>
+	showsAllMentions.value ? mentionChips.value : mentionChips.value.slice(0, VISIBLE_MENTION_LIMIT),
+);
+const hiddenMentionCount = computed(
+	() => mentionChips.value.length - visibleMentionChips.value.length,
+);
+
 const workflowChips = computed(() => toWorkflowChips(props.backlinks.workflows));
 const pageChips = computed(() => props.backlinks.pages.map(toPageChip));
-const hasBacklinks = computed(() => workflowChips.value.length + pageChips.value.length > 0);
+const hasBacklinks = computed(
+	() => mentionChips.value.length + workflowChips.value.length + pageChips.value.length > 0,
+);
 </script>
 
 <template>
@@ -59,6 +84,34 @@ const hasBacklinks = computed(() => workflowChips.value.length + pageChips.value
 		data-test-id="page-backlinks"
 	>
 		<div :class="$style.heading">{{ i18n.baseText('page.backlinks.title') }}</div>
+		<div v-if="mentionChips.length > 0" :class="$style.group">
+			<div :class="$style.label">
+				<N8nIcon icon="link" size="xsmall" />
+				{{ i18n.baseText('page.backlinks.mentions') }}
+			</div>
+			<ul :class="$style.chips">
+				<li
+					v-for="chip in visibleMentionChips"
+					:key="chip.key"
+					data-test-id="page-backlinks-mention"
+				>
+					<ResourceChip :href="chip.href" />
+				</li>
+				<li v-if="hiddenMentionCount > 0">
+					<N8nLink
+						size="small"
+						data-test-id="page-backlinks-show-all-mentions"
+						@click="showsAllMentions = true"
+					>
+						{{
+							i18n.baseText('page.backlinks.showAllMentions', {
+								interpolate: { count: hiddenMentionCount },
+							})
+						}}
+					</N8nLink>
+				</li>
+			</ul>
+		</div>
 		<div v-if="workflowChips.length > 0" :class="$style.group">
 			<div :class="$style.label">
 				<N8nIcon icon="sticky-note" size="xsmall" />

@@ -161,7 +161,7 @@ describe('PagesView', () => {
 		const backlinks = await wrapper.findByTestId('page-backlinks');
 
 		expect(api.getPageBacklinks).toHaveBeenCalledWith(expect.anything(), 'page-1');
-		expect(backlinks).toHaveTextContent('Linked from');
+		expect(backlinks).toHaveTextContent('Links');
 		expect(wrapper.getByTestId('page-backlinks-workflow')).toHaveTextContent('Sync orders');
 		expect(wrapper.getByTestId('page-backlinks-page')).toHaveTextContent('Notes');
 	});

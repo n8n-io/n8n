@@ -237,7 +237,7 @@ watch(selectedPageId, () => {
 											{{ i18n.baseText('page.editor.edited') }}
 											<N8nTimeAgo :date="page.updatedAt" live />
 										</N8nText>
-										<PageBacklinks :backlinks="backlinks" />
+										<PageBacklinks :backlinks="backlinks" :content="page.content" />
 									</div>
 								</template>
 							</PageEditor>
