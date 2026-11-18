@@ -1,10 +1,10 @@
 import { defineSpecies } from '../species.types';
 
-/** Agent alternate: later, each skill becomes a seaweed strand held in the tail. */
+/** Every agent. It holds one seaweed strand for each skill (`skillStrandsEffect`). */
 export const seahorse = defineSpecies({
 	id: 'seahorse',
 	kinds: ['agent'],
-	sizeTiers: ['tiny', 'small'],
+	sizeTiers: ['tiny', 'small', 'medium', 'large', 'huge'],
 	motion: 'drift',
 	frameRate: 2,
 	mouthRow: 10,

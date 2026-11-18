@@ -24,10 +24,13 @@ describe('deriveTraits', () => {
 	});
 
 	it('gives agents an agent species', () => {
-		expect(['jellyfish', 'seahorse']).toContain(
-			deriveTraits(entity({ complexity: 1 }, 'agent')).speciesId,
-		);
-		expect(deriveTraits(entity({ complexity: 20 }, 'agent')).speciesId).toBe('octopus');
+		expect(deriveTraits(entity({ complexity: 1 }, 'agent')).speciesId).toBe('seahorse');
+		expect(deriveTraits(entity({ complexity: 20 }, 'agent')).speciesId).toBe('seahorse');
+	});
+
+	it('gives agents one seaweed strand for each skill, and workflows none', () => {
+		expect(deriveTraits(entity({ complexity: 3 }, 'agent')).effects).toContain('skillStrands');
+		expect(deriveTraits(entity({ complexity: 3 })).effects).not.toContain('skillStrands');
 	});
 
 	it('makes busy creatures faster', () => {

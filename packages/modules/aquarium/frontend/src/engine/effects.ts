@@ -1,4 +1,5 @@
 import { MAX_SWIM_SPEED } from '../aquarium.constants';
+import { hashString } from '../species/species.registry';
 import type { Creature } from './simulation';
 
 /** Draws extra pixels for a creature after its sprite. Must not keep state between frames. */
@@ -94,9 +95,48 @@ export const catEffect: CreatureEffect = {
 	},
 };
 
+const STRAND_COLOURS = ['#2f8f4e', '#3fa65c', '#1cbc52', '#79ec41', '#267a42'];
+/** The seaweed stub in the seahorse's tail curl, in sprite pixels of the right-facing sprite. */
+const STRAND_ANCHOR = { x: 2, y: 24 };
+/** More strands than this would hide the seahorse. */
+const STRAND_MAX = 8;
+
+/**
+ * One seaweed strand for each skill of an agent. Agents have a complexity of 1 + their skill
+ * count. The agent id picks the colours, so a seahorse looks the same after a reload.
+ */
+export const skillStrandsEffect: CreatureEffect = {
+	id: 'skillStrands',
+	draw(ctx, creature) {
+		const strands = Math.min(STRAND_MAX, Math.max(0, creature.entity.metrics.complexity - 1));
+		if (strands === 0) return;
+		const scale = creature.traits.scale;
+		const fromX =
+			creature.facing === 1
+				? creature.x + STRAND_ANCHOR.x * scale
+				: creature.x + creature.width - 1 - STRAND_ANCHOR.x * scale;
+		const fromY = creature.y + STRAND_ANCHOR.y * scale;
+		const seed = hashString(creature.entity.id);
+
+		for (let i = 0; i < strands; i++) {
+			ctx.fillStyle = STRAND_COLOURS[(seed + i) % STRAND_COLOURS.length] ?? '#2f8f4e';
+			const length = 7 + ((seed >> (i % 8)) % 6);
+			// Strands fan out from the tail, and each tip sways more than its root.
+			const spread = (i - (strands - 1) / 2) * 0.4;
+			for (let k = 1; k <= length; k++) {
+				const sway = Math.sin(creature.age * 1.6 + i * 1.3 + k * 0.45) * (k / length) * 1.5;
+				const x = Math.round(fromX - creature.facing * k);
+				const y = Math.round(fromY + spread * k + sway);
+				ctx.fillRect(x, y, 1, 2);
+			}
+		}
+	},
+};
+
 const registry = new Map<string, CreatureEffect>([
 	[bubblesEffect.id, bubblesEffect],
 	[catEffect.id, catEffect],
+	[skillStrandsEffect.id, skillStrandsEffect],
 ]);
 
 export function registerEffect(effect: CreatureEffect): void {

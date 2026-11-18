@@ -71,7 +71,7 @@ The species says what an entity is and how big it is. Speed says how busy it is.
 | Execution count | How busy it is | Resting swim speed on a log scale. Bubbles from 10 runs | Built |
 | Live run rate | Busy right now | Faster swimming, fins and bubbles | Built |
 | Small workflow with many runs | A busy little helper | A fast minnow. Planned: a school of fish | Partly |
-| Agent | It exists, with a number of skills | A drifting jellyfish or octopus. Planned: a seahorse that holds its own clump of seaweed, one strand for each skill, coloured by the skill id | Partly |
+| Agent | It exists, with a number of skills | A seahorse that holds one seaweed strand for each skill (`skillStrandsEffect`), coloured by the agent id | Built |
 | Many workflows | A large instance | Zoom and pan, and a tank for each project | Built |
 
 Agents stay Neutral and static until a source gives agent run stats.

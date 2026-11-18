@@ -41,6 +41,10 @@ export const securityRule: TraitRule = (entity, traits) =>
 		? { ...traits, effects: [...traits.effects, 'cat'] }
 		: traits;
 
+/** An agent holds one seaweed strand for each skill. */
+export const skillStrandsRule: TraitRule = (entity, traits) =>
+	entity.kind === 'agent' ? { ...traits, effects: [...traits.effects, 'skillStrands'] } : traits;
+
 /** A creature that fails often blinks green and swims slowly. */
 export const sickRule: TraitRule = (entity, traits) =>
 	failureRateOf(entity.metrics) > SICK_FAILURE_RATE
@@ -59,6 +63,7 @@ export const defaultTraitRules: TraitRule[] = [
 	speedRule,
 	bubblesRule,
 	securityRule,
+	skillStrandsRule,
 	sickRule,
 ];
 
