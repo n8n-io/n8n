@@ -585,6 +585,86 @@ describe('Compression Node - Decompress Operation', () => {
 			expect(result[0][0].pairedItem).toEqual({ item: 0 });
 			expect(result[0][1].pairedItem).toEqual({ item: 1 });
 		});
+
+		it('should resolve the input binary field for each item', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{ json: { item: 1 } },
+				{ json: { item: 2 } },
+				{ json: { item: 3 } },
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, itemIndex: number) => {
+					if (paramName === 'operation') return 'decompress';
+					if (paramName === 'binaryPropertyName') {
+						return ['data1', 'data0', 'data2'][itemIndex];
+					}
+					if (paramName === 'outputPrefix') return 'file_';
+					return undefined;
+				},
+			);
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockImplementation(
+				(_itemIndex, binaryPropertyName) => ({
+					data: 'base64data',
+					mimeType: 'application/gzip',
+					fileName: `${binaryPropertyName}.json.gz`,
+					fileExtension: 'gz',
+				}),
+			);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(Buffer.from('target'));
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+				data: 'dGFyZ2V0',
+				mimeType: 'application/json',
+				fileName: 'target.json',
+				fileExtension: 'json',
+			} as IBinaryData);
+
+			await compression.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenNthCalledWith(1, 0, 'data1');
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenNthCalledWith(2, 1, 'data0');
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenNthCalledWith(3, 2, 'data2');
+		});
+
+		it('should preserve the version 1 input binary field behavior', async () => {
+			mockExecuteFunctions.getNode.mockReturnValue({ ...mockNode, typeVersion: 1 });
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{ json: { item: 1 } },
+				{ json: { item: 2 } },
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, itemIndex: number) => {
+					if (paramName === 'operation') return 'decompress';
+					if (paramName === 'binaryPropertyName') return `data${itemIndex}`;
+					if (paramName === 'outputPrefix') return 'file_';
+					return undefined;
+				},
+			);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue({
+				data: 'base64data',
+				mimeType: 'application/gzip',
+				fileName: 'data.json.gz',
+				fileExtension: 'gz',
+			});
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock gzip data'),
+			);
+			mockBoundedGunzip(Buffer.from('target'));
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+				data: 'dGFyZ2V0',
+				mimeType: 'application/json',
+				fileName: 'target.json',
+				fileExtension: 'json',
+			} as IBinaryData);
+
+			await compression.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenNthCalledWith(1, 0, 'data0');
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenNthCalledWith(2, 1, 'data0');
+		});
 	});
 
 	describe('Edge Cases', () => {
